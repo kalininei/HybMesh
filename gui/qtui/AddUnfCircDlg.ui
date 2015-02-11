@@ -1,0 +1,272 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>add_unf_circ</class>
+ <widget class="QDialog" name="add_unf_circ">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>292</width>
+    <height>198</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Add circle uniform grid block</string>
+  </property>
+  <property name="windowIcon">
+   <iconset resource="ComGridRes.qrc">
+    <normaloff>:/icons/mainwin.png</normaloff>:/icons/mainwin.png</iconset>
+  </property>
+  <widget class="QLabel" name="label">
+   <property name="geometry">
+    <rect>
+     <x>4</x>
+     <y>5</y>
+     <width>58</width>
+     <height>16</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Grid name</string>
+   </property>
+  </widget>
+  <widget class="QLineEdit" name="ed_name">
+   <property name="geometry">
+    <rect>
+     <x>66</x>
+     <y>5</y>
+     <width>131</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>CircleGrid1</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_2">
+   <property name="geometry">
+    <rect>
+     <x>4</x>
+     <y>59</y>
+     <width>40</width>
+     <height>16</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Radius</string>
+   </property>
+  </widget>
+  <widget class="QLineEdit" name="ed_rad">
+   <property name="geometry">
+    <rect>
+     <x>66</x>
+     <y>59</y>
+     <width>95</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>1.0</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_3">
+   <property name="geometry">
+    <rect>
+     <x>4</x>
+     <y>86</y>
+     <width>71</width>
+     <height>16</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Arch partition</string>
+   </property>
+  </widget>
+  <widget class="QLineEdit" name="ed_na">
+   <property name="geometry">
+    <rect>
+     <x>79</x>
+     <y>86</y>
+     <width>49</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>10</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_4">
+   <property name="geometry">
+    <rect>
+     <x>132</x>
+     <y>88</y>
+     <width>87</width>
+     <height>16</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Radius partition</string>
+   </property>
+  </widget>
+  <widget class="QLineEdit" name="ed_nr">
+   <property name="geometry">
+    <rect>
+     <x>223</x>
+     <y>86</y>
+     <width>65</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>10</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_5">
+   <property name="geometry">
+    <rect>
+     <x>4</x>
+     <y>113</y>
+     <width>91</width>
+     <height>16</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Refinement coef</string>
+   </property>
+  </widget>
+  <widget class="QLineEdit" name="ed_coef">
+   <property name="geometry">
+    <rect>
+     <x>109</x>
+     <y>113</y>
+     <width>51</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>1.2</string>
+   </property>
+  </widget>
+  <widget class="QCheckBox" name="cb_trian">
+   <property name="geometry">
+    <rect>
+     <x>4</x>
+     <y>140</y>
+     <width>124</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Triangulate center</string>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+  </widget>
+  <widget class="QDialogButtonBox" name="buttonBox">
+   <property name="geometry">
+    <rect>
+     <x>132</x>
+     <y>166</y>
+     <width>156</width>
+     <height>25</height>
+    </rect>
+   </property>
+   <property name="orientation">
+    <enum>Qt::Horizontal</enum>
+   </property>
+   <property name="standardButtons">
+    <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_6">
+   <property name="geometry">
+    <rect>
+     <x>4</x>
+     <y>32</y>
+     <width>16</width>
+     <height>16</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>X</string>
+   </property>
+  </widget>
+  <widget class="QLineEdit" name="ed_x">
+   <property name="geometry">
+    <rect>
+     <x>20</x>
+     <y>30</y>
+     <width>70</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>0.0</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_7">
+   <property name="geometry">
+    <rect>
+     <x>115</x>
+     <y>33</y>
+     <width>16</width>
+     <height>16</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Y</string>
+   </property>
+  </widget>
+  <widget class="QLineEdit" name="ed_y">
+   <property name="geometry">
+    <rect>
+     <x>130</x>
+     <y>31</y>
+     <width>95</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>0.0</string>
+   </property>
+  </widget>
+ </widget>
+ <resources>
+  <include location="ComGridRes.qrc"/>
+ </resources>
+ <connections>
+  <connection>
+   <sender>buttonBox</sender>
+   <signal>accepted()</signal>
+   <receiver>add_unf_circ</receiver>
+   <slot>accept()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>248</x>
+     <y>254</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>157</x>
+     <y>274</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>buttonBox</sender>
+   <signal>rejected()</signal>
+   <receiver>add_unf_circ</receiver>
+   <slot>reject()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>316</x>
+     <y>260</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>286</x>
+     <y>274</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+</ui>

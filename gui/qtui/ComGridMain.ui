@@ -1,0 +1,266 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>800</width>
+    <height>600</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>MainWindow</string>
+  </property>
+  <property name="windowIcon">
+   <iconset resource="ComGridRes.qrc">
+    <normaloff>:/icons/mainwin.png</normaloff>:/icons/mainwin.png</iconset>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="verticalLayout_2">
+    <item>
+     <widget class="QFrame" name="f_vtk">
+      <property name="frameShape">
+       <enum>QFrame::StyledPanel</enum>
+      </property>
+      <property name="frameShadow">
+       <enum>QFrame::Sunken</enum>
+      </property>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>800</width>
+     <height>20</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menu_File">
+    <property name="title">
+     <string>&amp;File</string>
+    </property>
+    <addaction name="act_open"/>
+    <addaction name="act_save"/>
+    <addaction name="separator"/>
+    <addaction name="act_exit"/>
+   </widget>
+   <widget class="QMenu" name="menu_Edit">
+    <property name="title">
+     <string>&amp;Edit</string>
+    </property>
+    <addaction name="act_undo"/>
+    <addaction name="act_redo"/>
+   </widget>
+   <widget class="QMenu" name="menu_View">
+    <property name="title">
+     <string>&amp;View</string>
+    </property>
+    <addaction name="act_comhist"/>
+    <addaction name="act_grid_manager"/>
+   </widget>
+   <widget class="QMenu" name="menu_Geometry">
+    <property name="title">
+     <string>&amp;Geometry</string>
+    </property>
+    <widget class="QMenu" name="menuAdd_grid">
+     <property name="title">
+      <string>Add &amp;grid</string>
+     </property>
+     <addaction name="act_unf_rect"/>
+     <addaction name="act_unf_circ"/>
+    </widget>
+    <addaction name="menuAdd_grid"/>
+   </widget>
+   <widget class="QMenu" name="menuTools">
+    <property name="title">
+     <string>&amp;Tools</string>
+    </property>
+    <addaction name="act_unite_grids"/>
+   </widget>
+   <widget class="QMenu" name="menuTransform">
+    <property name="title">
+     <string>Trans&amp;form</string>
+    </property>
+    <addaction name="act_movrot"/>
+   </widget>
+   <addaction name="menu_File"/>
+   <addaction name="menu_Edit"/>
+   <addaction name="menu_View"/>
+   <addaction name="menu_Geometry"/>
+   <addaction name="menuTools"/>
+   <addaction name="menuTransform"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <widget class="QDockWidget" name="DWGridManager">
+   <property name="features">
+    <set>QDockWidget::AllDockWidgetFeatures</set>
+   </property>
+   <property name="windowTitle">
+    <string>Grid Manager</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>2</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents">
+    <layout class="QVBoxLayout" name="verticalLayout">
+     <item>
+      <widget class="QTreeWidget" name="tw_gridblocks">
+       <property name="selectionMode">
+        <enum>QAbstractItemView::NoSelection</enum>
+       </property>
+       <property name="selectionBehavior">
+        <enum>QAbstractItemView::SelectItems</enum>
+       </property>
+       <property name="columnCount">
+        <number>5</number>
+       </property>
+       <attribute name="headerVisible">
+        <bool>false</bool>
+       </attribute>
+       <column>
+        <property name="text">
+         <string notr="true">1</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string notr="true">2</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string notr="true">3</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string notr="true">4</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string notr="true">5</string>
+        </property>
+       </column>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+  </widget>
+  <action name="act_open">
+   <property name="text">
+    <string>&amp;Open ...</string>
+   </property>
+  </action>
+  <action name="act_save">
+   <property name="text">
+    <string>&amp;Save ...</string>
+   </property>
+  </action>
+  <action name="act_exit">
+   <property name="text">
+    <string>E&amp;xit</string>
+   </property>
+  </action>
+  <action name="act_undo">
+   <property name="text">
+    <string>&amp;Undo</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Z</string>
+   </property>
+  </action>
+  <action name="act_redo">
+   <property name="text">
+    <string>&amp;Redo</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Y</string>
+   </property>
+  </action>
+  <action name="act_comhist">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Commands &amp;history</string>
+   </property>
+  </action>
+  <action name="act_unf_rect">
+   <property name="text">
+    <string>Uniform &amp;rectangle</string>
+   </property>
+  </action>
+  <action name="act_grid_manager">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Grid Manager</string>
+   </property>
+  </action>
+  <action name="act_unite_grids">
+   <property name="text">
+    <string>&amp;Unite grids</string>
+   </property>
+  </action>
+  <action name="act_unf_circ">
+   <property name="text">
+    <string>Uniform &amp;cirlce</string>
+   </property>
+  </action>
+  <action name="act_movrot">
+   <property name="text">
+    <string>&amp;Move/Rotate</string>
+   </property>
+  </action>
+ </widget>
+ <resources>
+  <include location="ComGridRes.qrc"/>
+ </resources>
+ <connections>
+  <connection>
+   <sender>act_exit</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>close()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>399</x>
+     <y>299</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>act_grid_manager</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>DWGridManager</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>761</x>
+     <y>300</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+</ui>

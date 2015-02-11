@@ -1,0 +1,36 @@
+<?xml version='1.0' encoding='utf-8'?>
+<ComGridProject>
+    <FLOWS>
+        <FLOW active="1" name="Flow1">
+            <COMMANDS>
+                <ENTRY current="1">
+                    <LINE>Start</LINE>
+                </ENTRY>
+                <ENTRY>
+                    <LINE>AddUnfRectGrid -5.0 -5.0 5.0 5.0 20 20 Grid1</LINE>
+                </ENTRY>
+                <ENTRY>
+                    <LINE>AddUnfCircGrid 0.0 0.0 1.0 30 10 1.2 True CircleGrid1</LINE>
+                </ENTRY>
+                <ENTRY>
+                    <LINE>RotateGrids -3.0 -3.0 5.0 CircleGrid1</LINE>
+                </ENTRY>
+                <ENTRY>
+                    <LINE>AddUnfRectGrid 0.0 0.0 1.0 1.0 10 10 Grid1</LINE>
+                </ENTRY>
+                <ENTRY>
+                    <LINE>RotateGrids 3.0 3.0 -10.0 Grid2</LINE>
+                </ENTRY>
+                <ENTRY>
+                    <LINE>MoveGrids 0.0 -3.0 Grid2</LINE>
+                </ENTRY>
+                <ENTRY>
+                    <LINE>MoveGrids -3.0 0.0 CircleGrid1</LINE>
+                </ENTRY>
+            </COMMANDS>
+            <STATE>
+                <GRIDS />
+            </STATE>
+        </FLOW>
+    </FLOWS>
+</ComGridProject>

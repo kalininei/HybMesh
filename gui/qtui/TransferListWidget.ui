@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Form</class>
+ <widget class="QWidget" name="Form">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>390</width>
+    <height>241</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <layout class="QGridLayout" name="gridLayout">
+   <item row="0" column="0" rowspan="5">
+    <widget class="QListWidget" name="lst_left"/>
+   </item>
+   <item row="3" column="1">
+    <widget class="QPushButton" name="bt_right">
+     <property name="text">
+      <string/>
+     </property>
+     <property name="icon">
+      <iconset resource="ComGridRes.qrc">
+       <normaloff>:/icons/right_arrow.png</normaloff>:/icons/right_arrow.png</iconset>
+     </property>
+    </widget>
+   </item>
+   <item row="4" column="1">
+    <spacer name="verticalSpacer">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>40</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item row="0" column="1">
+    <spacer name="verticalSpacer_2">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>40</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item row="0" column="2" rowspan="5">
+    <widget class="QListWidget" name="lst_right"/>
+   </item>
+   <item row="2" column="1">
+    <widget class="QPushButton" name="bt_left">
+     <property name="text">
+      <string/>
+     </property>
+     <property name="icon">
+      <iconset resource="ComGridRes.qrc">
+       <normaloff>:/icons/left_arrow.png</normaloff>:/icons/left_arrow.png</iconset>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources>
+  <include location="ComGridRes.qrc"/>
+ </resources>
+ <connections/>
+</ui>

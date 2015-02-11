@@ -1,0 +1,11 @@
+<RCC>
+  <qresource prefix="icons">
+    <file>left_arrow.png</file>
+    <file>right_arrow.png</file>
+    <file>delete.png</file>
+    <file>opts.png</file>
+    <file>eye-off.png</file>
+    <file>eye-on.png</file>
+    <file>mainwin.png</file>
+  </qresource>
+</RCC>

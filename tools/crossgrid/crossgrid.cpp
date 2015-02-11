@@ -28,6 +28,7 @@ void grid_get_points_cells(Grid* g, double* pts, int* cells){
 	//cells
 	for (int i=0; i<gg->n_cells(); ++i){
 		auto c = gg->get_cell(i);
+		*cells++ = c->dim();
 		for (int j=0; j<c->dim(); ++j){
 			*cells++ = c->get_point(j)->get_ind();
 		}
