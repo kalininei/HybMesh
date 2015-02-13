@@ -5,6 +5,7 @@
 #include "fileproc.h"
 #include "trigrid.h"
 #include "buffergrid.h"
+#include "wireframegrid.h"
 
 void Edge::add_adj_cell(int cell_ind, int i1, int i2) const{
 	if ((i1 == p1) && (i2 == p2)){
@@ -22,6 +23,12 @@ int GridGeom::n_cellsdim() const{
 	return ret;
 }
 
+double Cell::area() const{
+	return PContour::build(points).area();
+}
+void Cell::check_ordering(){
+	if (area()<0) std::reverse(points.begin(), points.end());
+}
 
 void GridGeom::add_data(const GridGeom& g){
 	int start_p_index = n_points();
@@ -203,32 +210,20 @@ GridGeom GridGeom::remove_area(const PContour& cont){
 	return res;
 }
 
-GridGeom* GridGeom::cross_grids(GridGeom* gmain, GridGeom* gsec, double buffer_size){
-	//normalize
-	auto nrm = gmain->do_scale();
-	gsec->do_scale(nrm);
+void GridGeom::force_cells_ordering(){
+	for (auto c: cells) c->check_ordering();
+}
 
-	//get all contours from secondary grid
-	auto csec  = gsec->get_contours();
-
-	//delete each contour area from the main grid
-	GridGeom constr(*gmain);
-	for (auto& c2: csec){
-		auto cont = c2.widen_contour(buffer_size);
-		constr=constr.remove_area(cont);
-	}
-
-	//after grid was cleared from area wich contains secondary grid
-	//we can add it
-	constr.add_data(*gsec);
-
-	//renormalize
-	gmain->undo_scale(nrm);
-	gsec->undo_scale(nrm);
-	constr.undo_scale(nrm);
-
-	//return grid sum
-	return new GridGeom(constr);
+GridGeom* GridGeom::combine2(GridGeom* gmain, GridGeom* gsec){
+	//1) input date to wireframe format
+	PtsGraph wmain(*gmain);
+	PtsGraph wsec(*gsec);
+	//2) cut outer grid with inner grid contour
+	wmain = PtsGraph::cut(wmain, gsec->get_contours());
+	//3) overlay grids
+	wmain = PtsGraph::overlay(wmain, wsec);
+	//4) return
+	return new GridGeom(wmain.togrid());
 }
 
 GridGeom* GridGeom::combine(GridGeom* gmain, GridGeom* gsec){
@@ -306,7 +301,7 @@ GridGeom* GridGeom::combine(GridGeom* gmain, GridGeom* gsec){
 	return ret;
 }
 
-GridGeom* GridGeom::cross_grids2(GridGeom* gmain, GridGeom* gsec, double buffer_size){
+GridGeom* GridGeom::cross_grids(GridGeom* gmain, GridGeom* gsec, double buffer_size){
 	//1 ---- combine grids without using buffers
 	GridGeom* comb = GridGeom::combine(gmain, gsec);
 
@@ -317,7 +312,7 @@ GridGeom* GridGeom::cross_grids2(GridGeom* gmain, GridGeom* gsec, double buffer_
 	for (auto c: csec){
 		//1. filter out a grid from buffer zone for the contour
 		BufferGrid bg(*comb, c, buffer_size);
-		
+
 		//2. add nodes to edges which are boundary in comb.first grid
 		bg.split_bedges();
 
@@ -327,7 +322,7 @@ GridGeom* GridGeom::cross_grids2(GridGeom* gmain, GridGeom* gsec, double buffer_
 
 		//4 build a grid within the area
 		TriGrid g3ref = g3.refine_grid(0.5);
-	
+
 		//5. change the internal of bg by g3ref grid
 		bg.change_internal(g3ref);
 		

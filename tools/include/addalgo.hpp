@@ -119,7 +119,7 @@ Container<PData> pointers_container(Container<Data>& d){
 template<class Container, class Data=typename Container::value_type::element_type>
 Data* add_shared(Container& c, const Data& d){
 	auto p = new Data(d);
-	std::inserter(c, c.end())=typename Container::value_type(p);
+	std::inserter(c, c.end()) = typename Container::value_type(p);
 	return p;
 }
 

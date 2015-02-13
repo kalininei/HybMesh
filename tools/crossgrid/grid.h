@@ -3,6 +3,7 @@
 
 #include "crossgrid.h"
 #include "bgeom.h"
+#include "contours.h"
 
 class GPoint: public Point{
 	int ind;
@@ -17,11 +18,14 @@ public:
 class Cell{
 	vector<GPoint*> points;
 	int ind;
+	//reverses points array if neseccary
+	void check_ordering();
 public:
 	explicit Cell(int _ind = 0):ind(_ind){}
 	int dim() const { return points.size(); }
 	const GPoint* get_point(int i) const { return points[i]; }
 	int get_ind() const { return ind; }
+	double area() const;
 
 	friend class GridGeom;
 };
@@ -31,7 +35,7 @@ struct Edge{
 	int p1, p2;
 	//cells indicies
 	mutable int cell_left, cell_right;
-	Edge(int i1, int i2):
+	Edge(int i1=0, int i2=0):
 		p1(std::min(i1, i2)), p2(std::max(i1,i2)), 
 		cell_left(-1), cell_right(-1){}
 	void add_adj_cell(int cell_ind, int i1, int i2) const;
@@ -52,11 +56,10 @@ protected:
 	ScaleBase do_scale();
 	void do_scale(const ScaleBase& sc);
 	void undo_scale(const ScaleBase& sc);
-	//edges 
-	std::set<Edge> get_edges() const;
 	//contours manipulation
 	std::vector<PContour> get_contours() const;
 	GridGeom remove_area(const PContour& cont);
+	void force_cells_ordering();
 	//indexation
 	void set_indicies();
 	void delete_unused_points();
@@ -89,6 +92,8 @@ public:
 	//data access
 	const GPoint* get_point(int i) const { return points[i].get(); }
 	const Cell* get_cell(int i) const { return cells[i].get(); }
+	//edges 
+	std::set<Edge> get_edges() const;
 
 	//data modify
 	//change internal structure of the grid with data from another one.
@@ -97,12 +102,12 @@ public:
 
 	//static builders
 	static GridGeom* cross_grids(GridGeom* gmain, GridGeom* gsec, double buffer_size);
-	static GridGeom* cross_grids2(GridGeom* gmain, GridGeom* gsec, double buffer_size);
 	
 	//builds a grid wich is constructed by imposition of gsec onto gmain
 	//no bufferzones. 
 	//Created grid area equals the intersection of gmain and gsec areas.
 	static GridGeom* combine(GridGeom* gmain, GridGeom* gsec);
+	static GridGeom* combine2(GridGeom* gmain, GridGeom* gsec);
 
 	friend class BufferGrid;
 };

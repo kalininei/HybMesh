@@ -55,6 +55,7 @@ std::vector<int> perform_triangulation(const vector<PContour>& cont, const shp_v
 			ret.push_back(c->GetPointId(j));
 		}
 	}
+
 	return ret;
 }
 
@@ -78,6 +79,10 @@ void TriGrid::build(const vector<PContour>& cont, const shp_vector<Point>& pts){
 	}
 	//indicies
 	set_indicies();
+
+	//force positive triangles (necessary)
+	force_cells_ordering();
+
 }
 
 TriGrid::TriGrid(const vector<PContour>& cont, const shp_vector<Point>& pts): GridGeom(){

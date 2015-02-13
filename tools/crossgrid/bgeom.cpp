@@ -1,5 +1,6 @@
 #include "bgeom.h"
 #include "addalgo.hpp"
+#include "assert.h"
 
 double Point::meas_section(const Point& p, const Point& L1, const Point& L2) noexcept{
 	Vect a = L2-L1, b = p - L1;
@@ -14,146 +15,66 @@ double Point::meas_section(const Point& p, const Point& L1, const Point& L2) noe
 	}
 }
 
-void PContour::select_points(const std::vector<Point*>& pts, 
-		std::vector<Point*>& inner, std::vector<Point*>& outer) const{
-	auto Rect = rectangle_bnd();
-	for (auto p: pts){
-		//check if point is within rectangle
-		//if (p->x < Rect.first.x ||
-				//p->x > Rect.second.x ||
-				//p->y < Rect.first.y ||
-				//p->y > Rect.second.y){
-		if (ISLOWER(p->x, Rect.first.x) ||
-				ISGREATER(p->x, Rect.second.x) ||
-				ISLOWER(p->y, Rect.first.y) ||
-				ISGREATER(p->y, Rect.second.y)){
-			outer.push_back(p);
-		}else{
-			//TODO
-			inner.push_back(p);
-		}
+bool isOnSection(const Point& p, const Point& start, const Point& end, double& ksi, double eps){
+	//check if p is ouside section square
+	if ( (p.x+eps < start.x && p.x+eps < end.x) ||
+	     (p.x-eps > start.x && p.x-eps > end.x) ||
+	     (p.y+eps < start.y && p.y+eps < end.y) ||
+	     (p.y-eps > start.y && p.y-eps > end.y) ) return false;
+	//calculation
+	Vect v1=(end-start);
+	vecNormalize(v1);
+	double Dor=v1.y*start.x-v1.x*start.y;
+	double Dp =v1.y*p.x-v1.x*p.y;
+	if (fabs(Dor-Dp)>eps) return false;
+	Point pproj;
+
+	//exact match
+	if (fabs(Dor-Dp)<geps) pproj=p;
+	else {
+	//~eps match
+		Vect v2(-v1.y, v1.x);
+		v2*=(Dor-Dp); //since |v2|=|v1|=1.0
+		pproj=p-v2;
 	}
-}
-PContour PContour::reverse() const { 
-	PContour ret(*this);
-	std::reverse(ret.pts.begin(), ret.pts.end()); 
-	return ret;
-}
 
-vector<double> PContour::meas_points(const vector<const Point*>& pts) const {
-	auto inner_pts_vec = find_inner(pts);
-	auto inner_pts = std::set<const Point*>(inner_pts_vec.begin(), inner_pts_vec.end());
-	vector<double> ret;
-	for(auto p: pts){
-		double v = meas_to_point(*p);
-		if (inner_pts.find(p)==inner_pts.end()) v*=-1;
-		ret.push_back(v);
+	if (ISEQ(start.x, end.x)){
+		assert(!ISEQ(start.y, end.y));
+		ksi=(pproj.y-start.y)/(end.y-start.y);
+	}else{
+		ksi=(pproj.x-start.x)/(end.x-start.x);
 	}
-	return ret;
+	return (ksi>-geps && ksi<1+geps);
 }
 
-//double PContour::extent() const{
-	//double ret = 0;
-	//for (int i=0; i<n_points(); ++i){
-		//for (int j=i+1; j<n_points(); ++j){
-			//double d = Point::meas(*pts[i], *pts[j]);
-			//if (d>ret) ret = d;
-		//}
-	//}
-	//return sqrt(ret);
-//}
+double determinant_2x2(double* A){
+	return A[0]*A[3]-A[1]*A[2];
+}
 
-double PContour::meas_to_point(const Point& p) const{
-	auto pprev = pts.back();
-	double ret = 1e100;
-	for (auto pc: pts){
-		double v = Point::meas_section(p, *pprev, *pc);
-		if (v<ret) ret = v;
-		pprev = pc;
+bool mat_inverse_2x2(double* A, double* B){
+	double det=determinant_2x2(A);
+	if (ISZERO(det)) return false;
+	B[0]= A[3]/det;
+	B[1]=-A[1]/det;
+	B[2]=-A[2]/det;
+	B[3]= A[0]/det;
+	return true;
+}
+
+bool SectCross(const Point& p1S, const Point& p1E, const Point& p2S, const Point& p2E, double* ksieta) noexcept{
+	double A[4]={p1E.x-p1S.x,  p2S.x-p2E.x,
+		  p1E.y-p1S.y,  p2S.y-p2E.y};
+	double B[4];
+	if (!mat_inverse_2x2(A,B)){ 
+		ksieta[0]=gbig; 
+		ksieta[1]=gbig;
+	} else {
+		double b[2]={p2S.x-p1S.x,
+			  p2S.y-p1S.y};
+		ksieta[0]=B[0]*b[0]+B[1]*b[1];
+		ksieta[1]=B[2]*b[0]+B[3]*b[1];
 	}
-	return ret;
-}
-
-vector<const Point*> PContour::find_inner(const vector<const Point*>& pts) const{
-	std::cout<<"Dummy find_inner"<<std::endl;
-	vector<const Point*> ret;
-	for (auto p: pts){
-		if (ISEQGREATER(p->x, 0.6) || ISEQGREATER(p->y, 0.6) ||
-				ISEQLOWER(p->x, 0.3) || ISEQLOWER(p->y, 0.3)){}
-		else{
-			ret.push_back(p);
-		}
-	}
-	return ret;
-}
-//vector<const Point*> PContour::filter_points(const vector<const Point*>& pts, double dist1, double dist2) const{
-	//vector<const Point*> inner_pts=find_inner(pts);
-	//if (dist1<=0 && dist2 > extent()) return inner_pts;
-	//vector<const Point*> ret;
-	//dist1*=dist1; dist2*=dist2;
-	//for (auto p: inner_pts){
-		//double m = meas_to_point(*p);
-		//if (m>=dist1 && m<=dist2) ret.push_back(p);
-	//}
-	//return ret;
-//}
-
-Contour PContour::widen_contour(double buffer_size) const{
-	//TODO
-	return Contour(*this);
-}
-
-vector<double> PContour::section_lenghts() const{
-	vector<double> ret;
-	auto pprev = pts.back();
-	for (auto p: pts){
-		ret.push_back(Point::dist(*pprev,*p));
-		pprev = p;
-	}
-	return ret;
-}
-vector<double> PContour::chdist() const{
-	vector<double> ret;
-	vector<double> lens = section_lenghts();
-	double dprev = lens.back();
-	for (auto d: lens){
-		ret.push_back((d+dprev)/2.0);
-		dprev = d;
-	}
-	return ret;
-}
-
-std::pair<Point, Point> PContour::rectangle_bnd() const{
-	double minx = pts[0]->x, maxx = pts[0]->x;
-	double miny = pts[0]->y, maxy = pts[0]->y;
-	for (auto p: pts){
-		if (p->x<minx) minx = p->x;
-		if (p->y<miny) miny = p->y;
-		if (p->x>maxx) maxx = p->x;
-		if (p->y>maxy) maxy = p->y;
-	}
-	return std::make_pair(Point(minx, miny), Point(maxx, maxy));
-	
-}
-
-Contour::Contour(const PContour& c): PContour(){
-	for (int i=0; i<c.n_points(); ++i){
-		add_point(*c.get_point(i));
-	}
-}
-
-Contour::Contour(const std::vector<Point>& _pts): PContour(){
-	for (auto& p: _pts) add_point(p);
-}
-
-void Contour::add_point(Point* p){
-	Point pcopy(*p);
-	add_point(pcopy);
-}
-
-void Contour::add_point(const Point& p){
-	auto pp = aa::add_shared(pdata, p);
-	PContour::add_point(pp);
+	return (ksieta[0]>=0 && ksieta[0]<=1 && ksieta[1]>=0 && ksieta[1]<=1); 
 }
 
 vector<double> RefineSection(double a, double b, double Len, double Den){

@@ -6,12 +6,14 @@
 #include <iostream>
 #include <set>
 #include <memory>
+#include "addalgo.hpp"
 
 using std::vector;
 template<class T> using shp_vector = std::vector<std::shared_ptr<T>>;
 
 const double geps = 1e-8;
 const double geps2 = geps*geps;
+const double gbig = 1.0/geps;
 inline bool ISZERO(double v){ return fabs(v)<geps; }
 inline bool ISEQ(double a, double b){ return ISZERO(a-b); }
 inline bool ISEQLOWER(double x, double y){ return x<y+geps; }
@@ -118,7 +120,13 @@ inline std::ostream& operator<<(std::ostream& os, const Point& p){
 	return os;
 }
 
+bool isOnSection(const Point& p, const Point& start, const Point& end, double& ksi, double eps=geps);
 
+//Finds a cross point between two sections: (p1S,p1E) and (p2S, p2E).
+//ksieta -- ouput cross weights: [0] -- weight in first section, [1] -- weight in second section
+//Returns true if 0<=ksieta[0,1]<=1.
+//if sections are parallel: ksieta[0,1]=gbig, returns false
+bool SectCross(const Point& p1S, const Point& p1E, const Point& p2S, const Point& p2E, double* ksieta) noexcept;
 
 //scaling
 struct ScaleBase{
@@ -183,64 +191,10 @@ inline void vecSetLen(Vect& a, double Len){ a/=(vecLen(a)/Len); }
 inline void vecNormalize(Vect& a){ a/=vecLen(a); }
 inline double vecCrossZ(const Vect& a, const Vect& b){ return a.x*b.y-a.y*b.x; }
 
-
-class Contour;
-
-//Contour basic class
-class PContour{
-	std::vector<Point*> pts;
-	std::pair<Point, Point> rectangle_bnd() const;
-	//points which lies within contour or on its edge
-	vector<const Point*> find_inner(const vector<const Point*>& pts) const;
-	//maximum distance between contour points
-	//double extent() const;
-	//meas from point to contour
-	double meas_to_point(const Point& p) const; 
-public:
-	//construction and modification
-	PContour(const vector<Point*>& _pts=vector<Point*>()): pts(_pts){}
-
-	virtual void add_point(Point* p){ pts.push_back(p); }
-	Contour widen_contour(double buffer_size) const;
-
-	//build reversed contour
-	PContour reverse() const;
-
-	//contour data access
-	int n_points() const { return pts.size(); }
-	const Point* get_point(int i) const { return pts[i]; }
-
-	//contour geometry procedures
-	void select_points(const vector<Point*>& pts, 
-			vector<Point*>& inner, vector<Point*>& outer) const;
-
-	//returns squared distances to points. Sign depends on whether points lies 
-	//outside(-) or inside(+) the contour
-	vector<double> meas_points(const vector<const Point*>& pts) const;
-
-	//return inner points which distance from contour is within [dist1, dist2]
-	//vector<const Point*> filter_points(const vector<const Point*>& pts, double dist1, double dist2) const;
-	
-	//additional procedures
-	//length of each section
-	vector<double> section_lenghts() const;
-	//return distances wich covers each node = (hleft+hright)/2.0
-	vector<double> chdist() const;
-};
-
-
-
-//Contour which owns all its points
-class Contour: public PContour{
-	shp_vector<Point> pdata;
-public:
-	Contour(const std::vector<Point>& _pts=std::vector<Point>());
-	Contour(const PContour& c);
-
-	void add_point(Point* p);
-	void add_point(const Point& p);
-};
-
+//triangle procedures
+inline double triarea(const Point& p1, const Point& p2, const Point& p3){
+	return 0.5*vecCrossZ(p1-p3, p2-p3);
+}
 
 //add refinement points within [0, Len] section. 0 and Len are not included.
 vector<double> RefineSection(double a, double b, double Len, double Den);

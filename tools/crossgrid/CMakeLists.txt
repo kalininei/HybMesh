@@ -6,6 +6,8 @@ set (HEADERS
 	fileproc.h
 	trigrid.h
 	buffergrid.h
+	wireframegrid.h
+	contours.h
 )
 
 set (SOURCES
@@ -15,6 +17,8 @@ set (SOURCES
 	fileproc.cpp
 	trigrid.cpp
 	buffergrid.cpp
+	wireframegrid.cpp
+	contours.cpp
 )
 
 source_group ("Header Files" FILES ${HEADERS} ${HEADERS})

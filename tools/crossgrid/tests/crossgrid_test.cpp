@@ -60,7 +60,7 @@ void test2(){
 	std::cout<<"2. merging two grids. Secondary grid lies within the main"<<std::endl;
 	Grid* gmain = rectangular_grid(0,0, 1,1, 10, 10);
 	Grid* gsec  = rectangular_grid(0.3,0.3, 0.6, 0.6, 30, 30);
-	Grid* res = cross_grids(gmain, gsec, 0.15);
+	Grid* res = cross_grids(gmain, gsec, 0.05);
 	grid_save_vtk(gmain,"out_main2.vtk");
 	grid_save_vtk(gsec,"out_sec2.vtk");
 	grid_save_vtk(res,"out_res2.vtk");
@@ -70,7 +70,8 @@ void test2(){
 }
 
 int main(){
-	test1();
-	test2();
+	crossgrid_internal_tests();
+	//test1();
+	//test2();
 	std::cout<<"DONE"<<std::endl;
 }

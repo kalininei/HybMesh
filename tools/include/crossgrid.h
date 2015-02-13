@@ -21,6 +21,7 @@ extern "C"{
 
 	Grid* cross_grids(Grid* gbase, Grid* gsecondary, double buffer_size);
 
+	void crossgrid_internal_tests();
 };
 
 
