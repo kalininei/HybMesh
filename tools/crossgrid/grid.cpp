@@ -214,91 +214,16 @@ void GridGeom::force_cells_ordering(){
 	for (auto c: cells) c->check_ordering();
 }
 
-GridGeom* GridGeom::combine2(GridGeom* gmain, GridGeom* gsec){
+GridGeom* GridGeom::combine(GridGeom* gmain, GridGeom* gsec){
 	//1) input date to wireframe format
 	PtsGraph wmain(*gmain);
 	PtsGraph wsec(*gsec);
 	//2) cut outer grid with inner grid contour
-	wmain = PtsGraph::cut(wmain, gsec->get_contours());
+	wmain = PtsGraph::cut(wmain, gsec->get_contours(),-1);
 	//3) overlay grids
 	wmain = PtsGraph::overlay(wmain, wsec);
 	//4) return
 	return new GridGeom(wmain.togrid());
-}
-
-GridGeom* GridGeom::combine(GridGeom* gmain, GridGeom* gsec){
-	//TODO
-	//------ DUMMY output: [0,0]x[1,1] + [0.3, 0.3]x[0.6, 0.6]
-	GridGeom* ret = new GridGeom(*gsec);
-	for (int i=0; i<gmain->n_points(); ++i){
-		aa::add_shared(ret->points, GPoint(*gmain->get_point(i)));
-	}
-	for (int i=0; i<gmain->n_cells(); ++i){
-		auto c = gmain->get_cell(i);
-		auto cnew = Cell();
-		for (int j=0; j<c->dim(); ++j){
-			int ind = c->get_point(j)->ind;
-			cnew.points.push_back(ret->points[ind+gsec->n_points()].get());
-		}
-		aa::add_shared(ret->cells, Cell(cnew));
-	}
-	int bc = gsec->n_cells();
-	//--- corner cells
-	//left bottom cell
-	ret->cells[bc+22]->points[2] = ret->points[0].get();
-	//right bottom cell
-	ret->cells[bc+26]->points[3] = ret->points[30].get();
-	//top left
-	ret->cells[bc+62]->points[1] = ret->points[31*30].get();
-	//top right
-	ret->cells[bc+66]->points[0] = ret->points[31*31-1].get();
-	////--- left cells
-	for (int i=0; i<3; ++i){
-		int cind = bc+32+10*i;
-		for (int j=0; j<11; ++j){
-			ret->cells[cind]->points.push_back(ret->points[31*(10*i +j)].get());
-		}
-		ret->cells[cind]->points.push_back(ret->cells[cind]->points[3]);
-		aa::remove_entries(ret->cells[cind]->points, {1,2,3});
-	}
-	//bottom cells
-	for (int i=0; i<3; ++i){
-		int cind = bc+23+i;
-		for (int j=0; j<11; ++j){
-			ret->cells[cind]->points.push_back(ret->points[10*(i+1)-j].get());
-		}
-		aa::remove_entries(ret->cells[cind]->points, {2,3});
-	}
-	//right cells
-	for (int i=0; i<3; ++i){
-		int cind = bc+36+10*i;
-		for (int j=0; j<11; ++j){
-			ret->cells[cind]->points.push_back(ret->points[ (10*(i+1)-j)*31+30 ].get());
-		}
-		aa::remove_entries(ret->cells[cind]->points, {0,3});
-	}
-	//top cells
-	for (int i=0; i<3; ++i){
-		int cind = bc+63+i;
-		for (int j=0; j<11; ++j){
-			ret->cells[cind]->points.push_back(ret->points[30*31+10*i+j].get());
-		}
-		ret->cells[cind]->points.push_back(ret->cells[cind]->points[2]);
-		ret->cells[cind]->points.push_back(ret->cells[cind]->points[3]);
-		aa::remove_entries(ret->cells[cind]->points, {0,1,2,3});
-	}
-	//superfluous cells
-	std::set<int> sup_cells;
-	for (int i = 3; i<6; ++i){
-		for (int j=3; j<6; ++j){
-			sup_cells.insert(bc+j*10+i);
-		}
-	}
-	aa::remove_entries(ret->cells, sup_cells);
-	ret->delete_unused_points();
-	ret->set_indicies();
-	std::cout<<"DUMMY COMBINE GRID: "<<ret->n_points()<<"  "<<ret->n_cells()<<std::endl;
-	return ret;
 }
 
 GridGeom* GridGeom::cross_grids(GridGeom* gmain, GridGeom* gsec, double buffer_size){

@@ -49,3 +49,26 @@ void save_vtk(const PContour* c, const char* fn){
 	for (int i=0;i<c->n_points();++i) fs<<3<<std::endl;
 	fs.close();
 }
+
+void save_vtk(const PtsGraph* g, const char* fn){
+	std::ofstream fs(fn);
+	fs<<"# vtk DataFile Version 3.0"<<std::endl;
+	fs<<"PtsGraph"<<std::endl;
+	fs<<"ASCII"<<std::endl;
+	//Points
+	fs<<"DATASET UNSTRUCTURED_GRID"<<std::endl;
+	fs<<"POINTS "<<g->Nnodes()<< " float"<<std::endl;
+	for (int i=0;i<g->Nnodes();++i){
+		auto p = g->get_point(i);
+		fs<<p->x<<" "<<p->y<<" 0"<<std::endl;
+	}
+	//Cells
+	fs<<"CELLS  "<<g->Nlines()<<"   "<<3*g->Nlines()<<std::endl;
+	for (int i=0;i<g->Nlines();++i){
+		auto ln = g->get_line(i);
+		fs<<2<<" "<<ln.first<<" "<<ln.second<<std::endl;
+	}
+	fs<<"CELL_TYPES  "<<g->Nlines()<<std::endl;
+	for (int i=0;i<g->Nlines();++i) fs<<3<<std::endl;
+	fs.close();
+}

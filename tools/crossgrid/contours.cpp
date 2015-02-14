@@ -2,6 +2,7 @@
 
 void PContour::select_points(const std::vector<Point*>& pts, 
 		std::vector<Point*>& inner, std::vector<Point*>& outer) const{
+	std::cout<<"DEPRECATED select_points"<<std::endl;
 	auto Rect = rectangle_bnd();
 	for (auto p: pts){
 		//check if point is within rectangle
@@ -54,14 +55,11 @@ double PContour::meas_to_point(const Point& p) const{
 }
 
 vector<const Point*> PContour::find_inner(const vector<const Point*>& pts) const{
-	std::cout<<"Dummy find_inner"<<std::endl;
 	vector<const Point*> ret;
+	bool is_inner = (area()>0);
 	for (auto p: pts){
-		if (ISEQGREATER(p->x, 0.6) || ISEQGREATER(p->y, 0.6) ||
-				ISEQLOWER(p->x, 0.3) || ISEQLOWER(p->y, 0.3)){}
-		else{
-			ret.push_back(p);
-		}
+		int pos = is_inside(*p, &is_inner);
+		if (pos!=-1) ret.push_back(p);
 	}
 	return ret;
 }
@@ -160,14 +158,30 @@ void ContoursCollection::add_contour(const PContour& cnt){
 	auto newc = aa::add_shared(contours, PContour(cnt));
 	auto newe = aa::add_shared(entries, _entry(newc));
 	auto p = cnt.get_point(0);
+	//find highest contour which contain new one
 	auto tope = const_cast<ContoursCollection::_entry*>(efind(*p));
 	if (tope!=NULL){
 		//if new contour lie within existing one
 		newe->upper = tope;
+		//check if any tope contour lie within new one
+		for (auto c: tope->lower){
+			const Point* p = c->data->get_point(0);
+			if (newe->geom_inside(*p)==1) newe->lower.push_back(c);
+		}
+		//delete newe internal contours from tope list
+		for (auto c: newe->lower) tope->lower.remove(c);
+		//add newe to tope as its lower contour
 		tope->lower.push_back(newe);
 	} else {
 		//if new contour doesn't lie within any other
 		//check if any top level contour lie within new one
+		for (auto c: top_level){
+			const Point* p = c->data->get_point(0);
+			if (newe->geom_inside(*p)==1) newe->lower.push_back(c);
+		}
+		//delete newe internal contours from top level list
+		for (auto c: newe->lower) top_level.remove(c);
+		//add newe to top level
 		top_level.push_back(newe);
 	}
 	set_nesting();
@@ -255,3 +269,4 @@ void Contour::add_point(const Point& p){
 	auto pp = aa::add_shared(pdata, p);
 	PContour::add_point(pp);
 }
+

@@ -197,12 +197,12 @@ GridGeom formgrid(const vector<tgPoint>& P, const vector<tgHalfEdge>& HE,
 		cells_nodes.push_back(c2.front()); c2.pop_front();
 		int nextnode = c2.front(); c2.pop_front();
 		while (c2.size()>0){
-			for (auto it=c2.begin(); it!=c2.end(); ++it){
+			for (auto it=c2.begin(); it!=c2.end(); std::advance(it,2)){
 				if (*it==nextnode){
 					cells_nodes.push_back(*it);
 					auto it2 = it++;
 					nextnode = *(it);
-					c2.erase(it, it2);
+					c2.erase(it2, ++it);  //erases two entries
 					break;
 				}
 			}
@@ -367,13 +367,14 @@ double PtsGraphAccel::find_gline(const Point& p) const noexcept{
 	return -1;
 }
 
-PtsGraph PtsGraph::cut(const PtsGraph& wmain, const ContoursCollection& conts){
+PtsGraph PtsGraph::cut(const PtsGraph& wmain, const ContoursCollection& conts, int dir){
+	dir = (dir>0)?-1:1;
 	auto ccut = PtsGraph(conts);
 	auto ires = impose(wmain, ccut, geps);
 	PtsGraph& pg = std::get<0>(ires);
 	std::set<int> bad_pts;
 	for (int i=0; i<pg.Nnodes(); ++i){
-		if (conts.is_inside(pg.nodes[i])==-1) bad_pts.insert(i);
+		if (conts.is_inside(pg.nodes[i])==dir) bad_pts.insert(i);
 	}
 	std::map<int, int> good_map;
 	for (int i=0; i<pg.Nnodes(); ++i) good_map[i]=i;
@@ -392,7 +393,7 @@ PtsGraph PtsGraph::cut(const PtsGraph& wmain, const ContoursCollection& conts){
 	}
 	aa::remove_entries(pg.lines, bad_lines);
 	//renumber points in good lines
-	for (auto line: pg.lines){
+	for (auto& line: pg.lines){
 		line.i0 = good_map[line.i0];
 		line.i1 = good_map[line.i1];
 	}

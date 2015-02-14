@@ -24,11 +24,20 @@ struct PtsGraph{
 	explicit PtsGraph(const GridGeom& tg);
 	explicit PtsGraph(const ContoursCollection& cc);
 
+	//get data
+	int Nnodes() const {return (int)nodes.size();}
+	int Nlines() const {return (int)lines.size();}
+	const Point* get_point(int i) const { return &nodes[i]; }
+	std::pair<int, int> get_line(int i) const { return std::make_pair(lines[i].i0, lines[i].i1); }
+
 	//create 2D grid on the basis of current wireframe
 	//all boundary edges has an adjacent cell with index=-1.
 	GridGeom togrid() const;
 
-	static PtsGraph cut(const PtsGraph& wmain, const ContoursCollection& conts);
+	//cuts wmain with the contours collection internals
+	//all collection contours lines will be present in the resulting graph
+	//dir = 1 cut contours outer zone, dir = -1 cut contours inner zone
+	static PtsGraph cut(const PtsGraph& wmain, const ContoursCollection& conts, int dir);
 	static PtsGraph overlay(const PtsGraph& wmain, const PtsGraph& wsec);
 private:
 	// ==== main data
@@ -36,8 +45,6 @@ private:
 	vector<GraphLine> lines;
 	
 	// ==== info
-	int Nnodes() const {return (int)nodes.size();}
-	int Nlines() const {return (int)lines.size();}
 	Point& ednode0(int i) noexcept { return nodes[lines[i].i0]; }
 	Point& ednode1(int i) noexcept { return nodes[lines[i].i1]; }
 

@@ -21,6 +21,7 @@ inline bool ISEQGREATER(double x, double y){ return x>y-geps; }
 inline bool ISLOWER(double x, double y){ return x<y-geps; }
 inline bool ISGREATER(double x, double y){ return x>y+geps; }
 
+inline double sqr(double x){ return x*x; }
 
 //Point
 struct Point{

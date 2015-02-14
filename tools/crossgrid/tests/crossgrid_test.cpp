@@ -69,9 +69,23 @@ void test2(){
 	grid_free(res);
 }
 
+void test3(){
+	std::cout<<"3. merging two grids. Secondary grid crosses area of the main"<<std::endl;
+	Grid* gmain = rectangular_grid(0,0, 1,1, 10, 10);
+	Grid* gsec  = rectangular_grid(0.3,-0.1, 0.6, 0.2, 30, 30);
+	Grid* res = cross_grids(gmain, gsec, 0.15);
+	grid_save_vtk(gmain,"out_main3.vtk");
+	grid_save_vtk(gsec,"out_sec3.vtk");
+	grid_save_vtk(res,"out_res3.vtk");
+	grid_free(gmain);
+	grid_free(gsec);
+	grid_free(res);
+}
+
 int main(){
 	crossgrid_internal_tests();
-	//test1();
-	//test2();
+	test1();
+	test2();
+	test3();
 	std::cout<<"DONE"<<std::endl;
 }

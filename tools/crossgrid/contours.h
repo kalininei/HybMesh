@@ -1,6 +1,7 @@
 #ifndef CROSSGRID_CONTOURS_H
 #define CROSSGRID_CONTOURS_H
 #include "bgeom.h"
+#include <list>
 
 //Contour basic class
 class PContour{
@@ -49,6 +50,7 @@ public:
 		vector<Point*>,  //points on contour
 		vector<Point*>   //outer points
 	> filter_points(const vector<Point*>& points) const;
+
 	//contour area
 	double area() const;
 	//length of each section
@@ -72,7 +74,7 @@ private:
 	struct _entry{
 		_entry* upper;
 		_entry(PContour* d): upper(0), is_inner(d->area()>0), data(d){}
-		vector<_entry*> lower;
+		std::list<_entry*> lower;
 		bool is_inner;
 		PContour* data;
 		int geom_inside(const Point& p) const;
@@ -81,7 +83,7 @@ private:
 	};
 	shp_vector<PContour>  contours;
 	shp_vector<_entry>  entries;
-	vector<_entry*> top_level;
+	std::list<_entry*> top_level;
 	void set_nesting();
 	const _entry* efind(const Point& p) const;
 };
@@ -96,6 +98,7 @@ public:
 	void add_point(Point* p);
 	void add_point(const Point& p);
 	void add_point(double x, double y){ add_point(Point(x,y)); }
+
 };
 
 

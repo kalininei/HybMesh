@@ -78,6 +78,7 @@ bool SectCross(const Point& p1S, const Point& p1E, const Point& p2S, const Point
 }
 
 vector<double> RefineSection(double a, double b, double Len, double Den){
+	//std::cout<<"DUMMY REFINE SECTION"<<std::endl;
 	//get number of points
 	double amean = (a+b)/2.0;
 	double hmean = 2*a*b/(a+b);
