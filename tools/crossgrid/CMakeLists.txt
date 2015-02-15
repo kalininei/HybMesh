@@ -25,8 +25,7 @@ source_group ("Header Files" FILES ${HEADERS} ${HEADERS})
 source_group ("Source Files" FILES ${SOURCES} ${SOURCES})
 
 add_library(${CROSSGRID_SONAME} SHARED ${HEADERS} ${SOURCES})
-include(${VTK_USE_FILE})
-target_link_libraries(${CROSSGRID_SONAME} ${VTK_LIBRARIES})
+target_link_libraries(${CROSSGRID_SONAME} ${GMSH_LIBRARY})
 
 include_directories(${CommonInclude})
 

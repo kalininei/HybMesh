@@ -7,21 +7,23 @@ class BufferGrid: public GridGeom{
 	GridGeom* orig;
 	vector<const Cell*> orig_cells;
 	
-	//buffer grid edges which are boundary for main grid
-	struct BndEdge: Edge{
-		BndEdge(const Edge& e);
-		double w1, w2;
-	};
-	vector<BndEdge> bedges;
-
-	void build_bedges(const PContour& cont, double buffer_size);
 	void new_edge_points(Edge& e, const vector<double>& wht);
+
+	//inner and outer boundary points
+	//boundary point -> boundary step dictionary
+	std::map<const Point*, double> inner_bp;  //boundary points from inner contour
+	std::map<const Point*, double> outer_bp;  //boundary points from outer contour
+	std::map<const Point*, double> true_bp;   //boundary points from original boundary
+	//fill *_bp dictionaries
+	void build_bedges(const PContour& cont, double buffer_size);
 public:
 	BufferGrid(GridGeom& main, const PContour& cont, double buffer_size);
 	
-	//modification procedures
-	void split_bedges(double density=0.5);
-
+	std::tuple<
+		std::vector<PContour>,
+		std::vector<double>
+	> boundary_info() const;
+	
 	void update_original() const;
 };
 

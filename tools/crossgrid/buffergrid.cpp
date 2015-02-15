@@ -40,10 +40,10 @@ BufferGrid::BufferGrid(GridGeom& main, const PContour& cont, double buffer_size)
 	
 	//4) build a grid from extracted cells
 	//points
-	std::map<int, GPoint*> mp;
+	std::map<int, GridPoint*> mp;
 	for(auto p: points_set){
-		aa::add_shared(points, GPoint(*p));
-		mp[static_cast<const GPoint*>(p)->get_ind()]=points.back().get();
+		aa::add_shared(points, GridPoint(*p));
+		mp[static_cast<const GridPoint*>(p)->get_ind()]=points.back().get();
 	}
 	//cells
 	for (auto c: orig_cells){
@@ -56,17 +56,7 @@ BufferGrid::BufferGrid(GridGeom& main, const PContour& cont, double buffer_size)
 	build_bedges(cont, buffer_size);
 }
 
-BufferGrid::BndEdge::BndEdge(const Edge& e): Edge(e.p1, e.p2){
-	cell_left = e.cell_left; cell_right = e.cell_right;
-	w1=-1; w2=-1;
-}
 void BufferGrid::build_bedges(const PContour& cont, double buffer_size){
-	//inner and outer boundary points
-	//boundary point -> boundary step dictionary
-	std::map<const Point*, double> inner_bp;  //boundary points from inner contour
-	std::map<const Point*, double> outer_bp;  //boundary points from outer contour
-	std::map<const Point*, double> true_bp;   //boundary points from original boundary
-	
 	//get contour points
 	auto cnts = get_contours();
 	vector<const Point*> pp;
@@ -126,31 +116,13 @@ void BufferGrid::build_bedges(const PContour& cont, double buffer_size){
 		double f2 = outer_bp[closest_outer.first];
 		bp.second = (f1*closest_inner.second + f2*closest_outer.second)/(closest_inner.second + closest_outer.second);
 	}
-	//build edges
-	for (auto& v: true_bp) all_bp.emplace(v.first, &v.second);
-	auto edges = get_edges();
-	for (auto& e: edges) if (e.is_boundary()){
-		auto p1 = points[e.p1].get(), p2 = points[e.p2].get();
-		//if any of p1 and p2 are in true_bp or
-		//p1 and p2 are in different sets then ignore this edge
-		bool p1_inner = (inner_bp.find(p1)!=inner_bp.end());
-		bool p2_inner = (inner_bp.find(p2)!=inner_bp.end());
-		if (p1_inner && p2_inner) continue;
-		bool p1_outer = (outer_bp.find(p1)!=outer_bp.end());
-		bool p2_outer = (outer_bp.find(p2)!=outer_bp.end());
-		if (p1_outer && p2_outer) continue;
-		//add edge
-		bedges.push_back(BndEdge(e));
-		bedges.back().w1 = *all_bp[p1];
-		bedges.back().w2 = *all_bp[p2];
-	}
 }
 
 void BufferGrid::new_edge_points(Edge& e, const vector<double>& wht){
 	auto p1 = points[e.p1].get(), p2 = points[e.p2].get();
-	vector<GPoint*> newp;
+	vector<GridPoint*> newp;
 	for (auto w: wht){
-		newp.push_back(aa::add_shared(points, GPoint(Point::Weigh(*p1, *p2, w))));
+		newp.push_back(aa::add_shared(points, GridPoint(Point::Weigh(*p1, *p2, w))));
 	}
 	//add to cell_left
 	if (e.cell_left>=0){
@@ -158,7 +130,7 @@ void BufferGrid::new_edge_points(Edge& e, const vector<double>& wht){
 		Cell* new_cleft = new Cell();
 		for (int i=0; i<cleft->dim(); ++i){
 			auto cell_point = cleft->get_point(i);
-			add_point_to_cell(new_cleft, const_cast<GPoint*>(cell_point));
+			add_point_to_cell(new_cleft, const_cast<GridPoint*>(cell_point));
 			if (cell_point==p1){
 				for (auto p: newp) add_point_to_cell(new_cleft, p);
 			}
@@ -172,7 +144,7 @@ void BufferGrid::new_edge_points(Edge& e, const vector<double>& wht){
 		Cell* new_cright = new Cell();
 		for (int i=0; i<cright->dim(); ++i){
 			auto cell_point = cright->get_point(i);
-			add_point_to_cell(new_cright, const_cast<GPoint*>(cell_point));
+			add_point_to_cell(new_cright, const_cast<GridPoint*>(cell_point));
 			if (cell_point==p2){
 				for (auto p: newp) add_point_to_cell(new_cright, p);
 			}
@@ -181,16 +153,29 @@ void BufferGrid::new_edge_points(Edge& e, const vector<double>& wht){
 	}
 }
 
-void BufferGrid::split_bedges(double density){
-	for (auto e: bedges){
-		auto p1 = *points[e.p1], p2 = *points[e.p2];
-		double Len = Point::dist(p1, p2);
-		auto refPnt = RefineSection(e.w1, e.w2, Len, density);
-		aa::Cforeach(refPnt, [Len](double& x){x/=Len;});
-		new_edge_points(e, refPnt);
+
+std::tuple<
+	std::vector<PContour>,
+	std::vector<double>
+> BufferGrid::boundary_info() const{
+	std::tuple<vector<PContour>, vector<double>> ret;
+	auto& cnt = std::get<0>(ret);
+	auto& lc = std::get<1>(ret);
+	std::map<const Point*, const double*> all_bp;
+	for (auto& v: inner_bp) all_bp.emplace(v.first, &v.second);
+	for (auto& v: outer_bp) all_bp.emplace(v.first, &v.second);
+	for (auto& v: true_bp)  all_bp.emplace(v.first, &v.second);
+	//get all contours
+	cnt = get_contours();
+	//extract contour points steps
+	for (auto c: cnt){
+		for (int i=0; i<c.n_points(); ++i){
+			lc.push_back(*all_bp[c.get_point(i)]);
+		}
 	}
-	set_indicies();
+	return ret;
 }
+
 
 void BufferGrid::update_original() const{
 	//1) delete all original cells
@@ -203,9 +188,9 @@ void BufferGrid::update_original() const{
 	orig->set_indicies();
 	std::map<int, int> cong_p;
 	auto ocont = orig->get_contours();
-	std::vector<const GPoint*> bpts;
+	std::vector<const GridPoint*> bpts;
 	for (auto c: ocont){
-		for (int i=0; i<c.n_points(); ++i) bpts.push_back(static_cast<const GPoint*>(c.get_point(i)));
+		for (int i=0; i<c.n_points(); ++i) bpts.push_back(static_cast<const GridPoint*>(c.get_point(i)));
 	}
 	for (int i=0; i<bpts.size(); ++i){
 		for (int j=i+1; j<bpts.size(); ++j){

@@ -5,25 +5,25 @@
 #include "bgeom.h"
 #include "contours.h"
 
-class GPoint: public Point{
+class GridPoint: public Point{
 	int ind;
 public:
-	GPoint(double x, double y, int _ind=0): Point(x,y), ind(_ind){}
-	GPoint(const Point& p): Point(p), ind(0){}
+	GridPoint(double x, double y, int _ind=0): Point(x,y), ind(_ind){}
+	GridPoint(const Point& p): Point(p), ind(0){}
 	int get_ind() const { return ind; }
 
 	friend class GridGeom;
 };
 
 class Cell{
-	vector<GPoint*> points;
+	vector<GridPoint*> points;
 	int ind;
 	//reverses points array if neseccary
 	void check_ordering();
 public:
 	explicit Cell(int _ind = 0):ind(_ind){}
 	int dim() const { return points.size(); }
-	const GPoint* get_point(int i) const { return points[i]; }
+	const GridPoint* get_point(int i) const { return points[i]; }
 	int get_ind() const { return ind; }
 	double area() const;
 
@@ -50,7 +50,7 @@ inline bool operator<(const Edge& e1, const Edge& e2){
 class GridGeom: public Grid{
 protected:
 	//Data
-	shp_vector<GPoint> points;
+	shp_vector<GridPoint> points;
 	shp_vector<Cell> cells;
 	//scaling
 	ScaleBase do_scale();
@@ -64,8 +64,8 @@ protected:
 	void set_indicies();
 	void delete_unused_points();
 	//data manipulation
-	static void add_point_to_cell(Cell* c, GPoint* p){ c->points.push_back(p); }
-	static void change_point_of_cell(Cell* c, int j, GPoint* p){ c->points[j] = p; }
+	static void add_point_to_cell(Cell* c, GridPoint* p){ c->points.push_back(p); }
+	static void change_point_of_cell(Cell* c, int j, GridPoint* p){ c->points[j] = p; }
 	//constructors
 	GridGeom(){};
 	GridGeom(const GridGeom& g);
@@ -90,7 +90,7 @@ public:
 	int n_cellsdim() const;
 	
 	//data access
-	const GPoint* get_point(int i) const { return points[i].get(); }
+	const GridPoint* get_point(int i) const { return points[i].get(); }
 	const Cell* get_cell(int i) const { return cells[i].get(); }
 	//edges 
 	std::set<Edge> get_edges() const;
