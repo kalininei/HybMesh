@@ -96,11 +96,34 @@ void test4(){
 	grid_free(res);
 }
 
+void test5(){
+	std::cout<<"5. Diamond within a square grid"<<std::endl;
+	Grid* gmain = rectangular_grid(-5,-5, 5,5, 20, 20);
+	double pnt2[] = {
+		0,0,0,-0.5,0.5,0,0,0.5,-0.5,0,0,-1,1,0,0,1,-1,0
+	};
+	int cls2[] ={
+		3,1,0,4,  3,4,0,3,  3,0,2,3,  3,1,2,0,
+		4,1,4,8,5,  4,8,4,3,7,  4,3,2,6,7,  4,1,5,6,2
+	};
+	Grid* gsec  = grid_construct(9, 8, pnt2, cls2);
+
+	Grid* res = cross_grids(gmain, gsec, 2.0);
+	grid_save_vtk(gmain,"out_main5.vtk");
+	grid_save_vtk(gsec,"out_sec5.vtk");
+	grid_save_vtk(res,"out_res5.vtk");
+
+	grid_free(gmain);
+	grid_free(gsec);
+	grid_free(res);
+}
+
 int main(){
 	crossgrid_internal_tests();
 	test1();
 	test2();
 	test3();
 	test4();
+	test5();
 	std::cout<<"DONE"<<std::endl;
 }

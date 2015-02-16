@@ -61,6 +61,8 @@ def unite_grids(g1, g2, buf, density):
 
     ret = _grid_from_c(c_cross)
 
+    #lib_fa.grid_save_vtk(c_cross, "union_grid.vtk")
+
     #free c memory
     lib_fa.grid_free(c_g1)
     lib_fa.grid_free(c_g2)

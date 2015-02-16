@@ -428,8 +428,8 @@ class CircularGrid(Grid2):
             # inner triangles
             for j in range(self.na):
                 jnext = (j + 1) % self.na
-                ret.append([self.node_index(i, j),
-                    self.node_index(i, jnext),
+                ret.append([self.node_index(self.nr - 1, j),
+                    self.node_index(self.nr - 1, jnext),
                     self.n_points() - 1])
         else:
             # inner polygon
