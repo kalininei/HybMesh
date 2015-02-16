@@ -24,7 +24,7 @@ TriGrid::TriGrid(const vector<PContour>& cont, const vector<double>& lc){
 			pprev = p;
 		}
 	}
-	std::vector<std::vector<GEdge*> > loop;
+	std::vector<std::vector<GEdge*>> loop;
 	loop.push_back(edges);
 	GFace *f = m.addPlanarFace(loop);
 	m.mesh(2);
@@ -101,7 +101,6 @@ void TriGrid::smooth(double w){
 		(*nn.first)*=(1-w); (*nn.first)+=wav;
 	}
 }
-
 
 vector<Point> TriGrid::cell_centers() const{
 	vector<Point> ret;

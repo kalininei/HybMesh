@@ -22,6 +22,7 @@ public:
 	}
 
 	virtual void add_point(Point* p){ pts.push_back(p); }
+	void delete_by_index(const std::set<int>& badind);
 
 	//build reversed contour
 	PContour reverse() const;
@@ -30,7 +31,11 @@ public:
 
 	//contour data access
 	int n_points() const { return pts.size(); }
-	const Point* get_point(int i) const { return pts[i]; }
+	const Point* get_point(int i) const { 
+		if (i<0) return get_point(i+n_points()); 
+		else if (i>=n_points()) return get_point(i-n_points());
+		else return pts[i];
+	}
 
 	//contour geometry procedures
 	void select_points(const vector<Point*>& pts, 
@@ -57,6 +62,8 @@ public:
 	vector<double> section_lenghts() const;
 	//return distances which are covered by each node  = (hleft+hright)/2.0
 	vector<double> chdist() const;
+	//is the i-th point lies on the section between i-1 and i+1 point
+	bool is_corner_point(int i) const;
 };
 
 //collection of contours.

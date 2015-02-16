@@ -18,6 +18,7 @@ class VTKWidget(QVTKRenderWindowInteractor):
         #renderer
         self.ren = vtk.vtkRenderer()
         self.GetRenderWindow().AddRenderer(self.ren)
+        self.ren.SetBackground(0, 0.3, 0.3)
         #2d interactor style
         self.iren().SetInteractorStyle(vtk.vtkInteractorStyleImage())
 

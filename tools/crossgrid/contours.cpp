@@ -77,10 +77,8 @@ double PContour::area() const{
 
 vector<double> PContour::section_lenghts() const{
 	vector<double> ret;
-	auto pprev = pts.back();
-	for (auto p: pts){
-		ret.push_back(Point::dist(*pprev,*p));
-		pprev = p;
+	for (int i=0; i<n_points(); ++i){
+		ret.push_back(Point::dist(*get_point(i), *get_point(i+1)));
 	}
 	return ret;
 }
@@ -116,6 +114,20 @@ int PContour::is_inside(const Point& p, const bool* inner_hint) const{
 	} else {
 		return -1;
 	}
+}
+
+bool PContour::is_corner_point(int i) const{
+	auto p = get_point(i);
+	auto pnext = get_point(i+1);
+	auto pprev = get_point(i-1);
+	Vect v1 = *pnext - *p;
+	Vect v2 = *p - *pprev;
+	double cos2 = sqr(vecDot(v1,v2))/vecDot(v1,v1)/vecDot(v2,v2);
+	return fabs(cos2-1.0)>geps;
+}
+
+void PContour::delete_by_index(const std::set<int>& badind){
+	aa::remove_entries(pts, badind);
 }
 
 std::tuple<

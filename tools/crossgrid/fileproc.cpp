@@ -50,6 +50,47 @@ void save_vtk(const PContour* c, const char* fn){
 	fs.close();
 }
 
+void save_vtk(const vector<PContour>& c, const char* fn){
+	std::ofstream fs(fn);
+	fs<<"# vtk DataFile Version 3.0"<<std::endl;
+	fs<<"Contour 2D"<<std::endl;
+	fs<<"ASCII"<<std::endl;
+	//Points
+	int numpts = 0;
+	for (auto cont: c) numpts+=cont.n_points();
+	fs<<"DATASET UNSTRUCTURED_GRID"<<std::endl;
+	fs<<"POINTS "<<numpts<< " float"<<std::endl;
+	for (auto cont: c){
+		for (int i=0;i<cont.n_points();++i){
+			auto p = cont.get_point(i);
+			fs<<p->x<<" "<<p->y<<" 0"<<std::endl;
+		}
+	}
+	//Cells
+	fs<<"CELLS  "<<numpts<<"   "<<3*numpts<<std::endl;
+	int globN = 0;
+	for (auto cont: c){
+		for (int i=0;i<cont.n_points();++i){
+			int inext = (i+1) % cont.n_points();
+			fs<<2<<" "<<i+globN<<" "<<inext+globN<<std::endl;
+		}
+		globN+=cont.n_points();
+	}
+	fs<<"CELL_TYPES  "<<numpts<<std::endl;
+	for (int i=0;i<numpts;++i) fs<<3<<std::endl;
+	fs.close();
+}
+
+void save_vtk(const vector<PContour>& c, const vector<double>& data, const char* fn){
+	save_vtk(c, fn);
+	std::ofstream f(fn, std::ios_base::app);
+	f<<"POINT_DATA "<<data.size()<<std::endl;
+	f<<"SCALARS data float 1"<<std::endl;
+	f<<"LOOKUP_TABLE default"<<std::endl;
+	for (auto v: data) f<<v<<std::endl;
+	f.close();
+}
+
 void save_vtk(const PtsGraph* g, const char* fn){
 	std::ofstream fs(fn);
 	fs<<"# vtk DataFile Version 3.0"<<std::endl;

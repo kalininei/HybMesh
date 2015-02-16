@@ -5,6 +5,8 @@
 
 BufferGrid::BufferGrid(GridGeom& main, const PContour& cont, double buffer_size):GridGeom(){
 	orig = &main;
+	buffer = buffer_size;
+	source_cont = Contour(cont);
 	//1) find measures to all points
 	vector<const Point*> pp;
 	for (int i=0; i<main.n_points(); ++i) pp.push_back(main.get_point(i));
@@ -53,10 +55,23 @@ BufferGrid::BufferGrid(GridGeom& main, const PContour& cont, double buffer_size)
 		}
 	}
 	set_indicies();
-	build_bedges(cont, buffer_size);
 }
 
-void BufferGrid::build_bedges(const PContour& cont, double buffer_size){
+std::tuple<
+	std::set<const Point*>,   //inner_bp - boundary points from inner contour
+	std::set<const Point*>,   //outer_bp - boundary points from outer contour
+	std::set<const Point*>    //true_bp  - boundary points from original boundary
+> BufferGrid::build_bedges() const{
+	//return value initializatin
+	std::tuple<
+		std::set<const Point*>,
+		std::set<const Point*>,
+		std::set<const Point*>
+	> ret;
+	auto& inner_bp = std::get<0>(ret);
+	auto& outer_bp = std::get<1>(ret);
+	auto& true_bp = std::get<2>(ret);
+
 	//get contour points
 	auto cnts = get_contours();
 	vector<const Point*> pp;
@@ -64,58 +79,17 @@ void BufferGrid::build_bedges(const PContour& cont, double buffer_size){
 		pp.push_back(c.get_point(i));
 	}
 	//get measures of contour points
-	auto meas = cont.meas_points(pp);
+	auto meas = source_cont.meas_points(pp);
 	//sort points depending on their meassures
 	for (size_t i=0; i<meas.size(); ++i){
 		//if point lies without buffer zone this is outer contour
-		if (-meas[i]>sqr(buffer_size-geps)) outer_bp.emplace(pp[i], -1);
+		if (-meas[i]>sqr(buffer-geps)) outer_bp.insert(pp[i]);
 		//if point lies on the contour this is inner contour point
-		else if (fabs(meas[i])<geps2) inner_bp.emplace(pp[i], -1);
+		else if (fabs(meas[i])<geps2) inner_bp.insert(pp[i]);
 		//if this is boundary point from the original grid
-		else true_bp.emplace(pp[i], -1);
+		else true_bp.insert(pp[i]);
 	}
-	//fill steps for inner and outer points
-	std::map<const Point*, double*> all_bp;
-	for (auto& v: inner_bp) all_bp.emplace(v.first, &v.second);
-	for (auto& v: outer_bp) all_bp.emplace(v.first, &v.second);
-	for (auto& c: cnts){
-		auto pprev = c.get_point(c.n_points()-1);
-		for (int i=0; i<c.n_points(); ++i){
-			auto p = c.get_point(i);
-			auto fndp = all_bp.find(p);
-			auto fndprev = all_bp.find(pprev);
-			if (fndp!=all_bp.end() && fndprev!=all_bp.end()){
-				double Len = Point::dist(*p, *pprev);
-				if (*fndp->second>0) *fndp->second = (*fndp->second + Len)/2.0;
-				else *fndp->second = Len;
-				if (*fndprev->second>0) *fndprev->second = (*fndprev->second + Len)/2.0;
-				else *fndprev->second = Len;
-			}
-			pprev = p;
-		}
-	}
-
-	//fill steps for true_bp as a weighted value 
-	//between steps of closest inner and closest outer point
-	auto closest_point = [](const Point* pnt, const std::map<const Point*, double>& col)
-			->std::pair<const Point*, double>{
-		double dist = gbig;
-		const Point* closest = 0;
-		for (auto& p2: col){
-			double d = Point::meas(*pnt, *p2.first);
-			if (d<dist) { dist = d; closest = p2.first; }
-		}
-		return std::make_pair(closest, sqrt(dist));
-	};
-	for (auto& bp: true_bp){
-		//find closest inner and outer points
-		auto closest_inner = closest_point(bp.first, inner_bp);
-		auto closest_outer = closest_point(bp.first, outer_bp);
-		//find steps
-		double f1 = inner_bp[closest_inner.first];
-		double f2 = outer_bp[closest_outer.first];
-		bp.second = (f1*closest_inner.second + f2*closest_outer.second)/(closest_inner.second + closest_outer.second);
-	}
+	return ret;
 }
 
 void BufferGrid::new_edge_points(Edge& e, const vector<double>& wht){
@@ -153,29 +127,88 @@ void BufferGrid::new_edge_points(Edge& e, const vector<double>& wht){
 	}
 }
 
-
 std::tuple<
 	std::vector<PContour>,
 	std::vector<double>
 > BufferGrid::boundary_info() const{
+	//return value
 	std::tuple<vector<PContour>, vector<double>> ret;
-	auto& cnt = std::get<0>(ret);
+	auto& real_contour = std::get<0>(ret);
 	auto& lc = std::get<1>(ret);
-	std::map<const Point*, const double*> all_bp;
-	for (auto& v: inner_bp) all_bp.emplace(v.first, &v.second);
-	for (auto& v: outer_bp) all_bp.emplace(v.first, &v.second);
-	for (auto& v: true_bp)  all_bp.emplace(v.first, &v.second);
-	//get all contours
-	cnt = get_contours();
-	//extract contour points steps
-	for (auto c: cnt){
+
+	//nodes origin info
+	auto origin = build_bedges();
+	auto& inner_bp = std::get<0>(origin);
+	auto& outer_bp = std::get<1>(origin);
+	auto& true_bp = std::get<2>(origin);
+	// --- build real contour
+	real_contour = get_contours();
+	//delete points which lie on the sections of the source contour
+	for (auto& c: real_contour){
+		std::set<int> bad_points;
 		for (int i=0; i<c.n_points(); ++i){
-			lc.push_back(*all_bp[c.get_point(i)]);
+			if (!c.is_corner_point(i) && inner_bp.find(c.get_point(i))!=inner_bp.end()){
+				auto p = c.get_point(i);
+				//find if p is the edge of source contour
+				for (int j=0; j<source_cont.n_points(); ++j){
+					if (*p == *source_cont.get_point(j)){
+						p=0; break;
+					}
+				}
+				if (p!=0) bad_points.insert(i);
+			}
+		}
+		c.delete_by_index(bad_points);
+	}
+
+	//build characteristic steps
+	int _npt=0; for (auto& c: real_contour) _npt+=c.n_points();
+	lc.reserve(_npt);  //dist_dict points to lc data hence reserve is necessary
+	std::map<const Point*, double*> dist_dict;
+	for (auto& c: real_contour){
+		//types of vertices: inner, outer, true boundary
+		vector<int> types;
+		for (int i=0; i<c.n_points(); ++i){
+			if (inner_bp.find(c.get_point(i))!=inner_bp.end()) types.push_back(0);
+			else if (true_bp.find(c.get_point(i))!=true_bp.end()) types.push_back(2);
+			else types.push_back(1);
+		}
+		//calculating distances
+		vector<double> dist = c.section_lenghts();
+		//characteristic steps
+		for (int i=0; i<c.n_points(); ++i){
+			int iprev = (i==0)?c.n_points()-1:i-1;
+			int inext = (i==c.n_points()-1)?0:i+1;
+			double d = (dist[iprev]+dist[i])/2.0 ;
+			if (types[i]==types[inext] && types[i]!=types[iprev]) d = dist[i];
+			else if (types[i]!=types[inext] && types[i]==types[iprev]) d = dist[iprev];
+				
+			lc.push_back(d);
+			dist_dict.emplace(c.get_point(i), &lc.back());
 		}
 	}
+	
+	//for true boundary points find closest inner and outer points
+	auto closest_point = [](const Point* pnt, const std::set<const Point*>& col)
+			->std::pair<const Point*, double>{
+		double dist = gbig;
+		const Point* closest = 0;
+		for (auto& p2: col){
+			double d = Point::meas(*pnt, *p2);
+			if (d<dist) { dist = d; closest = p2; }
+		}
+		return std::make_pair(closest, sqrt(dist));
+	};
+	for (auto& p: true_bp){
+		auto closest_inner = closest_point(p, inner_bp);
+		auto closest_outer = closest_point(p, outer_bp);
+		double f1 = *dist_dict[closest_inner.first], f2 = *dist_dict[closest_outer.first];
+		double d1 = closest_inner.second, d2 = closest_outer.second;
+		*dist_dict[p] = (f1*d1+f2*d2)/(d1+d2);
+	}
+
 	return ret;
 }
-
 
 void BufferGrid::update_original() const{
 	//1) delete all original cells
@@ -215,6 +248,4 @@ void BufferGrid::update_original() const{
 	orig->delete_unused_points();
 	orig->set_indicies();
 }
-
-
 

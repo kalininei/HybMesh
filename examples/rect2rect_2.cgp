@@ -10,10 +10,13 @@
                     <LINE>AddUnfRectGrid 0.0 0.0 1.0 1.0 10 10 Grid1</LINE>
                 </ENTRY>
                 <ENTRY>
-                    <LINE>AddUnfRectGrid 0.3 0.3 0.6 0.6 20 20 Grid1</LINE>
+                    <LINE>AddUnfRectGrid -0.3 -0.3 0.5 0.5 30 30 Grid1</LINE>
                 </ENTRY>
                 <ENTRY>
-                    <LINE>UniteGrids UnitedGrid1 Grid1 0.1 7 Grid2 0.1 7</LINE>
+                    <LINE>UniteGrids UnitedGrid1 Grid1 0.2 7 Grid2 0.2 7</LINE>
+                </ENTRY>
+                <ENTRY>
+                    <LINE>UniteGrids UnitedGrid1 Grid1 0.3 7 Grid2 0.3 7</LINE>
                 </ENTRY>
             </COMMANDS>
             <STATE>

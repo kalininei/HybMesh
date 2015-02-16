@@ -195,7 +195,8 @@ class ViewGridData(object):
         for i, cl in enumerate(g2.cells_nodes_connect()):
             cell = vtk.vtkPolygon()
             cell.GetPointIds().Allocate(len(cl))
-            map(cell.GetPointIds().InsertNextId, cl)
+            #WTF? without reversing some edges are black
+            map(cell.GetPointIds().InsertNextId, cl[::-1])
             g.InsertNextCell(cell.GetCellType(), cell.GetPointIds())
 
         #mapper and actor

@@ -242,10 +242,10 @@ GridGeom* GridGeom::cross_grids(GridGeom* gmain, GridGeom* gsec, double buffer_s
 		auto bgcont = bg.boundary_info();
 		TriGrid g3(std::get<0>(bgcont), std::get<1>(bgcont));
 
-		//5. change the internal of bg by g3ref grid
+		//3. change the internal of bg by g3ref grid
 		bg.change_internal(g3);
 		
-		//6. update original grid using new filling of buffer grid
+		//4. update original grid using new filling of buffer grid
 		bg.update_original();
 	}
 
@@ -269,78 +269,5 @@ void GridGeom::change_internal(const GridGeom& gg){
 		}
 	}
 	
-	////----------- subprocedures
-	//auto boundary_points = [](const vector<PContour>& cv)->std::set<const GridPoint*>{
-		//std::set<const GridPoint*> ret;
-		//for (auto c: cv){
-			//for (int i=0; i<c.n_points(); 
-				//ret.insert(static_cast<const GridPoint*>(c.get_point(i++))));
-		//}
-		//return ret;
-	//};
-	//auto internal_points = [](const GridGeom& grid, const std::set<const GridPoint*>& bs)
-			//->std::set<const GridPoint*>{
-		//std::set<const GridPoint*> ret;
-		//for (int i=0; i<grid.n_points(); ++i){
-			//if (bs.find(grid.get_point(i))==bs.end())
-				//ret.insert(static_cast<const GridPoint*>(grid.get_point(i)));
-
-		//};
-		//return ret;
-	//};
-	//auto boundary_match = [](const std::set<const GridPoint*>& s1, std::set<const GridPoint*>& s2)
-			//->std::map<const GridPoint*, const GridPoint*>{
-		//std::map<const GridPoint*, const GridPoint*> ret;
-		//for (auto p: s1){
-			//for (auto sit = s2.begin(); sit!=s2.end(); ++sit){
-				//if (*p==**sit){
-					//ret.emplace(p, *sit);
-					//s2.erase(sit);
-					//break;
-				//}
-			//}
-		//}
-		//assert(ret.size()==s1.size() && s2.size()==0);
-		//return ret;
-	//};
-	//auto fill_points = [](const GridGeom& g, const shp_vector<GridPoint>& bs, 
-			//const std::set<const GridPoint*>& is, std::map<const GridPoint*, const GridPoint*>& m)
-			//->shp_vector<GridPoint>{
-		//shp_vector<GridPoint> ret = bs;
-		//for (auto p: is) m[p] = aa::add_shared(ret, GridPoint(*p));
-		//return ret;
-	//};
-	//auto fill_cells = [](const shp_vector<GridPoint>& p, const std::map<const GridPoint*, const GridPoint*>& m,
-			//const GridGeom& grid)->shp_vector<Cell>{
-		//shp_vector<Cell> ret;
-		//for (int ic=0; ic<grid.n_cells(); ++ic){
-			//auto c = grid.get_cell(ic);
-			//auto newc = aa::add_shared(ret, Cell());
-			//for (int i=0; i<c->dim(); ++i){
-				//auto p = m.find(c->get_point(i))->second;
-				//add_point_to_cell(newc, const_cast<GridPoint*>(p));
-			//}
-		//}
-		//return ret;
-	//};
-	////------------ main procedure
-	////1) build outer contours 
-	//auto cont1 = get_contours();
-	//auto cont2 = gg.get_contours();
-	////2) create sets and vectors of boundary and internal points
-	//std::set<const GridPoint*> bs1 = boundary_points(cont1);
-	//std::set<const GridPoint*> bs2 = boundary_points(cont2);
-	//std::set<const GridPoint*> is2 = internal_points(gg, bs2);
-	//shp_vector<GridPoint> boundary = 
-		//aa::Cfill_vector(bs1, [this](const GridPoint* p){ return this->points[p->get_ind()]; });
-	////3) match between boundary sets
-	//std::map<const GridPoint*, const GridPoint*> s1s2 = boundary_match(bs2, bs1);
-	////4) fill points array and add them to s1s2 dictionary
-	//shp_vector<GridPoint> new_points = fill_points(*this, boundary, is2, s1s2);
-	////5) fill cells array
-	//shp_vector<Cell> new_cells = fill_cells(new_points, s1s2, gg);
-	////6) swap
-	//std::swap(points, new_points);
-	//std::swap(cells, new_cells);
 	set_indicies();
 }

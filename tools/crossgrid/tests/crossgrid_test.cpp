@@ -82,10 +82,25 @@ void test3(){
 	grid_free(res);
 }
 
+void test4(){
+	std::cout<<"4. Secondary grid covers the corner of main"<<std::endl;
+	Grid* gmain = rectangular_grid(0,0, 1,1, 10, 10);
+	Grid* gsec  = rectangular_grid(-0.3,-0.3, 0.5, 0.5, 30, 30);
+	Grid* res = cross_grids(gmain, gsec, 0.2);
+	grid_save_vtk(gmain,"out_main4.vtk");
+	grid_save_vtk(gsec,"out_sec4.vtk");
+	grid_save_vtk(res,"out_res4.vtk");
+
+	grid_free(gmain);
+	grid_free(gsec);
+	grid_free(res);
+}
+
 int main(){
 	crossgrid_internal_tests();
 	test1();
 	test2();
 	test3();
+	test4();
 	std::cout<<"DONE"<<std::endl;
 }
