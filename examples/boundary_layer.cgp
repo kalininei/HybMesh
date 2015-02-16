@@ -21,6 +21,12 @@
                 <ENTRY>
                     <LINE>UniteGrids UnitedGrid1 Grid1 0.1 7 UnitedGrid1 0.1 7</LINE>
                 </ENTRY>
+                <ENTRY>
+                    <LINE>UniteGrids UnitedGrid1 Grid2 0.0 7 Grid3 0.0 7</LINE>
+                </ENTRY>
+                <ENTRY>
+                    <LINE>UniteGrids UnitedGrid1 Grid1 0.3 7 UnitedGrid3 0.3 7</LINE>
+                </ENTRY>
             </COMMANDS>
             <STATE>
                 <GRIDS />

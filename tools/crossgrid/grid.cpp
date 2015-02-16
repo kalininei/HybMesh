@@ -105,6 +105,7 @@ void GridGeom::do_scale(const ScaleBase& sc){
 void GridGeom::undo_scale(const ScaleBase& sc){
 	sc.p_unscale(points.begin(), points.end());
 }
+
 std::set<Edge> GridGeom::get_edges() const{
 	std::set<Edge> ret;
 	for (int i=0; i<n_cells(); ++i){
@@ -227,28 +228,40 @@ GridGeom* GridGeom::combine(GridGeom* gmain, GridGeom* gsec){
 }
 
 GridGeom* GridGeom::cross_grids(GridGeom* gmain, GridGeom* gsec, double buffer_size){
+	//initial scaling before doing anything
+	auto sc = gmain->do_scale();
+	gsec->do_scale(sc);
+	buffer_size/=sc.L;
+	
 	//1 ---- combine grids without using buffers
 	GridGeom* comb = GridGeom::combine(gmain, gsec);
 
-	//2 ---- fill buffer
-	//loop over each get secondary contour
-	auto csec  = gsec->get_contours();
+	//2 ---- fill buffer zone
+	//zero buffer requires no further actions
+	if (buffer_size>geps){
+		//loop over each get secondary contour
+		auto csec  = gsec->get_contours();
 
-	for (auto c: csec){
-		//1. filter out a grid from buffer zone for the contour
-		BufferGrid bg(*comb, c, buffer_size);
+		for (auto c: csec){
+			//1. filter out a grid from buffer zone for the contour
+			BufferGrid bg(*comb, c, buffer_size);
 
-		//2. perform triangulation of buffer grid area
-		auto bgcont = bg.boundary_info();
-		TriGrid g3(std::get<0>(bgcont), std::get<1>(bgcont));
+			//2. perform triangulation of buffer grid area
+			auto bgcont = bg.boundary_info();
+			TriGrid g3(std::get<0>(bgcont), std::get<1>(bgcont));
 
-		//3. change the internal of bg by g3ref grid
-		bg.change_internal(g3);
-		
-		//4. update original grid using new filling of buffer grid
-		bg.update_original();
+			//3. change the internal of bg by g3ref grid
+			bg.change_internal(g3);
+			
+			//4. update original grid using new filling of buffer grid
+			bg.update_original();
+		}
 	}
 
+	//scale back after all procedures have been done and return
+	gmain->undo_scale(sc);
+	gsec->undo_scale(sc);
+	comb->undo_scale(sc);
 	return comb;
 }
 

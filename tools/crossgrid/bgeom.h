@@ -156,6 +156,18 @@ struct ScaleBase{
 		ret.scale(start, end);
 		return ret;
 	}
+	template<class Iter>
+	static ScaleBase p_doscale(Iter start, Iter end) noexcept{
+		vector<Point> p; p.reserve(end-start);
+		std::transform(start, end, std::back_inserter(p), 
+				[](const typename Iter::value_type& x){ return *x; });
+		auto p0 = Point::GetBot(p.begin(), p.end());
+		auto pdif = Point::GetTop(p.begin(), p.end()) - p0;
+		double L = std::max(pdif.x, pdif.y);
+		ScaleBase ret(p0.x, p0.y, L);
+		ret.p_scale(start, end);
+		return ret;
+	}
 	//scale points in container with Points pointers
 	template<class FirstIter, class LastIter>
 	void p_scale(FirstIter start, LastIter end) const noexcept {
@@ -164,14 +176,6 @@ struct ScaleBase{
 	template<class FirstIter, class LastIter>
 	void p_unscale(FirstIter start, LastIter end) const noexcept{
 		for (auto it=start; it!=end; ++it){ unscale(**it); }
-	}
-	//forces all points in container be in 1x1x1 square preserving aspect ratio
-	template<class Iter>
-	static ScaleBase p_doscale(Iter start, Iter end) noexcept{
-		vector<Point> p; p.reserve(end-start);
-		std::transform(start, end, std::back_inserter(p), 
-				[](const typename Iter::value_type& x){ return *x; });
-		return doscale(p.begin(), p.end());
 	}
 };
 
