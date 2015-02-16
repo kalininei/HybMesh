@@ -60,7 +60,7 @@ void test2(){
 	std::cout<<"2. merging two grids. Secondary grid lies within the main"<<std::endl;
 	Grid* gmain = rectangular_grid(0,0, 1,1, 10, 10);
 	Grid* gsec  = rectangular_grid(0.3,0.3, 0.6, 0.6, 30, 30);
-	Grid* res = cross_grids(gmain, gsec, 0.05);
+	Grid* res = cross_grids(gmain, gsec, 0.05, 0.5);
 	grid_save_vtk(gmain,"out_main2.vtk");
 	grid_save_vtk(gsec,"out_sec2.vtk");
 	grid_save_vtk(res,"out_res2.vtk");
@@ -73,7 +73,7 @@ void test3(){
 	std::cout<<"3. merging two grids. Secondary grid crosses area of the main"<<std::endl;
 	Grid* gmain = rectangular_grid(0,0, 1,1, 10, 10);
 	Grid* gsec  = rectangular_grid(0.3,-0.1, 0.6, 0.2, 30, 30);
-	Grid* res = cross_grids(gmain, gsec, 0.15);
+	Grid* res = cross_grids(gmain, gsec, 0.15, 0.5);
 	grid_save_vtk(gmain,"out_main3.vtk");
 	grid_save_vtk(gsec,"out_sec3.vtk");
 	grid_save_vtk(res,"out_res3.vtk");
@@ -86,7 +86,7 @@ void test4(){
 	std::cout<<"4. Secondary grid covers the corner of main"<<std::endl;
 	Grid* gmain = rectangular_grid(0,0, 1,1, 10, 10);
 	Grid* gsec  = rectangular_grid(-0.3,-0.3, 0.5, 0.5, 30, 30);
-	Grid* res = cross_grids(gmain, gsec, 0.2);
+	Grid* res = cross_grids(gmain, gsec, 0.2, 0.5);
 	grid_save_vtk(gmain,"out_main4.vtk");
 	grid_save_vtk(gsec,"out_sec4.vtk");
 	grid_save_vtk(res,"out_res4.vtk");
@@ -108,7 +108,7 @@ void test5(){
 	};
 	Grid* gsec  = grid_construct(9, 8, pnt2, cls2);
 
-	Grid* res = cross_grids(gmain, gsec, 2.0);
+	Grid* res = cross_grids(gmain, gsec, 2.0, 0.5);
 	grid_save_vtk(gmain,"out_main5.vtk");
 	grid_save_vtk(gsec,"out_sec5.vtk");
 	grid_save_vtk(res,"out_res5.vtk");
@@ -118,6 +118,28 @@ void test5(){
 	grid_free(res);
 }
 
+void test6(){
+	std::cout<<"6. Different density"<<std::endl;
+	Grid* gmain = rectangular_grid(0,0, 1,1, 10, 10);
+	Grid* gsec  = rectangular_grid(0.5,0.5, 0.6, 0.6, 30, 30);
+	grid_save_vtk(gmain,"out_main6.vtk");
+	grid_save_vtk(gsec,"out_sec6.vtk");
+
+	Grid* res = cross_grids(gmain, gsec, 0.3, 0.1);
+	grid_save_vtk(res,"out_res6_1.vtk");
+	grid_free(res);
+
+	res = cross_grids(gmain, gsec, 0.3, 0.5);
+	grid_save_vtk(res,"out_res6_5.vtk");
+	grid_free(res);
+
+	res = cross_grids(gmain, gsec, 0.3, 0.9);
+	grid_save_vtk(res,"out_res6_9.vtk");
+	grid_free(res);
+
+	grid_free(gmain);
+	grid_free(gsec);
+}
 int main(){
 	crossgrid_internal_tests();
 	test1();
@@ -125,5 +147,6 @@ int main(){
 	test3();
 	test4();
 	test5();
+	test6();
 	std::cout<<"DONE"<<std::endl;
 }

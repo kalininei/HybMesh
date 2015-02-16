@@ -16,7 +16,7 @@ class TriGrid: public GridGeom{
 	shp_vector<Point> ref_points(const vector<double>& dists, double density) const;
 public:
 	//constrcut from non-overlapping contours list and additional points
-	explicit TriGrid(const vector<PContour>& cont, const vector<double>& lc);
+	explicit TriGrid(const vector<PContour>& cont, const vector<double>& lc, double density);
 
 	//procedures get cell centers
 	vector<Point> cell_centers() const;

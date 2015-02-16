@@ -101,7 +101,7 @@ public:
 	void change_internal(const GridGeom& gg);
 
 	//static builders
-	static GridGeom* cross_grids(GridGeom* gmain, GridGeom* gsec, double buffer_size);
+	static GridGeom* cross_grids(GridGeom* gmain, GridGeom* gsec, double buffer_size, double density);
 	
 	//builds a grid wich is constructed by imposition of gsec onto gmain
 	//no bufferzones. 

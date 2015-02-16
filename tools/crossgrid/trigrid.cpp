@@ -1,13 +1,20 @@
-#include "addalgo.hpp"
-#include "trigrid.h"
 #include "gmsh/Gmsh.h"
 #include "gmsh/GModel.h"
 #include "gmsh/MVertex.h"
 #include "gmsh/MElement.h"
+#include "addalgo.hpp"
+#include "trigrid.h"
 
-TriGrid::TriGrid(const vector<PContour>& cont, const vector<double>& lc){
+TriGrid::TriGrid(const vector<PContour>& cont, const vector<double>& lc, double density){
 	//build mesh in gmsh
 	GmshInitialize();
+	GmshSetOption("Mesh", "Algorithm", 6.0);
+
+	//very rough density parameter implementation
+	double maxlc = 0;
+	for (auto v: lc) if (v>maxlc) maxlc=v;
+	GmshSetOption("Mesh", "CharacteristicLengthMax", (1.0-0.49*density)*maxlc); 
+
 	GModel m;
 	m.setFactory("Gmsh");
 	auto lcit = lc.begin();

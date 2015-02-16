@@ -227,7 +227,7 @@ GridGeom* GridGeom::combine(GridGeom* gmain, GridGeom* gsec){
 	return new GridGeom(wmain.togrid());
 }
 
-GridGeom* GridGeom::cross_grids(GridGeom* gmain, GridGeom* gsec, double buffer_size){
+GridGeom* GridGeom::cross_grids(GridGeom* gmain, GridGeom* gsec, double buffer_size, double density){
 	//initial scaling before doing anything
 	auto sc = gmain->do_scale();
 	gsec->do_scale(sc);
@@ -248,7 +248,7 @@ GridGeom* GridGeom::cross_grids(GridGeom* gmain, GridGeom* gsec, double buffer_s
 
 			//2. perform triangulation of buffer grid area
 			auto bgcont = bg.boundary_info();
-			TriGrid g3(std::get<0>(bgcont), std::get<1>(bgcont));
+			TriGrid g3(std::get<0>(bgcont), std::get<1>(bgcont), density);
 
 			//3. change the internal of bg by g3ref grid
 			bg.change_internal(g3);

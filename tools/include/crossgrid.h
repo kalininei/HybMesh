@@ -19,7 +19,7 @@ extern "C"{
 
 	void grid_free(Grid* g);
 
-	Grid* cross_grids(Grid* gbase, Grid* gsecondary, double buffer_size);
+	Grid* cross_grids(Grid* gbase, Grid* gsecondary, double buffer_size, double density);
 
 	void crossgrid_internal_tests();
 };

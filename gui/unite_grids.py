@@ -57,7 +57,9 @@ def unite_grids(g1, g2, buf, density):
     lib_fa = _clib()
     c_g1 = _grid_to_c(g1)
     c_g2 = _grid_to_c(g2)
-    c_cross = lib_fa.cross_grids(c_g1, c_g2, ct.c_double(buf))
+
+    c_den = ct.c_double(density/10.0);
+    c_cross = lib_fa.cross_grids(c_g1, c_g2, ct.c_double(buf), c_den)
 
     ret = _grid_from_c(c_cross)
 

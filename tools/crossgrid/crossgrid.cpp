@@ -44,11 +44,11 @@ void grid_free(Grid* g){
 	delete g;
 }
 
-Grid* cross_grids(Grid* gbase, Grid* gsecondary, double buffer_size){
+Grid* cross_grids(Grid* gbase, Grid* gsecondary, double buffer_size, double density){
 	return GridGeom::cross_grids(
 			static_cast<GridGeom*>(gbase),
 			static_cast<GridGeom*>(gsecondary),
-			buffer_size);
+			buffer_size, density);
 }
 
 // ========================== testing
