@@ -43,6 +43,50 @@ void GridGeom::add_data(const GridGeom& g){
 	set_indicies();
 }
 
+void GridGeom::add_data(const GridGeom& g, const std::vector<int>& cls){
+	bool need_merge = n_points()==0;
+	if (cls.size() == g.n_cells()) add_data(g);
+	else{
+		std::map<int, GridPoint*> added_points;
+		for (auto ci: cls){
+			const Cell* c = g.get_cell(ci);
+			Cell* newc = aa::add_shared(cells, Cell());
+			for (int j=0; j<c->dim(); ++j){
+				int orig_ind = c->get_point(j)->get_ind();
+				auto fnd = added_points.find(orig_ind);
+				GridPoint* cpnt = (fnd==added_points.end()) ? 
+					aa::add_shared(points, GridPoint(*g.get_point(orig_ind))) :
+					fnd->second;
+				add_point_to_cell(newc, cpnt);
+			}
+		}
+		set_indicies();
+	}
+	if (need_merge) merge_congruent_points();
+}
+
+void GridGeom::merge_congruent_points(){
+	std::map<int, int> cp;
+	for (int i=0; i<n_points(); ++i){
+		for (int j=i+1; j<n_points(); ++j){
+			if (*get_point(i)==*get_point(j))
+				cp.emplace(j,i);
+		}
+	}
+	if (cp.size()>0){
+		for (auto c: cells){
+			for (int j=0; j<c->dim(); ++j){
+				auto fnd = cp.find(c->get_point(j)->get_ind());
+				if (fnd!=cp.end()){
+					change_point_of_cell(c.get(), j, points[fnd->second].get());
+				}
+			}
+		}
+		delete_unused_points();
+		set_indicies();
+	}
+}
+
 GridGeom::GridGeom(const GridGeom& g){
 	add_data(g);
 }
@@ -117,6 +161,15 @@ std::set<Edge> GridGeom::get_edges() const{
 			ins.first->add_adj_cell(i, i1, i2);
 			jprev = j;
 		}
+	}
+	return ret;
+}
+
+std::set<const GridPoint*> GridGeom::get_bnd_points() const{
+	std::set<const GridPoint*> ret;
+	for (auto e: get_edges()) if (e.is_boundary()){
+		ret.insert(points[e.p1].get());
+		ret.insert(points[e.p2].get());
 	}
 	return ret;
 }
@@ -215,12 +268,54 @@ void GridGeom::force_cells_ordering(){
 	for (auto c: cells) c->check_ordering();
 }
 
+shp_vector<GridGeom> GridGeom::subdivide() const{
+	//cell->cell connectivity
+	std::vector<std::vector<int>> cell_cell(n_cells());
+	auto edges = get_edges();
+	for (auto& e: edges){
+		if (e.cell_left>=0 && e.cell_right>=0){
+			cell_cell[e.cell_left].push_back(e.cell_right);
+			cell_cell[e.cell_right].push_back(e.cell_left);
+		}
+	}
+	//vector of cells use status (0 - unused, 1 - used)
+	std::vector<int> cind(n_cells(), 0);
+
+	//recursive algorithm of connected cells traversal
+	std::function<void(int, vector<int>&)> add_cell = [&](int i, vector<int>& v ){
+		cind[i]=1;
+		v.push_back(i);
+		for (auto ci: cell_cell[i]){
+			if (cind[ci]==0) add_cell(ci, v);
+		}
+	};
+
+	//build sets of single connected cells
+	vector<vector<int>> sc_cells;
+	while (1){
+		auto fnd0 = std::find(cind.begin(), cind.end(), 0);
+		//stop if all cells are already used
+		if (fnd0 == cind.end()) break;
+		sc_cells.push_back(vector<int>());
+		add_cell(fnd0-cind.begin(), sc_cells.back());
+	}
+
+	//assemble new grids
+	shp_vector<GridGeom> ret;
+	for (auto& sc: sc_cells){
+		ret.push_back(std::shared_ptr<GridGeom>(new GridGeom()));
+		auto r = ret.back().get();
+		r->add_data(*this, sc);
+	}
+	return ret;
+}
+
 GridGeom* GridGeom::combine(GridGeom* gmain, GridGeom* gsec){
 	//1) input date to wireframe format
 	PtsGraph wmain(*gmain);
 	PtsGraph wsec(*gsec);
 	//2) cut outer grid with inner grid contour
-	wmain = PtsGraph::cut(wmain, gsec->get_contours(),-1);
+	wmain = PtsGraph::cut(wmain, gsec->get_contours_collection(),-1);
 	//3) overlay grids
 	wmain = PtsGraph::overlay(wmain, wsec);
 	//4) return
@@ -242,20 +337,35 @@ GridGeom* GridGeom::cross_grids(GridGeom* gmain, GridGeom* gsec, double buffer_s
 		//loop over each get secondary contour
 		auto csec  = gsec->get_contours();
 
-		for (auto c: csec){
-			//1. filter out a grid from buffer zone for the contour
-			BufferGrid bg(*comb, c, buffer_size);
+		//loop over each single connected grid
+		auto sg = comb->subdivide();
 
-			//2. perform triangulation of buffer grid area
-			auto bgcont = bg.boundary_info();
-			TriGrid g3(std::get<0>(bgcont), std::get<1>(bgcont), density);
+		for (auto grid: sg){
+			for (auto c: csec){
+				//1. filter out a grid from buffer zone for the contour
+				BufferGrid bg(*grid, c, buffer_size);
 
-			//3. change the internal of bg by g3ref grid
-			bg.change_internal(g3);
-			
-			//4. update original grid using new filling of buffer grid
-			bg.update_original();
+				//this is temporary solution for non overlapping grids
+				if (bg.num_orig_cells()==0) continue; 
+
+				//2. perform triangulation of buffer grid area
+				auto bgcont = bg.boundary_info();
+				TriGrid g3(std::get<0>(bgcont), std::get<1>(bgcont), density);
+
+				//3. change the internal of bg by g3ref grid
+				bg.change_internal(g3);
+				
+				//4. update original grid using new filling of buffer grid
+				bg.update_original();
+			}
 		}
+
+		//connect single connected grids
+		comb->clear();
+		for (size_t i=0; i<sg.size(); ++i){
+			comb->add_data(*sg[i]);
+		}
+		if (sg.size()>0) comb->merge_congruent_points();
 	}
 
 	//scale back after all procedures have been done and return

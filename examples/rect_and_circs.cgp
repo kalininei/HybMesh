@@ -1,0 +1,51 @@
+<?xml version='1.0' encoding='utf-8'?>
+<ComGridProject>
+    <FLOWS>
+        <FLOW active="1" name="Flow1">
+            <COMMANDS>
+                <ENTRY current="1">
+                    <LINE>Start</LINE>
+                </ENTRY>
+                <ENTRY>
+                    <LINE>AddUnfRectGrid 0.0 0.0 1.0 10.0 10 100 Grid1</LINE>
+                </ENTRY>
+                <ENTRY>
+                    <LINE>AddUnfRectGrid -2.0 8.0 4.0 12.0 100 100 Grid1</LINE>
+                </ENTRY>
+                <ENTRY>
+                    <LINE>UniteGrids UnitedGrid1 Grid1 1.0 7 Grid2 1.0 7</LINE>
+                </ENTRY>
+                <ENTRY>
+                    <LINE>UniteGrids UnitedGrid1 Grid2 1.0 7 Grid1 1.0 7</LINE>
+                </ENTRY>
+                <ENTRY>
+                    <LINE>UniteGrids UnitedGrid1 Grid2 0.2 7 Grid1 0.2 7</LINE>
+                </ENTRY>
+                <ENTRY>
+                    <LINE>AddUnfCircGrid 1.0 10.0 2.0 40 20 1.2 True CircleGrid1</LINE>
+                </ENTRY>
+                <ENTRY>
+                    <LINE>RemoveGrid2 CircleGrid1</LINE>
+                </ENTRY>
+                <ENTRY>
+                    <LINE>AddUnfCircGrid 0.0 0.0 0.8 40 10 1.2 True CircleGrid1</LINE>
+                </ENTRY>
+                <ENTRY>
+                    <LINE>MoveGrids 2.0 13.0 Grid1 Grid2 CircleGrid1</LINE>
+                </ENTRY>
+                <ENTRY>
+                    <LINE>MoveGrids 0.0 -3.0 Grid1 Grid2 CircleGrid1</LINE>
+                </ENTRY>
+                <ENTRY>
+                    <LINE>MoveGrids -1.0 0.0 Grid1 Grid2 CircleGrid1</LINE>
+                </ENTRY>
+                <ENTRY>
+                    <LINE>UniteGrids UnitedGrid1 UnitedGrid3 0.1 7 CircleGrid1 0.1 7</LINE>
+                </ENTRY>
+            </COMMANDS>
+            <STATE>
+                <GRIDS />
+            </STATE>
+        </FLOW>
+    </FLOWS>
+</ComGridProject>

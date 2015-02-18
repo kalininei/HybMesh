@@ -23,8 +23,10 @@ class BufferGrid: public GridGeom{
 public:
 	BufferGrid(GridGeom& main, const PContour& cont, double buffer_size);
 	
+	int num_orig_cells() const { return orig_cells.size(); }
+
 	std::tuple<
-		std::vector<PContour>,
+		ContoursCollection,
 		std::vector<double>
 	> boundary_info() const;
 	

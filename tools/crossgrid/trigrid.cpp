@@ -5,9 +5,9 @@
 #include "addalgo.hpp"
 #include "trigrid.h"
 
-TriGrid::TriGrid(const vector<PContour>& cont, const vector<double>& lc, double density){
+TriGrid::TriGrid(const ContoursCollection& cont, const vector<double>& lc, double density){
 	//build mesh in gmsh
-	GmshInitialize();
+	//2 - auto, 5 - delauney, 6 - frontal
 	GmshSetOption("Mesh", "Algorithm", 6.0);
 
 	//very rough density parameter implementation
@@ -17,44 +17,59 @@ TriGrid::TriGrid(const vector<PContour>& cont, const vector<double>& lc, double 
 
 	GModel m;
 	m.setFactory("Gmsh");
+	//add points
 	auto lcit = lc.begin();
-	std::vector<GEdge*> edges;
-	for (auto c: cont){
-		std::vector<GVertex*> verticies;
-		for (int i=0; i<c.n_points(); ++i){
-			auto p = c.get_point(i);
-			verticies.push_back(m.addVertex(p->x, p->y, 0, *lcit++));
-		}
-		auto pprev = verticies.back();
-		for (auto p: verticies){
-			edges.push_back(m.addLine(pprev, p));
-			pprev = p;
+	std::map<const Point*, GVertex*> verticies;
+	for (auto i=0; i<cont.n_cont(); ++i){
+		auto c = cont.get_contour(i);
+		for (int j=0; j<c->n_points(); ++j){
+			auto p = c->get_point(j);
+			verticies[p] = m.addVertex(p->x, p->y, 0, *lcit++);
 		}
 	}
-	std::vector<std::vector<GEdge*>> loop;
-	loop.push_back(edges);
-	GFace *f = m.addPlanarFace(loop);
-	m.mesh(2);
-	//--- extract mesh from gmsh
-	std::map<MVertex*, GridPoint*> vrt;
-	//cells
-	for (int i=0; i<f->getNumMeshElements(); ++i){
-		auto e = f->getMeshElement(i);
-		std::vector<MVertex*> vs;
-		e->getVertices(vs);
-		auto newcell = aa::add_shared(cells, Cell());
-		for (auto v: vs){ 
-			auto fnd = vrt.find(v); 
-			if (fnd==vrt.end()){
-				auto newp = aa::add_shared(points, GridPoint(v->x(), v->y()));
-				auto ins = vrt.emplace(v, newp);
-				fnd = ins.first;
-			}
-			add_point_to_cell(newcell, fnd->second);
+	//add edges and faces: each gmsh face should be single connected
+	auto add_contour_edges = [&m, &verticies](std::vector<GEdge*>& e, const PContour* c){
+		for (int j=0; j<c->n_points(); ++j){
+			auto p = c->get_point(j);
+			auto pn= c->get_point(j+1);
+			e.push_back(m.addLine(verticies[p], verticies[pn]));
 		}
+	};
+	std::vector<GFace*> fc;
+	for (int i=0; i<cont.n_cont(); ++i) if (cont.is_inner(i)){
+		std::vector<GEdge*> eds;
+		auto c = cont.get_contour(i);
+		add_contour_edges(eds, c);
+		for (auto& oc: cont.get_childs(i)){
+			add_contour_edges(eds, oc);
+		}
+		fc.push_back(m.addPlanarFace({eds}));
 	}
 
-	GmshFinalize();
+	//--- build mesh
+	//m.writeGEO("gmsh_geo.geo");
+	m.mesh(2);
+	//m.writeMSH("gmsh_msh.msh");
+	
+	//--- extract mesh from gmsh
+	std::map<MVertex*, GridPoint*> vrt;
+	for (auto& f: fc){
+		for (int i=0; i<f->getNumMeshElements(); ++i){
+			auto e = f->getMeshElement(i);
+			std::vector<MVertex*> vs;
+			e->getVertices(vs);
+			auto newcell = aa::add_shared(cells, Cell());
+			for (auto v: vs){ 
+				auto fnd = vrt.find(v); 
+				if (fnd==vrt.end()){
+					auto newp = aa::add_shared(points, GridPoint(v->x(), v->y()));
+					auto ins = vrt.emplace(v, newp);
+					fnd = ins.first;
+				}
+				add_point_to_cell(newcell, fnd->second);
+			}
+		}
+	}
 
 	//indicies
 	set_indicies();

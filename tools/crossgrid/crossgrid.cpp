@@ -2,6 +2,18 @@
 #include "grid.h"
 #include "fileproc.h"
 #include "wireframegrid.h"
+#include "gmsh/Gmsh.h"
+
+namespace{
+
+//gmesh library initialization
+struct _gmsh_initializer{
+	_gmsh_initializer(){GmshInitialize();}
+	~_gmsh_initializer(){GmshFinalize();}
+};
+_gmsh_initializer gi;
+
+}
 
 Grid* grid_construct(int Npts, int Ncells, double* pts, int* cells){
 	return new GridGeom(Npts, Ncells, pts, cells);
@@ -60,6 +72,36 @@ void add_check(bool ex, const char* info = 0){
 	if (ex) std::cout<<": True"<<std::endl;
 	else std::cout<<": False <<<<<<<<<<<<<<<<<<<"<<std::endl;
 };
+
+//build a rectangular structured grid 
+GridGeom rectangular_grid(double x0, double y0,
+		double x1, double y1, int Nx, int Ny){
+	double hx = (x1 - x0)/Nx;
+	double hy = (y1 - y0)/Ny;
+	//points
+	std::vector<double> pts;
+	for (int j=0; j<Ny+1; ++j){
+		for (int i=0;i<Nx+1;++i){
+			pts.push_back(i*hx+x0);
+			pts.push_back(j*hy+y0);
+		}
+	}
+	//cells
+	auto pts_ind = [Nx, Ny](int i, int j){
+		return j*(Nx+1)+i;
+	};
+	std::vector<int> cls;
+	for (int j=0; j<Ny; ++j){
+		for (int i=0; i<Nx; ++i){
+			cls.push_back(4);
+			cls.push_back(pts_ind(i,j));
+			cls.push_back(pts_ind(i+1,j));
+			cls.push_back(pts_ind(i+1,j+1));
+			cls.push_back(pts_ind(i,j+1));
+		}
+	}
+	return GridGeom((Nx+1)*(Ny+1), Nx*Ny, &pts[0], &cls[0]);
+}
 
 void test1(){
 	std::cout<<"contours collection tests"<<std::endl;
@@ -126,6 +168,23 @@ void test3(){
 	delete comb;
 }
 
+void test4(){
+	std::cout<<"Grid subdivide"<<std::endl;
+	auto grid1 = rectangular_grid(0, 0, 1, 1, 10, 10);
+	auto grid2 = rectangular_grid(1, 1, 2, 2, 10, 10);
+	auto grid3 = rectangular_grid(2,1.85, 3, 2.85, 10, 10);
+	auto cross1 = GridGeom::cross_grids(&grid1, &grid2, 0.0, 0.5);
+	auto cross2 = GridGeom::cross_grids(cross1, &grid3, 0.0, 0.5);
+	save_vtk(cross2, "test4_grid.vtk");
+	add_check(cross2->n_points()==362 && cross2->n_cells()==300, "combined grid topology");
+	auto div = cross2->subdivide();
+	add_check(div.size()==2, "number of single connected grids");
+	add_check(div[0]->n_points()==121 && div[0]->n_cells()==100, "grid1 topology");
+	add_check(div[1]->n_points()==242 && div[1]->n_cells()==200, "grid2 topology");
+	delete cross1;
+	delete cross2;
+}
+
 
 }
 
@@ -134,6 +193,7 @@ void crossgrid_internal_tests(){
 	test1();
 	test2();
 	test3();
+	test4();
 	std::cout<<"crossgrid shared library internal tests: DONE =========="<<std::endl;
 }
 

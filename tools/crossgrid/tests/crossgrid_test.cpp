@@ -140,6 +140,45 @@ void test6(){
 	grid_free(gmain);
 	grid_free(gsec);
 }
+
+void test7(){
+	std::cout<<"7. Merging non crossing areas"<<std::endl;
+	Grid* gmain = rectangular_grid(0,0, 1,1, 10, 10);
+	Grid* gsec  = rectangular_grid(2,0, 3,1, 10, 10);
+	Grid* gsec2  = rectangular_grid(1,1, 2,2, 10, 10);
+	Grid* gsec3  = rectangular_grid(2,1.05, 3, 2.05, 10, 10);
+	Grid* res = cross_grids(gmain, gsec, 0.2, 0.5);
+	Grid* res2 = cross_grids(res, gsec2, 0.2, 0.5);
+	Grid* res3 = cross_grids(res2, gsec3, 0.2, 0.5);
+	grid_save_vtk(res3,"out_res7.vtk");
+	add_check(grid_npoints(res)==242 && grid_ncells(res)==200, "merge non crossing");
+	add_check(grid_npoints(res2)==361 && grid_ncells(res2)==300, "merge grids with congruent point");
+	add_check(grid_npoints(res3)>482 && grid_ncells(res3)>400, "merge grids with tangent edges");
+	grid_free(gmain);
+	grid_free(gsec);
+	grid_free(gsec2);
+	grid_free(gsec3);
+	grid_free(res);
+	grid_free(res2);
+	grid_free(res3);
+}
+
+void test8(){
+	std::cout<<"8. Merging areas with complicated intersections"<<std::endl;
+	Grid* gmain = rectangular_grid(0,0, 1,1, 10, 10);
+	Grid* gsec  = rectangular_grid(4,0, 5,1, 10, 10);
+	Grid* gsec2  = rectangular_grid(-0.5,0.3, 5.5,0.6, 100, 10);
+	Grid* res = cross_grids(gmain, gsec, 0.2, 0.5);
+	Grid* res2 = cross_grids(res, gsec2, 0.2, 0.5);
+	add_check(grid_npoints(res2)==1361 && grid_ncells(res2)==1432, "grid topology");
+	grid_save_vtk(res2,"out_res8.vtk");
+	grid_free(gmain);
+	grid_free(gsec);
+	grid_free(gsec2);
+	grid_free(res);
+	grid_free(res2);
+}
+
 int main(){
 	crossgrid_internal_tests();
 	test1();
@@ -148,5 +187,7 @@ int main(){
 	test4();
 	test5();
 	test6();
+	test7();
+	test8();
 	std::cout<<"DONE"<<std::endl;
 }

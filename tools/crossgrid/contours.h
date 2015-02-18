@@ -10,7 +10,7 @@ class PContour{
 	//points which lies within contour or on its edge
 	vector<const Point*> find_inner(const vector<const Point*>& pts) const;
 	//meas from point to contour
-	double meas_to_point(const Point& p) const; 
+	double meas_to_point(const Point& p) const;
 public:
 	//construction and modification
 	PContour(const vector<Point*>& _pts=vector<Point*>()): pts(_pts){}
@@ -31,17 +31,17 @@ public:
 
 	//contour data access
 	int n_points() const { return pts.size(); }
-	const Point* get_point(int i) const { 
-		if (i<0) return get_point(i+n_points()); 
+	const Point* get_point(int i) const {
+		if (i<0) return get_point(i+n_points());
 		else if (i>=n_points()) return get_point(i-n_points());
 		else return pts[i];
 	}
 
 	//contour geometry procedures
-	void select_points(const vector<Point*>& pts, 
+	void select_points(const vector<Point*>& pts,
 			vector<Point*>& inner, vector<Point*>& outer) const;
 
-	//returns squared distances to points. Sign depends on whether points lies 
+	//returns squared distances to points. Sign depends on whether points lies
 	//outside(-) or inside(+) the contour
 	vector<double> meas_points(const vector<const Point*>& pts) const;
 
@@ -72,11 +72,23 @@ public:
 //that all first level contours be inner
 struct ContoursCollection{
 	ContoursCollection(){};
-	ContoursCollection(const vector<PContour>& cnts);
+	explicit ContoursCollection(const vector<PContour>& cnts);
 	void add_contour(const PContour& cnt);
 	vector<PContour> contours_list() const;
 	int is_inside(const Point& p) const;
 	int n_cont() const { return contours.size(); }
+
+	//contours management
+	const PContour* get_contour(int i) const { return entries[i]->data; }
+	bool is_inner(int i) const { return entries[i]->is_inner; }
+	const PContour* get_parent(int i) const {
+		return (entries[i]->upper == 0) ? 0: entries[i]->upper->data;
+	}
+	std::list<const PContour*> get_childs(int i) const {
+		std::list<const PContour*> ret;
+		for (auto c: entries[i]->lower) ret.push_back(c->data);
+		return ret;
+	}
 private:
 	struct _entry{
 		_entry* upper;

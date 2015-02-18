@@ -58,6 +58,7 @@ protected:
 	void undo_scale(const ScaleBase& sc);
 	//contours manipulation
 	std::vector<PContour> get_contours() const;
+	ContoursCollection get_contours_collection() const { return ContoursCollection(get_contours()); }
 	GridGeom remove_area(const PContour& cont);
 	void force_cells_ordering();
 	//indexation
@@ -66,11 +67,18 @@ protected:
 	//data manipulation
 	static void add_point_to_cell(Cell* c, GridPoint* p){ c->points.push_back(p); }
 	static void change_point_of_cell(Cell* c, int j, GridPoint* p){ c->points[j] = p; }
+	static void delete_point_of_cell(Cell* c, int j){ c->points.erase(c->points.begin()+j); }
+	void clear(){ points.clear(); cells.clear(); }
 	//constructors
 	GridGeom(){};
 	GridGeom(const GridGeom& g);
 	GridGeom& operator=(GridGeom g);
+	//add all points and cells from grid. No points merge
 	void add_data(const GridGeom& g);
+	//add points and cells from cls index array. Merge congruent points.
+	void add_data(const GridGeom& g, const std::vector<int>& cls);
+	//merge points with equal coordinates
+	void merge_congruent_points();
 public:
 	//build grid from raw points coordinates array
 	//and cells->points connectivity array
@@ -89,11 +97,16 @@ public:
 	//sum of all cells dimensions
 	int n_cellsdim() const;
 	
+	//returns set of single connected meshes.
+	shp_vector<GridGeom> subdivide() const;
+
 	//data access
 	const GridPoint* get_point(int i) const { return points[i].get(); }
 	const Cell* get_cell(int i) const { return cells[i].get(); }
 	//edges 
 	std::set<Edge> get_edges() const;
+	//boundary points
+	std::set<const GridPoint*> get_bnd_points() const;
 
 	//data modify
 	//change internal structure of the grid with data from another one.
@@ -107,7 +120,6 @@ public:
 	//no bufferzones. 
 	//Created grid area equals the intersection of gmain and gsec areas.
 	static GridGeom* combine(GridGeom* gmain, GridGeom* gsec);
-	static GridGeom* combine2(GridGeom* gmain, GridGeom* gsec);
 
 	friend class BufferGrid;
 };
