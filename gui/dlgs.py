@@ -1,12 +1,117 @@
 #!/usr/bin/env python
 
+from PyQt4 import QtCore
 from PyQt4.QtGui import (QDialog, QDialogButtonBox, QGridLayout,
-    QLabel, QLineEdit, QMessageBox)
+    QLabel, QLineEdit, QMessageBox, QProgressBar, QVBoxLayout)
 import bgeom
 import qtui.ui_UniteGridsDlg
 import qtui.ui_AddUnfCircDlg
 import qtui.ui_MoveRotateDlg
 import qtui.ui_GridViewOpt
+
+class _BackGroundWorkerCB(QtCore.QThread):
+    """ Background procedure with callback caller
+        for call from ProgressProcedureDlg
+    """
+    def __init__(self, emitter, func, args):
+        """ emitter - QObject that emits signal,
+            func(*args, callback_fun) - target procedure,
+            callback function should be declared as
+                int callback_fun(QString BaseName, QString SubName,
+                    double proc1, double proc2)
+            it should return 1 for cancellation requiry and 0 otherwise
+
+        """
+        super(_BackGroundWorkerCB, self).__init__()
+        self.emitter = emitter
+        self.proceed = True
+        self.func = func
+        self.args = args + (self._get_callback(),)
+        self._result = None
+
+    def run(self):
+        self.proceed = True
+        self._result = self.func(*self.args)
+
+
+    def _emit(self, n1, n2, p1, p2):
+        self.emitter.emit(QtCore.SIGNAL(
+            "fill_cb_form(QString, QString, double, double)"), n1, n2, p1, p2)
+
+    def _get_callback(self):
+        def cb(n1, n2, p1, p2):
+            self._emit(n1, n2, p1, p2)
+            return 0 if self.proceed else 1
+        import ctypes as ct
+        cbfunc = ct.CFUNCTYPE(ct.c_int, ct.c_char_p, ct.c_char_p,
+               ct.c_double, ct.c_double)
+        cb2 = cbfunc(cb)
+        return cb2
+
+
+class ProgressProcedureDlg(QDialog):
+    """ ProgressBar/Cancel dialog window which wraps time consuming
+        procedure calls.
+    """
+
+    def __init__(self, func, args, parent=None):
+        """ func(*args, callback_fun) - target procedure,
+            callback_fun should be declared as
+                int callback_fun(QString BaseName, QString SubName,
+                    double proc1, double proc2)
+            it should return 1 for cancellation requiry and 0 otherwise
+        """
+        flags = QtCore.Qt.Window | QtCore.Qt.WindowTitleHint
+        super(ProgressProcedureDlg, self).__init__(parent, flags)
+
+        #design
+        self._label1 = QLabel()
+        self._label2 = QLabel()
+        self._progbar1 = QProgressBar()
+        self._progbar2 = QProgressBar()
+        self._buttonbox = QDialogButtonBox(QDialogButtonBox.Cancel)
+        self._buttonbox.setCenterButtons(True)
+        self._buttonbox.rejected.connect(self._cancel_pressed)
+        layout = QVBoxLayout()
+        layout.addWidget(self._label1)
+        layout.addWidget(self._progbar1)
+        layout.addWidget(self._label2)
+        layout.addWidget(self._progbar2)
+        layout.addWidget(self._buttonbox)
+        self.setLayout(layout)
+        self.setFixedSize(400, 150)
+        self.setModal(True)
+
+        #worker
+        emitter = QtCore.QObject()
+        self.connect(emitter, QtCore.SIGNAL(
+            "fill_cb_form(QString, QString, double, double)"), self._fill)
+
+        self._worker = _BackGroundWorkerCB(emitter, func, args)
+        self._worker.finished.connect(self._fin)
+        self._worker.terminated.connect(self._fin)
+
+    def exec_(self):
+        self.show()  # show first to avoid delay
+        self._worker.start()
+        return super(ProgressProcedureDlg, self).exec_()
+
+    def _fill(self, n1, n2, p1, p2):
+        self.setWindowTitle(n1)
+        self._label1.setText(n1)
+        self._label2.setText(n2)
+        self._progbar1.setValue(100 * p1)
+        self._progbar2.setValue(100 * p2)
+
+    def _cancel_pressed(self):
+        self._worker.proceed = False
+
+    def _fin(self):
+        self._result = self._worker._result
+        self.close()
+
+    def get_result(self):
+        return self._result
 
 
 class AddUnfRectGrid(QDialog):

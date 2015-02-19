@@ -180,7 +180,8 @@ void test8(){
 }
 
 int main(){
-	crossgrid_internal_tests();
+	crossgrid_silent_callback();
+	//crossgrid_internal_tests();
 	test1();
 	test2();
 	test3();

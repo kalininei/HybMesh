@@ -13,10 +13,46 @@ struct _gmsh_initializer{
 };
 _gmsh_initializer gi;
 
+//default callback function
+int default_callback(const char* proc, const char* subproc, double percent, double subpercent){
+	std::cout<<proc;
+	if (percent>=0) std::cout<<" - "<<int(100*percent)<<"%";
+	std::cout<<";";
+	if (subproc!=0){
+		std::cout<<" ("<<subproc;
+		if (subpercent>=0) std::cout<<" - "<<int(100*subpercent)<<"%";
+		std::cout<<")";
+	}
+	std::cout<<std::endl;
+	return CALLBACK_OK;
+}
+int silent_callback(const char* proc, const char* subproc, double percent, double subpercent){
+	return CALLBACK_OK;
 }
 
+crossgrid_callback global_callback = default_callback;
+
+} //namespace
+
+//callbacks
+void crossgrid_cout_callback(){
+	global_callback = default_callback;
+}
+void crossgrid_silent_callback(){
+	global_callback = silent_callback;
+}
+void crossgrid_set_callback(crossgrid_callback fun){
+	global_callback = fun;
+}
+
+
 Grid* grid_construct(int Npts, int Ncells, double* pts, int* cells){
-	return new GridGeom(Npts, Ncells, pts, cells);
+	try{
+		return new GridGeom(Npts, Ncells, pts, cells);
+	} catch (const std::exception &e){
+		std::cout<<e.what()<<std::endl;
+		return 0;
+	}
 }
 
 int grid_npoints(Grid* g){
@@ -57,10 +93,20 @@ void grid_free(Grid* g){
 }
 
 Grid* cross_grids(Grid* gbase, Grid* gsecondary, double buffer_size, double density){
-	return GridGeom::cross_grids(
-			static_cast<GridGeom*>(gbase),
-			static_cast<GridGeom*>(gsecondary),
-			buffer_size, density);
+	return cross_grids_wcb(gbase, gsecondary, buffer_size, density, global_callback);
+}
+
+Grid* cross_grids_wcb(Grid* gbase, Grid* gsecondary, double buffer_size, double density, crossgrid_callback cb_fun){
+	try{
+		auto ret = GridGeom::cross_grids(
+				static_cast<GridGeom*>(gbase),
+				static_cast<GridGeom*>(gsecondary),
+				buffer_size, density, cb_fun);
+		return ret;
+	} catch (const std::exception &e) {
+		std::cout<<e.what()<<std::endl;
+		return 0;
+	}
 }
 
 // ========================== testing
@@ -173,8 +219,8 @@ void test4(){
 	auto grid1 = rectangular_grid(0, 0, 1, 1, 10, 10);
 	auto grid2 = rectangular_grid(1, 1, 2, 2, 10, 10);
 	auto grid3 = rectangular_grid(2,1.85, 3, 2.85, 10, 10);
-	auto cross1 = GridGeom::cross_grids(&grid1, &grid2, 0.0, 0.5);
-	auto cross2 = GridGeom::cross_grids(cross1, &grid3, 0.0, 0.5);
+	auto cross1 = GridGeom::cross_grids(&grid1, &grid2, 0.0, 0.5, silent_callback);
+	auto cross2 = GridGeom::cross_grids(cross1, &grid3, 0.0, 0.5, silent_callback);
 	save_vtk(cross2, "test4_grid.vtk");
 	add_check(cross2->n_points()==362 && cross2->n_cells()==300, "combined grid topology");
 	auto div = cross2->subdivide();

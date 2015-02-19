@@ -322,44 +322,64 @@ GridGeom* GridGeom::combine(GridGeom* gmain, GridGeom* gsec){
 	return new GridGeom(wmain.togrid());
 }
 
-GridGeom* GridGeom::cross_grids(GridGeom* gmain, GridGeom* gsec, double buffer_size, double density){
+GridGeom* GridGeom::cross_grids(GridGeom* gmain, GridGeom* gsec, 
+		double buffer_size, double density, crossgrid_callback cb){
 	//initial scaling before doing anything
+	if (cb("Building grid cross", "Scaling", 0, -1) == CALLBACK_CANCEL) return 0;
 	auto sc = gmain->do_scale();
 	gsec->do_scale(sc);
 	buffer_size/=sc.L;
 	
 	//1 ---- combine grids without using buffers
-	GridGeom* comb = GridGeom::combine(gmain, gsec);
+	if (cb("Building grid cross", "Combining", 0.05, -1) == CALLBACK_CANCEL) return 0;
+	std::unique_ptr<GridGeom> comb(GridGeom::combine(gmain, gsec));
 
 	//2 ---- fill buffer zone
 	//zero buffer requires no further actions
 	if (buffer_size>geps){
+	
 		//loop over each get secondary contour
 		auto csec  = gsec->get_contours();
 
 		//loop over each single connected grid
 		auto sg = comb->subdivide();
 
+		//callback percentages 
+		double cb_step = 1.0/(sg.size()*csec.size());
+		double cb_cur = 0;
 		for (auto grid: sg){
 			for (auto c: csec){
+				cb_cur+=cb_step;
 				//1. filter out a grid from buffer zone for the contour
+				if (cb("Building grid cross", "Filling buffer", 0.25, cb_cur-cb_step) 
+						== CALLBACK_CANCEL) return 0;
 				BufferGrid bg(*grid, c, buffer_size);
 
 				//this is temporary solution for non overlapping grids
 				if (bg.num_orig_cells()==0) continue; 
 
 				//2. perform triangulation of buffer grid area
+				if (cb("Building grid cross", "Filling buffer", 0.25, cb_cur-0.8*cb_step)
+						== CALLBACK_CANCEL) return 0;
 				auto bgcont = bg.boundary_info();
 				TriGrid g3(std::get<0>(bgcont), std::get<1>(bgcont), density);
 
 				//3. change the internal of bg by g3ref grid
+				if (cb("Building grid cross", "Filling buffer", 0.25, cb_cur-0.6*cb_step)
+						== CALLBACK_CANCEL) return 0;
 				bg.change_internal(g3);
 				
 				//4. update original grid using new filling of buffer grid
+				if (cb("Building grid cross", "Filling buffer", 0.25, cb_cur-0.3*cb_step)
+						== CALLBACK_CANCEL) return 0;
 				bg.update_original();
 			}
 		}
+		if (cb("Building grid cross", "Filling buffer", 0.25, 1.0)
+						== CALLBACK_CANCEL) return 0;
 
+		if (cb("Building grid cross", "Merging", 0.85, -1)
+						== CALLBACK_CANCEL) return 0;
 		//connect single connected grids
 		comb->clear();
 		for (size_t i=0; i<sg.size(); ++i){
@@ -369,10 +389,13 @@ GridGeom* GridGeom::cross_grids(GridGeom* gmain, GridGeom* gsec, double buffer_s
 	}
 
 	//scale back after all procedures have been done and return
+	cb("Building grid cross", "Unscaling", 0.95, -1);
 	gmain->undo_scale(sc);
 	gsec->undo_scale(sc);
 	comb->undo_scale(sc);
-	return comb;
+
+	cb("Building grid cross", "Done", 1.0, -1);
+	return comb.release();
 }
 
 void GridGeom::change_internal(const GridGeom& gg){

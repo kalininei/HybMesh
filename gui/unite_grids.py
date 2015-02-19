@@ -2,6 +2,7 @@
 import os
 import ctypes as ct
 import grid2
+import dlgs
 
 
 def _clib():
@@ -51,16 +52,21 @@ def _grid_from_c(c_gr):
         cls.append(c_cls[i])
     return grid2.Grid2.from_points_cells(npt, ncl, pnt, cls)
 
-
 def unite_grids(g1, g2, buf, density):
     'adds g2 to g1. Returns new grid'
     lib_fa = _clib()
     c_g1 = _grid_to_c(g1)
     c_g2 = _grid_to_c(g2)
+    c_den = ct.c_double(density / 10.0)
+    args = (c_g1, c_g2, ct.c_double(buf), c_den)
 
-    c_den = ct.c_double(density/10.0);
-    c_cross = lib_fa.cross_grids(c_g1, c_g2, ct.c_double(buf), c_den)
+    #callback initialization
+    c_cross = lib_fa.cross_grids(*args)
 
+    #e = dlgs.ProgressProcedureDlg(lib_fa.cross_grids_wcb, args)
+    #e.exec_()
+    #c_cross = e.get_result()
+    
     ret = _grid_from_c(c_cross)
 
     #lib_fa.grid_save_vtk(c_cross, "union_grid.vtk")
