@@ -1,6 +1,7 @@
 ' grid unification algorithm '
 import os
 import ctypes as ct
+import globvars
 import grid2
 import dlgs
 
@@ -57,23 +58,24 @@ def unite_grids(g1, g2, buf, density):
     lib_fa = _clib()
     c_g1 = _grid_to_c(g1)
     c_g2 = _grid_to_c(g2)
+    c_buf = ct.c_double(buf)
     c_den = ct.c_double(density / 10.0)
-    args = (c_g1, c_g2, ct.c_double(buf), c_den)
+    args = (c_g1, c_g2, c_buf, c_den)
 
-    #callback initialization
-    c_cross = lib_fa.cross_grids(*args)
+    lib_fa.cross_grids_wcb.restype = ct.c_void_p
+    e = dlgs.ProgressProcedureDlg(lib_fa.cross_grids_wcb, args, globvars.mainWindow)
+    e.exec_()
+    c_cross = ct.c_void_p(e.get_result())
 
-    #e = dlgs.ProgressProcedureDlg(lib_fa.cross_grids_wcb, args)
-    #e.exec_()
-    #c_cross = e.get_result()
-    
-    ret = _grid_from_c(c_cross)
+    #if result was obtained (no errors, no cancel)
+    if (c_cross.value is not None):
+        ret = _grid_from_c(c_cross)
+        #lib_fa.grid_save_vtk(c_cross, "union_grid.vtk")
+        lib_fa.grid_free(c_cross)
+    else:
+        ret = None
 
-    #lib_fa.grid_save_vtk(c_cross, "union_grid.vtk")
-
-    #free c memory
     lib_fa.grid_free(c_g1)
     lib_fa.grid_free(c_g2)
-    lib_fa.grid_free(c_cross)
 
     return ret

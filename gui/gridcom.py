@@ -32,6 +32,7 @@ class AddUnfRectGrid(command.Command):
         self.Grid = grid2.UnfRectGrid(self.p0, self.p1, self.Nx, self.Ny)
         #evalution
         self.receiver.grids2[self.name] = self.Grid
+        return True 
 
     def _clear(self):
         del self.Grid
@@ -85,6 +86,7 @@ class AddUnfCircGrid(command.Command):
                 self.coef, self.is_trian)
         #evalution
         self.receiver.grids2[self.name] = self.Grid
+        return True
 
     def _clear(self):
         del self.Grid
@@ -118,6 +120,7 @@ class RenameGrid2(command.Command):
 
     def _exec(self):
         self.receiver.grids2.changeKey(self.oldName, self.newName)
+        return True
 
     def _clear(self):
         pass
@@ -148,6 +151,7 @@ class RemoveGrid2(command.Command):
         self.backupIndex, self.backupGrid = \
             self.receiver.grids2.get_by_key(self.remGrid)
         del self.receiver.grids2[self.remGrid]
+        return True
 
     def _clear(self):
         del self.backupGrid
@@ -207,8 +211,11 @@ class UniteGrids(command.Command):
         for i in range(1, len(self.source)):
             g, b, d = self._get_grid(i)
             self.unitedGrid = unite_grids(self.unitedGrid, g, b, d)
+            if (self.unitedGrid is None):
+                return False
         #write result to receiver
         self.receiver.grids2[self.grid_name] = self.unitedGrid
+        return True
 
     def _clear(self):
         del self.unitedGrid
@@ -246,6 +253,7 @@ class MoveGrids(command.Command):
     def _exec(self):
         for g in self.names:
             self.receiver.grids2[g].move(self.dx, self.dy)
+        return True
 
     def _clear(self):
         pass
@@ -277,6 +285,7 @@ class RotateGrids(command.Command):
     def _exec(self):
         for g in self.names:
             self.receiver.grids2[g].rotate(self.x0, self.y0, self.angle)
+        return True
 
     def _clear(self):
         pass

@@ -41,14 +41,17 @@ class Command(object):
         self.receiver = None
 
     def do(self, receiver):
-        ' execute (or redos) the command '
+        """ execute (or redos) the command
+            returns True if success
+        """
         if (self.__executed):
             self._redo()
         else:
             self.receiver = receiver
-            self._exec()
-            self.__executed = True
+            if (self._exec()):
+                self.__executed = True
         self.receiver.post_proc()
+        return self.__executed
 
     def undo(self):
         """ undo the command and call receiver.post_proc() method.
@@ -102,6 +105,9 @@ class Command(object):
 
     #evalution
     def _exec(self):
+        """ command execution returns True
+            if success and False otherwise
+        """
         raise NotImplementedError
 
     def _clear(self):
@@ -135,7 +141,7 @@ class StartCommand(Command):
         return cls()
 
     def _exec(self, receiver):
-        pass
+        return True
 
     def _clear(self):
         pass
@@ -221,12 +227,19 @@ class CommandFlow(object):
     def exec_next(self):
         if (self.can_redo()):
             self._curpos += 1
-            self._commands[self._curpos].do(self._receiver)
-            self._collection._flow_changed()
+            if self._commands[self._curpos].do(self._receiver):
+                self._collection._flow_changed()
+            else:
+                self._curpos -= 1
 
     def exec_all(self):
         while (self.can_redo()):
+            a = self._curpos
             self.exec_next()
+            # if no progress was made (error or cancel)
+            # stop execution
+            if (a == self._curpos):
+                break
 
     def undo_prev(self):
         if (self.can_undo()):
@@ -283,7 +296,7 @@ class CommandFlow(object):
         for c in self._commands:
             nd = ET.SubElement(cl, "ENTRY")
             if c is self._commands[self._curpos]:
-                nd.attrib['current']='1'
+                nd.attrib['current'] = '1'
             ET.SubElement(nd, "LINE").text = str(c)
             if c.get_comment() != "":
                 ET.SubElement(nd, "COMMENT").text = c.get_comment()

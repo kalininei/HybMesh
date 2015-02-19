@@ -9,6 +9,7 @@ import qtui.ui_AddUnfCircDlg
 import qtui.ui_MoveRotateDlg
 import qtui.ui_GridViewOpt
 
+
 class _BackGroundWorkerCB(QtCore.QThread):
     """ Background procedure with callback caller
         for call from ProgressProcedureDlg
@@ -24,29 +25,34 @@ class _BackGroundWorkerCB(QtCore.QThread):
         """
         super(_BackGroundWorkerCB, self).__init__()
         self.emitter = emitter
-        self.proceed = True
         self.func = func
         self.args = args + (self._get_callback(),)
-        self._result = None
+        self.proceed, self._result = True, None
 
     def run(self):
         self.proceed = True
         self._result = self.func(*self.args)
-
 
     def _emit(self, n1, n2, p1, p2):
         self.emitter.emit(QtCore.SIGNAL(
             "fill_cb_form(QString, QString, double, double)"), n1, n2, p1, p2)
 
     def _get_callback(self):
+        import ctypes as ct
+
         def cb(n1, n2, p1, p2):
             self._emit(n1, n2, p1, p2)
             return 0 if self.proceed else 1
-        import ctypes as ct
-        cbfunc = ct.CFUNCTYPE(ct.c_int, ct.c_char_p, ct.c_char_p,
-               ct.c_double, ct.c_double)
-        cb2 = cbfunc(cb)
-        return cb2
+
+        #if target function is a c function then convert callback to
+        #a c function pointer
+        if isinstance(self.func, ct._CFuncPtr):
+            cbfunc = ct.CFUNCTYPE(ct.c_int, ct.c_char_p, ct.c_char_p,
+                   ct.c_double, ct.c_double)
+            cb2 = cbfunc(cb)
+            return cb2
+        else:
+            return cb
 
 
 class ProgressProcedureDlg(QDialog):
@@ -61,7 +67,9 @@ class ProgressProcedureDlg(QDialog):
                     double proc1, double proc2)
             it should return 1 for cancellation requiry and 0 otherwise
         """
-        flags = QtCore.Qt.Window | QtCore.Qt.WindowTitleHint
+        flags = QtCore.Qt.Dialog \
+                | QtCore.Qt.CustomizeWindowHint \
+                | QtCore.Qt.WindowTitleHint
         super(ProgressProcedureDlg, self).__init__(parent, flags)
 
         #design
