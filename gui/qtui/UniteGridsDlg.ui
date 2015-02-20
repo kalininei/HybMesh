@@ -37,7 +37,7 @@
    <property name="geometry">
     <rect>
      <x>4</x>
-     <y>106</y>
+     <y>136</y>
      <width>101</width>
      <height>191</height>
     </rect>
@@ -76,7 +76,7 @@
    <property name="geometry">
     <rect>
      <x>152</x>
-     <y>106</y>
+     <y>136</y>
      <width>111</width>
      <height>191</height>
     </rect>
@@ -89,7 +89,7 @@
    <property name="geometry">
     <rect>
      <x>114</x>
-     <y>162</y>
+     <y>192</y>
      <width>31</width>
      <height>25</height>
     </rect>
@@ -106,7 +106,7 @@
    <property name="geometry">
     <rect>
      <x>114</x>
-     <y>190</y>
+     <y>220</y>
      <width>31</width>
      <height>25</height>
     </rect>
@@ -197,6 +197,19 @@
    </property>
    <property name="text">
     <string>7</string>
+   </property>
+  </widget>
+  <widget class="QCheckBox" name="cb_preserve">
+   <property name="geometry">
+    <rect>
+     <x>3</x>
+     <y>103</y>
+     <width>191</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Preserve all boundary nodes</string>
    </property>
   </widget>
  </widget>

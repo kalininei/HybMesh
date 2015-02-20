@@ -1,6 +1,7 @@
 #include <iostream>
 #include "crossgrid.h"
 #include <vector>
+#include <cmath>
 
 void add_check(bool ex, const char* info = 0){
 	if (info==0){
@@ -60,7 +61,7 @@ void test2(){
 	std::cout<<"2. merging two grids. Secondary grid lies within the main"<<std::endl;
 	Grid* gmain = rectangular_grid(0,0, 1,1, 10, 10);
 	Grid* gsec  = rectangular_grid(0.3,0.3, 0.6, 0.6, 30, 30);
-	Grid* res = cross_grids(gmain, gsec, 0.05, 0.5);
+	Grid* res = cross_grids(gmain, gsec, 0.05, 0.5, 1);
 	grid_save_vtk(gmain,"out_main2.vtk");
 	grid_save_vtk(gsec,"out_sec2.vtk");
 	grid_save_vtk(res,"out_res2.vtk");
@@ -73,7 +74,7 @@ void test3(){
 	std::cout<<"3. merging two grids. Secondary grid crosses area of the main"<<std::endl;
 	Grid* gmain = rectangular_grid(0,0, 1,1, 10, 10);
 	Grid* gsec  = rectangular_grid(0.3,-0.1, 0.6, 0.2, 30, 30);
-	Grid* res = cross_grids(gmain, gsec, 0.15, 0.5);
+	Grid* res = cross_grids(gmain, gsec, 0.15, 0.5, 1);
 	grid_save_vtk(gmain,"out_main3.vtk");
 	grid_save_vtk(gsec,"out_sec3.vtk");
 	grid_save_vtk(res,"out_res3.vtk");
@@ -86,7 +87,7 @@ void test4(){
 	std::cout<<"4. Secondary grid covers the corner of main"<<std::endl;
 	Grid* gmain = rectangular_grid(0,0, 1,1, 10, 10);
 	Grid* gsec  = rectangular_grid(-0.3,-0.3, 0.5, 0.5, 30, 30);
-	Grid* res = cross_grids(gmain, gsec, 0.2, 0.5);
+	Grid* res = cross_grids(gmain, gsec, 0.2, 0.5, 1);
 	grid_save_vtk(gmain,"out_main4.vtk");
 	grid_save_vtk(gsec,"out_sec4.vtk");
 	grid_save_vtk(res,"out_res4.vtk");
@@ -108,7 +109,7 @@ void test5(){
 	};
 	Grid* gsec  = grid_construct(9, 8, pnt2, cls2);
 
-	Grid* res = cross_grids(gmain, gsec, 2.0, 0.5);
+	Grid* res = cross_grids(gmain, gsec, 2.0, 0.5, 1);
 	grid_save_vtk(gmain,"out_main5.vtk");
 	grid_save_vtk(gsec,"out_sec5.vtk");
 	grid_save_vtk(res,"out_res5.vtk");
@@ -125,15 +126,15 @@ void test6(){
 	grid_save_vtk(gmain,"out_main6.vtk");
 	grid_save_vtk(gsec,"out_sec6.vtk");
 
-	Grid* res = cross_grids(gmain, gsec, 0.3, 0.1);
+	Grid* res = cross_grids(gmain, gsec, 0.3, 0.1, 1);
 	grid_save_vtk(res,"out_res6_1.vtk");
 	grid_free(res);
 
-	res = cross_grids(gmain, gsec, 0.3, 0.5);
+	res = cross_grids(gmain, gsec, 0.3, 0.5, 1);
 	grid_save_vtk(res,"out_res6_5.vtk");
 	grid_free(res);
 
-	res = cross_grids(gmain, gsec, 0.3, 0.9);
+	res = cross_grids(gmain, gsec, 0.3, 0.9, 1);
 	grid_save_vtk(res,"out_res6_9.vtk");
 	grid_free(res);
 
@@ -147,9 +148,9 @@ void test7(){
 	Grid* gsec  = rectangular_grid(2,0, 3,1, 10, 10);
 	Grid* gsec2  = rectangular_grid(1,1, 2,2, 10, 10);
 	Grid* gsec3  = rectangular_grid(2,1.05, 3, 2.05, 10, 10);
-	Grid* res = cross_grids(gmain, gsec, 0.2, 0.5);
-	Grid* res2 = cross_grids(res, gsec2, 0.2, 0.5);
-	Grid* res3 = cross_grids(res2, gsec3, 0.2, 0.5);
+	Grid* res = cross_grids(gmain, gsec, 0.2, 0.5, 1);
+	Grid* res2 = cross_grids(res, gsec2, 0.2, 0.5, 1);
+	Grid* res3 = cross_grids(res2, gsec3, 0.2, 0.5, 1);
 	grid_save_vtk(res3,"out_res7.vtk");
 	add_check(grid_npoints(res)==242 && grid_ncells(res)==200, "merge non crossing");
 	add_check(grid_npoints(res2)==361 && grid_ncells(res2)==300, "merge grids with congruent point");
@@ -168,13 +169,57 @@ void test8(){
 	Grid* gmain = rectangular_grid(0,0, 1,1, 10, 10);
 	Grid* gsec  = rectangular_grid(4,0, 5,1, 10, 10);
 	Grid* gsec2  = rectangular_grid(-0.5,0.3, 5.5,0.6, 100, 10);
-	Grid* res = cross_grids(gmain, gsec, 0.2, 0.5);
-	Grid* res2 = cross_grids(res, gsec2, 0.2, 0.5);
+	Grid* res = cross_grids(gmain, gsec, 0.2, 0.5, 1);
+	Grid* res2 = cross_grids(res, gsec2, 0.2, 0.5, 1);
 	add_check(grid_npoints(res2)==1361 && grid_ncells(res2)==1432, "grid topology");
 	grid_save_vtk(res2,"out_res8.vtk");
 	grid_free(gmain);
 	grid_free(gsec);
 	grid_free(gsec2);
+	grid_free(res);
+	grid_free(res2);
+}
+
+void test9(){
+	std::cout<<"9. Boundary points control"<<std::endl;
+	Grid* gmain = rectangular_grid(0,0, 7,7, 7, 7);
+	Grid* gsec  = rectangular_grid(2.5,-1, 4.99, 1, 30, 30);
+	Grid* res = cross_grids(gmain, gsec, 0.2, 0.5, 1);
+	Grid* res2 = cross_grids(gmain, gsec, 0.2, 0.5, 0);
+	std::vector<double> pts(grid_npoints(res)*2), pts2(grid_npoints(res2)*2);
+	grid_get_points_cells(res, &pts[0], 0);
+	grid_get_points_cells(res2, &pts2[0], 0);
+	auto find_pt = [](double x, double y, const std::vector<double>& p)->bool{
+		auto it = p.begin();
+		while (it!=p.end()){
+			bool t1 = (fabs(*it++ - x)<1e-6);
+			bool t2 = (fabs(*it++ - y)<1e-6);
+			if (t1 && t2) return true;
+		}
+		return false;
+	};
+	add_check(find_pt(5, 0, pts), "boundary point was set");
+	add_check(!find_pt(5, 0, pts2), "boundary point was ignored");
+	grid_save_vtk(res,"out_res9_1.vtk");
+	grid_save_vtk(res2,"out_res9_2.vtk");
+	grid_free(gmain);
+	grid_free(gsec);
+	grid_free(res);
+	grid_free(res2);
+}
+
+void test10(){
+	std::cout<<"10. Buffer zone is bigger then outer grid"<<std::endl;
+	Grid* gmain = rectangular_grid(0,0, 1,1, 10, 10);
+	Grid* gsec  = rectangular_grid(0.31,-0.3, 0.695, 0.5, 10, 10);
+
+	Grid* res = cross_grids(gmain, gsec, 1.0, 0.5, 1);
+	Grid* res2 = cross_grids(gmain, gsec, 1.0, 0.5, 0);
+
+	grid_save_vtk(res,"out_res10_1.vtk");
+	grid_save_vtk(res2,"out_res10_2.vtk");
+	grid_free(gmain);
+	grid_free(gsec);
 	grid_free(res);
 	grid_free(res2);
 }
@@ -190,5 +235,7 @@ int main(){
 	test6();
 	test7();
 	test8();
+	test9();
+	test10();
 	std::cout<<"DONE"<<std::endl;
 }

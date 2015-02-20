@@ -69,13 +69,13 @@ int grid_cellsdim(Grid* g){
 void grid_get_points_cells(Grid* g, double* pts, int* cells){
 	auto gg=static_cast<GridGeom*>(g);
 	//points
-	for (int i=0; i<gg->n_points(); ++i){
+	if (pts!=0) for (int i=0; i<gg->n_points(); ++i){
 		auto p = gg->get_point(i);
 		*pts++ = p->x;
 		*pts++ = p->y;
 	}
 	//cells
-	for (int i=0; i<gg->n_cells(); ++i){
+	if (cells!=0) for (int i=0; i<gg->n_cells(); ++i){
 		auto c = gg->get_cell(i);
 		*cells++ = c->dim();
 		for (int j=0; j<c->dim(); ++j){
@@ -92,16 +92,17 @@ void grid_free(Grid* g){
 	delete g;
 }
 
-Grid* cross_grids(Grid* gbase, Grid* gsecondary, double buffer_size, double density){
-	return cross_grids_wcb(gbase, gsecondary, buffer_size, density, global_callback);
+Grid* cross_grids(Grid* gbase, Grid* gsecondary, double buffer_size, double density, int preserve_bp){
+	return cross_grids_wcb(gbase, gsecondary, buffer_size, density, preserve_bp, global_callback);
 }
 
-Grid* cross_grids_wcb(Grid* gbase, Grid* gsecondary, double buffer_size, double density, crossgrid_callback cb_fun){
+Grid* cross_grids_wcb(Grid* gbase, Grid* gsecondary, double buffer_size, 
+		double density, int preserve_bp, crossgrid_callback cb_fun){
 	try{
 		auto ret = GridGeom::cross_grids(
 				static_cast<GridGeom*>(gbase),
 				static_cast<GridGeom*>(gsecondary),
-				buffer_size, density, cb_fun);
+				buffer_size, density, (preserve_bp==1), cb_fun);
 		return ret;
 	} catch (const std::exception &e) {
 		std::cout<<e.what()<<std::endl;
@@ -219,8 +220,8 @@ void test4(){
 	auto grid1 = rectangular_grid(0, 0, 1, 1, 10, 10);
 	auto grid2 = rectangular_grid(1, 1, 2, 2, 10, 10);
 	auto grid3 = rectangular_grid(2,1.85, 3, 2.85, 10, 10);
-	auto cross1 = GridGeom::cross_grids(&grid1, &grid2, 0.0, 0.5, silent_callback);
-	auto cross2 = GridGeom::cross_grids(cross1, &grid3, 0.0, 0.5, silent_callback);
+	auto cross1 = GridGeom::cross_grids(&grid1, &grid2, 0.0, 0.5, true, silent_callback);
+	auto cross2 = GridGeom::cross_grids(cross1, &grid3, 0.0, 0.5, true, silent_callback);
 	save_vtk(cross2, "test4_grid.vtk");
 	add_check(cross2->n_points()==362 && cross2->n_cells()==300, "combined grid topology");
 	auto div = cross2->subdivide();

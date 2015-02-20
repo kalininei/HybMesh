@@ -28,7 +28,7 @@ public:
 	std::tuple<
 		ContoursCollection,
 		std::vector<double>
-	> boundary_info() const;
+	> boundary_info(bool preserve_true_bp) const;
 	
 	void update_original() const;
 };

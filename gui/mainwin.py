@@ -129,10 +129,10 @@ class MainWindow(QMainWindow, qtui.ui_ComGridMain.Ui_MainWindow):
         unused_grids = [n for n in all_grids if n not in used_grids]
         dialog = dlgs.UniteGrids(used_grids, unused_grids)
         if dialog.exec_():
-            name, grd, bfs, den = dialog.ret_value()
+            name, pbnd, grd, bfs, den = dialog.ret_value()
             src = [gridcom.UniteOpts(n, b, d)
                     for n, b, d in zip(grd, bfs, den)]
-            a = {'name': name}
+            a = {'name': name, 'fix_bnd': pbnd}
             for i, s in enumerate(src):
                 k = ''.join(['s', str(i)])
                 a[k] = s

@@ -53,14 +53,15 @@ def _grid_from_c(c_gr):
         cls.append(c_cls[i])
     return grid2.Grid2.from_points_cells(npt, ncl, pnt, cls)
 
-def unite_grids(g1, g2, buf, density):
+def unite_grids(g1, g2, buf, density, fix_bnd):
     'adds g2 to g1. Returns new grid'
     lib_fa = _clib()
     c_g1 = _grid_to_c(g1)
     c_g2 = _grid_to_c(g2)
     c_buf = ct.c_double(buf)
     c_den = ct.c_double(density / 10.0)
-    args = (c_g1, c_g2, c_buf, c_den)
+    c_fix = ct.c_int(1) if fix_bnd else ct.c_int(0)
+    args = (c_g1, c_g2, c_buf, c_den, c_fix)
 
     lib_fa.cross_grids_wcb.restype = ct.c_void_p
     e = dlgs.ProgressProcedureDlg(lib_fa.cross_grids_wcb, args, globvars.mainWindow)

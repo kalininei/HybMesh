@@ -201,17 +201,27 @@ class UniteOpts(object):
 class UniteGrids(command.Command):
     def __init__(self, **kwargs):
         """ args[name] - name of the new grid,
+            args[fix_bnd] - whether to fix all boundary points (=True)
             args[s0] = UniteOpts,
             args[s1] = UniteOpts,
             ....
         """
         super(UniteGrids, self).__init__(kwargs)
         self.grid_name = kwargs['name']
-        self.source = [None for i in range(len(kwargs) - 1)]
+        self.source = [None for i in range(len(kwargs))]
+        maxnum = 0
         for k, v in kwargs.items():
             if k[0] == 's':
                 num = int(k[1:])
+                if num > maxnum:
+                    maxnum = num
                 self.source[num] = v
+        self.source = self.source[:maxnum+1]
+        try:
+            self.fix_bnd = kwargs['fix_bnd']
+        except KeyError:
+            self.fix_bnd = True
+
 
     @classmethod
     def _method_code(cls):
@@ -238,7 +248,7 @@ class UniteGrids(command.Command):
         #unification
         for i in range(1, len(self.source)):
             g, b, d = self._get_grid(i)
-            self.unitedGrid = unite_grids(self.unitedGrid, g, b, d)
+            self.unitedGrid = unite_grids(self.unitedGrid, g, b, d, self.fix_bnd)
             if (self.unitedGrid is None):
                 return False
         #write result to receiver

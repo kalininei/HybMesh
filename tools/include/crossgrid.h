@@ -32,9 +32,11 @@ extern "C"{
 
 	// === crossgrid procedure
 	//with callback defined globally
-	Grid* cross_grids(Grid* gbase, Grid* gsecondary, double buffer_size, double density);
+	Grid* cross_grids(Grid* gbase, Grid* gsecondary, double buffer_size, 
+			double density, int preserve_bp);
 	//with specified callback function
-	Grid* cross_grids_wcb(Grid* gbase, Grid* gsecondary, double buffer_size, double density, crossgrid_callback cb_fun);
+	Grid* cross_grids_wcb(Grid* gbase, Grid* gsecondary, double buffer_size, 
+			double density, int preserve_bp, crossgrid_callback cb_fun);
 
 	// === testing
 	void crossgrid_internal_tests();

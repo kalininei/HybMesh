@@ -152,7 +152,7 @@ void BufferGrid::new_edge_points(Edge& e, const vector<double>& wht){
 std::tuple<
 	ContoursCollection,
 	std::vector<double>
-> BufferGrid::boundary_info() const{
+> BufferGrid::boundary_info(bool preserve_true_bp) const{
 	//return value
 	std::tuple<ContoursCollection, vector<double>> ret;
 	auto& cc = std::get<0>(ret);
@@ -163,26 +163,54 @@ std::tuple<
 	auto& inner_bp = std::get<0>(origin);
 	auto& outer_bp = std::get<1>(origin);
 	auto& true_bp = std::get<2>(origin);
+
+	//if there is no outer points: temporary settle the furthest true_bp point as inner
+	std::shared_ptr<Point> dummy_outer;
+	if (outer_bp.size()==0){
+		double maxmeas = 0;
+		const Point* furthp = 0;
+		for (auto& ptr: true_bp){
+			double minmeas = 1e100;
+			for (auto& pin: inner_bp){
+				double m = Point::meas(*ptr, *pin);
+				if (m<minmeas) minmeas = m;
+			}
+			if (minmeas>maxmeas){
+				maxmeas = minmeas;
+				furthp = ptr;
+			}
+		}
+		//dummy_outer.reset(new Point(furthp->x, furthp->y));
+		//outer_bp.insert(dummy_outer.get());
+		true_bp.erase(true_bp.find(furthp));
+		outer_bp.insert(furthp);
+	}
+
 	// --- build real contour
 	std::vector<PContour> real_contour = get_contours();
 	//delete points which lie on the sections of the source contour
+	//delete all boundary points if necessary
 	for (auto& c: real_contour){
 		std::set<int> bad_points;
 		for (int i=0; i<c.n_points(); ++i){
-			if (!c.is_corner_point(i) && inner_bp.find(c.get_point(i))!=inner_bp.end()){
+			if (!c.is_corner_point(i)){
 				auto p = c.get_point(i);
-				//find if p is the edge of source contour
-				for (int j=0; j<source_cont.n_points(); ++j){
-					if (*p == *source_cont.get_point(j)){
-						p=0; break;
+				if (inner_bp.find(p)!=inner_bp.end()){
+					//find if p is the edge of source contour
+					for (int j=0; j<source_cont.n_points(); ++j){
+						if (*p == *source_cont.get_point(j)){
+							p=0; break;
+						}
 					}
+					if (p!=0) bad_points.insert(i);
+				} else if (!preserve_true_bp && true_bp.find(p)!=true_bp.end()){
+					//delete all boundary points
+					bad_points.insert(i);
 				}
-				if (p!=0) bad_points.insert(i);
 			}
 		}
 		c.delete_by_index(bad_points);
 	}
-
 	//build characteristic steps
 	int _npt=0; for (auto& c: real_contour) _npt+=c.n_points();
 	lc.reserve(_npt);  //dist_dict points to lc data hence reserve is necessary
@@ -209,7 +237,19 @@ std::tuple<
 			dist_dict.emplace(c.get_point(i), &lc.back());
 		}
 	}
-	
+	//filter points origin to preserve only points from dist_dict
+	auto filter_origin = [&dist_dict](std::set<const Point*>& st){
+		auto it = st.begin();
+		while (it!=st.end()){
+			if (dist_dict.find(*it)==dist_dict.end()){
+				auto it2 = it++;
+				st.erase(it2);
+			} else ++it;
+		}
+	};
+	filter_origin(inner_bp);
+	filter_origin(outer_bp);
+	filter_origin(true_bp);
 	//for true boundary points find closest inner and outer points
 	auto closest_point = [](const Point* pnt, const std::set<const Point*>& col)
 			->std::pair<const Point*, double>{
@@ -224,9 +264,10 @@ std::tuple<
 	for (auto& p: true_bp){
 		auto closest_inner = closest_point(p, inner_bp);
 		auto closest_outer = closest_point(p, outer_bp);
-		double f1 = *dist_dict[closest_inner.first], f2 = *dist_dict[closest_outer.first];
+		double f1 = *dist_dict[closest_inner.first];
+		double f2 = *dist_dict[closest_outer.first];
 		double d1 = closest_inner.second, d2 = closest_outer.second;
-		*dist_dict[p] = (f1*d1+f2*d2)/(d1+d2);
+		*dist_dict[p] = (f1*d2+f2*d1)/(d1+d2);
 	}
 
 	//assemble contours collection and return

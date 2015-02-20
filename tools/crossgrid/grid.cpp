@@ -323,7 +323,7 @@ GridGeom* GridGeom::combine(GridGeom* gmain, GridGeom* gsec){
 }
 
 GridGeom* GridGeom::cross_grids(GridGeom* gmain, GridGeom* gsec, 
-		double buffer_size, double density, crossgrid_callback cb){
+		double buffer_size, double density, bool preserve_bp, crossgrid_callback cb){
 	//initial scaling before doing anything
 	if (cb("Building grid cross", "Scaling", 0, -1) == CALLBACK_CANCEL) return 0;
 	auto sc = gmain->do_scale();
@@ -351,31 +351,31 @@ GridGeom* GridGeom::cross_grids(GridGeom* gmain, GridGeom* gsec,
 			for (auto c: csec){
 				cb_cur+=cb_step;
 				//1. filter out a grid from buffer zone for the contour
-				if (cb("Building grid cross", "Filling buffer", 0.25, cb_cur-cb_step) 
+				if (cb("Building grid cross", "Filling buffer", 0.5, cb_cur-cb_step) 
 						== CALLBACK_CANCEL) return 0;
 				BufferGrid bg(*grid, c, buffer_size);
 
-				//this is temporary solution for non overlapping grids
+				//continue if buffergrid is empty
 				if (bg.num_orig_cells()==0) continue; 
 
 				//2. perform triangulation of buffer grid area
-				if (cb("Building grid cross", "Filling buffer", 0.25, cb_cur-0.8*cb_step)
+				if (cb("Building grid cross", "Filling buffer", 0.5, cb_cur-0.8*cb_step)
 						== CALLBACK_CANCEL) return 0;
-				auto bgcont = bg.boundary_info();
+				auto bgcont = bg.boundary_info(preserve_bp);
 				TriGrid g3(std::get<0>(bgcont), std::get<1>(bgcont), density);
 
 				//3. change the internal of bg by g3ref grid
-				if (cb("Building grid cross", "Filling buffer", 0.25, cb_cur-0.6*cb_step)
+				if (cb("Building grid cross", "Filling buffer", 0.5, cb_cur-0.6*cb_step)
 						== CALLBACK_CANCEL) return 0;
 				bg.change_internal(g3);
 				
 				//4. update original grid using new filling of buffer grid
-				if (cb("Building grid cross", "Filling buffer", 0.25, cb_cur-0.3*cb_step)
+				if (cb("Building grid cross", "Filling buffer", 0.5, cb_cur-0.3*cb_step)
 						== CALLBACK_CANCEL) return 0;
 				bg.update_original();
 			}
 		}
-		if (cb("Building grid cross", "Filling buffer", 0.25, 1.0)
+		if (cb("Building grid cross", "Filling buffer", 0.5, 1.0)
 						== CALLBACK_CANCEL) return 0;
 
 		if (cb("Building grid cross", "Merging", 0.85, -1)

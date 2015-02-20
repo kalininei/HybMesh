@@ -264,7 +264,9 @@ class UniteGrids(QDialog, qtui.ui_UniteGridsDlg.Ui_Dialog):
             QMessageBox.warning(self, "Warning", "Invalid Input")
 
     def ret_value(self):
-        ' -> (GridName, [source grids], [buffer sizes], [densities]) '
+        """ -> (GridName, preserve_bnd,
+            [source grids], [buffer sizes], [densities])
+        """
         nm = str(self.ed_name.text())
         src, buf, den = [], [], []
         for i in range(self.lst_used.count()):
@@ -275,7 +277,8 @@ class UniteGrids(QDialog, qtui.ui_UniteGridsDlg.Ui_Dialog):
         if len(src) < 2:
             #not enough grids to unite
             raise Exception()
-        return nm, src, buf, den
+        preserve_bnd = self.cb_preserve.checkState() == QtCore.Qt.Checked
+        return nm, preserve_bnd, src, buf, den
 
 
 class MoveRotateGridsDlg(QDialog, qtui.ui_MoveRotateDlg.Ui_Dialog):
