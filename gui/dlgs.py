@@ -184,7 +184,7 @@ class AddUnfRectGrid(QDialog):
             QMessageBox.warning(self, "Warning", "Invalid Input")
 
     def ret_value(self):
-        ' -> (p0, p1, Nx, Ny, GridName) '
+        ' -> {p0, p1, nx, ny, name} '
         p0 = bgeom.Point2(float(self.p0xedit.text()),
                 float(self.p0yedit.text()))
         p1 = bgeom.Point2(float(self.p1xedit.text()),
@@ -194,7 +194,8 @@ class AddUnfRectGrid(QDialog):
         #input data check
         if Nx <= 0 or Ny <= 0 or p0.x >= p1.x or p0.y >= p1.y:
             raise Exception
-        return (p0, p1, Nx, Ny, name)
+
+        return {'p0': p0, 'p1': p1, 'nx': Nx, 'ny': Ny, 'name': name}
 
 
 class AddUnfCircGrid(QDialog, qtui.ui_AddUnfCircDlg.Ui_add_unf_circ):
@@ -205,7 +206,7 @@ class AddUnfCircGrid(QDialog, qtui.ui_AddUnfCircDlg.Ui_add_unf_circ):
         self.setupUi(self)
 
     def ret_value(self):
-        '-> (pc, rad, Na, Nr, ref_coef, trian_center, GridName) '
+        '-> {pc, rad, Na, Nr, ref_coef, trian_center, GridName}'
         pc = bgeom.Point2(float(self.ed_x.text()),
                 float(self.ed_y.text()))
         rad = float(self.ed_rad.text())
@@ -213,7 +214,8 @@ class AddUnfCircGrid(QDialog, qtui.ui_AddUnfCircDlg.Ui_add_unf_circ):
         ref_coef = float(self.ed_coef.text())
         trian_center = self.cb_trian.isChecked()
         name = str(self.ed_name.text())
-        return pc, rad, Na, Nr, ref_coef, trian_center, name
+        return {'p0': pc, 'rad': rad, 'na': Na, 'nr': Nr, 'coef': ref_coef,
+                'is_trian': trian_center, 'name': name}
 
     def accept(self):
         try:

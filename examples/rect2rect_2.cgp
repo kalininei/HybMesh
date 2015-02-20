@@ -4,19 +4,19 @@
         <FLOW active="1" name="Flow1">
             <COMMANDS>
                 <ENTRY current="1">
-                    <LINE>Start</LINE>
+                    <LINE>Start {}</LINE>
                 </ENTRY>
                 <ENTRY>
-                    <LINE>AddUnfRectGrid 0.0 0.0 1.0 1.0 10 10 Grid1</LINE>
+                    <LINE>AddUnfRectGrid { 'p0': '0.0 0.0', 'p1': '1.0 1.0', 'nx': '10', 'ny': '10', 'name': 'Grid1'}</LINE>
                 </ENTRY>
                 <ENTRY>
-                    <LINE>AddUnfRectGrid -0.3 -0.3 0.5 0.5 30 30 Grid1</LINE>
+                    <LINE>AddUnfRectGrid {'p0':'-0.3 -0.3', 'p1': '0.5 0.5', 'nx': '30', 'ny': '30', 'name': 'Grid1'}</LINE>
                 </ENTRY>
                 <ENTRY>
-                    <LINE>UniteGrids UnitedGrid1 Grid1 0.2 7 Grid2 0.2 7</LINE>
+                    <LINE>UniteGrids { 'name': 'UnitedGrid1', 's0': "{'name': 'Grid1', 'buf': '0.2', 'den': 7}", 's1': "{'name': 'Grid2', 'buf': 0.2, 'den': 7}"}</LINE>
                 </ENTRY>
                 <ENTRY>
-                    <LINE>UniteGrids UnitedGrid1 Grid1 0.3 7 Grid2 0.3 7</LINE>
+                    <LINE>UniteGrids { 'name': 'UnitedGrid1', 's0': "{'name': 'Grid1', 'buf': 0.3, 'den': 7}", 's1': "{'name': 'Grid2', 'buf': 0.3,'den': 7}"}</LINE>
                 </ENTRY>
             </COMMANDS>
             <STATE>

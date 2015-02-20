@@ -1,3 +1,4 @@
+import ast
 import bgeom
 import grid2
 import command
@@ -6,22 +7,25 @@ from unite_grids import unite_grids
 
 class AddUnfRectGrid(command.Command):
     " Add uniform rectangular grid "
-    def __init__(self, p0, p1, nx, ny, name):
-        if name == "":
-            name = "Grid1"
-        super(AddUnfRectGrid, self).__init__(p0, p1, nx, ny, name)
-        self.p0, self.p1 = p0, p1
-        self.Nx, self.Ny = nx, ny
-        self.name = name
+    #def __init__(self, p0, p1, nx, ny, name):
+    def __init__(self, argsdict):
+        super(AddUnfRectGrid, self).__init__(argsdict)
+        self.p0, self.p1 = argsdict['p0'], argsdict['p1']
+        self.Nx, self.Ny = argsdict['nx'], argsdict['ny']
+        if 'name' not in argsdict or argsdict['name'] == '':
+            self.name = "Grid1"
+        else:
+            self.name = argsdict['name']
         self.Grid = None
 
     @classmethod
-    def from_strings(cls, slist):
-        p0 = bgeom.Point2(float(slist[0]), float(slist[1]))
-        p1 = bgeom.Point2(float(slist[2]), float(slist[3]))
-        Nx, Ny = int(slist[4]), int(slist[5])
-        name = slist[6]
-        return cls(p0, p1, Nx, Ny, name)
+    def fromstring(cls, slist):
+        arg = ast.literal_eval(slist)
+        arg['p0'] = bgeom.Point2.fromstring(arg['p0'])
+        arg['p1'] = bgeom.Point2.fromstring(arg['p1'])
+        arg['nx'] = int(arg['nx'])
+        arg['ny'] = int(arg['ny'])
+        return cls(arg)
 
     @classmethod
     def _method_code(cls):
@@ -32,7 +36,7 @@ class AddUnfRectGrid(command.Command):
         self.Grid = grid2.UnfRectGrid(self.p0, self.p1, self.Nx, self.Ny)
         #evalution
         self.receiver.grids2[self.name] = self.Grid
-        return True 
+        return True
 
     def _clear(self):
         del self.Grid
@@ -53,28 +57,36 @@ class AddUnfRectGrid(command.Command):
 class AddUnfCircGrid(command.Command):
     " Add uniform circular grid "
 
-    def __init__(self, p0, r, na, nr, coef, is_trian, name):
-        if name == "":
-            name = "CircularGrid1"
-        super(AddUnfCircGrid, self).__init__(p0, r, na, nr,
-                coef, is_trian, name)
-        self.p0 = p0
-        self.rad = r
-        self.Na, self.Nr = na, nr
-        self.coef = coef
-        self.is_trian = is_trian
-        self.name = name
+    def __init__(self, argsdict):
+        super(AddUnfCircGrid, self).__init__(argsdict)
+        self.p0 = argsdict['p0']
+        self.rad = argsdict['rad']
+        self.Na, self.Nr = argsdict['na'], argsdict['nr']
+        try:
+            self.coef = argsdict['coef']
+        except KeyError:
+            self.coef = 1.0
+        try:
+            self.is_trian = argsdict['is_trian']
+        except KeyError:
+            self.is_trian = True
+        if 'name' not in argsdict or argsdict['name'] == '':
+            argsdict['name'] = 'CircularGrid1'
+        self.name = argsdict['name']
+
         self.Grid = None
 
     @classmethod
-    def from_strings(cls, slist):
-        p0 = bgeom.Point2(float(slist[0]), float(slist[1]))
-        r = float(slist[2])
-        Na, Nr = int(slist[3]), int(slist[4])
-        coef = float(slist[5])
-        is_trian = bool(slist[6])
-        name = slist[7]
-        return cls(p0, r, Na, Nr, coef, is_trian, name)
+    def fromstring(cls, slist):
+        a = ast.literal_eval(slist)
+        a['p0'] = bgeom.Point2.fromstring(a['p0'])
+        a['rad'] = float(a['rad'])
+        a['na'], a['nr'] = int(a['na']), int(a['nr'])
+        if 'coef' in a:
+            a['coef'] = float(a['coef'])
+        if 'is_trian' in a:
+            a['is_trian'] = bool(a['is_trian'])
+        return cls(a)
 
     @classmethod
     def _method_code(cls):
@@ -105,9 +117,9 @@ class AddUnfCircGrid(command.Command):
 
 
 class RenameGrid2(command.Command):
-    def __init__(self, old_name, new_name):
-        super(RenameGrid2, self).__init__(old_name, new_name)
-        self.oldName, self.newName = old_name, new_name
+    def __init__(self, argsdict):
+        super(RenameGrid2, self).__init__(argsdict)
+        self.oldName, self.newName = argsdict['old'], argsdict['new']
 
     #overriden from Command
     @classmethod
@@ -115,8 +127,9 @@ class RenameGrid2(command.Command):
         return "RenameGrid2"
 
     @classmethod
-    def from_strings(cls, slist):
-        return cls(slist[0], slist[1])
+    def fromstring(cls, slist):
+        a = ast.literal_eval(slist)
+        return cls(a)
 
     def _exec(self):
         self.receiver.grids2.changeKey(self.oldName, self.newName)
@@ -133,10 +146,10 @@ class RenameGrid2(command.Command):
 
 
 class RemoveGrid2(command.Command):
-    def __init__(self, rem_grid):
-        ' rem_grid - string name of the removing grid '
-        super(RemoveGrid2, self).__init__(rem_grid)
-        self.remGrid = rem_grid
+    def __init__(self, name):
+        ' name - string name of the removing grid '
+        super(RemoveGrid2, self).__init__({'name': name})
+        self.remGrid = name
 
     #overriden from Command
     @classmethod
@@ -144,8 +157,9 @@ class RemoveGrid2(command.Command):
         return "RemoveGrid2"
 
     @classmethod
-    def from_strings(cls, slist):
-        return cls(slist[0])
+    def fromstring(cls, slist):
+        a = ast.literal_eval(slist)
+        return cls(a['name'])
 
     def _exec(self):
         self.backupIndex, self.backupGrid = \
@@ -168,34 +182,48 @@ class UniteOpts(object):
 
     ' Grids unification option: gridname + buffer size + density'
 
-    def __init__(self, name, buf, den):
+    def __init__(self, name, buf=0, den=5):
         self.name = name
         self.buf = buf
         self.den = den
 
     def __str__(self):
-        return " ".join(map(str, [self.name, self.buf, self.den]))
+        d = {'name': self.name,
+                'buf': self.buf, 'den': self.den}
+        return str(d)
+
+    @classmethod
+    def fromstring(cls, slist):
+        a = ast.literal_eval(slist)
+        return cls(**a)
 
 
 class UniteGrids(command.Command):
-    def __init__(self, grid_name, source_grids):
-        ' grid_name - name of the new grid, source_grids - [UniteOpts],  '
-        super(UniteGrids, self).__init__(grid_name, *source_grids)
-        self.grid_name = grid_name
-        self.source = source_grids
+    def __init__(self, **kwargs):
+        """ args[name] - name of the new grid,
+            args[s0] = UniteOpts,
+            args[s1] = UniteOpts,
+            ....
+        """
+        super(UniteGrids, self).__init__(kwargs)
+        self.grid_name = kwargs['name']
+        self.source = [None for i in range(len(kwargs) - 1)]
+        for k, v in kwargs.items():
+            if k[0] == 's':
+                num = int(k[1:])
+                self.source[num] = v
 
     @classmethod
     def _method_code(cls):
         return "UniteGrids"
 
     @classmethod
-    def from_strings(cls, slist):
-        it = iter(slist)
-        nm = it.next()
-        src = []
-        for n, b, d in zip(it, it, it):
-            src.append(UniteOpts(n, float(b), int(d)))
-        return cls(nm, src)
+    def fromstring(cls, slist):
+        a = ast.literal_eval(slist)
+        for k, v in a.items():
+            if k[0] == 's':
+                a[k] = UniteOpts.fromstring(v)
+        return cls(**a)
 
     def _get_grid(self, ind):
         """ returns (Grid, buffer size, density) from index """
@@ -237,14 +265,15 @@ class MoveGrids(command.Command):
     " Move grids "
 
     def __init__(self, dx, dy, names):
-        super(MoveGrids, self).__init__(dx, dy, *names)
+        a = {'dx': dx, 'dy': dy, 'names': ' '.join(names)}
+        super(MoveGrids, self).__init__(a)
         self.dx, self.dy = dx, dy
         self.names = names
 
     @classmethod
-    def from_strings(cls, slist):
-        [dx, dy] = slist[0:2]
-        return cls(float(dx), float(dy), slist[2:])
+    def fromstring(cls, slist):
+        a = ast.literal_eval(slist)
+        return cls(float(a['dx']), float(a['dy']), a['names'].split())
 
     @classmethod
     def _method_code(cls):
@@ -265,18 +294,21 @@ class MoveGrids(command.Command):
     def _redo(self):
         self._exec()
 
+
 class RotateGrids(command.Command):
     " Rotate grids "
 
-    def __init__(self, x0, y0, angle, names):
-        super(RotateGrids, self).__init__(x0, y0, angle, *names)
-        self.x0, self.y0, self.angle = x0, y0, angle
+    def __init__(self, p0, angle, names):
+        a = {'p0': p0, 'angle': angle, 'names': ' '.join(names)}
+        super(RotateGrids, self).__init__(a)
+        self.x0, self.y0, self.angle = p0.x, p0.y, angle
         self.names = names
 
     @classmethod
-    def from_strings(cls, slist):
-        [x0, y0, angle] = map(float, slist[0:3])
-        return cls(x0, y0, angle, slist[3:])
+    def fromstring(cls, slist):
+        a = ast.literal_eval(slist)
+        return cls(bgeom.Point2.fromstring(a['p0']),
+                float(a['angle']), a['names'].split())
 
     @classmethod
     def _method_code(cls):

@@ -27,16 +27,18 @@ class CommandReceiver(object):
 
 
 class Command(object):
-
     ' abstract base class for flow command '
 
-    def __init__(self, *args):
-        ' each arg should have __str__ method '
+    def __init__(self, argsdict):
+        ' each argsdict value should have __str__ method '
         self.__executed = False
         self.__comment = ""
         #comLine is string representation of command:
         #command Code from Factory dictionary + list of arguments
-        self.__comLine = " ".join([self._method_code()] + map(str, args))
+        st = copy.deepcopy(argsdict)
+        for k in st.keys():
+            st[k] = str(st[k])
+        self.__comLine = self._method_code()+' '+str(st)
         #last receiver of the command
         self.receiver = None
 
@@ -85,11 +87,11 @@ class Command(object):
     #------------ methods to override
     #constructors
     @classmethod
-    def from_strings(cls, slist):
+    def fromstring(cls, slist):
         """ -> Command object
 
-            @slist -- the array of string representation of
-            constuctor arguments
+            @slist -- string representation of
+            constuctor arguments dictionary
         """
         raise NotImplementedError
 
@@ -130,14 +132,14 @@ class StartCommand(Command):
 
     def __init__(self):
         ' __init__'
-        super(StartCommand, self).__init__()
+        super(StartCommand, self).__init__({})
 
     @classmethod
     def _method_code(cls):
         return "Start"
 
     @classmethod
-    def from_strings(cls, slist):
+    def fromstring(cls, slist):
         return cls()
 
     def _exec(self, receiver):
@@ -176,9 +178,9 @@ class Factory(object):
         return self._coms[s]
 
     def create_from_string(self, strcom):
-        p = strcom.split()
+        p = strcom.split(None, 1)
         cls = self.cls_from_string(p[0])
-        return cls.from_strings(p[1:])
+        return cls.fromstring(p[1])
 
     def create_from_args(self, clscode, *args):
         cls = self.cls_from_string(clscode)

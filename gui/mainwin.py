@@ -7,6 +7,7 @@ import qtui.ui_ComGridMain
 import vtk
 from vtk.qt4.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
+import bgeom
 import gridcom
 import dlgs
 import globvars
@@ -110,15 +111,15 @@ class MainWindow(QMainWindow, qtui.ui_ComGridMain.Ui_MainWindow):
     def _add_rectangle_grid(self):
         dialog = dlgs.AddUnfRectGrid(self)
         if dialog.exec_():
-            p0, p1, Nx, Ny, name = dialog.ret_value()
-            com = gridcom.AddUnfRectGrid(p0, p1, Nx, Ny, name)
+            arg = dialog.ret_value()
+            com = gridcom.AddUnfRectGrid(arg)
             globvars.actual_flow().exec_command(com)
 
     def _add_circular_grid(self):
         dialog = dlgs.AddUnfCircGrid(self)
         if dialog.exec_():
             r = dialog.ret_value()
-            com = gridcom.AddUnfCircGrid(*r)
+            com = gridcom.AddUnfCircGrid(r)
             globvars.actual_flow().exec_command(com)
 
     # --------- tools
@@ -131,7 +132,11 @@ class MainWindow(QMainWindow, qtui.ui_ComGridMain.Ui_MainWindow):
             name, grd, bfs, den = dialog.ret_value()
             src = [gridcom.UniteOpts(n, b, d)
                     for n, b, d in zip(grd, bfs, den)]
-            com = gridcom.UniteGrids(name, src)
+            a = {'name': name}
+            for i, s in enumerate(src):
+                k = ''.join(['s', str(i)])
+                a[k] = s
+            com = gridcom.UniteGrids(**a)
             globvars.actual_flow().exec_command(com)
 
     # ---------- transform
@@ -143,7 +148,8 @@ class MainWindow(QMainWindow, qtui.ui_ComGridMain.Ui_MainWindow):
             names, mopt, ropt = dialog.ret_value()
             #1) rotate
             if abs(ropt[2]) > 1e-16:
-                com = gridcom.RotateGrids(ropt[0], ropt[1], ropt[2], names)
+                com = gridcom.RotateGrids(bgeom.Point2(ropt[0], ropt[1]),
+                        ropt[2], names)
                 globvars.actual_flow().exec_command(com)
             #2) move
             if abs(mopt[0]) > 1e-16 or abs(mopt[1]) > 1e-16:

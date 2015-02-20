@@ -40,6 +40,12 @@ class Point2(object):
         " -> distance between self and p1 "
         x, y = p1.x - self.x, p1.y - self.y
         return math.sqrt(x * x + y * y)
+    
+    @classmethod
+    def fromstring(cls, s):
+        s2 = s.split()
+        return cls(float(s2[0]), float(s2[1]))
+
 
 
 def rotate_points(pnts, x0, y0, angle):

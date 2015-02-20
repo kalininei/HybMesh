@@ -4,16 +4,16 @@
         <FLOW active="1" name="Flow1">
             <COMMANDS>
                 <ENTRY current="1">
-                    <LINE>Start</LINE>
+                    <LINE>Start {}</LINE>
                 </ENTRY>
                 <ENTRY>
-                    <LINE>AddUnfRectGrid -5.0 -5.0 5.0 5.0 20 20 Grid1</LINE>
+                    <LINE>AddUnfRectGrid { 'p0': '-5.0 -5.0', 'p1': ' 5.0 5.0', 'nx': '20', 'ny': '20', 'name': 'Grid1'}</LINE>
                 </ENTRY>
                 <ENTRY>
-                    <LINE>AddUnfCircGrid 0.0 0.0 1.0 4 2 1.0 True CircleGrid1</LINE>
+                    <LINE>AddUnfCircGrid { 'p0': '0.0 0.0', 'rad': '1.0', 'na': '4', 'nr': '2', 'coef': '1.0', 'is_trian': 'True', 'name': 'CircleGrid1'}</LINE>
                 </ENTRY>
                 <ENTRY>
-                    <LINE>UniteGrids UnitedGrid1 Grid1 2.0 10 CircleGrid1 2.0 10</LINE>
+                    <LINE>UniteGrids { 'name': 'UnitedGrid1', 's0':"{'name':'Grid1', 'buf': 2.0, 'den': 10}", 's1': "{'name': 'CircleGrid1', 'buf': 2.0, 'den': 10}"}</LINE>
                 </ENTRY>
             </COMMANDS>
             <STATE>

@@ -4,43 +4,43 @@
         <FLOW active="1" name="Flow1">
             <COMMANDS>
                 <ENTRY current="1">
-                    <LINE>Start</LINE>
+                    <LINE>Start {}</LINE>
                 </ENTRY>
                 <ENTRY>
-                    <LINE>AddUnfRectGrid 0.0 0.0 1.0 10.0 10 100 Grid1</LINE>
+                    <LINE>AddUnfRectGrid { 'p0': '0.0 0.0', 'p1': '1.0 10.0', 'nx':  '10', 'ny': '100', 'name': 'Grid1'}</LINE>
                 </ENTRY>
                 <ENTRY>
-                    <LINE>AddUnfRectGrid -2.0 8.0 4.0 12.0 100 100 Grid1</LINE>
+                    <LINE>AddUnfRectGrid { 'p0': '-2.0 8.0', 'p1': '4.0 12.0', 'nx': '100', 'ny': '100', 'name': 'Grid1'}</LINE>
                 </ENTRY>
                 <ENTRY>
-                    <LINE>UniteGrids UnitedGrid1 Grid1 1.0 7 Grid2 1.0 7</LINE>
+                    <LINE>UniteGrids { 'name': 'UnitedGrid1', 's0': "{'name': 'Grid1', 'buf': 1.0, 'den': 7}", 's1': "{'name': 'Grid2', 'buf': 1.0, 'den': 7}"}</LINE>
                 </ENTRY>
                 <ENTRY>
-                    <LINE>UniteGrids UnitedGrid1 Grid2 1.0 7 Grid1 1.0 7</LINE>
+                    <LINE>UniteGrids { 'name': 'UnitedGrid1', 's0': "{'name': 'Grid2', 'buf': 1.0, 'den': 7}", 's1': "{'name': 'Grid1', 'buf': 1.0, 'den': 7}"}</LINE>
                 </ENTRY>
                 <ENTRY>
-                    <LINE>UniteGrids UnitedGrid1 Grid2 0.2 7 Grid1 0.2 7</LINE>
+                    <LINE>UniteGrids { 'name': 'UnitedGrid1', 's0': "{'name': 'Grid2', 'buf': 0.2, 'den': 7}", 's1': "{'name': 'Grid1', 'buf': 0.2, 'den': 7}"}</LINE>
                 </ENTRY>
                 <ENTRY>
-                    <LINE>AddUnfCircGrid 1.0 10.0 2.0 40 20 1.2 True CircleGrid1</LINE>
+                    <LINE>AddUnfCircGrid { 'p0': '1.0 10.0', 'rad': '2.0', 'na': '40', 'nr': '20', 'coef': '1.2', 'is_trian': 'True', 'name': 'CircleGrid1'}</LINE>
                 </ENTRY>
                 <ENTRY>
-                    <LINE>RemoveGrid2 CircleGrid1</LINE>
+                    <LINE>RemoveGrid2 {'name': 'CircleGrid1'}</LINE>
                 </ENTRY>
                 <ENTRY>
-                    <LINE>AddUnfCircGrid 0.0 0.0 0.8 40 10 1.2 True CircleGrid1</LINE>
+                    <LINE>AddUnfCircGrid { 'p0': '0.0 0.0', 'rad': '0.8', 'na': '40', 'nr': '10', 'coef': '1.2', 'is_trian': 'True', 'name': 'CircleGrid1'}</LINE>
                 </ENTRY>
                 <ENTRY>
-                    <LINE>MoveGrids 2.0 13.0 CircleGrid1</LINE>
+                    <LINE>MoveGrids { 'dx':'2.0', 'dy': '13.0', 'names': 'CircleGrid1'}</LINE>
                 </ENTRY>
                 <ENTRY>
-                    <LINE>MoveGrids 0.0 -3.0 CircleGrid1</LINE>
+                    <LINE>MoveGrids { 'dx': '0.0', 'dy':  '-3.0', 'names': 'CircleGrid1'}</LINE>
                 </ENTRY>
                 <ENTRY>
-                    <LINE>MoveGrids -1.0 0.0 CircleGrid1</LINE>
+                    <LINE>MoveGrids {'dx': '-1.0', 'dy': '0.0', 'names': 'CircleGrid1'}</LINE>
                 </ENTRY>
                 <ENTRY>
-                    <LINE>UniteGrids UnitedGrid1 UnitedGrid3 0.1 7 CircleGrid1 0.1 7</LINE>
+                    <LINE>UniteGrids { 'name': 'UnitedGrid1', 's0': "{'name':'UnitedGrid3', 'buf': 0.1, 'den': 7}", 's1': "{'name': 'CircleGrid1', 'buf': 0.1, 'den': 7}"}</LINE>
                 </ENTRY>
             </COMMANDS>
             <STATE>

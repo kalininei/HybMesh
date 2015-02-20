@@ -4,28 +4,28 @@
         <FLOW active="1" name="Flow1">
             <COMMANDS>
                 <ENTRY current="1">
-                    <LINE>Start</LINE>
+                    <LINE>Start {}</LINE>
                 </ENTRY>
                 <ENTRY>
-                    <LINE>AddUnfRectGrid 0.0 0.0 1.0 1.0 10 10 Grid1</LINE>
+                    <LINE>AddUnfRectGrid {'p0':'0.0 0.0', 'p1': '1.0 1.0', 'nx': '10', 'ny': '10', 'name': 'Grid1'}</LINE>
                 </ENTRY>
                 <ENTRY>
-                    <LINE>AddUnfRectGrid 0.0 0.0 0.2 1.0 10 100 Grid1</LINE>
+                    <LINE>AddUnfRectGrid {'p0': '0.0 0.0', 'p1': '0.2 1.0',  'nx': '10', 'ny': '100', 'name': 'Grid1'}</LINE>
                 </ENTRY>
                 <ENTRY>
-                    <LINE>AddUnfRectGrid 0.0 0.0 1.0 0.1 100 10 Grid1</LINE>
+                    <LINE>AddUnfRectGrid {'p0': '0.0 0.0', 'p1': '1.0 0.1', 'nx': '100', 'ny': '10', 'name': 'Grid1'}</LINE>
                 </ENTRY>
                 <ENTRY>
-                    <LINE>UniteGrids UnitedGrid1 Grid2 0.02 7 Grid3 0.02 7</LINE>
+                    <LINE>UniteGrids {'name': 'UnitedGrid1', 's0': "{'name': 'Grid2', 'buf': 0.02, 'den': 7}", 's1': "{'name': 'Grid3', 'buf': 0.02, 'den': 7}"}</LINE>
                 </ENTRY>
                 <ENTRY>
-                    <LINE>UniteGrids UnitedGrid1 Grid1 0.1 7 UnitedGrid1 0.1 7</LINE>
+                    <LINE>UniteGrids {'name': 'UnitedGrid1', 's0':  "{'name': 'Grid1', 'buf': 0.1, 'den': 7}", 's1':"{ 'name': 'UnitedGrid1', 'buf': 0.1, 'den': 7}"}</LINE>
                 </ENTRY>
                 <ENTRY>
-                    <LINE>UniteGrids UnitedGrid1 Grid2 0.0 7 Grid3 0.0 7</LINE>
+                    <LINE>UniteGrids {'name': 'UnitedGrid1', 's0':  "{'name': 'Grid2', 'buf': 0.0, 'den': 7}", 's1': "{'name': 'Grid3', 'buf':  0.0, 'den': 7}"}</LINE>
                 </ENTRY>
                 <ENTRY>
-                    <LINE>UniteGrids UnitedGrid1 Grid1 0.3 7 UnitedGrid3 0.3 7</LINE>
+                    <LINE>UniteGrids {'name': 'UnitedGrid1', 's0': "{'name': 'Grid1', 'buf': 0.3, 'den': 7}", 's1': "{'name': 'UnitedGrid3', 'buf': 0.3, 'den': 7}"}</LINE>
                 </ENTRY>
             </COMMANDS>
             <STATE>
