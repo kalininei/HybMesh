@@ -31,6 +31,19 @@ void PContour::reverse_self(){
 	std::reverse(pts.begin(), pts.end()); 
 }
 
+PContour PContour::simplify() const {
+	auto ret = PContour(*this);
+	ret.simplify_self();
+	return ret;
+}
+
+//simplify itself
+void PContour::simplify_self(){
+	std::set<int> simp_pnt;
+	for (int i=0; i<n_points(); ++i) if (!is_corner_point(i)) simp_pnt.insert(i);
+	aa::remove_entries(pts, simp_pnt);
+}
+
 vector<double> PContour::meas_points(const vector<const Point*>& pts) const {
 	auto inner_pts_vec = find_inner(pts);
 	auto inner_pts = std::set<const Point*>(inner_pts_vec.begin(), inner_pts_vec.end());
@@ -120,10 +133,8 @@ bool PContour::is_corner_point(int i) const{
 	auto p = get_point(i);
 	auto pnext = get_point(i+1);
 	auto pprev = get_point(i-1);
-	Vect v1 = *pnext - *p;
-	Vect v2 = *p - *pprev;
-	double cos2 = sqr(vecDot(v1,v2))/vecDot(v1,v1)/vecDot(v2,v2);
-	return fabs(cos2-1.0)>geps;
+	double area3 = triarea(*pprev, *p, *pnext);
+	return fabs(area3)>geps;
 }
 
 void PContour::delete_by_index(const std::set<int>& badind){
@@ -260,6 +271,49 @@ int ContoursCollection::is_inside(const Point& p) const{
 		}
 	}
 	return -1;
+}
+
+std::tuple<
+	vector<int>,  //internal points
+	vector<int>,  //points on contour
+	vector<int>   //outer points
+> ContoursCollection::filter_points_i(const vector<Point>& points) const{
+	//return value
+	std::tuple<vector<int>, vector<int>, vector<int>> ret;
+	auto& ipnt = std::get<0>(ret);
+	auto& cpnt = std::get<1>(ret);
+	auto& opnt = std::get<2>(ret);
+	//put simplifies contours into all entries
+	simplify_entries();
+	//loop over all points
+	for (size_t i=0; i<points.size(); ++i){
+		int r = is_inside(points[i]);
+		switch (r){
+			case -1: opnt.push_back(i); break;
+			case 1: ipnt.push_back(i); break;
+			default: cpnt.push_back(i);
+		}
+	}
+	//return original contours
+	unsimplify_entries();
+
+	return ret;
+}
+
+void ContoursCollection::simplify_entries() const{
+	_origcont.clear();
+	_simpcont.clear();
+	for(auto& e: entries){
+		//backup
+		_origcont.push_back(e->data);
+		//build new
+		e->data = aa::add_shared(_simpcont, e->data->simplify());
+	}
+}
+
+void ContoursCollection::unsimplify_entries() const{
+	auto it = _origcont.begin();
+	for (auto& e: entries) e->data = *it++;
 }
 
 Contour::Contour(const PContour& c): PContour(){

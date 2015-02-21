@@ -29,6 +29,11 @@ public:
 	//reverses itself
 	void reverse_self();
 
+	//build simplified contour
+	PContour simplify() const;
+	//simplify itself
+	void simplify_self();
+
 	//contour data access
 	int n_points() const { return pts.size(); }
 	const Point* get_point(int i) const {
@@ -89,13 +94,20 @@ struct ContoursCollection{
 		for (auto c: entries[i]->lower) ret.push_back(c->data);
 		return ret;
 	}
+	
+	//contours geometry procedures
+	std::tuple<
+		vector<int>,  //internal points
+		vector<int>,  //points on contour
+		vector<int>   //outer points
+	> filter_points_i(const vector<Point>& points) const;
 private:
 	struct _entry{
 		_entry* upper;
 		_entry(PContour* d): upper(0), is_inner(d->area()>0), data(d){}
 		std::list<_entry*> lower;
 		bool is_inner;
-		PContour* data;
+		mutable PContour* data;
 		int geom_inside(const Point& p) const;
 		void set_nesting(bool inner);
 		const _entry* find(const Point& p) const;
@@ -105,6 +117,13 @@ private:
 	std::list<_entry*> top_level;
 	void set_nesting();
 	const _entry* efind(const Point& p) const;
+
+	//simplify/unsimplify entries: 
+	//  modifies entires.data to simplified contours
+	mutable shp_vector<PContour> _simpcont;
+	mutable vector<PContour*> _origcont;
+	void simplify_entries() const;
+	void unsimplify_entries() const;
 };
 
 //Contour which owns all its points

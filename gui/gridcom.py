@@ -116,6 +116,64 @@ class AddUnfCircGrid(command.Command):
                                     self.Grid)
 
 
+class AddUnfRingGrid(command.Command):
+    " Add uniform circular ring"
+
+    def __init__(self, argsdict):
+        super(AddUnfRingGrid, self).__init__(argsdict)
+        self.p0 = argsdict['p0']
+        self.irad = argsdict['radinner']
+        self.orad = argsdict['radouter']
+        self.Na, self.Nr = argsdict['na'], argsdict['nr']
+        try:
+            self.coef = argsdict['coef']
+        except KeyError:
+            self.coef = 1.0
+        if 'name' not in argsdict or argsdict['name'] == '':
+            argsdict['name'] = 'CircularGrid1'
+        self.name = argsdict['name']
+
+        self.Grid = None
+
+    @classmethod
+    def fromstring(cls, slist):
+        a = ast.literal_eval(slist)
+        a['p0'] = bgeom.Point2.fromstring(a['p0'])
+        a['radinner'] = float(a['radinner'])
+        a['radouter'] = float(a['radouter'])
+        a['na'], a['nr'] = int(a['na']), int(a['nr'])
+        if 'coef' in a:
+            a['coef'] = float(a['coef'])
+        return cls(a)
+
+    @classmethod
+    def _method_code(cls):
+        return "AddUnfRingGrid"
+
+    def _exec(self):
+        #backup info
+        self.Grid = grid2.UnfRingGrid(self.p0, self.irad, self.orad,
+                self.Na, self.Nr, self.coef)
+        #evalution
+        self.receiver.grids2[self.name] = self.Grid
+        return True
+
+    def _clear(self):
+        del self.Grid
+
+    def _undo(self):
+        #backup current name of the grid and its index in fw dictionary
+        i, k = self.receiver.grids2.get_by_value(self.Grid)
+        self.__gridName = k
+        self.__gridPosition = i
+        #delete Grid from fw. It still presents in self.Grid attribute
+        del self.receiver.grids2[k]
+
+    def _redo(self):
+        self.receiver.grids2.insert(self.__gridPosition, self.__gridName,
+                                    self.Grid)
+
+
 class RenameGrid2(command.Command):
     def __init__(self, argsdict):
         super(RenameGrid2, self).__init__(argsdict)
@@ -216,12 +274,11 @@ class UniteGrids(command.Command):
                 if num > maxnum:
                     maxnum = num
                 self.source[num] = v
-        self.source = self.source[:maxnum+1]
+        self.source = self.source[:maxnum + 1]
         try:
             self.fix_bnd = kwargs['fix_bnd']
         except KeyError:
             self.fix_bnd = True
-
 
     @classmethod
     def _method_code(cls):
@@ -248,7 +305,8 @@ class UniteGrids(command.Command):
         #unification
         for i in range(1, len(self.source)):
             g, b, d = self._get_grid(i)
-            self.unitedGrid = unite_grids(self.unitedGrid, g, b, d, self.fix_bnd)
+            self.unitedGrid = unite_grids(self.unitedGrid, g, b,
+                    d, self.fix_bnd)
             if (self.unitedGrid is None):
                 return False
         #write result to receiver

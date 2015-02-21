@@ -68,6 +68,7 @@ class MainWindow(QMainWindow, qtui.ui_ComGridMain.Ui_MainWindow):
         #geometry
         self.act_unf_rect.triggered.connect(self._add_rectangle_grid)
         self.act_unf_circ.triggered.connect(self._add_circular_grid)
+        self.act_unf_ring.triggered.connect(self._add_ring_grid)
         #tools
         self.act_unite_grids.triggered.connect(self._unite_grids)
         #transform
@@ -120,6 +121,13 @@ class MainWindow(QMainWindow, qtui.ui_ComGridMain.Ui_MainWindow):
         if dialog.exec_():
             r = dialog.ret_value()
             com = gridcom.AddUnfCircGrid(r)
+            globvars.actual_flow().exec_command(com)
+
+    def _add_ring_grid(self):
+        dialog = dlgs.AddUnfRingGrid(self)
+        if dialog.exec_():
+            r = dialog.ret_value()
+            com = gridcom.AddUnfRingGrid(r)
             globvars.actual_flow().exec_command(com)
 
     # --------- tools

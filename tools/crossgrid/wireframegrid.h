@@ -30,6 +30,9 @@ struct PtsGraph{
 	const Point* get_point(int i) const { return &nodes[i]; }
 	std::pair<int, int> get_line(int i) const { return std::make_pair(lines[i].i0, lines[i].i1); }
 
+	//generate data
+	std::vector<Point> center_line_points() const;
+
 	//create 2D grid on the basis of current wireframe
 	//all boundary edges has an adjacent cell with index=-1.
 	GridGeom togrid() const;
@@ -72,6 +75,9 @@ private:
 	static impResT _impose_impl(const PtsGraph& main_graph, const PtsGraph& imp_graph, double eps);
 
 	friend struct PtsGraphAccel;
+
+	//data management
+	void delete_unused_points();
 };
 
 

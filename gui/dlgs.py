@@ -6,6 +6,7 @@ from PyQt4.QtGui import (QDialog, QDialogButtonBox, QGridLayout,
 import bgeom
 import qtui.ui_UniteGridsDlg
 import qtui.ui_AddUnfCircDlg
+import qtui.ui_AddUnfRingDlg
 import qtui.ui_MoveRotateDlg
 import qtui.ui_GridViewOpt
 
@@ -221,6 +222,38 @@ class AddUnfCircGrid(QDialog, qtui.ui_AddUnfCircDlg.Ui_add_unf_circ):
         try:
             self.ret_value()
             super(AddUnfCircGrid, self).accept()
+        except Exception:
+            QMessageBox.warning(self, "Warning", "Invalid Input")
+
+
+class AddUnfRingGrid(QDialog, qtui.ui_AddUnfRingDlg.Ui_add_unf_ring):
+    ' Add Uniform circular ring dialog '
+
+    def __init__(self, parent=None):
+        super(AddUnfRingGrid, self).__init__(parent)
+        self.setupUi(self)
+
+    def ret_value(self):
+        '-> {pc, radinner, radouter, Na, Nr, ref_coef, GridName}'
+        pc = bgeom.Point2(float(self.ed_x.text()),
+                float(self.ed_y.text()))
+        irad = float(self.ed_irad.text())
+        orad = float(self.ed_orad.text())
+        Na, Nr = int(self.ed_na.text()), int(self.ed_nr.text())
+        ref_coef = float(self.ed_coef.text())
+
+        #value check
+        if Na < 3 or Nr < 2 or irad <= 0 or orad <= 0 or irad >= orad:
+            raise Exception
+
+        name = str(self.ed_name.text())
+        return {'p0': pc, 'radinner': irad, 'radouter': orad, 'na': Na,
+                'nr': Nr, 'coef': ref_coef, 'name': name}
+
+    def accept(self):
+        try:
+            self.ret_value()
+            super(AddUnfRingGrid, self).accept()
         except Exception:
             QMessageBox.warning(self, "Warning", "Invalid Input")
 

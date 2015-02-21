@@ -73,6 +73,7 @@
      </property>
      <addaction name="act_unf_rect"/>
      <addaction name="act_unf_circ"/>
+     <addaction name="act_unf_ring"/>
     </widget>
     <addaction name="menuAdd_grid"/>
    </widget>
@@ -223,6 +224,11 @@
   <action name="act_movrot">
    <property name="text">
     <string>&amp;Move/Rotate</string>
+   </property>
+  </action>
+  <action name="act_unf_ring">
+   <property name="text">
+    <string>Uniform r&amp;ing</string>
    </property>
   </action>
  </widget>

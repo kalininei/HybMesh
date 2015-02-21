@@ -224,6 +224,39 @@ void test10(){
 	grid_free(res2);
 }
 
+void test11(){
+	std::cout<<"11. Grid combine with not single connected result"<<std::endl;
+	Grid* gmain = rectangular_grid(0,0, 1,1, 10, 10);
+
+	std::vector<double> pts_sec = {0.2, -0.2, 0.8, -0.2, 
+		0.8, 0.2, 0.2, 0.2, 0.3, -0.1, 0.7, -0.1, 0.7, 0.1, 0.3, 0.1};
+	std::vector<int> cls_sec = {4,0,1,5,4, 4,1,2,6,5, 4,6,2,3,7, 4,3,0,4,7};
+	Grid* gsec = grid_construct(8, 4, &pts_sec[0], &cls_sec[0]);
+	Grid* res = cross_grids(gmain, gsec, 0, 0, 0);
+	grid_save_vtk(res, "out_res11.vtk");
+	add_check(grid_npoints(res) == 125 && grid_ncells(res) == 96, "resulting topology");
+	grid_free(gmain);
+	grid_free(gsec);
+	grid_free(res);
+}
+
+void test12(){
+	std::cout<<"12. Big buffer for the polygon with hole imposition"<<std::endl;
+	Grid* gmain = rectangular_grid(0,0, 1,1, 10, 10);
+	std::vector<double> pts_sec = {0.2, -0.2, 0.8, -0.2, 
+		0.8, 0.2, 0.2, 0.2, 0.3, -0.1, 0.7, -0.1, 0.7, 0.1, 0.3, 0.1};
+	for (size_t i=1; i<pts_sec.size(); i+=2) pts_sec[i]+=0.5;
+	std::vector<int> cls_sec = {4,0,1,5,4, 4,1,2,6,5, 4,6,2,3,7, 4,3,0,4,7};
+	Grid* gsec = grid_construct(8, 4, &pts_sec[0], &cls_sec[0]);
+	Grid* res = cross_grids(gmain, gsec, 0.2, 0.5, 1);
+	grid_save_vtk(res, "out_res12.vtk");
+	add_check(grid_ncells(res) == 132 && grid_npoints(res) == 99, "resulting topology");
+
+	grid_free(gmain);
+	grid_free(gsec);
+	grid_free(res);
+}
+
 int main(){
 	crossgrid_silent_callback();
 	crossgrid_internal_tests();
@@ -237,5 +270,7 @@ int main(){
 	test8();
 	test9();
 	test10();
+	test11();
+	test12();
 	std::cout<<"DONE"<<std::endl;
 }

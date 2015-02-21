@@ -107,6 +107,8 @@ class Ui_MainWindow(object):
         self.act_unf_circ.setObjectName(_fromUtf8("act_unf_circ"))
         self.act_movrot = QtGui.QAction(MainWindow)
         self.act_movrot.setObjectName(_fromUtf8("act_movrot"))
+        self.act_unf_ring = QtGui.QAction(MainWindow)
+        self.act_unf_ring.setObjectName(_fromUtf8("act_unf_ring"))
         self.menu_File.addAction(self.act_open)
         self.menu_File.addAction(self.act_save)
         self.menu_File.addSeparator()
@@ -117,6 +119,7 @@ class Ui_MainWindow(object):
         self.menu_View.addAction(self.act_grid_manager)
         self.menuAdd_grid.addAction(self.act_unf_rect)
         self.menuAdd_grid.addAction(self.act_unf_circ)
+        self.menuAdd_grid.addAction(self.act_unf_ring)
         self.menu_Geometry.addAction(self.menuAdd_grid.menuAction())
         self.menuTools.addAction(self.act_unite_grids)
         self.menuTransform.addAction(self.act_movrot)
@@ -155,5 +158,6 @@ class Ui_MainWindow(object):
         self.act_unite_grids.setText(_translate("MainWindow", "&Unite grids", None))
         self.act_unf_circ.setText(_translate("MainWindow", "Uniform &cirlce", None))
         self.act_movrot.setText(_translate("MainWindow", "&Move/Rotate", None))
+        self.act_unf_ring.setText(_translate("MainWindow", "Uniform r&ing", None))
 
 import ComGridRes_rc

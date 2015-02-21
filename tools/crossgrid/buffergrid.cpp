@@ -164,26 +164,33 @@ std::tuple<
 	auto& outer_bp = std::get<1>(origin);
 	auto& true_bp = std::get<2>(origin);
 
-	//if there is no outer points: temporary settle the furthest true_bp point as inner
+	//if there is no outer points: set the furthest true_bp point as inner
+	//if there is no outer and boundary points: return only source contour
 	std::shared_ptr<Point> dummy_outer;
 	if (outer_bp.size()==0){
-		double maxmeas = 0;
-		const Point* furthp = 0;
-		for (auto& ptr: true_bp){
-			double minmeas = 1e100;
-			for (auto& pin: inner_bp){
-				double m = Point::meas(*ptr, *pin);
-				if (m<minmeas) minmeas = m;
+		if (true_bp.size()>0){
+			double maxmeas = 0;
+			const Point* furthp = 0;
+			for (auto& ptr: true_bp){
+				double minmeas = 1e100;
+				for (auto& pin: inner_bp){
+					double m = Point::meas(*ptr, *pin);
+					if (m<minmeas) minmeas = m;
+				}
+				if (minmeas>maxmeas){
+					maxmeas = minmeas;
+					furthp = ptr;
+				}
 			}
-			if (minmeas>maxmeas){
-				maxmeas = minmeas;
-				furthp = ptr;
-			}
+			//dummy_outer.reset(new Point(furthp->x, furthp->y));
+			//outer_bp.insert(dummy_outer.get());
+			true_bp.erase(true_bp.find(furthp));
+			outer_bp.insert(furthp);
+		} else {
+			cc.add_contour(source_cont);
+			lc = source_cont.chdist();
+			return ret;
 		}
-		//dummy_outer.reset(new Point(furthp->x, furthp->y));
-		//outer_bp.insert(dummy_outer.get());
-		true_bp.erase(true_bp.find(furthp));
-		outer_bp.insert(furthp);
 	}
 
 	// --- build real contour

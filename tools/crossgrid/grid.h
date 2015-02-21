@@ -23,7 +23,11 @@ class Cell{
 public:
 	explicit Cell(int _ind = 0):ind(_ind){}
 	int dim() const { return points.size(); }
-	const GridPoint* get_point(int i) const { return points[i]; }
+	const GridPoint* get_point(int i) const {
+		if (i<0) return get_point(i+dim());
+		else if (i>=dim()) return get_point(i-dim());
+		else return points[i];
+	}
 	int get_ind() const { return ind; }
 	double area() const;
 
@@ -60,6 +64,7 @@ protected:
 	std::vector<PContour> get_contours() const;
 	ContoursCollection get_contours_collection() const { return ContoursCollection(get_contours()); }
 	GridGeom remove_area(const PContour& cont);
+	//make all cells be counter clockwise
 	void force_cells_ordering();
 	//indexation
 	void set_indicies();
@@ -69,6 +74,7 @@ protected:
 	static void change_point_of_cell(Cell* c, int j, GridPoint* p){ c->points[j] = p; }
 	static void delete_point_of_cell(Cell* c, int j){ c->points.erase(c->points.begin()+j); }
 	void clear(){ points.clear(); cells.clear(); }
+	vector<Point> cells_internal_points() const;
 	//constructors
 	GridGeom(){};
 	GridGeom(const GridGeom& g);
@@ -79,6 +85,8 @@ protected:
 	void add_data(const GridGeom& g, const std::vector<int>& cls);
 	//merge points with equal coordinates
 	void merge_congruent_points();
+	//remove cells
+	void remove_cells(const vector<int>& bad_cells);
 public:
 	//build grid from raw points coordinates array
 	//and cells->points connectivity array

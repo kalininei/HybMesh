@@ -6,6 +6,7 @@
 #include "trigrid.h"
 #include "buffergrid.h"
 #include "wireframegrid.h"
+#include "bgeom.h"
 
 void Edge::add_adj_cell(int cell_ind, int i1, int i2) const{
 	if ((i1 == p1) && (i2 == p2)){
@@ -63,6 +64,14 @@ void GridGeom::add_data(const GridGeom& g, const std::vector<int>& cls){
 		set_indicies();
 	}
 	if (need_merge) merge_congruent_points();
+}
+
+void GridGeom::remove_cells(const vector<int>& bad_cells){
+	if (bad_cells.size()==0) return;
+	std::set<int> bc(bad_cells.begin(), bad_cells.end());
+	aa::remove_entries(cells, bc);
+	delete_unused_points();
+	set_indicies();
 }
 
 void GridGeom::merge_congruent_points(){
@@ -311,15 +320,33 @@ shp_vector<GridGeom> GridGeom::subdivide() const{
 }
 
 GridGeom* GridGeom::combine(GridGeom* gmain, GridGeom* gsec){
-	//1) input date to wireframe format
+	//1) build grids contours
+	auto maincont = gmain->get_contours_collection();
+	auto seccont = gsec->get_contours_collection();
+	//2) input date to wireframe format
 	PtsGraph wmain(*gmain);
 	PtsGraph wsec(*gsec);
-	//2) cut outer grid with inner grid contour
-	wmain = PtsGraph::cut(wmain, gsec->get_contours_collection(),-1);
-	//3) overlay grids
+	//3) cut outer grid with inner grid contour
+	wmain = PtsGraph::cut(wmain, seccont, -1);
+	//4) overlay grids
 	wmain = PtsGraph::overlay(wmain, wsec);
-	//4) return
-	return new GridGeom(wmain.togrid());
+	//5) build single connected grid
+	GridGeom* ret = new GridGeom(wmain.togrid());
+	//6) filter out all cells which lie outside gmain and gsec contours
+	//if gmain and gsec are not simple structures
+	if (maincont.n_cont()>1 || seccont.n_cont()>1){
+		vector<Point> pts = ret->cells_internal_points();
+		auto mainfilt = std::get<2>(maincont.filter_points_i(pts));
+		auto secfilt = std::get<2>(seccont.filter_points_i(pts));
+		vector<int> bad_cells;
+		for (int i: mainfilt){
+			if (std::find(secfilt.begin(), secfilt.end(), i)!=secfilt.end()){
+				bad_cells.push_back(i);
+			}
+		}
+		ret->remove_cells(bad_cells);
+	}
+	return ret;
 }
 
 GridGeom* GridGeom::cross_grids(GridGeom* gmain, GridGeom* gsec, 
@@ -417,3 +444,23 @@ void GridGeom::change_internal(const GridGeom& gg){
 	
 	set_indicies();
 }
+
+vector<Point> GridGeom::cells_internal_points() const{
+	vector<Point> ret; ret.reserve(n_cells());
+	for (auto& c: cells){
+		for (int i=0; i<c->dim(); ++i){
+			auto p1 = c->get_point(i-1);
+			auto p2 = c->get_point(i);
+			auto p3 = c->get_point(i+1);
+			if (fabs(triarea(*p1, *p2, *p3))>geps){
+				ret.push_back((*p1 + *p2 + *p3)/3.0);
+				break;
+			}
+		}
+	}
+	return ret;
+}
+
+
+
+

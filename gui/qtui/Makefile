@@ -5,7 +5,7 @@ PlugDir = .
 ResTarget = ComGridRes
 PlugTarget = TransferListWidget
 FormsTarget = HistoryWindow ComGridMain UniteGridsDlg AddUnfCircDlg MoveRotateDlg \
-	      GridViewOpt
+	      GridViewOpt AddUnfRingDlg
 
 
 all: $(ResTarget) $(PlugTarget) $(FormsTarget)

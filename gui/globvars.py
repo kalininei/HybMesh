@@ -27,6 +27,6 @@ mainWindow = mainwin.MainWindow()
 #it is build after mainwindow because FrameworkVis should use mainWindow
 _commands = [gridcom.AddUnfRectGrid, gridcom.RemoveGrid2,
         gridcom.AddUnfCircGrid, gridcom.MoveGrids, gridcom.RotateGrids,
-        gridcom.RenameGrid2, gridcom.UniteGrids]
+        gridcom.RenameGrid2, gridcom.UniteGrids, gridcom.AddUnfRingGrid]
 
 Flows = command.FlowCollection(_commands, framework.Framework)

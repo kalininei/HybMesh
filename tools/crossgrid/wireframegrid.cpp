@@ -1,6 +1,8 @@
 #include "wireframegrid.h"
 #include "addalgo.hpp"
 #include <algorithm>
+#include <numeric>
+#include "fileproc.h"
 
 //constructors
 PtsGraph::PtsGraph(const GridGeom& g2){
@@ -367,36 +369,56 @@ double PtsGraphAccel::find_gline(const Point& p) const noexcept{
 	return -1;
 }
 
+std::vector<Point> PtsGraph::center_line_points() const{
+	std::vector<Point> ret; ret.reserve(lines.size());
+	for (auto& ln: lines){
+		ret.push_back( (nodes[ln.i0] + nodes[ln.i1])/2.0 );
+	}
+	return ret;
+}
+
+void PtsGraph::delete_unused_points(){
+	std::vector<int> usage(nodes.size(), 0);
+	for (auto& ln: lines){
+		++usage[ln.i0];
+		++usage[ln.i1];
+	}
+	std::set<int> bad_pts;
+	for (size_t i = 0; i<usage.size(); ++i)
+		if (usage[i] == 0) bad_pts.insert(i);
+
+	//return if all points are used
+	if (bad_pts.size() == 0) return;
+	//old index -> new index dictionary
+	std::vector<int> old_new(nodes.size());
+	std::iota(old_new.begin(), old_new.end(), 0);
+	for (auto it = bad_pts.rbegin(); it != bad_pts.rend(); ++it){
+		std::for_each(old_new.begin() + *it, old_new.end(), [](int& i){ --i; });
+	}
+	//remove points
+	aa::remove_entries(nodes, bad_pts);
+	//renumber line entries
+	for (auto& ln: lines){
+		ln.i0 = old_new[ln.i0];
+		ln.i1 = old_new[ln.i1];
+	}
+}
+
 PtsGraph PtsGraph::cut(const PtsGraph& wmain, const ContoursCollection& conts, int dir){
 	dir = (dir>0)?-1:1;
 	auto ccut = PtsGraph(conts);
+	//get the imposition: wmain + conts
 	auto ires = impose(wmain, ccut, geps);
 	PtsGraph& pg = std::get<0>(ires);
-	std::set<int> bad_pts;
-	for (int i=0; i<pg.Nnodes(); ++i){
-		if (conts.is_inside(pg.nodes[i])==dir) bad_pts.insert(i);
-	}
-	std::map<int, int> good_map;
-	for (int i=0; i<pg.Nnodes(); ++i) good_map[i]=i;
-	for (int i: bad_pts){
-		for (int j=i; j<pg.Nnodes(); ++j) --good_map[j];
-	}
-	//delete bad points
-	aa::remove_entries(pg.nodes, bad_pts);
-	//delete lines which contains bad point
-	std::set<int> bad_lines;
-	for (int i=0; i<pg.lines.size(); ++i){
-		if (bad_pts.find(pg.lines[i].i0)!=bad_pts.end() ||
-			bad_pts.find(pg.lines[i].i1)!=bad_pts.end()){
-			bad_lines.insert(i);
-		}
-	}
+	//filter lines which lie within bad region
+	//using the position of line center point
+	std::vector<Point> line_cnt = pg.center_line_points();
+	auto flt = conts.filter_points_i(line_cnt);
+	std::vector<int>& badi = (dir==1) ? std::get<0>(flt) : std::get<2>(flt);
+	std::set<int> bad_lines(badi.begin(), badi.end());
 	aa::remove_entries(pg.lines, bad_lines);
-	//renumber points in good lines
-	for (auto& line: pg.lines){
-		line.i0 = good_map[line.i0];
-		line.i1 = good_map[line.i1];
-	}
+	//delete unused points
+	pg.delete_unused_points();
 	return pg;
 }
 

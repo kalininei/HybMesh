@@ -515,6 +515,67 @@ class UnfCircGrid(CircularGrid):
         return ret
 
 
+class UnfRingGrid(CircularGrid):
+    ' Uniform circular grid '
+    def __init__(self, p0, irad, orad, na, nr, coef):
+        super(UnfRingGrid, self).__init__(na, nr, False)
+        self.cells = self.cells[:-1]
+        self.p_center = p0
+        self.irad = irad
+        self.orad = orad
+        self.coef = coef
+        #angle is used for xml input/output of the grid only
+        self.angle = 0.0
+
+        #range segmentation using the refinement coef
+        rs = bgeom.div_range(self.irad, self.orad, self.nr, self.coef)
+        rs.reverse()
+
+        #build points
+        for i in range(self.nr):
+            r = rs[i]
+            for j in range(self.na):
+                a = j * 2 * math.pi / self.na
+                p = bgeom.Point2(r * math.cos(a) + self.p_center.x,
+                        r * math.sin(a) + self.p_center.y)
+                self.points.append(p)
+        if self.is_trian:
+            self.points.append(copy.deepcopy(self.p_center))
+
+    def move(self, dx, dy):
+        self.p_center.x += dx
+        self.p_center.y += dy
+        super(UnfRingGrid, self).move(dx, dy)
+
+    def rotate(self, x0, y0, angle):
+        self.angle += angle
+        [self.p_center] = bgeom.rotate_points([self.p_center], x0, y0, angle)
+        super(UnfRingGrid, self).rotate(x0, y0, angle)
+
+    def _xml_write_nodes(self, xmlnode):
+        ET.SubElement(xmlnode, "DIM").text = str(self.na) + " " + str(self.nr)
+        ET.SubElement(xmlnode, "CENTER").text = str(self.p_center)
+        ET.SubElement(xmlnode, "IRADIUS").text = str(self.irad)
+        ET.SubElement(xmlnode, "ORADIUS").text = str(self.orad)
+        ET.SubElement(xmlnode, "RCOEF").text = str(self.coef)
+        ET.SubElement(xmlnode, "ANGLE").text = str(self.angle)
+
+    #read from xml
+    @classmethod
+    def create_from_xml(cls, xmlnode):
+        [na, nr] = map(int, xmlnode.find("POINTS/DIM").text.split())
+        p0 = map(float, xmlnode.find("POINTS/CENTER").text.split())
+        p0 = bgeom.Point2(p0[0], p0[1])
+        irad = float(xmlnode.find("POINTS/IRADIUS").text)
+        orad = float(xmlnode.find("POINTS/ORADIUS").text)
+        coef = float(xmlnode.find("POINTS/RCOEF").text)
+        ret = cls(p0, irad, orad, na, nr, coef)
+        angle = xmlnode.find("POINTS/ANGLE")
+        if angle is not None:
+            ret.rotate(p0.x, p0.y, float(angle.text))
+        return ret
+
+
 # ============================== grids factory
 class Factory(object):
     """
@@ -530,7 +591,8 @@ class Factory(object):
                 "Grid2": Grid2,
                 "TetragonGrid": TetragonGrid,
                 "UnfRectGrid": UnfRectGrid,
-                "UnfCircGrid": UnfCircGrid
+                "UnfCircGrid": UnfCircGrid,
+                "UnfRingGrid": UnfRingGrid
             }
         return cls.instance
 

@@ -10,6 +10,9 @@ void save_vtk(const vector<PContour>& c, const char* fn);
 void save_vtk(const vector<PContour>& c, const vector<double>& data, const char* fn);
 void save_vtk(const PtsGraph* g, const char* fn);
 
+inline void save_vtk(const ContoursCollection& c, const char* fn){ save_vtk(c.contours_list(), fn); }
+inline void save_vtk(const ContoursCollection* c, const char* fn){ save_vtk(c->contours_list(), fn); }
+
 
 
 
