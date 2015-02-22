@@ -73,6 +73,7 @@ class MainWindow(QMainWindow, qtui.ui_ComGridMain.Ui_MainWindow):
         self.act_unite_grids.triggered.connect(self._unite_grids)
         #transform
         self.act_movrot.triggered.connect(self._mov_rot)
+        self.act_scale.triggered.connect(self._scale_grid)
 
     def _grid_manager_init(self):
         ' initialization of the grid manager '
@@ -162,6 +163,16 @@ class MainWindow(QMainWindow, qtui.ui_ComGridMain.Ui_MainWindow):
             #2) move
             if abs(mopt[0]) > 1e-16 or abs(mopt[1]) > 1e-16:
                 com = gridcom.MoveGrids(mopt[0], mopt[1], names)
+                globvars.actual_flow().exec_command(com)
+
+    def _scale_grid(self):
+        lg = globvars.actual_data().get_checked_grid_names()
+        rg = globvars.actual_data().get_unchecked_grid_names()
+        dialog = dlgs.ScaleGridsDlg(lg, rg, self)
+        if dialog.exec_():
+            names, rel_pnt, xpct, ypct = dialog.ret_value()
+            if xpct != 100 or ypct != 100:
+                com = gridcom.ScaleGrids(rel_pnt, xpct, ypct, names)
                 globvars.actual_flow().exec_command(com)
 
     # --------- Grid Manager

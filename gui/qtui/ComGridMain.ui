@@ -85,9 +85,10 @@
    </widget>
    <widget class="QMenu" name="menuTransform">
     <property name="title">
-     <string>Trans&amp;form</string>
+     <string>T&amp;ransform</string>
     </property>
     <addaction name="act_movrot"/>
+    <addaction name="act_scale"/>
    </widget>
    <addaction name="menu_File"/>
    <addaction name="menu_Edit"/>
@@ -229,6 +230,11 @@
   <action name="act_unf_ring">
    <property name="text">
     <string>Uniform r&amp;ing</string>
+   </property>
+  </action>
+  <action name="act_scale">
+   <property name="text">
+    <string>&amp;Scale</string>
    </property>
   </action>
  </widget>

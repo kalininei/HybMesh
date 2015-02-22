@@ -9,6 +9,8 @@ import qtui.ui_AddUnfCircDlg
 import qtui.ui_AddUnfRingDlg
 import qtui.ui_MoveRotateDlg
 import qtui.ui_GridViewOpt
+import qtui.ui_ScaleDlg
+import globvars
 
 
 class _BackGroundWorkerCB(QtCore.QThread):
@@ -339,6 +341,64 @@ class MoveRotateGridsDlg(QDialog, qtui.ui_MoveRotateDlg.Ui_Dialog):
         if len(names) == 0:
             raise Exception()
         return names, [mx, my], [rx0, ry0, an]
+
+
+class ScaleGridsDlg(QDialog, qtui.ui_ScaleDlg.Ui_scale_dlg):
+    'Scale grids group'
+
+    def __init__(self, act_grids, inact_grids, parent=None):
+        super(ScaleGridsDlg, self).__init__(parent)
+        self.setupUi(self)
+        self.transfer_list.set_lists(act_grids, inact_grids)
+
+    def accept(self):
+        ' overridden accept with input check '
+        try:
+            self._build_return()
+            super(ScaleGridsDlg, self).accept()
+        except Exception:
+            QMessageBox.warning(self, "Warning", "Invalid Input")
+
+    def _build_return(self):
+        names = self.transfer_list.get_left_list()
+        sx = sy = float(self.ed_width.text())
+        if (not self.cb_preserve.isChecked()):
+            sy = float(self.ed_height.text())
+
+        #check input
+        if len(names) == 0 or sx <= 0 or sy <= 0:
+            raise Exception()
+
+        #builing bounding box
+        x, y = [], []
+        for n in names:
+            p0, p1 = globvars.actual_data().grids2[n].bounding_box()
+            x.append(p0.x)
+            x.append(p1.x)
+            y.append(p0.y)
+            y.append(p1.y)
+        p0, p1 = bgeom.Point2(min(x), min(y)), bgeom.Point2(max(x), max(y))
+
+        #relative point
+        if self.rb_bl.isChecked():
+            rel_pnt = p0
+        elif self.rb_tr.isChecked():
+            rel_pnt = p1
+        else:
+            rel_pnt = bgeom.Point2((p0.x + p1.x) / 2.0, (p0.y + p1.y) / 2.0)
+
+        #scaling units to %
+        if (self.cb_units.currentIndex() == 1):
+            sx = sx / (p1.x - p0.x) * 100
+            if (not self.cb_preserve.isChecked()):
+                sy = sy / (p1.y - p0.y) * 100
+        if (self.cb_preserve.isChecked()):
+            sy = sx
+
+        self.__ret = names, rel_pnt, sx, sy
+
+    def ret_value(self):
+        return self.__ret
 
 
 class GridViewOpt(QDialog, qtui.ui_GridViewOpt.Ui_Dialog):

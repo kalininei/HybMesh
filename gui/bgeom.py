@@ -40,12 +40,16 @@ class Point2(object):
         " -> distance between self and p1 "
         x, y = p1.x - self.x, p1.y - self.y
         return math.sqrt(x * x + y * y)
-    
+
+    def dist0(self):
+        " -> distance between self and (0, 0) "
+        x, y = self.x, self.y
+        return math.sqrt(x * x + y * y)
+
     @classmethod
     def fromstring(cls, s):
         s2 = s.split()
         return cls(float(s2[0]), float(s2[1]))
-
 
 
 def rotate_points(pnts, x0, y0, angle):
@@ -59,6 +63,16 @@ def rotate_points(pnts, x0, y0, angle):
                             (p.x - x0) * cosa - (p.y - y0) * sina + x0,
                             (p.x - x0) * sina + (p.y - y0) * cosa + y0),
                 pnts)
+    return newpoints
+
+
+def scale_points(pnts, p0, xpc, ypc):
+    """ scale points list using p0 as reference point
+        and xpc% and ypc% as scaling procentages
+    """
+    sx, sy = xpc / 100.0, ypc / 100.0
+    newpoints = map(lambda p: Point2((p.x - p0.x) * sx + p0.x, 
+        (p.y - p0.y) * sy + p0.y), pnts)
     return newpoints
 
 

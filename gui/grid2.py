@@ -108,6 +108,16 @@ class Grid2(bgeom.GeomStruct):
         for a in self._subsribers_change_geom:
             a.grid_geom_event(self)
 
+    def bounding_box(self):
+        """ -> (bgeom.Point2, bgeom.Point2)
+
+        returns bottom left and top right point of grid bounding box
+        """
+        x = [p.x for p in self.points]
+        y = [p.y for p in self.points]
+
+        return bgeom.Point2(min(x), min(y)), bgeom.Point2(max(x), max(y))
+
     # ---- Transformations
     def move(self, dx, dy):
         for p in self.points:
@@ -118,6 +128,19 @@ class Grid2(bgeom.GeomStruct):
     def rotate(self, x0, y0, angle):
         self.points = bgeom.rotate_points(self.points, x0, y0, angle)
         self._geom_changed()
+
+    def scale(self, p0, xpc, ypc):
+        """ scale the grid using p0 as reference point
+            and xpc% and ypc% as scaling procentages
+        """
+        self.points = bgeom.scale_points(self.points, p0, xpc, ypc)
+        self._geom_changed()
+
+    def unscale(self, p0, xpc, ypc):
+        """ unscale the grid after scaling with p0 as
+            reference point and xpc%, ypc% as scaling procentages
+        """
+        self.scale(p0, 10000.0 / xpc, 10000.0 / ypc)
 
     # ---- save to xml
     def xml_save(self, xmlnode):
@@ -455,6 +478,25 @@ class CircularGrid(Grid2):
         return g
 
 
+class _CircActions:
+    def __init__(self, aname, val):
+        self.aname = aname
+        self.val = val
+
+    def do(self, g):
+        if self.aname == "ROTATE":
+            g.rotate(g.p_center.x, g.p_center.y, self.val)
+        if self.aname == "SCALE":
+            g.scale(g.p_center, 100.0, 100.0 * self.val)
+
+    def toxml(self, nd):
+        ET.SubElement(nd, self.aname).text = str(self.val)
+
+    @staticmethod
+    def fromxml(nd):
+        return _CircActions(nd.tag, float(nd.text))
+
+
 class UnfCircGrid(CircularGrid):
     ' Uniform circular grid '
     def __init__(self, p0, rad, na, nr, coef, is_trian):
@@ -462,8 +504,7 @@ class UnfCircGrid(CircularGrid):
         self.p_center = p0
         self.rad = rad
         self.coef = coef
-        #angle is used for xml input/output of the grid only
-        self.angle = 0.0
+        self.acts = []
 
         #range segmentation using the refinement coef
         rs = bgeom.div_range(0, self.rad, self.nr, self.coef)
@@ -486,16 +527,39 @@ class UnfCircGrid(CircularGrid):
         super(UnfCircGrid, self).move(dx, dy)
 
     def rotate(self, x0, y0, angle):
-        self.angle += angle
         [self.p_center] = bgeom.rotate_points([self.p_center], x0, y0, angle)
+
+        if len(self.acts) == 0 or self.acts[-1].aname != "ROTATE":
+            self.acts.append(_CircActions("ROTATE", angle))
+        else:
+            self.acts[-1].val += angle
+            if self.acts[-1].val == 0.0:
+                self.acts = self.acts[:-1]
+
         super(UnfCircGrid, self).rotate(x0, y0, angle)
+
+    def scale(self, p0, xpc, ypc):
+        [self.p_center] = bgeom.scale_points([self.p_center], p0, xpc, ypc)
+        self.rad *= (xpc / 100.0)
+
+        if len(self.acts) == 0 or self.acts[-1].aname != "SCALE":
+            self.acts.append(_CircActions("SCALE", ypc / xpc))
+        else:
+            self.acts[-1].val *= ypc / xpc
+            if self.acts[-1].val == 1.0:
+                self.acts = self.acts[:-1]
+
+        super(UnfCircGrid, self).scale(p0, xpc, ypc)
 
     def _xml_write_nodes(self, xmlnode):
         ET.SubElement(xmlnode, "DIM").text = str(self.na) + " " + str(self.nr)
         ET.SubElement(xmlnode, "CENTER").text = str(self.p_center)
         ET.SubElement(xmlnode, "RADIUS").text = str(self.rad)
         ET.SubElement(xmlnode, "RCOEF").text = str(self.coef)
-        ET.SubElement(xmlnode, "ANGLE").text = str(self.angle)
+        if len(self.acts) > 0:
+            nd = ET.SubElement(xmlnode, "ACTIONS")
+            for a in self.acts:
+                a.toxml(nd)
         if self.is_trian:
             ET.SubElement(xmlnode, "IN_TRIAN")
 
@@ -509,9 +573,10 @@ class UnfCircGrid(CircularGrid):
         coef = float(xmlnode.find("POINTS/RCOEF").text)
         is_trian = xmlnode.find("POINTS/IN_TRIAN") is not None
         ret = cls(p0, rad, na, nr, coef, is_trian)
-        angle = xmlnode.find("POINTS/ANGLE")
-        if angle is not None:
-            ret.rotate(p0.x, p0.y, float(angle.text))
+        anode = xmlnode.findall("POINTS/ACTIONS/*")
+        for a in anode:
+            act = _CircActions.fromxml(a)
+            act.do(ret)
         return ret
 
 
@@ -525,7 +590,7 @@ class UnfRingGrid(CircularGrid):
         self.orad = orad
         self.coef = coef
         #angle is used for xml input/output of the grid only
-        self.angle = 0.0
+        self.acts = []
 
         #range segmentation using the refinement coef
         rs = bgeom.div_range(self.irad, self.orad, self.nr, self.coef)
@@ -548,9 +613,30 @@ class UnfRingGrid(CircularGrid):
         super(UnfRingGrid, self).move(dx, dy)
 
     def rotate(self, x0, y0, angle):
-        self.angle += angle
         [self.p_center] = bgeom.rotate_points([self.p_center], x0, y0, angle)
+
+        if len(self.acts) == 0 or self.acts[-1].aname != "ROTATE":
+            self.acts.append(_CircActions("ROTATE", angle))
+        else:
+            self.acts[-1].val += angle
+            if self.acts[-1].val == 0.0:
+                self.acts = self.acts[:-1]
+
         super(UnfRingGrid, self).rotate(x0, y0, angle)
+
+    def scale(self, p0, xpc, ypc):
+        [self.p_center] = bgeom.scale_points([self.p_center], p0, xpc, ypc)
+        self.irad *= (xpc / 100.0)
+        self.orad *= (xpc / 100.0)
+
+        if len(self.acts) == 0 or self.acts[-1].aname != "SCALE":
+            self.acts.append(_CircActions("SCALE", ypc / xpc))
+        else:
+            self.acts[-1].val *= ypc / xpc
+            if self.acts[-1].val == 1.0:
+                self.acts = self.acts[:-1]
+
+        super(UnfRingGrid, self).scale(p0, xpc, ypc)
 
     def _xml_write_nodes(self, xmlnode):
         ET.SubElement(xmlnode, "DIM").text = str(self.na) + " " + str(self.nr)
@@ -558,7 +644,10 @@ class UnfRingGrid(CircularGrid):
         ET.SubElement(xmlnode, "IRADIUS").text = str(self.irad)
         ET.SubElement(xmlnode, "ORADIUS").text = str(self.orad)
         ET.SubElement(xmlnode, "RCOEF").text = str(self.coef)
-        ET.SubElement(xmlnode, "ANGLE").text = str(self.angle)
+        if len(self.acts) > 0:
+            nd = ET.SubElement(xmlnode, "ACTIONS")
+            for a in self.acts:
+                a.toxml(nd)
 
     #read from xml
     @classmethod
@@ -570,9 +659,10 @@ class UnfRingGrid(CircularGrid):
         orad = float(xmlnode.find("POINTS/ORADIUS").text)
         coef = float(xmlnode.find("POINTS/RCOEF").text)
         ret = cls(p0, irad, orad, na, nr, coef)
-        angle = xmlnode.find("POINTS/ANGLE")
-        if angle is not None:
-            ret.rotate(p0.x, p0.y, float(angle.text))
+        anode = xmlnode.findall("POINTS/ACTIONS/*")
+        for a in anode:
+            act = _CircActions.fromxml(a)
+            act.do(ret)
         return ret
 
 

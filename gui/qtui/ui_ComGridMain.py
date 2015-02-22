@@ -109,6 +109,8 @@ class Ui_MainWindow(object):
         self.act_movrot.setObjectName(_fromUtf8("act_movrot"))
         self.act_unf_ring = QtGui.QAction(MainWindow)
         self.act_unf_ring.setObjectName(_fromUtf8("act_unf_ring"))
+        self.act_scale = QtGui.QAction(MainWindow)
+        self.act_scale.setObjectName(_fromUtf8("act_scale"))
         self.menu_File.addAction(self.act_open)
         self.menu_File.addAction(self.act_save)
         self.menu_File.addSeparator()
@@ -123,6 +125,7 @@ class Ui_MainWindow(object):
         self.menu_Geometry.addAction(self.menuAdd_grid.menuAction())
         self.menuTools.addAction(self.act_unite_grids)
         self.menuTransform.addAction(self.act_movrot)
+        self.menuTransform.addAction(self.act_scale)
         self.menubar.addAction(self.menu_File.menuAction())
         self.menubar.addAction(self.menu_Edit.menuAction())
         self.menubar.addAction(self.menu_View.menuAction())
@@ -143,7 +146,7 @@ class Ui_MainWindow(object):
         self.menu_Geometry.setTitle(_translate("MainWindow", "&Geometry", None))
         self.menuAdd_grid.setTitle(_translate("MainWindow", "Add &grid", None))
         self.menuTools.setTitle(_translate("MainWindow", "&Tools", None))
-        self.menuTransform.setTitle(_translate("MainWindow", "Trans&form", None))
+        self.menuTransform.setTitle(_translate("MainWindow", "T&ransform", None))
         self.DWGridManager.setWindowTitle(_translate("MainWindow", "Grid Manager", None))
         self.act_open.setText(_translate("MainWindow", "&Open ...", None))
         self.act_save.setText(_translate("MainWindow", "&Save ...", None))
@@ -159,5 +162,6 @@ class Ui_MainWindow(object):
         self.act_unf_circ.setText(_translate("MainWindow", "Uniform &cirlce", None))
         self.act_movrot.setText(_translate("MainWindow", "&Move/Rotate", None))
         self.act_unf_ring.setText(_translate("MainWindow", "Uniform r&ing", None))
+        self.act_scale.setText(_translate("MainWindow", "&Scale", None))
 
 import ComGridRes_rc

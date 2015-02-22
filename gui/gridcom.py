@@ -396,3 +396,39 @@ class RotateGrids(command.Command):
 
     def _redo(self):
         self._exec()
+
+
+class ScaleGrids(command.Command):
+    "Scale grids "
+
+    def __init__(self, p0, xpc, ypc, names):
+        a = {'p0': p0, 'xpc': xpc, 'ypc': ypc, 'names': ' '.join(names)}
+        super(ScaleGrids, self).__init__(a)
+        self.p0 = p0
+        self.xpc, self.ypc = xpc, ypc
+        self.names = names
+
+    @classmethod
+    def fromstring(cls, slist):
+        a = ast.literal_eval(slist)
+        return cls(bgeom.Point2.fromstring(a['p0']),
+                float(a['xpc']), float(a['ypc']), a['names'].split())
+
+    @classmethod
+    def _method_code(cls):
+        return "ScaleGrids"
+
+    def _exec(self):
+        for g in self.names:
+            self.receiver.grids2[g].scale(self.p0, self.xpc, self.ypc)
+        return True
+
+    def _clear(self):
+        pass
+
+    def _undo(self):
+        for g in self.names:
+            self.receiver.grids2[g].unscale(self.p0, self.xpc, self.ypc)
+
+    def _redo(self):
+        self._exec()
