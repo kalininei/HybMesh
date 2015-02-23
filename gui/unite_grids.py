@@ -4,6 +4,7 @@ import ctypes as ct
 import globvars
 import grid2
 import dlgs
+import bgeom
 
 
 def _clib():
@@ -40,18 +41,42 @@ def _grid_to_c(g):
 def _grid_from_c(c_gr):
     " builds a grid from a c object"
     lib_fa = _clib()
-    npt = lib_fa.grid_npoints(c_gr)
-    ncl = lib_fa.grid_ncells(c_gr)
-    ncldim = lib_fa.grid_cellsdim(c_gr)
-    c_pnt = (ct.c_double * (2 * npt))()
-    c_cls = (ct.c_int * (ncldim + ncl))()
-    lib_fa.grid_get_points_cells(c_gr, c_pnt, c_cls)
-    pnt, cls = [], []
-    for i in range(len(c_pnt)):
-        pnt.append(c_pnt[i])
-    for i in range(len(c_cls)):
-        cls.append(c_cls[i])
-    return grid2.Grid2.from_points_cells(npt, ncl, pnt, cls)
+    #c types
+    ct_pint = ct.POINTER(ct.c_int)
+    ct_ppint = ct.POINTER(ct.POINTER(ct.c_int))
+    ct_pd = ct.POINTER(ct.c_double)
+    ct_ppd = ct.POINTER(ct.POINTER(ct.c_double))
+    #c data allocation
+    npt, ned, ncl = ct.c_int(), ct.c_int(), ct.c_int()
+    pt, ed, cdims, ced = ct_pd(), ct_pint(), ct_pint(), ct_pint()
+    #call c function
+    lib_fa.grid_get_edges_info.argtypes = [ct.c_void_p, ct_pint, ct_pint,
+            ct_pint, ct_ppd, ct_ppint, ct_ppint, ct_ppint]
+    lib_fa.grid_get_edges_info(c_gr, ct.byref(npt), ct.byref(ned),
+            ct.byref(ncl), ct.byref(pt), ct.byref(ed),
+            ct.byref(cdims), ct.byref(ced))
+    # ---- construct grid
+    ret = grid2.Grid2()
+    #points
+    it = iter(pt)
+    for i in range(npt.value):
+        ret.points.append(bgeom.Point2(next(it), next(it)))
+    #edges
+    it = iter(ed)
+    for i in range(ned.value):
+        ret.edges.append([next(it), next(it)])
+    #cells
+    it1, it2 = iter(cdims), iter(ced)
+    for i in range(ncl.value):
+        ied = [next(it2) for j in range(next(it1))]
+        ret.cells.append(ied)
+    #free c memory
+    lib_fa.grid_free_edges_info.argtypes = [ct_ppd, ct_ppint, ct_ppint,
+            ct_ppint]
+    lib_fa.grid_free_edges_info(ct.byref(pt), ct.byref(ed), ct.byref(cdims),
+            ct.byref(ced))
+
+    return ret
 
 def unite_grids(g1, g2, buf, density, fix_bnd):
     'adds g2 to g1. Returns new grid'
@@ -64,7 +89,8 @@ def unite_grids(g1, g2, buf, density, fix_bnd):
     args = (c_g1, c_g2, c_buf, c_den, c_fix)
 
     lib_fa.cross_grids_wcb.restype = ct.c_void_p
-    e = dlgs.ProgressProcedureDlg(lib_fa.cross_grids_wcb, args, globvars.mainWindow)
+    e = dlgs.ProgressProcedureDlg(lib_fa.cross_grids_wcb, args,
+            globvars.mainWindow)
     e.exec_()
     c_cross = ct.c_void_p(e.get_result())
 

@@ -11,11 +11,23 @@ extern "C"{
 
 	// === grid management
 	Grid* grid_construct(int Npts, int Ncells, double* pts, int* cells);
+	//grid structures count
 	int grid_npoints(Grid* g);
 	int grid_ncells(Grid* g);
 	int grid_cellsdim(Grid* g);
+	//get grid in points, edges->points, cells->edges format
+	void grid_get_edges_info(Grid* g, int* Npnt, int* Neds, int* Ncls,
+			double** pts,
+			int** ed_pt,
+			int** cls_dims,
+			int** cls_eds);
+	//free edges data
+	void grid_free_edges_info(double** pts, int** ed_pt, int** cls_dims, int** cls_eds);
+	//get grid in points, cells->points format. arrays should be allocated already
 	void grid_get_points_cells(Grid* g, double* pts, int* cells);
+	//save grid to vtk
 	void grid_save_vtk(Grid* g, const char* fn);
+	//free grid
 	void grid_free(Grid* g);
 
 	// === set default callbacks

@@ -84,6 +84,67 @@ void grid_get_points_cells(Grid* g, double* pts, int* cells){
 	}
 }
 
+//get grid in points, edges->points, cells->edges format
+void grid_get_edges_info(Grid* grd, int* Npnt, int* Neds, int* Ncls,
+		double** pts,
+		int** ed_pt,
+		int** cls_dims,
+		int** cls_eds){
+	GridGeom* g = static_cast<GridGeom*>(grd);
+	auto eds = g->get_edges();
+	//fill counts
+	*Npnt = g->n_points();
+	*Ncls = g->n_cells();
+	*Neds = eds.size();
+	//allocate arrays
+	*pts = new double[2 * (*Npnt)];
+	*ed_pt = new int[2 * (*Neds)];
+	*cls_dims = new int[*Ncls];
+	*cls_eds = new int[g->n_cellsdim()];
+	//fill points
+	double* p_pts = *pts;
+	for (int i=0; i<g->n_points(); ++i){
+		*p_pts++ = g->get_point(i)->x;
+		*p_pts++ = g->get_point(i)->y;
+	}
+	//fill edges
+	std::map<std::pair<int, int>, int> nd_eds;
+	int* p_eds = *ed_pt;
+	auto eit = eds.begin();
+	for (size_t i=0; i<eds.size(); ++i){
+		auto& e = *eit++;
+		*p_eds++ = e.p1;
+		*p_eds++ = e.p2;
+		nd_eds.emplace(std::make_pair(e.p1, e.p2), i);
+	}
+	//fill elements dimensions
+	int* p_cdim = *cls_dims;
+	for (int i=0; i<g->n_cells(); ++i){
+		*p_cdim++ = g->get_cell(i)->dim();
+	}
+	//fill cell->edges array
+	int* p_ced = *cls_eds;
+	for (int i=0; i<g->n_cells(); ++i){
+		auto c = g->get_cell(i);
+		for (int j=0; j<c->dim(); ++j){
+			int pprev = c->get_point(j-1)->get_ind();
+			int pcur = c->get_point(j)->get_ind();
+			if (pprev>pcur) std::swap(pprev, pcur);
+			*p_ced++ = nd_eds[std::make_pair(pprev, pcur)];
+		}
+	}
+}
+
+
+//free edges data
+void grid_free_edges_info(double** pts, int** ed_pt, int** cls_dims, int** cls_eds){
+	delete *pts; *pts = 0;
+	delete *ed_pt; *ed_pt = 0;
+	delete *cls_dims; *cls_dims = 0;
+	delete *cls_eds; *cls_eds = 0;
+}
+
+
 void grid_save_vtk(Grid* g, const char* fn){
 	save_vtk(static_cast<GridGeom*>(g), fn);
 }
