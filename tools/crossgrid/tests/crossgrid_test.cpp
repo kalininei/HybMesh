@@ -151,7 +151,7 @@ void test7(){
 	Grid* res = cross_grids(gmain, gsec, 0.2, 0.5, 1);
 	Grid* res2 = cross_grids(res, gsec2, 0.2, 0.5, 1);
 	Grid* res3 = cross_grids(res2, gsec3, 0.2, 0.5, 1);
-	grid_save_vtk(res3,"out_res7.vtk");
+	grid_save_vtk(res2,"out_res7.vtk");
 	add_check(grid_npoints(res)==242 && grid_ncells(res)==200, "merge non crossing");
 	add_check(grid_npoints(res2)==361 && grid_ncells(res2)==300, "merge grids with congruent point");
 	add_check(grid_npoints(res3)>482 && grid_ncells(res3)>400, "merge grids with tangent edges");
@@ -257,6 +257,18 @@ void test12(){
 	grid_free(res);
 }
 
+void test13(){
+	std::cout<<"13. Big data processing"<<std::endl;
+	Grid* gmain = rectangular_grid(0,0, 1,1, 100, 100);
+	Grid* gsec = rectangular_grid(-2,0, -1,1, 10, 10);
+	Grid* res = cross_grids(gmain, gsec, 0.2, 0.5, 1);
+	grid_save_vtk(res, "out_res13.vtk");
+
+	grid_free(gmain);
+	grid_free(gsec);
+	grid_free(res);
+}
+
 int main(){
 	crossgrid_silent_callback();
 	crossgrid_internal_tests();
@@ -272,5 +284,6 @@ int main(){
 	test10();
 	test11();
 	test12();
+	test13();
 	std::cout<<"DONE"<<std::endl;
 }

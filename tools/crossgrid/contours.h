@@ -80,6 +80,7 @@ struct ContoursCollection{
 	explicit ContoursCollection(const vector<PContour>& cnts);
 	void add_contour(const PContour& cnt);
 	vector<PContour> contours_list() const;
+	PContour contour(int i) const { return PContour(*contours[i]); }
 	int is_inside(const Point& p) const;
 	int n_cont() const { return contours.size(); }
 
@@ -88,6 +89,9 @@ struct ContoursCollection{
 	bool is_inner(int i) const { return entries[i]->is_inner; }
 	const PContour* get_parent(int i) const {
 		return (entries[i]->upper == 0) ? 0: entries[i]->upper->data;
+	}
+	int get_level(int i) const {
+		return entries[i]->get_level();
 	}
 	std::list<const PContour*> get_childs(int i) const {
 		std::list<const PContour*> ret;
@@ -111,6 +115,9 @@ private:
 		int geom_inside(const Point& p) const;
 		void set_nesting(bool inner);
 		const _entry* find(const Point& p) const;
+		int get_level() const{
+			return (upper==0) ? 0 : 1 + upper->get_level();
+		}
 	};
 	shp_vector<PContour>  contours;
 	shp_vector<_entry>  entries;

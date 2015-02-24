@@ -44,6 +44,7 @@ struct Edge{
 		cell_left(-1), cell_right(-1){}
 	void add_adj_cell(int cell_ind, int i1, int i2) const;
 	bool is_boundary() const { return cell_left<0 || cell_right<0; }
+	int any_cell() const { return std::max(cell_left, cell_right); }
 };
 inline bool operator<(const Edge& e1, const Edge& e2){
 	if (e1.p1<e2.p1) return true;
@@ -107,6 +108,7 @@ public:
 	
 	//returns set of single connected meshes.
 	shp_vector<GridGeom> subdivide() const;
+	shp_vector<GridGeom> subdivide2() const;
 
 	//data access
 	const GridPoint* get_point(int i) const { return points[i].get(); }

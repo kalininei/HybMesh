@@ -198,24 +198,36 @@ std::vector<PContour> GridGeom::get_contours() const {
 		cont.push_back(bnd_edges.begin()->p1);
 		cont.push_back(bnd_edges.begin()->p2);
 		bool dir = bnd_edges.begin()->cell_right<0;
+		int last_cell = bnd_edges.begin()->any_cell();
 		bnd_edges.erase(bnd_edges.begin());
 		//building a closed contour
 		while (cont.front()!=cont.back()){
 			std::set<Edge>::iterator e;
+			std::vector<std::set<Edge>::iterator> candidates;
 			for (e = bnd_edges.begin(); e!=bnd_edges.end(); ++e){
-				if (e->p1==cont.back()){
-					cont.push_back(e->p2);
-					break;
-				} else if (e->p2==cont.back()){
-					cont.push_back(e->p1);
-					break;
-				}
+				if (e->p1 == cont.back() || e->p2 == cont.back())
+					candidates.push_back(e);
 			}
-			if (e!=bnd_edges.end()){
-				bnd_edges.erase(e);
-			} else {
+			//if more then 1 candidate prefer the one with the same element
+			if (candidates.size() == 1){
+				e = candidates[0];
+			} else if (candidates.size() > 1){
+				auto fnd = std::find_if(candidates.begin(), candidates.end(),
+						[&last_cell](std::set<Edge>::iterator it){
+							return it->any_cell() == last_cell;
+						});
+				if (fnd!=candidates.end()) e = *fnd;
+				else e = candidates[0];
+			} else { 
 				throw std::runtime_error("Cannot detect a closed contour");
 			}
+			//add next point
+			if (e->p1==cont.back()){
+				cont.push_back(e->p2);
+			} else cont.push_back(e->p1);
+			last_cell = e->any_cell();
+			//erase used edge
+			bnd_edges.erase(e);
 		}
 		//remove last point which equals the first one
 		cont.pop_back();
@@ -319,6 +331,49 @@ shp_vector<GridGeom> GridGeom::subdivide() const{
 	return ret;
 }
 
+shp_vector<GridGeom> GridGeom::subdivide2() const{
+	//data prepare
+	std::vector<Point> cp = cells_internal_points();
+	std::set<int> unused_cells;
+	for (int i=0; i<n_cells(); unused_cells.insert(i++));
+	auto c = get_contours_collection();
+	//build level -> inner contours dictionary
+	std::map<int, std::vector<PContour>> lcnt;
+	for (int i=0; i<c.n_cont(); ++i) if (c.is_inner(i)){
+		int level = c.get_level(i);
+		lcnt.emplace(level, std::vector<PContour>());
+		lcnt[level].push_back(c.contour(i).simplify());
+	}
+	
+	//build sets of single connected cells
+	vector<vector<int>> sc_cells;
+	bool hint = true;
+	//loop beginning with contours with highest nesting level 
+	for (auto it = lcnt.rbegin(); it!=lcnt.rend(); ++it){
+		for (auto& inner_cont: it->second){
+			sc_cells.push_back(vector<int>());
+			auto& nv = sc_cells.back();
+			auto ind = unused_cells.begin();
+			while (ind!=unused_cells.end()){
+				if (inner_cont.is_inside(cp[*ind], &hint) == 1){
+					nv.push_back(*ind);
+					unused_cells.erase(ind++);
+				} else { ++ind; }
+			}
+			if (sc_cells.size() == 0) sc_cells.resize(sc_cells.size()-1);
+		}
+	}
+
+	//assemble new grids
+	shp_vector<GridGeom> ret;
+	for (auto& sc: sc_cells){
+		ret.push_back(std::shared_ptr<GridGeom>(new GridGeom()));
+		auto r = ret.back().get();
+		r->add_data(*this, sc);
+	}
+	return ret;
+}
+
 GridGeom* GridGeom::combine(GridGeom* gmain, GridGeom* gsec){
 	//1) build grids contours
 	auto maincont = gmain->get_contours_collection();
@@ -369,6 +424,7 @@ GridGeom* GridGeom::cross_grids(GridGeom* gmain, GridGeom* gsec,
 		auto csec  = gsec->get_contours();
 
 		//loop over each single connected grid
+		if (cb("Building grid cross", "Subdivision", 0.45, -1) == CALLBACK_CANCEL) return 0;
 		auto sg = comb->subdivide();
 
 		//callback percentages 

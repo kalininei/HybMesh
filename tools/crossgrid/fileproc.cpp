@@ -1,6 +1,20 @@
 #include "fileproc.h"
 #include <fstream>
 
+namespace{
+
+void add_vtk_point_data(const vector<double>& data, const char* name, const char* fn, bool is_first = false){
+	std::ofstream f(fn, std::ios_base::app);
+	if (is_first) f<<"POINT_DATA "<<data.size()<<std::endl;
+	f<<"SCALARS "<<name<<" float 1"<<std::endl;
+	f<<"LOOKUP_TABLE default"<<std::endl;
+	for (auto v: data) f<<v<<std::endl;
+	f.close();
+}
+
+}
+
+
 void save_vtk(const GridGeom* g, const char* fn){
 	std::ofstream fs(fn);
 	fs<<"# vtk DataFile Version 3.0"<<std::endl;
@@ -79,16 +93,18 @@ void save_vtk(const vector<PContour>& c, const char* fn){
 	fs<<"CELL_TYPES  "<<numpts<<std::endl;
 	for (int i=0;i<numpts;++i) fs<<3<<std::endl;
 	fs.close();
+	std::vector<double> cont_id;
+	int id = 0;
+	for (auto cont: c){
+		for (int i=0;i<cont.n_points();++i) cont_id.push_back(id);
+		++id;
+	}
+	add_vtk_point_data(cont_id, "Contours_ID", fn, true);
 }
 
-void save_vtk(const vector<PContour>& c, const vector<double>& data, const char* fn){
+void save_vtk(const vector<PContour>& c, const vector<double>& data, const char* dataname, const char* fn){
 	save_vtk(c, fn);
-	std::ofstream f(fn, std::ios_base::app);
-	f<<"POINT_DATA "<<data.size()<<std::endl;
-	f<<"SCALARS data float 1"<<std::endl;
-	f<<"LOOKUP_TABLE default"<<std::endl;
-	for (auto v: data) f<<v<<std::endl;
-	f.close();
+	add_vtk_point_data(data, "custom_data", fn);
 }
 
 void save_vtk(const PtsGraph* g, const char* fn){

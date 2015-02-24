@@ -293,7 +293,6 @@ void test4(){
 	delete cross2;
 }
 
-
 }
 
 void crossgrid_internal_tests(){
