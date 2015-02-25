@@ -65,6 +65,7 @@ protected:
 	std::vector<PContour> get_contours() const;
 	ContoursCollection get_contours_collection() const { return ContoursCollection(get_contours()); }
 	GridGeom remove_area(const PContour& cont);
+	std::pair<Point, Point> outer_rect() const;
 	//make all cells be counter clockwise
 	void force_cells_ordering();
 	//indexation

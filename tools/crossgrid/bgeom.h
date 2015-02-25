@@ -179,6 +179,28 @@ struct ScaleBase{
 	}
 };
 
+//find a node by coordinate
+class NodeFinder{
+	const int Nx, Ny;
+	const double eps;
+	const double x0, y0, x1, y1, hx, hy;
+	vector<int> get_index(const Point* p) const;
+	int to_glob(int i, int j) const { return j*Nx + i; }
+	std::vector<std::vector<const Point*>> data;
+	bool is_equal_point(const Point* p1, const Point* p2) const;
+public:
+	NodeFinder(Point p0, double Lx, double Ly, int Nx=30, int Ny=30, double eps=geps);
+	NodeFinder(const std::pair<Point, Point>& rect, int Nx=30, int Ny=30, double eps=geps);
+	//adds point to data list if necessary
+	//returns pointer to previously added point if p was already added,
+	//p if point was added to point data
+	//and 0 if p lies outside defined rectangle
+	const Point* add(const Point* p);
+	//returns pointer to previously added point if p was already added
+	//and 0 otherwise
+	const Point* find(const Point* p) const;
+};
+
 //Angles
 inline double ToAngle(double angle, double eps=0.0){
 	if (fabs(angle)<eps || fabs(angle-2*M_PI)<eps) return 0.0;

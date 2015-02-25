@@ -293,6 +293,35 @@ void test4(){
 	delete cross2;
 }
 
+void test5(){
+	std::cout<<"Node finder"<<std::endl;
+	NodeFinder finder(Point(3,3), 1.0, 1.0, 5, 10, 0.01);
+	Point p[] = {
+		Point(-2, 23),
+		Point(3.25, 3.42),
+		Point(3.2503, 3.4203),
+		Point(3.261, 3.239),
+		Point(2.999, 3.0),
+		Point(3.2, 3.2),
+		Point(3.203, 3.203),
+		Point(3.197, 3.203),
+		Point(3.197, 3.197),
+		Point(3.203, 3.197),
+		Point(4, 4)
+	};
+	add_check(finder.add(p) == 0, "out of rectangle");
+	add_check(finder.add(p+1) == p+1, "first addition");
+	add_check(finder.add(p+2) == p+1, "equal point");
+	add_check(finder.add(p+3) == p+3, "not equal point");
+	add_check(finder.add(p+4) == p+4, "point on the bottom left");
+	add_check(finder.add(p+10) == p+10, "point on the top right");
+	finder.add(p+5);
+	add_check(finder.add(p+6) == p+5, "first square equal");
+	add_check(finder.add(p+7) == p+5, "second square equal");
+	add_check(finder.add(p+8) == p+5, "third square equal");
+	add_check(finder.add(p+9) == p+5, "fourth square equal");
+}
+
 }
 
 void crossgrid_internal_tests(){
@@ -301,6 +330,7 @@ void crossgrid_internal_tests(){
 	test2();
 	test3();
 	test4();
+	test5();
 	std::cout<<"crossgrid shared library internal tests: DONE =========="<<std::endl;
 }
 

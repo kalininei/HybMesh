@@ -76,12 +76,13 @@ void GridGeom::remove_cells(const vector<int>& bad_cells){
 
 void GridGeom::merge_congruent_points(){
 	std::map<int, int> cp;
+	NodeFinder fnd(outer_rect());
 	for (int i=0; i<n_points(); ++i){
-		for (int j=i+1; j<n_points(); ++j){
-			if (*get_point(i)==*get_point(j))
-				cp.emplace(j,i);
-		}
+		const GridPoint* p = get_point(i);
+		auto pf = static_cast<const GridPoint*>(fnd.add(p));
+		if (pf!=p) cp.emplace(i, pf->get_ind());
 	}
+
 	if (cp.size()>0){
 		for (auto c: cells){
 			for (int j=0; j<c->dim(); ++j){
@@ -239,6 +240,18 @@ std::vector<PContour> GridGeom::get_contours() const {
 		ret.push_back(c);
 	}
 	return ret;
+}
+
+std::pair<Point, Point> GridGeom::outer_rect() const{
+	double x0(points[0]->x), y0(points[0]->y);
+	double x1(points[0]->x), y1(points[0]->y);
+	for (int i=1; i<n_points(); ++i){
+		if (points[i]->x > x1) x1 = points[i]->x;
+		if (points[i]->y > y1) y1 = points[i]->y;
+		if (points[i]->x < x0) x0 = points[i]->x;
+		if (points[i]->y < y0) y0 = points[i]->y;
+	}
+	return std::make_pair(Point(x0, y0), Point(x1, y1));
 }
 
 GridGeom GridGeom::remove_area(const PContour& cont){

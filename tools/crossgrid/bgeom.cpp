@@ -93,5 +93,66 @@ vector<double> RefineSection(double a, double b, double Len, double Den){
 
 
 
+NodeFinder::NodeFinder(Point p0, double _lx, double _ly, int _nx, int _ny, double _eps):
+		Nx(_nx), Ny(_ny), eps(1.1*_eps), 
+		x0(p0.x-eps), y0(p0.y-eps), 
+		x1(x0+_lx+2*eps), y1(y0+_ly+2*eps), 
+		hx((x1-x0)/Nx), hy((y1-y0)/Ny), data(Nx*Ny){}
+NodeFinder::NodeFinder(const std::pair<Point, Point>& rect, int _nx, int _ny, double _eps):
+		Nx(_nx), Ny(_ny), eps(1.1*_eps), 
+		x0(rect.first.x-eps), y0(rect.first.y-eps), 
+		x1(rect.second.x+eps), y1(rect.second.y+2*eps), 
+		hx((x1-x0)/Nx), hy((y1-y0)/Ny), data(Nx*Ny){}
+
+
+bool NodeFinder::is_equal_point(const Point* p1, const Point* p2) const{
+	return (fabs(p1->x-p2->x)<eps && (fabs(p1->y-p2->y)<eps));
+}
+
+const Point* NodeFinder::add(const Point* p){
+	auto ind = get_index(p);
+	if (ind.size()==0) return 0;
+	//try to find point
+	for (auto i: ind){
+		for (auto cand: data[i]){
+			if (is_equal_point(p, cand)) return cand;
+		}
+	}
+	//add point
+	for (auto i: ind) data[i].push_back(p);
+	return p;
+}
+
+const Point* NodeFinder::find(const Point* p) const{
+	auto ind = get_index(p);
+	for (auto i: ind){
+		for (auto cand: data[i]){
+			if (is_equal_point(p, cand)) return cand;
+		}
+	}
+	return 0;
+}
+
+vector<int> NodeFinder::get_index(const Point* p) const{
+	if (p->x < x0 || p->y < y0 || p->x > x1 || p->y > y1) return vector<int>();
+	double dx = p->x - x0, dy = p->y - y0;
+	auto pure_find = [&](double x, double y)->int{
+		int i = (int)std::floor(x/this->hx), j = (int)std::floor(y/this->hy);
+		return (i>=0 && i<this->Nx && j>=0 && j<this->Ny) ? 
+			this->to_glob(i, j) :
+			-1;
+	};
+	int i1 = pure_find(dx-eps, dy-eps);
+	int i2 = pure_find(dx-eps, dy+eps);
+	int i3 = pure_find(dx+eps, dy+eps);
+	int i4 = pure_find(dx+eps, dy-eps);
+	vector<int> ret; ret.reserve(4);
+	if (i1!=-1) ret.push_back(i1);
+	if (i2!=-1 && i2!=i1) ret.push_back(i2);
+	if (i3!=-1 && i3!=i2 && i3!=i1) ret.push_back(i3);
+	if (i4!=-1 && i4!=i3 && i4!=i2 && i4!=i1) ret.push_back(i4);
+	return ret;
+}
+
 
 
