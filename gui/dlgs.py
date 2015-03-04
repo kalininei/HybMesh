@@ -1,16 +1,13 @@
 #!/usr/bin/env python
 
-from PyQt4 import QtCore
-from PyQt4.QtGui import (QDialog, QDialogButtonBox, QGridLayout,
-    QLabel, QLineEdit, QMessageBox, QProgressBar, QVBoxLayout)
+import copy
+from PyQt4 import QtCore, QtGui
+from PyQt4.QtGui import (QDialog, QDialogButtonBox,
+    QLabel, QMessageBox, QProgressBar, QVBoxLayout)
 import bgeom
-import qtui.ui_UniteGridsDlg
-import qtui.ui_AddUnfCircDlg
-import qtui.ui_AddUnfRingDlg
-import qtui.ui_MoveRotateDlg
-import qtui.ui_GridViewOpt
-import qtui.ui_ScaleDlg
 import globvars
+import optview
+import qtui.ui_GridViewOpt
 
 
 class _BackGroundWorkerCB(QtCore.QThread):
@@ -125,280 +122,380 @@ class ProgressProcedureDlg(QDialog):
         return self._result
 
 
-class AddUnfRectGrid(QDialog):
-    ' Add Uniform Rectangular Grid dialog '
+class SimpleAbstractDialog(QDialog):
+    "Abstract dialog for option set"
+    class _OData(object):
+        pass
+
+    def odata(self):
+        """returns options struct child class singleton which stores
+        last dialog execution"""
+        if not hasattr(self, "_odata"):
+            setattr(self.__class__, "_odata", SimpleAbstractDialog._OData())
+            self._default_odata(self._odata)
+        return self._odata
+
     def __init__(self, parent=None):
-        super(AddUnfRectGrid, self).__init__(parent)
-        #buttons
+        super(SimpleAbstractDialog, self).__init__(parent)
+        oview = optview.OptionsView(self.olist())
+        oview.is_active_delegate(self._active_entries)
         buttonbox = QDialogButtonBox(
                 QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         buttonbox.accepted.connect(self.accept)
         buttonbox.rejected.connect(self.reject)
-        #edits
-        self.p0xedit = QLineEdit()
-        self.p0xedit.setText("0")
-        self.p0yedit = QLineEdit()
-        self.p0yedit.setText("0")
-        self.p1xedit = QLineEdit()
-        self.p1xedit.setText("1")
-        self.p1yedit = QLineEdit()
-        self.p1yedit.setText("1")
-        self.nmedit = QLineEdit()
-        self.nmedit.setText("")
-        self.nxedit = QLineEdit()
-        self.nxedit.setText("10")
-        self.nyedit = QLineEdit()
-        self.nyedit.setText("10")
-        #Layout
-        layout = QGridLayout()
-
-        #Grid name
-        layout.addWidget(QLabel("Grid name"), 3, 0, 1, 4)
-        layout.addWidget(self.nmedit, 4, 0, 1, 4)
-
-        #Grid partition
-        layout.addWidget(QLabel("Grid partition"), 7, 0, 1, 4)
-        layout.addWidget(QLabel("Nx"), 8, 0)
-        layout.addWidget(QLabel("Ny"), 8, 2)
-        layout.addWidget(self.nxedit, 8, 1)
-        layout.addWidget(self.nyedit, 8, 3)
-
-        #left bottom
-        layout.addWidget(QLabel("bottom left:"), 10, 0, 1, 4)
-        layout.addWidget(QLabel("X"), 20, 0)
-        layout.addWidget(self.p0xedit, 20, 1)
-        layout.addWidget(QLabel("Y"), 20, 2)
-        layout.addWidget(self.p0yedit, 20, 3)
-        #right top
-        layout.addWidget(QLabel("top right"), 30, 0, 1, 4)
-        layout.addWidget(QLabel("X"), 40, 0)
-        layout.addWidget(self.p1xedit, 40, 1)
-        layout.addWidget(QLabel("Y"), 40, 2)
-        layout.addWidget(self.p1yedit, 40, 3)
-
-        layout.addWidget(buttonbox, 100, 0, 1, 4)
-        self.setLayout(layout)
+        layout = QtGui.QVBoxLayout(self)
+        layout.addWidget(oview)
+        layout.addWidget(buttonbox)
 
     def accept(self):
+        "check errors and invoke parent accept"
         try:
-            self.ret_value()
-            super(AddUnfRectGrid, self).accept()
-        except Exception:
-            QMessageBox.warning(self, "Warning", "Invalid Input")
+            self.check_input()
+            super(SimpleAbstractDialog, self).accept()
+        except Exception as e:
+            QMessageBox.warning(self, "Warning",
+                    "Invalid Input: %s" % str(e))
+
+    #functions for overriding
+    def _default_odata(self, obj):
+        "fills options struct obj with default values"
+        raise NotImplementedError
+
+    def olist(self):
+        "-> optview.OptionsList"
+        raise NotImplementedError
+
+    def ret_value(self):
+        "-> dict from option struct"
+        raise NotImplementedError
+
+    def check_input(self):
+        "throws Exception if self.odata() has invalid fields"
+        pass
+
+    def _active_entries(self, entry):
+        "return False for non-active entries"
+        return True
+
+
+class AddUnfRectGrid(SimpleAbstractDialog):
+    'Add Uniform Rectangular Grid dialog '
+
+    def __init__(self, parent=None):
+        super(AddUnfRectGrid, self).__init__(parent)
+        self.resize(300, 300)
+        self.setWindowTitle("Build uniform rectangular grid")
+
+    def _default_odata(self, obj):
+        "-> options struct with default values"
+        obj.name = "RectGrid1"
+        obj.p0, obj.p1 = bgeom.Point2(0.0, 0.0), bgeom.Point2(1.0, 1.0)
+        obj.nx, obj.ny = 10, 10
+
+    def olist(self):
+        "-> optview.OptionsList"
+        return optview.OptionsList([("Basic", "Grid name",
+                optview.SimpleOptionEntry(self.odata(), "name")),
+            ("Geometry", "Bottom left",
+                optview.XYOptionEntry(self.odata(), "p0")),
+            ("Geometry", "Top right",
+                optview.XYOptionEntry(self.odata(), "p1")),
+            ("Partition", "Nx",
+                optview.BoundedIntOptionEntry(self.odata(), "nx", 1, 1e6)),
+            ("Partition", "Ny",
+                optview.BoundedIntOptionEntry(self.odata(), "ny", 1, 1e6))])
 
     def ret_value(self):
         ' -> {p0, p1, nx, ny, name} '
-        p0 = bgeom.Point2(float(self.p0xedit.text()),
-                float(self.p0yedit.text()))
-        p1 = bgeom.Point2(float(self.p1xedit.text()),
-                float(self.p1yedit.text()))
-        Nx, Ny = int(self.nxedit.text()), int(self.nyedit.text())
-        name = str(self.nmedit.text())
-        #input data check
-        if Nx <= 0 or Ny <= 0 or p0.x >= p1.x or p0.y >= p1.y:
-            raise Exception
+        od = copy.deepcopy(self.odata())
+        return {"p0": od.p0, "p1": od.p1, "nx": od.nx, "ny": od.ny,
+                "name": od.name}
 
-        return {'p0': p0, 'p1': p1, 'nx': Nx, 'ny': Ny, 'name': name}
+    def check_input(self):
+        if self.odata().p0.x == self.odata().p1.x or \
+                self.odata().p0.y == self.odata().p1.y:
+            raise Exception("Zero area polygon")
+        if self.odata().p0.x >= self.odata().p1.x or \
+                self.odata().p0.y >= self.odata().p1.y:
+            raise Exception("Invalid points order")
 
 
-class AddUnfCircGrid(QDialog, qtui.ui_AddUnfCircDlg.Ui_add_unf_circ):
+class AddUnfCircGrid(SimpleAbstractDialog):
     ' Add Uniform circular grid dialog '
 
     def __init__(self, parent=None):
         super(AddUnfCircGrid, self).__init__(parent)
-        self.setupUi(self)
+        self.resize(400, 400)
+        self.setWindowTitle("Build uniform circular grid")
+
+    def _default_odata(self, obj):
+        "-> options struct with default values"
+        obj.name = "CircGrid1"
+        obj.pc, obj.rad = bgeom.Point2(0.0, 0.0), 3.0
+        obj.na, obj.nr = 10, 4
+        obj.ctrian, obj.coef = True, 1.2
+
+    def olist(self):
+        "-> optview.OptionsList"
+        return optview.OptionsList([("Basic", "Grid name",
+                optview.SimpleOptionEntry(self.odata(), "name")),
+            ("Geometry", "Center point",
+                optview.XYOptionEntry(self.odata(), "pc")),
+            ("Geometry", "Radius",
+                optview.SimpleOptionEntry(self.odata(), "rad")),
+            ("Partition", "Radius partition",
+                optview.BoundedIntOptionEntry(self.odata(), "nr", 1, 1e6)),
+            ("Partition", "Arch partition",
+                optview.BoundedIntOptionEntry(self.odata(), "na", 3, 1e6)),
+            ("Partition", "Refinement coef.",
+                optview.SimpleOptionEntry(self.odata(), "coef")),
+            ("Partition", "Triangulate center cell",
+                optview.BoolOptionEntry(self.odata(), "ctrian"))])
+
+    def check_input(self):
+        if self.odata().rad <= 0:
+            raise Exception("Invalid radius data")
 
     def ret_value(self):
-        '-> {pc, rad, Na, Nr, ref_coef, trian_center, GridName}'
-        pc = bgeom.Point2(float(self.ed_x.text()),
-                float(self.ed_y.text()))
-        rad = float(self.ed_rad.text())
-        Na, Nr = int(self.ed_na.text()), int(self.ed_nr.text())
-        ref_coef = float(self.ed_coef.text())
-        trian_center = self.cb_trian.isChecked()
-        name = str(self.ed_name.text())
-        return {'p0': pc, 'rad': rad, 'na': Na, 'nr': Nr, 'coef': ref_coef,
-                'is_trian': trian_center, 'name': name}
-
-    def accept(self):
-        try:
-            self.ret_value()
-            super(AddUnfCircGrid, self).accept()
-        except Exception:
-            QMessageBox.warning(self, "Warning", "Invalid Input")
+        '-> {pc, rad, Na, Nr, coef, is_trian, name}'
+        od = copy.deepcopy(self.odata())
+        return {'p0': od.pc, 'rad': od.rad, 'na': od.na, 'nr': od.nr,
+                'coef': od.coef, 'is_trian': od.ctrian, 'name': od.name}
 
 
-class AddUnfRingGrid(QDialog, qtui.ui_AddUnfRingDlg.Ui_add_unf_ring):
+class AddUnfRingGrid(SimpleAbstractDialog):
     ' Add Uniform circular ring dialog '
 
     def __init__(self, parent=None):
         super(AddUnfRingGrid, self).__init__(parent)
-        self.setupUi(self)
+        self.resize(400, 400)
+        self.setWindowTitle("Build uniform ring grid")
+
+    def _default_odata(self, obj):
+        "-> options struct with default values"
+        obj.name = "RingGrid1"
+        obj.pc, obj.irad, obj.orad = bgeom.Point2(0.0, 0.0), 1.0, 4.0
+        obj.na, obj.nr = 10, 4
+        obj.coef = 1.2
+
+    def olist(self):
+        "-> optview.OptionsList"
+        return optview.OptionsList([("Basic", "Grid name",
+                optview.SimpleOptionEntry(self.odata(), "name")),
+            ("Geometry", "Center point",
+                optview.XYOptionEntry(self.odata(), "pc")),
+            ("Geometry", "Inner Radius",
+                optview.SimpleOptionEntry(self.odata(), "irad")),
+            ("Geometry", "Outer Radius",
+                optview.SimpleOptionEntry(self.odata(), "orad")),
+            ("Partition", "Radius partition",
+                optview.BoundedIntOptionEntry(self.odata(), "nr", 1, 1e6)),
+            ("Partition", "Arch partition",
+                optview.BoundedIntOptionEntry(self.odata(), "na", 3, 1e6)),
+            ("Partition", "Refinement coefficient",
+                optview.SimpleOptionEntry(self.odata(), "coef"))])
 
     def ret_value(self):
-        '-> {pc, radinner, radouter, Na, Nr, ref_coef, GridName}'
-        pc = bgeom.Point2(float(self.ed_x.text()),
-                float(self.ed_y.text()))
-        irad = float(self.ed_irad.text())
-        orad = float(self.ed_orad.text())
-        Na, Nr = int(self.ed_na.text()), int(self.ed_nr.text())
-        ref_coef = float(self.ed_coef.text())
+        '-> {pc, radinner, radouter, na, nr, coef, name}'
+        od = copy.deepcopy(self.odata())
+        return {'p0': od.pc, 'radinner': od.irad, 'radouter': od.orad,
+                'na': od.na, 'nr': od.nr, 'coef': od.coef, 'name': od.name}
 
-        #value check
-        if Na < 3 or Nr < 2 or irad <= 0 or orad <= 0 or irad >= orad:
-            raise Exception
-
-        name = str(self.ed_name.text())
-        return {'p0': pc, 'radinner': irad, 'radouter': orad, 'na': Na,
-                'nr': Nr, 'coef': ref_coef, 'name': name}
-
-    def accept(self):
-        try:
-            self.ret_value()
-            super(AddUnfRingGrid, self).accept()
-        except Exception:
-            QMessageBox.warning(self, "Warning", "Invalid Input")
+    def check_input(self):
+        if self.odata().irad <= 0 or self.odata().orad <= 0:
+            raise Exception("invalid radius data")
+        if self.odata().irad >= self.odata().orad:
+            raise Exception("inner radius is greater then outer")
 
 
-class UniteGrids(QDialog, qtui.ui_UniteGridsDlg.Ui_Dialog):
+class UniteGrids(SimpleAbstractDialog):
     ' unite grids dialog window '
 
-    def __init__(self, act_grids, inact_grids):
-        super(UniteGrids, self).__init__()
-        self._act = act_grids
-        self._inact = inact_grids
-        self.setupUi(self)
-        self._set_lists()
-        self.bt_left.clicked.connect(self._bleft)
-        self.bt_right.clicked.connect(self._bright)
+    def __init__(self, used_grids, all_grids, parent=None):
+        self.all_grids = all_grids
+        self.odata().grds = used_grids[:]
+        super(UniteGrids, self).__init__(parent)
+        self.resize(400, 300)
+        self.setWindowTitle("Unite grids")
 
-    def _set_lists(self):
-        self.lst_used.clear()
-        self.lst_unused.clear()
-        map(self.lst_used.addItem, self._act)
-        map(self.lst_unused.addItem, self._inact)
+    def _default_odata(self, obj):
+        "-> options struct with default values"
+        obj.name = "UnitedGrid1"
+        obj.pbnd = False
+        obj.buff = 0.3
+        obj.den = 7
+        obj.grds = []
 
-    def _bleft(self):
-        for it in self.lst_unused.selectedItems():
-            self._act.append(it.text())
-            self._inact.remove(it.text())
-        self._set_lists()
+    def olist(self):
+        "-> optview.OptionsList"
+        return optview.OptionsList([("Basic", "Grid name",
+                optview.SimpleOptionEntry(self.odata(), "name")),
+            ("Construction", "Preserve boundary nodes",
+                optview.BoolOptionEntry(self.odata(), "pbnd")),
+            ("Construction", "Buffer size",
+                optview.SimpleOptionEntry(self.odata(), "buff")),
+            ("Construction", "Density",
+                optview.BoundedIntOptionEntry(self.odata(), "den", 0, 10)),
+            ("Grids", "Grids list", optview.MultipleChoiceOptionEntry(
+                self.odata(), "grds", self.all_grids))])
 
-    def _bright(self):
-        for it in self.lst_used.selectedItems():
-            self._inact.append(it.text())
-            self._act.remove(it.text())
-        self._set_lists()
-
-    def accept(self):
-        ' overridden accept with input check '
-        try:
-            self.ret_value()
-            super(UniteGrids, self).accept()
-        except Exception:
-            QMessageBox.warning(self, "Warning", "Invalid Input")
+    def check_input(self):
+        if self.odata().buff < 0:
+            raise Exception("Invalid buffer size")
+        if len(self.odata().grds) < 2:
+            raise Exception("not enough grids")
 
     def ret_value(self):
         """ -> (GridName, preserve_bnd,
             [source grids], [buffer sizes], [densities])
         """
-        nm = str(self.ed_name.text())
-        src, buf, den = [], [], []
-        for i in range(self.lst_used.count()):
-            it = self.lst_used.item(i)
-            src.append(str(it.text()))
-            buf.append(float(self.ed_buf.text()))
-            den.append(self.sld_dens.value())
-        if len(src) < 2:
-            #not enough grids to unite
-            raise Exception()
-        preserve_bnd = self.cb_preserve.checkState() == QtCore.Qt.Checked
-        return nm, preserve_bnd, src, buf, den
+        od = copy.deepcopy(self.odata())
+        buff = [od.buff] * len(od.grds)
+        den = [od.den] * len(od.grds)
+        return od.name, od.pbnd, od.grds, buff, den
 
 
-class MoveRotateGridsDlg(QDialog, qtui.ui_MoveRotateDlg.Ui_Dialog):
+class MoveRotateGridsDlg(SimpleAbstractDialog):
     ' Move Rotate grids group'
 
-    def __init__(self, act_grids, inact_grids, parent=None):
+    def __init__(self, used_grids, all_grids, parent=None):
+        self.odata().grds = used_grids
+        self.all_grids = all_grids
         super(MoveRotateGridsDlg, self).__init__(parent)
-        self.setupUi(self)
-        self.transfer_list.set_lists(act_grids, inact_grids)
+        self.resize(400, 300)
+        self.setWindowTitle("Move/Rotate grids")
 
-    def accept(self):
-        ' overridden accept with input check '
-        try:
-            self.ret_value()
-            super(MoveRotateGridsDlg, self).accept()
-        except Exception:
-            QMessageBox.warning(self, "Warning", "Invalid Input")
+    def _default_odata(self, obj):
+        "-> options struct with default values"
+        obj.do_move, obj.do_rotate = True, True
+        obj.dx, obj.dy = 0.0, 0.0
+        obj.rotp = bgeom.Point2(0.0, 0.0)
+        obj.rotangle = 0.0
+        obj.grds = []
+
+    def olist(self):
+        "-> optview.OptionsList"
+        return optview.OptionsList([("Move", "Move grids",
+                optview.BoolOptionEntry(self.odata(), "do_move")),
+            ("Move", "X shift",
+                optview.SimpleOptionEntry(self.odata(), "dx")),
+            ("Move", "Y shift",
+                optview.SimpleOptionEntry(self.odata(), "dy")),
+            ("Rotate", "Rotate grids",
+                optview.BoolOptionEntry(self.odata(), "do_rotate")),
+            ("Rotate", "Reference Point",
+                optview.XYOptionEntry(self.odata(), "rotp")),
+            ("Rotate", "Angle (deg)",
+                optview.SimpleOptionEntry(self.odata(), "rotangle")),
+            ("Grids", "Grids list", optview.MultipleChoiceOptionEntry(
+                self.odata(), "grds", self.all_grids))])
+
+    def _active_entries(self, entry):
+        "return False for non-active entries"
+        if entry.member_name in ["dx", "dy"]:
+            return entry.data.do_move
+        elif entry.member_name in ["rotp", "rotangle"]:
+            return entry.data.do_rotate
+        elif entry.member_name in ["grds"]:
+            return entry.data.do_move or entry.data.do_rotate
+        else:
+            return True
+
+    def check_input(self):
+        if (len(self.odata().grds) < 1) or \
+                (not self.odata().do_move and not self.odata().do_rotate):
+            raise Exception("nothing to do")
 
     def ret_value(self):
-        ' [source grids], [move_x, move_y], [rot_x0, rot_y0, rot_angle] '
-        names = self.transfer_list.get_left_list()
-        mx, my = float(self.ed_movx.text()), float(self.ed_movy.text())
-        rx0, ry0 = float(self.ed_rotx0.text()), float(self.ed_roty0.text())
-        an = float(self.ed_rotan.text())
-        if len(names) == 0:
-            raise Exception()
-        return names, [mx, my], [rx0, ry0, an]
+        ' [source grids], [move_x, move_y], [rot_point, rot_angle] '
+        od = copy.deepcopy(self.odata())
+        if not od.do_move:
+            od.dx = od.dy = 0
+        if not od.do_rotate:
+            od.rotangle = 0
+        return od.grds, [od.dx, od.dy], [od.rotp, od.rotangle]
 
 
-class ScaleGridsDlg(QDialog, qtui.ui_ScaleDlg.Ui_scale_dlg):
+class ScaleGridsDlg(SimpleAbstractDialog):
     'Scale grids group'
 
-    def __init__(self, act_grids, inact_grids, parent=None):
+    def __init__(self, used_grids, all_grids, parent=None):
+        self.odata().grds = used_grids
+        self.all_grids = all_grids
         super(ScaleGridsDlg, self).__init__(parent)
-        self.setupUi(self)
-        self.transfer_list.set_lists(act_grids, inact_grids)
+        self.resize(400, 300)
+        self.setWindowTitle("Scale grids")
 
-    def accept(self):
-        ' overridden accept with input check '
-        try:
-            self._build_return()
-            super(ScaleGridsDlg, self).accept()
-        except Exception:
-            QMessageBox.warning(self, "Warning", "Invalid Input")
+    def _default_odata(self, obj):
+        "-> options struct with default values"
+        obj.width = 100.0
+        obj.height = 100.0
+        obj.units = "%"
+        obj.preserve_ratio = True
+        obj.point = "center"
+        obj.grds = []
 
-    def _build_return(self):
-        names = self.transfer_list.get_left_list()
-        sx = sy = float(self.ed_width.text())
-        if (not self.cb_preserve.isChecked()):
-            sy = float(self.ed_height.text())
+    def olist(self):
+        "-> optview.OptionsList"
+        a_pnt = ["bottom left", "center", "top right"]
+        a_units = ["%", "meter"]
+        return optview.OptionsList([("Scale", "Preserve ratio",
+                optview.BoolOptionEntry(self.odata(), "preserve_ratio")),
+            ("Scale", "Units", optview.SingleChoiceOptionEntry(
+                self.odata(), "units", a_units)),
+            ("Scale", "Width",
+                optview.SimpleOptionEntry(self.odata(), "width")),
+            ("Scale", "Height",
+                optview.SimpleOptionEntry(self.odata(), "height")),
+            ("Reference", "Reference Point", optview.SingleChoiceOptionEntry(
+                self.odata(), "point", a_pnt)),
+            ("Grids", "Grids list", optview.MultipleChoiceOptionEntry(
+                self.odata(), "grds", self.all_grids))])
 
-        #check input
-        if len(names) == 0 or sx <= 0 or sy <= 0:
-            raise Exception()
+    def _active_entries(self, entry):
+        "return False for non-active entries"
+        if entry.member_name in ["height"]:
+            return not entry.data.preserve_ratio
+        else:
+            return True
+
+    def check_input(self):
+        if (len(self.odata().grds) < 1):
+            raise Exception("nothing to do")
+        if self.odata().width <= 0 or \
+                (not self.odata().preserve_ratio and self.odata().height <= 0):
+            raise Exception("invalid scales")
+
+    def ret_value(self):
+        "-> names, rel_pnt, xpct, ypct"
+        od = copy.deepcopy(self.odata())
 
         #builing bounding box
         x, y = [], []
-        for n in names:
+        for n in od.grds:
             p0, p1 = globvars.actual_data().grids2[n].bounding_box()
-            x.append(p0.x)
-            x.append(p1.x)
-            y.append(p0.y)
-            y.append(p1.y)
+            x += [p0.x, p1.x]
+            y += [p0.y, p1.y]
         p0, p1 = bgeom.Point2(min(x), min(y)), bgeom.Point2(max(x), max(y))
 
         #relative point
-        if self.rb_bl.isChecked():
+        if od.point == "bottom left":
             rel_pnt = p0
-        elif self.rb_tr.isChecked():
+        elif od.point == "top right":
             rel_pnt = p1
         else:
             rel_pnt = bgeom.Point2((p0.x + p1.x) / 2.0, (p0.y + p1.y) / 2.0)
 
         #scaling units to %
-        if (self.cb_units.currentIndex() == 1):
+        sx, sy = od.width, od.height
+        if od.units == "meter":
             sx = sx / (p1.x - p0.x) * 100
-            if (not self.cb_preserve.isChecked()):
+            if (not od.preserve_ratio):
                 sy = sy / (p1.y - p0.y) * 100
-        if (self.cb_preserve.isChecked()):
+        if (od.preserve_ratio):
             sy = sx
 
-        self.__ret = names, rel_pnt, sx, sy
-
-    def ret_value(self):
-        return self.__ret
+        return od.grds, rel_pnt, sx, sy
 
 
 class GridViewOpt(QDialog, qtui.ui_GridViewOpt.Ui_Dialog):

@@ -109,7 +109,6 @@ public:
 	
 	//returns set of single connected meshes.
 	shp_vector<GridGeom> subdivide() const;
-	shp_vector<GridGeom> subdivide2() const;
 
 	//data access
 	const GridPoint* get_point(int i) const { return points[i].get(); }

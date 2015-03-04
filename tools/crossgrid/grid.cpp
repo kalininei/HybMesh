@@ -344,49 +344,6 @@ shp_vector<GridGeom> GridGeom::subdivide() const{
 	return ret;
 }
 
-shp_vector<GridGeom> GridGeom::subdivide2() const{
-	//data prepare
-	std::vector<Point> cp = cells_internal_points();
-	std::set<int> unused_cells;
-	for (int i=0; i<n_cells(); unused_cells.insert(i++));
-	auto c = get_contours_collection();
-	//build level -> inner contours dictionary
-	std::map<int, std::vector<PContour>> lcnt;
-	for (int i=0; i<c.n_cont(); ++i) if (c.is_inner(i)){
-		int level = c.get_level(i);
-		lcnt.emplace(level, std::vector<PContour>());
-		lcnt[level].push_back(c.contour(i).simplify());
-	}
-	
-	//build sets of single connected cells
-	vector<vector<int>> sc_cells;
-	bool hint = true;
-	//loop beginning with contours with highest nesting level 
-	for (auto it = lcnt.rbegin(); it!=lcnt.rend(); ++it){
-		for (auto& inner_cont: it->second){
-			sc_cells.push_back(vector<int>());
-			auto& nv = sc_cells.back();
-			auto ind = unused_cells.begin();
-			while (ind!=unused_cells.end()){
-				if (inner_cont.is_inside(cp[*ind], &hint) == 1){
-					nv.push_back(*ind);
-					unused_cells.erase(ind++);
-				} else { ++ind; }
-			}
-			if (sc_cells.size() == 0) sc_cells.resize(sc_cells.size()-1);
-		}
-	}
-
-	//assemble new grids
-	shp_vector<GridGeom> ret;
-	for (auto& sc: sc_cells){
-		ret.push_back(std::shared_ptr<GridGeom>(new GridGeom()));
-		auto r = ret.back().get();
-		r->add_data(*this, sc);
-	}
-	return ret;
-}
-
 GridGeom* GridGeom::combine(GridGeom* gmain, GridGeom* gsec){
 	//1) build grids contours
 	auto maincont = gmain->get_contours_collection();

@@ -4,8 +4,8 @@ PlugDir = .
 .SECONDEXPANSION:
 ResTarget = ComGridRes
 PlugTarget = TransferListWidget
-FormsTarget = HistoryWindow ComGridMain UniteGridsDlg AddUnfCircDlg MoveRotateDlg \
-	      GridViewOpt AddUnfRingDlg ScaleDlg
+FormsTarget = HistoryWindow ComGridMain \
+	      GridViewOpt
 
 
 all: $(ResTarget) $(PlugTarget) $(FormsTarget)

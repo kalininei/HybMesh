@@ -7,7 +7,6 @@ import qtui.ui_ComGridMain
 import vtk
 from vtk.qt4.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
-import bgeom
 import gridcom
 import dlgs
 import globvars
@@ -135,8 +134,7 @@ class MainWindow(QMainWindow, qtui.ui_ComGridMain.Ui_MainWindow):
     def _unite_grids(self):
         all_grids = globvars.actual_data().get_grid_names()
         used_grids = globvars.actual_data().get_checked_grid_names()
-        unused_grids = [n for n in all_grids if n not in used_grids]
-        dialog = dlgs.UniteGrids(used_grids, unused_grids)
+        dialog = dlgs.UniteGrids(used_grids, all_grids, self)
         if dialog.exec_():
             name, pbnd, grd, bfs, den = dialog.ret_value()
             src = [gridcom.UniteOpts(n, b, d)
@@ -150,15 +148,14 @@ class MainWindow(QMainWindow, qtui.ui_ComGridMain.Ui_MainWindow):
 
     # ---------- transform
     def _mov_rot(self):
-        lg = globvars.actual_data().get_checked_grid_names()
-        rg = globvars.actual_data().get_unchecked_grid_names()
-        dialog = dlgs.MoveRotateGridsDlg(lg, rg, self)
+        all_grids = globvars.actual_data().get_grid_names()
+        used_grids = globvars.actual_data().get_checked_grid_names()
+        dialog = dlgs.MoveRotateGridsDlg(used_grids, all_grids, self)
         if dialog.exec_():
             names, mopt, ropt = dialog.ret_value()
             #1) rotate
-            if abs(ropt[2]) > 1e-16:
-                com = gridcom.RotateGrids(bgeom.Point2(ropt[0], ropt[1]),
-                        ropt[2], names)
+            if abs(ropt[1]) > 1e-16:
+                com = gridcom.RotateGrids(ropt[0], ropt[1], names)
                 globvars.actual_flow().exec_command(com)
             #2) move
             if abs(mopt[0]) > 1e-16 or abs(mopt[1]) > 1e-16:
@@ -166,9 +163,9 @@ class MainWindow(QMainWindow, qtui.ui_ComGridMain.Ui_MainWindow):
                 globvars.actual_flow().exec_command(com)
 
     def _scale_grid(self):
-        lg = globvars.actual_data().get_checked_grid_names()
-        rg = globvars.actual_data().get_unchecked_grid_names()
-        dialog = dlgs.ScaleGridsDlg(lg, rg, self)
+        all_grids = globvars.actual_data().get_grid_names()
+        used_grids = globvars.actual_data().get_checked_grid_names()
+        dialog = dlgs.ScaleGridsDlg(used_grids, all_grids, self)
         if dialog.exec_():
             names, rel_pnt, xpct, ypct = dialog.ret_value()
             if xpct != 100 or ypct != 100:
