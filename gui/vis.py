@@ -1,7 +1,11 @@
 import sip
 
-from PyQt4.QtGui import QTreeWidgetItem, QIcon, QPixmap
+from PyQt4 import QtGui
 import vtk
+#resources
+import qtui.ComGridRes_rc
+#get rid off unused module spell checker error:
+qtui.ComGridRes_rc
 
 import gridcom
 import globvars
@@ -27,28 +31,17 @@ class FrameworkVis(object):
         raise NotImplementedError
 
 
-class GridBlockTreeItem(QTreeWidgetItem):
+class GridBlockTreeItem(QtGui.QTreeWidgetItem):
     ' presents a gridblock item in a grid manager docker window '
-    __icons = {}
-
-    @classmethod
-    def get_icon(cls, code):
-        ' get icon by its string code '
-        if len(cls.__icons) == 0:
-            cls.__icons['eye-on'] = QIcon(QPixmap(":/icons/eye-on.png"))
-            cls.__icons['eye-off'] = QIcon(QPixmap(":/icons/eye-off.png"))
-            cls.__icons['opts'] = QIcon(QPixmap(":/icons/opts.png"))
-            cls.__icons['del'] = QIcon(QPixmap(":/icons/delete.png"))
-        return cls.__icons[code]
 
     def __init__(self, name, view_opt):
         super(GridBlockTreeItem, self).__init__()
         self.view_opt = view_opt
         self.name = name
         #options
-        self.setIcon(3, self.get_icon("opts"))
+        self.setIcon(3, QtGui.QIcon(QtGui.QPixmap(":/icons/opts.png")))
         #delete button
-        self.setIcon(4, self.get_icon("del"))
+        self.setIcon(4, QtGui.QIcon(QtGui.QPixmap(":/icons/delete.png")))
         #opts
         self.update(name)
 
@@ -69,9 +62,9 @@ class GridBlockTreeItem(QTreeWidgetItem):
     def _set_view_icon(self):
         ' sets visibility icon '
         if self.view_opt.get_visibility():
-            self.setIcon(2, self.get_icon("eye-on"))
+            self.setIcon(2, QtGui.QIcon(QtGui.QPixmap(":/icons/eye-on.png")))
         else:
-            self.setIcon(2, self.get_icon("eye-off"))
+            self.setIcon(2, QtGui.QIcon(QtGui.QPixmap(":/icons/eye-off.png")))
 
     def clicked(self, col):
         """ item click handler

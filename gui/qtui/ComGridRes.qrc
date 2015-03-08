@@ -1,5 +1,9 @@
 <RCC>
   <qresource prefix="icons">
+    <file>split.png</file>
+    <file>undo.png</file>
+    <file>redo.png</file>
+    <file>do.png</file>
     <file>left_arrow.png</file>
     <file>right_arrow.png</file>
     <file>delete.png</file>

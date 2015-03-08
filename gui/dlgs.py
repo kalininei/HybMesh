@@ -2,8 +2,6 @@
 
 import copy
 from PyQt4 import QtCore, QtGui
-from PyQt4.QtGui import (QDialog, QDialogButtonBox,
-    QLabel, QMessageBox, QProgressBar, QVBoxLayout)
 import bgeom
 import globvars
 import optview
@@ -55,7 +53,7 @@ class _BackGroundWorkerCB(QtCore.QThread):
             return cb
 
 
-class ProgressProcedureDlg(QDialog):
+class ProgressProcedureDlg(QtGui.QDialog):
     """ ProgressBar/Cancel dialog window which wraps time consuming
         procedure calls.
     """
@@ -73,14 +71,14 @@ class ProgressProcedureDlg(QDialog):
         super(ProgressProcedureDlg, self).__init__(parent, flags)
 
         #design
-        self._label1 = QLabel()
-        self._label2 = QLabel()
-        self._progbar1 = QProgressBar()
-        self._progbar2 = QProgressBar()
-        self._buttonbox = QDialogButtonBox(QDialogButtonBox.Cancel)
+        self._label1 = QtGui.QLabel()
+        self._label2 = QtGui.QLabel()
+        self._progbar1 = QtGui.QProgressBar()
+        self._progbar2 = QtGui.QProgressBar()
+        self._buttonbox = QtGui.QDialogButtonBox(QtGui.QDialogButtonBox.Cancel)
         self._buttonbox.setCenterButtons(True)
         self._buttonbox.rejected.connect(self._cancel_pressed)
-        layout = QVBoxLayout()
+        layout = QtGui.QVBoxLayout()
         layout.addWidget(self._label1)
         layout.addWidget(self._progbar1)
         layout.addWidget(self._label2)
@@ -122,7 +120,7 @@ class ProgressProcedureDlg(QDialog):
         return self._result
 
 
-class SimpleAbstractDialog(QDialog):
+class SimpleAbstractDialog(QtGui.QDialog):
     "Abstract dialog for option set"
     class _OData(object):
         pass
@@ -139,8 +137,8 @@ class SimpleAbstractDialog(QDialog):
         super(SimpleAbstractDialog, self).__init__(parent)
         oview = optview.OptionsView(self.olist())
         oview.is_active_delegate(self._active_entries)
-        buttonbox = QDialogButtonBox(
-                QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttonbox = QtGui.QDialogButtonBox(
+                QtGui.QDialogButtonBox.Ok | QtGui.QDialogButtonBox.Cancel)
         buttonbox.accepted.connect(self.accept)
         buttonbox.rejected.connect(self.reject)
         layout = QtGui.QVBoxLayout(self)
@@ -153,7 +151,7 @@ class SimpleAbstractDialog(QDialog):
             self.check_input()
             super(SimpleAbstractDialog, self).accept()
         except Exception as e:
-            QMessageBox.warning(self, "Warning",
+            QtGui.QMessageBox.warning(self, "Warning",
                     "Invalid Input: %s" % str(e))
 
     #functions for overriding
@@ -166,7 +164,7 @@ class SimpleAbstractDialog(QDialog):
         raise NotImplementedError
 
     def ret_value(self):
-        "-> dict from option struct"
+        "-> return value from option struct"
         raise NotImplementedError
 
     def check_input(self):
@@ -498,7 +496,7 @@ class ScaleGridsDlg(SimpleAbstractDialog):
         return od.grds, rel_pnt, sx, sy
 
 
-class GridViewOpt(QDialog, qtui.ui_GridViewOpt.Ui_Dialog):
+class GridViewOpt(QtGui.QDialog, qtui.ui_GridViewOpt.Ui_Dialog):
     ' Grid view options '
 
     def __init__(self, opts, parent=None):

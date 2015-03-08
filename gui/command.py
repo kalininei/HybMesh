@@ -2,7 +2,6 @@
 import copy
 import xml.etree.ElementTree as ET
 import bp
-import commandwin
 
 
 class CommandReceiver(object):
@@ -10,19 +9,23 @@ class CommandReceiver(object):
     ' Interface for Command Receiver object '
 
     def to_zero_state(self):
-        ' set receiver to its initial state '
+        'set receiver to its initial state '
         raise NotImplementedError
 
     def post_proc(self):
-        ' procedure is called after each Command.do/redo/undo '
+        'procedure is called after each Command.do/redo/undo '
         raise NotImplementedError
 
     def save_state(self, xmlnode):
-        ' save to xml node '
+        'save to xml node'
         raise NotImplementedError
 
     def load_state(self, xmlnode):
-        ' load from xml node '
+        'load from xml node'
+        raise NotImplementedError
+
+    def deep_copy(self):
+        'make a deep copy of current receiver state'
         raise NotImplementedError
 
 
@@ -38,7 +41,7 @@ class Command(object):
         st = copy.deepcopy(argsdict)
         for k in st.keys():
             st[k] = str(st[k])
-        self.__comLine = self._method_code()+' '+str(st)
+        self.__comLine = self._method_code() + ' ' + str(st)
         #last receiver of the command
         self.receiver = None
 
@@ -72,7 +75,7 @@ class Command(object):
             self.__executed = False
             self._clear()
 
-    #comments property
+    #user comments property
     def set_comment(self, s):
         ' sets string comment to the command '
         self.__comment = s
@@ -98,12 +101,19 @@ class Command(object):
     #info
     @classmethod
     def _method_code(cls):
-        """-> string
+        """-> str
 
            Returns a word which is used to dub this command
            in xml files
         """
         raise NotImplementedError
+
+    @classmethod
+    def doc(cls):
+        """-> str.
+            Command documentation line as it will be shown in
+            commands history window"""
+        return cls.__doc__
 
     #evalution
     def _exec(self):
@@ -134,6 +144,9 @@ class StartCommand(Command):
         ' __init__'
         super(StartCommand, self).__init__({})
 
+    def doc(self):
+        return "Start"
+
     @classmethod
     def _method_code(cls):
         return "Start"
@@ -158,7 +171,7 @@ class StartCommand(Command):
 class Factory(object):
     ' Command class Factory '
     def __init__(self, coms):
-        """ Initialises the commands building factory.
+        """ Initializes the commands building factory.
             coms - is the list of classes which
             implement Command interface
         """
@@ -191,7 +204,16 @@ class Factory(object):
 
 
 class CommandFlow(object):
+    ExecCommand = 0
+    AppendCommand = 1
+    UndoCommand = 2
+    XmlLoadCommands = 3
+    ClearCommands = 4
+
     def __init__(self, flow_collection):
+        #subscribers for command do/undo
+        self._subscribers = []
+        #reference to collection
         self._collection = flow_collection
         #command list
         self._commands = [StartCommand()]
@@ -201,6 +223,25 @@ class CommandFlow(object):
         self._startpos = 0
         #receiver
         self._receiver = self._collection._new_receiver()
+
+    def com_count(self):
+        "->int. Number of commands"
+        return len(self._commands)
+
+    def com(self, i):
+        "-> Command. Get a command by index"
+        return self._commands[i]
+
+    def add_subscriber(self, obj):
+        self._subscribers.append(obj)
+
+    def remove_subscriber(self, obj):
+        self._subscribers.remove(obj)
+
+    def _subscriber_message(self, tp):
+        "sent a message for do/undo subscribers"
+        for s in self._subscribers:
+            s.command_flow_action(tp)
 
     #can undo/redo from current position
     def can_undo(self):
@@ -224,13 +265,14 @@ class CommandFlow(object):
     #Doesn't execute it
     def append_command(self, c):
         self._commands.append(c)
+        self._subscriber_message(self.AppendCommand)
 
     #commands execution procedures
     def exec_next(self):
         if (self.can_redo()):
             self._curpos += 1
             if self._commands[self._curpos].do(self._receiver):
-                self._collection._flow_changed()
+                self._subscriber_message(self.ExecCommand)
             else:
                 self._curpos -= 1
 
@@ -247,7 +289,7 @@ class CommandFlow(object):
         if (self.can_undo()):
             self._curpos -= 1
             self._commands[self._curpos + 1].undo()
-            self._collection._flow_changed()
+            self._subscriber_message(self.UndoCommand)
 
     def undo_all(self):
         while (self.can_undo()):
@@ -261,35 +303,19 @@ class CommandFlow(object):
         for c in self._commands:
             c.reset()
         self._receiver.post_proc()
-        self._collection._flow_changed()
-
-    #returns information about current state of command flow
-    #table() -> [ComInfo]
-    def table(self):
-        ret = []
-        for i, c in enumerate(self._commands):
-            if (i <= self._startpos):
-                state = 0
-            elif (i <= self._curpos):
-                state = 1
-            else:
-                state = 2
-            ret.append(ComInfo(str(c), c.get_comment(), state,
-                               i == self._startpos, i == self._curpos))
-        return ret
+        self._subscriber_message(self.ClearCommands)
 
     def make_checkpoint(self):
-        #avoid deep copy of collection by temporary setting it to None
-        __tmp = self._collection
-        self._collection = None
-        #deep copy of current data
-        ret = copy.deepcopy(self)
+        "returns a checkpoint copy of the current command flow"
+        ret = CommandFlow(self._collection)
+        ret._receiver = self._receiver.deep_copy()
         ret._curpos = self._curpos
         ret._startpos = self._curpos
-        for c in ret._commands[:]:
-            c.reset()
-        self._collection = __tmp
-        ret._collection = __tmp
+        factory = self._collection._factory
+        for c in self._commands[1:]:
+            ret.append_command(factory.create_from_string(str(c)))
+        for i, c in enumerate(self._commands):
+            ret.com(i).set_comment(c.get_comment())
         return ret
 
     def save_state(self, xmlnode):
@@ -326,23 +352,7 @@ class CommandFlow(object):
         #Program state
         pn = xmlnode.find("STATE")
         self._receiver.load_state(pn)
-
-
-class ComInfo(object):
-    """
-        Structure for representing commandFlow state
-        strline - command string
-        comline - command comment
-        state -  0 - ghost, 1 - done, 2 - undone
-        isLast - is this is the last executed command
-        isInitial - is this is the initial command
-    """
-    def __init__(self, strline, comline, state, is_init, is_last):
-        self.strline = strline
-        self.comline = comline
-        self.state = state
-        self.isLast = is_last
-        self.isInitial = is_init
+        self._subscriber_message(self.XmlLoadCommands)
 
 
 class FlowCollection(object):
@@ -355,18 +365,13 @@ class FlowCollection(object):
             @RecieverCls is the class which implements
             CommandReciever interface
         """
+        self._actflow_subscriber = []
         self._factory = Factory(com_cls)
         #set the framework and visualiser class
         self._rec_cls = reciever_cls
         #set flow list and impose active flow
         self._flows = bp.NamedList([("Flow1", CommandFlow(self))])
         _, self._actFlow = self._flows.get_by_index(0)
-        #qt window for history management
-        self._historyWindow = commandwin.HistoryWindow(self)
-
-    #functions which are called from outside
-    def show_manager(self):
-        self._historyWindow.show()
 
     def get_actual_flow(self):
         ' -> CommandFlow '
@@ -375,9 +380,23 @@ class FlowCollection(object):
     def set_actual_flow(self, flow_name):
         ' sets flow with @flowName as active '
         self._actFlow = self._flows[flow_name]
+        self._actFlow._receiver.view_update()
+        for s in self._actflow_subscriber:
+            s.actual_flow_changed(flow_name)
+
+    def get_flow(self, name=None, ind=None):
+        "-> CommandFlow. Get flow using its name or index"
+        if name is not None:
+            return self._flows[name]
+        elif ind is not None:
+            _, ret = self._flows.get_by_index(ind)
+            return ret
+
+    def add_actflow_subscriber(self, obj):
+        self._actflow_subscriber.append(obj)
 
     def get_flow_names(self):
-        ' -> [All existing flow names] '
+        ' -> [All existing flow names]'
         return self._flows.keys()
 
     def get_actual_flow_name(self):
@@ -420,17 +439,13 @@ class FlowCollection(object):
         ' returns new empty unconnected framework '
         return self._rec_cls()
 
-    def _flow_changed(self):
-        self._historyWindow.update_info()
-
-    def _checkpoint(self, flow_name="Flow1"):
+    def checkpoint_current(self, flow_name):
         """
             Makes a copy of active flow.
             @flowName is the name of new flow
         """
         new_flow = self._actFlow.make_checkpoint()
         self._flows[flow_name] = new_flow
-        self._flow_changed()
 
     #private functions
     def __save_states(self, xmlnode):
@@ -462,4 +477,3 @@ class FlowCollection(object):
                 actual_name = nm
 
         self.set_actual_flow(actual_name)
-        self._flow_changed()

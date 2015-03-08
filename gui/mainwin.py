@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+#from PyQt4 import QtGui
 from PyQt4.QtGui import (QMainWindow,
     QFileDialog, QHBoxLayout)
 import qtui.ui_ComGridMain
@@ -7,6 +8,7 @@ import qtui.ui_ComGridMain
 import vtk
 from vtk.qt4.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
+import commandwin
 import gridcom
 import dlgs
 import globvars
@@ -45,25 +47,29 @@ class VTKWidget(QVTKRenderWindowInteractor):
 
 
 class MainWindow(QMainWindow, qtui.ui_ComGridMain.Ui_MainWindow):
-    ' Main program window '
+    "Main program window"
     def __init__(self):
         super(MainWindow, self).__init__()
         self.setupUi(self)
+
+    def initialize(self):
+        """ build window widgets:
+            should be called after globvars.Flows init"""
         self._connect_actions()
         self._grid_manager_init()
+        self._commands_history_init()
         self._vtk_widget_init()
+        globvars.Flows.add_actflow_subscriber(self)
 
     # --------- constructor procedures
     def _connect_actions(self):
-        ' connects actions for main window'
+        "connects actions for main window"
         #file
         self.act_open.triggered.connect(self._open_flows)
         self.act_save.triggered.connect(self._save_flows)
         #edit
         self.act_undo.triggered.connect(self._undo_command)
         self.act_redo.triggered.connect(self._redo_command)
-        #view
-        self.act_comhist.triggered.connect(self._show_history)
         #geometry
         self.act_unf_rect.triggered.connect(self._add_rectangle_grid)
         self.act_unf_circ.triggered.connect(self._add_circular_grid)
@@ -78,6 +84,14 @@ class MainWindow(QMainWindow, qtui.ui_ComGridMain.Ui_MainWindow):
         ' initialization of the grid manager '
         self.tw_gridblocks.itemClicked.connect(
                 self._grid_manager_item_click)
+
+    def _commands_history_init(self):
+        'initialization of the commands history window'
+        self.dw_history.setFloating(True)
+        self.dw_history.resize(700, 300)
+        self.dw_history.setShown(False)
+        self.dw_history.setWidget(commandwin.HistoryDockFrame(
+            globvars.Flows, self.dw_history))
 
     def _vtk_widget_init(self):
         ' initialization of the vtk renderer window'
@@ -98,9 +112,6 @@ class MainWindow(QMainWindow, qtui.ui_ComGridMain.Ui_MainWindow):
             self, 'Open File', '', 'ComGrid projects (*.cgp);;All Files (*)')
         if (filename):
             globvars.Flows.xml_load(filename)
-
-    def _show_history(self):
-        globvars.Flows.show_manager()
 
     def _undo_command(self):
         globvars.actual_flow().undo_prev()
@@ -188,6 +199,11 @@ class MainWindow(QMainWindow, qtui.ui_ComGridMain.Ui_MainWindow):
 
     def _grid_manager_item_click(self, item, col):
         item.clicked(col)
+
+    # ---------- Interfaces
+    def actual_flow_changed(self, flow_name):
+        "subscribtion from command.FlowCollection"
+        self.setWindowTitle("HybMesh: %s" % flow_name)
 
     # ---------- Grid Viewer
     def set_grid_actors(self, actors):

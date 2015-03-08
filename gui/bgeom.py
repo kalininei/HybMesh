@@ -2,6 +2,7 @@ import copy
 import math
 
 
+#TODO: Do I really need it?
 class GeomStruct(object):
     "Geometric structure class - parent for all structures"
     __num = 0

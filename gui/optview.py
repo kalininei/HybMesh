@@ -35,6 +35,8 @@ import sys
 import copy
 import collections
 from PyQt4 import QtCore, QtGui
+import qtui.ui_ComGridMain
+qtui.ui_ComGridMain
 
 
 # ================ Configurations
@@ -297,12 +299,14 @@ class MultipleChoiceOptionEntry(OptionEntry):
             self.lw1 = QtGui.QListWidget()
             self.lw2 = QtGui.QListWidget()
             btleft = QtGui.QPushButton()
-            btleft.setText("<--")
+            btleft.setIcon(QtGui.QIcon(
+                QtGui.QPixmap(":/icons/left_arrow.png")))
             btleft.clicked.connect(self.left_click)
             btleft.setFocusPolicy(QtCore.Qt.NoFocus)
             btright = QtGui.QPushButton()
             btright.clicked.connect(self.right_click)
-            btright.setText("-->")
+            btright.setIcon(QtGui.QIcon(
+                QtGui.QPixmap(":/icons/right_arrow.png")))
             btright.setFocusPolicy(QtCore.Qt.NoFocus)
             bbox = QtGui.QDialogButtonBox()
             bbox.setStandardButtons(QtGui.QDialogButtonBox.Cancel |
@@ -552,8 +556,6 @@ class OptionsValueDelegate(QtGui.QItemDelegate):
 
     def sizeHint(self, option, index):
         "overriden"
-        #only cell height is defined manually so we deal only
-        #with second column because its widgth is defined by total widget width
         pos = self._index_position(index)
         if pos == 3:
             addl = max(1, self._option_data(index).display_lines()) - 1
@@ -749,8 +751,8 @@ class OptionsView(QtGui.QTreeView):
         self.setIndentation(conf.branch_indent)
 
     def is_active_delegate(self, func):
-        """define a function which sets active status for entries
-            func = bool function(OptionEntry)
+        """ define a function which sets active status for entries
+                func = bool function(OptionEntry)
         """
         self.model.is_active = func
 
@@ -764,7 +766,7 @@ class OptionsView(QtGui.QTreeView):
                     self.edit(index, trigger, event)
                     break
         else:
-            #using else: because otherwise it emits enter signal
+            #using "else:" here because otherwise it emits enter signal
             #for the whole form
             super(OptionsView, self).keyPressEvent(event)
 

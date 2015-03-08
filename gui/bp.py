@@ -140,7 +140,12 @@ class NamedList(OrderedDict):
             OrderedDict.__setitem__(self, k, v)
 
 if __name__ == '__main__':
-    a = NamedList([("active", 1), ("passive", 2)])
+    import copy
 
-    print a
+    a = NamedList([("active", 1), ("passive", 2)])
+    a["once"] = 4
+    for name, val in a.items():
+        print name, val
+    b = copy.deepcopy(a)
+    print b
     print "eof"

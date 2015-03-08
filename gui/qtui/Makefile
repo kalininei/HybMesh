@@ -4,7 +4,7 @@ PlugDir = .
 .SECONDEXPANSION:
 ResTarget = ComGridRes
 PlugTarget = TransferListWidget
-FormsTarget = HistoryWindow ComGridMain \
+FormsTarget = ComGridMain \
 	      GridViewOpt
 
 

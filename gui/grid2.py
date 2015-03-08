@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import copy
 import math
 import bgeom
@@ -16,7 +17,14 @@ class Grid2(bgeom.GeomStruct):
         self.cells = []
         #geometry change substribers:
         #   should contain grid_geom_event(grid2) method
-        self._subsribers_change_geom = set()
+        self._subscribers_change_geom = set()
+
+    def deepcopy(self):
+        __tmp = self._subscribers_change_geom
+        self._subscribers_change_geom = set()
+        ret = copy.deepcopy(self)
+        self._subscribers_change_geom = __tmp
+        return ret
 
     @staticmethod
     def from_points_cells(npt, ncls, pts, cls):
@@ -95,17 +103,17 @@ class Grid2(bgeom.GeomStruct):
     # ---- events
     def add_subscriber_change_geom(self, subscr):
         """ Adds an object which will get information
-            if grid geometry is changed by invocaton
+            if grid geometry is changed by invocation
             of subsr.grid_geom_event(self) method
         """
-        self._subsribers_change_geom.add(subscr)
+        self._subscribers_change_geom.add(subscr)
 
     def remove_subsriber_change_geom(self, subscr):
-        """ Removes subsription from grid geometry event """
-        self._subsribers_change_geom.remove(subscr)
+        """ Removes subscription from grid geometry event """
+        self._subscribers_change_geom.remove(subscr)
 
     def _geom_changed(self):
-        for a in self._subsribers_change_geom:
+        for a in self._subscribers_change_geom:
             a.grid_geom_event(self)
 
     def bounding_box(self):
@@ -696,3 +704,10 @@ class Factory(object):
     def xml_create(self, xmlnode):
         cls = self.cls_from_string(xmlnode.attrib["tp"])
         return cls.create_from_xml(xmlnode)
+
+if __name__ == "__main__":
+    g2 = UnfRectGrid(bgeom.Point2(0, 0), bgeom.Point2(1, 1), 10, 10)
+    print g2
+    g3 = g2.deepcopy()
+    print g3
+

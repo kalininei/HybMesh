@@ -2,10 +2,10 @@
 
 import sys
 from PyQt4.QtGui import QApplication
-import mainwin
 import command
 import framework
 import gridcom
+import mainwin
 
 
 def actual_flow():
@@ -31,3 +31,7 @@ _commands = [gridcom.AddUnfRectGrid, gridcom.RemoveGrid2,
         gridcom.ScaleGrids]
 
 Flows = command.FlowCollection(_commands, framework.Framework)
+
+#build window widgets: called after Flows building
+#because it is used by widgets
+mainWindow.initialize()

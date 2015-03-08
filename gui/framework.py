@@ -16,14 +16,13 @@ class Framework(command.CommandReceiver):
         self._visualiser = self._visCls()
         self._visualiser.set_framework(self)
         self.grids2 = bp.NamedList()
-        self.view_update()
 
     def view_update(self):
-        ' updates visualisation '
+        'updates visualisation'
         self._visualiser.update()
 
     def post_proc(self):
-        ' callback after each command invokation '
+        'callback after each command invokation '
         self.view_update()
 
     def get_grid_names(self):
@@ -59,3 +58,12 @@ class Framework(command.CommandReceiver):
             grd = grid2.Factory().xml_create(nd)
             self.grids2[name] = grd
         self.view_update()
+
+    def deep_copy(self):
+        ret = Framework()
+        for name, g in self.grids2.items():
+            gnew = g.deepcopy()
+            ret.grids2[name] = gnew
+        return ret
+
+

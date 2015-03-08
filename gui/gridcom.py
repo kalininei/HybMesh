@@ -6,7 +6,7 @@ from unite_grids import unite_grids
 
 
 class AddUnfRectGrid(command.Command):
-    " Add uniform rectangular grid "
+    "Add uniform rectangular grid "
     #def __init__(self, p0, p1, nx, ny, name):
     def __init__(self, argsdict):
         super(AddUnfRectGrid, self).__init__(argsdict)
@@ -55,7 +55,7 @@ class AddUnfRectGrid(command.Command):
 
 
 class AddUnfCircGrid(command.Command):
-    " Add uniform circular grid "
+    "Add uniform circular grid "
 
     def __init__(self, argsdict):
         super(AddUnfCircGrid, self).__init__(argsdict)
@@ -117,7 +117,7 @@ class AddUnfCircGrid(command.Command):
 
 
 class AddUnfRingGrid(command.Command):
-    " Add uniform circular ring"
+    "Add uniform circular ring"
 
     def __init__(self, argsdict):
         super(AddUnfRingGrid, self).__init__(argsdict)
@@ -179,7 +179,11 @@ class RenameGrid2(command.Command):
         super(RenameGrid2, self).__init__(argsdict)
         self.oldName, self.newName = argsdict['old'], argsdict['new']
 
+
     #overriden from Command
+    def doc(self):
+        return "Rename grid: %s" % self.oldName
+
     @classmethod
     def _method_code(cls):
         return "RenameGrid2"
@@ -205,9 +209,12 @@ class RenameGrid2(command.Command):
 
 class RemoveGrid2(command.Command):
     def __init__(self, name):
-        ' name - string name of the removing grid '
+        'name - string name of the removing grid'
         super(RemoveGrid2, self).__init__({'name': name})
         self.remGrid = name
+
+    def doc(self):
+        return "Remove grid %s" % self.remGrid
 
     #overriden from Command
     @classmethod
@@ -237,7 +244,6 @@ class RemoveGrid2(command.Command):
 
 
 class UniteOpts(object):
-
     ' Grids unification option: gridname + buffer size + density'
 
     def __init__(self, name, buf=0, den=5):
@@ -279,6 +285,12 @@ class UniteGrids(command.Command):
             self.fix_bnd = kwargs['fix_bnd']
         except KeyError:
             self.fix_bnd = True
+
+    def doc(self):
+        ret = "Unite Grids: "
+        for s in self.source:
+            ret += s.name + " "
+        return ret
 
     @classmethod
     def _method_code(cls):
@@ -338,6 +350,9 @@ class MoveGrids(command.Command):
         self.dx, self.dy = dx, dy
         self.names = names
 
+    def doc(self):
+        return "Move grids: " + ", ".join(self.names)
+
     @classmethod
     def fromstring(cls, slist):
         a = ast.literal_eval(slist)
@@ -371,6 +386,9 @@ class RotateGrids(command.Command):
         super(RotateGrids, self).__init__(a)
         self.x0, self.y0, self.angle = p0.x, p0.y, angle
         self.names = names
+
+    def doc(self):
+        return "Rotate grids: " + ", ".join(self.names)
 
     @classmethod
     def fromstring(cls, slist):
@@ -407,6 +425,9 @@ class ScaleGrids(command.Command):
         self.p0 = p0
         self.xpc, self.ypc = xpc, ypc
         self.names = names
+
+    def doc(self):
+        return "Scale grids: " + ", ".join(self.names)
 
     @classmethod
     def fromstring(cls, slist):

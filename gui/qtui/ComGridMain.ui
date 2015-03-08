@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>800</width>
+    <width>804</width>
     <height>600</height>
    </rect>
   </property>
@@ -36,7 +36,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>800</width>
+     <width>804</width>
      <height>20</height>
     </rect>
    </property>
@@ -60,8 +60,8 @@
     <property name="title">
      <string>&amp;View</string>
     </property>
-    <addaction name="act_comhist"/>
     <addaction name="act_grid_manager"/>
+    <addaction name="act_commands_history"/>
    </widget>
    <widget class="QMenu" name="menu_Geometry">
     <property name="title">
@@ -154,6 +154,15 @@
     </layout>
    </widget>
   </widget>
+  <widget class="QDockWidget" name="dw_history">
+   <property name="windowTitle">
+    <string>Commands History</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>8</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents_3"/>
+  </widget>
   <action name="act_open">
    <property name="text">
     <string>&amp;Open ...</string>
@@ -237,6 +246,14 @@
     <string>&amp;Scale</string>
    </property>
   </action>
+  <action name="act_commands_history">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Commands history</string>
+   </property>
+  </action>
  </widget>
  <resources>
   <include location="ComGridRes.qrc"/>
@@ -271,6 +288,54 @@
     <hint type="destinationlabel">
      <x>761</x>
      <y>300</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>DWGridManager</sender>
+   <signal>visibilityChanged(bool)</signal>
+   <receiver>act_grid_manager</receiver>
+   <slot>setChecked(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>664</x>
+     <y>300</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>act_commands_history</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>dw_history</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>401</x>
+     <y>558</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>dw_history</sender>
+   <signal>visibilityChanged(bool)</signal>
+   <receiver>act_commands_history</receiver>
+   <slot>setChecked(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>401</x>
+     <y>558</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>-1</x>
+     <y>-1</y>
     </hint>
    </hints>
   </connection>
