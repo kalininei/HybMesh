@@ -17,27 +17,42 @@ class Framework(command.CommandReceiver):
         self._visualiser.set_framework(self)
         self.grids2 = bp.NamedList()
 
+    def add_grid(self, name, grid):
+        'adds a grid with the certain name to a grid list'
+        self.grids2[name] = grid
+
+    def remove_grid(self, name):
+        'removes a grid with the certain name from a grid list'
+        self.grids2.pop(name)
+
+    def get_grid(self, ind=None, name=None, grid=None):
+        "-> (index, name, grid). Get a grid by name or reference"
+        return self.grids2.get(ind, name, grid)
+
     def view_update(self):
         'updates visualisation'
         self._visualiser.update()
 
     def post_proc(self):
-        'callback after each command invokation '
+        'callback after each command invocation '
         self.view_update()
 
     def get_grid_names(self):
+        '-> [list of grid names]'
         return self.grids2.keys()
 
     def get_checked_grid_names(self):
+        '-> [list of user checked grid names]'
         return self._visualiser.get_checked_grid_names()
 
     def get_unchecked_grid_names(self):
+        '-> [list of user unchecked grid names]'
         return [x for x in self.get_grid_names()
                 if x not in self.get_checked_grid_names()]
 
     #overriden from CommandReceiver
     def to_zero_state(self):
-        ' deletes all data '
+        'deletes all grids'
         self.grids2 = bp.NamedList()
 
     def save_state(self, xmlnode):

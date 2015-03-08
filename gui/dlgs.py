@@ -496,6 +496,71 @@ class ScaleGridsDlg(SimpleAbstractDialog):
         return od.grds, rel_pnt, sx, sy
 
 
+class CopyGrids(SimpleAbstractDialog):
+    def __init__(self, used_grids, all_grids, parent=None):
+        self.odata().grds = used_grids
+        self.all_grids = all_grids
+        super(CopyGrids, self).__init__(parent)
+        self.resize(400, 300)
+        self.setWindowTitle("Copy grids")
+
+    def _default_odata(self, obj):
+        "fills options struct obj with default values"
+        obj.prefix = "Copy"
+        obj.postfix = ""
+        obj.grds = []
+
+    def olist(self):
+        "-> optview.OptionsList"
+        return optview.OptionsList([("Copy Grids", "Grid name prefix",
+                optview.SimpleOptionEntry(self.odata(), "prefix")),
+            ("Copy Grids", "Grid name postfix",
+                optview.SimpleOptionEntry(self.odata(), "postfix")),
+            ("Copy Grids", "Grids list", optview.MultipleChoiceOptionEntry(
+                self.odata(), "grds", self.all_grids))])
+
+    def ret_value(self):
+        "-> (srcnames, newnames)"
+        names = self.odata().grds[:]
+        newnames = []
+        for n1 in names:
+            newnames.append(self.odata().prefix + n1 + self.odata().postfix)
+        return names, newnames
+
+    def check_input(self):
+        "throws Exception if self.odata() has invalid fields"
+        if len(self.odata().grds) < 1:
+            raise Exception("No source grids")
+
+
+class RemoveGrids(SimpleAbstractDialog):
+    def __init__(self, used_grids, all_grids, parent=None):
+        self.odata().grds = used_grids
+        self.all_grids = all_grids
+        super(RemoveGrids, self).__init__(parent)
+        self.resize(400, 300)
+        self.setWindowTitle("Remove grids")
+
+    def _default_odata(self, obj):
+        "fills options struct obj with default values"
+        obj.grds = []
+
+    def olist(self):
+        "-> optview.OptionsList"
+        return optview.OptionsList([
+            ("Remove Grids", "Grids list", optview.MultipleChoiceOptionEntry(
+                self.odata(), "grds", self.all_grids))])
+
+    def ret_value(self):
+        "-> [names]"
+        return self.odata().grds[:]
+
+    def check_input(self):
+        "throws Exception if self.odata() has invalid fields"
+        if len(self.odata().grds) < 1:
+            raise Exception("No grids to remove")
+
+
 class GridViewOpt(QtGui.QDialog, qtui.ui_GridViewOpt.Ui_Dialog):
     ' Grid view options '
 

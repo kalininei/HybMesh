@@ -75,11 +75,13 @@ class CommandTableDelegate(QtGui.QAbstractItemDelegate):
             return self.tw.toPlainText()
 
         def accept(self):
+            "overriden"
             self.commit_signal.emit(self)
             self.close_signal.emit(self, QtGui.QAbstractItemDelegate.NoHint)
             super(CommandTableDelegate.Editor, self).accept()
 
         def reject(self):
+            "overriden"
             self.close_signal.emit(self, QtGui.QAbstractItemDelegate.NoHint)
             super(CommandTableDelegate.Editor, self).reject()
 
@@ -242,6 +244,7 @@ class CommandTable(QtGui.QTableView):
     def __init__(self, comflow, parent=None):
         "CommandTable(command.CommandFlow comflow)"
         super(CommandTable, self).__init__(parent)
+        self.setVerticalScrollMode(self.ScrollPerPixel)
 
         hh = self.horizontalHeader()
         hh.setResizeMode(QtGui.QHeaderView.ResizeToContents)
@@ -249,7 +252,7 @@ class CommandTable(QtGui.QTableView):
 
         vh = self.verticalHeader()
         vh.setResizeMode(QtGui.QHeaderView.ResizeToContents)
-        vh.setDefaultAlignment(QtCore.Qt.AlignTop)
+        #vh.setDefaultAlignment(QtCore.Qt.AlignTop)
 
         delegate = CommandTableDelegate(hh, self)
         self.setItemDelegate(delegate)
@@ -380,9 +383,8 @@ class FlowList(QtGui.QTableView):
                 QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
         if a == QtGui.QMessageBox.Yes:
             try:
-                self.model.beginRemoveRows(QtCore.QModelIndex(), i, i)
                 self.flow_collection.remove_flow(fn)
-                self.model.endRemoveRows()
+                self.reset()
                 self.resizeColumnsToContents()
             except:
                 QtGui.QMessageBox.warning(None, "Warning",
@@ -395,8 +397,9 @@ class FlowList(QtGui.QTableView):
         fn = self.flow_collection.get_flow_names()[i]
         nm, ok = QtGui.QInputDialog.getText(self, "Rename",
                 "Enter new flow name", text=fn)
-        if ok:
-            self.flow_collection.rename_flow(fn, nm)
+        fn, nm = str(fn), str(nm)
+        if ok and fn != nm:
+            self.flow_collection.rename_flow(fn, str(nm))
             self.reset()
             self.resizeColumnsToContents()
 
@@ -469,7 +472,7 @@ if __name__ == "__main__":
 
         def remove_subscriber(self, obj):
             pass
-        
+
         def com_count(self):
             return len(self._commands)
 

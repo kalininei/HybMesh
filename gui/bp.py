@@ -124,9 +124,19 @@ class NamedList(OrderedDict):
         ind = self.keys().index(key)
         return ind, self.values()[ind]
 
+    def get(self, ind=None, key=None, val=None):
+        '-> (index, key, value). Get full entry information'
+        if ind is not None:
+            key, val = self.get_by_index(ind)
+        elif key is not None:
+            ind, val = self.get_by_key(key)
+        elif val is not None:
+            ind, key = self.get_by_value(val)
+        return ind, key, val
+
     #places (key, value) in a certain position
     def insert(self, ind, key, value):
-        ' inserts key,value at the specified position '
+        'inserts key,value at the specified position'
         key = unique_name(key, self.keys())
         restored = []
         k = len(self) - ind
@@ -144,6 +154,7 @@ if __name__ == '__main__':
 
     a = NamedList([("active", 1), ("passive", 2)])
     a["once"] = 4
+    a["active"] = 2
     for name, val in a.items():
         print name, val
     b = copy.deepcopy(a)

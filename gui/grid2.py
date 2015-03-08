@@ -22,7 +22,7 @@ class Grid2(bgeom.GeomStruct):
     def deepcopy(self):
         __tmp = self._subscribers_change_geom
         self._subscribers_change_geom = set()
-        ret = copy.deepcopy(self)
+        ret = super(Grid2, self).deepcopy()
         self._subscribers_change_geom = __tmp
         return ret
 

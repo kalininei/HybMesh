@@ -7,7 +7,6 @@ from unite_grids import unite_grids
 
 class AddUnfRectGrid(command.Command):
     "Add uniform rectangular grid "
-    #def __init__(self, p0, p1, nx, ny, name):
     def __init__(self, argsdict):
         super(AddUnfRectGrid, self).__init__(argsdict)
         self.p0, self.p1 = argsdict['p0'], argsdict['p1']
@@ -174,70 +173,79 @@ class AddUnfRingGrid(command.Command):
                                     self.Grid)
 
 
-class RenameGrid2(command.Command):
-    def __init__(self, argsdict):
-        super(RenameGrid2, self).__init__(argsdict)
-        self.oldName, self.newName = argsdict['old'], argsdict['new']
-
+class RenameGrid(command.Command):
+    def __init__(self, oldname, newname):
+        a = {"oldname": oldname, "newname": newname}
+        super(RenameGrid, self).__init__(a)
+        self.oldname, self.newname = oldname, newname
+        #actual new grid name can differ from self.newname
+        #due to unique names policy. Actual new name is stored
+        #in self.backup_newname
+        self.backup_newname = None
 
     #overriden from Command
     def doc(self):
-        return "Rename grid: %s" % self.oldName
+        return "Rename grid: %s" % self.oldname
 
     @classmethod
     def _method_code(cls):
-        return "RenameGrid2"
+        return "RenameGrid"
 
     @classmethod
     def fromstring(cls, slist):
         a = ast.literal_eval(slist)
-        return cls(a)
+        return cls(a['oldname'], a['newname'])
 
     def _exec(self):
-        self.receiver.grids2.changeKey(self.oldName, self.newName)
+        i, _, _ = self.receiver.get_grid(name=self.oldname)
+        self.receiver.grids2.change_key(self.oldname, self.newname)
+        #backup new name as it can be different from self.newname
+        _, self.backup_newname, _ = self.receiver.get_grid(ind=i)
         return True
 
     def _clear(self):
         pass
 
     def _undo(self):
-        self.receiver.grids2.changeKey(self.newName, self.oldName)
+        self.receiver.grids2.change_key(self.backup_newname, self.oldname)
 
     def _redo(self):
         self._exec()
 
 
-class RemoveGrid2(command.Command):
-    def __init__(self, name):
+class RemoveGrid(command.Command):
+    def __init__(self, names):
         'name - string name of the removing grid'
-        super(RemoveGrid2, self).__init__({'name': name})
-        self.remGrid = name
+        super(RemoveGrid, self).__init__({'names': ' '.join(names)})
+        self.names = names
+        self.backup = []
 
     def doc(self):
-        return "Remove grid %s" % self.remGrid
+        return "Remove grids: %s" % ', '.join(self.names)
 
     #overriden from Command
     @classmethod
     def _method_code(cls):
-        return "RemoveGrid2"
+        return "RemoveGrid"
 
     @classmethod
     def fromstring(cls, slist):
         a = ast.literal_eval(slist)
-        return cls(a['name'])
+        return cls(a['names'].split())
 
     def _exec(self):
-        self.backupIndex, self.backupGrid = \
-            self.receiver.grids2.get_by_key(self.remGrid)
-        del self.receiver.grids2[self.remGrid]
+        self.backup = []
+        for n in self.names:
+            self.backup.append(self.receiver.get_grid(name=n))
+            self.receiver.remove_grid(n)
         return True
 
     def _clear(self):
-        del self.backupGrid
+        self.backup = []
 
     def _undo(self):
-        self.receiver.grids2.insert(self.backupIndex,
-                                    self.remGrid, self.backupGrid)
+        for v in self.backup:
+            self.receiver.grids2.insert(*v)
 
     def _redo(self):
         self._exec()
@@ -453,3 +461,50 @@ class ScaleGrids(command.Command):
 
     def _redo(self):
         self._exec()
+
+
+class CopyGrid(command.Command):
+    "Copy grids"
+
+    def __init__(self, srcnames, copynames):
+        "srcnames, copynames are the list of grid names"
+        a = {'srcnames': ' '.join(srcnames),
+                'copynames': ' '.join(copynames)}
+        super(CopyGrid, self).__init__(a)
+        self.srcnames = srcnames
+        self.copynames = copynames
+        #new grids as a tuple (ind, name, grid)
+        self.created_grids = []
+
+    def doc(self):
+        return "Copy grids: " + ", ".join(self.srcnames)
+
+    @classmethod
+    def fromstring(cls, slist):
+        a = ast.literal_eval(slist)
+        return cls(a['srcnames'].split(), a['copynames'].split())
+
+    @classmethod
+    def _method_code(cls):
+        return "CopyGrid"
+
+    def _exec(self):
+        self.created_grids = []
+        for name1, name2 in zip(self.srcnames, self.copynames):
+            gold = self.receiver.get_grid(name=name1)[2]
+            gnew = gold.deepcopy()
+            self.receiver.add_grid(name2, gnew)
+            self.created_grids.append(self.receiver.get_grid(grid=gnew))
+        return True
+
+    def _clear(self):
+        self.created_grids = []
+
+    def _undo(self):
+        for _, n, _ in self.created_grids:
+            self.receiver.remove_grid(n)
+
+    def _redo(self):
+        for v in self.created_grids:
+            self.receiver.grids2.insert(*v)
+

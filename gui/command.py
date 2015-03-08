@@ -5,7 +5,6 @@ import bp
 
 
 class CommandReceiver(object):
-
     ' Interface for Command Receiver object '
 
     def to_zero_state(self):
@@ -33,7 +32,8 @@ class Command(object):
     ' abstract base class for flow command '
 
     def __init__(self, argsdict):
-        ' each argsdict value should have __str__ method '
+        """ argsdic is a option dictionary {optionname1: optionvalue1, ...}
+            each argsdict value should have __str__ method """
         self.__executed = False
         self.__comment = ""
         #comLine is string representation of command:
@@ -420,6 +420,9 @@ class FlowCollection(object):
 
         #removing from list
         del self._flows[flow_name]
+
+    def rename_flow(self, oldname, newname):
+        self._flows.change_key(oldname, newname)
 
     def xml_load(self, fname):
         ' fills object from xml file '

@@ -87,7 +87,26 @@ class GridBlockTreeItem(QtGui.QTreeWidgetItem):
         elif col == 4:
             #delete grid
             #assuming that we are operating on the actual flow
-            com = gridcom.RemoveGrid2(self.name)
+            com = gridcom.RemoveGrid([self.name])
+            globvars.actual_flow().exec_command(com)
+
+    def show_context(self, pnt):
+        def trig(m, name, fun):
+            "create menu item"
+            act = QtGui.QAction(name, self.treeWidget())
+            act.triggered.connect(fun)
+            m.addAction(act)
+        menu = QtGui.QMenu(self.treeWidget())
+        trig(menu, "Rename", self._rename)
+        menu.popup(self.treeWidget().viewport().mapToGlobal(pnt))
+
+    def _rename(self):
+        oldname = self.name
+        newname, ok = QtGui.QInputDialog.getText(self.treeWidget(),
+                "Rename grid", "Enter new grid name", text=oldname)
+        oldname, newname = str(oldname), str(newname)
+        if ok and oldname != newname:
+            com = gridcom.RenameGrid(oldname, newname)
             globvars.actual_flow().exec_command(com)
 
 

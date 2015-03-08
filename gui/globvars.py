@@ -25,10 +25,10 @@ mainWindow = mainwin.MainWindow()
 
 #build flow collection
 #it is build after mainwindow because FrameworkVis should use mainWindow
-_commands = [gridcom.AddUnfRectGrid, gridcom.RemoveGrid2,
+_commands = [gridcom.AddUnfRectGrid, gridcom.RemoveGrid,
         gridcom.AddUnfCircGrid, gridcom.MoveGrids, gridcom.RotateGrids,
-        gridcom.RenameGrid2, gridcom.UniteGrids, gridcom.AddUnfRingGrid,
-        gridcom.ScaleGrids]
+        gridcom.RenameGrid, gridcom.UniteGrids, gridcom.AddUnfRingGrid,
+        gridcom.ScaleGrids, gridcom.CopyGrid]
 
 Flows = command.FlowCollection(_commands, framework.Framework)
 

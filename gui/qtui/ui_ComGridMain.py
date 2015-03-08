@@ -120,6 +120,10 @@ class Ui_MainWindow(object):
         self.act_commands_history = QtGui.QAction(MainWindow)
         self.act_commands_history.setCheckable(True)
         self.act_commands_history.setObjectName(_fromUtf8("act_commands_history"))
+        self.act_copy_grids = QtGui.QAction(MainWindow)
+        self.act_copy_grids.setObjectName(_fromUtf8("act_copy_grids"))
+        self.act_remove_grids = QtGui.QAction(MainWindow)
+        self.act_remove_grids.setObjectName(_fromUtf8("act_remove_grids"))
         self.menu_File.addAction(self.act_open)
         self.menu_File.addAction(self.act_save)
         self.menu_File.addSeparator()
@@ -133,6 +137,8 @@ class Ui_MainWindow(object):
         self.menuAdd_grid.addAction(self.act_unf_ring)
         self.menu_Geometry.addAction(self.menuAdd_grid.menuAction())
         self.menuTools.addAction(self.act_unite_grids)
+        self.menuTools.addAction(self.act_copy_grids)
+        self.menuTools.addAction(self.act_remove_grids)
         self.menuTransform.addAction(self.act_movrot)
         self.menuTransform.addAction(self.act_scale)
         self.menubar.addAction(self.menu_File.menuAction())
@@ -177,5 +183,7 @@ class Ui_MainWindow(object):
         self.act_unf_ring.setText(_translate("MainWindow", "Uniform r&ing", None))
         self.act_scale.setText(_translate("MainWindow", "&Scale", None))
         self.act_commands_history.setText(_translate("MainWindow", "Commands history", None))
+        self.act_copy_grids.setText(_translate("MainWindow", "&Copy grids", None))
+        self.act_remove_grids.setText(_translate("MainWindow", "&Remove grids", None))
 
 import ComGridRes_rc

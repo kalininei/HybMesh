@@ -3,6 +3,7 @@ import math
 
 
 #TODO: Do I really need it?
+#it is somehow used in visualization cache
 class GeomStruct(object):
     "Geometric structure class - parent for all structures"
     __num = 0
@@ -31,8 +32,8 @@ class GeomStruct(object):
 class Point2(object):
     ' point in (x,y) plane '
     def __init__(self, x, y):
-        self.x = x
-        self.y = y
+        self.x = float(x)
+        self.y = float(y)
 
     def __str__(self):
         return str(self.x) + " " + str(self.y)

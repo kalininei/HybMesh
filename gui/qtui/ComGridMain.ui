@@ -82,6 +82,8 @@
      <string>&amp;Tools</string>
     </property>
     <addaction name="act_unite_grids"/>
+    <addaction name="act_copy_grids"/>
+    <addaction name="act_remove_grids"/>
    </widget>
    <widget class="QMenu" name="menuTransform">
     <property name="title">
@@ -252,6 +254,16 @@
    </property>
    <property name="text">
     <string>Commands history</string>
+   </property>
+  </action>
+  <action name="act_copy_grids">
+   <property name="text">
+    <string>&amp;Copy grids</string>
+   </property>
+  </action>
+  <action name="act_remove_grids">
+   <property name="text">
+    <string>&amp;Remove grids</string>
    </property>
   </action>
  </widget>

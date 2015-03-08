@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-#from PyQt4 import QtGui
+from PyQt4 import QtCore
 from PyQt4.QtGui import (QMainWindow,
     QFileDialog, QHBoxLayout)
 import qtui.ui_ComGridMain
@@ -60,6 +60,7 @@ class MainWindow(QMainWindow, qtui.ui_ComGridMain.Ui_MainWindow):
         self._commands_history_init()
         self._vtk_widget_init()
         globvars.Flows.add_actflow_subscriber(self)
+        self.actual_flow_changed(globvars.Flows.get_actual_flow_name())
 
     # --------- constructor procedures
     def _connect_actions(self):
@@ -76,6 +77,8 @@ class MainWindow(QMainWindow, qtui.ui_ComGridMain.Ui_MainWindow):
         self.act_unf_ring.triggered.connect(self._add_ring_grid)
         #tools
         self.act_unite_grids.triggered.connect(self._unite_grids)
+        self.act_remove_grids.triggered.connect(self._remove_grids)
+        self.act_copy_grids.triggered.connect(self._copy_grids)
         #transform
         self.act_movrot.triggered.connect(self._mov_rot)
         self.act_scale.triggered.connect(self._scale_grid)
@@ -84,6 +87,10 @@ class MainWindow(QMainWindow, qtui.ui_ComGridMain.Ui_MainWindow):
         ' initialization of the grid manager '
         self.tw_gridblocks.itemClicked.connect(
                 self._grid_manager_item_click)
+        self.tw_gridblocks.setContextMenuPolicy(
+                QtCore.Qt.CustomContextMenu)
+        self.tw_gridblocks.customContextMenuRequested.connect(
+                self._grid_manager_context_menu)
 
     def _commands_history_init(self):
         'initialization of the commands history window'
@@ -157,6 +164,24 @@ class MainWindow(QMainWindow, qtui.ui_ComGridMain.Ui_MainWindow):
             com = gridcom.UniteGrids(**a)
             globvars.actual_flow().exec_command(com)
 
+    def _copy_grids(self):
+        all_grids = globvars.actual_data().get_grid_names()
+        used_grids = globvars.actual_data().get_checked_grid_names()
+        dialog = dlgs.CopyGrids(used_grids, all_grids, self)
+        if dialog.exec_():
+            srcnames, newnames = dialog.ret_value()
+            com = gridcom.CopyGrid(srcnames, newnames)
+            globvars.actual_flow().exec_command(com)
+
+    def _remove_grids(self):
+        all_grids = globvars.actual_data().get_grid_names()
+        used_grids = globvars.actual_data().get_checked_grid_names()
+        dialog = dlgs.RemoveGrids(used_grids, all_grids, self)
+        if dialog.exec_():
+            remnames = dialog.ret_value()
+            com = gridcom.RemoveGrid(remnames)
+            globvars.actual_flow().exec_command(com)
+
     # ---------- transform
     def _mov_rot(self):
         all_grids = globvars.actual_data().get_grid_names()
@@ -199,6 +224,12 @@ class MainWindow(QMainWindow, qtui.ui_ComGridMain.Ui_MainWindow):
 
     def _grid_manager_item_click(self, item, col):
         item.clicked(col)
+
+    def _grid_manager_context_menu(self, pnt):
+        col = self.tw_gridblocks.indexAt(pnt).column()
+        if col == 0:
+            item = self.tw_gridblocks.itemAt(pnt)
+            item.show_context(pnt)
 
     # ---------- Interfaces
     def actual_flow_changed(self, flow_name):

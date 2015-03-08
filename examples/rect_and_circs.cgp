@@ -25,7 +25,7 @@
                     <LINE>AddUnfCircGrid { 'p0': '1.0 10.0', 'rad': '2.0', 'na': '40', 'nr': '20', 'coef': '1.2', 'is_trian': 'True', 'name': 'CircleGrid1'}</LINE>
                 </ENTRY>
                 <ENTRY>
-                    <LINE>RemoveGrid2 {'name': 'CircleGrid1'}</LINE>
+                    <LINE>RemoveGrid {'names': 'CircleGrid1'}</LINE>
                 </ENTRY>
                 <ENTRY>
                     <LINE>AddUnfCircGrid { 'p0': '0.0 0.0', 'rad': '0.8', 'na': '40', 'nr': '10', 'coef': '1.2', 'is_trian': 'True', 'name': 'CircleGrid1'}</LINE>
