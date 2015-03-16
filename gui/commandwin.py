@@ -3,9 +3,7 @@
 
 import functools
 from PyQt4 import QtCore, QtGui
-import qtui.ComGridRes_rc
-qtui.ComGridRes_rc
-
+import qtbp
 
 #===================== Command table MVC
 class CommandTableConfigure(object):
@@ -266,7 +264,7 @@ class CommandTable(QtGui.QTableView):
 
 
 class FlowListModel(QtCore.QAbstractTableModel):
-    """ Model for COmmands Flows representation.
+    """ Model for Commands Flows representation.
         Flows are shown in a list with additional
         icon buttons: remove flow, checkpoint flow
         and context menu for each flow"""
@@ -275,8 +273,8 @@ class FlowListModel(QtCore.QAbstractTableModel):
         "(command.FlowCollection flow_collection, QWidget parent)"
         super(FlowListModel, self).__init__(parent)
         self.flows = flow_collection
-        self.rem_icon = QtGui.QIcon(QtGui.QPixmap(":/icons/delete.png"))
-        self.chp_icon = QtGui.QIcon(QtGui.QPixmap(":/icons/split.png"))
+        self.rem_icon = qtbp.get_icon("del")
+        self.chp_icon = qtbp.get_icon("split")
 
     def rowCount(self, parent=None):
         "overriden"
@@ -439,8 +437,6 @@ class HistoryDockFrame(QtGui.QFrame):
 
     def actual_flow_changed(self, newflow):
         "messager from FlowCollection subscription"
-        #TODO: flist and comtab models should be
-        #      set as subscribers?
         #list change
         self.flist.model.reset()
         #table change

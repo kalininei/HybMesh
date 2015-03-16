@@ -2,15 +2,17 @@ import sip
 
 from PyQt4 import QtGui
 import vtk
-#resources
-import qtui.ComGridRes_rc
-#get rid off unused module spell checker error:
-qtui.ComGridRes_rc
 
+import qtbp
 import gridcom
+import objcom
 import globvars
 import dlgs
+import contvis
+import btypes
+import geomdlgs
 
+#vtk options
 def_color = (0.7, 0.7, 0.7)
 def_linewidth = 1
 chk_color = (1, 0, 0)
@@ -23,11 +25,31 @@ class FrameworkVis(object):
         self.fw = None
 
     def set_framework(self, fw):
-        ' sets a refference to the framework object @fw '
+        'sets a reference to the framework object @fw '
         self.fw = fw
 
     def update(self):
         ' Updates view of referenced framework '
+        raise NotImplementedError
+
+    #user requests
+    def ask_checked_grid_names(self):
+        ' returns names of checked grids '
+        raise NotImplementedError
+
+    def ask_checked_contours_names(self):
+        'returns names of checked contours'
+        raise NotImplementedError
+
+    def ask_checked_gbnd_names(self):
+        'returns names of checkes grid boundaries'
+        raise NotImplementedError
+
+    def ask_new_contours_bnd(self, cnames, btypes):
+        """ -> [{boundry-index: [list of contour edges]}, {}, ...]
+            -> None
+            Request for new boundary types for contours.
+        """
         raise NotImplementedError
 
 
@@ -39,9 +61,9 @@ class GridBlockTreeItem(QtGui.QTreeWidgetItem):
         self.view_opt = view_opt
         self.name = name
         #options
-        self.setIcon(3, QtGui.QIcon(QtGui.QPixmap(":/icons/opts.png")))
+        self.setIcon(3, qtbp.get_icon("opts"))
         #delete button
-        self.setIcon(4, QtGui.QIcon(QtGui.QPixmap(":/icons/delete.png")))
+        self.setIcon(4, qtbp.get_icon("del"))
         #opts
         self.update(name)
 
@@ -62,9 +84,9 @@ class GridBlockTreeItem(QtGui.QTreeWidgetItem):
     def _set_view_icon(self):
         ' sets visibility icon '
         if self.view_opt.get_visibility():
-            self.setIcon(2, QtGui.QIcon(QtGui.QPixmap(":/icons/eye-on.png")))
+            self.setIcon(2, qtbp.get_icon("eye-on"))
         else:
-            self.setIcon(2, QtGui.QIcon(QtGui.QPixmap(":/icons/eye-off.png")))
+            self.setIcon(2, qtbp.get_icon("eye-off"))
 
     def clicked(self, col):
         """ item click handler
@@ -87,7 +109,7 @@ class GridBlockTreeItem(QtGui.QTreeWidgetItem):
         elif col == 4:
             #delete grid
             #assuming that we are operating on the actual flow
-            com = gridcom.RemoveGrid([self.name])
+            com = objcom.RemoveGrid([self.name])
             globvars.actual_flow().exec_command(com)
 
     def show_context(self, pnt):
@@ -118,7 +140,7 @@ class ViewGridData(object):
     don't free memory with the deletion of the corresponding grid
     in order to support undo/redo strategy.
     Hence corresponding actors and other memory consuming attrs
-    should be freed mannualy with the deletion of the grid by
+    should be freed manualy with the deletion of the grid by
     invocation of mem_minimize() method
     """
     #id -> ViewGridData
@@ -142,7 +164,7 @@ class ViewGridData(object):
             cls.stored[g2.get_id()] = ret
 
         #adds a subscriber if grid geometry was chanded
-        g2.add_subscriber_change_geom(ret)
+        g2.add_subscriber_change_geom(ret.grid_geom_event)
         return ret
 
     def mem_minimize(self):
@@ -150,7 +172,7 @@ class ViewGridData(object):
         self._grid_actor = None
         self._manager_item = None
 
-    def grid_geom_event(self, g2):
+    def grid_geom_event(self):
         """ if grid geometry was change -> delete an actor
             It will be created again in a get_actor method
         """
@@ -234,14 +256,28 @@ class ViewGridData(object):
 
 
 class QtFrameworkVis(FrameworkVis):
-    """ output into two Qt Frames:
+    """ output into three Qt Frames:
          -- visual
          -- grid tree
+         -- contours tree
     """
     def __init__(self):
         super(QtFrameworkVis, self).__init__()
+        self.cont_view = globvars.mainWindow.cont_view
+        self.bnd_view = globvars.mainWindow.bnd_view
+        self.cont_model = None
+        self.bnd_model = None
+        self.vtk_draw = globvars.mainWindow.vtkWidget
 
-    def get_checked_grid_names(self):
+    #======================== OVERRIDEN
+    def set_framework(self, fw):
+        super(QtFrameworkVis, self).set_framework(fw)
+        self.cont_model = contvis.ContListModel(fw.contours2,
+                fw.grids2, fw.boundary_types, self.cont_view)
+        self.bnd_model = btypes.BoundaryTypesModel(fw.boundary_types,
+                self.bnd_view)
+
+    def ask_checked_grid_names(self):
         ' returns names of checked grids '
         ret = []
         for (name, grid) in self.fw.grids2.items():
@@ -250,15 +286,44 @@ class QtFrameworkVis(FrameworkVis):
                 ret.append(name)
         return ret
 
+    def ask_checked_contours_names(self):
+        'returns names of checked contours'
+        try:
+            return self.cont_model.checked_names_udc()
+        except:
+            return []
+
+    def ask_checked_gbnd_names(self):
+        'returns names of checkes grid boundaries'
+        try:
+            return self.cont_model.checked_names_gbc()
+        except:
+            return []
+
+    def ask_new_contours_bnd(self, cnames, btypes):
+        """ ->[{boundry-index: [list of contour edges]}, {}, ...]
+            -> None
+            Request for new boundary types for contours.
+        """
+        acts = [self.cont_model.get_actor(n) for n in cnames]
+        polys = [a.GetMapper().GetInput() for a in acts]
+        conts = [self.fw.get_any_contour(n) for n in cnames]
+        arg = zip(cnames, conts, polys)
+        dialog = geomdlgs.BoundaryTypesManagement(arg, btypes)
+        if dialog.exec_():
+            return dialog.ret_value()
+        else:
+            return None
+
     def update(self):
         """ updates view in of referenced framework in the main window '
             after new command has been executed
         """
-        # cold start invocation before window.show() call
+        #cold start invocation before window.show() call
         if not globvars.mainWindow.isVisible():
             return
 
-        #view grids update
+        #============== Grids
         #clear vtk actors for grids which are deleted
         ids = [a.get_id() for a in self.fw.grids2.values()]
         for k, v in ViewGridData.stored.items():
@@ -278,9 +343,20 @@ class QtFrameworkVis(FrameworkVis):
             #grid actors list
             grid_actors.append(view_data.get_actor(grid))
 
-        #set actors list
-        globvars.mainWindow.set_grid_actors(grid_actors)
+        #============== Boundary types
+        if self.bnd_view.model() is not self.bnd_model:
+            self.bnd_view.setModel(self.bnd_model)
+        self.bnd_model.reset()
 
-        #draw
-        globvars.mainWindow.vtkWidget.GetRenderWindow().Render()
-        globvars.mainWindow.vtkWidget.ren.ResetCamera()
+        #============== CONTOURS
+        if self.cont_view.model() is not self.cont_model:
+            self.cont_view.setModel(self.cont_model)
+        self.cont_model.reset()
+        self.cont_view.expandAll()
+
+        #============== Draw
+        #set actors list
+        alist = grid_actors + self.cont_model.active_actors()
+        self.vtk_draw.set_actor_list(alist)
+        self.vtk_draw.ren.ResetCamera()
+        self.vtk_draw.Render()

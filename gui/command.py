@@ -106,7 +106,7 @@ class Command(object):
            Returns a word which is used to dub this command
            in xml files
         """
-        raise NotImplementedError
+        return cls.__name__
 
     @classmethod
     def doc(cls):
@@ -204,6 +204,7 @@ class Factory(object):
 
 
 class CommandFlow(object):
+    #messages from command flow to subscribers
     ExecCommand = 0
     AppendCommand = 1
     UndoCommand = 2

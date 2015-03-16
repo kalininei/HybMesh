@@ -21,6 +21,8 @@ globvars.mainWindow.vtkWidget.iren().Initialize()
 # open file from argument string
 if len(sys.argv) > 1:
     globvars.Flows.xml_load(sys.argv[1])
+else:
+    globvars.actual_data().view_update()
 
 # start gui loop
 sys.exit(globvars.app.exec_())

@@ -172,7 +172,9 @@ class SimpleAbstractDialog(QtGui.QDialog):
         pass
 
     def _active_entries(self, entry):
-        "return False for non-active entries"
+        """ (optview.OptionEntry entry) -> bool
+            return False for non-active entries
+        """
         return True
 
 
@@ -356,12 +358,15 @@ class UniteGrids(SimpleAbstractDialog):
 class MoveRotateGridsDlg(SimpleAbstractDialog):
     ' Move Rotate grids group'
 
-    def __init__(self, used_grids, all_grids, parent=None):
+    def __init__(self, used_grids, all_grids,
+            used_conts, all_conts, parent=None):
         self.odata().grds = used_grids
+        self.odata().cnts = used_conts
         self.all_grids = all_grids
+        self.all_conts = all_conts
         super(MoveRotateGridsDlg, self).__init__(parent)
         self.resize(400, 300)
-        self.setWindowTitle("Move/Rotate grids")
+        self.setWindowTitle("Move/Rotate objects")
 
     def _default_odata(self, obj):
         "-> options struct with default values"
@@ -370,6 +375,7 @@ class MoveRotateGridsDlg(SimpleAbstractDialog):
         obj.rotp = bgeom.Point2(0.0, 0.0)
         obj.rotangle = 0.0
         obj.grds = []
+        obj.cnts = []
 
     def olist(self):
         "-> optview.OptionsList"
@@ -385,8 +391,10 @@ class MoveRotateGridsDlg(SimpleAbstractDialog):
                 optview.XYOptionEntry(self.odata(), "rotp")),
             ("Rotate", "Angle (deg)",
                 optview.SimpleOptionEntry(self.odata(), "rotangle")),
-            ("Grids", "Grids list", optview.MultipleChoiceOptionEntry(
-                self.odata(), "grds", self.all_grids))])
+            ("Objects", "Grids list", optview.MultipleChoiceOptionEntry(
+                self.odata(), "grds", self.all_grids)),
+            ("Objects", "Contours list", optview.MultipleChoiceOptionEntry(
+                self.odata(), "cnts", self.all_conts))])
 
     def _active_entries(self, entry):
         "return False for non-active entries"
@@ -400,29 +408,34 @@ class MoveRotateGridsDlg(SimpleAbstractDialog):
             return True
 
     def check_input(self):
-        if (len(self.odata().grds) < 1) or \
+        if (len(self.odata().grds) < 1 and len(self.odata().cnts) < 1) or \
                 (not self.odata().do_move and not self.odata().do_rotate):
             raise Exception("nothing to do")
 
     def ret_value(self):
-        ' [source grids], [move_x, move_y], [rot_point, rot_angle] '
+        """->[source grids], [source conts],
+             [move_x, move_y], [rot_point, rot_angle]
+        """
         od = copy.deepcopy(self.odata())
         if not od.do_move:
             od.dx = od.dy = 0
         if not od.do_rotate:
             od.rotangle = 0
-        return od.grds, [od.dx, od.dy], [od.rotp, od.rotangle]
+        return od.grds, od.cnts, [od.dx, od.dy], [od.rotp, od.rotangle]
 
 
 class ScaleGridsDlg(SimpleAbstractDialog):
-    'Scale grids group'
+    'Scale objects group'
 
-    def __init__(self, used_grids, all_grids, parent=None):
+    def __init__(self, used_grids, all_grids,
+            used_cnts, all_cnts, parent=None):
         self.odata().grds = used_grids
+        self.odata().cnts = used_cnts
         self.all_grids = all_grids
+        self.all_cnts = all_cnts
         super(ScaleGridsDlg, self).__init__(parent)
         self.resize(400, 300)
-        self.setWindowTitle("Scale grids")
+        self.setWindowTitle("Scale objects")
 
     def _default_odata(self, obj):
         "-> options struct with default values"
@@ -432,6 +445,7 @@ class ScaleGridsDlg(SimpleAbstractDialog):
         obj.preserve_ratio = True
         obj.point = "center"
         obj.grds = []
+        obj.cnts = []
 
     def olist(self):
         "-> optview.OptionsList"
@@ -447,8 +461,10 @@ class ScaleGridsDlg(SimpleAbstractDialog):
                 optview.SimpleOptionEntry(self.odata(), "height")),
             ("Reference", "Reference Point", optview.SingleChoiceOptionEntry(
                 self.odata(), "point", a_pnt)),
-            ("Grids", "Grids list", optview.MultipleChoiceOptionEntry(
-                self.odata(), "grds", self.all_grids))])
+            ("Objects", "Grids list", optview.MultipleChoiceOptionEntry(
+                self.odata(), "grds", self.all_grids)),
+            ("Objects", "Contours list", optview.MultipleChoiceOptionEntry(
+                self.odata(), "cnts", self.all_cnts))])
 
     def _active_entries(self, entry):
         "return False for non-active entries"
@@ -458,20 +474,24 @@ class ScaleGridsDlg(SimpleAbstractDialog):
             return True
 
     def check_input(self):
-        if (len(self.odata().grds) < 1):
+        if (len(self.odata().grds) < 1 and len(self.odata().cnts) < 1):
             raise Exception("nothing to do")
         if self.odata().width <= 0 or \
                 (not self.odata().preserve_ratio and self.odata().height <= 0):
             raise Exception("invalid scales")
 
     def ret_value(self):
-        "-> names, rel_pnt, xpct, ypct"
+        "-> names, contnames, rel_pnt, xpct, ypct"
         od = copy.deepcopy(self.odata())
 
         #builing bounding box
         x, y = [], []
         for n in od.grds:
             p0, p1 = globvars.actual_data().grids2[n].bounding_box()
+            x += [p0.x, p1.x]
+            y += [p0.y, p1.y]
+        for n in od.cnts:
+            p0, p1 = globvars.actual_data().contours2[n].bounding_box()
             x += [p0.x, p1.x]
             y += [p0.y, p1.y]
         p0, p1 = bgeom.Point2(min(x), min(y)), bgeom.Point2(max(x), max(y))
@@ -493,72 +513,219 @@ class ScaleGridsDlg(SimpleAbstractDialog):
         if (od.preserve_ratio):
             sy = sx
 
-        return od.grds, rel_pnt, sx, sy
+        return od.grds, od.cnts, rel_pnt, sx, sy
 
 
 class CopyGrids(SimpleAbstractDialog):
-    def __init__(self, used_grids, all_grids, parent=None):
+    def __init__(self, used_grids, all_grids,
+            used_cnts, all_cnts, parent=None):
         self.odata().grds = used_grids
+        self.odata().cnts = used_cnts
         self.all_grids = all_grids
+        self.all_cnts = all_cnts
         super(CopyGrids, self).__init__(parent)
         self.resize(400, 300)
-        self.setWindowTitle("Copy grids")
+        self.setWindowTitle("Copy objects")
 
     def _default_odata(self, obj):
         "fills options struct obj with default values"
         obj.prefix = "Copy"
         obj.postfix = ""
         obj.grds = []
+        obj.cnts = []
 
     def olist(self):
         "-> optview.OptionsList"
-        return optview.OptionsList([("Copy Grids", "Grid name prefix",
+        return optview.OptionsList([("Names", "Grid name prefix",
                 optview.SimpleOptionEntry(self.odata(), "prefix")),
-            ("Copy Grids", "Grid name postfix",
+            ("Names", "Grid name postfix",
                 optview.SimpleOptionEntry(self.odata(), "postfix")),
-            ("Copy Grids", "Grids list", optview.MultipleChoiceOptionEntry(
-                self.odata(), "grds", self.all_grids))])
+            ("Objects", "Grids list", optview.MultipleChoiceOptionEntry(
+                self.odata(), "grds", self.all_grids)),
+            ("Objects", "Contours list", optview.MultipleChoiceOptionEntry(
+                self.odata(), "cnts", self.all_cnts))])
 
     def ret_value(self):
-        "-> (srcnames, newnames)"
+        "-> (srcnames, newnames, srccontnames, newcontnames)"
         names = self.odata().grds[:]
-        newnames = []
+        contnames = self.odata().cnts[:]
+        newnames, cnewnames = [], []
         for n1 in names:
             newnames.append(self.odata().prefix + n1 + self.odata().postfix)
-        return names, newnames
+        for n1 in contnames:
+            cnewnames.append(self.odata().prefix + n1 + self.odata().postfix)
+        return names, newnames, contnames, cnewnames
 
     def check_input(self):
         "throws Exception if self.odata() has invalid fields"
-        if len(self.odata().grds) < 1:
-            raise Exception("No source grids")
+        if len(self.odata().grds) < 1 and len(self.odata().cnts) < 1:
+            raise Exception("No source objects")
 
 
 class RemoveGrids(SimpleAbstractDialog):
-    def __init__(self, used_grids, all_grids, parent=None):
+    def __init__(self, used_grids, all_grids,
+            used_conts, all_conts, parent=None):
         self.odata().grds = used_grids
+        self.odata().cnts = used_conts
         self.all_grids = all_grids
+        self.all_conts = all_conts
         super(RemoveGrids, self).__init__(parent)
         self.resize(400, 300)
-        self.setWindowTitle("Remove grids")
+        self.setWindowTitle("Remove objects")
 
     def _default_odata(self, obj):
         "fills options struct obj with default values"
         obj.grds = []
+        obj.cnts = []
 
     def olist(self):
         "-> optview.OptionsList"
+        from optview import MultipleChoiceOptionEntry as Mce
         return optview.OptionsList([
-            ("Remove Grids", "Grids list", optview.MultipleChoiceOptionEntry(
-                self.odata(), "grds", self.all_grids))])
+            ("Remove Objects", "Grids list", Mce(
+                self.odata(), "grds", self.all_grids)),
+            ("Remove Objects", "Contours list", Mce(
+                self.odata(), "cnts", self.all_conts)),
+        ])
 
     def ret_value(self):
-        "-> [names]"
-        return self.odata().grds[:]
+        "-> [names], [contour names]"
+        return self.odata().grds[:], self.odata().cnts[:]
 
     def check_input(self):
         "throws Exception if self.odata() has invalid fields"
-        if len(self.odata().grds) < 1:
-            raise Exception("No grids to remove")
+        if len(self.odata().grds) < 1 and \
+                len(self.odata().cnts) < 1:
+            raise Exception("No objects to remove")
+
+
+class AddRectCont(SimpleAbstractDialog):
+    'Add Uniform Rectangular Grid dialog '
+
+    def __init__(self, bnd_types, parent=None):
+        self.bnd_types = bnd_types
+        super(AddRectCont, self).__init__(parent)
+        self.resize(300, 300)
+        self.setWindowTitle("Build rectangular contour")
+
+    def _default_odata(self, obj):
+        "-> options struct with default values"
+        obj.name = "RectCont1"
+        obj.p0, obj.p1 = bgeom.Point2(0.0, 0.0), bgeom.Point2(1.0, 1.0)
+        obj.bt_separate = False
+        obj.bt_b = obj.bt_r = obj.bt_t = obj.bt_l = "0: None"
+
+    def olist(self):
+        "-> optview.OptionsList"
+        self._default_odata(self.odata())
+        names = self.bnd_types.get_names()
+        caps = []
+        for n in names:
+            b = self.bnd_types.get(name=n)
+            caps.append("%i: %s" % (b.index, b.name))
+        return optview.OptionsList([("Basic", "Contour name",
+                optview.SimpleOptionEntry(self.odata(), "name")),
+            ("Geometry", "Bottom left",
+                optview.XYOptionEntry(self.odata(), "p0")),
+            ("Geometry", "Top right",
+                optview.XYOptionEntry(self.odata(), "p1")),
+            ("Boundary types", "Separate types",
+                optview.BoolOptionEntry(self.odata(), "bt_separate")),
+            ("Boundary types", "Bottom",
+                optview.SingleChoiceOptionEntry(self.odata(), "bt_b", caps)),
+            ("Boundary types", "Right",
+                optview.SingleChoiceOptionEntry(self.odata(), "bt_r", caps)),
+            ("Boundary types", "Top",
+                optview.SingleChoiceOptionEntry(self.odata(), "bt_t", caps)),
+            ("Boundary types", "Left",
+                optview.SingleChoiceOptionEntry(self.odata(), "bt_l", caps)),
+        ])
+
+    def ret_value(self):
+        ' -> (name, p0, p1, [bot, right, top, left bnd int indicies])'
+        def to_b(s):
+            r = self.odata().__dict__[s]
+            r = r.split(None, 2)[0][:-1]
+            return int(r)
+
+        if self.odata().bt_separate:
+            tp = map(to_b, ["bt_b", "bt_r", "bt_t", "bt_l"])
+        else:
+            tp = [to_b("bt_b")] * 4
+        return self.odata().name, self.odata().p0, self.odata().p1, tp
+
+    def check_input(self):
+        if self.odata().p0.x == self.odata().p1.x or \
+                self.odata().p0.y == self.odata().p1.y:
+            raise Exception("Zero area polygon")
+        if self.odata().p0.x >= self.odata().p1.x or \
+                self.odata().p0.y >= self.odata().p1.y:
+            raise Exception("Invalid points order")
+
+    def _active_entries(self, entry):
+        """ (optview.OptionEntry entry) -> bool
+            return False for non-active entries
+        """
+        if entry.member_name in ["bt_r", "bt_t", "bt_l"]:
+            return entry.data.bt_separate
+        else:
+            return True
+
+
+class EditBoundaryType(SimpleAbstractDialog):
+    'Add Uniform Rectangular Grid dialog '
+
+    def __init__(self, bnd_types, bt, parent=None):
+        self._fill_odata(bnd_types, bt, self.odata())
+        #if zero boundary => only color dialog is active
+        if bt is not None and bnd_types.get(name=bt.name).index == 0:
+            self._ind0 = 0
+        else:
+            self._ind0 = 1
+        super(EditBoundaryType, self).__init__(parent)
+        self.resize(300, 300)
+        self.setWindowTitle("Edit boundary type")
+
+    def _default_odata(self, obj):
+        "-> options struct with default values"
+        obj.name = "Boundary"
+        obj.index = 1
+        obj.color = (255, 255, 255)
+
+    def _fill_odata(self, bnd_types, bt, obj):
+        if bt is None:
+            obj.name = bnd_types.next_name()
+            obj.index = bnd_types.next_index()
+            obj.color = bnd_types.next_color()
+        else:
+            obj.name = bt.name
+            obj.color = bt.color
+            obj.index = bt.index
+
+    def olist(self):
+        "-> optview.OptionsList"
+        return optview.OptionsList([("Boundary Type", "Index",
+                optview.BoundedIntOptionEntry(self.odata(), "index",
+                self._ind0, 1e6)),
+            ("Boundary Type", "Name",
+                optview.SimpleOptionEntry(self.odata(), "name")),
+            ("Boundary Type", "Color",
+                optview.ColorOptionEntry(self.odata(), "color")),
+        ])
+
+    def ret_value(self):
+        '-> index, name, (char)*3 color'
+        od = copy.deepcopy(self.odata())
+        return od.index, od.name, od.color
+
+    def _active_entries(self, entry):
+        """ (optview.OptionEntry entry) -> bool
+            return False for non-active entries
+        """
+        if entry.member_name in ["name", "index"]:
+            return self._ind0 != 0
+        else:
+            return True
 
 
 class GridViewOpt(QtGui.QDialog, qtui.ui_GridViewOpt.Ui_Dialog):

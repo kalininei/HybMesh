@@ -1,29 +1,46 @@
 #!/usr/bin/env python
 import copy
 import math
-import bgeom
 import xml.etree.ElementTree as ET
+import bgeom
 import bp
+import contour2
 
 
-class Grid2(bgeom.GeomStruct):
+class Grid2(bgeom.Point2SetStruct):
     def __init__(self):
         super(Grid2, self).__init__()
-        #points coords
-        self.points = []
         #edges -> points indicies
         self.edges = []
         #cells -> ordered edges indicies
         self.cells = []
-        #geometry change substribers:
-        #   should contain grid_geom_event(grid2) method
-        self._subscribers_change_geom = set()
+        #edge index -> boundary type index
+        self.bt = {}
+        #contour2.GridContour.
+        self.cont = None
+
+    def add_edge_bnd(self, ged):
+        """({edge_index: boundary index})
+            Adds values to edge boundary prop
+        """
+        for k, v in ged.items():
+            self.bt[k] = v
+
+    def set_edge_bnd(self, ged):
+        """({edge_index: boundary index})
+            Sets values to edge boundary prop
+        """
+        self.bt = copy.deepcopy(ged)
 
     def deepcopy(self):
-        __tmp = self._subscribers_change_geom
-        self._subscribers_change_geom = set()
+        """ overriden from GeomStruct. returns deepcopied grid """
+        #avoiding deepcopy of self.cont
+        backup_c = self.cont
+        self.cont = None
         ret = super(Grid2, self).deepcopy()
-        self._subscribers_change_geom = __tmp
+        self.cont = backup_c
+        if self.cont is not None:
+            contour2.GridContour2.copy_from_source(self, ret)
         return ret
 
     @staticmethod
@@ -51,10 +68,6 @@ class Grid2(bgeom.GeomStruct):
         for ed, ind in edmap.items():
             ret.edges[ind] = [ed[0], ed[1]]
         return ret
-
-    def n_points(self):
-        ' -> number of points '
-        return len(self.points)
 
     def n_edges(self):
         ' -> number of edges '
@@ -94,69 +107,61 @@ class Grid2(bgeom.GeomStruct):
                 #check if inclusion of e1 is positive
                 e1_direct = self.edges[e1][1] in self.edges[e2]
                 #add to result
-                if e1_direct:
-                    ret[e1][0] = icell
-                else:
-                    ret[e1][1] = icell
+                ret[e1][0 if e1_direct else 1] = icell
         return ret
 
-    # ---- events
-    def add_subscriber_change_geom(self, subscr):
-        """ Adds an object which will get information
-            if grid geometry is changed by invocation
-            of subsr.grid_geom_event(self) method
+    def build_contour(self):
+        'fills self.cont field with contour2.GridContour2 object'
+        self.cont = contour2.GridContour2(self)
+
+    def boundary_contours(self):
+        """ -> [[e1, e2, e3, ....], [e1, e2, e3, ...], ... ]
+            returns indicies of edges which form boundary contours.
+            All contours have anti-clockwise direction
         """
-        self._subscribers_change_geom.add(subscr)
 
-    def remove_subsriber_change_geom(self, subscr):
-        """ Removes subscription from grid geometry event """
-        self._subscribers_change_geom.remove(subscr)
-
-    def _geom_changed(self):
-        for a in self._subscribers_change_geom:
-            a.grid_geom_event(self)
-
-    def bounding_box(self):
-        """ -> (bgeom.Point2, bgeom.Point2)
-
-        returns bottom left and top right point of grid bounding box
-        """
-        x = [p.x for p in self.points]
-        y = [p.y for p in self.points]
-
-        return bgeom.Point2(min(x), min(y)), bgeom.Point2(max(x), max(y))
-
-    # ---- Transformations
-    def move(self, dx, dy):
-        for p in self.points:
-            p.x += dx
-            p.y += dy
-        self._geom_changed()
-
-    def rotate(self, x0, y0, angle):
-        self.points = bgeom.rotate_points(self.points, x0, y0, angle)
-        self._geom_changed()
-
-    def scale(self, p0, xpc, ypc):
-        """ scale the grid using p0 as reference point
-            and xpc% and ypc% as scaling procentages
-        """
-        self.points = bgeom.scale_points(self.points, p0, xpc, ypc)
-        self._geom_changed()
-
-    def unscale(self, p0, xpc, ypc):
-        """ unscale the grid after scaling with p0 as
-            reference point and xpc%, ypc% as scaling procentages
-        """
-        self.scale(p0, 10000.0 / xpc, 10000.0 / ypc)
+        #basic implementation.
+        ed_cl = self.edges_cells_connect()
+        cand_pos = [(i, self.edges[i])
+                for i, e in enumerate(ed_cl) if e[1] < 0]
+        cand_neg = [(i, list(reversed(self.edges[i])))
+                for i, e in enumerate(ed_cl) if e[0] < 0]
+        cand = cand_pos + cand_neg
+        ret = []
+        while len(cand) > 0:
+            ed_ind = [cand[0][0]]
+            pnt_ind = [cand[0][1][0], cand[0][1][1]]
+            del cand[0]
+            while pnt_ind[0] != pnt_ind[-1]:
+                for i, e in enumerate(cand):
+                    if e[1][0] == pnt_ind[-1]:
+                        break
+                else:
+                    raise Exception("Could not detect closed contour")
+                ed_ind.append(e[0])
+                pnt_ind.append(e[1][1])
+                del cand[i]
+            ret.append(ed_ind)
+        return ret
 
     # ---- save to xml
     def xml_save(self, xmlnode):
-        ' save to xml Node'
-        xmlnode.attrib["tp"] = Factory().string_from_cls(self.__class__)
+        'save to xml Node'
+        #basic info
+        xmlnode.attrib["tp"] = self.__class__.__name__
         ET.SubElement(xmlnode, "N_POINTS").text = str(self.n_points())
         ET.SubElement(xmlnode, "N_EDGES").text = str(self.n_edges())
         ET.SubElement(xmlnode, "N_CELLS").text = str(self.n_cells())
+        #specific
+        self._xml_specific_save(xmlnode)
+        #boundary types
+        #clean from zeros as its default value
+        self.bt = {k: v for k, v in self.bt.items() if v != 0}
+        ET.SubElement(xmlnode, "BOUNDARY").text = \
+            ' '.join(map(str, bp.dict_to_plain(self.bt)))
+
+    def _xml_specific_save(self, xmlnode):
+        'Function for overriding. Is called from xml_save()'
         self._xml_write_nodes(ET.SubElement(xmlnode, "POINTS"))
         self._xml_write_edges(ET.SubElement(xmlnode, "EDGES"))
 
@@ -176,19 +181,30 @@ class Grid2(bgeom.GeomStruct):
     @classmethod
     def create_from_xml(cls, xmlnode):
         ' create grid from xml node'
+        tp = globals()[xmlnode.attrib['tp']]
+        g = tp._specific_create_from_xml(xmlnode)
+        bnd = xmlnode.find("BOUNDARY")
+        if bnd is not None and bnd.text is not None:
+            g.bt = bp.plain_to_dict(map(int, bnd.text.split()))
+        g.build_contour()
+        return g
+
+    @classmethod
+    def _specific_create_from_xml(cls, xmlnode):
+        'function for overriding'
         g = cls()
         g._load_nodes(xmlnode.find("POINTS"))
         g._load_edges(xmlnode.find("EDGES"))
         return g
 
     def _load_nodes(self, xmlnode):
-        ' fill nodes table from xml node'
+        'fill nodes table from xml node'
         raw_coords = map(float, xmlnode.find("COORDS").text.split())
         it = iter(raw_coords)
         self.points = map(bgeom.Point2, it, it)
 
     def _load_edges(self, xmlnode):
-        ' fill edges table from xml node '
+        'fill edges table from xml node '
         #edges -> points
         raw = map(int, xmlnode.find("PTS_IND").text.split())
         it = iter(raw)
@@ -303,7 +319,7 @@ class TetragonGrid(Grid2):
 
     #read from xml
     @classmethod
-    def create_from_xml(cls, xmlnode):
+    def _specific_create_from_xml(cls, xmlnode):
         [Nx, Ny] = map(int, xmlnode.find("POINTS/DIM").text.split())
         g = cls(Nx, Ny)
         g._loadNodes(xmlnode.find("POINTS"))
@@ -342,7 +358,7 @@ class UnfRectGrid(TetragonGrid):
 
     #read from xml
     @classmethod
-    def create_from_xml(cls, xmlnode):
+    def _specific_create_from_xml(cls, xmlnode):
         [Nx, Ny] = map(int, xmlnode.find("POINTS/DIM").text.split())
         p0 = map(float, xmlnode.find("POINTS/P0").text.split())
         p0 = bgeom.Point2(p0[0], p0[1])
@@ -479,7 +495,7 @@ class CircularGrid(Grid2):
 
     #read from xml
     @classmethod
-    def create_from_xml(cls, xmlnode):
+    def _specific_create_from_xml(cls, xmlnode):
         [na, nr] = map(int, xmlnode.find("POINTS/DIM").text.split())
         g = cls(na, nr)
         g._loadNodes(xmlnode.find("POINTS"))
@@ -573,7 +589,7 @@ class UnfCircGrid(CircularGrid):
 
     #read from xml
     @classmethod
-    def create_from_xml(cls, xmlnode):
+    def _specific_create_from_xml(cls, xmlnode):
         [na, nr] = map(int, xmlnode.find("POINTS/DIM").text.split())
         p0 = map(float, xmlnode.find("POINTS/CENTER").text.split())
         p0 = bgeom.Point2(p0[0], p0[1])
@@ -659,7 +675,7 @@ class UnfRingGrid(CircularGrid):
 
     #read from xml
     @classmethod
-    def create_from_xml(cls, xmlnode):
+    def _specific_create_from_xml(cls, xmlnode):
         [na, nr] = map(int, xmlnode.find("POINTS/DIM").text.split())
         p0 = map(float, xmlnode.find("POINTS/CENTER").text.split())
         p0 = bgeom.Point2(p0[0], p0[1])
@@ -673,41 +689,5 @@ class UnfRingGrid(CircularGrid):
             act.do(ret)
         return ret
 
-
-# ============================== grids factory
-class Factory(object):
-    """
-    Represents {grid type -> string code} dictionary
-    Factory is used for xml read/write procedures
-    """
-    instance = None
-
-    def __new__(cls):
-        if not cls.instance:
-            cls.instance = super(Factory, cls).__new__(cls)
-            cls.instance._dict = {
-                "Grid2": Grid2,
-                "TetragonGrid": TetragonGrid,
-                "UnfRectGrid": UnfRectGrid,
-                "UnfCircGrid": UnfCircGrid,
-                "UnfRingGrid": UnfRingGrid
-            }
-        return cls.instance
-
-    def string_from_cls(self, cls):
-        ind = self._dict.values().index(cls)
-        return self._dict.keys()[ind]
-
-    def cls_from_string(self, s):
-        return self._dict[s]
-
-    def xml_create(self, xmlnode):
-        cls = self.cls_from_string(xmlnode.attrib["tp"])
-        return cls.create_from_xml(xmlnode)
-
 if __name__ == "__main__":
-    g2 = UnfRectGrid(bgeom.Point2(0, 0), bgeom.Point2(1, 1), 10, 10)
-    print g2
-    g3 = g2.deepcopy()
-    print g3
-
+    pass

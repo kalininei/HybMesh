@@ -17,6 +17,18 @@
    <iconset resource="ComGridRes.qrc">
     <normaloff>:/icons/mainwin.png</normaloff>:/icons/mainwin.png</iconset>
   </property>
+  <property name="toolButtonStyle">
+   <enum>Qt::ToolButtonIconOnly</enum>
+  </property>
+  <property name="animated">
+   <bool>true</bool>
+  </property>
+  <property name="dockNestingEnabled">
+   <bool>false</bool>
+  </property>
+  <property name="dockOptions">
+   <set>QMainWindow::AnimatedDocks</set>
+  </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout_2">
     <item>
@@ -61,6 +73,8 @@
      <string>&amp;View</string>
     </property>
     <addaction name="act_grid_manager"/>
+    <addaction name="act_contour_manager"/>
+    <addaction name="act_bnd_manager"/>
     <addaction name="act_commands_history"/>
    </widget>
    <widget class="QMenu" name="menu_Geometry">
@@ -75,29 +89,33 @@
      <addaction name="act_unf_circ"/>
      <addaction name="act_unf_ring"/>
     </widget>
+    <widget class="QMenu" name="menuAdd_contour">
+     <property name="title">
+      <string>Add &amp;contour</string>
+     </property>
+     <addaction name="act_cont_rect"/>
+    </widget>
     <addaction name="menuAdd_grid"/>
+    <addaction name="menuAdd_contour"/>
+    <addaction name="separator"/>
+    <addaction name="act_copy_grids"/>
+    <addaction name="act_remove_grids"/>
+    <addaction name="separator"/>
+    <addaction name="act_movrot"/>
+    <addaction name="act_scale"/>
    </widget>
    <widget class="QMenu" name="menuTools">
     <property name="title">
      <string>&amp;Tools</string>
     </property>
     <addaction name="act_unite_grids"/>
-    <addaction name="act_copy_grids"/>
-    <addaction name="act_remove_grids"/>
-   </widget>
-   <widget class="QMenu" name="menuTransform">
-    <property name="title">
-     <string>T&amp;ransform</string>
-    </property>
-    <addaction name="act_movrot"/>
-    <addaction name="act_scale"/>
+    <addaction name="act_set_bc"/>
    </widget>
    <addaction name="menu_File"/>
    <addaction name="menu_Edit"/>
    <addaction name="menu_View"/>
    <addaction name="menu_Geometry"/>
    <addaction name="menuTools"/>
-   <addaction name="menuTransform"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <widget class="QDockWidget" name="DWGridManager">
@@ -111,49 +129,7 @@
     <number>2</number>
    </attribute>
    <widget class="QWidget" name="dockWidgetContents">
-    <layout class="QVBoxLayout" name="verticalLayout">
-     <item>
-      <widget class="QTreeWidget" name="tw_gridblocks">
-       <property name="selectionMode">
-        <enum>QAbstractItemView::NoSelection</enum>
-       </property>
-       <property name="selectionBehavior">
-        <enum>QAbstractItemView::SelectItems</enum>
-       </property>
-       <property name="columnCount">
-        <number>5</number>
-       </property>
-       <attribute name="headerVisible">
-        <bool>false</bool>
-       </attribute>
-       <column>
-        <property name="text">
-         <string notr="true">1</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string notr="true">2</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string notr="true">3</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string notr="true">4</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string notr="true">5</string>
-        </property>
-       </column>
-      </widget>
-     </item>
-    </layout>
+    <layout class="QVBoxLayout" name="verticalLayout"/>
    </widget>
   </widget>
   <widget class="QDockWidget" name="dw_history">
@@ -164,6 +140,33 @@
     <number>8</number>
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_3"/>
+  </widget>
+  <widget class="QDockWidget" name="dw_contour_manager">
+   <property name="floating">
+    <bool>false</bool>
+   </property>
+   <property name="features">
+    <set>QDockWidget::AllDockWidgetFeatures</set>
+   </property>
+   <property name="windowTitle">
+    <string>Contours Manager</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>2</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents_2"/>
+  </widget>
+  <widget class="QDockWidget" name="dw_bnd_manager">
+   <property name="allowedAreas">
+    <set>Qt::AllDockWidgetAreas</set>
+   </property>
+   <property name="windowTitle">
+    <string>Boundary Manager</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>2</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents_4"/>
   </widget>
   <action name="act_open">
    <property name="text">
@@ -196,17 +199,6 @@
     <string>Ctrl+Y</string>
    </property>
   </action>
-  <action name="act_comhist">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="checked">
-    <bool>false</bool>
-   </property>
-   <property name="text">
-    <string>Commands &amp;history</string>
-   </property>
-  </action>
   <action name="act_unf_rect">
    <property name="text">
     <string>Uniform &amp;rectangle</string>
@@ -220,7 +212,7 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Grid Manager</string>
+    <string>&amp;Grid Manager</string>
    </property>
   </action>
   <action name="act_unite_grids">
@@ -245,7 +237,7 @@
   </action>
   <action name="act_scale">
    <property name="text">
-    <string>&amp;Scale</string>
+    <string>Sc&amp;ale</string>
    </property>
   </action>
   <action name="act_commands_history">
@@ -253,17 +245,46 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Commands history</string>
+    <string>Commands &amp;History</string>
    </property>
   </action>
   <action name="act_copy_grids">
    <property name="text">
-    <string>&amp;Copy grids</string>
+    <string>Cop&amp;y</string>
    </property>
   </action>
   <action name="act_remove_grids">
    <property name="text">
-    <string>&amp;Remove grids</string>
+    <string>&amp;Remove</string>
+   </property>
+  </action>
+  <action name="act_contour_manager">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Contour Manager</string>
+   </property>
+  </action>
+  <action name="act_cont_rect">
+   <property name="text">
+    <string>&amp;Rectangle</string>
+   </property>
+  </action>
+  <action name="act_bnd_manager">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Boundary Manager</string>
+   </property>
+  </action>
+  <action name="act_set_bc">
+   <property name="text">
+    <string>Set &amp;boundary types</string>
    </property>
   </action>
  </widget>
@@ -344,6 +365,70 @@
     <hint type="sourcelabel">
      <x>401</x>
      <y>558</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>act_contour_manager</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>dw_contour_manager</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>765</x>
+     <y>558</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>dw_contour_manager</sender>
+   <signal>visibilityChanged(bool)</signal>
+   <receiver>act_contour_manager</receiver>
+   <slot>setChecked(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>765</x>
+     <y>558</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>act_bnd_manager</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>dw_bnd_manager</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>765</x>
+     <y>511</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>dw_bnd_manager</sender>
+   <signal>visibilityChanged(bool)</signal>
+   <receiver>act_bnd_manager</receiver>
+   <slot>setChecked(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>765</x>
+     <y>511</y>
     </hint>
     <hint type="destinationlabel">
      <x>-1</x>

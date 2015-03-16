@@ -29,14 +29,16 @@ Defined public classes:
 
     XYOptionEntry - QLabel + pair of QLineEdits.
         Used for classes with x, y properties
+
+    ColorOptionEntry - color rectangle + QColorDialog
+        color pick
 """
 
 import sys
 import copy
 import collections
 from PyQt4 import QtCore, QtGui
-import qtui.ui_ComGridMain
-qtui.ui_ComGridMain
+import qtbp
 
 
 # ================ Configurations
@@ -187,7 +189,7 @@ class SingleChoiceOptionEntry(SimpleOptionEntry):
         return wdg
 
     def set_from_widget(self, widget):
-        self.set(widget.currentText())
+        self.set(str(widget.currentText()))
 
 
 class BoolOptionEntry(SimpleOptionEntry):
@@ -296,17 +298,16 @@ class MultipleChoiceOptionEntry(OptionEntry):
         def __init__(self, data, parent):
             #---- building window
             super(MultipleChoiceOptionEntry.EditWidget, self).__init__(parent)
+            self.setWindowTitle("Multiple choice dialog")
             self.lw1 = QtGui.QListWidget()
             self.lw2 = QtGui.QListWidget()
             btleft = QtGui.QPushButton()
-            btleft.setIcon(QtGui.QIcon(
-                QtGui.QPixmap(":/icons/left_arrow.png")))
+            btleft.setIcon(qtbp.get_icon('<-'))
             btleft.clicked.connect(self.left_click)
             btleft.setFocusPolicy(QtCore.Qt.NoFocus)
             btright = QtGui.QPushButton()
             btright.clicked.connect(self.right_click)
-            btright.setIcon(QtGui.QIcon(
-                QtGui.QPixmap(":/icons/right_arrow.png")))
+            btright.setIcon(qtbp.get_icon('->'))
             btright.setFocusPolicy(QtCore.Qt.NoFocus)
             bbox = QtGui.QDialogButtonBox()
             bbox.setStandardButtons(QtGui.QDialogButtonBox.Cancel |
@@ -404,6 +405,51 @@ class MultipleChoiceOptionEntry(OptionEntry):
 
     def __str__(self):
         return "; ".join(self.get())
+
+
+class ColorOptionEntry(OptionEntry):
+    'color picker. Fills (r, g, b) tuple'
+
+    def __init__(self, data, member_name):
+        super(ColorOptionEntry, self).__init__(data, member_name)
+
+    def _check_proc(self, val):
+        return all(v in range(0, 256) for v in val)
+
+    class DisplayWidget(QtGui.QFrame):
+        def __init__(self, col, parent=None):
+            super(ColorOptionEntry.DisplayWidget, self).__init__(parent)
+            self.col = col
+
+        def paintEvent(self, event):
+            super(ColorOptionEntry.DisplayWidget, self).paintEvent(event)
+            painter = QtGui.QPainter(self)
+            rad = self.height() / 3
+            x, y = 2 * rad, self.height() / 2
+            painter.setBrush(QtGui.QBrush(QtGui.QColor(*self.col)))
+            painter.drawEllipse(QtCore.QPoint(x, y), rad, rad)
+
+    def display_widget(self):
+        " generates display widget with data "
+        return ColorOptionEntry.DisplayWidget(self.get())
+
+    def edit_widget(self, parent=None):
+        w = QtGui.QColorDialog(QtGui.QColor(*self.get()))
+        w.setModal(True)
+        return w
+
+    def get(self):
+        v = super(ColorOptionEntry, self).get()
+        return copy.deepcopy(v)
+
+    def set(self, val):
+        v = copy.deepcopy(val)
+        super(ColorOptionEntry, self).set(v)
+
+    def set_from_widget(self, editor):
+        #value was set in editor widget ok action
+        c = editor.currentColor().getRgb()
+        self.set((c[0], c[1], c[2]))
 
 
 class OptionsList(object):

@@ -13,13 +13,13 @@
                     <LINE>AddUnfRectGrid {'nx': '30', 'ny': '30', 'p0': '-8.0 -8.0', 'p1': '8.0 8.0', 'name': ''}</LINE>
                 </ENTRY>
                 <ENTRY>
-                    <LINE>UniteGrids {'s1': "{'buf': 1.0, 'name': 'RingGrid1', 'den': 7}", 's0': "{'buf': 1.0, 'name': 'Grid1', 'den': 7}", 'name': 'UnitedGrid1', 'fix_bnd': 'False'}</LINE>
+                    <LINE>UniteGrids {'s1': "{'buf': 1.0, 'name': 'RingGrid1', 'den': 7}", 's0': "{'buf': 1.0, 'name': 'NewGrid1', 'den': 7}", 'name': 'UnitedGrid1', 'fix_bnd': 'False'}</LINE>
                 </ENTRY>
                 <ENTRY>
-                    <LINE>MoveGrids {'names': 'Grid1', 'dx': '0.0', 'dy': '6.0'}</LINE>
+                    <LINE>MoveGrids {'names': 'NewGrid1', 'dx': '0.0', 'dy': '6.0'}</LINE>
                 </ENTRY>
                 <ENTRY>
-                    <LINE>UniteGrids {'s1': "{'buf': 1.0, 'name': 'RingGrid1', 'den': 7}", 's0': "{'buf': 1.0, 'name': 'Grid1', 'den': 7}", 'name': 'UnitedGrid1', 'fix_bnd': 'False'}</LINE>
+                    <LINE>UniteGrids {'s1': "{'buf': 1.0, 'name': 'RingGrid1', 'den': 7}", 's0': "{'buf': 1.0, 'name': 'NewGrid1', 'den': 7}", 'name': 'UnitedGrid1', 'fix_bnd': 'False'}</LINE>
                 </ENTRY>
                 <ENTRY>
                     <LINE>AddUnfRingGrid {'p0': '0.0 2.0', 'name': 'RingGrid1', 'radinner': '0.5', 'na': '30', 'radouter': '1.0', 'coef': '1.2', 'nr': '3'}</LINE>

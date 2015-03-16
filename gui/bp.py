@@ -23,6 +23,24 @@ def xmlindent(elem, level=0):
             elem.tail = i
 
 
+def dict_to_plain(d):
+    '{k1: v1, k2: v2, k3: v3, ...} -> [k1, v1, k2, v2, ...]'
+    ret = []
+    for k, v in d.items():
+        ret.append(k)
+        ret.append(v)
+    return ret
+
+
+def plain_to_dict(p):
+    '[k1, v1, k2, v2, ...] -> {k1: v1, k2: v2, k3: v3, ...}'
+    ret = {}
+    it = iter(p)
+    for k, v in zip(it, it):
+        ret[k] = v
+    return ret
+
+
 def multifield_list(nd, dim):
     """ ([list], int) -> [[sublist1], [sublist2], ...]
 
@@ -54,7 +72,10 @@ def multifield_list(nd, dim):
 
 
 def unique_name(stem, nms):
-    if (stem not in nms):
+    """ ->str. Returns unique name on the basis of stem which
+        doesn't present in nms list
+    """
+    if stem not in nms:
         return stem
     else:
         #find last non digit
@@ -149,14 +170,43 @@ class NamedList(OrderedDict):
         for (k, v) in reversed(restored):
             OrderedDict.__setitem__(self, k, v)
 
-if __name__ == '__main__':
-    import copy
 
-    a = NamedList([("active", 1), ("passive", 2)])
-    a["once"] = 4
-    a["active"] = 2
-    for name, val in a.items():
-        print name, val
-    b = copy.deepcopy(a)
-    print b
-    print "eof"
+def compress_int_list(a):
+    """ ([i0, i1, i2, ....] -> "i0-i5 i6 i7-i8"
+
+        Converts integer array into string with
+        eliminated values which go in a row.
+        The procedure provides no internal sorting.
+    """
+    res = []
+    i, n = 0, len(a)
+    while i < n:
+        istart = i
+        while i < n - 1 and a[i + 1] - a[i] == 1:
+            i += 1
+        res.append([a[istart], a[i]])
+        i += 1
+    res2 = []
+    for r in res:
+        if r[0] == r[1]:
+            res2.append(str(r[0]))
+        else:
+            res2.append("%i-%i" % (r[0], r[1]))
+    return " ".join(res2)
+
+
+def int_list_from_compress(s):
+    'reciprocal to compress_int_list'
+    st = s.split()
+    ret = []
+    for v in st:
+        v = v.split('-', 2)
+        if len(v) == 1:
+            ret.append(int(v[0]))
+        else:
+            ist, ien = int(v[0]), int(v[1])
+            ret.extend(range(ist, ien + 1))
+    return ret
+
+if __name__ == '__main__':
+    pass

@@ -58,7 +58,7 @@
                     <LINE>MoveGrids {'names': 'CircleGrid1 RingGrid1', 'dx': '1.0', 'dy': '1.0'}</LINE>
                 </ENTRY>
                 <ENTRY>
-                    <LINE>ScaleGrids {'xpc': '50.0', 'ypc': '200.0', 'p0': '0.0 0.0', 'names': 'Grid1'}</LINE>
+                    <LINE>ScaleGrids {'xpc': '50.0', 'ypc': '200.0', 'p0': '0.0 0.0', 'names': 'NewGrid1'}</LINE>
                 </ENTRY>
             </COMMANDS>
             <STATE>

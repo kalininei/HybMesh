@@ -1,0 +1,79 @@
+<?xml version='1.0' encoding='utf-8'?>
+<ComGridProject>
+    <FLOWS>
+        <FLOW active="1" name="Flow1">
+            <COMMANDS>
+                <ENTRY current="1">
+                    <LINE>Start {}</LINE>
+                </ENTRY>
+                <ENTRY>
+                    <LINE>EditBoundaryType {'index': '1', 'r': '0', 'b': '255', 'name': 'boundary1', 'g': '0'}</LINE>
+                </ENTRY>
+                <ENTRY>
+                    <LINE>EditBoundaryType {'index': '2', 'r': '255', 'b': '0', 'name': 'boundary2', 'g': '0'}</LINE>
+                </ENTRY>
+                <ENTRY>
+                    <LINE>AddRectCont {'p0': '0.0 0.0', 'p1': '1.0 1.0', 'name': 'RectCont1', 'bnds': '2 0 1 0'}</LINE>
+                </ENTRY>
+                <ENTRY>
+                    <LINE>AddRectCont {'p0': '-1.0 -1.0', 'p1': '2.0 2.0', 'name': 'RectCont1', 'bnds': '0 0 0 0'}</LINE>
+                </ENTRY>
+                <ENTRY>
+                    <LINE>RemoveGrid {'contnames': 'RectCont2'}</LINE>
+                </ENTRY>
+                <ENTRY>
+                    <LINE>AddUnfRingGrid {'p0': '0.5 0.5', 'name': 'RingGrid1', 'radinner': '0.2', 'na': '10', 'radouter': '0.4', 'coef': '1.2', 'nr': '4'}</LINE>
+                </ENTRY>
+                <ENTRY>
+                    <LINE>AddUnfRectGrid {'nx': '2', 'ny': '2', 'p0': '0.0 0.0', 'p1': '0.1 0.1', 'name': 'RectGrid1'}</LINE>
+                </ENTRY>
+                <ENTRY>
+                    <LINE>RotateGrids {'contnames': 'RectCont1', 'p0': '0.0 0.0', 'angle': '15.0', 'names': 'RingGrid1'}</LINE>
+                </ENTRY>
+                <ENTRY>
+                    <LINE>CopyGrid {'copycontnames': 'CopyRectCont1', 'contnames': 'RectCont1', 'copynames': 'CopyRingGrid1', 'srcnames': 'RingGrid1'}</LINE>
+                </ENTRY>
+                <ENTRY>
+                    <LINE>MoveGrids {'contnames': 'CopyRectCont1', 'names': 'CopyRingGrid1', 'dx': '3.0', 'dy': '0.0'}</LINE>
+                </ENTRY>
+                <ENTRY>
+                    <LINE>RemoveGrid {'names': 'CopyRingGrid1'}</LINE>
+                </ENTRY>
+                <ENTRY>
+                    <LINE>CopyGrid {'copycontnames': 'SmallRectCont1 SmallCopyRectCont1', 'contnames': 'RectCont1 CopyRectCont1', 'copynames': '', 'srcnames': ''}</LINE>
+                </ENTRY>
+                <ENTRY>
+                    <LINE>ScaleGrids {'xpc': '2.36700683814', 'ypc': '2.36700683814', 'p0': '-0.258819045103 0.0', 'names': '', 'contnames': 'SmallRectCont1 SmallCopyRectCont1'}</LINE>
+                </ENTRY>
+                <ENTRY>
+                    <LINE>ScaleGrids {'xpc': '100.0', 'ypc': '300.0', 'p0': '-0.258819045103 0.0', 'names': 'RectGrid1', 'contnames': 'SmallRectCont1 SmallCopyRectCont1'}</LINE>
+                </ENTRY>
+                <ENTRY>
+                    <LINE>EditBoundaryType {'index': '2', 'b': '255', 'name': 'boundary1', 'g': '0', 'remindex': '1', 'r': '0'}</LINE>
+                </ENTRY>
+                <ENTRY>
+                    <LINE>EditBoundaryType {'index': '1', 'r': '0', 'b': '0', 'name': 'b1', 'g': '255'}</LINE>
+                </ENTRY>
+                <ENTRY>
+                    <LINE>EditBoundaryType {'index': '0', 'b': '255', 'name': 'None', 'g': '255', 'remindex': '0', 'r': '192'}</LINE>
+                </ENTRY>
+                <ENTRY>
+                    <LINE>EditBoundaryType {'index': '0', 'b': '0', 'name': 'None', 'g': '0', 'remindex': '0', 'r': '0'}</LINE>
+                </ENTRY>
+                <ENTRY>
+                    <LINE>SetBTypeToContour {'RingGrid1': "{0: '', 1: '10-19', 2: '0-9'}", 'RectGrid1': "{0: '0-7', 1: '', 2: ''}"}</LINE>
+                </ENTRY>
+            </COMMANDS>
+            <STATE>
+                <GRIDS />
+                <CONTOURS />
+                <BTYPES>
+                    <ENTRY ind="0">
+                        <NAME>None</NAME>
+                        <COLOR>255 255 255</COLOR>
+                    </ENTRY>
+                </BTYPES>
+            </STATE>
+        </FLOW>
+    </FLOWS>
+</ComGridProject>

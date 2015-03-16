@@ -13,22 +13,22 @@
                     <LINE>AddUnfRectGrid {'nx': '30', 'ny': '30', 'p0': '0.31 -1.0', 'p1': '0.695 0.14', 'name': ''}</LINE>
                 </ENTRY>
                 <ENTRY>
-                    <LINE>UniteGrids {'s1': "{'buf': 0.2, 'name': 'Grid2', 'den': 7}", 's0': "{'buf': 0.2, 'name': 'Grid1', 'den': 7}", 'name': 'NoFix_SmallBuf', 'fix_bnd': 'False'}</LINE>
+                    <LINE>UniteGrids {'s1': "{'buf': 0.2, 'name': 'NewGrid2', 'den': 7}", 's0': "{'buf': 0.2, 'name': 'NewGrid1', 'den': 7}", 'name': 'NoFix_SmallBuf', 'fix_bnd': 'False'}</LINE>
                 </ENTRY>
                 <ENTRY>
-                    <LINE>UniteGrids {'s1': "{'buf': 0.2, 'name': 'Grid2', 'den': 7}", 's0': "{'buf': 0.2, 'name': 'Grid1', 'den': 7}", 'name': 'Fix_SmallBuf', 'fix_bnd': 'True'}</LINE>
+                    <LINE>UniteGrids {'s1': "{'buf': 0.2, 'name': 'NewGrid2', 'den': 7}", 's0': "{'buf': 0.2, 'name': 'NewGrid1', 'den': 7}", 'name': 'Fix_SmallBuf', 'fix_bnd': 'True'}</LINE>
                 </ENTRY>
                 <ENTRY>
-                    <LINE>UniteGrids {'s1': "{'buf': 0.5, 'name': 'Grid2', 'den': 7}", 's0': "{'buf': 0.5, 'name': 'Grid1', 'den': 7}", 'name': 'NoFix_AverBuf', 'fix_bnd': 'False'}</LINE>
+                    <LINE>UniteGrids {'s1': "{'buf': 0.5, 'name': 'NewGrid2', 'den': 7}", 's0': "{'buf': 0.5, 'name': 'NewGrid1', 'den': 7}", 'name': 'NoFix_AverBuf', 'fix_bnd': 'False'}</LINE>
                 </ENTRY>
                 <ENTRY>
-                    <LINE>UniteGrids {'s1': "{'buf': 0.5, 'name': 'Grid2', 'den': 7}", 's0': "{'buf': 0.5, 'name': 'Grid1', 'den': 7}", 'name': 'Fix_AverBuf', 'fix_bnd': 'True'}</LINE>
+                    <LINE>UniteGrids {'s1': "{'buf': 0.5, 'name': 'NewGrid2', 'den': 7}", 's0': "{'buf': 0.5, 'name': 'NewGrid1', 'den': 7}", 'name': 'Fix_AverBuf', 'fix_bnd': 'True'}</LINE>
                 </ENTRY>
                 <ENTRY>
-                    <LINE>UniteGrids {'s1': "{'buf': 3.0, 'name': 'Grid2', 'den': 7}", 's0': "{'buf': 3.0, 'name': 'Grid1', 'den': 7}", 'name': 'NoFix_BigBuf', 'fix_bnd': 'False'}</LINE>
+                    <LINE>UniteGrids {'s1': "{'buf': 3.0, 'name': 'NewGrid2', 'den': 7}", 's0': "{'buf': 3.0, 'name': 'NewGrid1', 'den': 7}", 'name': 'NoFix_BigBuf', 'fix_bnd': 'False'}</LINE>
                 </ENTRY>
                 <ENTRY>
-                    <LINE>UniteGrids {'s1': "{'buf': 3.0, 'name': 'Grid2', 'den': 7}", 's0': "{'buf': 3.0, 'name': 'Grid1', 'den': 7}", 'name': 'Fix_BigBuf', 'fix_bnd': 'True'}</LINE>
+                    <LINE>UniteGrids {'s1': "{'buf': 3.0, 'name': 'NewGrid2', 'den': 7}", 's0': "{'buf': 3.0, 'name': 'NewGrid1', 'den': 7}", 'name': 'Fix_BigBuf', 'fix_bnd': 'True'}</LINE>
                 </ENTRY>
             </COMMANDS>
             <STATE>
