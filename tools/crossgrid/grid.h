@@ -30,6 +30,9 @@ public:
 	}
 	int get_ind() const { return ind; }
 	double area() const;
+	PContour get_contour() const;
+	//returns true if cell edges has crosses or are tangent
+	bool has_self_crosses() const;
 
 	friend class GridGeom;
 };
@@ -61,11 +64,8 @@ protected:
 	ScaleBase do_scale();
 	void do_scale(const ScaleBase& sc);
 	void undo_scale(const ScaleBase& sc);
-	//contours manipulation
-	std::vector<PContour> get_contours() const;
-	ContoursCollection get_contours_collection() const { return ContoursCollection(get_contours()); }
-	GridGeom remove_area(const PContour& cont);
-	std::pair<Point, Point> outer_rect() const;
+	//tables
+	vector<vector<int>> point_cell_tab() const;
 	//make all cells be counter clockwise
 	void force_cells_ordering();
 	//indexation
@@ -81,6 +81,8 @@ protected:
 	GridGeom(){};
 	GridGeom(const GridGeom& g);
 	GridGeom& operator=(GridGeom g);
+	//swaps points and cells arrays between two grids
+	static void swap_data(GridGeom& g1, GridGeom& g2);
 	//add all points and cells from grid. No points merge
 	void add_data(const GridGeom& g);
 	//add points and cells from cls index array. Merge congruent points.
@@ -89,6 +91,16 @@ protected:
 	void merge_congruent_points();
 	//remove cells
 	void remove_cells(const vector<int>& bad_cells);
+	//remove cells which lie outside cnt
+	void leave_only(const ContoursCollection& cnt);
+	//remove cells which lie inside cnt
+	void exclude_area(const ContoursCollection& cnt);
+	//tries to move boundary points to bp.
+	//bp should lie on existing boundary
+	void move_boundary_points(const vector<Point>& bp);
+	//move point srcp->tarp and check if cell geometry is still ok
+	//returns false if failed to move without breaking geometry
+	bool move_point(const GridPoint* srcp, const Point& tarp, const vector<vector<int>>& point_cell);
 public:
 	//build grid from raw points coordinates array
 	//and cells->points connectivity array
@@ -106,6 +118,13 @@ public:
 	int n_cells() const { return cells.size(); }
 	//sum of all cells dimensions
 	int n_cellsdim() const;
+	//area
+	double area() const;
+
+	//contours manipulation
+	vector<PContour> get_contours() const;
+	ContoursCollection get_contours_collection() const { return ContoursCollection(get_contours()); }
+	std::pair<Point, Point> outer_rect() const;
 	
 	//returns set of single connected meshes.
 	shp_vector<GridGeom> subdivide() const;
@@ -125,12 +144,21 @@ public:
 
 	//static builders
 	static GridGeom* cross_grids(GridGeom* gmain, GridGeom* gsec, double buffer_size, 
-			double density, bool preserve_bp, crossgrid_callback cb);
+			double density, bool preserve_bp, bool empty_holes, crossgrid_callback cb);
+	
+	//result = g - area(c). Area could be inner or outer. 
+	static GridGeom* grid_minus_cont(GridGeom* g, PointsContoursCollection* c,
+			bool is_inner, crossgrid_callback cb);
 	
 	//builds a grid wich is constructed by imposition of gsec onto gmain
 	//no bufferzones. 
 	//Created grid area equals the intersection of gmain and gsec areas.
 	static GridGeom* combine(GridGeom* gmain, GridGeom* gsec);
+
+	//builds a grid from the set of other grids. Grids should not overlap.
+	//no nodes merging, no check procedures.
+	static GridGeom sum(const vector<GridGeom>& g);
+	static GridGeom sum(const std::vector<GridGeom*>& g);
 
 	friend class BufferGrid;
 };

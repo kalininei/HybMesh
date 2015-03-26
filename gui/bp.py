@@ -1,5 +1,18 @@
 #!/usr/bin/env python
+import time
 from collections import OrderedDict
+
+
+def exectime(method):
+    "decorator for execution time measuring"
+    def timed(*args, **kw):
+        ts = time.time()
+        result = method(*args, **kw)
+        te = time.time()
+        print '%r:  %2.6f sec' % \
+              (method.__name__, te - ts)
+        return result
+    return timed
 
 
 def xmlindent(elem, level=0):
@@ -157,7 +170,7 @@ class NamedList(OrderedDict):
 
     #places (key, value) in a certain position
     def insert(self, ind, key, value):
-        'inserts key,value at the specified position'
+        'inserts key, value at the specified position'
         key = unique_name(key, self.keys())
         restored = []
         k = len(self) - ind
@@ -208,5 +221,30 @@ def int_list_from_compress(s):
             ret.extend(range(ist, ien + 1))
     return ret
 
+
+def find(f, seq):
+    """Return first item in sequence where f(item) == True or None"""
+    for item in seq:
+        if f(item):
+            return item
+    else:
+        return None
+
 if __name__ == '__main__':
-    pass
+    class A(object):
+        def __init__(self):
+            pass
+
+        @exectime
+        def proc(self, ar):
+            import math
+            a = 0
+            for i in range(10000) + ar:
+                for j in range(100 if i % 2 == 0 else 200):
+                    a += math.sin(i)
+                    a -= math.cos(j)
+            print a
+
+    ar = range(1, 100)
+    a = A()
+    a.proc(ar)

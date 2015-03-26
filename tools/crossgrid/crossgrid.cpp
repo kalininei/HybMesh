@@ -138,10 +138,48 @@ void grid_get_edges_info(Grid* grd, int* Npnt, int* Neds, int* Ncls,
 
 //free edges data
 void grid_free_edges_info(double** pts, int** ed_pt, int** cls_dims, int** cls_eds){
-	delete *pts; *pts = 0;
-	delete *ed_pt; *ed_pt = 0;
-	delete *cls_dims; *cls_dims = 0;
-	delete *cls_eds; *cls_eds = 0;
+	delete[] *pts; *pts = 0;
+	delete[] *ed_pt; *ed_pt = 0;
+	delete[] *cls_dims; *cls_dims = 0;
+	delete[] *cls_eds; *cls_eds = 0;
+}
+
+int grid_get_edge_cells(Grid* g, int* Neds, int** ed_cell, int* ed_pt){
+	auto ed = static_cast<GridGeom*>(g)->get_edges();
+	*Neds = ed.size();
+	*ed_cell = new int[*Neds];
+	int *ec = *ed_cell;
+	int ret = 1;
+	if (ed_pt == 0){
+		for (auto& e: ed){
+			*ec++ = e.cell_left;
+			*ec++ = e.cell_right;
+		}
+	} else {
+		for (int i=0; i<*Neds; ++i){
+			int p1 = ed_pt[2*i], p2 = ed_pt[2*i+1];
+			auto fnd = ed.find(Edge(p1, p2));
+			if (fnd != ed.end()){
+				if (p1 == fnd->p1){
+					*ec++ = fnd->cell_left;
+					*ec++ = fnd->cell_right;
+				} else {
+					*ec++ = fnd->cell_right;
+					*ec++ = fnd->cell_left;
+				}
+				ed.erase(fnd);
+			} else {
+				//invalid edge->points connectivity
+				ret = 0;
+				*ec++ = -1; *ec++ = -1;
+			}
+		}
+	}
+	return ret;
+}
+
+void grid_free_edge_cells(int** ed_cell){
+	delete[] *ed_cell; *ed_cell=0;
 }
 
 
@@ -149,26 +187,112 @@ void grid_save_vtk(Grid* g, const char* fn){
 	save_vtk(static_cast<GridGeom*>(g), fn);
 }
 
+void contour_save_vtk(Cont* c, const char* fn){
+	save_vtk(static_cast<PointsContoursCollection*>(c), fn);
+}
+
 void grid_free(Grid* g){
 	delete g;
 }
 
-Grid* cross_grids(Grid* gbase, Grid* gsecondary, double buffer_size, double density, int preserve_bp){
-	return cross_grids_wcb(gbase, gsecondary, buffer_size, density, preserve_bp, global_callback);
+Grid* cross_grids(Grid* gbase, Grid* gsecondary, double buffer_size, double density, int preserve_bp, int eh){
+	return cross_grids_wcb(gbase, gsecondary, buffer_size, density, preserve_bp, eh, global_callback);
 }
 
 Grid* cross_grids_wcb(Grid* gbase, Grid* gsecondary, double buffer_size, 
-		double density, int preserve_bp, crossgrid_callback cb_fun){
+		double density, int preserve_bp, int empty_holes, crossgrid_callback cb_fun){
 	try{
 		auto ret = GridGeom::cross_grids(
 				static_cast<GridGeom*>(gbase),
 				static_cast<GridGeom*>(gsecondary),
-				buffer_size, density, (preserve_bp==1), cb_fun);
+				buffer_size, density, (preserve_bp==1),
+				(empty_holes==1), cb_fun);
 		return ret;
 	} catch (const std::exception &e) {
 		std::cout<<e.what()<<std::endl;
 		return 0;
 	}
+}
+
+Cont* contour_construct(int Npts, int Ned, double* pts, int* edges){
+	auto p = vector<Point>();
+	auto e = vector<int>(edges, edges+2*Ned);
+	for (int i=0; i<Npts; ++i){
+		p.push_back(Point(pts[2*i], pts[2*i+1]));
+	}
+	return new PointsContoursCollection(p, e);
+}
+
+void cont_free(Cont* c){
+	delete c;
+}
+
+Grid* grid_exclude_cont(Grid* grd, Cont* cont, int is_inner){
+	return grid_exclude_cont_wcb(grd, cont, is_inner, global_callback);
+}
+
+Grid* grid_exclude_cont_wcb(Grid* grd, Cont* cont, int is_inner,
+		crossgrid_callback cb_fun){
+	try{
+		auto ret = GridGeom::grid_minus_cont(
+				static_cast<GridGeom*>(grd),
+				static_cast<PointsContoursCollection*>(cont),
+				is_inner!=0, cb_fun);
+		return ret;
+	} catch (const std::exception &e){
+		std::cout<<e.what()<<std::endl;
+		return 0;
+	}
+}
+
+void add_contour_bc(Cont* src, Cont* tar, int* vsrc, int* vtar, int def){
+	try{
+		auto src1 = static_cast<PointsContoursCollection*>(src);
+		auto tar1 = static_cast<PointsContoursCollection*>(tar);
+		vector<int> cor = PointsContoursCollection::edge_correlation(*src1, *tar1);
+		for (int i=0; i<tar1->n_edges(); ++i){
+			vtar[i] =  (cor[i]>=0) ? vsrc[cor[i]] : def;
+		}
+	} catch (const std::exception &e){
+		std::cout<<e.what()<<std::endl;
+	}
+}
+
+void contour_get_info(Cont* c, int* Npnt, int* Neds, 
+		double** pts,
+		int** eds){
+	PointsContoursCollection* cont = static_cast<PointsContoursCollection*>(c);
+	*Npnt = cont->n_total_points();
+	*Neds = cont->n_edges();
+	//points
+	*pts = new double[2*(*Npnt)];
+	double* pp = *pts;
+	for (int i=0; i<*Npnt; ++i){
+		auto p = cont->get_point(i);
+		*pp++ = p->x;
+		*pp++ = p->y;
+	}
+	//edges
+	*eds = new int[2*(*Neds)];
+	int *ee = *eds;
+	for (int i=0; i<*Neds; ++i){
+		auto e = cont->get_edge(i);
+		*ee++ = e.first;
+		*ee++ = e.second;
+	}
+}
+
+void contour_free_info(double** pts, int** eds){
+	delete[] (*pts);
+	delete[] (*eds);
+}
+
+double grid_area(Grid* g){
+	return static_cast<GridGeom*>(g)->area();
+}
+
+double contour_area(Cont* c){
+	return static_cast<PointsContoursCollection*>(c)->area();
 }
 
 // ========================== testing
@@ -209,6 +333,24 @@ GridGeom rectangular_grid(double x0, double y0,
 		}
 	}
 	return GridGeom((Nx+1)*(Ny+1), Nx*Ny, &pts[0], &cls[0]);
+}
+
+PointsContoursCollection uniform_polygon(double xc, double yc, int N, double rad){
+	//points
+	std::vector<double> pts;
+	for (int i=0; i<N; ++i){
+		double ang = i*2*M_PI/N;
+		pts.push_back(rad*cos(ang) + xc);
+		pts.push_back(rad*sin(ang) + yc);
+	}
+	//edges
+	std::vector<int> ed;
+	for (int i=0; i<N; ++i){
+		ed.push_back(i);
+		ed.push_back(i+1);
+	}
+	ed.back() = 0;
+	return PointsContoursCollection(pts, ed);
 }
 
 void test1(){
@@ -254,7 +396,7 @@ void test2(){
 	c.add_point(2,-1); c.add_point(9,-1);
 	c.add_point(4, 5); c.add_point(2, 5);
 	ContoursCollection cc({c});
-	PtsGraph newgraph = PtsGraph::cut(gr, cc, 1);
+	PtsGraph newgraph = PtsGraph::cut(gr, cc, OUTSIDE);
 	GridGeom newgeom =  newgraph.togrid();
 	//save_vtk(&gr, "graph.vtk");
 	//save_vtk(&newgraph, "cutgraph.vtk");
@@ -281,8 +423,8 @@ void test4(){
 	auto grid1 = rectangular_grid(0, 0, 1, 1, 10, 10);
 	auto grid2 = rectangular_grid(1, 1, 2, 2, 10, 10);
 	auto grid3 = rectangular_grid(2,1.85, 3, 2.85, 10, 10);
-	auto cross1 = GridGeom::cross_grids(&grid1, &grid2, 0.0, 0.5, true, silent_callback);
-	auto cross2 = GridGeom::cross_grids(cross1, &grid3, 0.0, 0.5, true, silent_callback);
+	auto cross1 = GridGeom::cross_grids(&grid1, &grid2, 0.0, 0.5, true, false, silent_callback);
+	auto cross2 = GridGeom::cross_grids(cross1, &grid3, 0.0, 0.5, true, false, silent_callback);
 	save_vtk(cross2, "test4_grid.vtk");
 	add_check(cross2->n_points()==362 && cross2->n_cells()==300, "combined grid topology");
 	auto div = cross2->subdivide();
@@ -322,7 +464,75 @@ void test5(){
 	add_check(finder.add(p+9) == p+5, "fourth square equal");
 }
 
+void test6(){
+	std::cout<<"Contours Collection constructing"<<std::endl;
+	vector<Point> p = {
+		Point(0, 0),
+		Point(1, 0),
+		Point(1, 1),
+		Point(0, 1),
+		Point(0.3, 0.3),
+		Point(0.6, 0.3),
+		Point(0.6, 0.6),
+		Point(0.3, 0.6)
+	};
+	vector<int> e = {
+		7, 4,
+		0, 1,
+		2, 1,
+		3, 0,
+		2, 3,
+		6, 5,
+		7, 6,
+		5, 4
+	};
+
+	auto c = PointsContoursCollection(p, e);
+	add_check(fabs(c.area() - 0.91) < 1e-6, "collection area");
 }
+
+void test7(){
+	std::cout<<"PtsGraph::togrid() with intrusion subprocedure"<<std::endl;
+	auto getar = [](const GridGeom& g){
+		double ar = 0;
+		for (int i=0; i<g.n_cells(); ++i) ar += g.get_cell(i)->area();
+		return ar;
+	};
+{ //case1
+	auto c1 = uniform_polygon(0, 0, 6, 4);
+	auto c2 = uniform_polygon(0,0,4,2);
+	PtsGraph g1(c1);
+	g1.add_edges(c2.contour(0));
+	auto grid = g1.togrid();
+	add_check(grid.n_cells() == 3 && fabs(c1.area()-getar(grid)) < 1e-6, "grid from two polys");
+}
+{ //case 2
+	auto c1 = uniform_polygon(3,2,7, 5);
+	auto c2 = uniform_polygon(3,3,4, 2);
+	auto c3 = uniform_polygon(3.2,3.1,3, 0.5);
+	PtsGraph g1(c1); g1.add_edges(c2.contour(0)); g1.add_edges(c3.contour(0));
+	auto grid = g1.togrid();
+	add_check(grid.n_cells() == 5 && fabs(c1.area()-getar(grid)) < 1e-6, "grid from 3 nested polys");
+}
+
+{ //case 3
+	auto c0 = uniform_polygon(3,3,5,0.5);
+	auto c1 = uniform_polygon(6,6,5,1);
+	auto c2 = uniform_polygon(2,3,8,2);
+	auto c3 = uniform_polygon(2.1,3,4,0.1);
+	auto c4 = uniform_polygon(2,3,5,0.3);
+	auto c5 = uniform_polygon(1,4,3,0.1);
+	PtsGraph g1(c0); g1.add_edges(c1.contour(0)); g1.add_edges(c2.contour(0));
+	g1.add_edges(c3.contour(0));g1.add_edges(c4.contour(0));g1.add_edges(c5.contour(0));
+	auto grid = g1.togrid();
+	double a = c1.area() + c2.area();
+	add_check(grid.n_cells() == 10 && fabs(a-getar(grid)) < 1e-6, "grid from complicated nested structure");
+}
+
+
+}//test7
+
+}//namespace
 
 void crossgrid_internal_tests(){
 	std::cout<<"crossgrid shared library internal tests ================"<<std::endl;
@@ -331,6 +541,8 @@ void crossgrid_internal_tests(){
 	test3();
 	test4();
 	test5();
+	test6();
+	test7();
 	std::cout<<"crossgrid shared library internal tests: DONE =========="<<std::endl;
 }
 

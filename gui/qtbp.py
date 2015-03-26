@@ -10,7 +10,7 @@ _icon_set = {}
 
 def get_icon(s):
     """ ->QtGui.QIcon. Returns icon by its string code:
-        opts, del, eye-on, eye-off, split
+        opts, del, eye-on, eye-off, split, ->, <-, hybmesh
     """
     global _icon_set
     if len(_icon_set) == 0:
@@ -21,7 +21,8 @@ def get_icon(s):
                 "eye-off": QtGui.QIcon(QtGui.QPixmap(":/icons/eye-off.png")),
                 "split": QtGui.QIcon(QtGui.QPixmap(":/icons/split.png")),
                 "->": QtGui.QIcon(QtGui.QPixmap(":/icons/right_arrow.png")),
-                "<-": QtGui.QIcon(QtGui.QPixmap(":/icons/left_arrow.png"))
+                "<-": QtGui.QIcon(QtGui.QPixmap(":/icons/left_arrow.png")),
+                "hybmesh": QtGui.QIcon(QtGui.QPixmap(":/icons/mainwin.png"))
         }
     return _icon_set[s]
 

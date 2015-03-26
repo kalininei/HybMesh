@@ -4,10 +4,11 @@ import copy
 import bp
 import bgeom
 import command
+import objcom
 import contour2
 
 
-class AddRectCont(command.Command):
+class AddRectCont(objcom.AbstractAddRemove):
     "Add rectangular contour"
     def __init__(self, name, p0, p1, bnds):
         self.name = name
@@ -16,7 +17,9 @@ class AddRectCont(command.Command):
         a = {"name": name, "p0": p0, "p1": p1,
                 "bnds": ' '.join(map(str, bnds))}
         super(AddRectCont, self).__init__(a)
-        self.cont = (None, None, None)
+
+    def doc(self):
+        return "Add rectangular contour"
 
     @classmethod
     def fromstring(cls, slist):
@@ -26,26 +29,175 @@ class AddRectCont(command.Command):
         bnds = map(int, arg['bnds'].split())
         return cls(arg['name'], p0, p1, bnds)
 
-    @classmethod
-    def _method_code(cls):
-        return "AddRectCont"
-
-    def _exec(self):
+    def _addrem_objects(self):
         c = contour2.ClosedContour2()
         p0, p1 = self.p0, bgeom.Point2(self.p1.x, self.p0.y)
         p2, p3 = self.p1, bgeom.Point2(self.p0.x, self.p1.y)
         c.append_points([p0, p1, p2, p3], self.bnds)
-        self.cont = self.receiver.add_user_contour(self.name, c)
+        return [], [], [(self.name, c)], []
+
+
+class GridBndToContour(command.Command):
+    'Copy grid boundary to user contour'
+    def __init__(self, name, grd_name, simplify, separate):
+        self.name = name
+        self.grd_name = grd_name
+        self.simplify = simplify
+        self.separate = separate
+        a = {"name": name, "grd_name": grd_name,
+                "simplify": simplify, "separate": separate}
+        super(GridBndToContour, self).__init__(a)
+        self.cont = (None, None, None)
+        self.simp_command = None
+
+    def doc(self):
+        return "Copy boundary from %s" % self.grd_name
+
+    @classmethod
+    def fromstring(cls, slist):
+        arg = ast.literal_eval(slist)
+        return cls(arg['name'], arg['grd_name'], arg['simplify'] == 'True',
+                arg['separate'] == 'True')
+
+    def _exec(self):
+        #copy contour
+        src = self.receiver.grids2[self.grd_name].cont
+        cont = contour2.Contour2.create_from_abstract(src)
+        self.cont = self.receiver.add_user_contour(self.name, cont)
+        #simplify and separate
+        if self.simplify or self.separate:
+            self.simp_command = SimplifyContours(
+                    self.separate, self.simplify, [self.cont[1]],
+                    [self.cont[1]], False, 0.0)
+            if not self.simp_command.do(self.receiver):
+                self.simp_command = None
         return True
 
     def _clear(self):
-        del self.cont
+        self.cont = None
+        self.simp_command = None
 
     def _undo(self):
+        if self.simp_command:
+            self.simp_command._undo()
         self.receiver.remove_user_contour(self.cont[1])
 
     def _redo(self):
         self.receiver.contours2.insert(*self.cont)
+        if self.simp_command:
+            self.simp_command._redo()
+
+
+class SimplifyContours(objcom.AbstractAddRemove):
+    'Separate and simplify user contour'
+    def __init__(self, sep, simp, conts, newnms, keepsrc, angle):
+        '(separate, simplify, [cont_names], [new_cont_names], keepsrc, angle)'
+        self.sep, self.simp = sep, simp
+        self.conts = conts
+        self.newnms, self.keepsrc = newnms, keepsrc
+        self.angle = angle
+        a = {"separate": sep, "simplify": simp, "names": ' '.join(conts)}
+        if simp:
+            a['angle'] = angle
+        if sep:
+            a['new_names'] = ' '.join(newnms)
+            a['keepsrc'] = keepsrc
+        super(SimplifyContours, self).__init__(a)
+        if not self.sep:
+            self.newnms = self.conts
+
+    def doc(self):
+        return "Simplify contours: %s" % ' '.join(self.conts)
+
+    @classmethod
+    def fromstring(cls, slist):
+        arg = ast.literal_eval(slist)
+        sep, simp = arg['separate'] == 'True', arg['simplify'] == 'True'
+        conts = arg['names'].split()
+        if sep:
+            newnms = arg['new_names'].split()
+            keepsrc = arg['keepsrc'] == 'True'
+        else:
+            newnms = None
+            keepsrc = None
+        if simp:
+            angle = float(arg['angle'])
+        else:
+            angle = 0
+        return cls(sep, simp, conts, newnms, keepsrc, angle)
+
+    def _addrem_objects(self):
+        added, removed = [], []
+        #operate
+        for i, nm in enumerate(self.conts):
+            cont = self.receiver.get_user_contour(name=nm)
+            res = []
+
+            #simplify
+            if self.simp:
+                s = cont[2].simplify(self.angle)
+                if s:
+                    res = [s]
+
+            #separate
+            if self.sep:
+                if res:
+                    s = res[0].separate()
+                    if s:
+                        res = s
+                else:
+                    res = cont[2].separate()
+
+            #continue if no result
+            if not res:
+                continue
+
+            #delete
+            # simplify + separate (keep src)
+            if len(res) == 1 or not self.keepsrc:
+                removed.append(cont[1])
+            #add
+            for r in res:
+                added.append((self.newnms[i], r))
+
+        return [], [], added, removed
+
+
+class UniteContours(objcom.AbstractAddRemove):
+    "unite contours to one contours with complicated connection"
+    def __init__(self, name, srcnames, keepsrc):
+        """ (string name, [string] srcnames, bool keepsrc)
+
+            name - united contour name
+            srcnames - names of contours to unite
+            keepsrc - whether to keep or remove source contours
+        """
+        self.name = name
+        self.srcnames = srcnames
+        self.keepsrc = keepsrc
+        a = {"name": name, "srcnames": ' '.join(srcnames), "keepsrc": keepsrc}
+        super(UniteContours, self).__init__(a)
+
+    def doc(self):
+        return "Unite contours: %s" % ' '.join(self.srcnames)
+
+    @classmethod
+    def fromstring(cls, slist):
+        arg = ast.literal_eval(slist)
+        name = arg['name']
+        conts = arg['srcnames'].split()
+        keep = arg['keepsrc'] == 'True'
+        return cls(name, conts, keep)
+
+    def _addrem_objects(self):
+        conts = [self.receiver.contours2[n] for n in self.srcnames]
+        #operate
+        newcont = contour2.Contour2.create_from_abstract(conts[0])
+        for c in conts[1:]:
+            newcont.add_from_abstract(c)
+        ac = [(self.name, newcont)]
+        rc = [] if self.keepsrc else self.srcnames
+        return [], [], ac, rc
 
 
 class EditBoundaryType(command.Command):
@@ -212,3 +364,39 @@ class SetBTypeToContour(command.Command):
         for co, new in zip(self.conts_opts, self.new_bnd):
             cont = self.receiver.get_any_contour(co.name)
             cont.add_edge_bnd(new)
+
+
+class RenameContour(command.Command):
+    def __init__(self, oldname, newname):
+        a = {"oldname": oldname, "newname": newname}
+        super(RenameContour, self).__init__(a)
+        self.oldname, self.newname = oldname, newname
+        #actual new grid name can differ from self.newname
+        #due to unique names policy. Actual new name is stored
+        #in self.backup_newname
+        self.backup_newname = None
+
+    #overriden from Command
+    def doc(self):
+        return "Rename contour: %s" % self.oldname
+
+    @classmethod
+    def fromstring(cls, slist):
+        a = ast.literal_eval(slist)
+        return cls(a['oldname'], a['newname'])
+
+    def _exec(self):
+        i, _, _ = self.receiver.get_user_contour(name=self.oldname)
+        self.receiver.contours2.change_key(self.oldname, self.newname)
+        #backup new name as it can be different from self.newname
+        _, self.backup_newname, _ = self.receiver.get_user_contour(ind=i)
+        return True
+
+    def _clear(self):
+        pass
+
+    def _undo(self):
+        self.receiver.contours2.change_key(self.backup_newname, self.oldname)
+
+    def _redo(self):
+        self._exec()

@@ -16,6 +16,7 @@ double Point::meas_section(const Point& p, const Point& L1, const Point& L2) noe
 }
 
 bool isOnSection(const Point& p, const Point& start, const Point& end, double& ksi, double eps){
+	ksi = gbig;
 	//check if p is ouside section square
 	if ( (p.x+eps < start.x && p.x+eps < end.x) ||
 	     (p.x-eps > start.x && p.x-eps > end.x) ||
@@ -78,7 +79,6 @@ bool SectCross(const Point& p1S, const Point& p1E, const Point& p2S, const Point
 }
 
 vector<double> RefineSection(double a, double b, double Len, double Den){
-	//std::cout<<"DUMMY REFINE SECTION"<<std::endl;
 	//get number of points
 	double amean = (a+b)/2.0;
 	double hmean = 2*a*b/(a+b);

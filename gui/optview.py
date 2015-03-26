@@ -180,7 +180,7 @@ class SingleChoiceOptionEntry(SimpleOptionEntry):
         super(SingleChoiceOptionEntry, self).__init__(data, member_name)
 
     def _check_proc(self, v):
-        return v in self.values
+        return v in self.values or v == ""
 
     def edit_widget(self, parent):
         wdg = QtGui.QComboBox(parent)
@@ -299,6 +299,7 @@ class MultipleChoiceOptionEntry(OptionEntry):
             #---- building window
             super(MultipleChoiceOptionEntry.EditWidget, self).__init__(parent)
             self.setWindowTitle("Multiple choice dialog")
+            self.setWindowIcon(qtbp.get_icon("hybmesh"))
             self.lw1 = QtGui.QListWidget()
             self.lw2 = QtGui.QListWidget()
             btleft = QtGui.QPushButton()

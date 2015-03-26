@@ -79,46 +79,58 @@
    </widget>
    <widget class="QMenu" name="menu_Geometry">
     <property name="title">
-     <string>&amp;Geometry</string>
+     <string>Geo&amp;metry</string>
     </property>
-    <widget class="QMenu" name="menuAdd_grid">
-     <property name="title">
-      <string>Add &amp;grid</string>
-     </property>
-     <addaction name="act_unf_rect"/>
-     <addaction name="act_unf_circ"/>
-     <addaction name="act_unf_ring"/>
-    </widget>
-    <widget class="QMenu" name="menuAdd_contour">
-     <property name="title">
-      <string>Add &amp;contour</string>
-     </property>
-     <addaction name="act_cont_rect"/>
-    </widget>
-    <addaction name="menuAdd_grid"/>
-    <addaction name="menuAdd_contour"/>
-    <addaction name="separator"/>
     <addaction name="act_copy_grids"/>
     <addaction name="act_remove_grids"/>
     <addaction name="separator"/>
     <addaction name="act_movrot"/>
     <addaction name="act_scale"/>
    </widget>
-   <widget class="QMenu" name="menuTools">
+   <widget class="QMenu" name="menuConts">
     <property name="title">
-     <string>&amp;Tools</string>
+     <string>&amp;Contour</string>
     </property>
-    <addaction name="act_unite_grids"/>
+    <widget class="QMenu" name="menuAdd_2">
+     <property name="title">
+      <string>&amp;Add uniform</string>
+     </property>
+     <addaction name="act_cont_rect"/>
+    </widget>
+    <addaction name="menuAdd_2"/>
+    <addaction name="separator"/>
+    <addaction name="act_unite_conts"/>
+    <addaction name="act_sep_conts"/>
+    <addaction name="separator"/>
     <addaction name="act_set_bc"/>
+    <addaction name="act_new_bc"/>
+   </widget>
+   <widget class="QMenu" name="menuGrid">
+    <property name="title">
+     <string>&amp;Grid</string>
+    </property>
+    <widget class="QMenu" name="menuAdd">
+     <property name="title">
+      <string>&amp;Add uniform</string>
+     </property>
+     <addaction name="act_unf_rect"/>
+     <addaction name="act_unf_circ"/>
+     <addaction name="act_unf_ring"/>
+    </widget>
+    <addaction name="menuAdd"/>
+    <addaction name="separator"/>
+    <addaction name="act_unite_grids"/>
+    <addaction name="act_ex_cont"/>
    </widget>
    <addaction name="menu_File"/>
    <addaction name="menu_Edit"/>
    <addaction name="menu_View"/>
+   <addaction name="menuConts"/>
+   <addaction name="menuGrid"/>
    <addaction name="menu_Geometry"/>
-   <addaction name="menuTools"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
-  <widget class="QDockWidget" name="DWGridManager">
+  <widget class="QDockWidget" name="dw_grid_manager">
    <property name="features">
     <set>QDockWidget::AllDockWidgetFeatures</set>
    </property>
@@ -201,7 +213,7 @@
   </action>
   <action name="act_unf_rect">
    <property name="text">
-    <string>Uniform &amp;rectangle</string>
+    <string>&amp;Rectangle</string>
    </property>
   </action>
   <action name="act_grid_manager">
@@ -222,7 +234,7 @@
   </action>
   <action name="act_unf_circ">
    <property name="text">
-    <string>Uniform &amp;cirlce</string>
+    <string>&amp;Cirlce</string>
    </property>
   </action>
   <action name="act_movrot">
@@ -232,7 +244,7 @@
   </action>
   <action name="act_unf_ring">
    <property name="text">
-    <string>Uniform r&amp;ing</string>
+    <string>R&amp;ing</string>
    </property>
   </action>
   <action name="act_scale">
@@ -250,7 +262,7 @@
   </action>
   <action name="act_copy_grids">
    <property name="text">
-    <string>Cop&amp;y</string>
+    <string>&amp;Copy</string>
    </property>
   </action>
   <action name="act_remove_grids">
@@ -284,7 +296,32 @@
   </action>
   <action name="act_set_bc">
    <property name="text">
-    <string>Set &amp;boundary types</string>
+    <string>&amp;Assign boundary types</string>
+   </property>
+  </action>
+  <action name="act_new_bc">
+   <property name="text">
+    <string>Create &amp;boundary type</string>
+   </property>
+  </action>
+  <action name="act_ex_cont">
+   <property name="text">
+    <string>&amp;Exclude conts</string>
+   </property>
+  </action>
+  <action name="act_unite_conts">
+   <property name="text">
+    <string>&amp;Unite contours</string>
+   </property>
+  </action>
+  <action name="act_sep_conts">
+   <property name="text">
+    <string>&amp;Separate/Simplify contours</string>
+   </property>
+  </action>
+  <action name="actionContour">
+   <property name="text">
+    <string>Contour</string>
    </property>
   </action>
  </widget>
@@ -311,7 +348,7 @@
   <connection>
    <sender>act_grid_manager</sender>
    <signal>toggled(bool)</signal>
-   <receiver>DWGridManager</receiver>
+   <receiver>dw_grid_manager</receiver>
    <slot>setVisible(bool)</slot>
    <hints>
     <hint type="sourcelabel">
@@ -325,7 +362,7 @@
    </hints>
   </connection>
   <connection>
-   <sender>DWGridManager</sender>
+   <sender>dw_grid_manager</sender>
    <signal>visibilityChanged(bool)</signal>
    <receiver>act_grid_manager</receiver>
    <slot>setChecked(bool)</slot>

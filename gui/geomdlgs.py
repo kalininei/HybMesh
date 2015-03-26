@@ -118,6 +118,8 @@ class _BndList(QtGui.QTableView):
         self.setSelectionMode(QtGui.QAbstractItemView.SingleSelection)
         self.selectRow(0)
 
+        self.bnds = bnds
+
     def mousePressEvent(self, event):
         #don't lose selection on outside item press
         index = self.indexAt(event.pos())
@@ -130,8 +132,10 @@ class _BndList(QtGui.QTableView):
         """
         row = self.selectedIndexes()[0].row()
         if row == self.model().rowCount() - 1:
-            row = -1
-        return row
+            ret = -1
+        else:
+            ret = self.bnds.get(orderindex=row).index
+        return ret
 
 
 class AskForRect(dlgs.SimpleAbstractDialog):

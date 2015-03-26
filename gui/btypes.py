@@ -84,7 +84,7 @@ class BndTypesList(object):
     def get_names(self):
         return [n.name for n in self._data]
 
-    def get(self, name=None, index=None):
+    def get(self, name=None, index=None, orderindex=None):
         '->BndType'
         if name is not None:
             for v in self._data:
@@ -94,7 +94,15 @@ class BndTypesList(object):
             for v in self._data:
                 if v.index == index:
                     return v
-        return self._data[0]
+        if orderindex is not None:
+            return self._data[orderindex]
+
+        if len(self._data) > 0:
+            return self._data[0]
+        else:
+            #this could be emitted in transitional programm states
+            #normally it couldn't
+            return BndType(0, "None", (0, 0, 0))
 
     def xml_save(self, xmlnode):
         'save data to xml node'
@@ -156,19 +164,7 @@ class BoundaryTypesView(QtGui.QTreeView):
                 globvars.actual_flow().exec_command(com)
 
     def _add_dialog(self):
-        btp = self.model().bt
-        dialog = dlgs.EditBoundaryType(btp, None, self)
-        if dialog.exec_():
-            i, nm, col = dialog.ret_value()
-            if i in btp._ind_set():
-                txt = "Boundary with index %i already exists. " % i
-                txt += "Reset it?"
-                a = QtGui.QMessageBox.question(None, "Confirmation",
-                        txt, QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
-                if a == QtGui.QMessageBox.No:
-                    return
-            com = contcom.EditBoundaryType(None, i, nm, col)
-            globvars.actual_flow().exec_command(com)
+        globvars.mainWindow._new_bc()
 
     def mousePressEvent(self, event):
         'overriden'

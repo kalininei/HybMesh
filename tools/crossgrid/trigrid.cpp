@@ -8,7 +8,7 @@
 TriGrid::TriGrid(const ContoursCollection& cont, const vector<double>& lc, double density){
 	//build mesh in gmsh
 	//2 - auto, 5 - delaunay, 6 - frontal
-	GmshSetOption("Mesh", "Algorithm", 6.0);
+	GmshSetOption("Mesh", "Algorithm", 2.0);
 
 	//very rough density parameter implementation
 	double maxlc = 0;

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from PyQt4 import QtCore, QtGui
+from PyQt4 import QtGui
 from PyQt4.QtGui import (QMainWindow,
     QFileDialog, QHBoxLayout)
 import qtui.ui_ComGridMain
@@ -13,6 +13,7 @@ import contcom
 import dlgs
 import globvars
 import contvis
+import gridvis
 import btypes
 
 
@@ -55,22 +56,17 @@ class MainWindow(QMainWindow, qtui.ui_ComGridMain.Ui_MainWindow):
         self.act_copy_grids.triggered.connect(self._copy_grids)
         #tools
         self.act_unite_grids.triggered.connect(self._unite_grids)
+        self.act_ex_cont.triggered.connect(self._ex_cont)
         self.act_set_bc.triggered.connect(self._set_bc)
+        self.act_new_bc.triggered.connect(self._new_bc)
+        self.act_unite_conts.triggered.connect(self._unite_conts)
+        self.act_sep_conts.triggered.connect(self._sep_conts)
 
     def _grid_manager_init(self):
         ' initialization of the grid manager '
-        self.tw_gridblocks = QtGui.QTreeWidget(self.DWGridManager)
-        self.tw_gridblocks.resize(200, 500)
-        self.tw_gridblocks.setSelectionMode(
-                QtGui.QAbstractItemView.NoSelection)
-        self.tw_gridblocks.setHeaderHidden(True)
-        self.DWGridManager.setWidget(self.tw_gridblocks)
-        self.tw_gridblocks.itemClicked.connect(
-                self._grid_manager_item_click)
-        self.tw_gridblocks.setContextMenuPolicy(
-                QtCore.Qt.CustomContextMenu)
-        self.tw_gridblocks.customContextMenuRequested.connect(
-                self._grid_manager_context_menu)
+        self.grid_view = gridvis.GridManagerItemView(self.dw_grid_manager)
+        self.dw_grid_manager.resize(200, 500)
+        self.dw_grid_manager.setWidget(self.grid_view)
 
     def _cont_manager_init(self):
         'initialization of contour manager dock'
@@ -156,8 +152,8 @@ class MainWindow(QMainWindow, qtui.ui_ComGridMain.Ui_MainWindow):
         dialog = dlgs.CopyGrids(used_grids, all_grids,
                 used_conts, all_conts, self)
         if dialog.exec_():
-            srcnames, newnames, cnames, newcnames = dialog.ret_value()
-            com = objcom.CopyGrid(srcnames, newnames, cnames, newcnames)
+            srcnames, newnames, cnames, newcnames, dx, dy = dialog.ret_value()
+            com = objcom.CopyGrid(srcnames, newnames, cnames, newcnames, dx, dy)
             globvars.actual_flow().exec_command(com)
 
     def _remove_grids(self):
@@ -209,14 +205,31 @@ class MainWindow(QMainWindow, qtui.ui_ComGridMain.Ui_MainWindow):
         used_grids = globvars.actual_data().get_checked_grid_names()
         dialog = dlgs.UniteGrids(used_grids, all_grids, self)
         if dialog.exec_():
-            name, pbnd, grd, bfs, den = dialog.ret_value()
-            src = [gridcom.UniteOpts(n, b, d)
-                    for n, b, d in zip(grd, bfs, den)]
-            a = {'name': name, 'fix_bnd': pbnd}
+            name, pbnd, keepsrc, empty_holes, grd, bfs = dialog.ret_value()
+            #build unite grids options
+            src = [gridcom.UniteOpts(n, b)
+                    for n, b in zip(grd, bfs)]
+            a = {'name': name, 'fix_bnd': pbnd, 'empty_holes': empty_holes,
+                    'keepsrc': keepsrc}
             for i, s in enumerate(src):
                 k = ''.join(['s', str(i)])
                 a[k] = s
+            #call the command
             com = gridcom.UniteGrids(**a)
+            globvars.actual_flow().exec_command(com)
+
+    def _ex_cont(self):
+        all_grids = globvars.actual_data().get_grid_names()
+        all_conts = globvars.actual_data().get_contour_names() + all_grids
+        used_conts = globvars.actual_data().get_checked_any_contour_names()
+        used_grids = globvars.actual_data().get_checked_grid_names()
+        grd = None if len(used_grids) == 0 else used_grids[0]
+        dialog = dlgs.ExcludeContours(grd, all_grids,
+                used_conts, all_conts, self)
+        if dialog.exec_():
+            #r = (name, src_grd, src_conts, is_inner, keep_grd)
+            r = dialog.ret_value()
+            com = gridcom.ExcludeContours(*r)
             globvars.actual_flow().exec_command(com)
 
     def _set_bc(self):
@@ -230,6 +243,37 @@ class MainWindow(QMainWindow, qtui.ui_ComGridMain.Ui_MainWindow):
             for c, e in zip(used_conts, ret):
                 arg.append(contcom.BTypePicker(c, e))
             com = contcom.SetBTypeToContour(arg)
+            globvars.actual_flow().exec_command(com)
+
+    def _new_bc(self):
+        btp = globvars.actual_data().boundary_types
+        dialog = dlgs.EditBoundaryType(btp, None, self)
+        if dialog.exec_():
+            i, nm, col = dialog.ret_value()
+            if i in btp._ind_set():
+                txt = "Boundary with index %i already exists. " % i
+                txt += "Reset it?"
+                a = QtGui.QMessageBox.question(None, "Confirmation",
+                        txt, QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
+                if a == QtGui.QMessageBox.No:
+                    return
+            com = contcom.EditBoundaryType(None, i, nm, col)
+            globvars.actual_flow().exec_command(com)
+
+    def _unite_conts(self):
+        used_conts = globvars.actual_data().get_checked_contour_names()
+        all_conts = globvars.actual_data().get_contour_names()
+        dialog = dlgs.UniteContours(used_conts, all_conts, self)
+        if dialog.exec_():
+            com = contcom.UniteContours(*dialog.ret_value())
+            globvars.actual_flow().exec_command(com)
+
+    def _sep_conts(self):
+        used_conts = globvars.actual_data().get_checked_contour_names()
+        all_conts = globvars.actual_data().get_contour_names()
+        dialog = dlgs.SimplifyContour(used_conts, all_conts, self)
+        if dialog.exec_():
+            com = contcom.SimplifyContours(*dialog.ret_value())
             globvars.actual_flow().exec_command(com)
 
     # --------- Grid Manager

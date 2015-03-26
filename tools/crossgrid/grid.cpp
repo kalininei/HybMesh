@@ -24,11 +24,42 @@ int GridGeom::n_cellsdim() const{
 	return ret;
 }
 
+PContour Cell::get_contour() const{
+	return PContour::build(points);
+}
+
 double Cell::area() const{
 	return PContour::build(points).area();
 }
+
 void Cell::check_ordering(){
 	if (area()<0) std::reverse(points.begin(), points.end());
+}
+
+bool Cell::has_self_crosses() const{
+	double ksi, ksieta[2];
+	//1) points don't lie on edges
+	for (int i=0; i<dim(); ++i){
+		auto a = get_point(i);
+		for (int j=1; j<dim()-1; ++j){
+			auto b1 = get_point(i+j);
+			auto b2 = get_point(i+j+1);
+			isOnSection(*a, *b1, *b2, ksi);
+			if (ksi>-geps && ksi<1+geps) return true;
+		}
+	}
+	//2) edges don't cross each other
+	for (int i=0; i<dim()-1; ++i){
+		auto a1 = get_point(i);
+		auto a2 = get_point(i+1);
+		int lastp = (i==0) ? dim() - 1 : dim();
+		for (int j=i+2; j<lastp; ++j){
+			auto b1 = get_point(j);
+			auto b2 = get_point(j+1);
+			if (SectCross(*a1, *a2, *b1, *b2, ksieta)) return true;
+		}
+	}
+	return false;
 }
 
 void GridGeom::add_data(const GridGeom& g){
@@ -74,6 +105,17 @@ void GridGeom::remove_cells(const vector<int>& bad_cells){
 	set_indicies();
 }
 
+void GridGeom::leave_only(const ContoursCollection& cnt){
+	vector<Point> intp = cells_internal_points();
+	vector<int> bad_cells = std::get<2>(cnt.filter_points_i(intp));
+	remove_cells(bad_cells);
+}
+void GridGeom::exclude_area(const ContoursCollection& cnt){
+	vector<Point> intp = cells_internal_points();
+	vector<int> bad_cells = std::get<0>(cnt.filter_points_i(intp));
+	remove_cells(bad_cells);
+}
+
 void GridGeom::merge_congruent_points(){
 	std::map<int, int> cp;
 	NodeFinder fnd(outer_rect());
@@ -105,6 +147,12 @@ GridGeom::GridGeom(GridGeom&& g){
 	std::swap(points, g.points);
 	std::swap(cells, g.cells);
 }
+
+void GridGeom::swap_data(GridGeom& g1, GridGeom& g2){
+	std::swap(g1.points, g2.points);
+	std::swap(g1.cells, g2.cells);
+}
+
 GridGeom& GridGeom::operator=(GridGeom g){
 	std::swap(points, g.points);
 	std::swap(cells, g.cells);
@@ -254,49 +302,6 @@ std::pair<Point, Point> GridGeom::outer_rect() const{
 	return std::make_pair(Point(x0, y0), Point(x1, y1));
 }
 
-GridGeom GridGeom::remove_area(const PContour& cont){
-	//1) filter points which lies within the contour
-	std::vector<Point*> p_all, p_inner, p_outer;
-	for (auto& p: points) p_all.push_back(p.get());
-	cont.select_points(p_all, p_inner, p_outer);
-	std::vector<bool> is_point_within(n_points(), false);
-	for (auto p: p_inner) 
-		is_point_within[static_cast<GridPoint*>(p)->ind]=true;
-
-	//2) copy cells info with only outer points
-	//their point pointers temporary refer to this->points
-	GridGeom res;
-	for (int i=0; i<n_cells(); ++i){
-		Cell c(res.n_cells());
-		for (int j=0; j<cells[i]->dim(); ++j){
-			int ind=cells[i]->points[j]->ind;
-			if (!is_point_within[ind]){
-				c.points.push_back(points[ind].get());
-			}
-		}
-		if (c.dim()>2) aa::add_shared(res.cells, c);
-	}
-
-	//3) make a deep copy of all points which present in res.cells.points
-	std::map<int, GridPoint*> inserted;
-	for (int i=0; i<res.n_cells(); ++i){
-		for (int j=0; j<res.cells[i]->dim(); ++j){
-			GridPoint* this_pnt = res.cells[i]->points[j];
-			auto fnd = inserted.find(this_pnt->ind);
-			if (fnd!=inserted.end()){
-				res.cells[i]->points[j]=fnd->second;
-			} else {
-				auto newp = aa::add_shared(res.points, *this_pnt);
-				res.cells[i]->points[j]=newp;
-				inserted.emplace(this_pnt->ind, newp);
-			}
-		}
-	}
-
-	//4) index nodes and return
-	res.set_indicies();
-	return res;
-}
 
 void GridGeom::force_cells_ordering(){
 	for (auto c: cells) c->check_ordering();
@@ -348,11 +353,11 @@ GridGeom* GridGeom::combine(GridGeom* gmain, GridGeom* gsec){
 	//1) build grids contours
 	auto maincont = gmain->get_contours_collection();
 	auto seccont = gsec->get_contours_collection();
-	//2) input date to wireframe format
+	//2) input data to wireframe format
 	PtsGraph wmain(*gmain);
 	PtsGraph wsec(*gsec);
 	//3) cut outer grid with inner grid contour
-	wmain = PtsGraph::cut(wmain, seccont, -1);
+	wmain = PtsGraph::cut(wmain, seccont, INSIDE);
 	//4) overlay grids
 	wmain = PtsGraph::overlay(wmain, wsec);
 	//5) build single connected grid
@@ -374,25 +379,64 @@ GridGeom* GridGeom::combine(GridGeom* gmain, GridGeom* gsec){
 	return ret;
 }
 
-GridGeom* GridGeom::cross_grids(GridGeom* gmain, GridGeom* gsec, 
-		double buffer_size, double density, bool preserve_bp, crossgrid_callback cb){
+GridGeom* GridGeom::cross_grids(GridGeom* gmain_inp, GridGeom* gsec_inp, 
+		double buffer_size, double density, bool preserve_bp, bool empty_holes, crossgrid_callback cb){
 	//initial scaling before doing anything
 	if (cb("Building grid cross", "Scaling", 0, -1) == CALLBACK_CANCEL) return 0;
-	auto sc = gmain->do_scale();
-	gsec->do_scale(sc);
+	auto sc = gmain_inp->do_scale();
+	gsec_inp->do_scale(sc);
 	buffer_size/=sc.L;
+
+	//procedure assigning
+	GridGeom* gmain = gmain_inp;
+	GridGeom* gsec = gsec_inp;
+	std::shared_ptr<GridGeom> _gm, _gs;  //this will store modified gmain and gsec if needed
+	auto cmain  = gmain->get_contours();
+	auto csec  = gsec->get_contours();
+
+	if (cb("Building grid cross", "Boundary analyze", 0.05, -1) == CALLBACK_CANCEL) return 0;
+	//1 ---- if secondary holes are empty -> remove secondary top level area from main grid
+	if (empty_holes){
+		ContoursCollection c1(csec);
+		if (c1.n_cont() != c1.n_inner_cont()){
+			PointsContoursCollection c2(c1.cut_by_level(0, 0));
+			_gm.reset(grid_minus_cont(gmain, &c2, true, cb));
+			if (_gm.get() == 0) return 0;
+			gmain = _gm.get();
+			cmain = gmain->get_contours();
+		}
+	}
 	
-	//1 ---- combine grids without using buffers
-	if (cb("Building grid cross", "Combining", 0.05, -1) == CALLBACK_CANCEL) return 0;
+	if (cb("Building grid cross", "Boundary analyze", 0.20, -1) == CALLBACK_CANCEL) return 0;
+	//2 ---- find contours intersection points and place gsec nodes there
+	if (!preserve_bp && buffer_size>geps){
+		//find all intersections
+		vector<Point> bnd_intersections;
+		for (int i=0; i<csec.size(); ++i){
+			auto bint = csec[i].intersections(cmain);
+			for (auto in: bint){
+				if (fabs(in.first - round(in.first))>geps){
+					bnd_intersections.push_back(in.second);
+				}
+			}
+		}
+		//move secondary grid boundary points to intersection points
+		if (bnd_intersections.size() > 0){
+			_gs.reset(new GridGeom(*gsec));
+			gsec = _gs.get();
+			gsec->move_boundary_points(bnd_intersections);
+			csec  = gsec->get_contours();
+		}
+	}
+	
+	//3 ---- combine grids without using buffers
+	if (cb("Building grid cross", "Combining", 0.25, -1) == CALLBACK_CANCEL) return 0;
 	std::unique_ptr<GridGeom> comb(GridGeom::combine(gmain, gsec));
 
-	//2 ---- fill buffer zone
+	//4 ---- fill buffer zone
 	//zero buffer requires no further actions
 	if (buffer_size>geps){
 	
-		//loop over each get secondary contour
-		auto csec  = gsec->get_contours();
-
 		//loop over each single connected grid
 		if (cb("Building grid cross", "Subdivision", 0.45, -1) == CALLBACK_CANCEL) return 0;
 		auto sg = comb->subdivide();
@@ -401,10 +445,11 @@ GridGeom* GridGeom::cross_grids(GridGeom* gmain, GridGeom* gsec,
 		double cb_step = 1.0/(sg.size()*csec.size());
 		double cb_cur = 0;
 		for (auto grid: sg){
+			//loop over each secondary contour
 			for (auto c: csec){
 				cb_cur+=cb_step;
 				//1. filter out a grid from buffer zone for the contour
-				if (cb("Building grid cross", "Filling buffer", 0.5, cb_cur-cb_step) 
+				if (cb("Building grid cross", "Filling buffer", 0.5, cb_cur-1.0*cb_step) 
 						== CALLBACK_CANCEL) return 0;
 				BufferGrid bg(*grid, c, buffer_size);
 
@@ -441,11 +486,12 @@ GridGeom* GridGeom::cross_grids(GridGeom* gmain, GridGeom* gsec,
 		if (sg.size()>0) comb->merge_congruent_points();
 	}
 
-	//scale back after all procedures have been done and return
+	//5. --- scale back after all procedures have been done and return
 	cb("Building grid cross", "Unscaling", 0.95, -1);
-	gmain->undo_scale(sc);
-	gsec->undo_scale(sc);
+	gmain_inp->undo_scale(sc);
+	gsec_inp->undo_scale(sc);
 	comb->undo_scale(sc);
+	comb->set_indicies();
 
 	cb("Building grid cross", "Done", 1.0, -1);
 	return comb.release();
@@ -474,19 +520,199 @@ void GridGeom::change_internal(const GridGeom& gg){
 vector<Point> GridGeom::cells_internal_points() const{
 	vector<Point> ret; ret.reserve(n_cells());
 	for (auto& c: cells){
+		//1) find if convex and any positive triangle
+		bool conv = true;
+		int anypos = -1;
 		for (int i=0; i<c->dim(); ++i){
 			auto p1 = c->get_point(i-1);
 			auto p2 = c->get_point(i);
 			auto p3 = c->get_point(i+1);
-			if (fabs(triarea(*p1, *p2, *p3))>geps){
-				ret.push_back((*p1 + *p2 + *p3)/3.0);
+			double ar = triarea(*p1, *p2, *p3);
+			if (ar<-geps2){
+				conv = false;
 				break;
+			} else if (ar>geps2){
+				anypos = i;
 			}
+		}
+		//2) if cell is convex: get center of any triangle
+		if (conv && anypos>-1){
+			auto p1 = c->get_point(anypos-1);
+			auto p2 = c->get_point(anypos);
+			auto p3 = c->get_point(anypos+1);
+			ret.push_back((*p1 + *p2 + *p3)/3.0);
+		} else if (!conv){
+		//3) if cell is non-convex: ray crossing algo
+			PContour cont;
+			for (int i=0; i<c->dim();
+				cont.add_point(const_cast<GridPoint*>(c->get_point(i++))));
+			ret.push_back(cont.inside_point_ca());
+		} else {
+			throw std::runtime_error("singular cell");
 		}
 	}
 	return ret;
 }
 
+GridGeom* GridGeom::grid_minus_cont(GridGeom* g, PointsContoursCollection* c,
+		bool is_inner, crossgrid_callback cb){
+	//initial scaling before doing anything
+	const char* com = "Excluding contour from grid";
+	if (cb(com, "Scaling", 0, -1) == CALLBACK_CANCEL) return 0;
+	auto sc = g->do_scale();
+	c->do_scale(sc);
 
+	//1) build a grid boundary
+	auto gbnd = g->get_contours_collection();
 
+	//2) force is_inner=false by addition new contour to c
+	ContoursCollection cp = c->shallow_copy();
+	Contour bounding_cnt;
+	if (is_inner==true){
+		BoundingBox bbox2(cp);
+		BoundingBox bbox1(gbnd);
+		bounding_cnt = BoundingBox({bbox1, bbox2}, 1.0).get_contour();
+		cp.add_contour(bounding_cnt);
+	}
 
+	//3) loop over each inner
+	int cball = cp.n_inner_cont();
+	int cbcur = 0;
+	vector<GridGeom> gg;
+	for (int i=0; i<cp.n_cont(); ++i) if (cp.is_inner(i)){
+		double k = 0.05 + 0.90*(double)cbcur++/cball;
+		if (cb(com, "Contours loop", k, 0) == CALLBACK_CANCEL) return 0;
+
+		//leave only inner + outers in contourscollection
+		ContoursCollection _ctmp = cp.level_01(i);
+
+		//build graph
+		PtsGraph graph(*g);
+
+		// ------- add edges
+		if (cb(com, "Contours loop", k, 0.1) == CALLBACK_CANCEL) return 0;
+		//loop over each outer
+		for (auto& child: _ctmp.get_childs(0)){
+			graph.add_edges(*child);
+		}
+		if (cb(com, "Contours loop", k, 0.4) == CALLBACK_CANCEL) return 0;
+		//treat inner by itself. always add contour (ignore_trivial=true)
+		//because trivial edges will be the last to present in graph
+		//after exclusion (not actual)
+		graph.add_edges(*cp.get_contour(i));
+
+		if (cb(com, "Contours loop", k, 0.5) == CALLBACK_CANCEL) return 0;
+		// ------- exclude edges
+		graph.exclude_area(gbnd,   OUTSIDE);
+		graph.exclude_area(_ctmp,  OUTSIDE);
+
+		gg.push_back(graph.togrid());
+
+		if (cb(com, "Contours loop", k, 0.8) == CALLBACK_CANCEL) return 0;
+		//remove elements which can present in the grid due
+		//to outer contour exclusion
+		if (_ctmp.num_childs(0) > 0) gg.back().leave_only(_ctmp);
+		if (gbnd.n_cont() > 0) gg.back().leave_only(gbnd);
+	}
+	
+	//4) assemble a grid from graph
+	if (cb(com, "Assembling", 0.95, -1) == CALLBACK_CANCEL) return 0;
+	auto ret = new GridGeom();
+	for (auto& g: gg) ret->add_data(g);
+
+	//5) unscaling
+	g->undo_scale(sc);
+	c->undo_scale(sc);
+	ret->undo_scale(sc);
+
+	cb(com, "Done", 1.0, -1);
+	return ret;
+}
+
+vector<vector<int>> GridGeom::point_cell_tab() const{
+	vector<vector<int>> ret(n_points());
+	for (int i=0; i<n_cells(); ++i){
+		auto c = get_cell(i);
+		for (auto j=0; j<c->dim(); ++j){
+			ret[c->get_point(j)->ind].push_back(c->ind);
+		}
+	}
+	return ret;
+}
+
+void GridGeom::move_boundary_points(const vector<Point>& bp){
+	auto bnd = get_contours();
+	double ksi;
+	auto pct = point_cell_tab();
+	for (auto p: bp){
+		//1) find edge in a loop for all boundary edges
+		const GridPoint *b1=0, *b2=0;
+		for (auto& c: bnd){
+			for (int i=0; i<c.n_points(); ++i){
+				auto p1 = c.get_point(i), p2 = c.get_point(i+1);
+				if (isOnSection(p, *p1, *p2, ksi)){
+					if (!c.is_corner_point(i))
+						b1 = static_cast<const GridPoint*>(p1);
+					if (!c.is_corner_point(i+1))
+						b2 = static_cast<const GridPoint*>(p2);
+					//no points which can be moved
+					if (b1 == 0 && b2 == 0) goto edge_not_found;
+					//sort: b1 should be better then b2
+					if (b1!=0 && b2!=0 && ksi>0.5) std::swap(b1,b2);
+					if (b1==0) std::swap(b1, b2);
+					goto edge_found;
+				}
+			}
+		}
+		edge_not_found:
+			continue;
+		edge_found:
+			//2) move point: try b1, if failed use b2
+			if (!move_point(b1, p, pct) && b2!=0) move_point(b2, p, pct);
+	}
+}
+
+bool GridGeom::move_point(const GridPoint* srcp, const Point& tarp, const vector<vector<int>>& point_cell){
+	Point oldpoint(*srcp);
+	GridPoint* s = points[srcp->ind].get();
+	s->x = tarp.x; s->y = tarp.y;
+	//check cells for self crosses and positivity
+	bool ok=true;
+	for (auto ci: point_cell[s->ind]){
+		Cell* cell = cells[ci].get();
+		if (cell->area() <= geps2 || cell->has_self_crosses()){
+			ok = false;
+			break;
+		}
+	}
+	if (ok){
+		return true;
+	}else{
+		s->x = oldpoint.x; s->y = oldpoint.y;
+		return false;
+	}
+}
+
+GridGeom GridGeom::sum(const std::vector<GridGeom>& g){
+	if (g.size() == 0) return GridGeom();
+	GridGeom ret(g[0]);
+	for (int i=1; i<g.size(); ++i){
+		ret.add_data(g[i]);
+	}
+	return ret;
+}
+
+GridGeom GridGeom::sum(const std::vector<GridGeom*>& g){
+	if (g.size() == 0) return GridGeom();
+	GridGeom ret(*g[0]);
+	for (int i=1; i<g.size(); ++i){
+		ret.add_data(*g[i]);
+	}
+	return ret;
+}
+
+double GridGeom::area() const{
+	double a=0;
+	for (int i=0; i<n_cells(); ++i) a+=get_cell(i)->area();
+	return a;
+}

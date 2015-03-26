@@ -2,6 +2,7 @@
 import copy
 import xml.etree.ElementTree as ET
 import bp
+import globvars
 
 
 class CommandReceiver(object):
@@ -270,7 +271,12 @@ class CommandFlow(object):
 
     #commands execution procedures
     def exec_next(self):
+        "executes (or redo's) the next command"
         if (self.can_redo()):
+            #debug mode: save before execution
+            if globvars.prog_options.debug_save_before:
+                globvars.Flows.xml_save(globvars.prog_options.debug_save_fn)
+            #execution
             self._curpos += 1
             if self._commands[self._curpos].do(self._receiver):
                 self._subscriber_message(self.ExecCommand)
@@ -362,8 +368,8 @@ class FlowCollection(object):
     def __init__(self, com_cls, reciever_cls):
         """
             Initialises flow collection.
-            @comCls is the array of classes for each possible command
-            @RecieverCls is the class which implements
+            @com_cls is the array of classes for each possible command
+            @Reciever_cls is the class which implements
             CommandReciever interface
         """
         self._actflow_subscriber = []
@@ -379,7 +385,7 @@ class FlowCollection(object):
         return self._actFlow
 
     def set_actual_flow(self, flow_name):
-        ' sets flow with @flowName as active '
+        ' sets flow with flow_name as active '
         self._actFlow = self._flows[flow_name]
         self._actFlow._receiver.view_update()
         for s in self._actflow_subscriber:

@@ -5,7 +5,6 @@ from PyQt4 import QtCore, QtGui
 import bgeom
 import globvars
 import optview
-import qtui.ui_GridViewOpt
 
 
 class _BackGroundWorkerCB(QtCore.QThread):
@@ -58,12 +57,12 @@ class ProgressProcedureDlg(QtGui.QDialog):
         procedure calls.
     """
 
-    def __init__(self, func, args, parent=None):
+    def __init__(self, func, args, has_cancel=True, parent=None):
         """ func(*args, callback_fun) - target procedure,
-            callback_fun should be declared as
+            callback_fun is declared as
                 int callback_fun(QString BaseName, QString SubName,
                     double proc1, double proc2)
-            it should return 1 for cancellation requiry and 0 otherwise
+            it returns 1 for cancellation requiry and 0 otherwise
         """
         flags = QtCore.Qt.Dialog \
                 | QtCore.Qt.CustomizeWindowHint \
@@ -83,7 +82,8 @@ class ProgressProcedureDlg(QtGui.QDialog):
         layout.addWidget(self._progbar1)
         layout.addWidget(self._label2)
         layout.addWidget(self._progbar2)
-        layout.addWidget(self._buttonbox)
+        if has_cancel:
+            layout.addWidget(self._buttonbox)
         self.setLayout(layout)
         self.setFixedSize(400, 150)
         self.setModal(True)
@@ -323,8 +323,9 @@ class UniteGrids(SimpleAbstractDialog):
         obj.name = "UnitedGrid1"
         obj.pbnd = False
         obj.buff = 0.3
-        obj.den = 7
         obj.grds = []
+        obj.keepsrc = True
+        obj.empty_holes = False
 
     def olist(self):
         "-> optview.OptionsList"
@@ -332,10 +333,12 @@ class UniteGrids(SimpleAbstractDialog):
                 optview.SimpleOptionEntry(self.odata(), "name")),
             ("Construction", "Preserve boundary nodes",
                 optview.BoolOptionEntry(self.odata(), "pbnd")),
+            ("Construction", "Keep empty holes",
+                optview.BoolOptionEntry(self.odata(), "empty_holes")),
             ("Construction", "Buffer size",
                 optview.SimpleOptionEntry(self.odata(), "buff")),
-            ("Construction", "Density",
-                optview.BoundedIntOptionEntry(self.odata(), "den", 0, 10)),
+            ("Grids", "Keep sources", optview.BoolOptionEntry(
+                self.odata(), "keepsrc")),
             ("Grids", "Grids list", optview.MultipleChoiceOptionEntry(
                 self.odata(), "grds", self.all_grids))])
 
@@ -346,13 +349,12 @@ class UniteGrids(SimpleAbstractDialog):
             raise Exception("not enough grids")
 
     def ret_value(self):
-        """ -> (GridName, preserve_bnd,
-            [source grids], [buffer sizes], [densities])
+        """ -> (GridName, preserve_bnd, keep_sources, empty_holes,
+            [source grids], [buffer sizes])
         """
         od = copy.deepcopy(self.odata())
         buff = [od.buff] * len(od.grds)
-        den = [od.den] * len(od.grds)
-        return od.name, od.pbnd, od.grds, buff, den
+        return od.name, od.pbnd, od.keepsrc, od.empty_holes, od.grds, buff
 
 
 class MoveRotateGridsDlg(SimpleAbstractDialog):
@@ -533,6 +535,9 @@ class CopyGrids(SimpleAbstractDialog):
         obj.postfix = ""
         obj.grds = []
         obj.cnts = []
+        obj.move = False
+        obj.dx = 0.0
+        obj.dy = 0.0
 
     def olist(self):
         "-> optview.OptionsList"
@@ -540,13 +545,19 @@ class CopyGrids(SimpleAbstractDialog):
                 optview.SimpleOptionEntry(self.odata(), "prefix")),
             ("Names", "Grid name postfix",
                 optview.SimpleOptionEntry(self.odata(), "postfix")),
+            ("Move", "Move copied objects",
+                optview.BoolOptionEntry(self.odata(), "move")),
+            ("Move", "X shift",
+                optview.SimpleOptionEntry(self.odata(), "dx")),
+            ("Move", "Y shift",
+                optview.SimpleOptionEntry(self.odata(), "dy")),
             ("Objects", "Grids list", optview.MultipleChoiceOptionEntry(
                 self.odata(), "grds", self.all_grids)),
             ("Objects", "Contours list", optview.MultipleChoiceOptionEntry(
                 self.odata(), "cnts", self.all_cnts))])
 
     def ret_value(self):
-        "-> (srcnames, newnames, srccontnames, newcontnames)"
+        "-> (srcnames, newnames, srccontnames, newcontnames, dx, dy)"
         names = self.odata().grds[:]
         contnames = self.odata().cnts[:]
         newnames, cnewnames = [], []
@@ -554,12 +565,23 @@ class CopyGrids(SimpleAbstractDialog):
             newnames.append(self.odata().prefix + n1 + self.odata().postfix)
         for n1 in contnames:
             cnewnames.append(self.odata().prefix + n1 + self.odata().postfix)
-        return names, newnames, contnames, cnewnames
+        dx = self.odata().dx if self.odata().move else 0
+        dy = self.odata().dy if self.odata().move else 0
+        return names, newnames, contnames, cnewnames, dx, dy
 
     def check_input(self):
         "throws Exception if self.odata() has invalid fields"
         if len(self.odata().grds) < 1 and len(self.odata().cnts) < 1:
             raise Exception("No source objects")
+
+    def _active_entries(self, entry):
+        """ (optview.OptionEntry entry) -> bool
+            return False for non-active entries
+        """
+        if entry.member_name in ["dx", "dy"]:
+            return entry.data.move
+        else:
+            return True
 
 
 class RemoveGrids(SimpleAbstractDialog):
@@ -728,18 +750,203 @@ class EditBoundaryType(SimpleAbstractDialog):
             return True
 
 
-class GridViewOpt(QtGui.QDialog, qtui.ui_GridViewOpt.Ui_Dialog):
-    ' Grid view options '
+class ExcludeContours(SimpleAbstractDialog):
+    'Exclude contour from grid dialog'
+    def __init__(self, grd, all_grids, used_conts, all_conts, parent=None):
+        self.all_grids = all_grids
+        self.all_conts = all_conts
+        self._fill_odata(grd, used_conts, self.odata())
+        super(ExcludeContours, self).__init__(parent)
+        self.resize(400, 300)
+        self.setWindowTitle("Exclude contours")
 
-    def __init__(self, opts, parent=None):
-        super(GridViewOpt, self).__init__(parent)
-        self.setupUi(self)
-        self.apply_opts(opts)
+    def _default_odata(self, obj):
+        "-> options struct with default values"
+        obj.name = "ExcludedGrid1"
+        obj.cnts, obj.grd = [], ""
+        obj.area = "Inner"
+        obj.keep_g = True
 
-    def apply_opts(self, opts):
-        #TODO
-        pass
+    def _fill_odata(self, grid, conts, obj):
+        if grid in self.all_grids:
+            obj.grd = grid
+        else:
+            obj.grd = ""
+        obj.cnts = conts
 
+    def olist(self):
+        "-> optview.OptionsList"
+        return optview.OptionsList([("Basic", "Name",
+                optview.SimpleOptionEntry(self.odata(), "name")),
+            ("Basic", "Keep source grid",
+                optview.BoolOptionEntry(self.odata(), "keep_g")),
+            ("Excluded Area", "Area",
+                optview.SingleChoiceOptionEntry(self.odata(), "area",
+                ["Inner", "Outer"])),
+            ("Sources", "Grids",
+                optview.SingleChoiceOptionEntry(self.odata(),
+                "grd", [""] + self.all_grids)),
+            ("Sources", "Contours",
+                optview.MultipleChoiceOptionEntry(self.odata(),
+                "cnts", self.all_conts))
+        ])
+
+    def ret_value(self):
+        '-> (name, src_grd, src_conts, is_inner, keep_g'
+        od = copy.deepcopy(self.odata())
+        isin = od.area == "Inner"
+        return od.name, od.grd, od.cnts, isin, od.keep_g
+
+    def check_input(self):
+        "throws Exception if self.odata() has invalid fields"
+        if self.odata().grd == "":
+            raise Exception("No source grid")
+        if len(self.odata().cnts) < 1:
+            raise Exception("No source contours")
+
+
+class GridBndToContour(SimpleAbstractDialog):
+    'grid boundary to user contour dialog'
+    def __init__(self, grd, all_grids, parent=None):
+        self.all_grids = all_grids
+        self.odata().grd = grd if grd else ""
+        super(GridBndToContour, self).__init__(parent)
+        self.resize(400, 300)
+        self.setWindowTitle("Grid boundary to contour")
+
+    def _default_odata(self, obj):
+        "-> options struct with default values"
+        obj.name = "NewContour1"
+        obj.grd = ""
+        obj.simplify = False
+        obj.separate = False
+
+    def olist(self):
+        "-> optview.OptionsList"
+        return optview.OptionsList([("Basic", "Name",
+                optview.SimpleOptionEntry(self.odata(), "name")),
+            ("Options", "Simplify contours",
+                optview.BoolOptionEntry(self.odata(), "simplify")),
+            ("Options", "Separate contours",
+                optview.BoolOptionEntry(self.odata(), "separate")),
+            ("Sources", "Grids",
+                optview.SingleChoiceOptionEntry(self.odata(),
+                "grd", self.all_grids))
+        ])
+
+    def ret_value(self):
+        '-> (name, src_grd, simplify, separate'
+        od = copy.deepcopy(self.odata())
+        return od.name, od.grd, od.simplify, od.separate
+
+    def check_input(self):
+        "throws Exception if self.odata() has invalid fields"
+        if self.odata().grd == "":
+            raise Exception("No source grid")
+
+
+class UniteContours(SimpleAbstractDialog):
+    'unite contours dialog'
+    def __init__(self, conts, all_conts, keepsrc, parent=None):
+        self.all_conts = all_conts
+        self.odata().conts = conts
+        super(UniteContours, self).__init__(parent)
+        self.resize(400, 300)
+        self.setWindowTitle("Unite contours")
+
+    def _default_odata(self, obj):
+        "-> options struct with default values"
+        obj.name = 'UnitedContour1'
+        obj.conts = []
+        obj.keepsrc = False
+
+    def olist(self):
+        "-> optview.OptionsList"
+        return optview.OptionsList([
+            ("Basic", "Name",
+                optview.SimpleOptionEntry(self.odata(), "name")),
+            ("Sources", "Keep source contours",
+                optview.BoolOptionEntry(self.odata(), "keepsrc")),
+            ("Sources", "Contours",
+                optview.MultipleChoiceOptionEntry(self.odata(), "conts",
+                    self.all_conts))
+        ])
+
+    def ret_value(self):
+        '-> name, [sources names], keepsrc'
+        od = copy.deepcopy(self.odata())
+        return od.name, od.conts, od.keepsrc
+
+    def check_input(self):
+        "throws Exception if self.odata() has invalid fields"
+        if len(self.odata().conts) < 2:
+            raise Exception("Not enough contours to unite")
+
+
+class SimplifyContour(SimpleAbstractDialog):
+    'split and simplify contour dialog'
+    def __init__(self, conts, all_conts, parent=None):
+        self.all_conts = all_conts
+        self.odata().conts = conts
+        super(SimplifyContour, self).__init__(parent)
+        self.resize(400, 300)
+        self.setWindowTitle("Simplify contours")
+
+    def _default_odata(self, obj):
+        "-> options struct with default values"
+        obj.prefix = ""
+        obj.postfix = "Split1"
+        obj.conts = []
+        obj.simplify = True
+        obj.sep = True
+        obj.keepsrc = False
+        obj.angle = 0.0
+
+    def olist(self):
+        "-> optview.OptionsList"
+        return optview.OptionsList([
+            ("Simplify", "Simplify contours",
+                optview.BoolOptionEntry(self.odata(), "simplify")),
+            ("Simplify", "Negligible angle (deg)",
+                optview.SimpleOptionEntry(self.odata(), "angle")),
+            ("Separate", "Separate contours",
+                optview.BoolOptionEntry(self.odata(), "sep")),
+            ("Separate", "Names prefix",
+                optview.SimpleOptionEntry(self.odata(), "prefix")),
+            ("Separate", "Names postfix",
+                optview.SimpleOptionEntry(self.odata(), "postfix")),
+            ("Separate", "Keep source contours",
+                optview.BoolOptionEntry(self.odata(), "keepsrc")),
+            ("Sources", "Contours",
+                optview.MultipleChoiceOptionEntry(self.odata(), "conts",
+                    self.all_conts))
+        ])
+
+    def ret_value(self):
+        '-> separate, simplify, [cont_names], [new_cont_names], keepsrc, angle'
+        od = copy.deepcopy(self.odata())
+        newnames = [od.prefix + cn + od.postfix for cn in od.conts]
+        return od.sep, od.simplify, od.conts, newnames, od.keepsrc, od.angle
+
+    def check_input(self):
+        "throws Exception if self.odata() has invalid fields"
+        if len(self.odata().conts) == 0 or \
+                (not self.odata().sep and not self.odata().simplify):
+            raise Exception("Nothing to do")
+        if self.odata().simplify and \
+                (self.odata().angle < 0 or self.odata().angle > 45):
+            raise Exception("Angle should be in [0, 45] deg")
+
+    def _active_entries(self, entry):
+        """ (optview.OptionEntry entry) -> bool
+            return False for non-active entries
+        """
+        if entry.member_name in ["prefix", "postfix", "keepsrc"]:
+            return self.odata().sep
+        elif entry.member_name in ["angle"]:
+            return self.odata().simplify
+        else:
+            return True
 
 if __name__ == "__main__":
     import sys

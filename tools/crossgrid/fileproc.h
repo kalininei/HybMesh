@@ -12,10 +12,21 @@ void save_vtk(const vector<PContour>& c, const char* fn);
 void save_vtk(const vector<PContour>& c, const vector<double>& data, const char* fn);
 void save_vtk(const PtsGraph* g, const char* fn);
 
-inline void save_vtk(const ContoursCollection& c, const char* fn){ save_vtk(c.contours_list(), fn); }
-inline void save_vtk(const ContoursCollection* c, const char* fn){ save_vtk(c->contours_list(), fn); }
+void save_vtk(const ContoursCollection& c, const char* fn);
+void save_vtk(const ContoursCollection* c, const char* fn);
+void save_vtk(const ContoursCollection& c, const vector<double>& pdata, const char* fn);
+void save_vtk(const GridGeom& g, const char* fn);
+void save_vtk(const PtsGraph& g, const char* fn);
+
+//debugging flags for internal steps
+void set_debug_mode(int i);
+int get_debug_mode();
 
 struct TicToc{
+	//usage:
+	//TicToc timer();
+	//......
+	//timer.fintoc();
 	TicToc(bool start=true, const char* name = "Time duration");
 	void tic();
 	void toc();

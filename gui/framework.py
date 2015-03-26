@@ -86,7 +86,7 @@ class Framework(command.CommandReceiver):
         del self.contours2[name]
 
     def get_contour_names(self):
-        '-> [list of contour names]'
+        '-> [list of user contour names]'
         return self.contours2.keys()
 
     def get_checked_contour_names(self):

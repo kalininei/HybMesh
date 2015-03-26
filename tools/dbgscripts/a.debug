@@ -1,0 +1,19 @@
+#call from build/bin directory with crossgrid_test:
+# gdb -x ../../dbgscripts/a.debug
+
+#file ./crossgrid_test
+#b main
+#run 
+#b crossgrid.cpp:480
+
+
+#====================================
+#call from gui/HybMesh.py directory with HybMesh
+# gdb -x ../tools/dbgscripts/a.debug
+
+file python
+set args ./HybMesh.py ../_debug.cgp
+set breakpoint pending on
+b main
+b contours.cpp:183
+run 

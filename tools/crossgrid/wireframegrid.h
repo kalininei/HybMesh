@@ -22,6 +22,7 @@ struct PtsGraph{
 	PtsGraph(){};
 	// ==== create wireframe from grid
 	explicit PtsGraph(const GridGeom& tg);
+	explicit PtsGraph(const PContour& cont);
 	explicit PtsGraph(const ContoursCollection& cc);
 
 	//get data
@@ -37,10 +38,18 @@ struct PtsGraph{
 	//all boundary edges has an adjacent cell with index=-1.
 	GridGeom togrid() const;
 
+	//imposes contour edges.
+	void add_edges(const PContour&);
+
+	//deletes edges which center lies outside (dir = OUTSIDE) or inside (dir = INSIDE) contour
+	void exclude_area(const ContoursCollection& cont, int dir);
+
 	//cuts wmain with the contours collection internals
 	//all collection contours lines will be present in the resulting graph
 	//dir = 1 cut contours outer zone, dir = -1 cut contours inner zone
 	static PtsGraph cut(const PtsGraph& wmain, const ContoursCollection& conts, int dir);
+	
+	//overalay two graphs
 	static PtsGraph overlay(const PtsGraph& wmain, const PtsGraph& wsec);
 private:
 	// ==== main data
@@ -62,7 +71,7 @@ private:
 	//  <0>  -- Resulting graph,
 	//  <1>  -- vector[@imp_graph.size()] which represents the position of secondary graph points
 	//          within resulting graph points list
-	//  <2>  -- vector[@resulting_graph.nodes.size()] of @main_grid edge coordinates 
+	//  <2>  -- vector[@resulting_graph.nodes.size()] of @main_graph edge coordinates 
 	//          of points which were placed on its edges  or -1
 	typedef std::tuple<
 		PtsGraph,      // resulting graph
@@ -75,11 +84,34 @@ private:
 	static impResT _impose_impl(const PtsGraph& main_graph, const PtsGraph& imp_graph, double eps);
 
 	friend struct PtsGraphAccel;
+	friend struct SubGraph;
 
 	//data management
 	void delete_unused_points();
+	//lines->lines connectivity
+	vector<vector<int>> lines_lines_tab() const;
 };
 
+//single connected part of the ptsgraph
+struct SubGraph{
+	const PtsGraph* parent;
+	std::list<int> lines;
+
+	static vector<SubGraph> build(const PtsGraph& p);
+	GridGeom togrid() const;
+private:
+	SubGraph(const std::list<int>& used_lines, const PtsGraph* p);
+
+	//recursive algo for subgraph assembling
+	static void lines_sort_out(int iline, std::vector<int>& lines_usage, std::list<int>& result,
+			const vector<std::vector<int>>& contab);
+
+	//build Graph base data
+	std::tuple<
+		vector<Point>,
+		vector<GraphLine>
+	> rebuild_nodes_lines() const;
+};
 
 typedef std::array<int, 2> Tind2;
 struct Tind2Proc{

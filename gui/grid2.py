@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import copy
 import math
+import itertools
 import xml.etree.ElementTree as ET
 import bgeom
 import bp
@@ -171,11 +172,11 @@ class Grid2(bgeom.Point2SetStruct):
     def _xml_write_edges(self, xmlnode):
         #points indicies
         ET.SubElement(xmlnode, "PTS_IND").text = \
-                " ".join(map(str, sum(self.edges, [])))
+                " ".join(map(str, itertools.chain.from_iterable(self.edges)))
         #cells connectivity
         ed_cl = self.edges_cells_connect()
         ET.SubElement(xmlnode, "CONNECT").text = \
-                " ".join(map(str, sum(ed_cl, [])))
+                " ".join(map(str, itertools.chain.from_iterable(ed_cl)))
 
     # ---- load from xml
     @classmethod
@@ -525,7 +526,7 @@ class UnfCircGrid(CircularGrid):
     ' Uniform circular grid '
     def __init__(self, p0, rad, na, nr, coef, is_trian):
         super(UnfCircGrid, self).__init__(na, nr, is_trian)
-        self.p_center = p0
+        self.p_center = copy.deepcopy(p0)
         self.rad = rad
         self.coef = coef
         self.acts = []
@@ -607,9 +608,9 @@ class UnfCircGrid(CircularGrid):
 class UnfRingGrid(CircularGrid):
     ' Uniform circular grid '
     def __init__(self, p0, irad, orad, na, nr, coef):
-        super(UnfRingGrid, self).__init__(na, nr, False)
+        super(UnfRingGrid, self).__init__(na, nr + 1, False)
         self.cells = self.cells[:-1]
-        self.p_center = p0
+        self.p_center = copy.deepcopy(p0)
         self.irad = irad
         self.orad = orad
         self.coef = coef
@@ -661,6 +662,9 @@ class UnfRingGrid(CircularGrid):
                 self.acts = self.acts[:-1]
 
         super(UnfRingGrid, self).scale(p0, xpc, ypc)
+
+    def cells_nodes_connect(self):
+        return super(UnfRingGrid, self).cells_nodes_connect()[:-1]
 
     def _xml_write_nodes(self, xmlnode):
         ET.SubElement(xmlnode, "DIM").text = str(self.na) + " " + str(self.nr)

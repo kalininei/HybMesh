@@ -12,7 +12,7 @@ using std::vector;
 template<class T> using shp_vector = std::vector<std::shared_ptr<T>>;
 
 const double geps = 1e-8;
-const double geps2 = geps*geps;
+const double geps2 = 1e-14;
 const double gbig = 1.0/geps;
 inline bool ISZERO(double v){ return fabs(v)<geps; }
 inline bool ISEQ(double a, double b){ return ISZERO(a-b); }
@@ -20,8 +20,13 @@ inline bool ISEQLOWER(double x, double y){ return x<y+geps; }
 inline bool ISEQGREATER(double x, double y){ return x>y-geps; }
 inline bool ISLOWER(double x, double y){ return x<y-geps; }
 inline bool ISGREATER(double x, double y){ return x>y+geps; }
-
+inline int SIGN(double x){ if (ISZERO(x)) return 0; else return (x<0) ? -1 : 1; }
 inline double sqr(double x){ return x*x; }
+
+//positioning constants
+const int BOUND = 0;
+const int INSIDE = 1;
+const int OUTSIDE = -1;
 
 //Point
 struct Point{
@@ -87,6 +92,7 @@ struct Point{
 	static Point CPoint(FirstIter start, LastIter end){
 		return std::accumulate(start, end, Point(0,0))/std::distance(start,end);
 	}
+
 };
 
 //point operators
@@ -115,6 +121,9 @@ inline Point& operator*=(Point& left, double d){
 inline Point operator/(const Point& p, double d){ auto x=Point(p); return std::move(x/=d); }
 inline Point operator*(const Point& p, double d){ auto x=Point(p); return std::move(x*=d); }
 inline bool operator==(const Point& p1, const Point& p2){ return (ISEQ(p1.x, p2.x) && ISEQ(p1.y, p2.y)); }
+inline bool operator<(const Point& p1, const Point& p2){
+	return (ISEQ(p1.x, p2.x)) ? ISLOWER(p1.y, p2.y) : ISLOWER(p1.x, p2.x);
+}
 
 inline std::ostream& operator<<(std::ostream& os, const Point& p){
 	os<<p.x<<" "<<p.y;

@@ -1,7 +1,5 @@
 ' global variables of the program '
 
-import sys
-from PyQt4.QtGui import QApplication
 import command
 import framework
 import gridcom
@@ -25,6 +23,7 @@ def mainvtk_render():
     mainWindow.vtkWidget.GetRenderWindow().Render()
 
 
+# ==================== Program options
 class ViewOptions(object):
     'View Options struct'
     def __init__(self):
@@ -39,8 +38,14 @@ class ViewOptions(object):
 view_options = ViewOptions()
 
 
-# -- initialize qt application
-app = QApplication(sys.argv)
+class ProgOptions(object):
+    'Options of the program behavior'
+    def __init__(self):
+        # ======= debugging:
+        #save before each command execution
+        self.debug_save_before = False
+        self.debug_save_fn = '../_debug.cgp'
+prog_options = ProgOptions()
 
 #build main window
 mainWindow = mainwin.MainWindow()
@@ -52,13 +57,18 @@ _commands = [gridcom.AddUnfRectGrid,
         gridcom.AddUnfRingGrid,
         gridcom.UniteGrids,
         gridcom.RenameGrid,
+        gridcom.ExcludeContours,
         objcom.RemoveGrid,
         objcom.MoveGrids,
         objcom.RotateGrids,
         objcom.ScaleGrids,
         objcom.CopyGrid,
+        contcom.RenameContour,
         contcom.AddRectCont,
+        contcom.UniteContours,
         contcom.EditBoundaryType,
+        contcom.GridBndToContour,
+        contcom.SimplifyContours,
         contcom.SetBTypeToContour]
 
 Flows = command.FlowCollection(_commands, framework.Framework)

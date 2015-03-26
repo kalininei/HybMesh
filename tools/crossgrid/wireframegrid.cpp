@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <numeric>
 #include "fileproc.h"
+#include "assert.h"
+#include "intrusion.h"
 
 //constructors
 PtsGraph::PtsGraph(const GridGeom& g2){
@@ -15,7 +17,7 @@ PtsGraph::PtsGraph(const GridGeom& g2){
 	auto eds = g2.get_edges();
 	lines.reserve(eds.size());
 	for (auto e: eds){
-		lines.push_back(GraphLine(e.p1, e.p2));	
+		lines.push_back(GraphLine(e.p1, e.p2));
 	}
 }
 
@@ -32,13 +34,24 @@ PtsGraph::PtsGraph(const ContoursCollection& cc){
 	}
 }
 
+PtsGraph::PtsGraph(const PContour& c){
+	for (int i=0; i<c.n_points(); ++i){
+		nodes.push_back(Point(*c.get_point(i)));
+		if (i<c.n_points()-1){
+			lines.push_back(GraphLine(nodes.size()-1, nodes.size()));
+		} else {
+			lines.push_back(GraphLine(nodes.size()-1, nodes.size()-c.n_points()));
+		}
+	}
+}
+
 auto PtsGraph::_impose_impl(const PtsGraph& main_graph, const PtsGraph& imp_graph, double eps)
 		-> impResT {
 	auto ret = impResT(main_graph, vector<int>(), vector<double>());
 	auto& G=std::get<0>(ret);
 	auto& ig_nodes=std::get<1>(ret);
 	auto& cross_nodes=std::get<2>(ret);
-	
+
 	// === Acceleration initialization
 	////this guarantees that points in G will not change their addresses
 	////on push_back invocation. This is important due to ndfinder implementation details.
@@ -60,7 +73,7 @@ auto PtsGraph::_impose_impl(const PtsGraph& main_graph, const PtsGraph& imp_grap
 		ig_nodes.push_back(std::get<1>(ares));
 		if (std::get<0>(ares)==2) crnodes_ind.push_back(G.nodes.size()-1);
 	}
-	
+
 	//all nodes which were added after last_node are cross nodes
 	int last_node=G.Nnodes();
 	//add connections from g
@@ -70,7 +83,7 @@ auto PtsGraph::_impose_impl(const PtsGraph& main_graph, const PtsGraph& imp_grap
 		Accel.add_connection(i0, i1);
 	}
 	for (int i=last_node; i<G.Nnodes(); ++i) crnodes_ind.push_back(i);
-	
+
 	//calculate cross_nodes coordinates
 	cross_nodes=vector<double>(G.Nnodes(), -1);
 	const PtsGraphAccel AccelMainG(const_cast<PtsGraph&>(main_graph),eps);
@@ -99,7 +112,7 @@ struct tgPoint: public Point{
 	tgPoint(const Point& p, int oind): Point(p), origindex(oind){}
 	std::map<double, tgHalfEdge*, geps_lower> he;
 	int NumEd() const {return he.size(); }
-	tgHalfEdge* popfirst(){  
+	tgHalfEdge* popfirst(){
 		tgHalfEdge* ret=he.begin()->second;
 		he.erase(he.begin());
 		return ret;
@@ -127,12 +140,12 @@ struct tgCell{
 	tgHalfEdge* lasthe() const{ return *he.rbegin(); };
 	double Area() const{
 		PContour cnt;
-		for (auto e: he) cnt.add_point(e->first); 
+		for (auto e: he) cnt.add_point(e->first);
 		return cnt.area();
 	}
 };
 
-void build_tg(const vector<Point>& pts, const vector<GraphLine>& lines, 
+void build_tg(const vector<Point>& pts, const vector<GraphLine>& lines,
 		vector<tgPoint>& P, vector<tgHalfEdge>& HE
 ){
 	//Points
@@ -211,18 +224,124 @@ GridGeom formgrid(const vector<tgPoint>& P, const vector<tgHalfEdge>& HE,
 		}
 	}
 	vector<double> raw_pnt;
-	for (auto& p: P){ raw_pnt.push_back(p.x); raw_pnt.push_back(p.y); } 
-	return GridGeom(raw_pnt.size()/2, cell_inner.size(), &raw_pnt[0], &cells_nodes[0]); 
+	for (auto& p: P){ raw_pnt.push_back(p.x); raw_pnt.push_back(p.y); }
+	return GridGeom(raw_pnt.size()/2, cell_inner.size(), &raw_pnt[0], &cells_nodes[0]);
 }
-
 }//namespace
 
 GridGeom PtsGraph::togrid() const{
+	//assemble subgraphs each of which can be
+	//processed to a single connected grid
+	auto subs = SubGraph::build(*this);
+
+	//assemble single connected grids for each sub graph
+	vector<GridGeom> grids; grids.reserve(subs.size());
+	for (auto& s: subs) grids.push_back(s.togrid());
+
+	//if only a single grid exists return it
+	if (grids.size() == 1) return GridGeom::sum(grids);
+
+	//collect all grid boundaries into a set of nested contours
+	ContoursCollection concol;
+	for (auto& g: grids){
+		auto gc = g.get_contours();
+		//should contain only single contour
+		if (gc.size() != 1) throw std::runtime_error(
+			"Can not assemble single contour around a grid");
+		concol.add_contour(gc[0]);
+	}
+
+	//if grid boundaries don't contain each other collect all data to one grid and return
+	if (concol.n_cont() == concol.n_inner_cont()) return GridGeom::sum(grids);
+
+	//set of level, parent_index, child_index
+	std::set<std::tuple<int, int, int>> lpc;
+	for (int i=0; i<concol.n_cont(); ++i){
+		int level = concol.get_level(i);
+		int parent = concol.get_parent_index(i);
+		if (level > 0) lpc.insert(std::make_tuple(level, parent, i));
+	}
+	//moving from the highest level of nesting
+	int parent=-1;
+	vector<int> childs;
+	auto intrude = [&](){
+		std::vector<GridGeom*> cg;
+		for (auto i: childs) cg.push_back(&grids[i]);
+		GridForIntrusion::intrude_grids(grids[parent], cg);
+	};
+	for (auto it=lpc.rbegin(); it!=lpc.rend(); ++it){
+		auto itnext = it; ++itnext;
+		parent = std::get<1>(*it);
+		childs.push_back(std::get<2>(*it));
+		if (itnext == lpc.rend() || std::get<1>(*itnext) != parent){
+			intrude();
+			parent=-1; childs.clear();
+		}
+	}
+
+	//assemble first level grids
+	vector<GridGeom*> lev0;
+	for (int i=0; i<concol.n_cont(); ++i) if (concol.get_level(i) == 0){
+		lev0.push_back(&grids[i]);
+	}
+	return GridGeom::sum(lev0);
+}
+
+vector<vector<int>> PtsGraph::lines_lines_tab() const{
+	vector<vector<int>> pts_lines(nodes.size());
+	for (int i=0; i<lines.size(); ++i){
+		pts_lines[lines[i].i0].push_back(i);
+		pts_lines[lines[i].i1].push_back(i);
+	}
+	vector<vector<int>> ret(lines.size());
+	for (auto& pl: pts_lines){
+		for (int i=0; i<pl.size(); ++i){
+			for (int j=i+1; j<pl.size(); ++j){
+				ret[pl[i]].push_back(pl[j]);
+				ret[pl[j]].push_back(pl[i]);
+			}
+		}
+	}
+	return ret;
+}
+
+// =============================== SubGraph
+SubGraph::SubGraph(const std::list<int>& used_lines, const PtsGraph* p):parent(p), lines(used_lines){}
+
+vector<SubGraph> SubGraph::build(const PtsGraph& p){
+	vector<SubGraph> ret;
+	std::vector<int> lines_usage(p.lines.size(), 0);
+	auto contab = p.lines_lines_tab();
+	while (1){
+		auto fnd0 = std::find(lines_usage.begin(), lines_usage.end(), 0);
+		if (fnd0 == lines_usage.end()) break;
+		std::list<int> used_lines;
+		lines_sort_out(fnd0 - lines_usage.begin(), lines_usage, used_lines, contab);
+		ret.push_back(SubGraph(used_lines, &p));
+	};
+	return ret;
+}
+
+void SubGraph::lines_sort_out(int iline, std::vector<int>& lines_usage, std::list<int>& result,
+			const vector<std::vector<int>>& contab){
+	if (lines_usage[iline] == 1) return;
+	lines_usage[iline] = 1;
+	result.push_back(iline);
+	for (auto adj: contab[iline]) lines_sort_out(adj, lines_usage, result, contab);
+}
+
+GridGeom SubGraph::togrid() const{
 	vector<tgPoint> P;
 	vector<tgHalfEdge> HEdges;
 	vector<tgCell> VC;
+	
+	auto nl = rebuild_nodes_lines();
+	auto nodes = std::get<0>(nl);
+	auto lines = std::get<1>(nl);
+
 	//1) Build tgHalfEdge, tgPoint vectors.
 	build_tg(nodes, lines, P, HEdges);
+
 	//2) Fill VC vector
 	for (auto& p: P){
 		while (p.NumEd()!=0){
@@ -236,6 +355,7 @@ GridGeom PtsGraph::togrid() const{
 			}
 		}
 	}
+
 	//3) Sort inner and outer cells using sign of their areas.
 	vector<tgCell*> inner_cells, outer_cells;
 	for (auto& c: VC){
@@ -246,8 +366,37 @@ GridGeom PtsGraph::togrid() const{
 	return formgrid(P, HEdges, inner_cells, outer_cells);
 }
 
+std::tuple<
+	vector<Point>,
+	vector<GraphLine>
+> SubGraph::rebuild_nodes_lines() const{
+	std::tuple<vector<Point>, vector<GraphLine>> ret;
+	auto& pts = std::get<0>(ret);
+	auto& lns = std::get<1>(ret);
+
+	std::set<int> used_points;
+	for (auto& oln: lines){
+		used_points.insert(parent->lines[oln].i0);
+		used_points.insert(parent->lines[oln].i1);
+	}
+
+	std::map<int, int> oldnew_p;
+	for (auto up: used_points){
+		oldnew_p[up] = pts.size();
+		pts.push_back(parent->nodes[up]);
+	}
+	
+	for (auto& nl: lines){
+		lns.push_back(parent->lines[nl]);
+		lns.back().i0 = oldnew_p[lns.back().i0];
+		lns.back().i1 = oldnew_p[lns.back().i1];
+	}
+
+	return ret;
+};
+
 // =============================== PtsGraphAccel
-PtsGraphAccel::PtsGraphAccel(PtsGraph& g, const Point& pmin, const Point& pmax, double e) noexcept: 
+PtsGraphAccel::PtsGraphAccel(PtsGraph& g, const Point& pmin, const Point& pmax, double e) noexcept:
 		eps(e), epsPnt(e,e), ip(Tind2Proc(Naux, Naux)), G(&g), nodecomp(e), ndfinder(nodecomp)
 {
 	init(pmin, pmax);
@@ -280,10 +429,10 @@ std::tuple<int, int>  PtsGraphAccel::add_point(const Point& p) noexcept{
 	//find equal edge
 	double ksi;
 	for (auto i: candidates_edges(p)){
-		if (isOnSection(p, G->ednode0(i), G->ednode1(i), ksi, eps)) 
+		if (isOnSection(p, G->ednode0(i), G->ednode1(i), ksi, eps))
 			return std::make_tuple(2, break_graph_line(i, ksi));
 	}
-	//add new node to Graph 
+	//add new node to Graph
 	return std::make_tuple(0, add_graph_node(p));
 }
 
@@ -405,7 +554,6 @@ void PtsGraph::delete_unused_points(){
 }
 
 PtsGraph PtsGraph::cut(const PtsGraph& wmain, const ContoursCollection& conts, int dir){
-	dir = (dir>0)?-1:1;
 	auto ccut = PtsGraph(conts);
 	//get the imposition: wmain + conts
 	auto ires = impose(wmain, ccut, geps);
@@ -414,13 +562,30 @@ PtsGraph PtsGraph::cut(const PtsGraph& wmain, const ContoursCollection& conts, i
 	//using the position of line center point
 	std::vector<Point> line_cnt = pg.center_line_points();
 	auto flt = conts.filter_points_i(line_cnt);
-	std::vector<int>& badi = (dir==1) ? std::get<0>(flt) : std::get<2>(flt);
+	std::vector<int>& badi = (dir==INSIDE) ? std::get<0>(flt) : std::get<2>(flt);
 	std::set<int> bad_lines(badi.begin(), badi.end());
 	aa::remove_entries(pg.lines, bad_lines);
-	//delete unused points
+
 	pg.delete_unused_points();
+
 	return pg;
 }
+
+void PtsGraph::add_edges(const PContour& c){
+	PtsGraph pgr(c);
+	auto ires = std::get<0>(impose(*this, pgr, geps));
+	nodes = ires.nodes;
+	lines = ires.lines;
+}
+
+void PtsGraph::exclude_area(const ContoursCollection& cont, int dir){
+	std::vector<Point> line_cnt = center_line_points();
+	auto flt = cont.filter_points_i(line_cnt);
+	std::vector<int>& badi = (dir==INSIDE) ? std::get<0>(flt) : std::get<2>(flt);
+	std::set<int> bad_lines(badi.begin(), badi.end());
+	aa::remove_entries(lines, bad_lines);
+	delete_unused_points();
+};
 
 PtsGraph PtsGraph::overlay(const PtsGraph& wmain, const PtsGraph& wsec){
 	auto ret = impose(wmain, wsec, geps);

@@ -5,6 +5,7 @@
 #include <numeric>
 #include <vector>
 #include <set>
+#include <map>
 
 namespace aa{
 
@@ -167,6 +168,18 @@ void Cfill_container(const Container& c, OutContainer& outc, Method&& M){
 			[&M](const typename Container::value_type& x){ return M(x); });
 }
 
+// ====================== map with double as the key using epsilon compare
+struct _MapComp{
+	_MapComp(double _e): e(_e){}
+	const double e;
+	bool operator()(double a, double b){ return a+e<b; }
+};
+
+template <typename Arg>
+class DoubleMap: public std::map<double, Arg, _MapComp>{
+public:
+	DoubleMap(double e): std::map<double, Arg, _MapComp>(_MapComp(e)){}
+};
 
 }//namespace
 

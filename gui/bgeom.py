@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 "basic geometry"
 import copy
 import math
@@ -26,6 +27,18 @@ class Point2(object):
     def fromstring(cls, s):
         s2 = s.split()
         return cls(float(s2[0]), float(s2[1]))
+
+
+def angle_3pnt(p1, p2, p3):
+    '-> [0, 2*pi]. Get the angle from 3 consecutive points'
+    v1x, v1y = p1.x - p2.x, p1.y - p2.y
+    v2x, v2y = p3.x - p2.x, p3.y - p2.y
+    dot = v1x * v2x + v1y * v2y
+    cross = v1x * v2y - v1y * v2x
+    a = math.atan2(cross, dot)
+    if a < 0:
+        a += 2 * math.pi
+    return a
 
 
 class GeomStruct(object):
@@ -187,3 +200,9 @@ class Point2SetStruct(GeomStruct):
     def __str_to_pnts(data):
         it = iter(map(float, data.split()))
         return map(Point2, it, it)
+
+if __name__ == "__main__":
+    a = angle_3pnt(Point2(4.8, 2.8), Point2(0, 0), Point2(3.28, -1.86))
+    if a < 0:
+        a += math.pi
+    print a / math.pi * 180.0

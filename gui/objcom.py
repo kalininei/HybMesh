@@ -5,7 +5,113 @@ import bgeom
 import command
 
 
-class RemoveGrid(command.Command):
+class _AddRemoveObjects(command.Command):
+    """ subcommand to remove objects.
+        Could be used only as the internal command for other user commands
+
+        Order of execution:
+            remove grids, remove contours, add grids, add contours
+    """
+    def __init__(self, addgrids, remgrids, addconts, remconts):
+        """ addgrids -- [ (string name, Grid2 grid), ... ]
+            remgrids -- [ string name, ... ]
+            addconts -- [ (string name, Contour2 conts), ...]
+            remconts -- [ string name, ...]
+        """
+        self.addgrids, self.addconts = addgrids, addconts
+        self.remgrids, self.remconts = remgrids, remconts
+        super(_AddRemoveObjects, self).__init__({})
+        self._clear()
+
+    @classmethod
+    def fromstring(cls, slist):
+        raise NotImplementedError
+
+    def doc(self):
+        raise NotImplementedError
+
+    def do(self, receiver):
+        self.receiver = receiver
+        self._clear()
+        if len(self.remgrids) + len(self.remconts) + len(self.addgrids) +\
+                len(self.addconts) == 0:
+            return False
+        #remove grids
+        for n in self.remgrids:
+            self._bu_remgrids.append(receiver.get_grid(name=n))
+            receiver.remove_grid(n)
+        #remove contours
+        for n in self.remconts:
+            self._bu_remconts.append(receiver.get_user_contour(name=n))
+            receiver.remove_user_contour(n)
+        #add grids
+        for v in self.addgrids:
+            self._bu_addgrids.append(receiver.add_grid(*v))
+        #add contours
+        for v in self.addconts:
+            self._bu_addconts.append(receiver.add_user_contour(*v))
+        return True
+
+    def _exec(self):
+        return self.do(self.receiver)
+
+    def _clear(self):
+        self._bu_remgrids = []
+        self._bu_remconts = []
+        self._bu_addgrids = []
+        self._bu_addconts = []
+
+    def _undo(self):
+        #everything in the reversed order
+        #undo add contours
+        for v in self._bu_addconts[::-1]:
+            self.receiver.remove_user_contour(v[1])
+        #undo add grids
+        for v in self._bu_addgrids[::-1]:
+            self.receiver.remove_grid(v[1])
+        #undo remove contours
+        for v in self._bu_remconts[::-1]:
+            self.receiver.contours2.insert(*v)
+        #undo remove grids
+        for v in self._bu_remgrids[::-1]:
+            self.receiver.grids2.insert(*v)
+
+    def _redo(self):
+        return self.do(self.receiver)
+
+
+class AbstractAddRemove(command.Command):
+    """ Abstract base for commands which end up
+        with adding and/or removing objects """
+    def __init__(self, argsdict):
+        super(AbstractAddRemove, self).__init__(argsdict)
+        self.__addrem = None
+
+    def _exec(self):
+        self.__addrem = _AddRemoveObjects(*self._addrem_objects())
+        return self.__addrem.do(self.receiver)
+
+    def _clear(self):
+        self.__addrem = None
+
+    def _undo(self):
+        self.__addrem._undo()
+
+    def _redo(self):
+        self.__addrem._redo()
+
+    #function for overriding
+    def _addrem_objects(self):
+        """ -> addgrids, remgrids, addconts, remconts.
+            addgrids -- [ (string name, Grid2 grid), ... ]
+            remgrids -- [ string name, ... ]
+            addconts -- [ (string name, Contour2 conts), ...]
+            remconts -- [ string name, ...]
+        """
+        raise NotImplementedError
+
+
+class RemoveGrid(AbstractAddRemove):
     'remove grid/contour list'
     def __init__(self, names, contnames=[]):
         """ name - string name of the removing grid
@@ -19,13 +125,6 @@ class RemoveGrid(command.Command):
         super(RemoveGrid, self).__init__(a)
         self.names = names
         self.contnames = contnames
-        self._backup_grid = []
-        self._backup_cont = []
-
-    #overriden from Command
-    @classmethod
-    def _method_code(cls):
-        return "RemoveGrid"
 
     @classmethod
     def fromstring(cls, slist):
@@ -41,29 +140,8 @@ class RemoveGrid(command.Command):
         n = self.names + self.contnames
         return "Remove objects: %s" % (', '.join(n))
 
-    def _exec(self):
-        self._backup_grid = []
-        self._backup_cont = []
-        for n in self.names:
-            self._backup_grid.append(self.receiver.get_grid(name=n))
-            self.receiver.remove_grid(n)
-        for n in self.contnames:
-            self._backup_cont.append(self.receiver.get_user_contour(name=n))
-            self.receiver.remove_user_contour(n)
-        return True
-
-    def _clear(self):
-        self._backup_grid = []
-        self._backup_cont = []
-
-    def _undo(self):
-        for v in self._backup_grid:
-            self.receiver.grids2.insert(*v)
-        for v in self._backup_cont:
-            self.receiver.contours2.insert(*v)
-
-    def _redo(self):
-        self._exec()
+    def _addrem_objects(self):
+        return [], self.names, [], self.contnames
 
 
 class MoveGrids(command.Command):
@@ -90,10 +168,6 @@ class MoveGrids(command.Command):
         if 'contnames' in a:
             contnames = a['contnames'].split()
         return cls(float(a['dx']), float(a['dy']), names, contnames)
-
-    @classmethod
-    def _method_code(cls):
-        return "MoveGrids"
 
     def _exec(self):
         for g in self.names:
@@ -141,10 +215,6 @@ class RotateGrids(command.Command):
             contnames = a['contnames'].split()
         return cls(bgeom.Point2.fromstring(a['p0']),
                 float(a['angle']), names, contnames)
-
-    @classmethod
-    def _method_code(cls):
-        return "RotateGrids"
 
     def _exec(self):
         for g in self.names:
@@ -194,10 +264,6 @@ class ScaleGrids(command.Command):
         return cls(bgeom.Point2.fromstring(a['p0']),
                 float(a['xpc']), float(a['ypc']), names, contnames)
 
-    @classmethod
-    def _method_code(cls):
-        return "ScaleGrids"
-
     def _exec(self):
         for g in self.names:
             self.receiver.grids2[g].scale(self.p0, self.xpc, self.ypc)
@@ -218,25 +284,29 @@ class ScaleGrids(command.Command):
         self._exec()
 
 
-class CopyGrid(command.Command):
+class CopyGrid(AbstractAddRemove):
     "Copy objects"
 
-    def __init__(self, srcnames, copynames, cnames, copycnames):
+    def __init__(self, srcnames, copynames, cnames, copycnames,
+                dx=0.0, dy=0.0):
         """ srcnames, copynames are the list of old and new grid names
             cnames, copycnames are the list of old and new contours names
+            dx, dy - copied objects shift
         """
         a = {'srcnames': ' '.join(srcnames),
                 'copynames': ' '.join(copynames),
                 'contnames': ' '.join(cnames),
-                'copycontnames': ' '.join(copycnames)}
+                'copycontnames': ' '.join(copycnames),
+                'dx': dx, 'dy': dy}
         super(CopyGrid, self).__init__(a)
         self.srcnames = srcnames
         self.copynames = copynames
         self.cnames = cnames
         self.copycnames = copycnames
-        #new grids as a tuple (ind, name, grid)
-        self.created_grids = []
-        self.created_conts = []
+        if dx != 0 or dy != 0:
+            self.shift = dx, dy
+        else:
+            self.shift = None
 
     def doc(self):
         n = self.srcnames + self.cnames
@@ -253,40 +323,31 @@ class CopyGrid(command.Command):
         if 'contnames' in a:
             cnames = a['contnames'].split()
             newcnames = a['copycontnames'].split()
-        return cls(gnames, newgnames, cnames, newcnames)
+        if 'dx' in a:
+            dx = float(a['dx'])
+        else:
+            dx = 0.0
+        if 'dy' in a:
+            dy = float(a['dy'])
+        else:
+            dy = 0.0
+        return cls(gnames, newgnames, cnames, newcnames, dx, dy)
 
-    @classmethod
-    def _method_code(cls):
-        return "CopyGrid"
-
-    def _exec(self):
-        self.created_grids = []
-        self.created_conts = []
+    def _addrem_objects(self):
+        newg, newc = [], []
+        #copy
         for name1, name2 in zip(self.srcnames, self.copynames):
             gold = self.receiver.get_grid(name=name1)[2]
             gnew = gold.deepcopy()
-            self.receiver.add_grid(name2, gnew)
-            self.created_grids.append(self.receiver.get_grid(grid=gnew))
+            newg.append((name2, gnew))
         for name1, name2 in zip(self.cnames, self.copycnames):
             gold = self.receiver.get_user_contour(name=name1)[2]
             gnew = gold.deepcopy()
-            self.receiver.add_user_contour(name2, gnew)
-            self.created_conts.append(
-                    self.receiver.get_user_contour(cont=gnew))
-        return True
-
-    def _clear(self):
-        self.created_grids = []
-        self.created_conts = []
-
-    def _undo(self):
-        for _, n, _ in self.created_grids:
-            self.receiver.remove_grid(n)
-        for _, n, _ in self.created_conts:
-            self.receiver.remove_user_contour(n)
-
-    def _redo(self):
-        for v in self.created_grids:
-            self.receiver.grids2.insert(*v)
-        for v in self.created_conts:
-            self.receiver.contours2.insert(*v)
+            newc.append((name2, gnew))
+        #shift
+        if self.shift is not None:
+            for g in newg:
+                g[1].move(*self.shift)
+            for c in newc:
+                c[1].move(*self.shift)
+        return newg, [], newc, []
