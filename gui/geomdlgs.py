@@ -208,8 +208,8 @@ class BoundaryTypesManagement(QtGui.QDialog):
         #selection widget
         self.frame_select = QtGui.QGroupBox("Selection", self)
         self.rb_excluding = QtGui.QRadioButton("Auto excluding")
-        self.rb_excluding.setChecked(True)
         self.rb_union = QtGui.QRadioButton("Union")
+        self.rb_union.setChecked(True)
         self.rb_separated = QtGui.QRadioButton("Separated")
         self.but_reverse = QtGui.QPushButton("Reverse")
         self.but_clear = QtGui.QPushButton("Clear")
@@ -414,8 +414,8 @@ class BoundaryTypesManagement(QtGui.QDialog):
         for i, c in enumerate(self.conts):
             ret.append({})
             r = ret[-1]
-            for b in [self.bt.get(name=n).index for n in self.bt.get_names()]:
-                r[b] = []
+            for s in set(self.new_bnd[i]):
+                r[s] = []
             for i, e in enumerate(self.new_bnd[i]):
                 r[e].append(i)
         return ret

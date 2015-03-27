@@ -400,3 +400,35 @@ class RenameContour(command.Command):
 
     def _redo(self):
         self._exec()
+
+
+class CreateContour(objcom.AbstractAddRemove):
+    'Manually enter contour points'
+    def __init__(self, name, pts, bnds, closed):
+        'str name, [Points], [int bnd], bool closed'
+        self.name = name
+        self.pts, self.bnds, self.is_closed = pts, bnds, closed
+        a = {'name': name, 'points': ', '.join(map(str, pts)),
+                'bnd': bnds, 'closed': closed}
+        super(CreateContour, self).__init__(a)
+
+    def doc(self):
+        return "Create contour"
+
+    @classmethod
+    def fromstring(cls, slist):
+        arg = ast.literal_eval(slist)
+        pts = map(bgeom.Point2.fromstring, arg['points'].split(','))
+        b = arg['bnd']
+        cl = arg['closed'] == 'True'
+        return cls(arg['name'], pts, b, cl)
+
+    def _addrem_objects(self):
+        eds = [[i, i + 1] for i in range(len(self.pts))]
+        if self.is_closed:
+            eds[-1][1] = 0
+        else:
+            eds = eds[:-1]
+        cont = contour2.Contour2.create_from_point_set(self.pts,
+                eds, self.bnds)
+        return [], [], [cont], []

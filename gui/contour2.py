@@ -257,7 +257,13 @@ class Contour2(AbstractContour2):
             edpnt - [[p1, p2], [p1, p2], ...]. Points indicies for all edges.
             bnd - boundary types for each edge. if [] -> default boundary
         """
-        raise NotImplementedError
+        ret = cls()
+        ret.points = copy.deepcopy(pts)
+        ret.bnds = {i: b for i, b in enumerate(bnd) if b != 0}
+        ret.edges = [[ret.points[i], ret.points[j]]
+                for [i, j] in edpnt]
+        ret._pnts_ind = {p: i for i, p in enumerate(ret.points)}
+        return ret
 
     def deepcopy(self):
         return self.create_from_abstract(self)

@@ -5,6 +5,7 @@ import framework
 import gridcom
 import objcom
 import contcom
+import importcom
 import mainwin
 
 
@@ -43,8 +44,8 @@ class ProgOptions(object):
     def __init__(self):
         # ======= debugging:
         #save before each command execution
-        self.debug_save_before = False
-        self.debug_save_fn = '../_debug.cgp'
+        self.debug_save_before = True
+        self.debug_save_fn = '../_debug.hmp'
 prog_options = ProgOptions()
 
 #build main window
@@ -52,7 +53,8 @@ mainWindow = mainwin.MainWindow()
 
 #build flow collection
 #it is build after mainwindow because FrameworkVis should use mainWindow
-_commands = [gridcom.AddUnfRectGrid,
+_commands = [
+        gridcom.AddUnfRectGrid,
         gridcom.AddUnfCircGrid,
         gridcom.AddUnfRingGrid,
         gridcom.UniteGrids,
@@ -69,7 +71,12 @@ _commands = [gridcom.AddUnfRectGrid,
         contcom.EditBoundaryType,
         contcom.GridBndToContour,
         contcom.SimplifyContours,
-        contcom.SetBTypeToContour]
+        contcom.SetBTypeToContour,
+        importcom.ImportContourNative,
+        importcom.ImportContourASCII,
+        importcom.ImportGridNative,
+        importcom.ImportGridSimple34,
+    ]
 
 Flows = command.FlowCollection(_commands, framework.Framework)
 

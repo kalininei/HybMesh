@@ -48,12 +48,24 @@ class Grid2(bgeom.Point2SetStruct):
     def from_points_cells(npt, ncls, pts, cls):
         """ create grid from row points and cells->nodes
             connectivity given as plain arrays """
-        ret = Grid2()
         it = iter(pts)
-        ret.points = map(bgeom.Point2, it, it)
+        points = map(bgeom.Point2, it, it)
+        cls = bp.multifield_list(cls, "auto")
+        return Grid2.from_points_cells2(points, cls)
+
+    @staticmethod
+    def from_points_cells2(pts, cls):
+        """ create grid from points data pts:
+                [bgeom.Point2]
+            and cells->nodes connectivity from point indicies cls:
+                [[p1 index, p2 index, ...], [p3 index, ....], ...]
+            All input data will be deepcopied.
+        """
+        ret = Grid2()
+        ret.points = copy.deepcopy(pts)
         #build cells
         edmap = {}
-        for er in bp.multifield_list(cls, "auto"):
+        for er in cls:
             newcell = []
             for j in range(len(er)):
                 nd1, nd2 = er[j - 1], er[j]
@@ -77,6 +89,13 @@ class Grid2(bgeom.Point2SetStruct):
     def n_cells(self):
         ' -> number of cells '
         return len(self.cells)
+
+    def cell_types_info(self):
+        '->{cell dims: number of such cells}'
+        ret = {}
+        for k, vit in itertools.groupby(sorted(self.cells, key=len), key=len):
+            ret[k] = sum(1 for _ in vit)
+        return ret
 
     def cells_nodes_connect(self):
         """ -> [[n1, n2, n3, n4], [n5, n6, ..., ], ...]
@@ -120,7 +139,6 @@ class Grid2(bgeom.Point2SetStruct):
             returns indicies of edges which form boundary contours.
             All contours have anti-clockwise direction
         """
-
         #basic implementation.
         ed_cl = self.edges_cells_connect()
         cand_pos = [(i, self.edges[i])

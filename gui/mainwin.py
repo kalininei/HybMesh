@@ -15,6 +15,8 @@ import globvars
 import contvis
 import gridvis
 import btypes
+import importcom
+import exportcom
 
 
 class MainWindow(QMainWindow, qtui.ui_ComGridMain.Ui_MainWindow):
@@ -42,25 +44,31 @@ class MainWindow(QMainWindow, qtui.ui_ComGridMain.Ui_MainWindow):
         #file
         self.act_open.triggered.connect(self._open_flows)
         self.act_save.triggered.connect(self._save_flows)
-        #edit
+        self.act_imp_cont.triggered.connect(self._imp_cont)
+        self.act_imp_grid.triggered.connect(self._imp_grid)
+        self.act_exp_grid.triggered.connect(self._exp_grid)
+        #commands
         self.act_undo.triggered.connect(self._undo_command)
         self.act_redo.triggered.connect(self._redo_command)
-        #geometry
+        self.act_clean_all.triggered.connect(self._clean_all)
+        self.act_clean_hist.triggered.connect(self._clean_hist)
+        #grid
         self.act_unf_rect.triggered.connect(self._add_rectangle_grid)
         self.act_unf_circ.triggered.connect(self._add_circular_grid)
         self.act_unf_ring.triggered.connect(self._add_ring_grid)
-        self.act_cont_rect.triggered.connect(self._add_rectangle_cont)
-        self.act_movrot.triggered.connect(self._mov_rot)
-        self.act_scale.triggered.connect(self._scale_grid)
-        self.act_remove_grids.triggered.connect(self._remove_grids)
-        self.act_copy_grids.triggered.connect(self._copy_grids)
-        #tools
         self.act_unite_grids.triggered.connect(self._unite_grids)
         self.act_ex_cont.triggered.connect(self._ex_cont)
+        #contour
+        self.act_cont_rect.triggered.connect(self._add_rectangle_cont)
         self.act_set_bc.triggered.connect(self._set_bc)
         self.act_new_bc.triggered.connect(self._new_bc)
         self.act_unite_conts.triggered.connect(self._unite_conts)
         self.act_sep_conts.triggered.connect(self._sep_conts)
+        #geometry
+        self.act_movrot.triggered.connect(self._mov_rot)
+        self.act_scale.triggered.connect(self._scale_grid)
+        self.act_remove_grids.triggered.connect(self._remove_grids)
+        self.act_copy_grids.triggered.connect(self._copy_grids)
 
     def _grid_manager_init(self):
         ' initialization of the grid manager '
@@ -98,13 +106,13 @@ class MainWindow(QMainWindow, qtui.ui_ComGridMain.Ui_MainWindow):
     # --------- Flows Management
     def _save_flows(self):
         filename = QFileDialog.getSaveFileName(self,
-            'Save to File', '', 'ComGrid projects (*.cgp);;All Files (*)')
+            'Save to File', '', 'ComGrid projects (*.hmp);;All Files (*)')
         if (filename):
             globvars.Flows.xml_save(filename)
 
     def _open_flows(self):
         filename = QFileDialog.getOpenFileName(
-            self, 'Open File', '', 'ComGrid projects (*.cgp);;All Files (*)')
+            self, 'Open File', '', 'ComGrid projects (*.hmp);;All Files (*)')
         if (filename):
             globvars.Flows.xml_load(filename)
 
@@ -113,6 +121,40 @@ class MainWindow(QMainWindow, qtui.ui_ComGridMain.Ui_MainWindow):
 
     def _redo_command(self):
         globvars.actual_flow().exec_next()
+
+    def _clean_all(self):
+        a = QtGui.QMessageBox.question(self, "Confirmation",
+                "Go to the initial state of the current command flow?\n" +
+                "All existing data will be lost.",
+                QtGui.QMessageBox.Ok | QtGui.QMessageBox.Cancel)
+        if a == QtGui.QMessageBox.Ok:
+            globvars.actual_flow().to_zero_state()
+
+    def _clean_hist(self):
+        raise NotImplementedError
+
+    # --------- import/export
+    def _imp_cont(self):
+        dialog = importcom.ImportContourDlg(self)
+        if dialog.exec_():
+            com = dialog.ret_value()
+            if com is not None:
+                globvars.actual_flow().exec_command(com)
+
+    def _imp_grid(self):
+        dialog = importcom.ImportGridDlg(self)
+        if dialog.exec_():
+            com = dialog.ret_value()
+            if com is not None:
+                globvars.actual_flow().exec_command(com)
+
+    def _exp_grid(self):
+        all_grids = globvars.actual_data().grids2
+        grd = globvars.actual_data().get_checked_grid_names()
+        grd = grd[0] if len(grd) > 0 else None
+        dialog = exportcom.ExportGridDlg(grd, all_grids, self)
+        if dialog.exec_():
+            dialog.ret_value()
 
     # --------- geometry actions
     def _add_rectangle_grid(self):
@@ -152,8 +194,8 @@ class MainWindow(QMainWindow, qtui.ui_ComGridMain.Ui_MainWindow):
         dialog = dlgs.CopyGrids(used_grids, all_grids,
                 used_conts, all_conts, self)
         if dialog.exec_():
-            srcnames, newnames, cnames, newcnames, dx, dy = dialog.ret_value()
-            com = objcom.CopyGrid(srcnames, newnames, cnames, newcnames, dx, dy)
+            srcnm, newnm, cnm, newcnm, dx, dy = dialog.ret_value()
+            com = objcom.CopyGrid(srcnm, newnm, cnm, newcnm, dx, dy)
             globvars.actual_flow().exec_command(com)
 
     def _remove_grids(self):

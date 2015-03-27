@@ -56,17 +56,35 @@
     <property name="title">
      <string>&amp;File</string>
     </property>
+    <widget class="QMenu" name="menuImport">
+     <property name="title">
+      <string>&amp;Import</string>
+     </property>
+     <addaction name="act_imp_cont"/>
+     <addaction name="act_imp_grid"/>
+    </widget>
+    <widget class="QMenu" name="menuExport">
+     <property name="title">
+      <string>&amp;Export</string>
+     </property>
+     <addaction name="act_exp_grid"/>
+    </widget>
     <addaction name="act_open"/>
     <addaction name="act_save"/>
+    <addaction name="menuImport"/>
+    <addaction name="menuExport"/>
     <addaction name="separator"/>
     <addaction name="act_exit"/>
    </widget>
    <widget class="QMenu" name="menu_Edit">
     <property name="title">
-     <string>&amp;Edit</string>
+     <string>C&amp;ommands</string>
     </property>
     <addaction name="act_undo"/>
     <addaction name="act_redo"/>
+    <addaction name="separator"/>
+    <addaction name="act_clean_hist"/>
+    <addaction name="act_clean_all"/>
    </widget>
    <widget class="QMenu" name="menu_View">
     <property name="title">
@@ -123,8 +141,8 @@
     <addaction name="act_ex_cont"/>
    </widget>
    <addaction name="menu_File"/>
-   <addaction name="menu_Edit"/>
    <addaction name="menu_View"/>
+   <addaction name="menu_Edit"/>
    <addaction name="menuConts"/>
    <addaction name="menuGrid"/>
    <addaction name="menu_Geometry"/>
@@ -296,12 +314,12 @@
   </action>
   <action name="act_set_bc">
    <property name="text">
-    <string>&amp;Assign boundary types</string>
+    <string>Assign &amp;boundary types</string>
    </property>
   </action>
   <action name="act_new_bc">
    <property name="text">
-    <string>Create &amp;boundary type</string>
+    <string>&amp;Create boundary type</string>
    </property>
   </action>
   <action name="act_ex_cont">
@@ -316,12 +334,52 @@
   </action>
   <action name="act_sep_conts">
    <property name="text">
-    <string>&amp;Separate/Simplify contours</string>
+    <string>&amp;Separate/Simplify</string>
    </property>
   </action>
   <action name="actionContour">
    <property name="text">
     <string>Contour</string>
+   </property>
+  </action>
+  <action name="act_enter_cont">
+   <property name="text">
+    <string>&amp;Enter</string>
+   </property>
+  </action>
+  <action name="act_imp_cont">
+   <property name="text">
+    <string>&amp;Contour</string>
+   </property>
+  </action>
+  <action name="act_imp_grid">
+   <property name="text">
+    <string>&amp;Grid</string>
+   </property>
+  </action>
+  <action name="act_exp_cont">
+   <property name="text">
+    <string>&amp;Contour</string>
+   </property>
+  </action>
+  <action name="act_exp_grid">
+   <property name="text">
+    <string>&amp;Grid</string>
+   </property>
+  </action>
+  <action name="act_clean_hist">
+   <property name="text">
+    <string>Clean &amp;history</string>
+   </property>
+  </action>
+  <action name="act_clean_all">
+   <property name="text">
+    <string>Clean all</string>
+   </property>
+  </action>
+  <action name="act_repeat">
+   <property name="text">
+    <string>&amp;Repeat last</string>
    </property>
   </action>
  </widget>

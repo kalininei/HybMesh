@@ -230,21 +230,42 @@ def find(f, seq):
     else:
         return None
 
+
+def dict_readbool(d, key, defval):
+    """ -> bool or defval
+        read a value from dictionary which is supposed to be str(bool).
+        If key exists returns (value == 'True') else defval
+    """
+    if key in d:
+        return d[key] == 'True'
+    else:
+        return defval
+
+
 if __name__ == '__main__':
-    class A(object):
-        def __init__(self):
-            pass
+    import itertools
+    import operator
 
-        @exectime
-        def proc(self, ar):
-            import math
-            a = 0
-            for i in range(10000) + ar:
-                for j in range(100 if i % 2 == 0 else 200):
-                    a += math.sin(i)
-                    a -= math.cos(j)
-            print a
+    class A:
+        def __init__(self, k):
+            self.k = k
 
-    ar = range(1, 100)
-    a = A()
-    a.proc(ar)
+        def func(self):
+            return self.k
+
+        def __str__(self):
+            return str(self.k)
+
+    a = [A(5), A(6), A(9), A(1), A(2), A(5), A(9)]
+
+    ass = sorted(a, key=operator.methodcaller('func'))
+
+    print map(str, ass)
+
+    for v in itertools.groupby(ass, key=operator.methodcaller('func')):
+        print v, sum(1 for _ in v[1])
+
+    a = [[], [1, 2, 3], [2], []]
+    #ass = sorted(a, key=operator.methodcaller('__len__'))
+    ass = sorted(a, key=len)
+    print ass

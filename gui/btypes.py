@@ -17,6 +17,19 @@ class BndType(object):
 
 
 class BndTypesList(object):
+    _st_cols = [c.getRgb()[:3] for c in [
+            QtGui.QColor("chartreuse"),
+            QtGui.QColor("blue"),
+            QtGui.QColor("magenta"),
+            QtGui.QColor("cyan"),
+            QtGui.QColor("yellow"),
+            QtGui.QColor("green"),
+            QtGui.QColor("orange"),
+            QtGui.QColor("red"),
+            QtGui.QColor("pink"),
+            QtGui.QColor("black"),
+        ]]
+
     'list of (index, name, color) entries'
     def __init__(self):
         self._data = [
@@ -51,7 +64,18 @@ class BndTypesList(object):
 
     def next_color(self):
         '->(char)*3. default color for next item'
-        return (255, 255, 255)
+        try:
+            from collections import OrderedDict
+            import copy
+            st_used = OrderedDict([(c, 0) for c in self._st_cols])
+            used = [c.color for c in self._data]
+            for c in used:
+                if c in st_used:
+                    st_used[c] += 1
+            minused = min(st_used.values())
+            return bp.find(lambda x: x[1] == minused, st_used.items())[0]
+        except:
+            return (255, 255, 255)
 
     def bnd_count(self):
         return len(self._data)

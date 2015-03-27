@@ -32,6 +32,9 @@ Defined public classes:
 
     ColorOptionEntry - color rectangle + QColorDialog
         color pick
+
+    OFileOptionEntry/SFileOptionEntry - label + QFileDialog
+        pick a single file for reading/writing
 """
 
 import sys
@@ -185,7 +188,8 @@ class SingleChoiceOptionEntry(SimpleOptionEntry):
     def edit_widget(self, parent):
         wdg = QtGui.QComboBox(parent)
         wdg.addItems(self.values)
-        wdg.setCurrentIndex(self.values.index(self.get()))
+        if self.get() in self.values:
+            wdg.setCurrentIndex(self.values.index(self.get()))
         return wdg
 
     def set_from_widget(self, widget):
@@ -453,6 +457,70 @@ class ColorOptionEntry(OptionEntry):
         self.set((c[0], c[1], c[2]))
 
 
+class OFileOptionEntry(SimpleOptionEntry):
+    'pick an existing file'
+
+    def __init__(self, data, member_name,
+            filters=["All files (*.*)"], filter_func=None):
+        """ [str filter] - list of specified filters as "Type (*.e1|*.e2)"
+            get_nf - function which returns actual filters.
+                     If None, use specified filters
+        """
+        if filter_func is None:
+            self.__flt = copy.deepcopy(filters)
+            self.filters = lambda: self.__flt
+        else:
+            self.filters = filter_func
+        super(OFileOptionEntry, self).__init__(data, member_name)
+
+    def edit_widget(self, parent):
+        w = QtGui.QFileDialog()
+        w.setFileMode(QtGui.QFileDialog.ExistingFile)
+        w.setNameFilters(self.filters())
+        w.setModal(True)
+        return w
+
+    def set_from_widget(self, editor):
+        if (len(editor.selectedFiles()) > 0):
+            self.set(str(editor.selectedFiles()[0]))
+
+
+class SFileOptionEntry(SimpleOptionEntry):
+    'pick an file for writing'
+
+    def __init__(self, data, member_name,
+            filters=["All files (*.*)"], defname='',
+            filter_func=None, defname_func=None):
+        """ [str filter] - list of specified filters as "Type (*.e1|*.e2)"
+            filter_func - function which returns actual filters.
+                     If None, use specified filters
+        """
+        if filter_func is None:
+            self.__flt = copy.deepcopy(filters)
+            self.filters = lambda: self.__flt
+        else:
+            self.filters = filter_func
+        if defname_func is None:
+            self.__dn = defname
+            self.defname = lambda: self.__dn
+        else:
+            self.defname = defname_func
+        super(SFileOptionEntry, self).__init__(data, member_name)
+
+    def edit_widget(self, parent):
+        w = QtGui.QFileDialog()
+        w.setFileMode(QtGui.QFileDialog.AnyFile)
+        w.setAcceptMode(QtGui.QFileDialog.AcceptSave)
+        w.setNameFilters(self.filters())
+        w.setModal(True)
+        w.selectFile(self.defname())
+        return w
+
+    def set_from_widget(self, editor):
+        if (len(editor.selectedFiles()) > 0):
+            self.set(str(editor.selectedFiles()[0]))
+
+
 class OptionsList(object):
     'list of objects derived from OptionEntry class'
 
@@ -598,7 +666,8 @@ class OptionsValueDelegate(QtGui.QItemDelegate):
         "overriden"
         ed = self._option_data(index).edit_widget(parent)
         #emit size hint in case editor has more lines then display widget
-        self.sizeHintChanged.emit(index)
+        if ed.parent() is not None:
+            self.sizeHintChanged.emit(index)
         return ed
 
     def sizeHint(self, option, index):
