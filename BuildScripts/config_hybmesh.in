@@ -1,0 +1,2 @@
+libdir @LIB_INSTALL_DIR@
+homedir @HYBMESH_HOMEDIR@

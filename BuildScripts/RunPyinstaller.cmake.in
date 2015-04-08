@@ -1,0 +1,34 @@
+# CMake vars:
+# PYINSTALLER - pyinstaller executable
+# PYINST_OUTDIR - output of pyinstaller execution directory
+# PYINST_TARGET - full path to python script
+# PYINST_ICON - full path to *.ico file
+# PYINST_OPT - additional options like -w, -y, --clean
+
+
+# Resulting file tree (BaseName is the base of PYINST_TARGET):
+# [PYINST_OUTDIR]
+#  | - [trash]
+#  |     | - [BaseName]
+#  |     | - BaseName.spec
+#  | - [BaseName]
+#        | - BaseName.exe, ... //output binaries
+
+file(TO_NATIVE_PATH "@PYINST_TARGET@" _PTARGET)
+file(TO_NATIVE_PATH "@PYINST_OUTDIR@" _PBINDIR)
+file(TO_NATIVE_PATH "@PYINST_OUTDIR@/trash" _PTRASH)
+file(TO_NATIVE_PATH "@PYINST_ICON@" _PICON)
+
+execute_process(COMMAND "@PYINSTALLER@" @PYINST_OPT@ 
+		--distpath=${_PBINDIR}
+		--workpath=${_PTRASH}
+		--specpath=${_PTRASH} 
+		-i ${_PICON}
+		${_PTARGET}
+		RESULT_VARIABLE _PRESULT)
+
+if(NOT _PRESULT EQUAL 0)
+	message(FATAL_ERROR "PyInstaller error: - ${_PRESULT}\n")
+endif()
+
+

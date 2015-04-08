@@ -1,0 +1,171 @@
+# Creates simple two step installer: Select directory -> OK.
+# Structure of resulting directory is:
+# APPNAME
+#  | -- LIBDEST
+#  |     | -- ...
+#  |
+#  | -- BINDEST
+#  |     | -- EXENAME, ...
+#  |
+#  | -- APPNAME.lnk (shortcut to EXENAME)
+#  | -- Uninstall.exe
+#  
+# Cmake variables:
+# NSIS_INSTALLER_NAME  -- name of the resulting installer without .exe
+# NSIS_INSTALLER_APPNAME -- name of the installed application
+# NSIS_INSTALLER_EXENAME -- main executable name relative to BINDEST (with exe). Used for shortcuts creating.
+#
+# NSIS_INSTALLER_DESCRIPTION -- short description
+# NSIS_INSTALLER_BIT  -- "32" or "64". Influences default installation path only.
+#
+# NSIS_INSTALLER_BIN -- list of files which should be installed to bin subdirectory relative to current
+# NSIS_INSTALLER_BINDEST -- path to bin subdirectory relative to installation directory
+# NSIS_INSTALLER_LIB -- list of files which should be installed to lib subdirectory relative to current
+# NSIS_INSTALLER_LIBDEST -- path to lib subdirectory relative to installation directory
+# NSIS_INSTALLER_ICON -- path to *.ico which will be assiciated with shortcuts (Could be empty)
+
+# 
+# All directories (LIB\BINDEST) are in path\\to\\dir format without slash at the end.
+# LIB and BIN could be given as nsis patterns. /r, /x options are available:
+#	lib\\*.dll  -- all dll's from lib
+#	/r build\\prog\\* -- all files from build\\prog including directories
+#	/x *.sh /r build\\*  -- all from build excluding sh files.
+
+
+OutFile "@NSIS_INSTALLER_NAME@.exe"
+
+!define APPNAME "@NSIS_INSTALLER_APPNAME@"
+!define DESCRIPTION "@NSIS_INSTALLER_DESCRIPTION@"
+RequestExecutionLevel admin ;Require admin rights on NT6+ (When UAC is turned on)
+
+!include LogicLib.nsh
+!define ProgBit "@NSIS_INSTALLER_BIT@"
+
+InstallDir $PROGRAMFILES\${APPNAME}
+	
+Name "${APPNAME}"
+
+Page directory
+Page instfiles
+
+!macro VerifyUserIsAdmin
+UserInfo::GetAccountType
+pop $0
+${If} $0 != "admin" ;Require admin rights on NT4+
+        messageBox mb_iconstop "Administrator rights required!"
+        setErrorLevel 740 ;ERROR_ELEVATION_REQUIRED
+        quit
+${EndIf}
+!macroend
+ 
+function .onInit
+	setShellVarContext all
+	${If} ${ProgBit} == "64"
+		StrCpy $INSTDIR $PROGRAMFILES64\${APPNAME}
+	${Else}
+		StrCpy $INSTDIR $PROGRAMFILES32\${APPNAME}
+	${Endif}
+	!insertmacro VerifyUserIsAdmin
+functionEnd
+
+# default section start; every NSIS script has at least one section.
+Section "install"
+
+# ====== lib
+SetOutPath $INSTDIR\@NSIS_INSTALLER_LIBDEST@
+File @NSIS_INSTALLER_LIB@
+
+# ======= bin
+SetOutPath $INSTDIR\@NSIS_INSTALLER_BINDEST@
+File @NSIS_INSTALLER_BIN@
+
+# ======= additional commands
+# make new configuration file depending on install path
+ReadEnvStr $1 PROGRAMDATA
+!define DTDIR "$1\@NSIS_INSTALLER_APPNAME@"
+FileOpen $0 "$INSTDIR\@NSIS_INSTALLER_BINDEST@\config_hybmesh" w
+FileWrite $0 "libdir $INSTDIR\@NSIS_INSTALLER_LIBDEST@$\r$\n"
+FileWrite $0 "homedir ${DTDIR}"
+FileClose $0
+# create a dummy config file in DTDIR just to be sure dtdir exists.
+# change permission to allow all users write to it
+FileOpen $0 "${DTDIR}\Config.xml" w
+FileClose $0
+AccessControl::GrantOnFile "${DTDIR}" "(S-1-5-32-545)" "FullAccess"
+
+# Shortcuts for bin files. Places ico file to bin directory
+${IF} @NSIS_INSTALLER_ICON@ == ""
+	!define ShortcutIcon ""
+${ELSE}
+	File /oname=${APPNAME}.ico @NSIS_INSTALLER_ICON@
+	!define /redef ShortcutIcon $INSTDIR\@NSIS_INSTALLER_BINDEST@\${APPNAME}.ico 
+${ENDIF}
+
+CreateDirectory "$SMPROGRAMS\${APPNAME}"
+CreateShortCut "$SMPROGRAMS\${APPNAME}\${APPNAME}.lnk" \
+	"$INSTDIR\@NSIS_INSTALLER_BINDEST@\@NSIS_INSTALLER_EXENAME@" \
+	"" "${ShortcutIcon}" "" SW_SHOWMAXIMIZED
+CreateShortCut "$INSTDIR\${APPNAME}.lnk" \
+	"$INSTDIR\@NSIS_INSTALLER_BINDEST@\@NSIS_INSTALLER_EXENAME@" \
+	"" "${ShortcutIcon}" "" SW_SHOWMAXIMIZED
+	
+# ======== uninstaller
+WriteUninstaller $INSTDIR\Uninstall.exe
+CreateShortCut "$SMPROGRAMS\${APPNAME}\Uninstall.lnk" "$INSTDIR\Uninstall.exe"
+
+SectionEnd
+
+# Uninstaller
+Function un.RMDirUP
+	!define RMDirUP '!insertmacro RMDirUPCall'
+	
+	!macro RMDirUPCall _PATH
+		push '${_PATH}'
+		Call un.RMDirUP
+	!macroend
+	
+	; $0 - current folder
+	ClearErrors
+	
+	Exch $0
+	;DetailPrint "ASDF - $0\.."
+	RMDir "$0\.."
+	
+	IfErrors Skip
+	${RMDirUP} "$0\.."
+	Skip:
+	
+	Pop $0
+FunctionEnd
+
+function un.onInit
+	SetShellVarContext all
+ 
+	#Verify the uninstaller - last chance to back out
+	MessageBox MB_OKCANCEL "Remove ${APPNAME}?" IDOK next
+		Abort
+	next:
+	!insertmacro VerifyUserIsAdmin
+functionEnd
+ 
+section "Uninstall"
+ 
+	# Remove Start Menu launcher
+	delete "$SMPROGRAMS\${APPNAME}\${APPNAME}.lnk"
+	delete "$SMPROGRAMS\${APPNAME}\Uninstall.lnk"
+	rmDir "$SMPROGRAMS\${APPNAME}"
+ 
+	# Remove files
+	RMDir /r "$INSTDIR\@NSIS_INSTALLER_BINDEST@"
+	RMDir /r "$INSTDIR\@NSIS_INSTALLER_LIBDEST@"
+	${RMDirUP} "$INSTDIR\@NSIS_INSTALLER_BINDEST@"   ;remove parents (if each is empty ONLY)
+	${RMDirUP} "$INSTDIR\@NSIS_INSTALLER_LIBDEST@"   ;remove parents (if each is empty ONLY)
+	delete "$INSTDIR\${APPNAME}.lnk"
+ 
+	# Always delete uninstaller as the last action
+	delete "$INSTDIR\Uninstall.exe"
+ 
+	# Try to remove the install directory - this will only happen if it is empty
+	rmDir $INSTDIR
+ 
+sectionEnd

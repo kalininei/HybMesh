@@ -1,0 +1,86 @@
+1) === Stable distributions are available at resources page
+
+2) === Building from source
+
+2.1) --- Linux (gcc)
+System requirements:
+    python 2.7
+    gcc-c++
+    cmake 3.2
+    libGmsh (optionally). If libGmsh does not present in the system a local copy of libGmsh will be built. For the latter blas and lapack development packages are required.
+    pyQt4 (python-qt4)
+    python-vtk (Python bindings for VTK)
+
+Procedure:
+    mkdir build && cd build
+    cmake .. -DCMAKE_BUILD_TYPE=Release
+    make -j4
+    sudo make install
+
+Installation results
+    HybMesh_gui package will be installed as a standard python package (-> /usr/lib/python2.7/site-packages)
+    Hybmesh executable -> ${CMAKE_INSTALL_PREFIX}/bin/
+    Additional libraries -> ${CMAKE_INSTALL_PREFIX}/lib/HybMesh/
+    basic configuration directory /etc/HybMesh
+    home directory ~/.HybMesh
+
+Troubleshooting:
+    ImportError: libmpi.so.1 (for vtk 6.2)
+        add directory with libmpi.so.1 to /etc/ld.conf.d (smth like /usr/lib64/mpi/gcc/openmpi/lib64/libmpi.so.1)
+
+2.2) --- Windows (mingw)
+System requirments:
+    mingw-w64 (seh version)
+    msys
+    python2.7 with PyQt4 and vtk support
+    cmake 3.2
+    PyInstaller (if exe is needed)
+    NSIS with AccessControl Plugin (if installer is needed)
+note: python and mingw-w64 bitness should match
+
+Procedure:
+    1) open exec_cmake_win.sh file in text editor and set cmake options
+    2) open msys shell with administrative access and cd to HybMesh directory
+    3) mkdir build && cd build
+    4) sh ../exec_cmake_win.sh
+    5) make -j4
+    6) make install
+    7) make pack (if nsis installer is needed)
+
+Installation results:
+    HybMesh_gui package will be installed as a standard python package (-> Python27/Lib/site-packages)
+    Hybmesh main script file -> ${CMAKE_INSTALL_PREFIX}/py/
+    Additional libraries -> ${CMAKE_INSTALL_PREFIX}/lib/
+    home directory {ProgramData}/HybMesh
+    if PyInstaller:
+        pyinstaller executable with required libs -> ${CMAKE_INSTALL_PREFIX}/bin/
+    if NSIS:
+        installer executable -> ${CMAKE_INSTALL_PREFIX}
+
+Initial system configuration:
+all installed packages should match target architecture (32/64 bit)
+
+1) install python2.7 and add path/to/python.exe to system paths
+2) install PyInstaller using pip
+3) install PyQt4 from the official binaries
+4) install vtk for python.
+-- from http://www.vtk.org/download/ download windows python installer
+of required architecture and install it
+-- copy directory {VTKDIR}/bin/Lib/site-packages/vtk to {Python27}/Lib/site-packages
+-- copy all files from {VTKDIR}/bin/ (except for vtkpython.exe and python27.dll) to {Python27}/Lib/site-packages/vtk
+-- now python supports vtk module and vtk can be safely uninstalled
+5) install cmake. Do not add cmake path to system path as it can lead to problems on 64bit architecture.
+6) install NSIS (3.0)
+7) download AccessControl plugin from http://nsis.sourceforge.net/AccessControl_plug-in.
+Place Plugins/AccessControl.dll -> {NSIS}/Plugins/x86-ansi
+      Unicode/Plugins/AccessControl.dll -> {NSIS}/Plugins/x86-unicode
+8) download and install mingw-64 through mingw-w64-install.exe
+from http://sourceforge.net/projects/mingw-w64/files/Toolchains%20targetting%20Win32/Personal%20Builds/mingw-builds/installer/
+Choose platform. Set Exception type dwarf for i686 and seh for x86_64.
+9) download Msys from
+http://sourceforge.net/projects/mingw-w64/files/External%20binary%20packages%20%28Win64%20hosted%29/MSYS%20%2832-bit%29/
+unzip it to C:\msys and run 
+    sh /postinstall/pi.sh
+from msys shell. Set path to mingw-w64 directory which contains /bin 
+10) download openblas from http://sourceforge.net/projects/openblas/files/ 
+and place libopenblas.dll to {MinGW}/bin

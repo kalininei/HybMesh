@@ -1,0 +1,32 @@
+#valgrind should be called like (from build/test directory)
+#	valgrind --leak-check=full --suppressions=../../src/libs/dbgscripts/hm_suppress.supp ./crossgrid_test
+
+#get rid of libGmsh memory leaks
+#Not sure if i'm doing smth wrong with libgmsh?
+#It seems like it provides a memory leak after each mesh generation.
+{
+	gmsh_init
+	Memcheck:Leak
+	...
+	fun:*GmshInitialize*
+}
+{
+	gmsh_load
+	Memcheck:Leak
+	...
+	obj:/usr/lib64/libGmsh.so
+	fun:call_init.part.0
+}
+{
+	gmsh_generation
+	Memcheck:Leak
+	...
+	fun:*GenerateMesh*
+	fun:*GModel*mesh*
+}
+{
+	local_gmsh_static_initialization
+	Memcheck:Leak
+	...
+	fun:_GLOBAL__sub_I_Options.cpp
+}

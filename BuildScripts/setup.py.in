@@ -1,0 +1,30 @@
+# APPNAME - name of package
+# APPVERSION - version of package
+# PYROOTDIR - root directory
+# PyPack    - python package directory in PYROOTDIR
+
+import re
+import os
+import os.path
+from distutils.core import setup
+
+rootdir = os.path.abspath('@PYROOTDIR@')
+packdir = os.path.join(rootdir, '@PyPack@')
+
+
+def find_packages(path, relpath):
+    """ finds all packages in path and returns it in [path.to.pack]
+        fortmat.
+    """
+    ret = []
+    for root, dirs, files in os.walk(path):
+        if '__init__.py' in files:
+            root = os.path.relpath(root, relpath)
+            ret.append(re.sub('^[^A-z0-9_]+', '', root.replace('/', '.')))
+    return ret
+
+setup(name="@APPNAME@",
+    version="@APPVERSION@",
+    package_dir={'': rootdir},
+    packages=find_packages(packdir, rootdir)
+      )

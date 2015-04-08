@@ -1,0 +1,4 @@
+# PYOUTDIR - directory where configured setup.py is stored
+
+[build]
+build-base = @PYOUTDIR@

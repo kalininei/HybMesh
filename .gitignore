@@ -1,4 +1,4 @@
 ~*
 *.swp
-test.hmp
-_debug.hmp
+build*/
+winbuild*/

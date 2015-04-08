@@ -1,0 +1,4 @@
+-I/home/ek/Work/HybMesh/tools/include/
+-I/usr/include/vtk-6.1
+-I/usr/include/gmsh
+-I/home/ek/Work/HybMesh/src/libs/include
