@@ -442,7 +442,15 @@ class FlowCollection(object):
         self.__save_states(outp)
         bp.xmlindent(outp)
         tree = ET.ElementTree(outp)
-        tree.write(fname, xml_declaration=True, encoding='utf-8')
+        try:
+            tree.write(fname, xml_declaration=True, encoding='utf-8')
+        except Exception as e:
+            import traceback
+            print traceback.format_exc()
+            QtGui.QMessageBox.critical(None, "Export failure",
+                    str(e))
+
+
 
     #function which are called from CommandFlow
     def _new_receiver(self):

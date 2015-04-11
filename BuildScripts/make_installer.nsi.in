@@ -89,8 +89,11 @@ FileWrite $0 "homedir ${DTDIR}"
 FileClose $0
 # create a dummy config file in DTDIR just to be sure dtdir exists.
 # change permission to allow all users write to it
-FileOpen $0 "${DTDIR}\Config.xml" w
-FileClose $0
+#FileOpen $0 "${DTDIR}\Config.xml" w
+#FileClose $0
+${IfNot} ${FileExists} "${DTDIR}\*.*"
+	CreateDirectory "${DTDIR}"
+${EndIf}
 AccessControl::GrantOnFile "${DTDIR}" "(S-1-5-32-545)" "FullAccess"
 
 # Shortcuts for bin files. Places ico file to bin directory

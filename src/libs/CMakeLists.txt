@@ -9,13 +9,13 @@ add_subdirectory(crossgrid)
 
 #copy mingw runtime libraries to binary directory
 if (WIN32)
+	find_library(RUNTIME_LIB1 "libstdc++-6.dll")
+	find_library(RUNTIME_LIB2 "libwinpthread-1.dll")
 	if (CXX_BITNESS STREQUAL "64")
-		find_library(RUNTIME_LIB1 "libstdc++-6.dll")
-		find_library(RUNTIME_LIB2 "libgcc_s_seh-1.dll")
-		find_library(RUNTIME_LIB3 "libwinpthread-1.dll")
-		install(FILES ${RUNTIME_LIB1} ${RUNTIME_LIB2} ${RUNTIME_LIB3}
-			DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+		find_library(RUNTIME_LIB3 "libgcc_s_seh-1.dll")
 	else()
-		message(FATAL_ERROR "TODO: runtime for x32")
+		find_library(RUNTIME_LIB3 "libgcc_s_dw2-1.dll")
 	endif()
+	install(FILES ${RUNTIME_LIB1} ${RUNTIME_LIB2} ${RUNTIME_LIB3}
+		DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 endif()

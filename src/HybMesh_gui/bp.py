@@ -243,5 +243,8 @@ def dict_readbool(d, key, defval):
 
 
 if __name__ == '__main__':
-    import glob
-    print glob.glob('/usr/lib/lib*.so')
+    from functools import partial
+    def F1(a, b, c):
+        print a, b, c
+    F2 = partial(F1, 1, 2)
+    F2(3)

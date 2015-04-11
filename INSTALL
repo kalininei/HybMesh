@@ -1,5 +1,5 @@
-1) === Stable distributions are available at resources page
-
+1) === Stable windows distributions are available at resources page
+https://github.com/kalininei/HybMesh/releases/latest
 2) === Building from source
 
 2.1) --- Linux (gcc)
@@ -30,7 +30,7 @@ Troubleshooting:
 
 2.2) --- Windows (mingw)
 System requirments:
-    mingw-w64 (seh version)
+    mingw-w64 (dwarf or seh exceptions version)
     msys
     python2.7 with PyQt4 and vtk support
     cmake 3.2
@@ -57,11 +57,11 @@ Installation results:
     if NSIS:
         installer executable -> ${CMAKE_INSTALL_PREFIX}
 
-Initial system configuration:
+Initial Windows system configuration:
 all installed packages should match target architecture (32/64 bit)
 
 1) install python2.7 and add path/to/python.exe to system paths
-2) install PyInstaller using pip
+2) install PyInstaller using pip with pywin32
 3) install PyQt4 from the official binaries
 4) install vtk for python.
 -- from http://www.vtk.org/download/ download windows python installer

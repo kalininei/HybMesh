@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 
-from PyQt4 import QtGui
-from PyQt4.QtGui import (QMainWindow,
-    QFileDialog, QHBoxLayout)
+from PyQt4 import QtGui, QtCore
 import qtui.ui_ComGridMain
 
 import drawarea
@@ -19,7 +17,7 @@ import importcom
 import exportcom
 
 
-class MainWindow(QMainWindow, qtui.ui_ComGridMain.Ui_MainWindow):
+class MainWindow(QtGui.QMainWindow, qtui.ui_ComGridMain.Ui_MainWindow):
     "Main program window"
     def __init__(self):
         super(MainWindow, self).__init__()
@@ -41,6 +39,9 @@ class MainWindow(QMainWindow, qtui.ui_ComGridMain.Ui_MainWindow):
     # --------- constructor procedures
     def _connect_actions(self):
         "connects actions for main window"
+        #custom signals
+        self.connect(self, QtCore.SIGNAL(
+            "inform(QString, QString)"), self.inform)
         #file
         self.act_open.triggered.connect(self._open_flows)
         self.act_save.triggered.connect(self._save_flows)
@@ -69,6 +70,8 @@ class MainWindow(QMainWindow, qtui.ui_ComGridMain.Ui_MainWindow):
         self.act_scale.triggered.connect(self._scale_grid)
         self.act_remove_grids.triggered.connect(self._remove_grids)
         self.act_copy_grids.triggered.connect(self._copy_grids)
+        #help
+        self.act_about.triggered.connect(self._about)
 
     def _grid_manager_init(self):
         ' initialization of the grid manager '
@@ -99,19 +102,19 @@ class MainWindow(QMainWindow, qtui.ui_ComGridMain.Ui_MainWindow):
     def _vtk_widget_init(self):
         ' initialization of the vtk renderer window'
         self.vtkWidget = drawarea.VTKWidget(self.f_vtk)
-        layout = QHBoxLayout()
+        layout = QtGui.QHBoxLayout()
         layout.addWidget(self.vtkWidget)
         self.f_vtk.setLayout(layout)
 
     # --------- Flows Management
     def _save_flows(self):
-        filename = QFileDialog.getSaveFileName(self,
+        filename = QtGui.QFileDialog.getSaveFileName(self,
             'Save to File', '', 'ComGrid projects (*.hmp);;All Files (*)')
         if (filename):
             globvars.Flows.xml_save(filename)
 
     def _open_flows(self):
-        filename = QFileDialog.getOpenFileName(
+        filename = QtGui.QFileDialog.getOpenFileName(
             self, 'Open File', '', 'ComGrid projects (*.hmp);;All Files (*)')
         if (filename):
             globvars.Flows.xml_load(filename)
@@ -341,7 +344,24 @@ class MainWindow(QMainWindow, qtui.ui_ComGridMain.Ui_MainWindow):
             item = self.tw_gridblocks.itemAt(pnt)
             item.show_context(pnt)
 
+    # ---------- About
+    def _about(self):
+        s = "HybMesh v.%s\n\n" % globvars.prog_options.version
+        s = s + "https://github.com/kalininei/HybMesh\n"
+        s = s + "email: kalininei@yandex.ru\n"
+        QtGui.QMessageBox.about(self, "About", s)
+
     # ---------- Interfaces
     def actual_flow_changed(self, flow_name):
         "subscription from command.FlowCollection"
         self.setWindowTitle("HybMesh: %s" % flow_name)
+
+    # ---------- Custom information methods
+    def inform(self, caption, s):
+        'shows information box with caption and string'
+        msg = QtGui.QMessageBox(self)
+        msg.setIcon(QtGui.QMessageBox.Information)
+        msg.setWindowTitle(caption)
+        msg.setTextFormat(QtCore.Qt.RichText)
+        msg.setText(s)
+        msg.exec_()

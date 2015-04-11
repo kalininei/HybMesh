@@ -86,7 +86,7 @@ class ExportGridDlg(dlgs.SimpleAbstractDialog):
                 import traceback
                 print traceback.format_exc()
                 QtGui.QMessageBox.critical(None, "Export failure",
-                        str(e.message))
+                        str(e))
 
 
 
