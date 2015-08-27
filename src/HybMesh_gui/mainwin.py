@@ -59,6 +59,7 @@ class MainWindow(QtGui.QMainWindow, qtui.ui_ComGridMain.Ui_MainWindow):
         self.act_unf_ring.triggered.connect(self._add_ring_grid)
         self.act_unite_grids.triggered.connect(self._unite_grids)
         self.act_ex_cont.triggered.connect(self._ex_cont)
+        self.act_blayer.triggered.connect(self._blayer)
         #contour
         self.act_cont_rect.triggered.connect(self._add_rectangle_cont)
         self.act_set_bc.triggered.connect(self._set_bc)
@@ -272,9 +273,21 @@ class MainWindow(QtGui.QMainWindow, qtui.ui_ComGridMain.Ui_MainWindow):
         dialog = dlgs.ExcludeContours(grd, all_grids,
                 used_conts, all_conts, self)
         if dialog.exec_():
-            #r = (name, src_grd, src_conts, is_inner, keep_grd)
             r = dialog.ret_value()
             com = gridcom.ExcludeContours(*r)
+            globvars.actual_flow().exec_command(com)
+
+    def _blayer(self):
+        all_conts = globvars.actual_data().get_grid_names()
+        used_cont = globvars.actual_data().get_checked_grid_names()
+        if len(used_cont) > 0:
+            used_cont = used_cont[0]
+        else:
+            used_cont = None
+        dialog = dlgs.BuildBLayer(used_cont, all_conts, self)
+        if dialog.exec_():
+            r = dialog.ret_value()
+            com = gridcom.BuildBLayer(*r)
             globvars.actual_flow().exec_command(com)
 
     def _set_bc(self):

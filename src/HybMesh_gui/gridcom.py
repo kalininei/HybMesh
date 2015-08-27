@@ -298,3 +298,44 @@ class UniteGrids(objcom.AbstractAddRemove):
 
         delgrd = [] if self.keepsrc else [n.name for n in self.source]
         return [(self.grid_name, ret)], delgrd, [], []
+
+
+class BuildBLayer(objcom.AbstractAddRemove):
+    def __init__(self, **kwargs):
+        """ args[name] - name of the new grid,
+            args[hfull]
+            args[mult]
+            args[h0]
+            args[cont]
+        """
+        super(UniteGrids, self).__init__(kwargs)
+        self.grid_name = kwargs['name']
+        self.hfull = kwargs['hfull']
+        self.mult = kwargs['mult']
+        self.h0 = kwargs['h0']
+        self.cont = kwargs['cont']
+
+    @classmethod
+    def fromstring(cls, slist):
+        a = ast.literal_eval(slist)
+        return cls(**a)
+
+
+    def _addrem_objects(self):
+        #basic grid
+        ret, _ = self._get_grid(0)
+
+        #unification
+        for i in range(1, len(self.source)):
+            g, b = self._get_grid(i)
+            ret = unite_grids(ret, g, b, self.fix_bnd, self.empty_holes)
+            if (ret is None):
+                return [], [], [], []
+
+        #boundary conditions
+        ret.build_contour()
+        srccont = [self._get_grid(i)[0].cont for i in range(len(self.source))]
+        setbc_from_conts(ret.cont, srccont)
+
+        delgrd = [] if self.keepsrc else [n.name for n in self.source]
+        return [(self.grid_name, ret)], delgrd, [], []

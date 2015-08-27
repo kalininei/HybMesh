@@ -15,6 +15,7 @@ class ExportGridDlg(dlgs.SimpleAbstractDialog):
             (0, 'native (*.hmg)'),
             (2, 'vtk ASCII (*.vtk)'),
             (1, 'GridGen ASCII (*.net)'),
+            (3, 'Fluent mesh (*.msh)'),
         ])
 
     def __init__(self, grd, all_grids, parent=None):
@@ -58,6 +59,8 @@ class ExportGridDlg(dlgs.SimpleAbstractDialog):
             ret.append("GridGen grid(*.net)")
         elif self.odata().tp == self.opts[2]:
             ret.append("vtk files(*.vtk)")
+        elif self.odata().tp == self.opts[3]:
+            ret.append("msh files(*.msh)")
         ret.append("All files(*.*)")
         return ret
 
@@ -78,6 +81,9 @@ class ExportGridDlg(dlgs.SimpleAbstractDialog):
         #vtk ascii
         elif self.odata().tp == self.opts[2]:
             ex = ExportGridVTK(od.filename, g)
+        #msh format
+        elif self.odata().tp == self.opts[3]:
+            ex = ExportGridFluent(od.filename, g)
 
         if ex is not None:
             try:
@@ -87,7 +93,6 @@ class ExportGridDlg(dlgs.SimpleAbstractDialog):
                 print traceback.format_exc()
                 QtGui.QMessageBox.critical(None, "Export failure",
                         str(e))
-
 
 
 # ====================== Abstract export
@@ -226,3 +231,117 @@ class ExportGridVTK(AbstractExportGrid):
 
         self._write_to_textfile(out)
 
+
+class ExportGridFluent(AbstractExportGrid):
+    'Export grid to *.msh format'
+    def __init__(self, filename, grid):
+        super(ExportGridFluent, self).__init__(filename, grid)
+
+    def export(self):
+        import globvars
+
+        def toh(i):
+            '->str. integer to hex format'
+            #return str(i)
+            return hex(i)[2:]
+
+        #check if all cells are tri/tetra
+        cellsinfo = self.grid.cell_types_info()
+        c3 = cellsinfo[3] if 3 in cellsinfo else 0
+        c4 = cellsinfo[4] if 4 in cellsinfo else 0
+        aa = self.grid.cells_nodes_connect()
+        for a in aa:
+            if len(a) == 5:
+                print "Start"
+                for x in a:
+                    print " %i: %f %f" % (x, self.grid.points[x].x, self.grid.points[x].y)
+        if c3 + c4 != self.grid.n_cells():
+            raise Exception("Only triangle/tetrahedral grids could be" +
+                    " exported to Fluent *.msh format")
+        out = [
+                """(0 "HybMesh to Fluent File")""",
+                """(0 "Dimensions")""",
+                """(2 2)""",
+        ]
+        #Zones:
+        #0    - no zone
+        #1    - vericies default
+        #2    - fluid for cells
+        #3    - default interior
+        #4..N - bc's
+
+        #faces by zone
+        ns = {i: 0 if (c[0] == -1 or c[1] == -1) else -1
+                for i, c in enumerate(self.grid.edges_cells_connect())}
+        for k, v in self.grid.bt.iteritems():
+            ns[k] = v
+        tps, tpind = [], [-1]
+        for v in ns.values():
+            if v not in tpind:
+                tpind.append(v)
+        for v in tpind:
+            tps.append([x[0] for x in filter(lambda x: x[1] == v,
+                ns.iteritems())])
+
+        #verticies
+        out.extend([
+                """(0 "Verticies")""",
+                "(10 (0 1 %s 1 2))" % toh(self.grid.n_points()),
+                "(10 (1 1 %s 1 2)(" % toh(self.grid.n_points()),
+        ])
+        out.extend(['  %16.12e %16.12e' % (p.x, p.y)
+            for p in self.grid.points])
+        out.extend(["))"])
+        #faces
+        fconnect = self.grid.edges_cells_connect()
+        out.extend([
+            """(0 "Faces")""",
+            "(13 (0 1 %s 0))" % toh(self.grid.n_edges()),
+        ])
+        #interior faces
+        out.append("(13 (3 1 %s 2 0)(" % toh(len(tps[0])))
+        out.extend(["2 %s %s %s %s" % (
+                toh(self.grid.edges[i][0] + 1),
+                toh(self.grid.edges[i][1] + 1),
+                toh(fconnect[i][0] + 1),
+                toh(fconnect[i][1] + 1)
+            ) for i in tps[0]])
+        out.append('))')
+        #boundary nodes
+        c0 = len(tps[0])
+        for i, t in enumerate(tps[1:]):
+            c1 = c0 + len(t)
+            out.append("(13 (%s %s %s 3 0)(" % (
+                         toh(4 + i), toh(c0+1), toh(c1)
+                    )
+            )
+            out.extend(["2 %s %s %s %s" % (
+                        toh(self.grid.edges[i][0] + 1),
+                        toh(self.grid.edges[i][1] + 1),
+                        toh(fconnect[i][0] + 1),
+                        toh(fconnect[i][1] + 1))
+                for i in t])
+            out.append('))')
+            c0 = c1
+
+        #cells
+        out.extend([
+            """(0 "Cells")""",
+            """(12 (0 1 %s 0))""" % toh(self.grid.n_cells()),
+            """(12 (2 1 %s 1 0)(""" % toh(self.grid.n_cells()),
+        ])
+        out.extend([('1' if len(c) == 3 else '3') for c in self.grid.cells])
+        out.append('))')
+        #zones
+        out.extend([
+            """(0 "Zones")""",
+            "(45 (2 fluid fluid)())",
+            "(45 (3 interior default-interior)())"
+        ])
+        out.extend([
+            "(45 (%s wall %s)())" % (
+                toh(4 + i),
+                globvars.actual_data().boundary_types.get(index=ti).name
+            )
+            for i, ti in enumerate(tpind[1:])])
+        self._write_to_textfile(out)

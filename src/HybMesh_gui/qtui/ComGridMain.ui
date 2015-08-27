@@ -144,6 +144,7 @@
     <addaction name="menuAdd"/>
     <addaction name="separator"/>
     <addaction name="act_unite_grids"/>
+    <addaction name="act_blayer"/>
     <addaction name="act_ex_cont"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
@@ -398,6 +399,11 @@
   <action name="act_about">
    <property name="text">
     <string>About</string>
+   </property>
+  </action>
+  <action name="act_blayer">
+   <property name="text">
+    <string>Boundary layer</string>
    </property>
   </action>
  </widget>

@@ -12,8 +12,7 @@
 # gdb -x ../tools/dbgscripts/a.debug
 
 file python
-set args ./HybMesh.py ../_debug.cgp
+set args ./HybMesh.py ~/test.hmp
 set breakpoint pending on
-b main
-b contours.cpp:183
+b grid.cpp:435
 run 

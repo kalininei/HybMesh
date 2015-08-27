@@ -582,7 +582,15 @@ PtsGraph PtsGraph::cut(const PtsGraph& wmain, const ContoursCollection& conts, i
 	//using the position of line center point
 	std::vector<Point> line_cnt = pg.center_line_points();
 	auto flt = conts.filter_points_i(line_cnt);
+	//######################################
 	std::vector<int>& badi = (dir==INSIDE) ? std::get<0>(flt) : std::get<2>(flt);
+	//std::vector<int> badi = std::get<1>(flt);
+	//if (dir == INSIDE){
+		//for (auto i: std::get<0>(flt)) badi.push_back(i);
+	//} else {
+		//for (auto i: std::get<2>(flt)) badi.push_back(i);
+	//}
+	//######################################
 	std::set<int> bad_lines(badi.begin(), badi.end());
 	aa::remove_entries(pg.lines, bad_lines);
 

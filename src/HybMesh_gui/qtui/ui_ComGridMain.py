@@ -176,6 +176,8 @@ class Ui_MainWindow(object):
         self.act_repeat.setObjectName(_fromUtf8("act_repeat"))
         self.act_about = QtGui.QAction(MainWindow)
         self.act_about.setObjectName(_fromUtf8("act_about"))
+        self.act_blayer = QtGui.QAction(MainWindow)
+        self.act_blayer.setObjectName(_fromUtf8("act_blayer"))
         self.menuImport.addAction(self.act_imp_cont)
         self.menuImport.addAction(self.act_imp_grid)
         self.menuExport.addAction(self.act_exp_grid)
@@ -213,6 +215,7 @@ class Ui_MainWindow(object):
         self.menuGrid.addAction(self.menuAdd.menuAction())
         self.menuGrid.addSeparator()
         self.menuGrid.addAction(self.act_unite_grids)
+        self.menuGrid.addAction(self.act_blayer)
         self.menuGrid.addAction(self.act_ex_cont)
         self.menuHelp.addAction(self.act_about)
         self.menubar.addAction(self.menu_File.menuAction())
@@ -287,5 +290,6 @@ class Ui_MainWindow(object):
         self.act_clean_all.setText(_translate("MainWindow", "Clean all", None))
         self.act_repeat.setText(_translate("MainWindow", "&Repeat last", None))
         self.act_about.setText(_translate("MainWindow", "About", None))
+        self.act_blayer.setText(_translate("MainWindow", "Boundary layer", None))
 
 import ComGridRes_rc

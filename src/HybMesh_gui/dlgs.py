@@ -948,6 +948,60 @@ class SimplifyContour(SimpleAbstractDialog):
         else:
             return True
 
+
+class BuildBLayer(SimpleAbstractDialog):
+    'Build a grid as a boundary layer '
+
+    def __init__(self, cont, all_conts, parent=None):
+        self.cont = cont
+        self.all_conts = all_conts
+        super(BuildBLayer, self).__init__(parent)
+        self.resize(500, 300)
+        self.setWindowTitle("Build boundary layer grid")
+
+    def _default_odata(self, obj):
+        "-> options struct with default values"
+        obj.name = "BLayerGrid1"
+        obj.hfull = 0.1
+        obj.h0 = 0.01
+        obj.mult = 1.2
+        obj.cont = ""
+        obj.direct = 'inner'
+        obj.rnd = False
+        obj.minsharp = 120
+
+    def olist(self):
+        "-> optview.OptionsList"
+        return optview.OptionsList([("Basic", "Grid name",
+                optview.SimpleOptionEntry(self.odata(), "name")),
+            ("Layer Partition", "Height",
+                optview.SimpleOptionEntry(self.odata(), "hfull")),
+            ("Layer Partition", "First Step",
+                optview.SimpleOptionEntry(self.odata(), "h0")),
+            ("Layer Partition", "Factor",
+                optview.SimpleOptionEntry(self.odata(), "mult")),
+            ("Options", "Direction",
+                optview.SingleChoiceOptionEntry(self.odata(),
+                    "direct", ['inner', 'outer'])),
+            ("Options", "Round Off Sharp Angles",
+                optview.BoolOptionEntry(self.odata(), "rnd")),
+            ("Options", "Maximum Sharp Angle",
+                optview.BoundedIntOptionEntry(self.odata(),
+                    "minsharp", 45, 160)),
+            ("Source", "Contour",
+                optview.SingleChoiceOptionEntry(self.odata(),
+                    "cont", self.all_conts))])
+
+    def ret_value(self):
+        ' -> {hfull, h0, mult, cont, name} '
+        od = copy.deepcopy(self.odata())
+        return {"hfull": od.hfull, "cont": od.cont, "name": od.name,
+                "mult": od.mult, "h0": od.h0}
+
+    def check_input(self):
+        #TODO
+        pass
+
 if __name__ == "__main__":
     import sys
     from PyQt4.QtGui import QApplication
