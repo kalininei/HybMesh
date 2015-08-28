@@ -1,45 +1,48 @@
-set(CROSSGRID_SONAME crossgrid)
-
 #library file
 set (HEADERS
+	crossgrid.h
 	grid.h
-	bgeom.h
 	fileproc.h
 	trigrid.h
 	buffergrid.h
 	wireframegrid.h
 	contours.h
 	intrusion.h
+	boundary_layer_grid.h
 )
 
 set (SOURCES
 	crossgrid.cpp
 	grid.cpp
-	bgeom.cpp
 	fileproc.cpp
 	trigrid.cpp
 	buffergrid.cpp
 	wireframegrid.cpp
 	contours.cpp
 	intrusion.cpp
+	boundary_layer_grid.cpp
 )
 
 source_group ("Header Files" FILES ${HEADERS} ${HEADERS})
 source_group ("Source Files" FILES ${SOURCES} ${SOURCES})
 
-add_library(${CROSSGRID_SONAME} SHARED ${HEADERS} ${SOURCES})
+add_library(${CROSSGRID_TARGET} SHARED ${HEADERS} ${SOURCES})
 
 # =========== linkage
-target_link_libraries(${CROSSGRID_SONAME} ${GMSH_TARGET})
+target_link_libraries(${CROSSGRID_TARGET} ${GMSH_TARGET})
+target_link_libraries(${CROSSGRID_TARGET} ${BGEOM2D_TARGET})
+target_link_libraries(${CROSSGRID_TARGET} ${HYBMESH_CONTOURS2D_TARGET})
 
 include_directories(${CommonInclude})
 include_directories(${GMSH_INCLUDE})
+include_directories(${BGEOM2D_INCLUDE})
+include_directories(${HYBMESH_CONTOURS2D_INCLUDE})
 
-install(TARGETS ${CROSSGRID_SONAME}
+install(TARGETS ${CROSSGRID_TARGET}
 	DESTINATION ${LIB_INSTALL_DIR})
 
 #C++11
-set_property(TARGET ${CROSSGRID_SONAME} PROPERTY CXX_STANDARD 11)
-set_property(TARGET ${CROSSGRID_SONAME} PROPERTY CXX_STANDARD_REQUIRED ON)
+set_property(TARGET ${CROSSGRID_TARGET} PROPERTY CXX_STANDARD 11)
+set_property(TARGET ${CROSSGRID_TARGET} PROPERTY CXX_STANDARD_REQUIRED ON)
 
 add_subdirectory(tests)

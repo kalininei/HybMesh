@@ -72,7 +72,7 @@ double PContour::area() const{
 
 //find internal point: cross algorithm
 Point PContour::inside_point_ca() const{
-	BoundingBox bb(*this, 0.5);
+	CGBoundingBox bb(*this, 0.5);
 	Point farp1(bb.xmin-134.11*geps, bb.ymin), farp2(bb.xmax+243.43*geps, bb.ymax);
 	//get all crosses
 	vector<double> crosses;
@@ -137,7 +137,7 @@ int PContour::is_inside(const Point& p, const bool* inner_hint) const{
 	//check whether contours is inner or outer
 	bool is_inner = (inner_hint!=0) ? *inner_hint : (area()>0);
 	//simple bounding box check
-	if (BoundingBox(*this).whereis(p) == OUTSIDE) return is_inner ? OUTSIDE : INSIDE;
+	if (CGBoundingBox(*this).whereis(p) == OUTSIDE) return is_inner ? OUTSIDE : INSIDE;
 	//some random farpoint which lies outside any contour
 	static Point farpoint = Point(1e3+1.23411+45.4*geps, 2.3e3+7.432+2.1*geps);
 	//calculate number of crosses between [p, farpoint] and all contour segments
@@ -193,7 +193,7 @@ vector<std::pair<double, Point>>
 PContour::intersections(const PContour& p) const {
 	vector<std::pair<double, Point>> ret;
 	std::set<Point> pntset;
-	BoundingBox bbox1(*this), bbox2(p);
+	CGBoundingBox bbox1(*this), bbox2(p);
 	if (!bbox1.has_common_points(bbox2)) return ret;
 	double ksieta[] = {-1,-1};
 	for (int i=0; i<n_points(); ++i){
@@ -574,24 +574,7 @@ double PointsContoursCollection::Edge::get_angle() const{
 	return _angle;
 }
 
-void BoundingBox::init(){
-	xmin =  gbig; xmax = -gbig;
-	ymin =  gbig; ymax = -gbig;
-}
-
-void BoundingBox::widen(double e){
-	xmin -= e; ymin -= e;
-	xmax += e; ymax += e;
-}
-
-void BoundingBox::add_point(const Point* p){
-	if (p->x < xmin) xmin = p->x;
-	if (p->x > xmax) xmax = p->x;
-	if (p->y < ymin) ymin = p->y;
-	if (p->y > ymax) ymax = p->y;
-}
-
-BoundingBox::BoundingBox(const vector<BoundingBox>& bb, double e){
+CGBoundingBox::CGBoundingBox(const vector<CGBoundingBox>& bb, double e):BoundingBox(){
 	init();
 	for (auto& b: bb){
 		if (xmin > b.xmin) xmin = b.xmin;
@@ -602,13 +585,13 @@ BoundingBox::BoundingBox(const vector<BoundingBox>& bb, double e){
 	widen(e);
 }
 
-BoundingBox::BoundingBox(const PContour& cont, double e){
+CGBoundingBox::CGBoundingBox(const PContour& cont, double e):BoundingBox(){
 	init();
 	for (int i=0; i<cont.n_points(); ++i) add_point(cont.get_point(i));
 	widen(e);
 }
 
-BoundingBox::BoundingBox(const ContoursCollection& col, double e){
+CGBoundingBox::CGBoundingBox(const ContoursCollection& col, double e):BoundingBox(){
 	init();
 	for (int i=0; i<col.n_cont(); ++i){
 		auto c = col.get_contour(i);
@@ -617,62 +600,17 @@ BoundingBox::BoundingBox(const ContoursCollection& col, double e){
 	widen(e);
 }
 
-Contour BoundingBox::get_contour() const {
+Contour CGBoundingBox::get_contour() const {
 	vector<Point> p {Point(xmin, ymin),
 		Point(xmax, ymin), Point(xmax, ymax), Point(xmin, ymax)};
 	return Contour(p);
 }
 
 
-BoundingBox::BoundingBox(const Point& p1, const Point& p2, double e){
+CGBoundingBox::CGBoundingBox(const Point& p1, const Point& p2, double e):BoundingBox(){
 	xmin = std::min(p1.x, p2.x);
 	ymin = std::min(p1.y, p2.y);
 	xmax = std::max(p1.x, p2.x);
 	ymax = std::max(p1.y, p2.y);
 	widen(e);
 }
-
-double BoundingBox::area() const{
-	return (xmax-xmin)*(ymax-ymin);
-}
-
-int BoundingBox::whereis(const Point& p) const{
-	if (ISLOWER(p.x, xmax) && ISLOWER(p.y, ymax) &&
-			ISGREATER(p.x, xmin) && ISGREATER(p.y, ymin)) return INSIDE;
-	if (ISGREATER(p.x, xmax) || ISGREATER(p.y, ymax) ||
-			ISLOWER(p.x, xmin) || ISLOWER(p.y, ymin)) return OUTSIDE;
-	return BOUND;
-}
-
-bool BoundingBox::has_common_points(const BoundingBox& bb) const{
-	auto res=BoundingBox({*this, bb});
-	auto sum=BoundingBox(0,0,lenx()+bb.lenx(), leny()+bb.leny());
-	//if one lies outside the other
-	if (ISGREATER(res.lenx(), sum.lenx()) ||
-		ISGREATER(res.leny(), sum.leny())) return false;
-
-	//if one lies inside the other
-	if (ISEQ(lenx(), res.lenx()) && ISEQ(leny(), res.lenx())){
-		return whereis(Point(bb.xmin, bb.ymin)) == INSIDE &&
-			whereis(Point(bb.xmax, bb.ymax)) == INSIDE;
-	}
-	if (ISEQ(bb.lenx(), res.lenx()) && ISEQ(bb.leny(), res.leny())){
-		return bb.whereis(Point(xmin, ymin)) == INSIDE &&
-			bb.whereis(Point(xmax, ymax)) == INSIDE;
-	}
-	//has intersections
-	return true;
-}
-
-bool BoundingBox::contains(const Point& p1, const Point& p2) const{
-	if (whereis(p1) == INSIDE || whereis(p2) == INSIDE) return true;
-	if (has_common_points(BoundingBox(p1,p2)) == false) return false;
-
-	double A=p2.y-p1.y, B=p2.x-p1.x, C=p1.y*p2.x-p2.y*p1.x;
-	auto func = [&](double x, double y)->int{ return SIGN(A*x+B*y+C); };
-
-	int s = func(xmin, ymax);
-	return !(s == func(xmax, ymin) && s == func(xmax, ymax) && s == func(xmin, ymax));
-
-}
-

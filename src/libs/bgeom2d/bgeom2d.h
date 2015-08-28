@@ -1,15 +1,9 @@
-#ifndef CROSSGRID_BGEOM_H
-#define CROSSGRID_BGEOM_H
+#ifndef HYBMESH_BGEOM_H
+#define HYBMESH_BGEOM_H
 
-#include <math.h>
+#include "hmproject.h"
 #include <algorithm>
-#include <iostream>
-#include <set>
-#include <memory>
 #include "addalgo.hpp"
-
-using std::vector;
-template<class T> using shp_vector = std::vector<std::shared_ptr<T>>;
 
 const double geps = 1e-8;
 const double geps2 = 1e-14;
@@ -47,7 +41,7 @@ struct Point{
 		vector<Point> ret; ret.reserve(pcoord.size()/Dim);
 		auto it=pcoord.begin();
 		while (it!=pcoord.end()){
-			double x=(Dim>0) ? *it++ : 0.0; 
+			double x= *it++;
 			double y=(Dim>1) ? *it++ : 0.0;
 			ret.push_back(Point(x,y));
 		}
@@ -235,5 +229,33 @@ inline double triarea(const Point& p1, const Point& p2, const Point& p3){
 //add refinement points within [0, Len] section. 0 and Len are not included.
 vector<double> RefineSection(double a, double b, double Len, double Den);
 
+class BoundingBox{
+protected:
+	void init();
+	void add_point(const Point* p);
+	void widen(double e);
+public:
+	double xmin, xmax, ymin, ymax;
+
+	BoundingBox():xmin(0), xmax(1), ymin(0), ymax(1){}
+	BoundingBox(double x0, double y0, double x1, double y1):xmin(x0), xmax(x1), ymin(y0), ymax(y1){}
+	BoundingBox(const vector<BoundingBox>&, double e=0.0);
+	BoundingBox(const Point& p1, const Point& p2, double e=0.0);
+
+	void WidenWithPoint(const Point& p);
+
+	double area() const;
+	double lenx() const { return xmax-xmin; }
+	double leny() const { return ymax-ymin; }
+	Point BottomLeft() const { return Point(xmin, ymin); }
+	Point TopRight() const { return Point(xmax, ymax); }
+
+	//-> INSIDE, OUTSIDE, BOUND
+	int whereis(const Point& p) const;
+	//does this have any intersections or tangent segments with another segment
+	bool has_common_points(const BoundingBox& bb) const;
+	//does this contain any part of [p1, p2] segment
+	bool contains(const Point& p1, const Point& p2) const;
+};
 
 #endif

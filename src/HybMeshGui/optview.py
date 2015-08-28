@@ -35,6 +35,9 @@ Defined public classes:
 
     OFileOptionEntry/SFileOptionEntry - label + QFileDialog
         pick a single file for reading/writing
+
+    Partition1DOptinEntry - edit: temporary QTextEdit, display: QLineEdit
+        1d Partition of segment
 """
 
 import sys
@@ -300,6 +303,9 @@ class MultipleChoiceOptionEntry(OptionEntry):
     class EditWidget(QtGui.QWidget):
         'widget for creating unique sublist'
         def __init__(self, data, parent):
+            """ data - MultipleChoiceOptionEntry
+                parent - parent for opening window
+            """
             #---- building window
             super(MultipleChoiceOptionEntry.EditWidget, self).__init__(parent)
             self.setWindowTitle("Multiple choice dialog")
@@ -486,7 +492,7 @@ class OFileOptionEntry(SimpleOptionEntry):
 
 
 class SFileOptionEntry(SimpleOptionEntry):
-    'pick an file for writing'
+    'pick a file for writing'
 
     def __init__(self, data, member_name,
             filters=["All files (*.*)"], defname='',
@@ -519,6 +525,89 @@ class SFileOptionEntry(SimpleOptionEntry):
     def set_from_widget(self, editor):
         if (len(editor.selectedFiles()) > 0):
             self.set(str(editor.selectedFiles()[0]))
+
+
+class Partition1DOptionEntry(SimpleOptionEntry):
+    def __init__(self, data, member_name, left=None, right=None):
+        """ left, right - prededined bounds.
+            left/right=None if no bounds
+        """
+        self.left, self.right = left, right
+        super(Partition1DOptionEntry, self).__init__(data, member_name)
+
+    class EditWidget(QtGui.QWidget):
+        # TODO
+        'widget for creating 1D Partition'
+        def __init__(self, data, parent):
+            """ data - Partition1DOptionEntry
+                parent - parent for opening window. = None
+            """
+            #---- building window
+            super(Partition1DOptionEntry.EditWidget, self).__init__(parent)
+            self.setWindowTitle("1D partition")
+            self.setWindowIcon(qtbp.get_icon("hybmesh"))
+            self.tedit = QtGui.QTextEdit()
+            self.bbox = QtGui.QDialogButtonBox()
+            self.bbox.setStandardButtons(QtGui.QDialogButtonBox.Cancel |
+                    QtGui.QDialogButtonBox.Ok)
+            self.bbox.accepted.connect(self.ok_action)
+            self.bbox.rejected.connect(self.cancel_action)
+            #window
+            self.setLayout(QtGui.QVBoxLayout())
+            self.layout().addWidget(self.tedit)
+            self.layout().addWidget(self.bbox)
+            self.resize(250, 300)
+            self.setWindowModality(QtCore.Qt.WindowModal)
+            #---- data
+            self.data = data
+            self._fill_textbox()
+
+        def _fill_textbox(self):
+            """fill textbox with data array
+            """
+            s = '\n'.join(map(str, self.data.get()))
+            self.tedit.setPlainText(s)
+
+        def ok_action(self):
+            try:
+                a = map(float, str(self.tedit.toPlainText()).split())
+                self.data.set(a)
+                self.close()
+            except Exception as e:
+                QtGui.QMessageBox.warning(self, "Warning",
+                        "Invalid data: %s" % str(e))
+
+        def cancel_action(self):
+            self.close()
+
+    def edit_widget(self, parent=None):
+        #create widget in a separate window without parents
+        return Partition1DOptionEntry.EditWidget(self, None)
+
+    def get(self):
+        v = super(Partition1DOptionEntry, self).get()
+        return copy.deepcopy(v)
+
+    def set(self, val):
+        v = sorted(set(val))
+        if len(v) < 2:
+            raise Exception('At least two values should exist')
+        if self.left is not None and v[0] != self.left:
+            raise Exception('Left bound should equal %f' % self.left)
+        if self.right is not None and v[-1] != self.right:
+            raise Exception('Right bound should equal %f' % self.right)
+        super(Partition1DOptionEntry, self).set(v)
+
+    def set_from_widget(self, editor):
+        #value was set in editor widget ok action
+        pass
+
+    def __str__(self):
+        s = ", ".join(['%.5f' % k for k in self.get()]) 
+        s = "[%s]" % s
+        if len(s) > 30:
+            s = s[:27] + ' ...'
+        return s
 
 
 class OptionsList(object):
@@ -885,7 +974,6 @@ class OptionsView(QtGui.QTreeView):
             #using "else:" here because otherwise it emits enter signal
             #for the whole form
             super(OptionsView, self).keyPressEvent(event)
-
 
 #=================== Usage example
 if __name__ == "__main__":

@@ -956,30 +956,24 @@ class BuildBLayer(SimpleAbstractDialog):
         self.cont = cont
         self.all_conts = all_conts
         super(BuildBLayer, self).__init__(parent)
-        self.resize(500, 300)
+        self.resize(400, 300)
         self.setWindowTitle("Build boundary layer grid")
 
     def _default_odata(self, obj):
         "-> options struct with default values"
         obj.name = "BLayerGrid1"
-        obj.hfull = 0.1
-        obj.h0 = 0.01
-        obj.mult = 1.2
         obj.cont = ""
         obj.direct = 'inner'
         obj.rnd = False
         obj.minsharp = 120
+        obj.mesh_cont = 'No'
+        obj.mesh_cont_step = 1
+        obj.partition = [0]
 
     def olist(self):
         "-> optview.OptionsList"
         return optview.OptionsList([("Basic", "Grid name",
                 optview.SimpleOptionEntry(self.odata(), "name")),
-            ("Layer Partition", "Height",
-                optview.SimpleOptionEntry(self.odata(), "hfull")),
-            ("Layer Partition", "First Step",
-                optview.SimpleOptionEntry(self.odata(), "h0")),
-            ("Layer Partition", "Factor",
-                optview.SimpleOptionEntry(self.odata(), "mult")),
             ("Options", "Direction",
                 optview.SingleChoiceOptionEntry(self.odata(),
                     "direct", ['inner', 'outer'])),
@@ -988,19 +982,49 @@ class BuildBLayer(SimpleAbstractDialog):
             ("Options", "Maximum Sharp Angle",
                 optview.BoundedIntOptionEntry(self.odata(),
                     "minsharp", 45, 160)),
+            ("Options", "Force contour mesh",
+                optview.SingleChoiceOptionEntry(self.odata(),
+                    "mesh_cont", ['No', 'Mesh. Ignore all nodes',
+                        'Mesh. Keep shape', 'Mesh. Keep origin'])),
+            ("Layer Partition", "Perpendicular Partition",
+                optview.Partition1DOptionEntry(self.odata(),
+                    "partition", 0, None)),
+            ("Layer Partition", "Contour mesh step",
+                optview.SimpleOptionEntry(self.odata(), 'mesh_cont_step')),
             ("Source", "Contour",
                 optview.SingleChoiceOptionEntry(self.odata(),
                     "cont", self.all_conts))])
 
     def ret_value(self):
-        ' -> {hfull, h0, mult, cont, name} '
+        """ {name, cont, direct, rnd, minsharp, mesh_cont, 
+            mesh_cont_step, partition}
+        """
         od = copy.deepcopy(self.odata())
-        return {"hfull": od.hfull, "cont": od.cont, "name": od.name,
-                "mult": od.mult, "h0": od.h0}
+        return {"name": od.name, "cont": od.cont, "direct": od.direct,
+                "rnd": od.rnd, "minshart": od.minsharp,
+                "mesh_cont": od.mesh_cont,
+                "mesh_cont_step": od.mesh_cont_step,
+                "partition": od.partition,
+                }
 
     def check_input(self):
-        #TODO
-        pass
+        if self.odata().mesh_cont != 'No' and \
+                self.odata().mesh_cont_step <= 0:
+            raise Exception('Mesh contour step should be greater then zero')
+        if self.odata().cont == '':
+            raise Exception('Define a contour')
+        if len(self.odata().partition) < 2:
+            raise Exception('Define at least 2 values for partition')
+
+    def _active_entries(self, entry):
+        """ (optview.OptionEntry entry) -> bool
+            return False for non-active entries
+        """
+        if entry.member_name in ["mesh_cont_step"]:
+            return self.odata().mesh_cont != 'No'
+        else:
+            return True
+
 
 if __name__ == "__main__":
     import sys

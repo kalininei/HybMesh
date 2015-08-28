@@ -1,7 +1,7 @@
 #ifndef CROSSGRID_CONTOURS_H
 #define CROSSGRID_CONTOURS_H
 #include "crossgrid.h"
-#include "bgeom.h"
+#include "bgeom2d.h"
 #include <list>
 
 //Contour basic class
@@ -82,7 +82,7 @@ public:
 
 //Contour which owns all its points
 class Contour: public PContour{
-	shp_vector<Point> pdata;
+	ShpVector<Point> pdata;
 public:
 	Contour(const std::vector<Point>& _pts=std::vector<Point>());
 	Contour(const PContour& c);
@@ -167,15 +167,15 @@ protected:
 			return (upper==0) ? 0 : 1 + upper->get_level();
 		}
 	};
-	shp_vector<PContour>  contours;
-	shp_vector<_entry>  entries;
+	ShpVector<PContour>  contours;
+	ShpVector<_entry>  entries;
 	std::list<_entry*> top_level;
 	void set_nesting();
 	const _entry* efind(const Point& p) const;
 
 	//simplify/unsimplify entries: 
 	//modifies entires.data to simplified contours
-	mutable shp_vector<PContour> _simpcont;
+	mutable ShpVector<PContour> _simpcont;
 	mutable vector<PContour*> _origcont;
 	void simplify_entries() const;
 	void unsimplify_entries() const;
@@ -183,7 +183,7 @@ protected:
 
 //Contour collection which owns all its points
 class PointsContoursCollection: public ContoursCollection{
-	shp_vector<Point> pdata;
+	ShpVector<Point> pdata;
 	void build(const vector<Point>& pts, const vector<int>& eds);
 	//edges management
 	struct Edge{
@@ -230,31 +230,17 @@ public:
 			const PointsContoursCollection& tar);
 };
 
-class BoundingBox{
-	void init();
-	void add_point(const Point* p);
-	void widen(double e);
+class CGBoundingBox: public BoundingBox{
+//crossgrid copy of bounding box
+//TODO: place to conours2d library
 public:
-	double xmin, xmax, ymin, ymax;
-
-	BoundingBox(double x0, double y0, double x1, double y1):xmin(x0), xmax(x1), ymin(y0), ymax(y1){}
-	BoundingBox(const vector<BoundingBox>&, double e=0.0);
-	BoundingBox(const PContour& cont, double e=0.0);
-	BoundingBox(const ContoursCollection& col, double e=0.0);
-	BoundingBox(const Point& p1, const Point& p2, double e=0.0);
+	CGBoundingBox(double x0, double y0, double x1, double y1):BoundingBox(x0, y0, x1, y1){}
+	CGBoundingBox(const vector<CGBoundingBox>&, double e=0.0);
+	CGBoundingBox(const PContour& cont, double e=0.0);
+	CGBoundingBox(const ContoursCollection& col, double e=0.0);
+	CGBoundingBox(const Point& p1, const Point& p2, double e=0.0);
 
 	Contour get_contour() const;
-
-	double area() const;
-	double lenx() const { return xmax-xmin; }
-	double leny() const { return ymax-ymin; }
-
-	//-> INSIDE, OUTSIDE, BOUND
-	int whereis(const Point& p) const;
-	//does this have any intersections or tangent segments with another segment
-	bool has_common_points(const BoundingBox& bb) const;
-	//does this contain any part of [p1, p2] segment
-	bool contains(const Point& p1, const Point& p2) const;
 };
 
 

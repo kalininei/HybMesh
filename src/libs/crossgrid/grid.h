@@ -2,7 +2,7 @@
 #define CROSSGRID_GRID_H
 
 #include "crossgrid.h"
-#include "bgeom.h"
+#include "bgeom2d.h"
 #include "contours.h"
 
 class GridPoint: public Point{
@@ -58,8 +58,8 @@ inline bool operator<(const Edge& e1, const Edge& e2){
 class GridGeom: public Grid{
 protected:
 	//Data
-	shp_vector<GridPoint> points;
-	shp_vector<Cell> cells;
+	ShpVector<GridPoint> points;
+	ShpVector<Cell> cells;
 	//scaling
 	ScaleBase do_scale();
 	void do_scale(const ScaleBase& sc);
@@ -101,6 +101,7 @@ protected:
 	//move point srcp->tarp and check if cell geometry is still ok
 	//returns false if failed to move without breaking geometry
 	bool move_point(const GridPoint* srcp, const Point& tarp, const vector<vector<int>>& point_cell);
+
 public:
 	//build grid from raw points coordinates array
 	//and cells->points connectivity array
@@ -127,7 +128,7 @@ public:
 	std::pair<Point, Point> outer_rect() const;
 	
 	//returns set of single connected meshes.
-	shp_vector<GridGeom> subdivide() const;
+	ShpVector<GridGeom> subdivide() const;
 
 	//data access
 	const GridPoint* get_point(int i) const { return points[i].get(); }

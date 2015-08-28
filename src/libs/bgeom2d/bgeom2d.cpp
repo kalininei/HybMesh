@@ -1,4 +1,4 @@
-#include "bgeom.h"
+#include "bgeom2d.h"
 #include "addalgo.hpp"
 #include "assert.h"
 
@@ -154,5 +154,86 @@ vector<int> NodeFinder::get_index(const Point* p) const{
 	return ret;
 }
 
+void BoundingBox::init(){
+	xmin =  gbig; xmax = -gbig;
+	ymin =  gbig; ymax = -gbig;
+}
 
+void BoundingBox::widen(double e){
+	xmin -= e; ymin -= e;
+	xmax += e; ymax += e;
+}
 
+void BoundingBox::add_point(const Point* p){
+	if (p->x < xmin) xmin = p->x;
+	if (p->x > xmax) xmax = p->x;
+	if (p->y < ymin) ymin = p->y;
+	if (p->y > ymax) ymax = p->y;
+}
+
+BoundingBox::BoundingBox(const vector<BoundingBox>& bb, double e){
+	init();
+	for (auto& b: bb){
+		if (xmin > b.xmin) xmin = b.xmin;
+		if (ymin > b.ymin) ymin = b.ymin;
+		if (xmax < b.xmax) xmax = b.xmax;
+		if (ymax < b.ymax) ymax = b.ymax;
+	}
+	widen(e);
+}
+
+BoundingBox::BoundingBox(const Point& p1, const Point& p2, double e){
+	xmin = std::min(p1.x, p2.x);
+	ymin = std::min(p1.y, p2.y);
+	xmax = std::max(p1.x, p2.x);
+	ymax = std::max(p1.y, p2.y);
+	widen(e);
+}
+
+double BoundingBox::area() const{
+	return (xmax-xmin)*(ymax-ymin);
+}
+
+int BoundingBox::whereis(const Point& p) const{
+	if (ISLOWER(p.x, xmax) && ISLOWER(p.y, ymax) &&
+			ISGREATER(p.x, xmin) && ISGREATER(p.y, ymin)) return INSIDE;
+	if (ISGREATER(p.x, xmax) || ISGREATER(p.y, ymax) ||
+			ISLOWER(p.x, xmin) || ISLOWER(p.y, ymin)) return OUTSIDE;
+	return BOUND;
+}
+
+bool BoundingBox::has_common_points(const BoundingBox& bb) const{
+	auto res=BoundingBox({*this, bb});
+	auto sum=BoundingBox(0,0,lenx()+bb.lenx(), leny()+bb.leny());
+	//if one lies outside the other
+	if (ISGREATER(res.lenx(), sum.lenx()) ||
+		ISGREATER(res.leny(), sum.leny())) return false;
+
+	//if one lies inside the other
+	if (ISEQ(lenx(), res.lenx()) && ISEQ(leny(), res.lenx())){
+		return whereis(Point(bb.xmin, bb.ymin)) == INSIDE &&
+			whereis(Point(bb.xmax, bb.ymax)) == INSIDE;
+	}
+	if (ISEQ(bb.lenx(), res.lenx()) && ISEQ(bb.leny(), res.leny())){
+		return bb.whereis(Point(xmin, ymin)) == INSIDE &&
+			bb.whereis(Point(xmax, ymax)) == INSIDE;
+	}
+	//has intersections
+	return true;
+}
+
+bool BoundingBox::contains(const Point& p1, const Point& p2) const{
+	if (whereis(p1) == INSIDE || whereis(p2) == INSIDE) return true;
+	if (has_common_points(BoundingBox(p1,p2)) == false) return false;
+
+	double A=p2.y-p1.y, B=p2.x-p1.x, C=p1.y*p2.x-p2.y*p1.x;
+	auto func = [&](double x, double y)->int{ return SIGN(A*x+B*y+C); };
+
+	int s = func(xmin, ymax);
+	return !(s == func(xmax, ymin) && s == func(xmax, ymax) && s == func(xmin, ymax));
+
+}
+
+void BoundingBox::WidenWithPoint(const Point& p){
+	add_point(&p);
+}

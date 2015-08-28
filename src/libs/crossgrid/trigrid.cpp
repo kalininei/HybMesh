@@ -104,8 +104,8 @@ std::map<GridPoint*, vector<GridPoint*>>& TriGrid::nodenodeI() const{
 	return _nodenodeI;
 }
 
-shp_vector<Point> TriGrid::ref_points(const vector<double>& dists, double density) const{
-	auto ret=shp_vector<Point>();
+ShpVector<Point> TriGrid::ref_points(const vector<double>& dists, double density) const{
+	auto ret=ShpVector<Point>();
 	for (auto e: edges()){
 		if (!e.is_boundary()){
 			auto p1 = get_point(e.p1), p2 = get_point(e.p2);

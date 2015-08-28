@@ -1,7 +1,7 @@
 #ifndef CROSSGRID_FILEPROC_H
 #define CROSSGRID_FILEPROC_H
 #include <chrono>
-#include "bgeom.h"
+#include "bgeom2d.h"
 #include "grid.h"
 #include "wireframegrid.h"
 

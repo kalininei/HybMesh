@@ -300,7 +300,7 @@ class UniteGrids(objcom.AbstractAddRemove):
         return [(self.grid_name, ret)], delgrd, [], []
 
 
-class BuildBLayer(objcom.AbstractAddRemove):
+class BuildBoundaryGrid(objcom.AbstractAddRemove):
     def __init__(self, **kwargs):
         """ args[name] - name of the new grid,
             args[hfull]

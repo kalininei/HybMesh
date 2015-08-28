@@ -39,7 +39,7 @@ set(APPNAME HybMesh)
 # names of files and directories in the file tree
 set(MainGui HybMesh)
 set(MainConf HybMesh_conf)
-set(PyPack HybMesh_gui)
+set(PyPack HybMeshGui)
 # description
 set(APPDESCRIPTION "composite grid generator")
 
@@ -86,11 +86,11 @@ endif(WIN32)
 # ============================ Version
 # provides ${APPVERSION} string
 execute_process(COMMAND
-	${PYTHON} ${CMAKE_SOURCE_DIR}/src/${MainGui}.py --version
+	${PYTHON} ${CMAKE_SOURCE_DIR}/src/setup.py --version
 	RESULT_VARIABLE _PRESULT
 	OUTPUT_VARIABLE APPVERSION)
 if (NOT _PRESULT EQUAL 0)
-	message(FATAL_ERROR "${MainGui}.py doesn't process --version argument")
+	message(FATAL_ERROR "setup.py doesn't process --version argument")
 endif()
 string(STRIP ${APPVERSION} APPVERSION)
 string(LENGTH "${APPVERSION}" APPVERSION_LENGTH)
@@ -107,7 +107,6 @@ if (FIND_LIBGMSH)
 else()
 	message(STATUS "LibGmsh not found")
 endif()
-
 if (NOT FIND_LIBGMSH OR USE_INTERNAL_LIBGMSH)
 	set(GMSH_TARGET gmsh_shared)
 	set(BUILD_GMSH ON)
@@ -127,6 +126,34 @@ else()
 	set(GMSH_TARGET ${FIND_LIBGMSH})
 	find_path(GMSH_INCLUDE NAMES Gmsh.h GModel.h PATH_SUFFIXES gmsh)
 endif()
+#libpolyclipping: global definition of BUILD_CLIPPER, CLIPPER_TARGET, CLIPPER_INCLUDE
+find_library(FIND_LIBCLIPPER polyclipping)
+if (FIND_LIBCLIPPER)
+	option(USE_INTERNAL_LIBCLIPPER "use internal build of libpolyclipping" OFF)
+	message(STATUS "clipper found at ${FIND_LIBGMSH}")
+else()
+	message(STATUS "clipper not found")
+endif()
+if (NOT FIND_LIBCLIPPER OR USE_INTERNAL_LIBCLIPPER)
+	set(CLIPPER_TARGET polyclipping)
+	set(BUILD_CLIPPER on)
+	set(CLIPPER_INCLUDE "${CMAKE_SOURCE_DIR}/src/libs/external/clipper")
+else()
+	message(STATUS "Using system libpolyclipping")
+	set(BUILD_CLIPPER off)
+	set(CLIPPER_TARGET ${FIND_LIBCLIPPER})
+	find_path(CLIPPER_INCLUDE NAMES clipper.hpp)
+endif()
+#libbgeom2d: global definition of BGEOM2D_INCLUDE, BGEOM2D_TARGET
+set(BGEOM2D_INCLUDE "${CMAKE_SOURCE_DIR}/src/libs/bgeom2d")
+set(BGEOM2D_TARGET bgeom2d)
+#libhybmesh_contours2d: global definition of HYBMESH_CONTOURS2D_INCLUDE, HYBMESH_CONTOURS2D_TARGET
+set(HYBMESH_CONTOURS2D_INCLUDE "${CMAKE_SOURCE_DIR}/src/libs/hybmesh_contours2d")
+set(HYBMESH_CONTOURS2D_TARGET hybmesh_contours2d)
+#libcrossgird: global definition of CROSSGRID_INCLUDE, CROSSGRID_TARGET
+set(CROSSGRID_INCLUDE "${CMAKE_SOURCE_DIR}/src/libs/crossgrid")
+set(CROSSGRID_TARGET crossgrid)
+
 
 # =========================== configuration file 
 if (WIN32)

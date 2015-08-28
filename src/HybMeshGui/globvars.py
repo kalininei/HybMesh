@@ -88,6 +88,7 @@ _commands = [
         importcom.ImportContourASCII,
         importcom.ImportGridNative,
         importcom.ImportGridSimple34,
+        gridcom.BuildBoundaryGrid,
     ]
 
 Flows = command.FlowCollection(_commands, framework.Framework)
@@ -101,25 +102,29 @@ mainWindow.initialize()
 import xml.etree.ElementTree as ET
 
 
-def configure(fn, cur_vers):
-    """ (str fn, HybMeshVersion cur_vers)
-        Reads configure file from fn and fills prog_options and view_options.
+def configure():
+    """ Reads configuration init from config_installed.py or config.py
+        and fills prog_options and view_options.
         Checks for version updates if necessary.
     """
     import os.path
     import glob
 
-    homedir, libdir = None, None
-    confs = file(fn, 'r').readlines()
-    for s in confs:
-        k = s.strip().split(None, 1)
-        if len(k) < 2 or k[0][0] == '#':
-            continue
-        elif k[0] == 'libdir':
-            libdir = os.path.expanduser(k[1])
-        elif k[0] == 'homedir':
-            homedir = os.path.expanduser(k[1])
-    if homedir is None or libdir is None or not os.path.isdir(libdir):
+    try:
+        # If this is an installed version, then
+        # current directory contains config_installed.py file
+        import config_installed
+        libdir = os.path.abspath(config_installed.libdir)
+        homedir = os.path.abspath(config_installed.homedir)
+        version = config_installed.version
+    except:
+        # For debug version
+        import config
+        libdir = os.path.abspath(config.libdir)
+        homedir = os.path.abspath(config.homedir)
+        version = config.version
+
+    if not os.path.isdir(libdir):
         raise Exception('Home/Library directories are not correctly set')
     if not os.path.isdir(homedir):
         os.makedirs(homedir)
@@ -145,8 +150,8 @@ def configure(fn, cur_vers):
     _rewrite_options()
 
     #updates
-    prog_options.version = str(cur_vers)
-    _check_for_updates(cur_vers)
+    prog_options.version = version
+    _check_for_updates(version)
 
     #debug output directory
     prog_options.debug_save_fn = os.path.join(homedir,
@@ -284,10 +289,35 @@ def _get_last_version(rurl):
         return (None, None)
 
 
+# version
+class HybMeshVersion:
+    def __init__(self, s):
+        """initializes version for string of "1.2.3" type"""
+        def __only_nums(n):
+            return ''.join(k for k in n if k.isdigit())
+        self.nums = map(__only_nums, s.split('.'))
+        self.nums = map(int, [n for n in self.nums if len(n) > 0])
+
+    def __str__(self):
+        return '.'.join(map(str, self.nums))
+
+    @classmethod
+    def str_compare(cls, v1, v2):
+        '(str, str) -> [-1 or 0 or 1]. Compares self and v2 string'
+        [v1, v2] = [HybMeshVersion(v) for v in [v1, v2]]
+        for i in range(min(len(v1.nums), len(v2.nums))):
+            if v1.nums[i] < v2.nums[i]:
+                return -1
+            elif v1.nums[i] > v2.nums[i]:
+                return 1
+        return 0
+
+
 def _compare_versions(cur_vers, (last_vers, url)):
+    'if current version < last version raises message box'
     if last_vers is None:
         return
-    cres = cur_vers.str_compare(last_vers)
+    cres = HybMeshVersion.str_compare(cur_vers, last_vers)
     if cres < 0:
         from PyQt4 import QtCore
         s = "New HybMesh release %s is available <a href='%s'>here</a>" \
@@ -306,13 +336,8 @@ def _check_for_updates(cur_vers):
         return
     #make github request
     print "check for update"
-    from multiprocessing import Pool
-    from functools import partial
     rurl = 'https://api.github.com/repos/' + \
         'kalininei/HybMesh/releases/latest'
-    #pool = Pool(processes=1)
-    #pool.apply_async(_get_last_version, args=(rurl,),
-    #        callback=partial(_compare_versions, cur_vers))
     _compare_versions(cur_vers, _get_last_version(rurl))
     prog_options.updates_last = datetime.now()
     _rewrite_options()

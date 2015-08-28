@@ -1,9 +1,12 @@
 #include <iostream>
-#include "crossgrid.h"
 #include <vector>
 #include <cmath>
 #include <algorithm>
 #include <stdexcept>
+#include "crossgrid.h"
+#include "fileproc.h"
+#include "hybmesh_contours2d.hpp"
+#include "boundary_layer_grid.h"
 
 void add_check(bool ex, const char* info = 0){
 	if (info==0){
@@ -526,6 +529,34 @@ void test20(){
 	cont_free(c1);
 };
 
+void test21(){
+	std::cout<<"21. Boundary Layer grid from square"<<std::endl;
+	//1) Create contour
+	HMCont2D::ClosedContour Cont4;
+	Cont4.AddPointToEnd(0, 0);
+	Cont4.AddPointToEnd(1, 0);
+	Cont4.AddPointToEnd(1, 1);
+	Cont4.AddPointToEnd(0, 1);
+	//2) Create contour tree
+	auto tree = new HMCont2D::ContourTree;
+	tree->AddContour(Cont4);
+	//3) Options
+	BLayerGridInput opt;
+	opt.tree.reset(tree);
+	opt.step_method = BLayerGridInput::STEP0_STEPNUM;
+	opt.direction = INSIDE;
+	opt.step0 = 0.03;
+	opt.delta = 1.1;
+	opt.step_num = 5;
+	opt.bnd_step_method = BLayerGridInput::CONST_BND_STEP_KEEP_SHAPE;
+	opt.bnd_step = 0.1;
+
+	//4) Build a Grid
+	BLayerGrid g = BLayerGrid(opt);
+
+	add_check(fabs(g.area()-0.47938)<1e-3, "boundary grid area");
+	save_vtk(g, "out_test21.vtk");
+};
 
 int main(){
 	crossgrid_silent_callback();
@@ -550,5 +581,6 @@ int main(){
 	test18();
 	test19();
 	test20();
+	test21();
 	std::cout<<"DONE"<<std::endl;
 }

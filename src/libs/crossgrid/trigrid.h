@@ -13,7 +13,7 @@ class TriGrid: public GridGeom{
 	std::map<GridPoint*, vector<GridPoint*>>& nodenodeI() const;
 	
 	//get_refinement points for the meshed area
-	shp_vector<Point> ref_points(const vector<double>& dists, double density) const;
+	ShpVector<Point> ref_points(const vector<double>& dists, double density) const;
 public:
 	//constrcut from non-overlapping contours list and additional points
 	explicit TriGrid(const ContoursCollection& cont, const vector<double>& lc, double density);

@@ -6,7 +6,6 @@
 #include "trigrid.h"
 #include "buffergrid.h"
 #include "wireframegrid.h"
-#include "bgeom.h"
 
 void Edge::add_adj_cell(int cell_ind, int i1, int i2) const{
 	if ((i1 == p1) && (i2 == p2)){
@@ -318,7 +317,7 @@ void add_cell(int i, vector<int>& v, const vector<vector<int>>& cell_cell, vecto
 }
 }//namespace
 
-shp_vector<GridGeom> GridGeom::subdivide() const{
+ShpVector<GridGeom> GridGeom::subdivide() const{
 	//cell->cell connectivity
 	std::vector<std::vector<int>> cell_cell(n_cells());
 	auto edges = get_edges();
@@ -341,7 +340,7 @@ shp_vector<GridGeom> GridGeom::subdivide() const{
 	}
 
 	//assemble new grids
-	shp_vector<GridGeom> ret;
+	ShpVector<GridGeom> ret;
 	for (auto& sc: sc_cells){
 		ret.push_back(std::shared_ptr<GridGeom>(new GridGeom()));
 		auto r = ret.back().get();
@@ -569,9 +568,9 @@ GridGeom* GridGeom::grid_minus_cont(GridGeom* g, PointsContoursCollection* c,
 	ContoursCollection cp = c->shallow_copy();
 	Contour bounding_cnt;
 	if (is_inner==true){
-		BoundingBox bbox2(cp);
-		BoundingBox bbox1(gbnd);
-		bounding_cnt = BoundingBox({bbox1, bbox2}, 1.0).get_contour();
+		CGBoundingBox bbox2(cp);
+		CGBoundingBox bbox1(gbnd);
+		bounding_cnt = CGBoundingBox({bbox1, bbox2}, 1.0).get_contour();
 		cp.add_contour(bounding_cnt);
 	}
 

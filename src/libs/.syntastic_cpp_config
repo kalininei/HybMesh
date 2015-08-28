@@ -2,3 +2,5 @@
 -I/usr/include/vtk-6.1
 -I/usr/include/gmsh
 -I/home/ek/Work/HybMesh/src/libs/include
+-I/home/ek/Work/HybMesh/src/libs/bgeom2d
+-I/home/ek/Work/HybMesh/src/libs/hybmesh_contours2d
