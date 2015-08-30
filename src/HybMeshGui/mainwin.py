@@ -42,6 +42,8 @@ class MainWindow(QtGui.QMainWindow, qtui.ui_ComGridMain.Ui_MainWindow):
         #custom signals
         self.connect(self, QtCore.SIGNAL(
             "inform(QString, QString)"), self.inform)
+        self.connect(self, QtCore.SIGNAL(
+            "inform_error(QString, QString)"), self.inform_error)
         #file
         self.act_open.triggered.connect(self._open_flows)
         self.act_save.triggered.connect(self._save_flows)
@@ -287,7 +289,7 @@ class MainWindow(QtGui.QMainWindow, qtui.ui_ComGridMain.Ui_MainWindow):
         dialog = dlgs.BuildBLayer(used_cont, all_conts, self)
         if dialog.exec_():
             r = dialog.ret_value()
-            com = gridcom.BuildBLayer(*r)
+            com = gridcom.BuildBoundaryGrid(**r)
             globvars.actual_flow().exec_command(com)
 
     def _set_bc(self):
@@ -378,3 +380,7 @@ class MainWindow(QtGui.QMainWindow, qtui.ui_ComGridMain.Ui_MainWindow):
         msg.setTextFormat(QtCore.Qt.RichText)
         msg.setText(s)
         msg.exec_()
+
+    def inform_error(self, caption, s):
+        'shows error box with caption and string'
+        QtGui.QMessageBox.critical(self, caption, s)

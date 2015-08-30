@@ -12,9 +12,6 @@ def main():
     print "Qt version:", QT_VERSION_STR
     print "VTK version:", vtkVersion.GetVTKVersion()
 
-    # -- initialize qt application
-    app = QtGui.QApplication(sys.argv)
-
     import globvars as gv
 
     # configure program
@@ -37,4 +34,6 @@ def main():
     sys.exit(app.exec_())
 
 if __name__ == '__main__':
+    # -- initialize qt application here to avoid exit error
+    app = QtGui.QApplication(sys.argv)
     main()

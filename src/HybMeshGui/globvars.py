@@ -56,6 +56,7 @@ class ProgOptions(object):
         # ======= file paths:
         # Should be initialized from configure(fn)
         self.lib_crossgrid = "not-defined"
+        self.lib_contours2 = "not-defined"
         self.opt_file = "not-defined"
         self.version = "not-defined"
 prog_options = ProgOptions()
@@ -134,6 +135,12 @@ def configure():
     if len(c) == 0:
         raise Exception("libcrossgrid was not found at %s" % libdir)
     prog_options.lib_crossgrid = c[0]
+    print '%s loaded' % c[0]
+    # find contours2
+    c = glob.glob("%s/*hybmesh_contours2d*" % libdir)
+    if len(c) == 0:
+        raise Exception("libhybmesh_contours2d was not found at %s" % libdir)
+    prog_options.lib_cont2 = c[0]
     print '%s loaded' % c[0]
 
     #read options from Config.xml

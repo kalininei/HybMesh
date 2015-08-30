@@ -228,13 +228,13 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
         QtCore.QObject.connect(self.act_exit, QtCore.SIGNAL(_fromUtf8("triggered()")), MainWindow.close)
-        QtCore.QObject.connect(self.act_grid_manager, QtCore.SIGNAL(_fromUtf8("toggled(bool)")), self.dw_grid_manager.setVisible)
+        QtCore.QObject.connect(self.act_grid_manager, QtCore.SIGNAL(_fromUtf8("triggered(bool)")), self.dw_grid_manager.setVisible)
         QtCore.QObject.connect(self.dw_grid_manager, QtCore.SIGNAL(_fromUtf8("visibilityChanged(bool)")), self.act_grid_manager.setChecked)
-        QtCore.QObject.connect(self.act_commands_history, QtCore.SIGNAL(_fromUtf8("toggled(bool)")), self.dw_history.setVisible)
+        QtCore.QObject.connect(self.act_commands_history, QtCore.SIGNAL(_fromUtf8("triggered(bool)")), self.dw_history.setVisible)
         QtCore.QObject.connect(self.dw_history, QtCore.SIGNAL(_fromUtf8("visibilityChanged(bool)")), self.act_commands_history.setChecked)
-        QtCore.QObject.connect(self.act_contour_manager, QtCore.SIGNAL(_fromUtf8("toggled(bool)")), self.dw_contour_manager.setVisible)
+        QtCore.QObject.connect(self.act_contour_manager, QtCore.SIGNAL(_fromUtf8("triggered(bool)")), self.dw_contour_manager.setVisible)
         QtCore.QObject.connect(self.dw_contour_manager, QtCore.SIGNAL(_fromUtf8("visibilityChanged(bool)")), self.act_contour_manager.setChecked)
-        QtCore.QObject.connect(self.act_bnd_manager, QtCore.SIGNAL(_fromUtf8("toggled(bool)")), self.dw_bnd_manager.setVisible)
+        QtCore.QObject.connect(self.act_bnd_manager, QtCore.SIGNAL(_fromUtf8("triggered(bool)")), self.dw_bnd_manager.setVisible)
         QtCore.QObject.connect(self.dw_bnd_manager, QtCore.SIGNAL(_fromUtf8("visibilityChanged(bool)")), self.act_bnd_manager.setChecked)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 

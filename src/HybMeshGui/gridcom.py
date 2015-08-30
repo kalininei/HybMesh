@@ -4,7 +4,8 @@ import bgeom
 import grid2
 import command
 import objcom
-from unite_grids import unite_grids, grid_excl_cont, setbc_from_conts
+from unite_grids import (unite_grids, grid_excl_cont, setbc_from_conts,
+   boundary_layer_grid)
 
 
 class NewGridCommand(objcom.AbstractAddRemove):
@@ -303,39 +304,25 @@ class UniteGrids(objcom.AbstractAddRemove):
 class BuildBoundaryGrid(objcom.AbstractAddRemove):
     def __init__(self, **kwargs):
         """ args[name] - name of the new grid,
-            args[hfull]
-            args[mult]
-            args[h0]
-            args[cont]
+            see dlgs.BuildBLayer._default_odata() for
+            kwargs explanation
         """
-        super(UniteGrids, self).__init__(kwargs)
-        self.grid_name = kwargs['name']
-        self.hfull = kwargs['hfull']
-        self.mult = kwargs['mult']
-        self.h0 = kwargs['h0']
-        self.cont = kwargs['cont']
+        super(BuildBoundaryGrid, self).__init__(kwargs)
+        self.opt = copy.deepcopy(kwargs)
 
     @classmethod
     def fromstring(cls, slist):
-        a = ast.literal_eval(slist)
-        return cls(**a)
-
+        ret = super(BuildBoundaryGrid, cls).fromstring(slist)
+        ret.opt['rnd'] = ret.opt['rnd'] == 'True'
+        ret.opt['minsharp'] = float(ret.opt['minsharp'])
+        ret.opt['partition'] = ast.literal_eval(ret.opt['partition'])
+        ret.opt['mesh_cont_step'] = float(ret.opt['mesh_cont_step'])
+        return ret
 
     def _addrem_objects(self):
-        #basic grid
-        ret, _ = self._get_grid(0)
-
-        #unification
-        for i in range(1, len(self.source)):
-            g, b = self._get_grid(i)
-            ret = unite_grids(ret, g, b, self.fix_bnd, self.empty_holes)
-            if (ret is None):
-                return [], [], [], []
-
-        #boundary conditions
-        ret.build_contour()
-        srccont = [self._get_grid(i)[0].cont for i in range(len(self.source))]
-        setbc_from_conts(ret.cont, srccont)
-
-        delgrd = [] if self.keepsrc else [n.name for n in self.source]
-        return [(self.grid_name, ret)], delgrd, [], []
+        cont = self.receiver.get_any_contour(self.opt['cont'])
+        newg = boundary_layer_grid(cont, self.opt)
+        if newg is not None:
+            return [(self.opt['name'], newg)], [], [], []
+        else:
+            return [], [], [], []

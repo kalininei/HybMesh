@@ -94,10 +94,14 @@ class Command(object):
     def fromstring(cls, slist):
         """ -> Command object
 
-            @slist -- string representation of
+            slist -- string representation of
             constuctor arguments dictionary
         """
-        raise NotImplementedError
+        import ast
+        #This is only a default implementation
+        #which reads everything to a string format
+        a = ast.literal_eval(slist)
+        return cls(**a)
 
     #info
     @classmethod
@@ -446,11 +450,8 @@ class FlowCollection(object):
             tree.write(fname, xml_declaration=True, encoding='utf-8')
         except Exception as e:
             import traceback
-            print traceback.format_exc()
-            QtGui.QMessageBox.critical(None, "Export failure",
-                    str(e))
-
-
+            traceback.print_exc()
+            globvars.mainwin.mainWindow.inform_error("Export failure", str(e))
 
     #function which are called from CommandFlow
     def _new_receiver(self):

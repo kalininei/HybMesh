@@ -429,7 +429,7 @@
   </connection>
   <connection>
    <sender>act_grid_manager</sender>
-   <signal>toggled(bool)</signal>
+   <signal>triggered(bool)</signal>
    <receiver>dw_grid_manager</receiver>
    <slot>setVisible(bool)</slot>
    <hints>
@@ -461,7 +461,7 @@
   </connection>
   <connection>
    <sender>act_commands_history</sender>
-   <signal>toggled(bool)</signal>
+   <signal>triggered(bool)</signal>
    <receiver>dw_history</receiver>
    <slot>setVisible(bool)</slot>
    <hints>
@@ -493,7 +493,7 @@
   </connection>
   <connection>
    <sender>act_contour_manager</sender>
-   <signal>toggled(bool)</signal>
+   <signal>triggered(bool)</signal>
    <receiver>dw_contour_manager</receiver>
    <slot>setVisible(bool)</slot>
    <hints>
@@ -525,7 +525,7 @@
   </connection>
   <connection>
    <sender>act_bnd_manager</sender>
-   <signal>toggled(bool)</signal>
+   <signal>triggered(bool)</signal>
    <receiver>dw_bnd_manager</receiver>
    <slot>setVisible(bool)</slot>
    <hints>

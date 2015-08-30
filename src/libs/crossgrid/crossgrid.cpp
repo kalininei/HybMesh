@@ -3,6 +3,8 @@
 #include "fileproc.h"
 #include "wireframegrid.h"
 #include "Gmsh.h"
+#include "hybmesh_contours2d.hpp"
+#include "boundary_layer_grid.h"
 
 namespace{
 
@@ -210,7 +212,7 @@ Grid* cross_grids(Grid* gbase, Grid* gsecondary, double buffer_size, int preserv
 	return cross_grids_wcb(gbase, gsecondary, buffer_size, preserve_bp, eh, global_callback);
 }
 
-Grid* cross_grids_wcb(Grid* gbase, Grid* gsecondary, double buffer_size, 
+Grid* cross_grids_wcb(Grid* gbase, Grid* gsecondary, double buffer_size,
 		int preserve_bp, int empty_holes, crossgrid_callback cb_fun){
 	try{
 		if (gbase == NULL || gsecondary == NULL)
@@ -271,7 +273,7 @@ void add_contour_bc(Cont* src, Cont* tar, int* vsrc, int* vtar, int def){
 	}
 }
 
-void contour_get_info(Cont* c, int* Npnt, int* Neds, 
+void contour_get_info(Cont* c, int* Npnt, int* Neds,
 		double** pts,
 		int** eds){
 	PointsContoursCollection* cont = static_cast<PointsContoursCollection*>(c);
@@ -308,6 +310,33 @@ double contour_area(Cont* c){
 	return static_cast<PointsContoursCollection*>(c)->area();
 }
 
+Grid* boundary_layer_grid(void* cont, int is_inner, int Npart, double* part,
+		int mesh_cont_type, double mesh_cont_step,
+		int round_off, double minsharp){
+	try{
+		BLayerGridInput inp;
+		inp.tree = static_cast<HMCont2D::ContourTree*>(cont);
+		inp.direction = is_inner == 1 ? INSIDE : OUTSIDE;
+		switch (mesh_cont_type){
+			case 0: inp.bnd_step_method = BLayerGridInput::NO_BND_STEPPING; break;
+			case 1: inp.bnd_step_method = BLayerGridInput::CONST_BND_STEP; break;
+			case 2: inp.bnd_step_method = BLayerGridInput::CONST_BND_STEP_KEEP_SHAPE; break;
+			case 3: inp.bnd_step_method = BLayerGridInput::CONST_BND_STEP_KEEP_ALL; break;
+			default: throw std::runtime_error("Invalid mesh_cont_type");
+		}
+		inp.bnd_step = mesh_cont_step;
+		inp.round_off = round_off == 1;
+		inp.minsharp = minsharp/180.0*M_PI;
+		for (int i=0; i<Npart; ++i) inp.partition.push_back(part[i]);
+		std::unique_ptr<BLayerGrid> res(new BLayerGrid(inp));
+		return res.release();
+	} catch (std::exception& e){
+		std::cout<<e.what()<<std::endl;
+		return 0;
+	}
+}
+
+
 // ========================== testing
 namespace{
 
@@ -318,7 +347,7 @@ void add_check(bool ex, const char* info = 0){
 	else std::cout<<": False <<<<<<<<<<<<<<<<<<<"<<std::endl;
 };
 
-//build a rectangular structured grid 
+//build a rectangular structured grid
 GridGeom rectangular_grid(double x0, double y0,
 		double x1, double y1, int Nx, int Ny){
 	double hx = (x1 - x0)/Nx;
@@ -379,7 +408,7 @@ void test1(){
 	c4.add_point(0.8, 0.4);
 
 	ContoursCollection cc;
-	cc.add_contour(c2); 
+	cc.add_contour(c2);
 	cc.add_contour(c1);
 	cc.add_contour(c4);
 	cc.add_contour(c3);

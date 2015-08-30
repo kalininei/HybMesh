@@ -1,18 +1,19 @@
 #call from build/bin directory with crossgrid_test:
 # gdb -x ../../src/libs/dbgscripts/a.debug
 
-file ./crossgrid_test
-b main
-run 
-b boundary_layer_grid.cpp:38
+#file ./crossgrid_test
+#file ./hybmesh_contours2d_test
+#b main
+#run 
+#b hybmesh_contours2d.cpp:57
 
 
 #====================================
 #call from gui/HybMesh.py directory with HybMesh
-# gdb -x ../tools/dbgscripts/a.debug
+# gdb -x ../libs/dbgscripts/a.debug
 
-#file python
-#set args ./HybMesh.py ~/test.hmp
-#set breakpoint pending on
-#b grid.cpp:435
-#run 
+file python
+set args ./HybMesh.py ~/.HybMesh/_debug.hmp
+set breakpoint pending on
+b boundary_layer_grid.cpp:72
+run 

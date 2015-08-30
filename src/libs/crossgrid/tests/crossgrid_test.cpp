@@ -542,19 +542,16 @@ void test21(){
 	tree->AddContour(Cont4);
 	//3) Options
 	BLayerGridInput opt;
-	opt.tree.reset(tree);
-	opt.step_method = BLayerGridInput::STEP0_STEPNUM;
+	opt.tree = tree;
 	opt.direction = INSIDE;
-	opt.step0 = 0.03;
-	opt.delta = 1.1;
-	opt.step_num = 5;
+	opt.partition = {0.0, 0.03, 0.06, 0.3};
 	opt.bnd_step_method = BLayerGridInput::CONST_BND_STEP_KEEP_SHAPE;
 	opt.bnd_step = 0.1;
 
 	//4) Build a Grid
 	BLayerGrid g = BLayerGrid(opt);
 
-	add_check(fabs(g.area()-0.47938)<1e-3, "boundary grid area");
+	add_check(fabs(g.area() - 1 + 0.16)<1e-6, "boundary grid area");
 	save_vtk(g, "out_test21.vtk");
 };
 

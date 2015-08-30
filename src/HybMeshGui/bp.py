@@ -243,4 +243,6 @@ def dict_readbool(d, key, defval):
 
 
 if __name__ == '__main__':
-    pass
+    a = [[1,2,4], [2,4,5], [2,4,2]]
+    for [x, y, z] in a:
+        print x, y

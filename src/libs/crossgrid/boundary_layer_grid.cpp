@@ -33,14 +33,14 @@ GridGeom BuildSquareGrid(const vector<double>& part_x,vector<double>& part_y){
 BLayerGrid::BLayerGrid(const BLayerGridInput& opt): GridGeom(){
 	std::cout<<"DUMMY BLayerGrid"<<std::endl;
 	//0) check if options are valid
-	//TODO
+	if (opt.round_off || opt.bnd_step_method != BLayerGridInput::CONST_BND_STEP)
+		throw std::runtime_error("Not implemented option");
 	//1) get square sizes
 	BoundingBox b = opt.tree->BuildBoundingBox();
 	Point a0 = b.BottomLeft();
 	Point a1 = b.TopRight();
 	//2) bnd steps: from zero
-	vector<double> h {0, opt.step0};
-	for (int i=2; i<opt.step_num; ++i) h.push_back(h[i-1] + opt.factor*(h[i-1] - h[i-2]));
+	vector<double> h = opt.partition;
 
 	//3) build a grid around a square
 	CGBoundingBox innerb(0, 0, 0, 0);
@@ -69,7 +69,30 @@ BLayerGrid::BLayerGrid(const BLayerGridInput& opt): GridGeom(){
 		innerb = CGBoundingBox(partx[0] + h.back(), party[0] + h.back(),
 				partx.back() - h.back(), party.back() - h.back());
 	} else {
-		//TODO
+		double lenx = a1.x - a0.x;
+		double leny = a1.y - a0.y;
+		double mainx = lenx + 2*h.back();
+		double mainy = leny + 2*h.back();
+		Point r = a1 - a0;
+		//x
+		partx = h;
+		std::reverse(partx.begin(), partx.end());
+		for (auto& a: partx) a = -(a-h.back());
+		double hx = mainx / int(mainx/opt.bnd_step);
+		while (partx.back() < a0.x-1.5*hx) partx.push_back(partx.back() + hx);
+		for (int i=0; i<h.size(); ++i) partx.push_back(a1.x + h.back() + h[i]);
+		for (auto& x: partx) x+=a0.x - h.back();
+		//y
+		party = h;
+		std::reverse(party.begin(), party.end());
+		for (auto& a: party) a = -(a-h.back());
+		double hy = mainy / int(mainy/opt.bnd_step);
+		while (party.back() < a0.y-1.5*hy) party.push_back(party.back() + hy);
+		for (int i=0; i<h.size(); ++i) party.push_back(a1.y + h.back() + h[i]);
+		for (auto& x: party) x+=a0.y - h.back();
+		//bounding box
+		innerb = CGBoundingBox(partx[0] + h.back(), party[0] + h.back(),
+				partx.back() - h.back(), party.back() - h.back());
 	}
 	//build filled grids
 	GridGeom g = BuildSquareGrid(partx, party);

@@ -6,6 +6,7 @@ set (HEADERS
 
 set (SOURCES
 	hybmesh_contours2d.cpp
+	contvtk.cpp
 )
 
 source_group ("Header Files" FILES ${HEADERS} ${HEADERS})

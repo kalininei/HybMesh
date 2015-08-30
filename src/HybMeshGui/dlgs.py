@@ -961,13 +961,26 @@ class BuildBLayer(SimpleAbstractDialog):
 
     def _default_odata(self, obj):
         "-> options struct with default values"
+        # new grid name
         obj.name = "BLayerGrid1"
+        # name of the parent 
         obj.cont = ""
+        # direction
         obj.direct = 'inner'
+        # round off sharp angles
         obj.rnd = False
+        # minimal angle which is treated as sharp
         obj.minsharp = 120
+        # method of meshing grid along the contour:
+        # -- 'No' use contour partition
+        # -- 'Mesh. Ignore all nodes' - use equidistant mesh
+        #    not regarding to contour mesh by itself
+        # -- 'Mesh. Keep shape' - keep only non collinear contour nodes
+        # -- 'Mesh. Keep origin'- keep all nodes
         obj.mesh_cont = 'No'
+        # mesh step for meshing grid along the contour
         obj.mesh_cont_step = 1
+        # boundary layer partition. Starts with 0.
         obj.partition = [0]
 
     def olist(self):
@@ -1001,7 +1014,7 @@ class BuildBLayer(SimpleAbstractDialog):
         """
         od = copy.deepcopy(self.odata())
         return {"name": od.name, "cont": od.cont, "direct": od.direct,
-                "rnd": od.rnd, "minshart": od.minsharp,
+                "rnd": od.rnd, "minsharp": od.minsharp,
                 "mesh_cont": od.mesh_cont,
                 "mesh_cont_step": od.mesh_cont_step,
                 "partition": od.partition,
