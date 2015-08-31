@@ -232,7 +232,6 @@ vector<double> RefineSection(double a, double b, double Len, double Den);
 class BoundingBox{
 protected:
 	void init();
-	void add_point(const Point* p);
 	void widen(double e);
 public:
 	double xmin, xmax, ymin, ymax;
@@ -241,8 +240,31 @@ public:
 	BoundingBox(double x0, double y0, double x1, double y1):xmin(x0), xmax(x1), ymin(y0), ymax(y1){}
 	BoundingBox(const vector<BoundingBox>&, double e=0.0);
 	BoundingBox(const Point& p1, const Point& p2, double e=0.0);
+	BoundingBox(const Point& p1, double e=0.0);
 
+	//Container<Point> -> BoundingBox
+	template<class Iter> static typename std::enable_if<
+		std::is_base_of<Point, typename Iter::value_type>::value,
+		BoundingBox
+	>::type Build(Iter first, Iter last){
+		BoundingBox ret(first->x, first->y, first->x, first->y);
+		while (first!=last) {ret.WidenWithPoint(&*first); ++first;}
+		return ret;
+	}
+	//Container<Point*> -> BoundingBox
+	template<class Iter> static typename std::enable_if<
+		!std::is_base_of<Point, typename Iter::value_type>::value,
+		BoundingBox
+	>::type Build(Iter first, Iter last){
+		BoundingBox ret((*first)->x, (*first)->y, (*first)->x, (*first)->y);
+		while (first!=last) {ret.WidenWithPoint(**first); ++first;}
+		return ret;
+	}
+
+	//Enlarge if point lies outside box
 	void WidenWithPoint(const Point& p);
+
+	Point Center() const;
 
 	double area() const;
 	double lenx() const { return xmax-xmin; }

@@ -1,5 +1,6 @@
 #include "hybmesh_contours2d.h"
 #include "hybmesh_contours2d.hpp"
+#include "clipper_core.h"
 
 int hybmesh_contours2d_ping(int a){
 	return 2*a;
@@ -7,6 +8,17 @@ int hybmesh_contours2d_ping(int a){
 
 using namespace HMCont2D;
 
+Contour::~Contour(){
+	if (_core != 0){
+		auto core = static_cast<HMCont2DCore::Path*>(_core);
+		delete core;
+		_core = 0;
+	}
+}
+
+Contour::Contour(){
+	_core = new HMCont2DCore::Path();
+}
 
 std::tuple<const Point*, const Point*, int> Contour::Edge(int i) const{
 	const Point* p = Pnt(i);
@@ -19,6 +31,7 @@ void Contour::AddPointToEnd(double x, double y, int b){
 	shared_ptr<Point> newp(new Point(x, y));
 	pts.push_back(newp);
 	btype[newp.get()] = b;
+	static_cast<HMCont2DCore::Path*>(_core)->AddPointToEnd(*pts.back());
 }
 
 void Contour::AddPointToEnd(Point xy, int b){
@@ -29,26 +42,62 @@ bool Contour::HasCrosses(const Contour& c1, const Contour& c2){
 	std::cout<<"DUMMY HasCrosses"<<std::endl;
 	return false;
 }
-void Contour::PtsReallocate(){
-	std::cout<<"DUMMY PtsReallocate"<<std::endl;
+
+void Contour::GetData(Contour& c){
+	pts = c.pts; c.pts.clear();
+	btype = c.btype; c.btype.clear();
+	_core = c._core; c._core = 0;
+}
+
+void Contour::CopyData(const Contour& c){
+	pts.clear(); btype.clear(); _core = 0;
+	for (auto& p: c.pts){
+		auto newp = aa::add_shared(pts, *p);
+		btype[newp] = c.btype.at(p.get());
+	}
+	HMCont2DCore::Path* ccore = static_cast<HMCont2DCore::Path*>(c._core);
+	_core = new HMCont2DCore::Path(*ccore);
+}
+
+void Contour::Reverse(){
+	std::reverse(pts.begin(), pts.end());
+	static_cast<HMCont2DCore::Path*>(_core)->Reverse();
 }
 
 BoundingBox Contour::BuildBoundingBox() const{
-	if (NumPoints() == 0) { return BoundingBox(0, 0, 0, 0); }
-	auto ret = BoundingBox(pts[0]->x, pts[0]->y, pts[0]->x, pts[0]->y);
-	for (auto p: pts) ret.WidenWithPoint(*p);
-	return ret;
+	return BoundingBox::Build(pts.begin(), pts.end());
 }
 
 ClosedContour ClosedContour::DeepCopy() const{
-	ClosedContour c2(*this);
-	c2.PtsReallocate();
+	ClosedContour c2;
+	c2.CopyData(*this);
 	return c2;
+}
+
+bool ClosedContour::IsWithinGeom(const Point& p) const{
+	auto core = static_cast<HMCont2DCore::Path*>(_core);
+	return core->IsWithin(p);
+}
+
+int ClosedContour::Direction() const{
+	auto core = static_cast<HMCont2DCore::Path*>(_core);
+	return core->ClosedDirection();
 }
 
 bool ClosedContour::IsValid() const{
 	std::cout<<"DUMMY IsValid()"<<std::endl;
 	return true;
+}
+
+void ClosedContour::ForceDirection(bool is_inner){
+	int a = is_inner ? INSIDE : OUTSIDE;
+	if (Direction() != a) Reverse();
+}
+double ClosedContour::Area() const {
+	return static_cast<HMCont2DCore::Path*>(_core)->Area();
+}
+double ClosedContour::SignedArea() const {
+	return static_cast<HMCont2DCore::Path*>(_core)->SignedArea();
 }
 
 vector<ClosedContour> ClosedContour::FromConnectedPoints(const vector<Point>& xy,
@@ -132,7 +181,69 @@ void ContourTree::AddContour(const ClosedContour& cont){
 }
 
 void ContourTree::RebuildStructure(){
-	std::cout<<"DUMMY RebuildStructure"<<std::endl;
+	//Initialize tree entries by filling
+	//self, inside and outside contours
+	entries.clear();
+	std::map<ClosedContour*, vector<ClosedContour*>> inside_contours, outside_contours;
+	for (auto& c: conts){
+		inside_contours[c.get()] = {};
+		outside_contours[c.get()] = {};
+	}
+	for (auto& c: conts){
+		auto e = aa::add_shared(entries, Entry(c.get()));
+		for (auto& c2: conts) if (c2.get() != c.get()){
+			auto p = c2->Pnt(0);
+			if (c->IsWithinGeom(*p)){
+				inside_contours[c.get()].push_back(c2.get());
+				outside_contours[c2.get()].push_back(c.get());
+			}
+		}
+	}
+	//fill parent field
+	//1) parent contains e
+	//2) parent children doesn't contain e
+	for (auto& e: entries){
+		//1 condition
+		for (auto& cout: outside_contours[e->self]){
+			//2 condition
+			for (auto& csibling: inside_contours[cout]) if (csibling != e->self){
+				auto vi = inside_contours[csibling];
+				auto fnd = std::find(vi.begin(), vi.end(), e->self);
+				if (fnd == vi.end()){
+					e->parent = FindEntry(csibling);
+					goto PARENT_FOUND;
+				}
+			}
+		}
+		PARENT_FOUND:;
+	}
+
+	//fill child field
+	for (auto& e: entries){
+		if (e->parent != 0){
+			e->parent->children.push_back(e.get());
+		}
+	}
+	
+	//fill top_level
+	top_level.clear();
+	for (auto& e: entries) if (e->parent == 0){
+		top_level.push_back(e.get());
+	}
+	//reverse contours according to structure
+	for (auto& e: top_level) ForceMultiplicity(e, true);
+}
+
+ContourTree::Entry* ContourTree::FindEntry(ClosedContour* c){
+	for (auto& e: entries){
+		if (e->self == c) return e.get();
+	}
+	return 0;
+}
+
+void ContourTree::ForceMultiplicity(ContourTree::Entry* e, bool is_inner){
+	e->self->ForceDirection(is_inner);
+	for (auto& child: e->children) ForceMultiplicity(child, !is_inner);
 }
 
 int ContourTree::NumPoints() const{
@@ -152,6 +263,11 @@ BoundingBox ContourTree::BuildBoundingBox() const{
 	return BoundingBox(bd);
 }
 
+double ContourTree::Area() const{
+	double sum = 0;
+	for (auto& c: conts) sum += c->SignedArea();
+	return sum;
+}
 
 // ============================= C procedures
 void* create_contour_tree(int Npnt, double* points, int Nedges, int* edges){

@@ -19,20 +19,34 @@ void add_check(bool ex, const char* info = 0){
 
 void test1(){
 	std::cout<<"ContourTree building"<<std::endl;
-	Point p1(0,0);
-	Point p2(1,0);
-	Point p3(1,1);
-	Point p4(0,1);
+	Point p1(0,0), p2(1,0), p3(1,1), p4(0,1);
+	Point p5(0.3,0.3), p6(0.5,0.3), p7(0.5,0.5), p8(0.3,0.5);
 	auto a = ClosedContour::FromConnectedPoints(
-			{p1, p2, p3, p4},
-			{0,1,2,3},
-			{1,2,3,0});
-	add_check(a.size() == 1, "number of contours");
+			{p1, p2, p3, p4, p5, p6, p7, p8},
+			{0,1,2,3,4,5,6,7},
+			{1,2,3,0,5,6,7,4});
+	add_check(a.size() == 2, "number of contours");
 	ContourTree tree;
-	for (auto& c: a){
-		tree.AddContour(c);
+	for (auto& c: a) tree.AddContour(c);
+	add_check(tree.NumContours() == 2, "number of contours in the tree");
+	add_check(tree.NumPoints() == 8, "number of points in the tree");
+	add_check(fabs(tree.Area() - 0.096) < 1e-12, "Tree area");
+
+	std::cout<<a[0].SignedArea()<<std::endl;
+	std::cout<<a[1].SignedArea()<<std::endl;
+	if (a[1].IsWithinGeom(Point(0.4, 0.4))){
+		std::cout<<"within"<<std::endl;
+	} else {
+		std::cout<<"without"<<std::endl;
 	}
-	add_check(tree.NumPoints() == 4, "number of points in a tree");
+	a[1].Reverse();
+	std::cout<<a[1].SignedArea()<<std::endl;
+	if (a[1].IsWithinGeom(Point(0.9, 0.9))){
+		std::cout<<"within"<<std::endl;
+	} else {
+		std::cout<<"without"<<std::endl;
+	}
+
 	SaveVtk(tree, "cont2d_test1.vtk");
 }
 

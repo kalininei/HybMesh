@@ -102,6 +102,10 @@ class Framework(command.CommandReceiver):
         return self.get_checked_contour_names() + \
                 self.get_checked_gbnd_names()
 
+    def get_all_names(self):
+        '-> [list of all grid and user contours]'
+        return self.get_contour_names() + \
+                self.get_grid_names()
     #user requests
     def ask_for_new_contours_bnd(self, cont_names):
         """ ->[{boundry-index: [list of contour edges]}, {}, ...]

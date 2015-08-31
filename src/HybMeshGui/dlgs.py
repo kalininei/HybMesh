@@ -979,7 +979,7 @@ class BuildBLayer(SimpleAbstractDialog):
         # -- 'Mesh. Keep origin'- keep all nodes
         obj.mesh_cont = 'No'
         # mesh step for meshing grid along the contour
-        obj.mesh_cont_step = 1
+        obj.mesh_cont_step = 1.0
         # boundary layer partition. Starts with 0.
         obj.partition = [0]
 

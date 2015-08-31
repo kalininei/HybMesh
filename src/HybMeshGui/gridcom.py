@@ -4,8 +4,7 @@ import bgeom
 import grid2
 import command
 import objcom
-from unite_grids import (unite_grids, grid_excl_cont, setbc_from_conts,
-   boundary_layer_grid)
+from unite_grids import (unite_grids, grid_excl_cont, setbc_from_conts)
 
 
 class NewGridCommand(objcom.AbstractAddRemove):
@@ -302,27 +301,43 @@ class UniteGrids(objcom.AbstractAddRemove):
 
 
 class BuildBoundaryGrid(objcom.AbstractAddRemove):
+    CONT_MESH_NO = 0
+    CONT_MESH_KEEP_ORIGIN = 1
+    CONT_MESH_KEEP_SHAPE = 2
+    CONT_MESH_IGNORE_ORIGIN = 3
+
     def __init__(self, **kwargs):
-        """ args[name] - name of the new grid,
-            see dlgs.BuildBLayer._default_odata() for
-            kwargs explanation
+        """ arguments
+                name: str  -- name of the new grid
+                opt: [ {
+                    source: st -- name of source contour
+                    tp: str    -- inside/outside/left/right/around boundary
+                    start: double   -- normalized to [0, 1] with respect to
+                        source length coordinate of section start
+                    end: double     -- normalized to [0, 1] with respect to
+                        source length coordinate of section end
+                    round_off: 0/1 -- round off sharp corners
+                    maxsharp: 20.0-160.0 -- maximum angle which is sharp (deg)
+                    mesh_cont: 0/1/2/3 -- contour meshing strategy:
+                        0 - No meshing, use original contour nodes
+                        1 - keep all original contour nodes,
+                        2 - keep only non-collinear contour nodes,
+                        3 - ignore all existing contour nodes
+                    mesh_cont_step: double -- contour mesh step if mesh_cont!=0
+                    partition: [0.0,...] -- layer partition starts from 0
+                }, ...]
         """
         super(BuildBoundaryGrid, self).__init__(kwargs)
+        #temporary. This should be done in Command class consructor
+        self._Command__comLine = self._method_code() + str(kwargs)
         self.opt = copy.deepcopy(kwargs)
 
     @classmethod
     def fromstring(cls, slist):
-        ret = super(BuildBoundaryGrid, cls).fromstring(slist)
-        ret.opt['rnd'] = ret.opt['rnd'] == 'True'
-        ret.opt['minsharp'] = float(ret.opt['minsharp'])
-        ret.opt['partition'] = ast.literal_eval(ret.opt['partition'])
-        ret.opt['mesh_cont_step'] = float(ret.opt['mesh_cont_step'])
-        return ret
+        #temporary. This should be done in Command class
+        args = ast.literal_eval(slist)
+        return cls(**args)
 
     def _addrem_objects(self):
-        cont = self.receiver.get_any_contour(self.opt['cont'])
-        newg = boundary_layer_grid(cont, self.opt)
-        if newg is not None:
-            return [(self.opt['name'], newg)], [], [], []
-        else:
-            return [], [], [], []
+        print str(self.opt)
+        return [], [], [], []

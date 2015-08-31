@@ -56,13 +56,13 @@ BLayerGrid::BLayerGrid(const BLayerGridInput& opt): GridGeom(){
 		//x
 		for (auto x: h) partx.push_back(x);
 		double hx = mainx / int(mainx/opt.bnd_step);
-		while (partx.back()< r.x-h.back()-1.5*hx) partx.push_back(partx.back() + hx);
+		for (int i=0; i<mainx/hx-1;++i) partx.push_back(partx.back() + hx);
 		for (int i=h.size()-1; i>=0; --i) partx.push_back(r.x - h[i]);
 		for (auto& x: partx) x+=a0.x;
 		//y
 		for (auto x: h) party.push_back(x);
 		double hy = mainy / int(mainy/opt.bnd_step);
-		while (party.back()< r.y-h.back()-1.5*hy) party.push_back(party.back() + hy);
+		for (int i=0; i<mainy/hy-1;++i) party.push_back(party.back() + hy);
 		for (int i=h.size()-1; i>=0; --i) party.push_back(r.y - h[i]);
 		for (auto& x: party) x+=a0.y;
 		//bounding box
@@ -78,17 +78,17 @@ BLayerGrid::BLayerGrid(const BLayerGridInput& opt): GridGeom(){
 		partx = h;
 		std::reverse(partx.begin(), partx.end());
 		for (auto& a: partx) a = -(a-h.back());
-		double hx = mainx / int(mainx/opt.bnd_step);
-		while (partx.back() < a0.x-1.5*hx) partx.push_back(partx.back() + hx);
-		for (int i=0; i<h.size(); ++i) partx.push_back(a1.x + h.back() + h[i]);
+		double hx = lenx / int(mainx/opt.bnd_step);
+		for (int i=0; i<lenx/hx-1;++i) partx.push_back(partx.back() + hx);
+		for (int i=0; i<h.size(); ++i) partx.push_back(lenx + h.back() + h[i]);
 		for (auto& x: partx) x+=a0.x - h.back();
 		//y
 		party = h;
 		std::reverse(party.begin(), party.end());
 		for (auto& a: party) a = -(a-h.back());
-		double hy = mainy / int(mainy/opt.bnd_step);
-		while (party.back() < a0.y-1.5*hy) party.push_back(party.back() + hy);
-		for (int i=0; i<h.size(); ++i) party.push_back(a1.y + h.back() + h[i]);
+		double hy = leny / int(mainy/opt.bnd_step);
+		for (int i=0; i<leny/hy-1;++i) party.push_back(party.back() + hy);
+		for (int i=0; i<h.size(); ++i) party.push_back(leny + h.back() + h[i]);
 		for (auto& x: party) x+=a0.y - h.back();
 		//bounding box
 		innerb = CGBoundingBox(partx[0] + h.back(), party[0] + h.back(),

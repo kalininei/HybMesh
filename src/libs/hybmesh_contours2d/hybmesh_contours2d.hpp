@@ -7,30 +7,46 @@ namespace HMCont2D{
 
 //2D contour base class
 class Contour{
+	std::unique_ptr<int> __not_copiable_object;
 protected:
+	// =========== Data
 	//path
 	ShpVector<Point> pts;
 	//boundary type of point
 	std::map<const Point*, int> btype;
 
-	//reallocates all pts
-	//This is used for making contours with unique dataset
-	void PtsReallocate();
+	//object which implements procedures from clipper lib
+	//HMCont2DCore::Path
+	mutable void* _core;
+
+	// ============ Methods
+	//get data from another contour.
+	//object c is not longer valid after this
+	void GetData(Contour& c);
+
+	//make a deep copy of contour c data into this
+	void CopyData(const Contour& c);
 public:
 	//=== Constructors
-	Contour(){};
+	Contour();
+	Contour(Contour&& other) { GetData(other); }
+	Contour(const Contour& other) { CopyData(other); }
+	Contour& operator=(const Contour& other){ if (this != &other) CopyData(other); return *this; }
+	virtual ~Contour();
 
 	//=== Set Geometry
 	void Clear();
 	void AddPointToEnd(double x, double y, int b=0);
 	void AddPointToEnd(Point xy, int b=0);
 
+	//=== Modify Geometry
+	virtual void Reverse();
+
 	//=== GeometryInfo
 	int NumPoints() const { return pts.size(); }
 	virtual int NumEdges() const { return pts.size() - 1; }
 	virtual const Point* Pnt(int i) const { return pts[i].get(); }
 	std::tuple<const Point*, const Point*, int> Edge(int i) const;
-
 	virtual bool IsClosed() const = 0;
 	//true if no self crosses
 	virtual bool IsValid() const = 0;
@@ -43,7 +59,7 @@ public:
 };
 
 //Closed contour
-//   path in anticlockwise direction
+//   path in counter clockwise direction
 //   self crossing is not allowed
 //   endpoints are not doubled
 class ClosedContour: public Contour{
@@ -59,12 +75,24 @@ public:
 		const vector<int>& bnd = vector<int>());
 
 
+	//=== Modify Geometry
+	void ForceDirection(bool is_inner);
+
 	//=== GeometryInfo
 	bool IsClosed() const override {return false;}
 	bool IsValid() const override;
 	int NumEdges() const override { return pts.size(); }
 	const Point* Pnt(int i) const override { return  (i>=pts.size()) ? Pnt(i-NumPoints()) : pts[i].get(); }
 
+	//does point lie strictly within contour not regarding to its orientation
+	bool IsWithinGeom(const Point& p) const;
+
+	//INSIDE or OUTSIDE
+	int Direction() const;
+
+	//SignedArea < 0 for Direction() == Outside. Area always > 0.
+	double Area() const;
+	double SignedArea() const;
 };
 
 //Path as sequence of points
@@ -84,6 +112,21 @@ public:
 //Contours structure
 class ContourTree{
 	ShpVector<ClosedContour> conts;
+
+	struct Entry{
+		Entry(ClosedContour* c){
+			self = c;
+			parent = 0;
+		}
+		ClosedContour* self;
+		Entry* parent;
+		vector<Entry*> children;
+	};
+	void ForceMultiplicity(Entry* e, bool is_inner);
+	Entry* FindEntry(ClosedContour*);
+	ShpVector<Entry> entries;
+	vector<Entry*> top_level;
+
 	void RebuildStructure();
 public:
 	//=== Constructors
@@ -100,7 +143,7 @@ public:
 	int NumContours() const { return conts.size(); }
 	const ClosedContour* Cont(int i) const { return conts[i].get(); }
 	BoundingBox BuildBoundingBox() const;
-
+	double Area() const;
 };
 
 void SaveVtk(const ContourTree& Tree, const char* fname);

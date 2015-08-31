@@ -2,11 +2,13 @@
 set (HEADERS
 	hybmesh_contours2d.hpp
 	hybmesh_contours2d.h
+	clipper_core.h
 )
 
 set (SOURCES
 	hybmesh_contours2d.cpp
 	contvtk.cpp
+	clipper_core.cpp
 )
 
 source_group ("Header Files" FILES ${HEADERS} ${HEADERS})

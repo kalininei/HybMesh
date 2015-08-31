@@ -280,13 +280,9 @@ class MainWindow(QtGui.QMainWindow, qtui.ui_ComGridMain.Ui_MainWindow):
             globvars.actual_flow().exec_command(com)
 
     def _blayer(self):
-        all_conts = globvars.actual_data().get_grid_names()
-        used_cont = globvars.actual_data().get_checked_grid_names()
-        if len(used_cont) > 0:
-            used_cont = used_cont[0]
-        else:
-            used_cont = None
-        dialog = dlgs.BuildBLayer(used_cont, all_conts, self)
+        ch_names = globvars.actual_data().get_checked_any_contour_names()
+        all_conts = globvars.actual_data().get_all_names()
+        dialog = geomdlgs.BoundaryGridOptions(ch_names, all_conts, {})
         if dialog.exec_():
             r = dialog.ret_value()
             com = gridcom.BuildBoundaryGrid(**r)

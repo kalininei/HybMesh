@@ -164,11 +164,15 @@ void BoundingBox::widen(double e){
 	xmax += e; ymax += e;
 }
 
-void BoundingBox::add_point(const Point* p){
-	if (p->x < xmin) xmin = p->x;
-	if (p->x > xmax) xmax = p->x;
-	if (p->y < ymin) ymin = p->y;
-	if (p->y > ymax) ymax = p->y;
+void BoundingBox::WidenWithPoint(const Point& p){
+	if (p.x < xmin) xmin = p.x;
+	if (p.x > xmax) xmax = p.x;
+	if (p.y < ymin) ymin = p.y;
+	if (p.y > ymax) ymax = p.y;
+}
+
+Point BoundingBox::Center() const{
+	return Point((xmin+xmax)/2, (ymin+ymax)/2);
 }
 
 BoundingBox::BoundingBox(const vector<BoundingBox>& bb, double e){
@@ -189,6 +193,14 @@ BoundingBox::BoundingBox(const Point& p1, const Point& p2, double e){
 	ymax = std::max(p1.y, p2.y);
 	widen(e);
 }
+
+
+BoundingBox::BoundingBox(const Point& p1, double e){
+	xmin = p1.x; xmax = p1.x;
+	ymin = p1.y; ymax = p1.y;
+	widen(e);
+}
+
 
 double BoundingBox::area() const{
 	return (xmax-xmin)*(ymax-ymin);
@@ -232,8 +244,4 @@ bool BoundingBox::contains(const Point& p1, const Point& p2) const{
 	int s = func(xmin, ymax);
 	return !(s == func(xmax, ymin) && s == func(xmax, ymax) && s == func(xmin, ymax));
 
-}
-
-void BoundingBox::WidenWithPoint(const Point& p){
-	add_point(&p);
 }

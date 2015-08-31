@@ -437,5 +437,23 @@ class BoundaryTypesManagement(QtGui.QDialog):
         self._select_in_display_rect(xmin, ymin, xmax, ymax)
 
 
+class BoundaryGridOptions(QtGui.QDialog):
+    'dialog for setting boundary grid options'
+
+    def __init__(self, checked_names, all_conts, init_opt):
+        """ checked_names - [str] names of active contours
+            all conts - [AbstractContour2] all contours
+            init_opt - {...} initial state of ret_value
+        """
+
+    def ret_value(self):
+        '-> {...}. See gridcom.BuildBoundaryGrid input arguments for details'
+        return {'name': 'NNN', 'opt': [{'tp': 'inner'}, {'tp': 'outer'}]}
+
+    def exec_(self):
+        'overriden'
+        self.show()
+        return super(BoundaryGridOption, self).exec_()
+
 if __name__ == "__main__":
     pass

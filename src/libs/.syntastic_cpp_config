@@ -4,3 +4,4 @@
 -I/home/ek/Work/HybMesh/src/libs/include
 -I/home/ek/Work/HybMesh/src/libs/bgeom2d
 -I/home/ek/Work/HybMesh/src/libs/hybmesh_contours2d
+-I/home/ek/Work/HybMesh/src/libs/external/clipper

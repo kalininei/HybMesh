@@ -587,7 +587,7 @@ CGBoundingBox::CGBoundingBox(const vector<CGBoundingBox>& bb, double e):Bounding
 
 CGBoundingBox::CGBoundingBox(const PContour& cont, double e):BoundingBox(){
 	init();
-	for (int i=0; i<cont.n_points(); ++i) add_point(cont.get_point(i));
+	for (int i=0; i<cont.n_points(); ++i) WidenWithPoint(*cont.get_point(i));
 	widen(e);
 }
 
@@ -595,7 +595,7 @@ CGBoundingBox::CGBoundingBox(const ContoursCollection& col, double e):BoundingBo
 	init();
 	for (int i=0; i<col.n_cont(); ++i){
 		auto c = col.get_contour(i);
-		for (int j=0; j<c->n_points(); ++j) add_point(c->get_point(j));
+		for (int j=0; j<c->n_points(); ++j) WidenWithPoint(*c->get_point(j));
 	}
 	widen(e);
 }
