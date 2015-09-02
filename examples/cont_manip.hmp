@@ -1,7 +1,8 @@
 <?xml version='1.0' encoding='utf-8'?>
 <ComGridProject>
     <FLOWS>
-        <FLOW active="1" name="Flow1">
+	<ACTIVE_FLOW>Flow1</ACTIVE_FLOW>
+        <FLOW name="Flow1">
             <COMMANDS>
                 <ENTRY current="1">
                     <LINE>Start {}</LINE>
