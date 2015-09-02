@@ -118,7 +118,7 @@ class ConsoleCallbackCancel2PG(SilentCallbackCancel2PG):
         self.__prev_n1, self.__prev_n2 = '', ''
 
     def _info(self, n1, n2, p1, p2):
-        n, s = 20, 10
+        n, s = 25, 4
         if n1 != self.__prev_n1 or n2 != self.__prev_n2:
             outs = ''
             if n1 != self.__prev_n1:
@@ -131,7 +131,7 @@ class ConsoleCallbackCancel2PG(SilentCallbackCancel2PG):
             self.__prev_n2 = n2
             print outs
 
-        progress1, progress2 = [' '] * n, [' '] * n
+        progress1, progress2 = ['-'] * n, ['-'] * n
         w1, w2 = int(n * p1), int(n * p2)
         for i in range(w1):
             progress1[i] = '#'

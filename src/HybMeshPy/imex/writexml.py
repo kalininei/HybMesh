@@ -31,6 +31,12 @@ def xmlindent(elem, level=0):
             elem.tail = i
 
 
+def writexml(r, filename):
+    xmlindent(r)
+    tree = ET.ElementTree(r)
+    tree.write(filename, xml_declaration=True, encoding='utf-8')
+
+
 # ------------------- Commands
 def write_command_flow(comflow, xmlnode, flowname=None):
     """ creates xmlnode/FLOW and writes flow commands there """
@@ -47,16 +53,6 @@ def write_command_flow(comflow, xmlnode, flowname=None):
         ET.SubElement(nd, "LINE").text = c.opt_line()
         if c.get_comment() != "":
             ET.SubElement(nd, "COMMENT").text = c.get_comment()
-
-
-def write_flow_and_framework_to_file(comflow, fw, filename):
-    'writes flow.CommandFlow comflow to xml file'
-    r = _root_xml()
-    write_command_flow(comflow, r)
-    write_framework(fw, r.find('FLOW'))
-    xmlindent(r)
-    tree = ET.ElementTree(r)
-    tree.write(filename, xml_declaration=True, encoding='utf-8')
 
 
 # ---------------------- Framework

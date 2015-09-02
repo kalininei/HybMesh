@@ -1,7 +1,7 @@
 import command
 import basic.proc as bp
 import basic.interf
-from gdata.framework import Framework
+from gdata import Framework
 
 
 class CommandFlow(bp.AbstractSender):

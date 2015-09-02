@@ -5,7 +5,7 @@
 # ------------ Commands
 def load_command_flow(comflow, xmlnode):
     'adds commands to flow.CommandFlow comflow from xmlnode tagged FLOW'
-    from com.factory import factory
+    from com import factory
     #Commands list
     cfnd = xmlnode.findall("COMMANDS/ENTRY")
     for cline in cfnd:

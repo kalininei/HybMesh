@@ -209,6 +209,48 @@
 					'is_inner': False
 				</LINE>
 			</ENTRY>
+			<ENTRY>
+				<TITLE>AddUnfRingGrid</TITLE>
+				<LINE>
+					'name': 'GridForExport',
+					'p0': (2, -5),
+					'radinner': 0.3,
+					'radouter': 1.2,
+					'na': 10,
+					'nr': 10,
+					'coef': 5,
+				</LINE>
+			</ENTRY>
+			<ENTRY>
+				<TITLE>ImportContourASCII</TITLE>
+				<LINE>
+					'filename': 'ascii_contour.txt',
+					'simplify': True,
+					'force_closed': True
+				</LINE>
+			</ENTRY>
+			<ENTRY>
+				<TITLE>ImportContourNative</TITLE>
+				<LINE>
+					'filename': 'hmc_contour.hmc',
+					'name': 'ImportedContour',
+					'simplify': True,
+				</LINE>
+			</ENTRY>
+			<ENTRY>
+				<TITLE>ImportGridNative</TITLE>
+				<LINE>
+					'filename': 'hmg_grid.hmg',
+					'name': 'ImportedHmgGrid',
+				</LINE>
+			</ENTRY>
+			<ENTRY>
+				<TITLE>ImportGridSimple34</TITLE>
+				<LINE>
+					'filename': 'ggen_grid.net',
+					'name': 'ImportedGgenGrid',
+				</LINE>
+			</ENTRY>
 		</COMMANDS>
 	</FLOW>
 </HybMeshProject>

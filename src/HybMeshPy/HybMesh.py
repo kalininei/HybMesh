@@ -4,7 +4,7 @@ Console interface for HybMesh. Possible arguments:
 -v -- print version and exit
 -u -- check for updates and exit
 ------------------------------------------------
--x fn.hmp [-sgrid gname fmt fn] [-sproj fn]
+-x fn.hmp [-sgrid gname fmt fn] [-sproj fn] [-silent]
 Execute command flow from 'hmp' file and saves resulting data.
 
 Options:
@@ -17,6 +17,7 @@ file fn using format fmt. Can be called multiple times.
         msh - fluent mesh format
 
 -sproj fn -- save project file after execution to file fn
+-silent -- callback
 
 Example:
 
@@ -27,11 +28,8 @@ Example:
     4) saves finalized project to final.hmp
 """
 import sys
-import xml.etree.ElementTree as ET
 import progdata
-import com.flow
-import gdata.framework
-from imex import readxml, writexml
+import imex
 import basic.interf
 
 
@@ -60,21 +58,10 @@ def main():
     if '-x' in sys.argv:
         fn = sys.argv[sys.argv.index('-x') + 1]
         # load flow and state
-        root = ET.parse(fn).getroot()
-        flow_nodes = root.findall('.//FLOW')
-        if len(flow_nodes) == 0:
-            raise Exception('No proper data in %s' % fn)
-        flow_node = flow_nodes[0]
-        f = com.flow.CommandFlow()
-        readxml.load_command_flow(f, flow_node)
-        state_node = flow_node.find('STATE')
-        if state_node is not None:
-            data = com.framework.Framework
-            readxml.load_framework_state(data, state_node)
-        else:
-            data = gdata.framework.Framework()
-        f.set_receiver(data)
-        f.set_interface(basic.interf.ConsoleInterface())
+        f = imex.read_flow_and_framework_from_file(fn)
+
+        if '-silent' not in sys.argv:
+            f.set_interface(basic.interf.ConsoleInterface())
 
         # run till end
         f.exec_all()
@@ -82,16 +69,15 @@ def main():
         # save current state
         if '-sproj' in sys.argv:
             fn = sys.argv[sys.argv.index('-sproj') + 1]
-            writexml.write_flow_and_framework_to_file(f, data, fn)
+            imex.write_flow_and_framework_to_file(f, fn)
 
         # export grid
         for i, op in enumerate(sys.argv):
             if op == '-sgrid':
                 gname = sys.argv[i + 1]
-                # fmt = sys.argv[i + 2]
+                fmt = sys.argv[i + 2]
                 fn = sys.argv[i + 3]
-                # grid = data.get_grid(name=gname)
-                # imex.export_grid(grid, fmt, fn)
+                imex.export_grid(fmt, fn, flow=f, name=gname)
                 print '%s save to %s' % (gname, fn)
 
         print "DONE"
