@@ -3,8 +3,6 @@
 #include "fileproc.h"
 #include "wireframegrid.h"
 #include "Gmsh.h"
-#include "hybmesh_contours2d.hpp"
-#include "boundary_layer_grid.h"
 
 namespace{
 
@@ -15,6 +13,7 @@ struct _gmsh_initializer{
 };
 _gmsh_initializer gi;
 
+//callbacks
 //default callback function
 int default_callback(const char* proc, const char* subproc, double percent, double subpercent){
 	std::cout<<proc;
@@ -26,315 +25,23 @@ int default_callback(const char* proc, const char* subproc, double percent, doub
 		std::cout<<")";
 	}
 	std::cout<<std::endl;
-	return CALLBACK_OK;
-}
-int silent_callback(const char* proc, const char* subproc, double percent, double subpercent){
-	return CALLBACK_OK;
+	return CrossGridCallback::OK;
 }
 
-crossgrid_callback global_callback = default_callback;
+int silent_callback(const char* proc, const char* subproc, double percent, double subpercent){
+	return CrossGridCallback::OK;
+}
 
 } //namespace
 
-//callbacks
-void crossgrid_cout_callback(){
-	global_callback = default_callback;
-}
-void crossgrid_silent_callback(){
-	global_callback = silent_callback;
-}
-void crossgrid_set_callback(crossgrid_callback fun){
-	global_callback = fun;
+CrossGridCallback::func CrossGridCallback::to_cout(){
+	return default_callback;
 }
 
-
-Grid* grid_construct(int Npts, int Ncells, double* pts, int* cells){
-	try{
-		return new GridGeom(Npts, Ncells, pts, cells);
-	} catch (const std::exception &e){
-		std::cout<<"crossgrid error: "<<e.what()<<std::endl;
-		return 0;
-	}
+CrossGridCallback::func CrossGridCallback::silent(){
+	return silent_callback;
 }
 
-int grid_npoints(Grid* g){
-	return static_cast<GridGeom*>(g)->n_points();
-}
-
-int grid_ncells(Grid* g){
-	return static_cast<GridGeom*>(g)->n_cells();
-}
-int grid_cellsdim(Grid* g){
-	return static_cast<GridGeom*>(g)->n_cellsdim();
-}
-
-void grid_get_points_cells(Grid* g, double* pts, int* cells){
-	auto gg=static_cast<GridGeom*>(g);
-	//points
-	if (pts!=0) for (int i=0; i<gg->n_points(); ++i){
-		auto p = gg->get_point(i);
-		*pts++ = p->x;
-		*pts++ = p->y;
-	}
-	//cells
-	if (cells!=0) for (int i=0; i<gg->n_cells(); ++i){
-		auto c = gg->get_cell(i);
-		*cells++ = c->dim();
-		for (int j=0; j<c->dim(); ++j){
-			*cells++ = c->get_point(j)->get_ind();
-		}
-	}
-}
-
-void grid_get_points_cells2(Grid* g, double** pts, int** cells){
-	int np = grid_npoints(g);
-	int nc = grid_ncells(g);
-	int npc = grid_cellsdim(g);
-	*pts = new double[2*np];
-	*cells = new int[nc+npc];
-	grid_get_points_cells(g, *pts, *cells);
-}
-
-//get grid in points, edges->points, cells->edges format
-void grid_get_edges_info(Grid* grd, int* Npnt, int* Neds, int* Ncls,
-		double** pts,
-		int** ed_pt,
-		int** cls_dims,
-		int** cls_eds){
-	GridGeom* g = static_cast<GridGeom*>(grd);
-	auto eds = g->get_edges();
-	//fill counts
-	*Npnt = g->n_points();
-	*Ncls = g->n_cells();
-	*Neds = eds.size();
-	//allocate arrays
-	*pts = new double[2 * (*Npnt)];
-	*ed_pt = new int[2 * (*Neds)];
-	*cls_dims = new int[*Ncls];
-	*cls_eds = new int[g->n_cellsdim()];
-	//fill points
-	double* p_pts = *pts;
-	for (int i=0; i<g->n_points(); ++i){
-		*p_pts++ = g->get_point(i)->x;
-		*p_pts++ = g->get_point(i)->y;
-	}
-	//fill edges
-	std::map<std::pair<int, int>, int> nd_eds;
-	int* p_eds = *ed_pt;
-	auto eit = eds.begin();
-	for (size_t i=0; i<eds.size(); ++i){
-		auto& e = *eit++;
-		*p_eds++ = e.p1;
-		*p_eds++ = e.p2;
-		nd_eds.emplace(std::make_pair(e.p1, e.p2), i);
-	}
-	//fill elements dimensions
-	int* p_cdim = *cls_dims;
-	for (int i=0; i<g->n_cells(); ++i){
-		*p_cdim++ = g->get_cell(i)->dim();
-	}
-	//fill cell->edges array
-	int* p_ced = *cls_eds;
-	for (int i=0; i<g->n_cells(); ++i){
-		auto c = g->get_cell(i);
-		for (int j=0; j<c->dim(); ++j){
-			int pprev = c->get_point(j-1)->get_ind();
-			int pcur = c->get_point(j)->get_ind();
-			if (pprev>pcur) std::swap(pprev, pcur);
-			*p_ced++ = nd_eds[std::make_pair(pprev, pcur)];
-		}
-	}
-}
-
-
-//free edges data
-void grid_free_edges_info(double** pts, int** ed_pt, int** cls_dims, int** cls_eds){
-	delete[] *pts; *pts = 0;
-	delete[] *ed_pt; *ed_pt = 0;
-	delete[] *cls_dims; *cls_dims = 0;
-	delete[] *cls_eds; *cls_eds = 0;
-}
-
-int grid_get_edge_cells(Grid* g, int* Neds, int** ed_cell, int* ed_pt){
-	auto ed = static_cast<GridGeom*>(g)->get_edges();
-	*Neds = ed.size();
-	*ed_cell = new int[*Neds];
-	int *ec = *ed_cell;
-	int ret = 1;
-	if (ed_pt == 0){
-		for (auto& e: ed){
-			*ec++ = e.cell_left;
-			*ec++ = e.cell_right;
-		}
-	} else {
-		for (int i=0; i<*Neds; ++i){
-			int p1 = ed_pt[2*i], p2 = ed_pt[2*i+1];
-			auto fnd = ed.find(Edge(p1, p2));
-			if (fnd != ed.end()){
-				if (p1 == fnd->p1){
-					*ec++ = fnd->cell_left;
-					*ec++ = fnd->cell_right;
-				} else {
-					*ec++ = fnd->cell_right;
-					*ec++ = fnd->cell_left;
-				}
-				ed.erase(fnd);
-			} else {
-				//invalid edge->points connectivity
-				ret = 0;
-				*ec++ = -1; *ec++ = -1;
-			}
-		}
-	}
-	return ret;
-}
-
-void grid_free_edge_cells(int** ed_cell){
-	delete[] *ed_cell; *ed_cell=0;
-}
-
-
-void grid_save_vtk(Grid* g, const char* fn){
-	if (g==NULL) return;
-	save_vtk(static_cast<GridGeom*>(g), fn);
-}
-
-void contour_save_vtk(Cont* c, const char* fn){
-	if (c==NULL) return;
-	save_vtk(static_cast<PointsContoursCollection*>(c), fn);
-}
-
-void grid_free(Grid* g){
-	if (g!=NULL) delete g;
-}
-
-Grid* cross_grids(Grid* gbase, Grid* gsecondary, double buffer_size, int preserve_bp, int eh){
-	return cross_grids_wcb(gbase, gsecondary, buffer_size, preserve_bp, eh, global_callback);
-}
-
-Grid* cross_grids_wcb(Grid* gbase, Grid* gsecondary, double buffer_size,
-		int preserve_bp, int empty_holes, crossgrid_callback cb_fun){
-	try{
-		if (gbase == NULL || gsecondary == NULL)
-			throw std::runtime_error("nullptr grid data");
-		auto ret = GridGeom::cross_grids(
-				static_cast<GridGeom*>(gbase),
-				static_cast<GridGeom*>(gsecondary),
-				buffer_size, 0.5, (preserve_bp==1),
-				(empty_holes==1), cb_fun);
-		return ret;
-	} catch (const std::exception &e) {
-		std::cout<<"crossgrid error: "<<e.what()<<std::endl;
-		return 0;
-	}
-}
-
-Cont* contour_construct(int Npts, int Ned, double* pts, int* edges){
-	auto p = vector<Point>();
-	auto e = vector<int>(edges, edges+2*Ned);
-	for (int i=0; i<Npts; ++i){
-		p.push_back(Point(pts[2*i], pts[2*i+1]));
-	}
-	return new PointsContoursCollection(p, e);
-}
-
-void cont_free(Cont* c){
-	delete c;
-}
-
-Grid* grid_exclude_cont(Grid* grd, Cont* cont, int is_inner){
-	return grid_exclude_cont_wcb(grd, cont, is_inner, global_callback);
-}
-
-Grid* grid_exclude_cont_wcb(Grid* grd, Cont* cont, int is_inner,
-		crossgrid_callback cb_fun){
-	try{
-		auto ret = GridGeom::grid_minus_cont(
-				static_cast<GridGeom*>(grd),
-				static_cast<PointsContoursCollection*>(cont),
-				is_inner!=0, cb_fun);
-		return ret;
-	} catch (const std::exception &e){
-		std::cout<<"crossgrid error: "<<e.what()<<std::endl;
-		return 0;
-	}
-}
-
-void add_contour_bc(Cont* src, Cont* tar, int* vsrc, int* vtar, int def){
-	try{
-		auto src1 = static_cast<PointsContoursCollection*>(src);
-		auto tar1 = static_cast<PointsContoursCollection*>(tar);
-		vector<int> cor = PointsContoursCollection::edge_correlation(*src1, *tar1);
-		for (int i=0; i<tar1->n_edges(); ++i){
-			vtar[i] =  (cor[i]>=0) ? vsrc[cor[i]] : def;
-		}
-	} catch (const std::exception &e){
-		std::cout<<"crossgrid error: "<<e.what()<<std::endl;
-	}
-}
-
-void contour_get_info(Cont* c, int* Npnt, int* Neds,
-		double** pts,
-		int** eds){
-	PointsContoursCollection* cont = static_cast<PointsContoursCollection*>(c);
-	*Npnt = cont->n_total_points();
-	*Neds = cont->n_edges();
-	//points
-	*pts = new double[2*(*Npnt)];
-	double* pp = *pts;
-	for (int i=0; i<*Npnt; ++i){
-		auto p = cont->get_point(i);
-		*pp++ = p->x;
-		*pp++ = p->y;
-	}
-	//edges
-	*eds = new int[2*(*Neds)];
-	int *ee = *eds;
-	for (int i=0; i<*Neds; ++i){
-		auto e = cont->get_edge(i);
-		*ee++ = e.first;
-		*ee++ = e.second;
-	}
-}
-
-void contour_free_info(double** pts, int** eds){
-	delete[] (*pts);
-	delete[] (*eds);
-}
-
-double grid_area(Grid* g){
-	return static_cast<GridGeom*>(g)->area();
-}
-
-double contour_area(Cont* c){
-	return static_cast<PointsContoursCollection*>(c)->area();
-}
-
-Grid* boundary_layer_grid(void* cont, int is_inner, int Npart, double* part,
-		int mesh_cont_type, double mesh_cont_step,
-		int round_off, double minsharp){
-	try{
-		BLayerGridInput inp;
-		inp.tree = static_cast<HMCont2D::ContourTree*>(cont);
-		inp.direction = is_inner == 1 ? INSIDE : OUTSIDE;
-		switch (mesh_cont_type){
-			case 0: inp.bnd_step_method = BLayerGridInput::NO_BND_STEPPING; break;
-			case 1: inp.bnd_step_method = BLayerGridInput::CONST_BND_STEP; break;
-			case 2: inp.bnd_step_method = BLayerGridInput::CONST_BND_STEP_KEEP_SHAPE; break;
-			case 3: inp.bnd_step_method = BLayerGridInput::CONST_BND_STEP_KEEP_ALL; break;
-			default: throw std::runtime_error("Invalid mesh_cont_type");
-		}
-		inp.bnd_step = mesh_cont_step;
-		inp.round_off = round_off == 1;
-		inp.minsharp = minsharp/180.0*M_PI;
-		for (int i=0; i<Npart; ++i) inp.partition.push_back(part[i]);
-		std::unique_ptr<BLayerGrid> res(new BLayerGrid(inp));
-		return res.release();
-	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
-		return 0;
-	}
-}
 
 
 // ========================== testing

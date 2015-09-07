@@ -7,6 +7,8 @@ add_subdirectory(external)
 add_subdirectory(bgeom2d)
 add_subdirectory(hybmesh_contours2d)
 add_subdirectory(crossgrid)
+add_subdirectory(hmblay)
+add_subdirectory(hmcport)
 
 
 #copy mingw runtime libraries to binary directory

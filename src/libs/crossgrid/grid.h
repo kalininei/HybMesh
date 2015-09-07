@@ -60,10 +60,6 @@ protected:
 	//Data
 	ShpVector<GridPoint> points;
 	ShpVector<Cell> cells;
-	//scaling
-	ScaleBase do_scale();
-	void do_scale(const ScaleBase& sc);
-	void undo_scale(const ScaleBase& sc);
 	//tables
 	vector<vector<int>> point_cell_tab() const;
 	//make all cells be counter clockwise
@@ -122,6 +118,10 @@ public:
 	//area
 	double area() const;
 
+	//scaling
+	ScaleBase do_scale();
+	void do_scale(const ScaleBase& sc);
+	void undo_scale(const ScaleBase& sc);
 	//contours manipulation
 	vector<PContour> get_contours() const;
 	ContoursCollection get_contours_collection() const { return ContoursCollection(get_contours()); }
@@ -145,11 +145,13 @@ public:
 
 	//static builders
 	static GridGeom* cross_grids(GridGeom* gmain, GridGeom* gsec, double buffer_size, 
-			double density, bool preserve_bp, bool empty_holes, crossgrid_callback cb);
+			double density, bool preserve_bp, bool empty_holes,
+			CrossGridCallback::func cb);
 	
 	//result = g - area(c). Area could be inner or outer. 
 	static GridGeom* grid_minus_cont(GridGeom* g, PointsContoursCollection* c,
-			bool is_inner, crossgrid_callback cb);
+			bool is_inner,
+			CrossGridCallback::func cb);
 	
 	//builds a grid wich is constructed by imposition of gsec onto gmain
 	//no bufferzones. 

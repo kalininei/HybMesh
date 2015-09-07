@@ -14,7 +14,7 @@ class _Factory(object):
             gridcom.AddUnfRingGrid,
             gridcom.UniteGrids,
             gridcom.ExcludeContours,
-            # gridcom.BuildBoundaryGrid,
+            gridcom.BuildBoundaryGrid,
             objcom.RenameGeom,
             objcom.RemoveGeom,
             objcom.MoveGeom,

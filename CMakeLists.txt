@@ -153,6 +153,12 @@ set(HYBMESH_CONTOURS2D_TARGET hybmesh_contours2d)
 #libcrossgird: global definition of CROSSGRID_INCLUDE, CROSSGRID_TARGET
 set(CROSSGRID_INCLUDE "${CMAKE_SOURCE_DIR}/src/libs/crossgrid")
 set(CROSSGRID_TARGET crossgrid)
+#libhmblay: global definition of HMBLAY_INCLUDE, HMBLAY_TARGET
+set(HMBLAY_INCLUDE "${CMAKE_SOURCE_DIR}/src/libs/hmblay")
+set(HMBLAY_TARGET hmblay)
+#libhmcport: global definition of HMCPORT_INCLUDE, HMCPORT_TARGET
+set(HMCPORT_INCLUDE "${CMAKE_SOURCE_DIR}/src/libs/hmcport")
+set(HMCPORT_TARGET hmcport)
 
 
 # =========================== configuration file 

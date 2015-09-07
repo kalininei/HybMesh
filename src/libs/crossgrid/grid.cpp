@@ -380,9 +380,10 @@ GridGeom* GridGeom::combine(GridGeom* gmain, GridGeom* gsec){
 }
 
 GridGeom* GridGeom::cross_grids(GridGeom* gmain_inp, GridGeom* gsec_inp, 
-		double buffer_size, double density, bool preserve_bp, bool empty_holes, crossgrid_callback cb){
+		double buffer_size, double density, bool preserve_bp, bool empty_holes,
+		CrossGridCallback::func cb){
 	//initial scaling before doing anything
-	if (cb("Building grid cross", "Scaling", 0, -1) == CALLBACK_CANCEL) return 0;
+	if (cb("Building grid cross", "Scaling", 0, -1) == CrossGridCallback::CANCEL) return 0;
 	auto sc = gmain_inp->do_scale();
 	gsec_inp->do_scale(sc);
 	buffer_size/=sc.L;
@@ -394,7 +395,7 @@ GridGeom* GridGeom::cross_grids(GridGeom* gmain_inp, GridGeom* gsec_inp,
 	auto cmain  = gmain->get_contours();
 	auto csec  = gsec->get_contours();
 
-	if (cb("Building grid cross", "Boundary analyze", 0.05, -1) == CALLBACK_CANCEL) return 0;
+	if (cb("Building grid cross", "Boundary analyze", 0.05, -1) == CrossGridCallback::CANCEL) return 0;
 	//1 ---- if secondary holes are empty -> remove secondary top level area from main grid
 	if (empty_holes){
 		ContoursCollection c1(csec);
@@ -407,7 +408,7 @@ GridGeom* GridGeom::cross_grids(GridGeom* gmain_inp, GridGeom* gsec_inp,
 		}
 	}
 	
-	if (cb("Building grid cross", "Boundary analyze", 0.20, -1) == CALLBACK_CANCEL) return 0;
+	if (cb("Building grid cross", "Boundary analyze", 0.20, -1) == CrossGridCallback::CANCEL) return 0;
 	//2 ---- find contours intersection points and place gsec nodes there
 	if (!preserve_bp && buffer_size>geps){
 		//find all intersections
@@ -430,7 +431,7 @@ GridGeom* GridGeom::cross_grids(GridGeom* gmain_inp, GridGeom* gsec_inp,
 	}
 	
 	//3 ---- combine grids without using buffers
-	if (cb("Building grid cross", "Combining", 0.25, -1) == CALLBACK_CANCEL) return 0;
+	if (cb("Building grid cross", "Combining", 0.25, -1) == CrossGridCallback::CANCEL) return 0;
 	std::unique_ptr<GridGeom> comb(GridGeom::combine(gmain, gsec));
 
 	//4 ---- fill buffer zone
@@ -438,7 +439,7 @@ GridGeom* GridGeom::cross_grids(GridGeom* gmain_inp, GridGeom* gsec_inp,
 	if (buffer_size>geps){
 	
 		//loop over each single connected grid
-		if (cb("Building grid cross", "Subdivision", 0.45, -1) == CALLBACK_CANCEL) return 0;
+		if (cb("Building grid cross", "Subdivision", 0.45, -1) == CrossGridCallback::CANCEL) return 0;
 		auto sg = comb->subdivide();
 
 		//callback percentages 
@@ -450,7 +451,7 @@ GridGeom* GridGeom::cross_grids(GridGeom* gmain_inp, GridGeom* gsec_inp,
 				cb_cur+=cb_step;
 				//1. filter out a grid from buffer zone for the contour
 				if (cb("Building grid cross", "Filling buffer", 0.5, cb_cur-1.0*cb_step) 
-						== CALLBACK_CANCEL) return 0;
+						== CrossGridCallback::CANCEL) return 0;
 				BufferGrid bg(*grid, c, buffer_size);
 
 				//continue if buffergrid is empty
@@ -458,26 +459,26 @@ GridGeom* GridGeom::cross_grids(GridGeom* gmain_inp, GridGeom* gsec_inp,
 
 				//2. perform triangulation of buffer grid area
 				if (cb("Building grid cross", "Filling buffer", 0.5, cb_cur-0.8*cb_step)
-						== CALLBACK_CANCEL) return 0;
+						== CrossGridCallback::CANCEL) return 0;
 				auto bgcont = bg.boundary_info(preserve_bp);
 				TriGrid g3(std::get<0>(bgcont), std::get<1>(bgcont), density);
 
 				//3. change the internal of bg by g3ref grid
 				if (cb("Building grid cross", "Filling buffer", 0.5, cb_cur-0.6*cb_step)
-						== CALLBACK_CANCEL) return 0;
+						== CrossGridCallback::CANCEL) return 0;
 				bg.change_internal(g3);
 				
 				//4. update original grid using new filling of buffer grid
 				if (cb("Building grid cross", "Filling buffer", 0.5, cb_cur-0.3*cb_step)
-						== CALLBACK_CANCEL) return 0;
+						== CrossGridCallback::CANCEL) return 0;
 				bg.update_original();
 			}
 		}
 		if (cb("Building grid cross", "Filling buffer", 0.5, 1.0)
-						== CALLBACK_CANCEL) return 0;
+						== CrossGridCallback::CANCEL) return 0;
 
 		if (cb("Building grid cross", "Merging", 0.85, -1)
-						== CALLBACK_CANCEL) return 0;
+						== CrossGridCallback::CANCEL) return 0;
 		//connect single connected grids
 		comb->clear();
 		for (size_t i=0; i<sg.size(); ++i){
@@ -554,10 +555,11 @@ vector<Point> GridGeom::cells_internal_points() const{
 }
 
 GridGeom* GridGeom::grid_minus_cont(GridGeom* g, PointsContoursCollection* c,
-		bool is_inner, crossgrid_callback cb){
+		bool is_inner,
+		CrossGridCallback::func cb){
 	//initial scaling before doing anything
 	const char* com = "Excluding contour from grid";
-	if (cb(com, "Scaling", 0, -1) == CALLBACK_CANCEL) return 0;
+	if (cb(com, "Scaling", 0, -1) == CrossGridCallback::CANCEL) return 0;
 	auto sc = g->do_scale();
 	c->do_scale(sc);
 
@@ -580,7 +582,7 @@ GridGeom* GridGeom::grid_minus_cont(GridGeom* g, PointsContoursCollection* c,
 	vector<GridGeom> gg;
 	for (int i=0; i<cp.n_cont(); ++i) if (cp.is_inner(i)){
 		double k = 0.05 + 0.90*(double)cbcur++/cball;
-		if (cb(com, "Contours loop", k, 0) == CALLBACK_CANCEL) return 0;
+		if (cb(com, "Contours loop", k, 0) == CrossGridCallback::CANCEL) return 0;
 
 		//leave only inner + outers in contourscollection
 		ContoursCollection _ctmp = cp.level_01(i);
@@ -589,25 +591,25 @@ GridGeom* GridGeom::grid_minus_cont(GridGeom* g, PointsContoursCollection* c,
 		PtsGraph graph(*g);
 
 		// ------- add edges
-		if (cb(com, "Contours loop", k, 0.1) == CALLBACK_CANCEL) return 0;
+		if (cb(com, "Contours loop", k, 0.1) == CrossGridCallback::CANCEL) return 0;
 		//loop over each outer
 		for (auto& child: _ctmp.get_childs(0)){
 			graph.add_edges(*child);
 		}
-		if (cb(com, "Contours loop", k, 0.4) == CALLBACK_CANCEL) return 0;
+		if (cb(com, "Contours loop", k, 0.4) == CrossGridCallback::CANCEL) return 0;
 		//treat inner by itself. always add contour (ignore_trivial=true)
 		//because trivial edges will be the last to present in graph
 		//after exclusion (not actual)
 		graph.add_edges(*cp.get_contour(i));
 
-		if (cb(com, "Contours loop", k, 0.5) == CALLBACK_CANCEL) return 0;
+		if (cb(com, "Contours loop", k, 0.5) == CrossGridCallback::CANCEL) return 0;
 		// ------- exclude edges
 		graph.exclude_area(gbnd,   OUTSIDE);
 		graph.exclude_area(_ctmp,  OUTSIDE);
 
 		gg.push_back(graph.togrid());
 
-		if (cb(com, "Contours loop", k, 0.8) == CALLBACK_CANCEL) return 0;
+		if (cb(com, "Contours loop", k, 0.8) == CrossGridCallback::CANCEL) return 0;
 		//remove elements which can present in the grid due
 		//to outer contour exclusion
 		if (_ctmp.num_childs(0) > 0) gg.back().leave_only(_ctmp);
@@ -615,7 +617,7 @@ GridGeom* GridGeom::grid_minus_cont(GridGeom* g, PointsContoursCollection* c,
 	}
 	
 	//4) assemble a grid from graph
-	if (cb(com, "Assembling", 0.95, -1) == CALLBACK_CANCEL) return 0;
+	if (cb(com, "Assembling", 0.95, -1) == CrossGridCallback::CANCEL) return 0;
 	auto ret = new GridGeom();
 	for (auto& g: gg) ret->add_data(g);
 
@@ -715,3 +717,32 @@ double GridGeom::area() const{
 	for (int i=0; i<n_cells(); ++i) a+=get_cell(i)->area();
 	return a;
 }
+
+
+GridGeom BuildSquareGrid(const vector<double>& part_x,vector<double>& part_y){
+	int Npts = part_x.size()*part_y.size();
+	int Ncls = (part_x.size()-1)*(part_y.size()-1);
+	vector<double> points;
+	for (int j=0; j<part_y.size(); ++j){
+		for (int i=0; i<part_x.size(); ++i){
+			points.push_back(part_x[i]);
+			points.push_back(part_y[j]);
+		}
+	}
+	vector<int> cells;
+	for (int j=0; j<part_y.size() - 1; ++j){
+		for (int i=0; i<part_x.size() - 1; ++i){
+			int i0 = j*part_x.size() + i;
+			int i1 = j*part_x.size() + i + 1;
+			int i2 = (j + 1) * part_x.size() + i + 1;
+			int i3 = (j + 1) * part_x.size() + i;
+			cells.push_back(4);
+			cells.push_back(i0);
+			cells.push_back(i1);
+			cells.push_back(i2);
+			cells.push_back(i3);
+		}
+	}
+	return GridGeom(Npts, Ncls, &points[0], &cells[0]);
+}
+

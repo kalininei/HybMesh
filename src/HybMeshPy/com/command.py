@@ -1,4 +1,4 @@
-""" Describes command flow management """
+""" Describes abstract command interface """
 import ast
 import copy
 import basic.proc as bp
@@ -41,11 +41,11 @@ class ExecutionError(bp.EmbException):
         s += self.message
         return s
 
+
 class ObjectNotFound(ExecutionError):
     def __init__(self, objname, sender=None, upper_error=None):
         s = "Object %s not found" % objname
         super(ObjectNotFound, self).__init__(s, sender, upper_error)
-
 
 
 class BasicOption(object):
@@ -82,6 +82,31 @@ class ListOfOptions(BasicOption):
 
     def unserial(self, v):
         return [self.tp.unserial(x) for x in v]
+
+
+class SubDictOption(BasicOption):
+    def __init__(self, **kwargs):
+        """ Present dictionary of options:
+            name1: value1,
+            name2: value2,...
+
+            kwargs are  name=BasicOption()
+        """
+        self.args = kwargs
+
+    def serial(self, v):
+        a = {}
+        for k, val in v.items():
+            if k in self.args:
+                a[k] = self.args[k].serial(val)
+        return a
+
+    def unserial(self, v):
+        a = {}
+        for k, val in v.items():
+            if k in self.args:
+                a[k] = self.args[k].unserial(val)
+        return a
 
 
 class Point2Option(BasicOption):
@@ -238,6 +263,50 @@ class Command(object):
 
     def _redo(self):
         raise NotImplementedError
+
+    #auxilliary functions
+    def cont_by_name(self, name):
+        '->contour by its name or raise ObjNotFound'
+        try:
+            _, _, c = self.receiver.get_ucontour(name=name)
+        except:
+            raise ObjectNotFound(name, self)
+
+    def grid_by_name(self, name):
+        '->grid by its name or raise ObjNotFound'
+        try:
+            _, _, c = self.receiver.get_grid(name=name)
+        except:
+            raise ObjectNotFound(name, self)
+
+    def any_by_name(self, name):
+        '->(grid, contour) or raise. One of (grid, contour) is None'
+        if name in self.receiver.get_grid_names():
+            return self.receiver.get_grid(name=name)
+        elif name in self.receiver.get_ucontour_names():
+            return self.receiver.get_ucontour(name=name)
+        else:
+            raise ObjectNotFound(name, self)
+
+    def any_cont_by_name(self, name):
+        '->contour or raise. Grid contour or user contour by object name'
+        if name in self.receiver.get_grid_names():
+            return self.receiver.get_grid(name=name)[2].cont
+        elif name in self.receiver.get_ucontour_names():
+            return self.receiver.get_ucontour(name=name)
+        else:
+            raise ObjectNotFound(name, self)
+
+    def ask_for_callback(self, tp):
+        """ ask parent flow interface for callback.
+            Returns proper callback object
+            tp - callback types from interf.
+        """
+        import basic.interf
+        try:
+            return self.parent_flow.get_interface().ask_for_callback(tp)
+        except:
+            return basic.interf.Callback.silent_factory(tp)
 
 
 class Start(Command):

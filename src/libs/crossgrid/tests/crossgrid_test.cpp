@@ -5,11 +5,12 @@
 #include <stdexcept>
 #include "crossgrid.h"
 #include "fileproc.h"
-#include "hybmesh_contours2d.hpp"
-#include "boundary_layer_grid.h"
+#include "hmcport.h"
 
-void add_check(bool ex, const char* info = 0){
-	if (info==0){
+int FAILED_CHECKS = 0;
+
+void add_check(bool ex, std::string info){
+	if (info.size()==0){
 		std::cout<<"\tunknown check: ";
 	} else{
 		std::cout<<"\t"<<info;
@@ -17,9 +18,11 @@ void add_check(bool ex, const char* info = 0){
 	if (ex){
 		std::cout<<": True"<<std::endl;
 	} else {
+		++FAILED_CHECKS;
 		std::cout<<": False <<<<<<<<<<<<<<<<<<<"<<std::endl;
 	}
 };
+
 
 //build a rectangular structured grid 
 Grid* rectangular_grid(double x0, double y0,
@@ -529,66 +532,37 @@ void test20(){
 	cont_free(c1);
 };
 
-void test21(){
-	std::cout<<"21. Boundary Layer grid from square"<<std::endl;
-	//1) Create contour
-	HMCont2D::ClosedContour Cont4;
-	Cont4.AddPointToEnd(0, 0);
-	Cont4.AddPointToEnd(1, 0);
-	Cont4.AddPointToEnd(1, 1);
-	Cont4.AddPointToEnd(0, 1);
-	//2) Create contour tree
-	auto tree = new HMCont2D::ContourTree;
-	tree->AddContour(Cont4);
-	//3) Options
-	BLayerGridInput opt;
-	opt.tree = tree;
-	opt.direction = INSIDE;
-	opt.partition = {0.0, 0.02, 0.04, 0.06, 0.08, 0.1};
-	opt.bnd_step_method = BLayerGridInput::CONST_BND_STEP;
-	opt.bnd_step = 0.1;
-	opt.round_off = false;
-
-	//4) Build a Grid
-	BLayerGrid g = BLayerGrid(opt);
-	add_check(fabs(g.area() - (1 - sqr(1 - 2*opt.partition.back())))<1e-6, "boundary grid area");
-	save_vtk(g, "out_test21.vtk");
-
-	//5) Build inside contour
-	HMCont2D::ClosedContour Cont5;
-	Cont5.AddPointToEnd(0.3, 0.3);
-	Cont5.AddPointToEnd(0.6, 0.3);
-	Cont5.AddPointToEnd(0.6, 0.6);
-	Cont5.AddPointToEnd(0.3, 0.6);
-	tree->AddContour(Cont5);
-	BLayerGrid g2 = BLayerGrid(opt);
-	save_vtk(g2, "out_test21.vtk");
-	//add_check(fabs(g2.area() - 1 + 0.16)<1e-6, "boundary grid area");
-};
-
 int main(){
 	crossgrid_silent_callback();
-	//crossgrid_internal_tests();
-	//test1();
-	//test2();
-	//test3();
-	//test4();
-	//test5();
-	//test6();
-	//test7();
-	//test8();
-	//test9();
-	//test10();
-	//test11();
-	//test12();
-	//test13();
-	//test14();
-	//test15();
-	//test16();
-	//test17();
-	//test18();
-	//test19();
-	//test20();
-	test21();
+	crossgrid_internal_tests();
+	test1();
+	test2();
+	test3();
+	test4();
+	test5();
+	test6();
+	test7();
+	test8();
+	test9();
+	test10();
+	test11();
+	test12();
+	test13();
+	test14();
+	test15();
+	test16();
+	test17();
+	test18();
+	test19();
+	test20();
+
+
+	if (FAILED_CHECKS ==1){
+		std::cout<<FAILED_CHECKS<<" test failed <<<<<<<<<<<<<<<<<<<"<<std::endl;
+	} else if (FAILED_CHECKS > 1) {
+		std::cout<<FAILED_CHECKS<<" tests failed <<<<<<<<<<<<<<<<<<<"<<std::endl;
+	} else {
+		std::cout<<"All tests passed"<<std::endl;
+	}
 	std::cout<<"DONE"<<std::endl;
 }

@@ -1,0 +1,76 @@
+#ifndef HYBMESH_CONTOURS2D_CLIPPER_CORE_HPP
+#define HYBMESH_CONTOURS2D_CLIPPER_CORE_HPP
+
+#include "hybmesh_contours2d.hpp"
+#include "clipper.hpp"
+
+namespace HMCont2D{ namespace Impl{
+class ClipperPath;
+class ClipperTree;
+
+//area of integer arithmetic computing is within [-Resolution, Resolution] square
+const ClipperLib::cInt CLIPPER_RESOLUTION = 1e8;
+//normalized to [0, 1] distance between true and approximated arcs
+const double ClipperArcTolerance = 0.0001;
+
+// ================================ ClipperPath
+struct ClipperObject{
+	//BoundingBox in real geometry
+	BoundingBox bbox;
+	//scaling:
+	//   real_geometry = p0 + integer_geometry / factor
+	//   integer_geometry = factor * (real_geomtery - p0)
+	Point p0;
+	long double factor;
+
+	ClipperObject(): bbox(0.0, 0.0, 0.0, 0.0), p0(0,0), factor(1.0){}
+	ClipperObject(const BoundingBox& bb) { ApplyBoundingBox(bb);}
+
+	//scaling methods
+	ClipperLib::IntPoint ToIntGeom(const Point& p) const;
+	Point ToRealGeom(const ClipperLib::IntPoint& p) const;
+	virtual void ApplyBoundingBox(const BoundingBox& newbbox);
+};
+
+
+struct ClipperPath: public ClipperObject{
+	//Clipper::Path object
+	ClipperLib::Path data;
+
+	//constructor
+	ClipperPath(): ClipperObject(), data(){};
+	ClipperPath(const Contour&);
+
+	//scaling methods
+	void ApplyBoundingBox(const BoundingBox& newbbox) override;
+
+	// === Modify geometry
+	void SetPoints(const ShpVector<Point>& p);
+	void AddPointToEnd(const Point& p);
+
+	// === Methods
+	Container<ContourTree> Offset(double delta, HMCont2D::OffsetTp tp) const;
+	//-1 - point is on polygon
+	// 0 - point is outside polygon
+	// 1 - point is in polygon
+	int WhereIs(Point p) const;
+
+	Container<Contour> ToHMContainer() const;
+	static Container<Contour> HMContainer(const ClipperLib::Path&, const BoundingBox& bbox);
+};
+
+
+// ================================ ClipperTree =========================
+//read only object
+struct ClipperTree: public ClipperObject{
+	//to container
+	static Container<ContourTree> HMContainer(const ClipperLib::PolyTree&, const BoundingBox&);
+};
+
+
+}}
+
+
+
+#endif
+

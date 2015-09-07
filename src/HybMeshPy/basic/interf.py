@@ -28,53 +28,143 @@ class DefaultErrorHandler(object):
         print '>>>>>>>>>>>>>>>>>>>>>>>'
 
 
-class SilentCallbackCancel2PG(object):
-    """ Default implementation of callback function of type
-
-        int callback_fun(str BaseName, str SubName,
-                double proc1, double proc2)
-        it returns 1 for cancellation requiry and 0 otherwise
-        BaseName/SubName - names of main/sub process
-        proc1/proc2 - [0,1] progress of base/sub processes
-
-        No callback, No output here
+class Callback(object):
+    """ Abstract callback function of type
+        cb_result callback_fun(*cb_args)
     """
-    def __init__(self):
-        pass
+    # callback types:
+    # 1 process, (process progress is double in [0, 1]
+    # cb_result=void, cb_args = (str ProcName, double ProcProgress)
+    CB_NOCANCEL1 = 0
+    # 2 processes,
+    # cb_result=void, cb_args = (str ProcName, str SubProcName,
+    # double ProcProgress, double SubProcProgress)
+    # cb_result=void, cb_args = (str ProcName, double ProcProgress)
+    CB_NOCANCEL2 = 1
+    # 1 process, cancel option
+    # returns 1 for cancellation requiry
+    # cb_result=int, cb_args = (str ProcName,double ProcProgres)
+    CB_CANCEL1 = 2
+    # 2 processes, cancel option
+    # returns 1 for cancellation requiry
+    # cb_result=int, cb_args = (str ProcName, str SubProcName,
+    # double ProcProgress, double SubProcProgress)
+    CB_CANCEL2 = 3
 
-    def initialize(self, func, args, **kwargs):
+    def __init__(self, cb_res_type, cb_args_types):
+        self.cb_res_type = cb_res_type
+        self.cb_args_types = cb_args_types
+
+    @staticmethod
+    def __pytype_to_c_type(tp):
+        import ctypes as ct
+        if tp is int:
+            return ct.c_int
+        elif tp is str:
+            return ct.c_char_p
+        elif tp is float:
+            return ct.c_double
+
+    def __construct_c_function(self, py_func):
+        import ctypes as ct
+        args = ()
+        if self.cb_res_type is not None:
+            args = args + (self.__pytype_to_c_type(self.cb_res_type),)
+        for t in self.cb_args_types:
+            args = args + (self.__pytype_to_c_type(t),)
+        cbfunc = ct.CFUNCTYPE(*args)
+        return cbfunc(py_func)
+
+    def initialize(self, func, args):
         """ func(*args, callback_fun) - target procedure,
         """
+        import ctypes as ct
         self._func = func
+        self._is_c_target = isinstance(self._func, ct._CFuncPtr)
         self._args = args + (self._get_callback(),)
         self._result = None
-        self._proceed = True
 
     def execute_command(self):
         self._result = None
+        self._proceed = True
         self._result = self._func(*self._args)
 
     def get_result(self):
         return self._result
 
     def _get_callback(self):
-        import ctypes as ct
-
-        def cb(n1, n2, p1, p2):
-            self._info(n1, n2, p1, p2)
-            return 0 if self._proceed else 1
-
-        #if target function is a c function then convert callback to
-        #a c function pointer
-        if isinstance(self._func, ct._CFuncPtr):
-            cbfunc = ct.CFUNCTYPE(ct.c_int, ct.c_char_p, ct.c_char_p,
-                   ct.c_double, ct.c_double)
-            cb2 = cbfunc(cb)
-            return cb2
+        def cb(*args):
+            return self._callback(*args)
+        if self._is_c_target:
+            return self.__construct_c_function(cb)
         else:
             return cb
 
-    def _info(self, n1, n2, p1, p2):
+    # function for overloading
+    def _callback(*args):
+        raise NotImplementedError
+
+    @staticmethod
+    def silent_factory(tp):
+        if tp == Callback.CB_NOCANCEL1:
+            return SilentCallbackNoCancel1
+        elif tp == Callback.CB_NOCANCEL2:
+            return SilentCallbackNoCancel2
+        elif tp == Callback.CB_CANCEL1:
+            return SilentCallbackCancel1
+        elif tp == Callback.CB_CANCEL2:
+            return SilentCallbackCancel2
+        else:
+            raise proc.EmbException('Unknown callback type %s' % str(tp))
+
+
+class SilentCallbackCancel1(Callback):
+    """ Default implementation of callback function of type
+        Callback.CB_CANCEL1
+        Provides no callback output
+    """
+    def __init__(self):
+        super(SilentCallbackCancel1, self).__init__(int, (str, float))
+
+    def _callback(self, n1, p2):
+        return 0 if self._proceed else 1
+
+
+class SilentCallbackCancel2(Callback):
+    """ Default implementation of callback function of type
+        Callback.CB_CANCEL2
+        Provides no callback output
+    """
+    def __init__(self):
+        super(SilentCallbackCancel2, self).__init__(
+                int, (str, str, float, float))
+
+    def _callback(self, n1, n2, p1, p2):
+        return 0 if self._proceed else 1
+
+
+class SilentCallbackNoCancel1(Callback):
+    """ Default implementation of callback function of type
+        Callback.CB_NoCANCEL1
+        Provides no callback output
+    """
+    def __init__(self):
+        super(SilentCallbackNoCancel1, self).__init__(int, (str, float))
+
+    def _callback(self, n1, p2):
+        pass
+
+
+class SilentCallbackNoCancel2(Callback):
+    """ Default implementation of callback function of type
+        Callback.CB_NOCANCEL2
+        Provides no callback output
+    """
+    def __init__(self):
+        super(SilentCallbackNoCancel2, self).__init__(
+                int, (str, str, float, float))
+
+    def _callback(self, n1, n2, p1, p2):
         pass
 
 
@@ -105,19 +195,31 @@ class BasicInterface(object):
     def error_handler(self):
         return DefaultErrorHandler()
 
-    def ok_cancel_2pg_callback(self):
-        return SilentCallbackCancel2PG()
+    def ask_for_callback(self, tp):
+        """ tp is Callback.CB_* integer
+            Returns proper callback object
+        """
+        if tp == Callback.CB_NOCANCEL1:
+            return SilentCallbackNoCancel1()
+        elif tp == Callback.CB_NOCANCEL2:
+            return SilentCallbackNoCancel2()
+        elif tp == Callback.CB_CANCEL1:
+            return SilentCallbackCancel1()
+        elif tp == Callback.CB_CANCEL2:
+            return SilentCallbackCancel2()
+        else:
+            raise proc.EmbException('Unknown callback tp %s' % str(tp))
 
 
-class ConsoleCallbackCancel2PG(SilentCallbackCancel2PG):
+class ConsoleCallbackCancel2(SilentCallbackCancel2):
     """
         Callback to console.
     """
     def __init__(self):
-        super(ConsoleCallbackCancel2PG, self).__init__()
+        super(ConsoleCallbackCancel2, self).__init__()
         self.__prev_n1, self.__prev_n2 = '', ''
 
-    def _info(self, n1, n2, p1, p2):
+    def _callback(self, n1, n2, p1, p2):
         n, s = 25, 4
         if n1 != self.__prev_n1 or n2 != self.__prev_n2:
             outs = ''
@@ -141,6 +243,7 @@ class ConsoleCallbackCancel2PG(SilentCallbackCancel2PG):
         progress2 = ['['] + progress2 + [']']
 
         print ''.join(progress1) + ' ' * s + ''.join(progress2)
+        return 0
 
 
 class ConsoleInterface(BasicInterface):
@@ -162,5 +265,12 @@ class ConsoleInterface(BasicInterface):
         'self.cur_flow_collection messages receiver'
         pass
 
-    def ok_cancel_2pg_callback(self):
-        return ConsoleCallbackCancel2PG()
+    def ask_for_callback(self, tp):
+        """ tp is Callback.CB_* integer
+            Returns proper callback class
+        """
+        # Only CB_CANCLE2 is implemented
+        if tp == Callback.CB_CANCEL2:
+            return ConsoleCallbackCancel2()
+        else:
+            return super(ConsoleInterface, self).ask_for_callback(tp)

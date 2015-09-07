@@ -56,19 +56,19 @@ class Framework(object):
         '-> [list of user contour names]'
         return self.contours2.keys()
 
-    #grid + contours
+    def get_all_names(self):
+        '-> [list of all grid and user contours]'
+        return self.get_contour_names() + self.get_grid_names()
+
+    #grid + user
     def get_any_contour(self, name):
-        '-> Grid or user contour by its name'
+        '-> Grid contour or user contour by its name'
         if name in self.contours2:
             return self.contours2[name]
         elif name in self.grids2:
             return self.grids2[name].cont
         else:
             return None
-
-    def get_all_names(self):
-        '-> [list of all grid and user contours]'
-        return self.get_contour_names() + self.get_grid_names()
 
     #overriden from CommandReceiver
     def to_zero_state(self):

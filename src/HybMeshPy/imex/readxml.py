@@ -9,6 +9,8 @@ def load_command_flow(comflow, xmlnode):
     #Commands list
     cfnd = xmlnode.findall("COMMANDS/ENTRY")
     for cline in cfnd:
+        if 'end_load_here' in cline.attrib:
+            break
         com_title = cline.find("TITLE").text
         try:
             com_string = cline.find("LINE").text

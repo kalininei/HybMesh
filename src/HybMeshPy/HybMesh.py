@@ -77,8 +77,11 @@ def main():
                 gname = sys.argv[i + 1]
                 fmt = sys.argv[i + 2]
                 fn = sys.argv[i + 3]
-                imex.export_grid(fmt, fn, flow=f, name=gname)
-                print '%s save to %s' % (gname, fn)
+                try:
+                    imex.export_grid(fmt, fn, flow=f, name=gname)
+                    print '%s saved to %s' % (gname, fn)
+                except Exception as e:
+                    print 'Exporting Failure: %s' % str(e)
 
         print "DONE"
         quit()

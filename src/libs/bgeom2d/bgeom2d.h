@@ -134,8 +134,8 @@ bool SectCross(const Point& p1S, const Point& p1E, const Point& p2S, const Point
 
 //scaling
 struct ScaleBase{
-	const Point p0;
-	const double L;
+	Point p0;
+	double L;
 	explicit ScaleBase(double x0=0, double y0=0, double _L=1): p0(x0, y0), L(_L){}
 	//scale and unscale procedures
 	void scale(Point& p) const noexcept {p-=p0; p/=L; }
@@ -211,7 +211,13 @@ inline double ToAngle(double angle, double eps=0.0){
 	else if (angle>=2*M_PI) return ToAngle(angle-2*M_PI, eps);
 	else return angle;
 }
+inline double DegToAngle(double deg){
+	return ToAngle(deg/180*M_PI);
+}
 inline double AngleAdd(double angle, double add, double eps=0.0){ return ToAngle(angle+add,eps); }
+inline double Angle(const Point& p1, const Point& p2, const Point& p3){
+	return ToAngle(atan2(p1.y-p2.y, p1.x-p2.x) - atan2(p3.y-p2.y, p3.x-p2.x));
+}
 
 //Vector
 typedef Point Vect;
@@ -220,6 +226,10 @@ inline double vecLen(const Vect& a){ return sqrt(vecDot(a,a)); }
 inline void vecSetLen(Vect& a, double Len){ a/=(vecLen(a)/Len); }
 inline void vecNormalize(Vect& a){ a/=vecLen(a); }
 inline double vecCrossZ(const Vect& a, const Vect& b){ return a.x*b.y-a.y*b.x; }
+inline Vect vecRotate(const Vect& u, double angle){
+	double cs = cos(angle), sn = sin(angle);
+	return Point(u.x*cs - u.y*sn, u.x*sn+u.y*cs);
+}
 
 //triangle procedures
 inline double triarea(const Point& p1, const Point& p2, const Point& p3){

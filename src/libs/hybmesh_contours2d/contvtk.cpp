@@ -1,41 +1,28 @@
-#include "hybmesh_contours2d.hpp"
+#include "collections.hpp"
 #include <fstream>
 
 using namespace HMCont2D;
 
-void HMCont2D::SaveVtk(const ContourTree& tree, const char* fname){
-	std::ofstream fs(fname);
+void ECollection::SaveVtk(const ECollection& ec, const char* fn){
+	std::ofstream fs(fn);
 	fs<<"# vtk DataFile Version 3.0"<<std::endl;
-	fs<<"Contour 2D"<<std::endl;
+	fs<<"EdgesData"<<std::endl;
 	fs<<"ASCII"<<std::endl;
 	//Points
-	int numpts = tree.NumPoints();
+	vector<Point*> pts = ec.all_points();
 	fs<<"DATASET UNSTRUCTURED_GRID"<<std::endl;
-	fs<<"POINTS "<<numpts<< " float"<<std::endl;
-	std::map<const Point*, int> point_ind;
-	int n=0;
-	for (int i=0; i<tree.NumContours(); ++i){
-		auto c = tree.Cont(i);
-		for (int j=0; j<c->NumPoints();++j){
-			auto p = c->Pnt(j);
-			fs<<p->x<<" "<<p->y<<" 0"<<std::endl;
-			point_ind[p] = n++;
-		}
+	fs<<"POINTS "<<pts.size()<< " float"<<std::endl;
+	for (int i=0; i<pts.size(); ++i){
+		fs<<pts[i]->x<<" "<<pts[i]->y<<" 0"<<std::endl;
 	}
-	//Edges
-	int numedges = tree.NumEdges();
 	//Cells
-	fs<<"CELLS  "<<numedges<<"   "<<3*numedges<<std::endl;
-	vector<int> edges_shift; edges_shift.push_back(0);
-	for (int i=0; i<tree.NumContours(); ++i){
-		auto c = tree.Cont(i);
-		for (int j=0; j<c->NumEdges(); ++j){
-			auto ed = c->Edge(j);
-			fs<<2<<" "<<point_ind[std::get<0>(ed)]<<" "
-				<<point_ind[std::get<1>(ed)]<<std::endl;
-		}
+	fs<<"CELLS  "<<ec.size()<<"   "<<3*ec.size()<<std::endl;
+	for (int i=0; i<ec.size(); ++i){
+		int i1 = std::find(pts.begin(), pts.end(), ec.pvalue(i)->pstart) - pts.begin();
+		int i2 = std::find(pts.begin(), pts.end(), ec.pvalue(i)->pend) - pts.begin();
+		fs<<2<<" "<<i1<<" "<<i2<<std::endl;
 	}
-	fs<<"CELL_TYPES  "<<numedges<<std::endl;
-	for (int i=0;i<numedges;++i) fs<<3<<std::endl;
+	fs<<"CELL_TYPES  "<<ec.size()<<std::endl;
+	for (int i=0;i<ec.size();++i) fs<<3<<std::endl;
 	fs.close();
 }

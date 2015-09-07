@@ -1,7 +1,6 @@
 ' grid unification algorithm '
 import ctypes as ct
 import cobj
-import basic.interf
 
 
 def add_bc_from_cont(tar_cont, src_cont, c_src=None, c_tar=None):
@@ -67,9 +66,9 @@ def setbc_from_conts(tar_cont, src):
     lib_fa.cont_free(c_tar)
 
 
-def unite_grids(g1, g2, buf, fix_bnd, empty_holes, cb=None):
-    """ adds g2 to g1. Returns new grid. cb -- callback object
-        inherited from inter.SilentCallback2PG'
+def unite_grids(g1, g2, buf, fix_bnd, empty_holes, cb):
+    """ adds g2 to g1. Returns new grid.
+        cb -- Callback.CB_CANCEL2 callback object
     """
     lib_fa = cobj.crossgrid_lib()
     c_g1 = cobj.grid_to_c(g1)
@@ -79,8 +78,6 @@ def unite_grids(g1, g2, buf, fix_bnd, empty_holes, cb=None):
     c_eh = ct.c_int(1) if empty_holes else ct.c_int(0)
     args = (c_g1, c_g2, c_buf, c_fix, c_eh)
 
-    if cb is None:
-        cb = basic.interf.SilentCallbackCancel2PG()
     lib_fa.cross_grids_wcb.restype = ct.c_void_p
     cb.initialize(lib_fa.cross_grids_wcb, args)
     cb.execute_command()
@@ -99,7 +96,7 @@ def unite_grids(g1, g2, buf, fix_bnd, empty_holes, cb=None):
     return ret
 
 
-def grid_excl_cont(grd, cnt, is_inner, cb=None):
+def grid_excl_cont(grd, cnt, is_inner, cb):
     """ ->grid2.Grid2
         Returns a grid with excluded contour area (inner or outer)
     """
@@ -110,12 +107,6 @@ def grid_excl_cont(grd, cnt, is_inner, cb=None):
     args = (c_g, c_c, c_isinner)
     lib_fa.grid_exclude_cont_wcb.restype = ct.c_void_p
 
-    # e = dlgs.ProgressProcedureDlg(lib_fa.grid_exclude_cont_wcb, args,
-    #         True, globvars.mainWindow)
-    # e.exec_()
-    # res = ct.c_void_p(e.get_result())
-    if cb is None:
-        cb = basic.interf.SilentCallbackCancel2PG()
     cb.initialize(lib_fa.grid_exclude_cont_wcb, args)
     cb.execute_command()
     res = ct.c_void_p(cb.get_result())
@@ -146,45 +137,82 @@ def grid_excl_cont(grd, cnt, is_inner, cb=None):
     return newg
 
 
-def boundary_layer_grid(cont, opt):
-    """-> Grid2 or None. Builds a grid around contour.
-    cont - AbstractContour2
-    opt - dlgs._default_odata() object
+def boundary_layer_grid(opt, cb):
+    """ ->grid2.
+        opt - options dictionary object.
+              Same as gridcom.BuildBoundaryGrid options['opt'] dictionary
+              except for 'source' field is a proper Contour2 object.
+              All fields must be filled
+        cb - callback of CB_CANCEL2 type
     """
-    lib_cg = cobj.crossgrid_lib()
+    import ctypes as ct
+
+    # prepare c input data
+    class COptStruct(ct.Structure):
+        usedconts = {}
+
+        def __init__(self, opt_entry):
+            self.cont = self.usedconts[opt_entry['source']]
+            self.start = (ct.c_double * 2)(opt_entry['start'].x,
+                    opt_entry['start'].y)
+            self.end = (ct.c_double * 2)(opt_entry['end'].x,
+                    opt_entry['end'].y)
+            self.tp = ct.c_char_p(opt_entry['tp'])
+            self.round_off = ct.c_int(1 if opt_entry['tp'] else 0)
+            self.maxsharp = ct.c_double(opt_entry['maxsharp'])
+            self.mesh_cont = ct.c_char_p({
+                0: 'NO', 1: 'KEEP_ORIGIN', 2: 'KEEP_SHAPE', 3: 'IGNORE_ALL'
+            }[opt_entry['mesh_cont']])
+            self.mesh_cont_step = ct.c_double(opt_entry['mesh_cont_step'])
+            n = len(opt_entry['partition'])
+            self.Npartition = ct.c_int(n)
+            self.partition = (ct.c_double * n)(*opt_entry['partition'])
+
+        _fields_ = [
+                ('cont', ct.c_void_p),
+                ('start', ct.c_double * 2),
+                ('end', ct.c_double * 2),
+                ('tp', ct.c_char_p),
+                ('round_off', ct.c_int),
+                ('maxsharp', ct.c_double),
+                ('mesh_cont', ct.c_char_p),
+                ('mesh_cont_step', ct.c_double),
+                ('Npartition', ct.c_int),
+                ('partition', ct.POINTER(ct.c_double)),
+        ]
+
+    lib_fa = cobj.crossgrid_lib()
     lib_c2 = cobj.cont2_lib()
-    # parse arguments
-    c_cont = cobj.cont2_to_c(cont)
-    c_isinner = ct.c_int(1 if opt['direct'] == 'inner' else 0)
-    c_npart = ct.c_int(len(opt['partition']))
-    c_part = (ct.c_double * len(opt['partition']))()
-    for i, p in enumerate(opt['partition']):
-        c_part[i] = p
-    _t = {'No': 0,
-            'Mesh. Ignore all nodes': 1,
-            'Mesh. Keep shape': 2,
-            'Mesh. Keep origin': 3,
-          }[opt['mesh_cont']]
-    c_mesh_cont_type = ct.c_int(_t)
-    c_mesh_cont_step = ct.c_double(opt['mesh_cont_step'])
-    c_round_off = ct.c_int(1 if opt['rnd'] else 0)
-    c_minsharp = ct.c_double(opt['minsharp'])
-    lib_cg.boundary_layer_grid.restype = ct.c_void_p
-    res = lib_cg.boundary_layer_grid(c_cont, c_isinner,
-            c_npart, c_part, c_mesh_cont_type, c_mesh_cont_step,
-            c_round_off, c_minsharp)
-    if res is not None:
-        newg = cobj.grid_from_c(res)
-        newg.build_contour()
-        #assign boundary conditions
-        bs = cont.bnd_types().difference(set([0]))
-        if len(bs) > 0:
-            add_bc_from_cont(newg.cont, cont, c_src=c_cont)
 
-        #free grid memory
-        lib_cg.grid_free(res)
+    # 1) get contour pointers
+    for co in opt:
+        pycont = co['source']
+        if pycont not in COptStruct.usedconts:
+            COptStruct.usedconts[pycont] = cobj.cont2_to_c(pycont)
+
+    # 2) build array of c structures
+    c_opt_type = COptStruct * len(opt)
+    c_opt = c_opt_type()
+    for i, co in enumerate(opt):
+        c_opt[i] = COptStruct(co)
+
+    # 3) call through callback object
+    args = (len(opt), c_opt)
+    lib_fa.boundary_layer_grid_wcb.restype = ct.c_void_p
+    cb.initialize(lib_fa.boundary_layer_grid_wcb, args)
+    cb.execute_command()
+    cres = ct.c_void_p(cb.get_result())
+
+    # 4) take result
+    if cres.value is not None:
+        ret = cobj.grid_from_c(cres)
     else:
-        newg = None
+        ret = None
 
-    lib_c2.free_contour_tree(c_cont)
-    return newg
+    # 5) free data
+    lib_fa.grid_free(cres)
+    for c in COptStruct.usedconts.values():
+        lib_c2.free_contour_tree(c)
+    COptStruct.usedconts = {}
+
+    return ret

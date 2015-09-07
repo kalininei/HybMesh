@@ -8,7 +8,6 @@ set (HEADERS
 	wireframegrid.h
 	contours.h
 	intrusion.h
-	boundary_layer_grid.h
 )
 
 set (SOURCES
@@ -20,7 +19,6 @@ set (SOURCES
 	wireframegrid.cpp
 	contours.cpp
 	intrusion.cpp
-	boundary_layer_grid.cpp
 )
 
 source_group ("Header Files" FILES ${HEADERS} ${HEADERS})

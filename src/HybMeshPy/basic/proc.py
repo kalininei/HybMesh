@@ -295,6 +295,11 @@ def dict_readbool(d, key, defval):
     else:
         return defval
 
+def set_if_no(dic, key, val):
+    'set dic[key] if it is empty'
+    if key not in dic:
+        dic[key] = val
+
 
 if __name__ == '__main__':
     a = [[1, 2, 4], [2, 4, 5], [2, 4, 2]]

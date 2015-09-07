@@ -1,14 +1,23 @@
 #library file
 set (HEADERS
+	c_hybmesh_contours2d.h
 	hybmesh_contours2d.hpp
-	hybmesh_contours2d.h
-	clipper_core.h
+	collections.hpp
+	containers.hpp
+	edges.hpp
+	tree.hpp
+	contour.hpp
+	constructor.hpp
+	clipper_core.hpp
 )
 
 set (SOURCES
 	hybmesh_contours2d.cpp
-	contvtk.cpp
+	constructor.cpp
+	collections.cpp
+	contour.cpp
 	clipper_core.cpp
+	tree.cpp
 )
 
 source_group ("Header Files" FILES ${HEADERS} ${HEADERS})

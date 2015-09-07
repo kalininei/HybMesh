@@ -317,9 +317,9 @@ class SetBTypeToContour(command.Command):
     def _arguments_types(cls):
         """
             btypes: [
-                {'name': contour name,
-                bnd: [list of edges indicies],
-                bnd: [list of edges indicies],
+                {
+                    'name': contour name,
+                    'bnd': [list of edges indicies],
                 },
                 {...}, ....
             ]

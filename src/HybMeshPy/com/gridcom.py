@@ -1,29 +1,28 @@
-import ast
 import copy
 import command
 import objcom
 import gdata.grid2
-from unite_grids import (unite_grids, grid_excl_cont, setbc_from_conts)
+from basic.geom import Point2
+from unite_grids import (unite_grids, grid_excl_cont, setbc_from_conts,
+    boundary_layer_grid)
+import basic.proc as bp
 
 
 class NewGridCommand(objcom.AbstractAddRemove):
     "Command with a new grid addition"
     def __init__(self, argsdict):
         super(NewGridCommand, self).__init__(argsdict)
-        try:
-            self.name = argsdict["name"]
-        except KeyError:
-            self.name = ""
-        if self.name == "":
-            self.name = "NewGrid1"
 
     def _addrem_objects(self):
         #backup info
         g = self._build_grid()
-        g.build_contour()
-        return [(self.name, g)], [], [], []
+        if g is not None:
+            g.build_contour()
+            return [(self.options['name'], g)], [], [], []
+        else:
+            return [], [], [], []
 
-    #function for overriding
+    #function for overloading
     def _build_grid(self):
         '-> grid2.Grid2'
         raise NotImplementedError
@@ -128,6 +127,7 @@ class ExcludeContours(objcom.AbstractAddRemove):
 
     #overriden from NewGridCommand keeping self.remove_com
     def __build_grid(self):
+        import basic.interf
         try:
             _, _, base = self.receiver.get_grid(name=self.options['grid_name'])
         except:
@@ -135,11 +135,7 @@ class ExcludeContours(objcom.AbstractAddRemove):
         for c in self.options['cont_names']:
             c = self.receiver.get_any_contour(c)
             #ask parent_flow for callback
-            try:
-                intf = self.parent_flow.get_interface()
-                cb = intf.ok_cancel_2pg_callback()
-            except:
-                cb = None
+            cb = self.ask_for_callback(basic.interf.Callback.CB_CANCEL2)
             #invoke exclusion
             base = grid_excl_cont(base, c, self.options['is_inner'], cb)
             if base is None:
@@ -154,33 +150,8 @@ class ExcludeContours(objcom.AbstractAddRemove):
         return [(self.options['name'], g)], remg, [], []
 
 
-class UniteOption(command.BasicOption):
-    'name, buf, den - dictionary'
-    def __init__(self):
-        super(UniteOption, self).__init__()
-
-    def serial(self, v):
-        'before writing'
-        return v
-
-    def unserial(self, s):
-        'after reading'
-        ret = s
-        ret['buf'] = float(ret['buf'])
-        ret['den'] = float(ret['den'])
-        return ret
-
-
 class UniteGrids(objcom.AbstractAddRemove):
     def __init__(self, argsdict):
-        """ args[name] - name of the new grid,
-            args[fix_bnd] - whether to fix all boundary points (=False)
-            args[keepsrc] - whether to remove source grids (=True)
-            args[empty_holes] - keep all empty zone in 2nd grid (=False)
-            args[s0] = UniteOpts,   <- list of grids. Keys start with 's'.
-            args[s1] = UniteOpts,      No other args keys can start with 's'
-            ....
-        """
         a = copy.deepcopy(argsdict)
         if 'fix_bnd' not in a:
             a['fix_bnd'] = False
@@ -196,6 +167,15 @@ class UniteGrids(objcom.AbstractAddRemove):
             ret += s['name'] + " "
         return ret[:-1]
 
+    class Option(command.SubDictOption):
+        'name, buf, den - dictionary'
+        def __init__(self):
+            super(UniteGrids.Option, self).__init__(
+                    name=command.BasicOption(str),
+                    buf=command.BasicOption(float),
+                    den=command.BasicOption(int)
+            )
+
     @classmethod
     def _arguments_types(cls):
         """ name - name of the new grid,
@@ -210,7 +190,7 @@ class UniteGrids(objcom.AbstractAddRemove):
                 'empty_holes': command.BoolOption(),
                 'keep_src': command.BoolOption(),
                 'base': command.BasicOption(str),
-                'plus': command.ListOfOptions(UniteOption()),
+                'plus': command.ListOfOptions(UniteGrids.Option()),
                 }
 
     def _get_grid(self, ind):
@@ -230,6 +210,7 @@ class UniteGrids(objcom.AbstractAddRemove):
         return g, b, d
 
     def _addrem_objects(self):
+        import basic.interf
         opt = self.options
         #basic grid
         ret, _, _ = self._get_grid(0)
@@ -239,11 +220,7 @@ class UniteGrids(objcom.AbstractAddRemove):
             g, b, _ = self._get_grid(i + 1)
             try:
                 #ask parent_flow for callback
-                try:
-                    intf = self.parent_flow.get_interface()
-                    cb = intf.ok_cancel_2pg_callback()
-                except:
-                    cb = None
+                cb = self.ask_for_callback(basic.interf.Callback.CB_CANCEL2)
                 #execute
                 ret = unite_grids(ret, g, b,
                         opt['fix_bnd'], opt['empty_holes'], cb)
@@ -270,23 +247,46 @@ class UniteGrids(objcom.AbstractAddRemove):
         return [(opt['name'], ret)], delgrd, [], []
 
 
-class BuildBoundaryGrid(objcom.AbstractAddRemove):
+class BuildBoundaryGrid(NewGridCommand):
     CONT_MESH_NO = 0
     CONT_MESH_KEEP_ORIGIN = 1
     CONT_MESH_KEEP_SHAPE = 2
     CONT_MESH_IGNORE_ORIGIN = 3
 
-    def __init__(self, **kwargs):
+    def __init__(self, kwargs):
+        for op in kwargs['opt']:
+            if 'start' not in op or 'end' not in op:
+                op['start'] = op['end'] = Point2(0, 0)
+            bp.set_if_no(op, 'round_off', False)
+            bp.set_if_no(op, 'maxsharp', 120)
+            bp.set_if_no(op, 'mesh_cont', 0)
+            bp.set_if_no(op, 'mesh_cont_step', 0.1)
+        super(BuildBoundaryGrid, self).__init__(kwargs)
+
+    class Option(command.SubDictOption):
+        def __init__(self):
+            super(BuildBoundaryGrid.Option, self).__init__(
+                source=command.BasicOption(str),
+                tp=command.BasicOption(str),
+                start=command.Point2Option(),
+                end=command.Point2Option(),
+                round_off=command.BoolOption(),
+                maxsharp=command.BasicOption(float),
+                mesh_cont=command.BasicOption(int),
+                mesh_cont_step=command.BasicOption(float),
+                partition=command.ListOfOptions(command.BasicOption(float))
+            )
+
+    @classmethod
+    def _arguments_types(cls):
         """ arguments
                 name: str  -- name of the new grid
                 opt: [ {
-                    source: st -- name of source contour
+                    source: str -- name of source contour
                     tp: str    -- inside/outside/left/right/around boundary
-                    start: double   -- normalized to [0, 1] with respect to
-                        source length coordinate of section start
-                    end: double     -- normalized to [0, 1] with respect to
-                        source length coordinate of section end
-                    round_off: 0/1 -- round off sharp corners
+                    start: Point   -- Start Point of Section.
+                    end: Point     -- End Point of Section.
+                    round_off: bool -- round off sharp corners
                     maxsharp: 20.0-160.0 -- maximum angle which is sharp (deg)
                     mesh_cont: 0/1/2/3 -- contour meshing strategy:
                         0 - No meshing, use original contour nodes
@@ -297,17 +297,17 @@ class BuildBoundaryGrid(objcom.AbstractAddRemove):
                     partition: [0.0,...] -- layer partition starts from 0
                 }, ...]
         """
-        super(BuildBoundaryGrid, self).__init__(kwargs)
-        #temporary. This should be done in Command class consructor
-        self._Command__comLine = self._method_code() + str(kwargs)
-        self.opt = copy.deepcopy(kwargs)
+        return {
+                'name': command.BasicOption(str),
+                'opt': command.ListOfOptions(cls.Option())
+        }
 
-    @classmethod
-    def fromstring(cls, slist):
-        #temporary. This should be done in Command class
-        args = ast.literal_eval(slist)
-        return cls(**args)
-
-    def _addrem_objects(self):
-        print str(self.opt)
-        return [], [], [], []
+    #function for overloading
+    def _build_grid(self):
+        '-> grid2.Grid2'
+        import basic.interf
+        arg = copy.deepcopy(self.options['opt'])
+        for op in arg:
+            op['source'] = self.any_cont_by_name(op['source'])
+        cb = self.ask_for_callback(basic.interf.Callback.CB_CANCEL2)
+        return boundary_layer_grid(arg, cb)

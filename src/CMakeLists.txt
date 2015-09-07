@@ -8,14 +8,15 @@ set(SETUP_CFG "${PYOUTDIR}/setup.cfg")
 configure_file(${SETUP_PY_IN} ${SETUP_PY} @ONLY)
 configure_file(${SETUP_CFG_IN} ${SETUP_CFG} @ONLY)
 
-set(DEPS "${PYROOTDIR}/${PyPack}/__init__.py")
-add_custom_command(
-	OUTPUT ${PYOUTDIR}/timestamp
-	COMMAND ${PYTHON} ${SETUP_PY} build
-	COMMAND ${CMAKE_COMMAND} -E touch ${PYOUTDIR}/timestamp
-	DEPENDS ${DEPS}
-)
-add_custom_target(pydistr ALL DEPENDS ${PYOUTDIR}/timestamp)
+# ============= TODO for assembling installer
+#set(DEPS "${PYROOTDIR}/${PyPack}/__init__.py")
+#add_custom_command(
+	#OUTPUT ${PYOUTDIR}/timestamp
+	#COMMAND ${PYTHON} ${SETUP_PY} build
+	#COMMAND ${CMAKE_COMMAND} -E touch ${PYOUTDIR}/timestamp
+	#DEPENDS ${DEPS}
+#)
+#add_custom_target(pydistr ALL DEPENDS ${PYOUTDIR}/timestamp)
 
 #installs python packages to system
 install(CODE "execute_process(COMMAND ${PYTHON} ${SETUP_PY} install)")
