@@ -9,6 +9,7 @@
 #include "tree.hpp"
 #include "constructor.hpp"
 #include "algos.hpp"
+#include "debug_cont2d.hpp"
 
 namespace HMCont2D{
 

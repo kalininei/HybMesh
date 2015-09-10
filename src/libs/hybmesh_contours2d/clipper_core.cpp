@@ -96,12 +96,17 @@ Container<ContourTree> ClipperTree::HMContainer(const ClipperLib::PolyTree& tree
 	setcont = [&ret, &bbox, &setcont](ClipperLib::PolyNode* nd, ContourTree::TreeNode* parent){
 		assert(!nd->IsOpen());
 		Container<Contour> c = ClipperPath::HMContainer(nd->Contour, bbox);
-		ret.Unite(c); //add points and edges
+		//Using raw push_backs to eschew ret tree rebuilding
+		//add points
+		ret.pdata.Unite(c.pdata);
+		//add edges
+		std::copy(c.data.begin(), c.data.end(), std::back_inserter(ret.data));
 		shared_ptr<ContourTree::TreeNode> newnode(new ContourTree::TreeNode);
 		newnode->Unite(c); //add only edges
 		newnode->parent = parent;
 		ret.nodes.push_back(newnode);
 		for (auto& child: nd->Childs) setcont(child, newnode.get());
+	
 	};
 	for (int i=0; i<tree.ChildCount(); ++i) setcont(tree.Childs[i], nullptr);
 

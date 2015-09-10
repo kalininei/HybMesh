@@ -1,28 +1,26 @@
 #include "bgrid.hpp"
+#include "simple_bgrid.hpp"
 
 using namespace HMBlay::Impl;
 
-auto HMBlay::Impl::BuildPathPntData(Point* p1, Point* p2, Point* p3, Options* d) -> PathPntData{
+void PathPntData::fill(Point* p1, Point* p2, Point* p3){
 	//building of object for 'ext_data' field
-	PathPntData ret;
-	ret.opt = d;
 	if (p1 == 0 || p3 == 0){
-		ret.tp = CornerTp::NO;
-		ret.angle = M_PI;
-		if (p1 == 0) ret.normal = vecRotate((*p3 - *p2), M_PI/2.0);
-		if (p3 == 0) ret.normal = vecRotate((*p2 - *p1), M_PI/2.0);
+		tp = CornerTp::NO;
+		angle = M_PI;
+		if (p1 == 0) normal = vecRotate((*p3 - *p2), M_PI/2.0);
+		if (p3 == 0) normal = vecRotate((*p2 - *p1), M_PI/2.0);
 	} else {
-		ret.angle = Angle(*p1, *p2, *p3);
+		angle = Angle(*p1, *p2, *p3);
 		//type
-		if (ret.angle<DegToAngle(d->sharp_angle)) ret.tp = CornerTp::SHARP;
-		else if (ret.angle<DegToAngle(d->corner_angle)) ret.tp = CornerTp::CORNER;
-		else if (ret.angle<DegToAngle(d->regular_angle)) ret.tp = CornerTp::REGULAR;
-		else ret.tp = CornerTp::OBTUSE;
+		if (angle<DegToAngle(opt->sharp_angle)) tp = CornerTp::SHARP;
+		else if (angle<DegToAngle(opt->corner_angle)) tp = CornerTp::CORNER;
+		else if (angle<DegToAngle(opt->regular_angle)) tp = CornerTp::REGULAR;
+		else tp = CornerTp::OBTUSE;
 		//normal, option
-		ret.normal = vecRotate((*p3 - *p2), ret.angle/2.0);
+		normal = vecRotate((*p3 - *p2), angle/2.0);
 	}
-	vecNormalize(ret.normal);
-	return ret;
+	vecNormalize(normal);
 };
 
 ExtPath ExtPath::Assemble(const vector<Options*>& data){
@@ -34,30 +32,76 @@ ExtPath ExtPath::Assemble(const vector<Options*>& data){
 		//check for ordering
 		assert(ret.size() == 0 || ret.last() == p->first());
 		auto pnt = p->ordered_points();
-		//add temporary values for first and last points
-		if (ret.size() == 0) ret.ext_data.push_back({CornerTp::NO, Vect(), d});
-		//fill internal
-		for (int i=1; i < pnt.size()-1; ++i){
-			ret.ext_data.push_back(BuildPathPntData(pnt[i-1], pnt[i], pnt[i+1], d));
+		//add empty extended data object.
+		//conflicting i=0 edge: set priority to longest partition
+		if (ret.size()>0){
+			auto L1 = ret.ext_data.back().opt->partition.back();
+			auto L2 = d->partition.back();
+			if (L2>L1) ret.ext_data.back().opt = d;
+		} else ret.ext_data.push_back(PathPntData(d));
+		for (int i=1; i<pnt.size(); ++i){
+			ret.ext_data.push_back(PathPntData(d));
 		}
+		//add edges
 		ret.Unite(*p);
 	}
-	//add temporary values for first and last points
-	ret.ext_data.push_back({CornerTp::NO, Vect(), data.back()});
-	//check first and last points connection
+	//fill extended data
+	auto p = ret.ordered_points();
 	if (ret.is_closed()){
-		//if closed -> compute last-first connection
-		auto last3 = Ed::PointOrder(*ret.data.back(), *ret.edge(0));
-		ret.ext_data[0] = BuildPathPntData(last3[0], last3[1], last3[2], ret.ext_data[0].opt);
-		ret.ext_data.back() = ret.ext_data[0];
+		//conflicting first-last
+		auto L1 = ret.ext_data[0].opt->partition.back(),
+		     L2 = ret.ext_data.back().opt->partition.back();
+		if (L1>=L2) ret.ext_data.back().opt = ret.ext_data[0].opt;
+		else ret.ext_data[0].opt = ret.ext_data.back().opt;
+		//take into account last-first connection
+		for (int i=0; i<p.size(); ++i){
+			Point* pcur = p[i];
+			Point* pprev = (i==0) ? p[p.size()-2] : p[i-1];
+			Point* pnext = (i==p.size()-1) ? p[1] : p[i+1];
+			ret.ext_data[i].fill(pprev, pcur, pnext);
+		}
 	} else {
-		//if open -> place normal at right angle
-		auto first3 = Ed::PointOrder(*ret.edge(0), *ret.edge(1));
-		ret.ext_data[0] = BuildPathPntData(0, first3[0], first3[1], data[0]);
-		auto last3 = Ed::PointOrder(*ret.edge(ret.size()-2), *ret.edge(ret.size()-1));
-		ret.ext_data.back() = BuildPathPntData(last3[1], last3[2], 0, data.back());
+		//assemble without additional connections
+		for (int i=0; i<p.size(); ++i){
+			Point* pcur = p[i];
+			Point* pprev = (i==0) ? 0 : p[i-1];
+			Point* pnext = (i==p.size()-1) ? 0 :p[i+1];
+			ret.ext_data[i].fill(pprev, pcur, pnext);
+		}
 	}
 	return ret;
+}
+
+void ExtPath::AdoptEndNormals(const Contour& outer){
+	if (is_closed()) return;
+	auto need_to_adopt = [](Vect n1, Vect n2){
+		if (triarea(Point(0, 0), n1, n2) < 0) return true;
+		if (Angle(n2, Point(0, 0), n1) < M_PI/6) return true;
+		return false;
+	};
+
+	//start point
+	Point* p0 = first();
+	auto sib0 = outer.point_siblings(p0);
+	assert(sib0[1] && sib0[2]);
+	if (sib0[0] != 0){
+		Vect n = *sib0[0] - *sib0[1];
+		if (need_to_adopt(ext_data[0].normal, n)){
+			vecNormalize(n);
+			ext_data[0].normal = n;
+		}
+	}
+	//end point
+	Point* p1 = last();
+	auto sib1 = outer.point_siblings(p1);
+	assert(sib1[1] && sib1[0]);
+	if (sib1[2] != 0){
+		Vect n = *sib1[2] - *sib1[1];
+		if (need_to_adopt(n, ext_data.back().normal)){
+			vecNormalize(n);
+			ext_data.back().normal = n;
+		}
+	}
 }
 
 BGrid::TEpMap BGrid::RemoveObtuse(vector<ExtPath*>&& v){
@@ -102,49 +146,6 @@ BGrid BGrid::JoinObtuseNodes(vector<std::pair<ExtPath*, BGrid*>>& inp){
 	return BGrid(*inp[0].second);
 }
 
-SimpleBGrid::SimpleBGrid(ExtPath& pth):BGrid(){
-	//Only NO and REGULAR corners in pth
-	assert(pth.size() == pth.ext_data.size() - 1);
-	assert(std::all_of(pth.ext_data.begin(), pth.ext_data.end(),
-		[](PathPntData& d){
-			return (d.tp == CornerTp::NO ||
-				d.tp == CornerTp::REGULAR);
-		}
-	));
-	is_closed = pth.is_closed();
-	//1) recalculate normals to guarantee smooth normal changes from first to last
-	_DUMMY_FUN_;
-	//2) assemble grid
-	//2.1) fill stencil
-	auto basepnts = pth.ordered_points();
-	for (int i=0; i<pth.size() + (is_closed?0:1); ++i){
-		Point* b = basepnts[i];
-		Vect n = pth.ext_data[i].normal;
-		auto& part = pth.ext_data[i].opt->partition;
-		stencil.push_back(vector<GridPoint*>());
-		for (int j = 0; j<part.size(); ++j){
-			GridPoint* p = aa::add_shared(points, GridPoint(*b + n * part[j]));
-			stencil.back().push_back(p);
-		}
-	}
-	//2.2) fill cells
-	for (int edind = 0; edind < pth.size(); ++edind){
-		int stenind1 = edind;
-		int stenind2 = (is_closed && edind == pth.size() - 1) ? 0 : edind+1;
-		//number of cells for this edge
-		int n_height = std::min(stencil[stenind1].size(), stencil[stenind2].size()) - 1;
-		for (int ih = 0; ih < n_height; ++ih){
-			Cell* c = aa::add_shared(cells, Cell());
-			add_point_to_cell(c, stencil[stenind1][ih]);
-			add_point_to_cell(c, stencil[stenind2][ih]);
-			add_point_to_cell(c, stencil[stenind2][ih+1]);
-			add_point_to_cell(c, stencil[stenind1][ih+1]);
-			priority[c] = HIGHEST_PRIORITY - ih;
-		}
-	}
-	set_indicies();
-}
-
 ShpVector<BGrid> BGrid::MeshSequence(vector<Options*>& data){ 
 	auto ret = ShpVector<BGrid>();
 	auto BuildVP = [](TEpMap& inp)->vector<ExtPath*>{
@@ -164,6 +165,10 @@ ShpVector<BGrid> BGrid::MeshSequence(vector<Options*>& data){
 		};
 		return inpdata;
 	};
+	// basic options
+	int Nsmooth = 0;
+	for (auto op: data) if (op->smooth_normals_steps>Nsmooth) 
+		Nsmooth = op->smooth_normals_steps;
 
 	// ============================ Dividing paths
 	// Building a tree-like structure of pathes.
@@ -172,6 +177,10 @@ ShpVector<BGrid> BGrid::MeshSequence(vector<Options*>& data){
 	// TEpMap is std::map<ExtPath*, vector<ExtPath>> -- parent to children dictionary.
 	//1) assemble extended path
 	ExtPath fullpath = ExtPath::Assemble(data);
+
+	//2) Adopt first/last normal according to full contour if full contour
+	//   is closed and meshed contour is open
+	fullpath.AdoptEndNormals(*data[0]->get_full_source());
 
 	//2) Remove all obtuse entries
 	TEpMap no_obtuse = RemoveObtuse({&fullpath});
@@ -188,7 +197,7 @@ ShpVector<BGrid> BGrid::MeshSequence(vector<Options*>& data){
 	for (auto& kv: no_corner){
 		for (auto& v: kv.second){
 			primitives.push_back(std::make_shared<BGrid>(
-				SimpleBGrid(v)
+				SimpleBGrid(v, Nsmooth)
 			));
 			no_corner_primitives[&v] = primitives.back().get();
 		}
@@ -238,7 +247,7 @@ ShpVector<BGrid> BGrid::MeshSequence(vector<Options*>& data){
 }
 
 BGrid BGrid::ImposeBGrids(ShpVector<BGrid>& gg){
-	std::cout<<"DUMMY Impose BGrids"<<std::endl;
+	_DUMMY_FUN_;
 	return BGrid(*gg[0]);
 }
 

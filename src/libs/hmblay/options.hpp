@@ -42,10 +42,29 @@ struct Input{
 	//start, end points of contour tree. Uses hole contour, if they match
 	Point start, end;
 
+	//number of steps for smoothing normals during
+	//treating with regular segments
+	int smooth_normals_steps;
+
 	//angles
 	double sharp_angle;
 	double corner_angle;
 	double regular_angle;
+
+	//Default values
+	Input():
+		partition({0}),
+		bnd_step_method(BndStepMethod::NO_BND_STEPPING),
+		direction(Direction::INNER),
+		edges(NULL),
+		bnd_step(0.1),
+		round_off(false),
+		start(Point(0,0)),
+		end(Point(0, 0)),
+		smooth_normals_steps(10),
+		sharp_angle(60),
+		corner_angle(120),
+		regular_angle(235){}
 };
 
 namespace Impl{
@@ -57,15 +76,19 @@ class Options: public Input{
 	//-- data filled by CreateFromParent and Initialize procedures
 	//pool for all edges and points
 	shared_ptr<HMCont2D::Container<HMCont2D::ECollection>> __all_data;
-	//storage for 'edges' member
+	//storage for parent 'edges' member
 	shared_ptr<HMCont2D::ECollection> __edges_data;
 
 
-	//start, end points and full path for this option.
-	//start/end belong to path. Path edges are from __edges_data.
-	//equal zero if all contour is used
-	Point *pnt_start, *pnt_end;
+	//these are contours which should be meshed (path)
+	//and full contour which contains the path
+	//path and full_source are directed in such a way that 
+	//grid is build in an inner (left) direction
+	HMCont2D::Contour full_source;
 	HMCont2D::Contour path;
+
+	//start/end belong of path
+	Point *pnt_start, *pnt_end;
 
 	//all data in [0, 1] square. 'scaling' stores original sizes.
 	shared_ptr<ScaleBase> scaling;
@@ -76,6 +99,7 @@ public:
 	//get
 	ScaleBase* get_scaling(){ return scaling.get(); }
 	HMCont2D::Contour* get_path(){ return &path; }
+	HMCont2D::Contour* get_full_source(){ return &full_source; }
 
 	//Algorithms
 	static vector<Options> CreateFromParent(const vector<Input>& par);

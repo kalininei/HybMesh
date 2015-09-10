@@ -26,12 +26,13 @@ struct Container: public ECol{
 	Point* point(int i){return pdata.pvalue(i);}
 
 	//Methods
-	template<class TFrom>
+	template<class TFrom, class = Tpp::IsBase<TParent, typename TFrom::TParent>>
 	void Unite(const TFrom& c){
 		ECol::Unite(c);
 		pdata.Unite(c.pdata);
 	}
 	static double Area(const Container& obj){ return ECol::Area(obj); }
+
 
 	//Scaling
 	static ScaleBase Scale01(Container& c){ return PCol::Scale01(c.pdata); }

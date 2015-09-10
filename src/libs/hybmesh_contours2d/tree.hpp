@@ -22,7 +22,10 @@ struct ContourTree: public ECollection {
 	ShpVector<TreeNode> nodes;
 
 	//get roots node: always outer contours
-	vector<TreeNode*> roots();
+	vector<TreeNode*> roots() const;
+	//number of contours
+	virtual int cont_count() const { return nodes.size(); }
+
 	//get contour by point
 	virtual Contour* get_contour(Point* p) const;
 
@@ -34,7 +37,6 @@ struct ContourTree: public ECollection {
 
 	//Algos
 	static double Area(const ContourTree& c);
-
 };
 
 // ContourTree + set of open contours
@@ -42,6 +44,7 @@ struct ExtendedTree: public ContourTree {
 	ShpVector<Contour> open_contours;
 
 	Contour* get_contour(Point* p) const override;
+	int cont_count() const override { return nodes.size() + open_contours.size(); }
 	
 	//Methods
 	void AddContour(shared_ptr<Contour>& c) override;

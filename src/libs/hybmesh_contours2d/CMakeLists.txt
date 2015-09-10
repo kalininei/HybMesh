@@ -9,6 +9,7 @@ set (HEADERS
 	contour.hpp
 	constructor.hpp
 	clipper_core.hpp
+	debug_cont2d.hpp
 )
 
 set (SOURCES
@@ -18,6 +19,7 @@ set (SOURCES
 	contour.cpp
 	clipper_core.cpp
 	tree.cpp
+	debug_cont2d.cpp
 )
 
 source_group ("Header Files" FILES ${HEADERS} ${HEADERS})

@@ -24,6 +24,6 @@ template<class T> using ShpVector = vector<shared_ptr<T>>;
 	printf("\tat %s: %i\n", __FILE__, __LINE__);
 
 #define _THROW_NOT_IMP_ \
-	printf("function: \n\t%s\nat\n\t%s: %i\n", __PRETTY_FUNCTION__, __FILE__, __LINE__); \
+	printf("function:\t%s\nat\t%s: %i\n", __PRETTY_FUNCTION__, __FILE__, __LINE__); \
 	throw std::runtime_error("NOT IMPLEMENTED ERROR");
 #endif

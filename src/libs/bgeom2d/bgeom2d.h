@@ -205,6 +205,7 @@ public:
 };
 
 //Angles
+//to angle in [0, 2pi]
 inline double ToAngle(double angle, double eps=0.0){
 	if (fabs(angle)<eps || fabs(angle-2*M_PI)<eps) return 0.0;
 	if (angle<0) return ToAngle(angle+2*M_PI);

@@ -29,7 +29,7 @@ Point* ECollection::FindClosestNode(const ECollection& dt, const Point& p){
 	for (auto& e: dt.data){
 		double d1 = Point::meas(p, *e->pstart);
 		if (d1<d){ d = d1; res = e->pstart; }
-		double d2 = Point::meas(p, *e->pstart);
+		double d2 = Point::meas(p, *e->pend);
 		if (d2<d){ d = d2; res = e->pend; }
 	}
 	return res;

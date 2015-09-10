@@ -35,14 +35,11 @@ struct Edge{
 		else if (e1.pend == e2.pend) return { e1.pstart, e1.pend, e2.pstart };
 		else if (e1.pstart == e2.pstart) return { e1.pend, e1.pstart, e2.pend };
 		else if (e1.pstart == e2.pend) return { e1.pend, e1.pstart, e2.pstart };
-		else throw std::runtime_error("Failed to build edges connection");
+		else assert(false);
 	}
-};
 
-struct BEdge: public Edge{
-	int tp;
+	void Reverse(){ std::swap(pstart, pend); }
 };
-
 
 }
 

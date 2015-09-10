@@ -2,7 +2,7 @@
 
 using namespace HMCont2D;
 
-vector<ContourTree::TreeNode*> ContourTree::roots(){
+vector<ContourTree::TreeNode*> ContourTree::roots() const{
 	vector<TreeNode*> ret;
 	std::for_each(nodes.begin(), nodes.end(), 
 		[&](shared_ptr<TreeNode> nd){ if (nd->parent == 0) ret.push_back(nd.get()); }

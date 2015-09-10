@@ -4,12 +4,14 @@ set (HEADERS
 	hmblay.hpp
 	options.hpp
 	bgrid.hpp
+	simple_bgrid.hpp
 )
 
 set (SOURCES
 	hmblay.cpp
 	options.cpp
 	bgrid.cpp
+	simple_bgrid.cpp
 )
 
 source_group ("Header Files" FILES ${HEADERS} ${HEADERS})

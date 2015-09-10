@@ -118,16 +118,28 @@ void test3(){
 				"keep shape coarse");
 	auto r5 = Contour::Partition(0.1, c6, pc4, PartitionTp::KEEP_SHAPE);
 	add_check(fabs(r5.length() - len6)<1e-12 && pc4.size() == r5.size() + 1 - 5, "keep shape fine");
+
 }
 
 void test4(){
 	std::cout<<"Partition direction"<<std::endl;
-	auto c10 = Constructor::Circle(10, 1, Point(-5,4));
-	auto r1 = Contour::Partition(100, c10, PartitionTp::IGNORE_ALL);
-	add_check(r1.size() == 3 && Area(r1) > 0, "positive closed path");
-	c10.Reverse();
-	auto r2 = Contour::Partition(0.1, c10, PartitionTp::IGNORE_ALL);
-	add_check(r2.size() == std::lround(c10.length()/0.1) && Area(r2) < 0, "negative closed path");
+	//ignore all
+	//auto c10 = Constructor::Circle(10, 1, Point(-5,4));
+	//auto r1 = Contour::Partition(100, c10, PartitionTp::IGNORE_ALL);
+	//add_check(r1.size() == 3 && Area(r1) > 0, "positive closed path, ignore all");
+	//c10.Reverse();
+	//auto r2 = Contour::Partition(0.1, c10, PartitionTp::IGNORE_ALL);
+	//add_check(r2.size() == std::lround(c10.length()/0.1) && Area(r2) < 0, "negative closed path, ignore all");
+	
+	//keep shape
+	auto in4 = Constructor::Circle(10, 0.2, Point(2,3));
+	in4.Reverse();
+	auto out4 = Contour::Partition(0.1, in4, PartitionTp::KEEP_SHAPE);
+	add_check(fabs(Area(in4) - Area(out4))<1e-8, "negative closed path, keep shape");
+	std::cout<<Area(in4)<<",  "<<Area(out4)<<std::endl;
+	SaveVtk(in4, "1.vtk");
+	SaveVtk(out4, "2.vtk");
+
 }
 
 void test5(){
@@ -146,9 +158,10 @@ void test5(){
 	ECollection::DeepCopy(c2, collection);
 	auto etree2 = ExtendedTree::Assemble(collection);
 	add_check(fabs(Area(etree2) - (-Area(c1)-Area(c2)))<1e-8, "2 closed");
+
 	
 	//3) + sibling contour
-	auto c3 = Constructor::Circle(3, 0.2, Point(-3, -3));
+	auto c3 = Constructor::Circle(3, 0.2, Point(-2.3, -3));
 	ECollection::DeepCopy(c3, collection);
 	auto etree3 = ExtendedTree::Assemble(collection);
 	add_check(fabs(Area(etree3) - (-Area(c1)-Area(c2)-Area(c3)))<1e-8, "3 closed");
@@ -160,9 +173,9 @@ void test5(){
 	double area4=(-Area(c1)-Area(c2)-Area(c3));
 	double len4 = c1.length() + c2.length() + c3.length() + c4.length();
 	add_check(fabs(Area(etree4) - area4)<1e-12 && fabs(etree4.length() - len4)<1e-12, "3 closed, 1 open");
-	
+
 	//5) + big contour
-	auto c5 = Constructor::Circle(100, 100, Point(1,1));
+	auto c5 = Constructor::Circle(100, 30, Point(1,1));
 	ECollection::DeepCopy(c5, collection);
 	auto etree5 = ExtendedTree::Assemble(collection);
 	double area5=Area(c5) - (-Area(c1)-Area(c2)-Area(c3));
@@ -178,6 +191,37 @@ void test5(){
 	add_check(fabs(Area(etree6) - area6)<1e-8 && fabs(etree6.length() - len6)<1e-12, "5 closed, 1 open");
 }
 
+void test6(){
+	std::cout<<"Contour unite"<<std::endl;
+	
+	Container<Contour> c1 = Constructor::ContourFromPoints({0,0, 2,1, 4,3, 5,1, 6,2, 7,0});
+	Contour a1 = Contour::ShallowCopy(c1, 0, 1);
+	Contour a2 = Contour::ShallowCopy(c1, 2, 2);
+	a1.Unite(a2);
+	add_check(a1.ordered_points().size() == 4, "unite open lines");
+
+	try{
+		Contour a3 = Contour::ShallowCopy(c1, 1, 1);
+		a1.Unite(a3);
+		add_check(false, "try to add not connected line");
+	} catch (GeomError& g){
+		add_check(true, "try to add not connected line");
+	}
+	
+	a1.add_value(Edge{c1.pdata.point(0), c1.pdata.point(3)});
+	add_check(a1.is_closed(), "closing contour");
+
+	try{
+		Contour a4 = Contour::ShallowCopy(c1);
+		a1.Unite(a4);
+		add_check(false, "try to add to a closed contour");
+	} catch (GeomError& g){
+		add_check(true, "try to add to a closed contour");
+	}
+
+
+}
+
 int main(){
 	std::cout<<"hybmesh_contours2d testing"<<std::endl;
 	if (hybmesh_contours2d_ping(1) == 2) 
@@ -188,6 +232,7 @@ int main(){
 	test3();
 	test4();
 	test5();
+	test6();
 	
 
 	if (FAILED_CHECKS == 1){

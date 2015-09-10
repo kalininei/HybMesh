@@ -5,7 +5,14 @@
 #include "bgeom2d.h"
 #include "edges.hpp"
 
-namespace HMCont2D{ namespace Tpp{
+namespace HMCont2D{
+	
+class GeomError: public std::runtime_error{
+public:
+	GeomError(const char* s) noexcept: std::runtime_error(s){}
+};
+
+namespace Tpp{
 
 //Basis implementation of shared pointer generator
 template<class C>
@@ -111,13 +118,25 @@ struct Collection{
 		return ret;
 	}
 
-	//Methods
+	//--------- Methods
+	//add all entries from another collection without deep copy
 	template<class CInp, class=Valid<typename CInp::Tvalue>>
 	void Unite(const CInp& c){
 		std::copy(c.begin(), c.end(), std::back_inserter(data));
 	}
 
-	//static Methods
+	//--------- static Methods
+	//create a shallow copy of object.
+	//If start/end are defined then only entries [start, end] (including) interval
+	//entries will be copied.
+	template<class TTarget, class=IsBase<Collection, TTarget>>
+	static TTarget ShallowCopy(const TTarget& col, int start=0, int end=0){
+		TTarget ret;
+		if (end == 0 || end>=col.size()) end=col.size()-1; 
+		std::copy(col.begin()+start, col.begin()+end+1, std::back_inserter(ret.data));
+		return ret;
+	}
+
 	//DeepCopy using predefined generator of shared object.
 	template<class TTarget, class = IsBase<Collection, TTarget>>
 	static TDeepCopyResult DeepCopy(const Collection& from, TTarget& to, ShpGen& gen) {

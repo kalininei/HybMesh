@@ -1,8 +1,8 @@
 define contvtk
 	if $argc ==1
-		call HMCont2D::SaveVtk($arg0, "_dbgout.vtk")
+		call HMCont2D::ECollection::SaveVtk($arg0, "_dbgout.vtk")
 	else
-		call HMCont2D::SaveVtk($arg0, $arg1)
+		call HMCont2D::ECollection::SaveVtk($arg0, $arg1)
 	end
 end
 
@@ -33,21 +33,21 @@ define ppvec
 	end
 end
 
-document ppvec
-prints pointer vector.
-Usage ppvec arg0 [start_index] [endindex]
+define info_contour
+	call HMCont2D::Debug::info_contour($arg0)
 end
 
 
 #call from build/bin directory with crossgrid_test:
 # gdb -x ../../src/libs/dbgscripts/a.gdb
 
-file ./hybmesh_contours2d_test
+#file ./hybmesh_contours2d_test
 #file ./crossgrid_test
-#file ./hmblay_test
+file ./hmblay_test
 b main
 run 
-b hybmesh_contours2d_test.cpp:169
+b options.cpp:93
+b contour.cpp:70
 
 #====================================
 #call from gui/HybMesh.py directory with HybMesh

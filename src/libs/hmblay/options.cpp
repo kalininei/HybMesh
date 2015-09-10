@@ -21,11 +21,12 @@ C string_option(std::string opt,
 
 HMBlay::BndStepMethod HMBlay::MethFromString(const char* str){
 	return string_option(str,
-			{"NO", "KEEP_ORIGIN", "KEEP_SHAPE", "IGNORE_ALL"},
+			{"NO", "KEEP_ORIGIN", "KEEP_SHAPE", "IGNORE_ALL", "KEEP_ALL"},
 				{BndStepMethod::NO_BND_STEPPING,
 				 BndStepMethod::CONST_BND_STEP_KEEP_ALL,
 				 BndStepMethod::CONST_BND_STEP_KEEP_SHAPE,
-				 BndStepMethod::CONST_BND_STEP});
+				 BndStepMethod::CONST_BND_STEP,
+				 BndStepMethod::CONST_BND_STEP_KEEP_ALL});
 }
 
 HMBlay::Direction HMBlay::DirectionFromString(const char* str){
@@ -71,6 +72,8 @@ vector<Options> Options::CreateFromParent(const vector<HMBlay::Input>& par){
 		r.edges = r.__edges_data.get();
 		r.scaling = sc;
 		r.bnd_step /= sc->L;
+		sc->scale(r.start);
+		sc->scale(r.end);
 		for(auto& p: r.partition) p/=sc->L;
 	}
 	
@@ -81,33 +84,50 @@ vector<Options> Options::CreateFromParent(const vector<HMBlay::Input>& par){
 }
 
 void Options::Initialize(){
-	//make correct partition of contours, assemble pathes
+	//make correct partition of contours, assemble paths
 	typedef HMCont2D::ECollection ECol;
 	typedef HMCont2D::Contour ECont;
 	typedef HMCont2D::PartitionTp Ptp;
 	typedef HMCont2D::ExtendedTree Etree;
-	//1. Start and End points
+	//Start and End points
 	pnt_start = ECol::FindClosestNode(*edges, start);
 	pnt_end = ECol::FindClosestNode(*edges, end);
 	//assemble a tree -> find contour with pnt_start/end -> cut it
 	auto tree = Etree::Assemble(*edges);
-	auto cont = tree.get_contour(pnt_start);
-	assert(cont->contains_point(pnt_end));
-	path = ECont::Assemble(*cont, pnt_start, pnt_end);
+	full_source = HMCont2D::Contour(*tree.get_contour(pnt_start));
+	assert(full_source.contains_point(pnt_end));
+	//place Start/End points to contour if necessary
+	if (!(start==end && full_source.is_closed())){
+		pnt_start = std::get<1>(full_source.GuaranteePoint(start, __all_data->pdata));
+		pnt_end   = std::get<1>(full_source.GuaranteePoint(end, __all_data->pdata));
+		//throw if points are coincide
+		if (pnt_start == pnt_end)
+			throw std::runtime_error("Zero length boundary layer section");
+	}
 
-	//reverse path if nessesary.
-	if (direction == Direction::OUTER) path.Reverse();
+	//assemble path
+	path = ECont::Assemble(full_source, pnt_start, pnt_end);
+	//all edges in path are directed according to global direction. May be usefull.
+	path.DirectEdges();
+	//if path has only 1 segment we need to implicitly define its direction
+	if (path.size() == 1){ path.edge(0)->pstart = pnt_start; path.edge(0)->pend = pnt_end; }
+	//reverse full_source if path is in opposite direction.
+	if (full_source.next_point(pnt_start) != path.next_point(pnt_start)) full_source.Reverse();
+	assert(full_source.next_point(pnt_start) == path.next_point(pnt_start));
+	
+	//reverse path if necessary.
+	if (direction == Direction::OUTER) { path.ReallyReverse(); full_source.Reverse(); }
 
 	//partition
 	switch (bnd_step_method){
 		case BndStepMethod::CONST_BND_STEP_KEEP_ALL:
-			ECont::Partition(bnd_step, path, __all_data->pdata, Ptp::KEEP_ALL); 
+			path = ECont::Partition(bnd_step, path, __all_data->pdata, Ptp::KEEP_ALL); 
 			break;
 		case BndStepMethod::CONST_BND_STEP:
-			ECont::Partition(bnd_step, path, __all_data->pdata, Ptp::IGNORE_ALL); 
+			path = ECont::Partition(bnd_step, path, __all_data->pdata, Ptp::IGNORE_ALL); 
 			break;
 		case BndStepMethod::CONST_BND_STEP_KEEP_SHAPE:
-			ECont::Partition(bnd_step, path, __all_data->pdata, Ptp::KEEP_SHAPE); 
+			path = ECont::Partition(bnd_step, path, __all_data->pdata, Ptp::KEEP_SHAPE); 
 			break;
 		case BndStepMethod::NO_BND_STEPPING:
 			break;
@@ -115,18 +135,31 @@ void Options::Initialize(){
 }
 
 vector<vector<Options*>> Options::BuildSequence(vector<Options>& inp){
-	//Connect each pathes of options into sequences
+	//Connect each paths of options into sequences
 	auto ret = vector<vector<Options*>>();
 	std::set<Options*> setop;
 	for (auto& x: inp) setop.insert(&x);
 	while (setop.size() > 0){
-		ret.push_back(vector<Options*>());
-		auto& nd = ret.back();
-		nd.push_back(*setop.begin()); setop.erase(setop.begin());
-		if (nd[0]->path.is_closed()) continue;
-		else {
-			_THROW_NOT_IMP_;
+		std::list<Options*> lst;
+		//1) place first
+		lst.push_back(*setop.begin()); setop.erase(setop.begin());
+		//2) in a loop find if edge->last==lst.first->push_front
+		//                  if edge->first==lst.last->push_back
+		for (auto it=setop.begin(); it!=setop.end();){
+			Point* p0 = lst.front()->path.first();
+			Point* p1 = lst.front()->path.last();
+			//path is already closed
+			if (p0 == p1) break;
+			//last=first
+			if (p1 == (*it)->path.first()){
+				lst.push_back(*it); it = setop.erase(it);
+			//first=last
+			} else if (p0 == (*it)->path.last()){
+				lst.push_front(*it); it = setop.erase(it);
+			} else ++it;
 		}
+		//3) add lst to ret and clear it
+		ret.push_back(vector<Options*>(lst.begin(), lst.end()));
 	}
 	return ret;
 }

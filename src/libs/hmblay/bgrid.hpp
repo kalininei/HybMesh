@@ -14,12 +14,13 @@ enum class CornerTp {NO, SHARP, CORNER, REGULAR, OBTUSE};
 
 //layer data for point in source path
 struct PathPntData{
+	PathPntData(Options* o):opt(o){}
 	CornerTp tp;
 	Vect normal;
 	Options* opt;
 	double angle; //angle between previous/next edge
+	void fill(Point*, Point*, Point*);
 };
-PathPntData BuildPathPntData(Point* p1, Point* p2, Point* p3, Options* opt);
 
 //path with extended info
 struct ExtPath: public HMCont2D::Contour{
@@ -30,6 +31,8 @@ struct ExtPath: public HMCont2D::Contour{
 
 	//assemble from sequence of connected paths given in list of options
 	static ExtPath Assemble(const vector<Options*>& src);
+
+	void AdoptEndNormals(const Contour& outer);
 };
 
 class BGrid: public GridGeom{
@@ -57,16 +60,6 @@ protected:
 public:
 	static ShpVector<BGrid> MeshSequence(vector<Options*>& data);
 	static BGrid ImposeBGrids(ShpVector<BGrid>& gg);
-};
-
-
-//grid with rectangular structure
-class SimpleBGrid: public BGrid{
-	//each stencil entry is a line, perpendicular to source
-	vector<vector<GridPoint*>> stencil;
-	bool is_closed;
-public:
-	SimpleBGrid(ExtPath& pth);
 };
 
 

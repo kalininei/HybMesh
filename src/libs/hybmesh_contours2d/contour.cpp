@@ -1,6 +1,7 @@
 #include "contour.hpp"
 #include "tree.hpp"
 #include "clipper_core.hpp"
+#include "debug_cont2d.hpp"
 
 using namespace HMCont2D;
 
@@ -32,20 +33,55 @@ vector<Point*> Contour::ordered_points() const{
 vector<Point*> Contour::corner_points() const{
 	auto pnt = ordered_points();
 	vector<Point*> ret;
-	for (int i=0; i<pnt.size() - 1; ++i){
+	for (int i=0; i<pnt.size()-1; ++i){
 		Point *pprev, *p, *pnext;
 		if (i == 0){
 			if (is_closed()) pprev = pnt[pnt.size() - 2];
 			else continue;
 		} else pprev = pnt[i-1];
 		p = pnt[i];
-		if (i == pnt.size() - 2 && is_closed()) continue;
-		else pnext = pnt[i+1];
+		pnext = pnt[i+1];
 		//build triangle. if its area = 0 -> that is not a corner point
 		if (fabs(triarea(*pprev, *p, *pnext)) > geps)
 			ret.push_back(p);
 	}
 	return ret;
+}
+
+std::array<Point*, 3> Contour::point_siblings(Point* p) const{
+	std::array<Point*, 3> ret {0, 0, 0};
+	auto e1 = std::find_if(data.begin(), data.end(), [&p](shared_ptr<Edge> e){ return e->contains(p); });
+	if (e1 == data.end()) return ret;
+	else { ret[0] = (*e1)->sibling(p); ret[1] = p; }
+
+	auto e2 = std::find_if(e1 + 1, data.end(), [&p](shared_ptr<Edge> e){ return e->contains(p); });
+	if (e2 == data.end()){
+		assert(!is_closed() && (p==first() || p==last()));
+		if (p == first()) std::swap(ret[0], ret[2]);
+		return ret;
+	} else ret[2] = (*e2)->sibling(p);
+
+	if (is_closed() && (e1==data.begin() && e2 != data.begin()+1)) std::swap(ret[0], ret[2]);
+
+	return ret;
+}
+
+void Contour::DirectEdges(){
+	auto p = ordered_points();
+	for (int i=0; i<size(); ++i){
+		Point* p0 = p[i];
+		Point* p1 = p[i+1];
+		if (data[i]->pstart != p0) data[i]->Reverse();
+		assert(data[i]->pstart == p0 && data[i]->pend == p1);
+	}
+}
+
+void Contour::ReallyReverse(){ 
+	if (size() == 1) data[0]->Reverse();
+	else{
+		Reverse();
+		DirectEdges();
+	}
 }
 
 bool Contour::ForceDirection(bool dir){
@@ -62,6 +98,15 @@ bool Contour::IsWithin(const Point& p) const{
 	//use clipper procedure
 	Impl::ClipperPath cp(*this);
 	return cp.WhereIs(p) == 1;
+}
+
+std::tuple<bool, Point*>
+Contour::GuaranteePoint(const Point& p, PCollection& pcol){
+	_DUMMY_FUN_;
+	std::tuple<bool, Point*> ret;
+	std::get<0>(ret) = false;
+	std::get<1>(ret) = FindClosestNode(*this, p);
+	return ret;
 }
 
 
@@ -128,12 +173,18 @@ Contour partition_core(double step, const Contour& contour, PCollection& pstore)
 //returns repartitioned copy of a contour 
 Contour partition_core(double step, const Contour& contour, PCollection& pstore, const std::list<Point*>& keep){
 	auto it0 = keep.begin(), it1 = std::next(it0);
-
 	Contour ret;
 	while (it1 != keep.end()){
 		Contour sub = Contour::Assemble(contour, *it0, *it1);
 		Contour psub = partition_core(step, sub, pstore);
 		ret.Unite(psub);
+		//if sub.size() == 1 then its direction is not defined
+		//so we need to check the resulting direction.
+		//We did it after second Unition when direction matters
+		if (it0 == std::next(keep.begin())){
+			if (ret.last() != *it1) ret.Reverse();
+		}
+
 		++it0; ++it1;
 	}
 	return ret;
@@ -197,11 +248,14 @@ Contour Contour::Assemble(const Contour& con, Point* pnt_start, Point* pnt_end){
 	}
 	
 	if (i1 >= i0) return assemble_core(con, i0, i1);
-	else{
-		//if reversed non-closed
-		Contour r = assemble_core(con, i1, i0);
-		r.Reverse();
-		return r;
+	else {
+		if (con.is_closed()) return assemble_core(con, i0, i1 + con.size());
+		else{
+			//if reversed non-closed
+			Contour r = assemble_core(con, i1, i0);
+			r.Reverse();
+			return r;
+		}
 	}
 }
 
