@@ -53,5 +53,29 @@ Container<Contour> cns::ContourFromPoints(vector<Point> pnt, bool force_closed){
 	return ret;	
 }
 
+Contour cns::ContourFromPoints(const HMCont2D::PCollection& dt, bool force_closed){
+	return cns::ContourFromPoints(dt.pvalues(), force_closed);
+}
 
+Container<Contour> cns::CutContour(const HMCont2D::Contour& cont, const Point& pstart, int direction, double len){
+	Container<Contour> ret;
+	//if pstart lies on cont -> use simple assembling
+	vector<Point*> op = cont.ordered_points();
+	auto fnd = std::find_if(op.begin(), op.end(), [&pstart](Point* p){return pstart == *p;});
+	if (fnd != op.end()){
+		Contour c2 = Contour::Assemble(cont, *fnd, direction, len);
+		Container<Contour>::DeepCopy(c2, ret);
+		return ret;
+	}
+	//place pstart on contour then use assembling
+	Contour c2 = cont;
+	auto eres = ECollection::FindClosestEdge(c2, pstart);
+	Edge* ed = std::get<0>(eres);
+	int index = c2.get_index(ed);
+	c2.RemoveAt({index});
+	Point pp = pstart;
+	c2.AddAt(index, { std::make_shared<Edge>(ed->pstart, &pp), std::make_shared<Edge>(ed->pstart, &pp) });
+	Container<Contour>::DeepCopy(c2, ret);
+	return ret;
+}
 

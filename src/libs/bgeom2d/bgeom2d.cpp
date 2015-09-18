@@ -2,17 +2,22 @@
 #include "addalgo.hpp"
 #include "assert.h"
 
-double Point::meas_section(const Point& p, const Point& L1, const Point& L2) noexcept{
+double Point::meas_section(const Point& p, const Point& L1, const Point& L2, double& ksi) noexcept{
 	Vect a = L2-L1, b = p - L1;
-	double ksi=vecDot(a,b)/vecDot(a,a);
-	if (ksi>=1) return meas(p,L2);
-	else if (ksi<=0) return meas(p,L1);
+	ksi=vecDot(a,b)/vecDot(a,a);
+	if (ksi>=1) { ksi=1.0; return meas(p,L2);}
+	else if (ksi<=0) { ksi=0.0; return meas(p,L1);}
 	else{
 		double A[3] = { L1.y-L2.y, L2.x-L1.x, vecCrossZ(L1,L2) };
 		double d0=A[0]*p.x+A[1]*p.y+A[2];
 		d0*=d0; d0/=(A[0]*A[0]+A[1]*A[1]); //distance^2 to line 
 		return d0;
 	}
+}
+
+double Point::meas_section(const Point& p, const Point& L1, const Point& L2) noexcept{
+	static double k;
+	return meas_section(p, L1, L2, k);
 }
 
 bool isOnSection(const Point& p, const Point& start, const Point& end, double& ksi, double eps){

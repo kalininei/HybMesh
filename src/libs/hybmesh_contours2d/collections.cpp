@@ -35,6 +35,29 @@ Point* ECollection::FindClosestNode(const ECollection& dt, const Point& p){
 	return res;
 }
 
+std::tuple<Edge*, double, double>
+ECollection::FindClosestEdge(const ECollection& dt, const Point& p){
+	std::tuple<Edge*, double, double> ret;
+	Edge*& edge = std::get<0>(ret);
+	double& dist = std::get<1>(ret);
+	double& ksi = std::get<2>(ret);
+	edge = 0; dist = 1e99; ksi = 1e99;
+
+	double k;
+	for (auto e: dt.data){
+		double dnew = Point::meas_section(p, *e->pstart, *e->pend, k);
+		if (dnew < dist){
+			edge = e.get();
+			dist = dnew;
+			ksi = k;
+			if (ISZERO(dist)) break;
+		}
+	}
+
+	dist = sqrt(dist);
+	return ret;
+}
+
 void ECollection::SaveVtk(const ECollection& dt, const char* fn){
 	std::ofstream fs(fn);
 	fs<<"# vtk DataFile Version 3.0"<<std::endl;
@@ -80,3 +103,15 @@ void PCollection::SaveVtk(const PCollection& dt, const char* fn){
 	for (int i=0;i<dt.size();++i) fs<<1<<std::endl;
 	fs.close();
 }
+
+
+vector<double> ECollection::ELengths(const ECollection& dt){
+	vector<double> ret; ret.reserve(dt.size());
+	for (auto it = dt.begin(); it != dt.end(); ++it) ret.push_back((*it)->length());
+	return ret;
+}
+
+
+
+
+

@@ -37,6 +37,10 @@ define info_contour
 	call HMCont2D::Debug::info_contour($arg0)
 end
 
+define gg_contour
+	call HMCont2D::Debug::geogebra_contour($arg0)
+end
+
 
 #call from build/bin directory with crossgrid_test:
 # gdb -x ../../src/libs/dbgscripts/a.gdb
@@ -46,8 +50,7 @@ end
 file ./hmblay_test
 b main
 run 
-b options.cpp:93
-b contour.cpp:70
+b bgrid.cpp:108
 
 #====================================
 #call from gui/HybMesh.py directory with HybMesh

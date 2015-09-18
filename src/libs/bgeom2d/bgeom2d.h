@@ -55,9 +55,10 @@ struct Point{
 		return sqrt(meas(p1,p2));
 	}
 	static double meas_section(const Point& p, const Point& L1, const Point& L2) noexcept;
+	static double meas_section(const Point& p, const Point& L1, const Point& L2, double& ksi) noexcept;
 
 	//finds a point between two given ones with a certain weight w
-	static Point Weigh(const Point& p1, const Point& p2, double w){
+	static Point Weigh(const Point& p1, const Point& p2, double w) noexcept{
 		return Point(p1.x*(1-w)+p2.x*w, p1.y*(1-w)+p2.y*w);
 	}
 
@@ -115,6 +116,7 @@ inline Point& operator*=(Point& left, double d){
 inline Point operator/(const Point& p, double d){ auto x=Point(p); return std::move(x/=d); }
 inline Point operator*(const Point& p, double d){ auto x=Point(p); return std::move(x*=d); }
 inline bool operator==(const Point& p1, const Point& p2){ return (ISEQ(p1.x, p2.x) && ISEQ(p1.y, p2.y)); }
+inline bool operator!=(const Point& p1, const Point& p2){ return (!ISEQ(p1.x, p2.x) || !ISEQ(p1.y, p2.y)); }
 inline bool operator<(const Point& p1, const Point& p2){
 	return (ISEQ(p1.x, p2.x)) ? ISLOWER(p1.y, p2.y) : ISLOWER(p1.x, p2.x);
 }

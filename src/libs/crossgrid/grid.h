@@ -5,6 +5,12 @@
 #include "bgeom2d.h"
 #include "contours.h"
 
+namespace GGeom{
+struct Modify;
+struct Constructor;
+struct Info;
+};
+
 class GridPoint: public Point{
 	int ind;
 public:
@@ -28,6 +34,8 @@ public:
 		else if (i>=dim()) return get_point(i-dim());
 		else return points[i];
 	}
+	vector<const GridPoint*> get_points() const
+		{ return vector<const GridPoint*>(points.begin(), points.end());}
 	int get_ind() const { return ind; }
 	double area() const;
 	PContour get_contour() const;
@@ -71,6 +79,7 @@ protected:
 	static void add_point_to_cell(Cell* c, GridPoint* p){ c->points.push_back(p); }
 	static void change_point_of_cell(Cell* c, int j, GridPoint* p){ c->points[j] = p; }
 	static void delete_point_of_cell(Cell* c, int j){ c->points.erase(c->points.begin()+j); }
+	static void shallow_copy(GridGeom* from, GridGeom* to){ to->cells = from->cells; to->points = from->points; }
 	void clear(){ points.clear(); cells.clear(); }
 	vector<Point> cells_internal_points() const;
 	//constructors
@@ -79,7 +88,7 @@ protected:
 	GridGeom& operator=(GridGeom g);
 	//swaps points and cells arrays between two grids
 	static void swap_data(GridGeom& g1, GridGeom& g2);
-	//add all points and cells from grid. No points merge
+	//add all points and cells from grid. No points merge. Deepcopied.
 	void add_data(const GridGeom& g);
 	//add points and cells from cls index array. Merge congruent points.
 	void add_data(const GridGeom& g, const std::vector<int>& cls);
@@ -115,7 +124,7 @@ public:
 	int n_cells() const { return cells.size(); }
 	//sum of all cells dimensions
 	int n_cellsdim() const;
-	//area
+	//area as a sum of cells area
 	double area() const;
 
 	//scaling
@@ -133,6 +142,8 @@ public:
 	//data access
 	const GridPoint* get_point(int i) const { return points[i].get(); }
 	const Cell* get_cell(int i) const { return cells[i].get(); }
+	GridPoint* get_point(int i) { return points[i].get(); }
+	Cell* get_cell(int i) { return cells[i].get(); }
 	//edges 
 	std::set<Edge> get_edges() const;
 	//boundary points
@@ -159,15 +170,48 @@ public:
 	static GridGeom* combine(GridGeom* gmain, GridGeom* gsec);
 
 	//builds a grid from the set of other grids. Grids should not overlap.
-	//no nodes merging, no check procedures.
+	//no nodes merging, no check procedures. Deepcopied.
 	static GridGeom sum(const vector<GridGeom>& g);
-	static GridGeom sum(const std::vector<GridGeom*>& g);
+	static GridGeom sum(const vector<GridGeom*>& g);
 
 	friend class BufferGrid;
+	friend class GGeom::Constructor;
+	friend struct GGeom::Modify;
+	friend struct GGeom::Info;
+};
+
+
+//This is a new style interface.
+//Old interface should be completely changed to new one during grid refactoring.
+#include "hybmesh_contours2d.hpp"
+namespace GGeom{
+
+struct Constructor{
+
+static GridGeom RectGrid(const vector<double>& part_x, vector<double>& part_y);
+static GridGeom RectGrid01(int Nx, int Ny);
+
+};
+
+
+struct Modify{
+
+static void RemoveCells(GridGeom& grid, const std::vector<const Cell*>& cls);
+static void PointModify(GridGeom& grid, std::function<void(GridPoint*)> fun);
+static void ShallowAdd(GridGeom* from, GridGeom* to);
+
+};
+
+struct Info{
+
+static ShpVector<GridPoint> SharePoints(const GridGeom& grid, const vector<int>& indicies);
+static HMCont2D::ContourTree Contour(const GridGeom& grid);
+
 };
 
 
 
+}
 
 
 

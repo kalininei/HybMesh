@@ -24,6 +24,7 @@ struct Container: public ECol{
 
 	//get/set
 	Point* point(int i){return pdata.pvalue(i);}
+	void clear(){ pdata.clear(); ECol::clear(); }
 
 	//Methods
 	template<class TFrom, class = Tpp::IsBase<TParent, typename TFrom::TParent>>

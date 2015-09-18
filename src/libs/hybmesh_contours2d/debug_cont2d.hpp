@@ -15,6 +15,10 @@ struct Debug{
 	static void info_tree(const ContourTree& c);
 	static void info_tree_node(const ContourTree::TreeNode& c);
 
+	//contour in geogebra script format
+	static void geogebra_contour(const Contour& c);
+	static void geogebra_tree(const ContourTree& c);
+
 	//printing with tabulation
 	static int tabs;
 	static void Print(const char* fmt, ...);

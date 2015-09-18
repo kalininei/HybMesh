@@ -37,6 +37,12 @@ struct ContourTree: public ECollection {
 
 	//Algos
 	static double Area(const ContourTree& c);
+
+	//If tree is ok returns true.
+	//contacts are allowed
+	static bool CheckNoCross(const ContourTree& c);
+	//contacts are forbidden
+	static bool CheckNoContact(const ContourTree& c);
 };
 
 // ContourTree + set of open contours
@@ -51,6 +57,7 @@ struct ExtendedTree: public ContourTree {
 
 	//Algos
 	static ExtendedTree Assemble(const ECollection&);
+	static ContourTree ExtractTree(const ExtendedTree& et){ return ContourTree(et); }
 };
 
 

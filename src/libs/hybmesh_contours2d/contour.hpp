@@ -24,6 +24,15 @@ struct Contour: public ECollection{
 	std::array<Point*, 3> point_siblings(Point* p) const;
 	//return next point or null
 	Point* next_point(Point* p) const{ return std::get<2>(point_siblings(p));}
+
+	struct PInfo{
+		Point *p, *pprev, *pnext;
+		shared_ptr<Edge>  eprev, enext;
+		int index;
+	};
+	//returns vector of length (size()+1)
+	//detailed information about each node connection.
+	vector<PInfo> ordered_info() const;
 	
 	// ====== overridden from Collection
 	//only if TTarget is also a contour.
@@ -57,17 +66,35 @@ struct Contour: public ECollection{
 	bool IsWithin(const Point& p) const;
 
 	// ======= Algorithms
+	//calculates vector representing direction of contour at point p smoother by lengh len
+	//if p doesn't lie on c -> project it to c and calculate
+	static Vect SmoothedDirection(const Contour& c, Point* p, int direction, double len);
+
+	//finds first cross (with respect to length of c1) of contours c1, c2.
+	//returns <0>: if cross was found
+	//        <1>: cross point
+	//        <2,3>: normalized length coordinate of intersection
+	static std::tuple<bool, Point, double, double> Cross(const Contour& c1, const Contour& c2);
+		
 	static double Area(const Contour& c);
+	//weigth points by [0,1] weights of full contour length
 	static PCollection WeightPoints(const Contour& c, vector<double> w);
+	//weigth points by lenght
+	static PCollection WeightPointsByLen(const Contour& c, vector<double> lens);
 
 	//Offset
 	static Container<ContourTree> Offset(const Contour& source, double delta, OffsetTp tp);
+	//Cut contour
+	static Container<Contour> CutByWeight(const Contour& source, double w1, double w2);
 
 	//Assemble from shattered edges
-	static Contour Assemble(const ECollection& col, Point* pnt_start, Point* pnt_end);
-	static Contour Assemble(const ECollection& col, Point* pnt_start);
+	static Contour Assemble(const ECollection& col, const Point* pnt_start, const Point* pnt_end);
+	static Contour Assemble(const ECollection& col, const Point* pnt_start);
 	//Assemble from another contour
-	static Contour Assemble(const Contour& col, Point* pnt_start, Point* pnt_end);
+	static Contour Assemble(const Contour& col, const Point* pnt_start, const Point* pnt_end);
+	//assemles for pnt_start in the direction (+-1) til the length of
+	//resulting contour will be more then len
+	static Contour Assemble(const Contour& col, const Point* pnt_start, int direction, double len);
 
 	//Partition contour.
 	//step - step of partitioning

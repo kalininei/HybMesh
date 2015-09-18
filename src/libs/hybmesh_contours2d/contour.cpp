@@ -66,6 +66,45 @@ std::array<Point*, 3> Contour::point_siblings(Point* p) const{
 	return ret;
 }
 
+vector<Contour::PInfo> Contour::ordered_info() const{
+	vector<PInfo> ret;
+	if (size() == 0) return ret;
+	assert(is_closed() ? (size() > 2) : true);
+	vector<Point*> pts = ordered_points();
+	for (int i=0; i<pts.size(); ++i){
+		ret.push_back(PInfo());
+		auto& a = ret.back();
+		a.index = i;
+		a.p = pts[i];
+		if (i == 0) {
+			if (is_closed()){
+				a.pprev = pts[pts.size() - 2];
+				a.eprev = data.back();
+			} else {
+				a.pprev = 0;
+				a.eprev.reset();
+			}
+		} else {
+			a.pprev = pts[i-1];
+			a.eprev = data[i-1];
+		}
+		if (i == pts.size() - 1){
+			if (is_closed()){
+				a.pnext = pts[2];
+				a.enext = data[0];
+			} else {
+				a.pnext = 0;
+				a.enext.reset();
+			}
+		} else {
+			a.pnext = pts[i+1];
+			a.enext = data[i];
+		}
+
+	}
+	return ret;
+}
+
 void Contour::DirectEdges(){
 	auto p = ordered_points();
 	for (int i=0; i<size(); ++i){
@@ -102,10 +141,36 @@ bool Contour::IsWithin(const Point& p) const{
 
 std::tuple<bool, Point*>
 Contour::GuaranteePoint(const Point& p, PCollection& pcol){
-	_DUMMY_FUN_;
 	std::tuple<bool, Point*> ret;
-	std::get<0>(ret) = false;
-	std::get<1>(ret) = FindClosestNode(*this, p);
+	Point* pc = FindClosestNode(*this, p);
+	if ( p == *pc){
+		std::get<0>(ret) = false;
+		std::get<1>(ret) = pc;
+	} else {
+		std::tuple<Edge*, double, double> ce = FindClosestEdge(*this, p);
+		if (ISEQ(std::get<2>(ce), 0)){
+			std::get<0>(ret) = false;
+			std::get<1>(ret) = std::get<0>(ce)->pstart;
+		} else if (ISEQ(std::get<2>(ce), 1)){
+			std::get<0>(ret) = false;
+			std::get<1>(ret) = std::get<0>(ce)->pend;
+		} else {
+			Point* p1 = std::get<0>(ce)->pstart;
+			Point* p2 = std::get<0>(ce)->pend;
+			shared_ptr<Point> pnew(new Point(Point::Weigh(*p1, *p2, std::get<2>(ce))));
+			pcol.add_value(pnew);
+			int ind = get_index(std::get<0>(ce));
+			//cannot simply rewrite data to indexed edge because it can be
+			//used by another owners.
+			RemoveAt({ind});
+			AddAt(ind, {
+				std::make_shared<Edge>(p1, pnew.get()),
+				std::make_shared<Edge>(pnew.get(), p2)
+			});
+			std::get<0>(ret) = true;
+			std::get<1>(ret) = pnew.get();
+		}
+	}
 	return ret;
 }
 
@@ -128,6 +193,81 @@ double Contour::Area(const Contour& c){
 	}
 	return ret;
 };
+
+namespace{
+Vect smoothed_direction_core(const vector<Point*>& p){
+	assert(p.size() > 1);
+	Vect ret = *p.back() - *p[0];
+	vecNormalize(ret);
+	return ret;
+}
+
+}
+
+Vect Contour::SmoothedDirection(const Contour& c, Point* p, int direction, double len){
+	std::list<Point> apoints; //storage for additional points
+	vector<Point*> chosen = c.ordered_points();
+	//1. place p into chosen array
+	int pindex = -1;
+	//try to find exact match
+	auto fnd = std::find(chosen.begin(), chosen.end(), p);
+	if (fnd == chosen.end()) fnd = std::find_if(chosen.begin(), chosen.end(),
+			[&p](Point* p1){ return *p1 == *p; });
+	if (fnd != chosen.end()) pindex = fnd - chosen.begin();
+	//if failed -> place p on nearest edge
+	if (pindex < 0){
+		auto ce = FindClosestEdge(c, *p);
+		Edge* e = std::get<0>(ce);
+		double &w = std::get<2>(ce);
+		if (ISEQ(w, 0)) return SmoothedDirection(c,  e->pstart, direction, len);
+		if (ISEQ(w, 1)) return SmoothedDirection(c,  e->pend, direction, len);
+		apoints.push_back(Point::Weigh(*e->pstart, *e->pend, w));
+		pindex = c.get_index(e) + 1;
+		chosen.insert(chosen.begin() + pindex, &apoints.back());
+	}
+	
+	//2. revert according to direction
+	if (direction == -1){
+		std::reverse(chosen.begin(), chosen.end());
+		pindex = chosen.size()- 1 - pindex;
+	}
+	//3. for closed contours set p as the first point
+	//and guarantee len > 0.25 of full length. Hence we can remove edge before pindex.
+	if (c.is_closed()){
+		chosen.pop_back();
+		for (int i=0; i<pindex; ++i) chosen.push_back(chosen[i]);
+		chosen = vector<Point*>(chosen.begin()+pindex, chosen.end());
+		pindex = 0;
+		len = std::min(len, 0.25*c.length());
+	} else {
+	//4. if full length of open contour is less then len treat all contour
+		if (len>=c.length()) return smoothed_direction_core(chosen);
+	}
+	//5. go forward till we can
+	int iend = pindex;
+	double usedx = 0, last_len=0;
+	while (iend<chosen.size()-1 && ISGREATER(len, usedx)){
+		++iend;
+		last_len = Point::dist(*chosen[iend-1], *chosen[iend]);
+		usedx+=last_len;
+	}
+	//if we've gone too far change chosen[iend] to weighted point to provide len.
+	if (ISGREATER(usedx, len)){
+		double w = (usedx - len)/last_len;
+		apoints.push_back(Point::Weigh(*chosen[iend-1], *chosen[iend], w));
+		chosen[iend] = &apoints.back();
+	}
+	//6 .go backward if necessary
+	int istart = pindex;
+	if (ISGREATER(len, usedx)){
+		_THROW_NOT_IMP_;
+	}
+	
+	//7. leave only [istart-iend] points and calculate
+	chosen = vector<Point*>(chosen.begin()+istart,  chosen.begin() + iend+1);
+	return smoothed_direction_core(chosen);
+}
+
 
 Contour Contour::Partition(double step, const Contour& contour, PCollection& pstore, PartitionTp tp){
 	switch (tp){
@@ -233,7 +373,7 @@ Contour assemble_core(const Contour& con, int estart, int eend){
 
 }
 
-Contour Contour::Assemble(const Contour& con, Point* pnt_start, Point* pnt_end){
+Contour Contour::Assemble(const Contour& con, const Point* pnt_start, const Point* pnt_end){
 	//find indicies of pnt_start/pnt_end
 	auto op = con.ordered_points();
 	int i0 = std::find_if(op.begin(), op.end(), [&pnt_start](Point* p){ return p == pnt_start; })
@@ -259,18 +399,18 @@ Contour Contour::Assemble(const Contour& con, Point* pnt_start, Point* pnt_end){
 	}
 }
 
-Contour Contour::Assemble(const ECollection& col, Point* pnt_start, Point* pnt_end){
+Contour Contour::Assemble(const ECollection& col, const Point* pnt_start, const Point* pnt_end){
 	//1) get contour which contains pnt_start
 	Contour x = Contour::Assemble(col, pnt_start);
 	//2) cut it
 	return Contour::Assemble(x, pnt_start, pnt_end);
 }
 
-Contour Contour::Assemble(const ECollection& col, Point* pnt_start){
+Contour Contour::Assemble(const ECollection& col, const Point* pnt_start){
 	std::list<shared_ptr<Edge>> eset(col.begin(), col.end());
 	
 	//finds and removes from eset Edge with point
-	auto fnded = [&eset](Point* p) -> shared_ptr<Edge>{ 
+	auto fnded = [&eset](const Point* p) -> shared_ptr<Edge>{ 
 		auto fnd = std::find_if(eset.begin(), eset.end(),
 			[&p](shared_ptr<Edge> e){ return e->contains(p); });
 		if (fnd == eset.end()) return nullptr;
@@ -280,10 +420,10 @@ Contour Contour::Assemble(const ECollection& col, Point* pnt_start){
 	};
 
 	//finds another point of edge
-	auto nextnd = [](Edge* e, Point* p)->Point*{ return (p == e->pstart) ? e->pend : e->pstart; };
+	auto nextnd = [](Edge* e, const Point* p)->Point*{ return (p == e->pstart) ? e->pend : e->pstart; };
 
 	//builds edges in any direction
-	auto build_half_cont = [&](Point* p1){
+	auto build_half_cont = [&](const Point* p1){
 		Contour r;
 		while(1){
 			auto a = fnded(p1);
@@ -301,19 +441,47 @@ Contour Contour::Assemble(const ECollection& col, Point* pnt_start){
 	return c1;
 }
 
+Contour Contour::Assemble(const Contour& col, const Point* pnt_start, int direction, double len){
+	assert(col.contains_point(pnt_start));
+	if (col.size() == 1) return Contour(col);
+	if (direction == -1){
+		Contour c2(col);
+		c2.Reverse();
+		return Assemble(c2, pnt_start, 1.0, len);
+	}
+	auto oi = col.ordered_info();
+	auto fnd = std::find_if(oi.begin(), oi.end(), [&](PInfo& info){ return info.p == pnt_start; });
+	assert(fnd != oi.end());
+	double used_len = 0;
+	Contour ret;
+	while(used_len<len){
+		if (!fnd->enext){
+			if (col.is_closed()) fnd = oi.begin();
+			else return ret;
+		}
+		double dist = fnd->enext->length();
+		used_len += dist;
+		ret.add_value(fnd->enext);
+	}
+	return ret;
+}
 
 PCollection Contour::WeightPoints(const Contour& p, vector<double> vw){
+	double len = p.length();
+	for (auto& v: vw) v*=len;
+	return WeightPointsByLen(p, vw);
+}
+
+PCollection Contour::WeightPointsByLen(const Contour& p, vector<double> vw){
 	PCollection ret;
 	auto pseq = p.ordered_points();
 	std::sort(vw.begin(), vw.end());
-	assert(!ISLOWER(vw[0], 0) && !ISGREATER(vw.back(), 1.0));
+	assert(!ISLOWER(vw[0], 0) && !ISGREATER(vw.back(), p.length()));
 
 	vector<double> elens {0};
 	for (auto& e: p.data) elens.push_back(Point::dist(*e->pstart, *e->pend));
 	std::partial_sum(elens.begin(), elens.end(), elens.begin());
-	double len = elens.back();
-	std::transform(vw.begin(), vw.end(), vw.begin(), [&len](double x){ return x*len; });
-
+	
 	int icur=1;
 	for (auto w: vw){
 		while (elens[icur]<w && icur<pseq.size()) ++icur;
@@ -323,4 +491,54 @@ PCollection Contour::WeightPoints(const Contour& p, vector<double> vw){
 	}
 	return ret;
 }
+
+std::tuple<bool, Point, double, double>
+Contour::Cross(const Contour& c1, const Contour& c2){
+	std::tuple<bool, Point, double, double> ret;
+	vector<Point*> op1 = c1.ordered_points();
+	vector<Point*> op2 = c2.ordered_points();
+	
+	auto lens1 = ELengths(c1), lens2 = ELengths(c2);
+
+	double ksieta[2];
+	double L1=0.0, L2=0.0;
+	for (int i=0; i<op1.size()-1; ++i){
+		L2 = 0;
+		for (int j=0; j<op2.size()-1; ++j){
+			if (SectCross(*op1[i], *op1[i+1], *op2[j], *op2[j+1], ksieta)){
+				std::get<0>(ret) = true;
+				std::get<1>(ret) = Point::Weigh(*op1[i], *op1[i+1], ksieta[0]);
+				std::get<2>(ret) =
+					(L1 + lens1[i]*ksieta[0])/std::accumulate(lens1.begin(), lens1.end(), 0.0);
+				std::get<3>(ret) = 
+					(L2 + lens2[i]*ksieta[1])/std::accumulate(lens2.begin(), lens2.end(), 0.0);
+				return ret;
+			} else {
+				L2+=lens2[j];
+			}
+		}
+		L1 += lens1[i];
+	}
+	std::get<0>(ret) = false;
+	return ret;
+}
+
+Container<Contour> Contour::CutByWeight(const Contour& source, double w1, double w2){
+	Container<Contour> tmp;
+	Container<Contour>::DeepCopy(source, tmp);
+	PCollection wp = WeightPoints(tmp, {w1, w2});
+	auto p1 = tmp.GuaranteePoint(*wp.point(0), tmp.pdata);
+	auto p2 = tmp.GuaranteePoint(*wp.point(1), tmp.pdata);
+	Contour rc = Contour::Assemble(tmp, std::get<1>(p1), std::get<1>(p2));
+	Container<Contour> ret;
+	Container<Contour>::DeepCopy(rc, ret);
+	return ret;
+}
+
+
+
+
+
+
+
 

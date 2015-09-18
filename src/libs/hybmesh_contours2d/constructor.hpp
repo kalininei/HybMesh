@@ -5,12 +5,17 @@
 
 namespace HMCont2D{ namespace Constructor{
 
+//Shaped contours
 HMCont2D::Container<Contour> Circle(int N, double rad, Point cnt);
 
-HMCont2D::Contour ContourFromPoints(const vector<Point*>& pnt, bool forse_closed=false);
-
-HMCont2D::Container<Contour> ContourFromPoints(vector<double> pnt, bool forse_closed=false);
+//Contour from points
+HMCont2D::Contour ContourFromPoints(const vector<Point*>& pnt, bool force_closed=false);
+HMCont2D::Contour ContourFromPoints(const HMCont2D::PCollection& dt, bool force_closed=false);
+HMCont2D::Container<Contour> ContourFromPoints(vector<double> pnt, bool force_closed=false);
 HMCont2D::Container<Contour> ContourFromPoints(vector<Point> pnt, bool force_closed=false);
+
+//Contour from another contours with deep copy
+HMCont2D::Container<Contour> CutContour(const HMCont2D::Contour& cont, const Point& pstart, int direction, double len);
 
 
 }};

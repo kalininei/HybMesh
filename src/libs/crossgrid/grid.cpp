@@ -116,6 +116,7 @@ void GridGeom::exclude_area(const ContoursCollection& cnt){
 }
 
 void GridGeom::merge_congruent_points(){
+	if (n_points() == 0) return;
 	std::map<int, int> cp;
 	NodeFinder fnd(outer_rect());
 	for (int i=0; i<n_points(); ++i){
@@ -719,7 +720,7 @@ double GridGeom::area() const{
 }
 
 
-GridGeom BuildSquareGrid(const vector<double>& part_x,vector<double>& part_y){
+GridGeom GGeom::Constructor::RectGrid(const vector<double>& part_x,vector<double>& part_y){
 	int Npts = part_x.size()*part_y.size();
 	int Ncls = (part_x.size()-1)*(part_y.size()-1);
 	vector<double> points;
@@ -745,4 +746,51 @@ GridGeom BuildSquareGrid(const vector<double>& part_x,vector<double>& part_y){
 	}
 	return GridGeom(Npts, Ncls, &points[0], &cells[0]);
 }
+
+GridGeom GGeom::Constructor::RectGrid01(int Nx, int Ny){
+	vector<double> x(Nx);
+	vector<double> y(Ny);
+	for (int i=0; i<x.size(); ++i){ x[i] = (double)i/(Nx-1); }
+	for (int i=0; i<y.size(); ++i){ y[i] = (double)i/(Ny-1); }
+	return RectGrid(x, y);
+}
+
+void GGeom::Modify::RemoveCells(GridGeom& grid, const std::vector<const Cell*>& cls){
+	vector<int> bc(cls.size());
+	std::transform(cls.begin(), cls.end(), bc.begin(), [](const Cell* c){ return c->get_ind(); });
+	grid.remove_cells(bc);
+}
+
+void GGeom::Modify::PointModify(GridGeom& grid, std::function<void(GridPoint*)> fun){
+	std::for_each(grid.points.begin(), grid.points.end(),
+			[&fun](shared_ptr<GridPoint> gp){ fun(gp.get()); });
+}
+
+void GGeom::Modify::ShallowAdd(GridGeom* from, GridGeom* to){
+	std::copy(from->points.begin(), from->points.end(), std::back_inserter(to->points));
+	std::copy(from->cells.begin(), from->cells.end(), std::back_inserter(to->cells));
+	to->set_indicies();
+}
+
+ShpVector<GridPoint> GGeom::Info::SharePoints(const GridGeom& grid, const vector<int>& indicies){
+	ShpVector<GridPoint> ret;
+	for (int i: indicies) ret.push_back(grid.points[i]);
+	return ret;
+}
+
+
+HMCont2D::ContourTree GGeom::Info::Contour(const GridGeom& grid){
+	std::set<Edge> edges = grid.get_edges();
+	HMCont2D::ECollection ecol;
+	for (auto& e: edges) if (e.is_boundary()){
+		HMCont2D::Edge newe(grid.points[e.p1].get(), grid.points[e.p2].get());
+		ecol.add_value(newe);
+	}
+	auto ec = HMCont2D::ExtendedTree::Assemble(ecol);
+	auto ret = HMCont2D::ExtendedTree::ExtractTree(ec);
+	assert(ec.cont_count() == ret.cont_count());
+	return ret;
+}
+
+
 

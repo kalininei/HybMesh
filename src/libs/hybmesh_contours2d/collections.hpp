@@ -88,13 +88,20 @@ struct Collection{
 		std::transform(begin(), end(), std::back_inserter(ret), [](shared_ptr<Tvalue> a){ return a.get(); });
 		return ret;
 	}
-	bool contains(const Tvalue* a){
+	bool contains(const Tvalue* a) const {
 		return std::any_of(data.begin(), data.end(),
 			[&a](const Tentry& e){ return e.get() == a;
 		});
 	}
 
+	int get_index(const C* v) const {
+		auto fnd = std::find_if(begin(), end(), [&v](shared_ptr<C> e){ return e.get() == v; });
+		if (fnd == end()) return -1;
+		else return fnd-begin();
+	}
+
 	//set methods: templates are used because
+	virtual void clear() { data.clear(); }
 	//data internal structure can differ from TValue (derived from it) declared here.
 	template<class Inp>
 	using Valid = IsBase<Tvalue, Inp>;
@@ -111,6 +118,12 @@ struct Collection{
 		return static_cast<CInp*>(pvalue(size()-1));
 	}
 
+	template<class CInp, class=Valid<CInp>>
+	void add_values(const ShpVector<CInp>& v){
+		std::copy(v.begin(), v.end(), std::back_inserter(data));
+	}
+
+
 	template<class CInp=C, class=Valid<CInp>>
 	shared_ptr<CInp> pop_value(){
 		shared_ptr<CInp> ret(data.back());
@@ -123,6 +136,25 @@ struct Collection{
 	template<class CInp, class=Valid<typename CInp::Tvalue>>
 	void Unite(const CInp& c){
 		std::copy(c.begin(), c.end(), std::back_inserter(data));
+	}
+	//removes all entries which has zero count of external owners
+	void RemoveUnused(){
+		std::list<Tentry> lst(data.begin(), data.end());
+		data.clear();
+		lst.remove_if([](const Tentry& e){ return e.use_count() == 1; });
+		std::copy(lst.begin(), lst.end(), std::back_inserter(data));
+	}
+	//removes object at indicies
+	void RemoveAt(const std::set<int>& ind){ aa::remove_entries(data, ind); }
+
+	//adds sequence of data so, that v[0] be on data[ind] place
+	void AddAt(int ind, const vector<Tentry>& v){
+		assert(ind<=size() && ind >= 0);
+		vector<Tentry> cp; cp.reserve(size() + v.size());
+		std::copy(data.begin(), data.begin()+ind, std::back_inserter(cp));
+		std::copy(v.begin(), v.end(), std::back_inserter(cp));
+		std::copy(data.begin()+ind+1, data.end(), std::back_inserter(cp));
+		std::swap(data, cp);
 	}
 
 	//--------- static Methods
@@ -191,7 +223,7 @@ struct ECollection: public Tpp::Collection<Edge>{
 			[](double s, const Tentry& e){ return s + e->length(); });}
 	Edge* edge(int i) const { return pvalue(i); }
 
-	bool contains_point(const Point* a){
+	bool contains_point(const Point* a) const {
 		return std::any_of(data.begin(), data.end(),
 			[&a](const Tentry& e){ return e->contains(a); });
 	}
@@ -200,7 +232,14 @@ struct ECollection: public Tpp::Collection<Edge>{
 
 	//Methods
 	static void SaveVtk(const ECollection& dt, const char* fn);
+	//pointer to closest point
 	static Point* FindClosestNode(const ECollection& dt, const Point& p);
+	//closest edge-> returns Edge, distance, weight of closest
+	//point within edge.
+	static std::tuple<Edge*, double, double>
+	FindClosestEdge(const ECollection& dt, const Point& p);
+	//length of each edge
+	static vector<double> ELengths(const ECollection& dt);
 };
 
 

@@ -72,7 +72,49 @@ void Debug::info_tree_node(const ContourTree::TreeNode& c){
 	Cout()<<"+++++++++++++++++++++++++++++++++++++"<<std::endl;
 }
 
+#include <time.h>
+std::string random_id(int len){
+	static bool k = true;
+	if (k){
+		srand (time(NULL));
+		k = false;
+	}
+	std::string ret;
+	for (int i=0; i<len; ++i) ret += char(97 + rand()%26);
+	return ret;
+}
 
+void Debug::geogebra_contour(const Contour& c){
+	vector<Point*> op = c.ordered_points();
+	std::string id = random_id(3);
+	for (int i=0; i<op.size(); ++i){
+		if (i == op.size() - 1 && c.is_closed()) break;
+		printf("P%s_%i = (%10.8f, %10.8f)\n", id.c_str(), i+1, op[i]->x, op[i]->y);
+	}
+	if (op.size() == 2){
+		std::cout<<"L"+id<<" = Segment[";
+		std::cout<<"P"+id+"_1, ";
+		std::cout<<"P"+id+"_2]"<<std::endl;
+	} else if (!c.is_closed()){
+		std::cout<<"L"+id<<" = Polyline[";
+		for (int i=0; i<op.size(); ++i){
+			if (i>0) std::cout<<", ";
+			std::cout<<"P"+id+"_"<<i+1;
+		}
+		std::cout<<"]"<<std::endl;
+	} else {
+		std::cout<<"L"+id<<" = Polygon[";
+		for (int i=0; i<op.size()-1; ++i){
+			if (i>0) std::cout<<", ";
+			std::cout<<"P"+id+"_"<<i+1;
+		}
+		std::cout<<"]"<<std::endl;
+	}
+}
+
+void Debug::geogebra_tree(const ContourTree& c){
+	for (auto n: c.nodes) geogebra_contour(*n);
+}
 
 
 #endif

@@ -121,3 +121,50 @@ Contour* ExtendedTree::get_contour(Point* p) const{
 	}
 	return ret;
 }
+
+
+namespace {
+
+bool check_core(const ContourTree& tree, double v0, double v1){
+	//all contours are closed
+	for (auto cont: tree.nodes){
+		if (!cont->is_closed()) return false;
+	}
+	//each edge is owned by one contour
+	std::set<Edge*> eset;
+	for (auto cont: tree.nodes){
+		for (auto e: cont->data){
+			if (eset.find(e.get()) != eset.end()) return false;
+			eset.insert(e.get());
+		}
+	}
+	//no edge crosses
+	double ksieta[2];
+	for (int i=0; i<tree.size(); ++i){
+		for (int j=i+1; j<tree.size(); ++j){
+			Edge* e1 = tree.edge(i);
+			Edge* e2 = tree.edge(j);
+			if (Edge::AreConnected(*e1, *e2)) continue;
+			SectCross(*e1->pstart, *e1->pend, *e2->pstart, *e2->pend, ksieta);
+			if (ksieta[0]>v0 && ksieta[0]<v1 && ksieta[1]>v0 && ksieta[1]<v1)
+				return false;
+		}
+	}
+	return true;
+}
+
+}
+
+bool ContourTree::CheckNoCross(const ContourTree& tree){
+	return check_core(tree, +geps, 1-geps);
+}
+
+bool ContourTree::CheckNoContact(const ContourTree& tree){
+	return check_core(tree, -geps, 1+geps);
+}
+
+
+
+
+
+
