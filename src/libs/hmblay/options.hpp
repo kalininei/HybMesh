@@ -42,10 +42,6 @@ struct Input{
 	//start, end points of contour tree. Uses hole contour, if they match
 	Point start, end;
 
-	//number of steps for smoothing normals during
-	//treating with regular segments
-	int smooth_normals_steps;
-
 	//angles
 	double sharp_angle;
 	double corner_angle;
@@ -61,13 +57,15 @@ struct Input{
 		round_off(false),
 		start(Point(0,0)),
 		end(Point(0, 0)),
-		smooth_normals_steps(10),
 		sharp_angle(60),
 		corner_angle(120),
 		regular_angle(235){}
 };
 
 namespace Impl{
+
+//corner type: no (start of path), sharp, corner (right), regular (plain), obtuse
+enum class CornerTp {NO, ZERO, SHARP, CORNER, REGULAR, OBTUSE, NEGLECTABLE};
 
 //Input options with additional fields. Created by Create From Parent Command.
 //All data is deepcopied.
@@ -100,6 +98,10 @@ public:
 	ScaleBase* get_scaling(){ return scaling.get(); }
 	HMCont2D::Contour* get_path(){ return &path; }
 	HMCont2D::Contour* get_full_source(){ return &full_source; }
+
+	//treats corner according to this option
+	//a is an angle in radians
+	CornerTp CornerType(double a);
 
 	//Algorithms
 	static vector<Options> CreateFromParent(const vector<Input>& par);

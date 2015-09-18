@@ -92,6 +92,7 @@ void Options::Initialize(){
 	//Start and End points
 	pnt_start = ECol::FindClosestNode(*edges, start);
 	pnt_end = ECol::FindClosestNode(*edges, end);
+
 	//assemble a tree -> find contour with pnt_start/end -> cut it
 	auto tree = Etree::Assemble(*edges);
 	full_source = HMCont2D::Contour(*tree.get_contour(pnt_start));
@@ -117,21 +118,6 @@ void Options::Initialize(){
 	
 	//reverse path if necessary.
 	if (direction == Direction::OUTER) { path.ReallyReverse(); full_source.Reverse(); }
-
-	//partition
-	switch (bnd_step_method){
-		case BndStepMethod::CONST_BND_STEP_KEEP_ALL:
-			path = ECont::Partition(bnd_step, path, __all_data->pdata, Ptp::KEEP_ALL); 
-			break;
-		case BndStepMethod::CONST_BND_STEP:
-			path = ECont::Partition(bnd_step, path, __all_data->pdata, Ptp::IGNORE_ALL); 
-			break;
-		case BndStepMethod::CONST_BND_STEP_KEEP_SHAPE:
-			path = ECont::Partition(bnd_step, path, __all_data->pdata, Ptp::KEEP_SHAPE); 
-			break;
-		case BndStepMethod::NO_BND_STEPPING:
-			break;
-	};
 }
 
 vector<vector<Options*>> Options::BuildSequence(vector<Options>& inp){
@@ -163,3 +149,13 @@ vector<vector<Options*>> Options::BuildSequence(vector<Options>& inp){
 	}
 	return ret;
 }
+
+CornerTp Options::CornerType(double a){
+	CornerTp tp;
+	if (fabs(a)<1e-6) tp = CornerTp::ZERO;
+	else if (a<DegToAngle(sharp_angle)) tp = CornerTp::SHARP;
+	else if (a<DegToAngle(corner_angle)) tp = CornerTp::CORNER;
+	else if (a<DegToAngle(regular_angle)) tp = CornerTp::REGULAR;
+	else tp = CornerTp::OBTUSE;
+	return tp;
+};

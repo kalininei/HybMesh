@@ -60,7 +60,6 @@ void test02(){
 	inp.sharp_angle = inp.corner_angle = 0.0;
 	inp.regular_angle = 300;
 	inp.start = inp.end = Point(0,0);
-	inp.smooth_normals_steps = 10;
 
 	std::string cn("8-side polygon with outer layer");
 	auto col1 = HMCont2D::Constructor::Circle(8, 1.3, Point(2, 2));
@@ -98,11 +97,11 @@ void test03(){
 	inp.start=inp.end=Point(0,0);
 	inp.sharp_angle = inp.corner_angle = 0.0;
 	inp.regular_angle = 300;
-	inp.smooth_normals_steps = 0;
 
 	std::string cn("5-points polyline. Left layer");
 	auto col1 = HMCont2D::Constructor::ContourFromPoints(
 			{0,0, 1,1, 2,1.9, 4,3.5, 7,6.1});
+	HMCont2D::Debug::geogebra_contour(col1);
 	inp.direction = HMBlay::DirectionFromString("LEFT");
 	inp.start = Point(0,0);
 	inp.end = Point(7,6.1);
@@ -140,7 +139,6 @@ void test04(){
 	inp1.bnd_step_method = HMBlay::MethFromString("KEEP_ALL");
 	inp1.sharp_angle = inp1.corner_angle = 0.0;
 	inp1.regular_angle = 300;
-	inp1.smooth_normals_steps = 50;
 	inp1.direction = HMBlay::DirectionFromString("OUTER");
 	inp1.edges = &col1;
 
@@ -187,7 +185,6 @@ void test04(){
 	cn = std::string("Two layer with different partition depth count");
 	inp1.direction = inp2.direction = HMBlay::DirectionFromString("OUTER");
 	inp2.partition.push_back(1.0); inp2.partition.push_back(1.2);
-	inp1.smooth_normals_steps = inp2.smooth_normals_steps = 0;
 	GridGeom Ans4 = HMBlay::BuildBLayerGrid({inp1, inp2});
 	add_check([&](){
 		for (int i=0; i<Ans4.n_cells(); ++i) if (Ans4.get_cell(i)->area()<0) return false;
@@ -210,7 +207,6 @@ void test05(){
 	inp1.bnd_step_method = HMBlay::MethFromString("KEEP_ALL");
 	inp1.sharp_angle = inp1.corner_angle = 0.0;
 	inp1.regular_angle = 300;
-	inp1.smooth_normals_steps = 0;
 	inp1.direction = HMBlay::DirectionFromString("INNER");
 	inp1.edges = &col1;
 	inp1.partition = {0, 0.1, 0.2, 0.3, 0.4};
@@ -238,7 +234,6 @@ void test06(){
 	inp1.bnd_step_method = HMBlay::MethFromString("NO");
 	inp1.sharp_angle = inp1.corner_angle = 0.0;
 	inp1.regular_angle = 300;
-	inp1.smooth_normals_steps = 0;
 	inp1.partition = {0, 0.1};
 	inp1.bnd_step = 0.1;
 
@@ -295,6 +290,29 @@ void test06(){
 
 void test07(){
 	std::cout<<"07. Corner angle algorithm basic test"<<std::endl;
+	auto c1 = HMCont2D::Constructor::Circle(36, 3, Point(0, 0));
+	HMCont2D::PCollection apoints;
+	apoints.add_value(Point(-3, -7));
+	apoints.add_value(Point(4, -7));
+	HMCont2D::Contour con1 = HMCont2D::Contour::Assemble(c1,
+			HMCont2D::ECollection::FindClosestNode(c1, Point(3,0)),
+			HMCont2D::ECollection::FindClosestNode(c1, Point(-3,0)));
+	con1.add_value(HMCont2D::Edge(con1.last(), apoints.point(0)));
+	con1.add_value(HMCont2D::Edge(apoints.point(0), apoints.point(1)));
+	con1.add_value(HMCont2D::Edge(apoints.point(1), con1.first()));
+	HMCont2D::SaveVtk(con1, "_dbgout.vtk");
+	
+	HMBlay::Input inp1;
+	inp1.bnd_step_method = HMBlay::MethFromString("KEEP_SHAPE");
+	inp1.sharp_angle = 0;
+	inp1.corner_angle = 120;
+	inp1.regular_angle = 235;
+	inp1.direction = HMBlay::DirectionFromString("INNER");
+	inp1.partition = {0, 0.1, 0.2, 0.3, 0.4};
+	inp1.start = inp1.end = Point(0, 0);
+	inp1.bnd_step = 0.3;
+	inp1.edges = &con1;
+	GridGeom Ans5 = HMBlay::BuildBLayerGrid({inp1});
 }
 
 void test08(){
@@ -305,16 +323,39 @@ void test09(){
 	std::cout<<"09 Throw on crossing intervals"<<std::endl;
 }
 
+void test10(){
+	std::cout<<"10. Corner + Obtuse angle"<<std::endl;
+	auto c = HMCont2D::Constructor::ContourFromPoints(
+		{0,0, 2,0, 2.3,-1,  5,-1});
+	HMBlay::Input inp1;
+	inp1.bnd_step_method = HMBlay::MethFromString("KEEP_SHAPE");
+	inp1.sharp_angle = 0;
+	inp1.corner_angle = 150;
+	inp1.regular_angle = 200;
+	inp1.direction = HMBlay::DirectionFromString("INNER");
+	inp1.partition = {0, 0.1, 0.2, 0.3, 0.4};
+	inp1.start = Point(0, 0);
+	inp1.end = Point(5, -1);
+	inp1.bnd_step = 0.1;
+	inp1.edges = &c;
+	GridGeom Ans1 = HMBlay::BuildBLayerGrid({inp1});
+	add_check(Ans1.n_cells() == 232 && Ans1.n_points() == 295, "Mesh");
+};
+
+
 int main(){
 	//test01();
 	//test02();
-	//test03();
+	test03();
 	//test04();
 	//test05();
-	test06();
+	//test06();
 	//test07();
 	//test08();
 	//test09();
+
+
+	//test10();
 
 	if (FAILED_CHECKS ==1){
 		std::cout<<FAILED_CHECKS<<" test failed <<<<<<<<<<<<<<<<<<<"<<std::endl;

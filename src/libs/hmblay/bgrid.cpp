@@ -1,253 +1,267 @@
 #include "bgrid.hpp"
 #include "simple_bgrid.hpp"
+#include "canonic_bgrid.hpp"
 
 using namespace HMBlay::Impl;
 
-void PathPntData::fill(Point* p1, Point* p2, Point* p3){
-	//building of object for 'ext_data' field
-	if (p1 == 0 || p3 == 0){
-		tp = CornerTp::NO;
-		angle = M_PI;
-		if (p1 == 0) normal = vecRotate((*p3 - *p2), M_PI/2.0);
-		if (p3 == 0) normal = vecRotate((*p2 - *p1), M_PI/2.0);
-	} else {
-		angle = Angle(*p1, *p2, *p3);
-		//type
-		if (angle<DegToAngle(opt->sharp_angle)) tp = CornerTp::SHARP;
-		else if (angle<DegToAngle(opt->corner_angle)) tp = CornerTp::CORNER;
-		else if (angle<DegToAngle(opt->regular_angle)) tp = CornerTp::REGULAR;
-		else tp = CornerTp::OBTUSE;
-		//normal, option
-		normal = vecRotate((*p3 - *p2), angle/2.0);
-	}
-	vecNormalize(normal);
+namespace{
+struct MConnector{
+private:
+	virtual void ModifyAdjecents(){};
+	virtual void BuildInternals(){};
+protected:
+	MappedMesher *prev, *next;
+	MConnector(MappedMesher* _prev, MappedMesher* _next): prev(_prev), next(_next){}
+public:
+	static shared_ptr<MConnector>
+	Build(CornerTp tp, MappedMesher* prev, MappedMesher* next);
+	
+	//modifies prev, next meshes,
+	//build connection mesh if nessessary.
+	void Apply(){ ModifyAdjecents(); BuildInternals();}
+
+	//adds next grid along with connection section to g
+	virtual void Add(shared_ptr<BGrid>& g) = 0;
 };
 
-ExtPath ExtPath::Assemble(const vector<Options*>& data){
-	//data[i]->path are in strict sequence.
-	//all data may have different options
-	ExtPath ret;
-	for (auto d: data){
-		auto p = d->get_path();
-		//check for ordering
-		assert(ret.size() == 0 || ret.last() == p->first());
-		auto pnt = p->ordered_points();
-		//add empty extended data object.
-		//conflicting i=0 edge: set priority to longest partition
-		if (ret.size()>0){
-			auto L1 = ret.ext_data.back().opt->partition.back();
-			auto L2 = d->partition.back();
-			if (L2>L1) ret.ext_data.back().opt = d;
-		} else ret.ext_data.push_back(PathPntData(d));
-		for (int i=1; i<pnt.size(); ++i){
-			ret.ext_data.push_back(PathPntData(d));
-		}
-		//add edges
-		ret.Unite(*p);
+struct FillerConnector: public MConnector{
+protected:
+	shared_ptr<MappedMesher> connection_grid;
+	shared_ptr<MappedRect> connection_area;
+	FillerConnector(MappedMesher* _prev, MappedMesher* _next): MConnector(_prev, _next){}
+public:
+	void Add(shared_ptr<BGrid>& g) override{
+		//1) add previous grid if it has not been add yet
+		if (!g) g.reset(new BGrid());
+		if (g->n_cells() == 0) GGeom::Modify::ShallowAdd(&prev->result, g.get());
+		//2) add connection grid
+		GGeom::Modify::ShallowAdd(&connection_grid->result, g.get());
+		//3) add next grid
+		GGeom::Modify::ShallowAdd(&next->result, g.get());
 	}
-	//fill extended data
-	auto p = ret.ordered_points();
-	if (ret.is_closed()){
-		//conflicting first-last
-		auto L1 = ret.ext_data[0].opt->partition.back(),
-		     L2 = ret.ext_data.back().opt->partition.back();
-		if (L1>=L2) ret.ext_data.back().opt = ret.ext_data[0].opt;
-		else ret.ext_data[0].opt = ret.ext_data.back().opt;
-		//take into account last-first connection
-		for (int i=0; i<p.size(); ++i){
-			Point* pcur = p[i];
-			Point* pprev = (i==0) ? p[p.size()-2] : p[i-1];
-			Point* pnext = (i==p.size()-1) ? p[1] : p[i+1];
-			ret.ext_data[i].fill(pprev, pcur, pnext);
-		}
-	} else {
-		//assemble without additional connections
-		for (int i=0; i<p.size(); ++i){
-			Point* pcur = p[i];
-			Point* pprev = (i==0) ? 0 : p[i-1];
-			Point* pnext = (i==p.size()-1) ? 0 :p[i+1];
-			ret.ext_data[i].fill(pprev, pcur, pnext);
-		}
-	}
-	return ret;
-}
+};
 
-void ExtPath::AdoptEndNormals(const Contour& outer){
-	if (is_closed()) return;
-	auto need_to_adopt = [](Vect n1, Vect n2){
-		if (triarea(Point(0, 0), n1, n2) < 0) return true;
-		if (Angle(n2, Point(0, 0), n1) < M_PI/6) return true;
-		return false;
-	};
+struct RightConnector: public FillerConnector{
+private:
+	HMCont2D::Container<HMCont2D::Contour> left, bot;
+	HMCont2D::Contour right, top;
+	void BuildInternals() override {
+		//1) assemble borders
+		HMCont2D::Contour _left = prev->rect->BottomContour();
+		left = HMCont2D::Contour::CutByWeight(_left, prev->wend, 1.0); 
+		left.ReallyReverse();
+		HMCont2D::Contour _bot = next->rect->BottomContour();
+		bot = HMCont2D::Contour::CutByWeight(_bot, 0.0, next->wstart); 
+		HMCont2D::Contour right = next->LeftContour();
+		HMCont2D::Contour top = prev->RightContour();
 
-	//start point
-	Point* p0 = first();
-	auto sib0 = outer.point_siblings(p0);
-	assert(sib0[1] && sib0[2]);
-	if (sib0[0] != 0){
-		Vect n = *sib0[0] - *sib0[1];
-		if (need_to_adopt(ext_data[0].normal, n)){
-			vecNormalize(n);
-			ext_data[0].normal = n;
-		}
-	}
-	//end point
-	Point* p1 = last();
-	auto sib1 = outer.point_siblings(p1);
-	assert(sib1[1] && sib1[0]);
-	if (sib1[2] != 0){
-		Vect n = *sib1[2] - *sib1[1];
-		if (need_to_adopt(n, ext_data.back().normal)){
-			vecNormalize(n);
-			ext_data.back().normal = n;
-		}
-	}
-}
+		//2) assemble connector
+		connection_area = FourLineRect::Factory(left, right, bot, top);
+		connection_grid.reset(new MappedMesher(connection_area.get(), 0.0, 1.0));
 
-BGrid::TEpMap BGrid::RemoveObtuse(vector<ExtPath*>&& v){
-	_DUMMY_FUN_;
-	assert(v.size()>0);
-	BGrid::TEpMap ret;
-	ret[v[0]] = vector<ExtPath>( {ExtPath(*v[0])} );
-	return ret;
-}
-
-BGrid::TEpMap BGrid::RemoveSharp(vector<ExtPath*>&& v){
-	_DUMMY_FUN_;
-	assert(v.size()>0);
-	BGrid::TEpMap ret;
-	ret[v[0]] = vector<ExtPath>( {ExtPath(*v[0])} );
-	return ret;
-}
-
-BGrid::TEpMap BGrid::RemoveCorner(vector<ExtPath*>&& v){
-	_DUMMY_FUN_;
-	assert(v.size()>0);
-	BGrid::TEpMap ret;
-	ret[v[0]] = vector<ExtPath>( {ExtPath(*v[0])} );
-	return ret;
-}
-
-BGrid BGrid::JoinCornerNodes(vector<std::pair<ExtPath*, BGrid*>>& inp){
-	_DUMMY_FUN_;
-	assert(inp.size()>0);
-	return BGrid(*inp[0].second);
-}
-
-BGrid BGrid::JoinSharpNodes(vector<std::pair<ExtPath*, BGrid*>>& inp){
-	_DUMMY_FUN_;
-	assert(inp.size()>0);
-	return BGrid(*inp[0].second);
-}
-
-BGrid BGrid::JoinObtuseNodes(vector<std::pair<ExtPath*, BGrid*>>& inp){
-	assert(inp.size()>0);
-	_DUMMY_FUN_;
-	return BGrid(*inp[0].second);
-}
-
-ShpVector<BGrid> BGrid::MeshSequence(vector<Options*>& data){ 
-	auto ret = ShpVector<BGrid>();
-	auto BuildVP = [](TEpMap& inp)->vector<ExtPath*>{
-		//Extracts all keys of input map to vector of pointers to keys
-		vector<ExtPath*> ret;
-		for (auto& kv: inp) for (auto& v: kv.second) ret.push_back(&v);
-		return ret;
-	};
-	auto assemble_path_grid = [](vector<ExtPath>& dt, std::map<ExtPath*, BGrid*>& mp)
-			->vector<std::pair<ExtPath*, BGrid*>>{
-		//merge pathes from vector with grids from map values
-		vector<std::pair<ExtPath*, BGrid*>> inpdata;
-		for (auto& v: dt){
-			ExtPath* pth = &v;
-			BGrid* g = mp[pth];
-			inpdata.push_back(std::make_pair(pth, g));
+		//3) build a grid there
+		auto bot_part=[&](double, double)->vector<double>{
+			//This function is called once since its ok to calculate here
+			//get a partition from top and stretch it
+			vector<double> ret {0};
+			auto lens = HMCont2D::Contour::ELengths(top);
+			std::copy(lens.begin(), lens.end(), std::back_inserter(ret));
+			std::partial_sum(ret.begin(), ret.end(), ret.begin());
+			double lentop = std::accumulate(lens.begin(), lens.end(), 0.0);
+			double lenbot = bot.length();
+			for (auto& v: ret) v = v/lentop*lenbot;
+			return ret;
 		};
-		return inpdata;
-	};
-	// basic options
-	int Nsmooth = 0;
-	for (auto op: data) if (op->smooth_normals_steps>Nsmooth) 
-		Nsmooth = op->smooth_normals_steps;
+		vector<double> f2out {0};
+		auto lens = HMCont2D::Contour::ELengths(right);
+		std::copy(lens.begin(), lens.end(), std::back_inserter(f2out));
+		std::partial_sum(f2out.begin(), f2out.end(), f2out.begin());
+		auto vert_part=[&f2out](double)->vector<double>{
+			//calculate before since function is called multiple times
+			return f2out;
+		};
+		connection_grid->Fill(bot_part, vert_part);
+	}
+public:
+	RightConnector(MappedMesher* _prev, MappedMesher* _next): FillerConnector(_prev, _next){
+		//find cross point between top lines of previous and
+		//next mesh_areas
+		HMCont2D::Contour prev_top = prev->rect->TopContour();
+		HMCont2D::Contour next_top = next->rect->TopContour();
+		std::tuple<bool, Point, double, double> cross =
+			HMCont2D::Contour::Cross(prev_top, next_top);
+		assert(std::get<0>(cross));
+		//cut meshed area by found weights
+		prev->wend = std::get<2>(cross);
+		next->wstart = std::get<3>(cross);
+	}
+};
 
-	// ============================ Dividing paths
-	// Building a tree-like structure of pathes.
-	// On each level path is divided by splitting with angles
-	// of special type. Sum of pathes on each level equals full path.
-	// TEpMap is std::map<ExtPath*, vector<ExtPath>> -- parent to children dictionary.
-	//1) assemble extended path
+struct ObtuseConnector: public FillerConnector{
+private:
+	Point top_right_pnt;
+	HMCont2D::Contour left, bot, right, top;
+	void BuildInternals() override {
+		//1) assemble left/bot:
+		// left/bot are straight lines. Otherwise there was an error
+		// during ExtPath division
+		left = prev->RightContour();
+		bot = next->LeftContour();
+		assert(ISEQ( left.length(), Point::dist(*left.first(), *left.last()) ));
+		assert(ISEQ( bot.length(),  Point::dist(*bot.first(), *bot.last())  ));
+		int sz = std::min(left.size(), bot.size());
+		if (left.size()>sz) left = HMCont2D::ECollection::ShallowCopy(left, 0, sz);
+		if (bot.size()>sz) bot = HMCont2D::ECollection::ShallowCopy(bot, 0, sz);
+
+		//2) assembling top/right
+		// Find a corner point and draw lines from left/bot to it
+		Vect v1 = *left.last() - *left.first();
+		v1 = vecRotate(v1, 3*M_PI/2); 
+		Vect v2 = *bot.last() - *bot.first();
+		v2 = vecRotate(v2, M_PI/2);
+		double ksieta[2];
+		SectCross(*left.last(), *left.last() + v1, *bot.last(), *bot.last() + v2, ksieta);
+		if (ksieta[0]<2 && ksieta[1]<2){
+			top_right_pnt = Point::Weigh(*left.last(), *left.last() + v1, ksieta[0]);
+		} else {
+			//Circle grid is needed
+			_THROW_NOT_IMP_;
+		}
+		top.clear(); right.clear();
+		top.add_value(HMCont2D::Edge { left.last(), &top_right_pnt});
+		right.add_value(HMCont2D::Edge { bot.last(), &top_right_pnt});
+
+		//3) assemble connector
+		connection_area = FourLineRect::Factory(left, right, bot, top);
+		connection_grid.reset(new MappedMesher(connection_area.get(), 0.0, 1.0));
+
+		//4) build a grid there
+		auto bot_part=[&](double, double)->vector<double>{
+			vector<double> ret {0};
+			auto lens = HMCont2D::Contour::ELengths(bot);
+			std::copy(lens.begin(), lens.end(), std::back_inserter(ret));
+			std::partial_sum(ret.begin(), ret.end(), ret.begin());
+			return ret;
+		};
+		vector<double> f2out {0};
+		auto lens = HMCont2D::Contour::ELengths(left);
+		std::copy(lens.begin(), lens.end(), std::back_inserter(f2out));
+		std::partial_sum(f2out.begin(), f2out.end(), f2out.begin());
+		auto vert_part=[&f2out](double)->vector<double>{
+			return f2out;
+		};
+		connection_grid->Fill(bot_part, vert_part);
+	}
+public:
+	ObtuseConnector(MappedMesher* _prev, MappedMesher* _next): FillerConnector(_prev, _next){
+	}
+};
+
+struct SharpConnector: public MConnector{
+	SharpConnector(MappedMesher* _prev, MappedMesher* _next): MConnector(_prev, _next){
+		_THROW_NOT_IMP_;
+	}
+	void Add(shared_ptr<BGrid>& g) override{ _THROW_NOT_IMP_; }
+};
+
+shared_ptr<MConnector> MConnector::Build(CornerTp tp, MappedMesher* prev, MappedMesher* next){
+	switch (tp){
+		case CornerTp::SHARP:  return std::make_shared<SharpConnector>(prev, next);
+		case CornerTp::OBTUSE:  return std::make_shared<ObtuseConnector>(prev, next);
+		case CornerTp::CORNER: return std::make_shared<RightConnector>(prev, next);
+		default: assert(false);
+	}
+}
+
+}
+
+shared_ptr<BGrid> BGrid::MeshFullPath(const ExtPath& epath){
+	//1. divide by angles
+	vector<ExtPath> pths = ExtPath::DivideByAngle(epath,
+			{CornerTp::CORNER, CornerTp::OBTUSE, CornerTp::SHARP});
+
+	//2. build conform mapping for each subpath
+	ShpVector<MappedRect> mps;
+	for (auto& p: pths){
+		double h = p.largest_depth();
+		mps.push_back(MappedCavity::Factory(p.leftbc, p.rightbc, p, h));
+	}
+
+	//3. build rectangular meshers
+	ShpVector<MappedMesher> mesher4;
+	for (auto& m: mps){
+		mesher4.push_back(shared_ptr<MappedMesher>());
+		mesher4.back().reset(new MappedMesher(m.get(), 0, 1));
+	}
+
+	//4. Connection rules
+	ShpVector<MConnector> connectors;
+	for (int i=0; i<mps.size()-1; ++i){
+		CornerTp t = pths[i].ext_data.back().tp;
+		connectors.push_back(MConnector::Build(t, mesher4[i].get(), mesher4[i+1].get()));
+	}
+	if (epath.is_closed()){ _THROW_NOT_IMP_; }
+
+
+	//5. build rectangular meshes
+	for (int i=0; i<mesher4.size(); ++i){
+		ExtPath& ipth = pths[i];
+		auto bpart = [&ipth](double len1, double len2)->vector<double>{
+			return ipth.PathPartition(len1, len2);
+		};
+		auto wpart = [&ipth](double len1)->vector<double>{
+			return ipth.VerticalPartition(len1);
+		};
+		mesher4[i]->Fill(bpart, wpart);
+	}
+
+	//6. Connection procedures
+	for (auto& c: connectors) c->Apply();
+	
+	//7. Gather all resulting meshes
+	shared_ptr<BGrid> g;
+	for (auto& c: connectors) c->Add(g);
+	g->merge_congruent_points();
+
+	return g;
+}
+
+shared_ptr<BGrid> BGrid::MeshSequence(vector<Options*>& data){ 
+	auto ret = shared_ptr<BGrid>();
+
+	//1) assemble extended path = path + boundaries + angles
 	ExtPath fullpath = ExtPath::Assemble(data);
 
-	//2) Adopt first/last normal according to full contour if full contour
-	//   is closed and meshed contour is open
-	fullpath.AdoptEndNormals(*data[0]->get_full_source());
+	//2) if corner angle section is very short then
+	//   make it sharp or regular depending on adjecent corner types
+	ExtPath::ReinterpretCornerTp(fullpath);
 
-	//2) Remove all obtuse entries
-	TEpMap no_obtuse = RemoveObtuse({&fullpath});
-	
-	//3) Remove all sharp entries 
-	TEpMap no_sharp = RemoveSharp(BuildVP(no_obtuse));
+	//3) build grid for a path
+	ret = BGrid::MeshFullPath(fullpath);
 
-	//4) Remove all corner entries
-	TEpMap no_corner = RemoveCorner(BuildVP(no_sharp));
+	//4) guarantee no self-intersections
+	ret = NoSelfIntersections(ret);
 
-	// ============================ Assembling primitives
-	ShpVector<BGrid> primitives;  //grids pool
-	std::map<ExtPath*, BGrid*> no_corner_primitives;
-	for (auto& kv: no_corner){
-		for (auto& v: kv.second){
-			primitives.push_back(std::make_shared<BGrid>(
-				SimpleBGrid(v, Nsmooth)
-			));
-			no_corner_primitives[&v] = primitives.back().get();
-		}
-	}
 
-	// ============================ Joining primitives
-	// 3) merging no corner
-	std::map<ExtPath*, BGrid*> no_sharp_primitives;
-	for (auto& kv: no_corner){
-		auto inpdata = assemble_path_grid(kv.second, no_corner_primitives);
-		primitives.push_back(std::make_shared<BGrid>(
-			JoinCornerNodes(inpdata)
-		));
-		no_sharp_primitives[kv.first] = primitives.back().get();
-	}
-
-	// 2) merging no sharp
-	std::map<ExtPath*, BGrid*> no_obtuse_primitives;
-	for (auto& kv: no_sharp){
-		auto inpdata = assemble_path_grid(kv.second, no_sharp_primitives);
-		primitives.push_back(std::make_shared<BGrid>(
-			JoinSharpNodes(inpdata) 
-		));
-		no_obtuse_primitives[kv.first] = primitives.back().get();
-	}
-	
-	// 1) merging no obtuse
-	std::map<ExtPath*, BGrid*> fingrd;
-	for (auto& kv: no_obtuse){
-		auto inpdata = assemble_path_grid(kv.second, no_obtuse_primitives);
-		primitives.push_back(std::make_shared<BGrid>(
-			JoinObtuseNodes(inpdata)
-		));
-		fingrd[kv.first] = primitives.back().get();
-	}
-	
-	// ============================ Assemble result
-	//find a fingrd in a grids pool and return it
-	auto full_path_pointer = &fullpath;
-	for (auto& g: primitives){
-		if (fingrd.find(full_path_pointer) != fingrd.end()){
-				ret.push_back(g);
-				return ret;
-		}
-	}
-	throw;
+	return ret;
 }
 
-BGrid BGrid::ImposeBGrids(ShpVector<BGrid>& gg){
-	_DUMMY_FUN_;
-	return BGrid(*gg[0]);
+shared_ptr<BGrid> BGrid::NoSelfIntersections(shared_ptr<BGrid> g){
+	auto cont = GGeom::Info::Contour(*g);
+	//check for no self-contacts in resulting tree
+	assert( cont.cont_count() > 0 && HMCont2D::ContourTree::CheckNoContact(cont) );
+	//area as sum of cells areas
+	double area1 = g->area();
+	//area as bnd area
+	double area2 = HMCont2D::ContourTree::Area(cont);
+	if (ISEQ(area1, area2)) return g;
+	else{
+		_THROW_NOT_IMP_;
+	}
 }
 
+shared_ptr<BGrid> BGrid::ImposeBGrids(ShpVector<BGrid>& gg){
+	if (gg.size() == 0) return shared_ptr<BGrid>();
+	if (gg.size() == 1) return gg[0];
+	_THROW_NOT_IMP_;
+}

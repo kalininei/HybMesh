@@ -4,14 +4,16 @@ set (HEADERS
 	hmblay.hpp
 	options.hpp
 	bgrid.hpp
-	simple_bgrid.hpp
+	extpath.hpp
+	canonic_bgrid.hpp
 )
 
 set (SOURCES
 	hmblay.cpp
 	options.cpp
 	bgrid.cpp
-	simple_bgrid.cpp
+	extpath.cpp
+	canonic_bgrid.cpp
 )
 
 source_group ("Header Files" FILES ${HEADERS} ${HEADERS})
@@ -23,11 +25,13 @@ add_library(${HMBLAY_TARGET} SHARED ${HEADERS} ${SOURCES})
 target_link_libraries(${HMBLAY_TARGET} ${BGEOM2D_TARGET})
 target_link_libraries(${HMBLAY_TARGET} ${HYBMESH_CONTOURS2D_TARGET})
 target_link_libraries(${HMBLAY_TARGET} ${CROSSGRID_TARGET})
+target_link_libraries(${HMBLAY_TARGET} ${HMFEM_TARGET})
 
 include_directories(${CommonInclude})
 include_directories(${BGEOM2D_INCLUDE})
 include_directories(${HYBMESH_CONTOURS2D_INCLUDE})
 include_directories(${CROSSGRID_INCLUDE})
+include_directories(${HMFEM_INCLUDE})
 
 install(TARGETS ${HMBLAY_TARGET}
 	DESTINATION ${LIB_INSTALL_DIR})
