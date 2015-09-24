@@ -57,7 +57,8 @@ Contour cns::ContourFromPoints(const HMCont2D::PCollection& dt, bool force_close
 	return cns::ContourFromPoints(dt.pvalues(), force_closed);
 }
 
-Container<Contour> cns::CutContour(const HMCont2D::Contour& cont, const Point& pstart, int direction, double len){
+Container<Contour> cns::CutContour(const HMCont2D::Contour& cont,
+		const Point& pstart, int direction, double len){
 	Container<Contour> ret;
 	//if pstart lies on cont -> use simple assembling
 	vector<Point*> op = cont.ordered_points();
@@ -67,15 +68,23 @@ Container<Contour> cns::CutContour(const HMCont2D::Contour& cont, const Point& p
 		Container<Contour>::DeepCopy(c2, ret);
 		return ret;
 	}
-	//place pstart on contour then use assembling
-	Contour c2 = cont;
-	auto eres = ECollection::FindClosestEdge(c2, pstart);
-	Edge* ed = std::get<0>(eres);
-	int index = c2.get_index(ed);
-	c2.RemoveAt({index});
-	Point pp = pstart;
-	c2.AddAt(index, { std::make_shared<Edge>(ed->pstart, &pp), std::make_shared<Edge>(ed->pstart, &pp) });
-	Container<Contour>::DeepCopy(c2, ret);
+	//if not-> place point and try once again
+	Container<Contour> c2 = Container<Contour>::DeepCopy(cont);
+	c2.GuaranteePoint(pstart, c2.pdata);
+	return cns::CutContour(c2, pstart, direction, len);
+}
+
+HMCont2D::Container<Contour> cns::CutContour(const HMCont2D::Contour& cont,
+		const Point& pstart, const Point& pend){
+	PCollection tmpp;
+	Contour tmpc = cont;
+	auto p1 = std::get<1>(tmpc.GuaranteePoint(pstart, tmpp));
+	auto p2 = std::get<1>(tmpc.GuaranteePoint(pend, tmpp));
+	tmpc = Contour::Assemble(tmpc, p1, p2);
+	Container<Contour> ret;
+	Container<Contour>::DeepCopy(tmpc, ret);
 	return ret;
 }
+
+
 

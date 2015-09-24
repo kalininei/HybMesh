@@ -7,5 +7,5 @@
 -I /home/ek/Work/HybMesh/src/libs/external/clipper
 -I /home/ek/Work/HybMesh/src/libs/hmcport/
 -I /home/ek/Work/HybMesh/src/libs/crossgrid/
--I /home/ek/Work/HybMesh/src/libs/hmfem/
+-I /home/ek/Work/HybMesh/src/libs/hmmath/
 -I /home/ek/Work/HybMesh/src/libs/hmblay/

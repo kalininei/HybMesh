@@ -47,6 +47,10 @@ struct Input{
 	double corner_angle;
 	double regular_angle;
 
+	//force conformal mapping for all areas.
+	//no rectangle approximation if true.
+	bool force_conformal;
+
 	//Default values
 	Input():
 		partition({0}),
@@ -59,7 +63,8 @@ struct Input{
 		end(Point(0, 0)),
 		sharp_angle(60),
 		corner_angle(120),
-		regular_angle(235){}
+		regular_angle(235),
+		force_conformal(false){}
 };
 
 namespace Impl{

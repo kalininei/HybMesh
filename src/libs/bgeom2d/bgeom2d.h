@@ -17,6 +17,16 @@ inline bool ISGREATER(double x, double y){ return x>y+geps; }
 inline int SIGN(double x){ if (ISZERO(x)) return 0; else return (x<0) ? -1 : 1; }
 inline double sqr(double x){ return x*x; }
 
+//map for gathering coordinates
+template<class C>
+struct TCoordMap: public std::map<double, C, bool(*)(double, double)>{
+	TCoordMap(): std::map<double, C, bool(*)(double, double)>(ISLOWER){}
+};
+template<class C>
+struct TCoordSet: public std::set<C, bool(*)(double, double)>{
+	TCoordSet(): std::set<C, bool(*)(double, double)>(ISLOWER){}
+};
+
 //positioning constants
 const int BOUND = 0;
 const int INSIDE = 1;
@@ -26,9 +36,9 @@ const int OUTSIDE = -1;
 struct Point{
 	double x,y;
 	//constructors
-	explicit Point(double _x=0, double _y=0):x(_x), y(_y){}
-	Point(const Point& p2):x(p2.x), y(p2.y){}
-	Point& operator=(const Point& p){
+	explicit Point(double _x=0, double _y=0) noexcept:x(_x), y(_y){}
+	Point(const Point& p2) noexcept:x(p2.x), y(p2.y){}
+	Point& operator=(const Point& p) noexcept{
 		if (this!=&p){
 			this->x=p.x; this->y=p.y;
 		}
@@ -91,33 +101,33 @@ struct Point{
 };
 
 //point operators
-inline Point operator+(const Point& left, const Point& right){
+inline Point operator+(const Point& left, const Point& right) noexcept{
 	return Point(left.x+right.x, left.y+right.y);
 }
-inline Point operator-(const Point& left, const Point& right){
+inline Point operator-(const Point& left, const Point& right) noexcept{
 	return Point(left.x-right.x, left.y-right.y);
 }
-inline Point& operator+=(Point& left, const Point& right){
+inline Point& operator+=(Point& left, const Point& right) noexcept{
 	left.x+=right.x; left.y+=right.y;
 	return left;
 }
-inline Point& operator-=(Point& left, const Point& right){
+inline Point& operator-=(Point& left, const Point& right) noexcept{
 	left.x-=right.x; left.y-=right.y;
 	return left;
 }
-inline Point& operator/=(Point& left, double d){
+inline Point& operator/=(Point& left, double d) noexcept{
 	left.x/=d; left.y/=d;
 	return left;
 }
-inline Point& operator*=(Point& left, double d){
+inline Point& operator*=(Point& left, double d) noexcept{
 	left.x*=d; left.y*=d;
 	return left;
 }
-inline Point operator/(const Point& p, double d){ auto x=Point(p); return std::move(x/=d); }
-inline Point operator*(const Point& p, double d){ auto x=Point(p); return std::move(x*=d); }
-inline bool operator==(const Point& p1, const Point& p2){ return (ISEQ(p1.x, p2.x) && ISEQ(p1.y, p2.y)); }
-inline bool operator!=(const Point& p1, const Point& p2){ return (!ISEQ(p1.x, p2.x) || !ISEQ(p1.y, p2.y)); }
-inline bool operator<(const Point& p1, const Point& p2){
+inline Point operator/(const Point& p, double d) noexcept{ auto x=Point(p); return std::move(x/=d); }
+inline Point operator*(const Point& p, double d) noexcept{ auto x=Point(p); return std::move(x*=d); }
+inline bool operator==(const Point& p1, const Point& p2) noexcept{ return (ISEQ(p1.x, p2.x) && ISEQ(p1.y, p2.y)); }
+inline bool operator!=(const Point& p1, const Point& p2) noexcept{ return (!ISEQ(p1.x, p2.x) || !ISEQ(p1.y, p2.y)); }
+inline bool operator<(const Point& p1, const Point& p2) noexcept{
 	return (ISEQ(p1.x, p2.x)) ? ISLOWER(p1.y, p2.y) : ISLOWER(p1.x, p2.x);
 }
 
@@ -126,7 +136,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& p){
 	return os;
 }
 
-bool isOnSection(const Point& p, const Point& start, const Point& end, double& ksi, double eps=geps);
+bool isOnSection(const Point& p, const Point& start, const Point& end, double& ksi, double eps=geps) noexcept;
 
 //Finds a cross point between two sections: (p1S,p1E) and (p2S, p2E).
 //ksieta -- ouput cross weights: [0] -- weight in first section, [1] -- weight in second section

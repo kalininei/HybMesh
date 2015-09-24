@@ -3,92 +3,227 @@
 
 using namespace HMBlay::Impl;
 
-shared_ptr<MappedCavity>
-MappedCavity::Factory(HMCont2D::Contour& left, HMCont2D::Contour& right,
-		HMCont2D::Contour& bottom, double h){
-	bool straight_left = ISEQ(left.length(), Point::dist(*left.first(), *left.last()));
-	bool straight_right = ISEQ(right.length(), Point::dist(*right.first(), *right.last()));
-	bool straight_bottom = ISEQ(bottom.length(), Point::dist(*bottom.first(), *bottom.last()));
-	//if all boundaries are straight lines
-	if (straight_left && straight_right && straight_bottom){
-		Point p1 = *left.first();
-		Point p3 = *right.first();
-		Vect v1 = *left.last() - *left.first(); vecNormalize(v1);
-		Vect v2 = *right.last() - *right.first(); vecNormalize(v2);
-		return std::make_shared<FourStraightLinesRect>(p1 + v1*h, p1, p3, p3 + v2*h);
-	}
-	_THROW_NOT_IMP_;
-}
-
-shared_ptr<FourLineRect>
-FourLineRect::Factory(HMCont2D::Contour& left, HMCont2D::Contour& right,
-		HMCont2D::Contour& bottom, HMCont2D::Contour& top){
+shared_ptr<MappedRect>
+MappedRect::Factory(HMCont2D::Contour& left, HMCont2D::Contour& right,
+		HMCont2D::Contour& bottom, HMCont2D::Contour& top,
+		bool use_rect_approx){
 	assert(*left.first() == *bottom.first());
 	assert(*left.last() == *top.first());
 	assert(*right.first() == *bottom.last());
 	assert(*right.last() == *top.last());
 
-	bool straight_left = ISEQ(left.length(), Point::dist(*left.first(), *left.last()));
-	bool straight_right = ISEQ(right.length(), Point::dist(*right.first(), *right.last()));
-	bool straight_bottom = ISEQ(bottom.length(), Point::dist(*bottom.first(), *bottom.last()));
-	bool straight_top = ISEQ(top.length(), Point::dist(*top.first(), *top.last()));
-	if (straight_left && straight_right && straight_top && straight_bottom){
-		Point p1 = *left.last();
-		Point p2 = *left.first();
-		Point p3 = *right.first();
-		Point p4 = *right.last();
-		return std::make_shared<FourStraightLinesRect>(p1, p2, p3, p4);
+	//if left/right coincide we need mapping to a ring
+	auto leftcrn = left.corner_points();
+	auto rightcrn = right.corner_points();
+	if (leftcrn.size() == rightcrn.size()){
+		if (std::equal(leftcrn.begin(), leftcrn.end(), rightcrn.begin(),
+				[](Point* p1, Point* p2){ return *p1 == *p2; })){
+			return std::make_shared<RectForClosedArea>(
+				left, bottom, top, use_rect_approx
+			);
+		}
 	}
-	_THROW_NOT_IMP_;
+	//left/right do not coincide. We need mapping to rectangle.
+	return std::make_shared<RectForOpenArea>(
+		left, right, bottom, top, use_rect_approx
+	);
 };
 
+shared_ptr<MappedRect>
+MappedRect::Factory(HMCont2D::Contour& left, HMCont2D::Contour& right,
+		HMCont2D::Contour& bottom, double h,
+		bool use_rect_approx){
+	assert(*left.first() == *bottom.first());
+	assert(*right.first() == *bottom.last());
 
-HMCont2D::Contour FourStraightLinesRect::TopContour() {
-	HMCont2D::Contour ret;
-	ret.add_value(HMCont2D::Edge(&pts[0], &pts[3]));
-	return ret;
-}
-
-HMCont2D::Contour FourStraightLinesRect::BottomContour() {
-	HMCont2D::Contour ret;
-	ret.add_value(HMCont2D::Edge(&pts[1], &pts[2]));
-	return ret;
-}
-HMCont2D::Contour FourStraightLinesRect::FullContour() {
-	HMCont2D::Contour ret;
-	ret.add_value(HMCont2D::Edge(&pts[1], &pts[2]));
-	ret.add_value(HMCont2D::Edge(&pts[2], &pts[3]));
-	ret.add_value(HMCont2D::Edge(&pts[3], &pts[0]));
-	ret.add_value(HMCont2D::Edge(&pts[0], &pts[1]));
-	return ret;
-}
-
-HMCont2D::PCollection FourStraightLinesRect::MapToReal(const vector<const Point*>& points){
-	HMCont2D::PCollection ret;
-	for (auto p: points){
-		Point pup   = Point::Weigh(pts[0], pts[3], p->x);
-		Point pdown = Point::Weigh(pts[1], pts[2], p->x);
-		ret.add_value(Point::Weigh(pdown, pup, p->y));
+	//1) if bottom is a closed line draw outer contour at h from bottom
+	if (*bottom.first() == *bottom.last()){
+		_THROW_NOT_IMP_;
 	}
-	return ret;
+
+	//2) cut left and right to size h since we need it
+	auto left2 = HMCont2D::Contour::CutByLen(left, 0, h);
+	auto right2 = HMCont2D::Contour::CutByLen(right, 0, h);
+	bool straight_left = left2.is_straight();
+	bool straight_right = right2.is_straight();
+	bool straight_bottom = bottom.is_straight();
+
+	//3) if all lines are straight and are at same angles -> connect end points
+	vector<Point*> op_left = left2.ordered_points();
+	vector<Point*> op_right = right2.ordered_points();
+	vector<Point*> op_bottom = bottom.ordered_points();
+	if (straight_left && straight_right && straight_bottom &&
+			ISEQ(Angle(*op_left[1], *op_left[0], *op_bottom[1]),
+			     Angle(*op_bottom[op_bottom.size()-2], *op_right[0], *op_right[1]))){
+		HMCont2D::Contour top;
+		top.add_value(HMCont2D::Edge(op_left.back(), op_right.back()));
+		return Factory(left2, right2, bottom, top, use_rect_approx);
+	}
+
+	//4) if left and right are straight draw equidistant polygon around bot
+	HMCont2D::Container<HMCont2D::Contour> top;
+	if (straight_left && straight_right){
+		auto ellipse = HMCont2D::Contour::OffsetOuter(bottom, h);
+		auto pl = ellipse.GuaranteePoint(*left2.last(), ellipse.pdata);
+		auto pr = ellipse.GuaranteePoint(*right2.last(), ellipse.pdata);
+		top = HMCont2D::Constructor::CutContour(ellipse, *right2.last(), *left2.last());
+		top.ReallyReverse();
+		*left2.last() = *top.first();
+		*right2.last() = *top.last();
+		goto GEOMETRY_RESULT_CHECK;
+	}
+	
+	//6) try weighted geometric procedures
+	//....
+
+GEOMETRY_RESULT_CHECK:
+	if (top.size() > 0){
+		//no crosses for bottom,
+		//cross at the end point for left, right
+		auto cr1 = HMCont2D::Contour::Cross(bottom, top);
+		if (std::get<0>(cr1) == true) goto GEOMETRY_FAILED;
+		auto cr2 = HMCont2D::Contour::Cross(left2, top);
+		if (std::get<0>(cr2) && !ISEQ(std::get<2>(cr2), 1.0)) goto GEOMETRY_FAILED;
+		auto cr3 = HMCont2D::Contour::Cross(right2, top);
+		if (std::get<0>(cr3) && !ISEQ(std::get<2>(cr3), 1.0)) goto GEOMETRY_FAILED;
+		//all checks were passed
+		return Factory(left2, right2, bottom, top, use_rect_approx);
+	}
+
+GEOMETRY_FAILED:
+	//7) Failed to connect nodes geometrically.
+	//   We need a really smart algorithm here. Smth like
+	//   D. Gaier, On an area problem in conformal mapping, Results in Mathematics 10 (1986) 66-81.
+	_THROW_NOT_IMP_;
+}
+
+// ============ Open area
+RectForOpenArea::RectForOpenArea(HMCont2D::Contour& left, HMCont2D::Contour& right,
+			HMCont2D::Contour& bottom, HMCont2D::Contour& top, bool use_rect_approx):
+			MappedRect(left, right, bottom, top, use_rect_approx){
+	//1. assemble polygon
+	std::vector<Point> path;
+	std::array<int, 4> corners;
+	corners[0] = 0;
+	auto tmp = left.corner_points(); std::reverse(tmp.begin(), tmp.end());
+	for (Point* p: tmp) path.push_back(*p);
+	path.pop_back();
+	corners[1] = path.size();
+	for (Point* p: bottom.corner_points()) path.push_back(*p);
+	path.pop_back();
+	corners[2] = path.size();
+	for (Point* p: right.corner_points()) path.push_back(*p);
+	path.pop_back();
+	corners[3] = path.size();
+	tmp = top.corner_points(); std::reverse(tmp.begin(), tmp.end());
+	for (Point* p: tmp) path.push_back(*p);
+	path.pop_back();
+	//2. build conformal transformation into rectangle [0,m]x[0,1]
+	HMMath::Conformal::Rect::Option opt;
+	opt.use_rect_approx = use_rect_approx;
+	opt.right_angle_eps = M_PI/8.0;
+	opt.length_weight = 1.05;
+	core = HMMath::Conformal::Rect::Factory(path, corners, opt);
+}
+
+HMCont2D::PCollection RectForOpenArea::MapToReal(const vector<const Point*>& p) const{
+	vector<Point> ret(p.size());
+	double m = core->module();
+	//stretch to conformal rectangle
+	std::transform(p.begin(), p.end(), ret.begin(), [&m](const Point* it){
+			return Point(it->x*m, it->y);
+	});
+	//run transform
+	ret = core->MapToPolygon(ret);
+	//return
+	HMCont2D::PCollection col;
+	for (auto& it: ret){
+		col.add_value(it);
+	}
+	return col;
+}
+
+HMCont2D::PCollection RectForOpenArea::MapToSquare(const vector<const Point*>& p) const{
+	vector<Point> ret(p.size());
+	std::transform(p.begin(), p.end(), ret.begin(), [](const Point* it){
+			return Point(it->x, it->y);
+	});
+	//run transform
+	ret = core->MapToRectangle(ret);
+	//stretch to conformal rectangle
+	double m = core->module();
+	for (auto& p: ret) p.x/=m;
+	//return
+	HMCont2D::PCollection col;
+	for (auto& it: ret){
+		col.add_value(it);
+	}
+	return col;
+}
+
+//============= CLosed area
+RectForClosedArea::RectForClosedArea(HMCont2D::Contour& side, HMCont2D::Contour& bottom,
+		HMCont2D::Contour& top, bool use_rect_approx):
+		MappedRect(side, side, bottom, top, use_rect_approx){
+	_THROW_NOT_IMP_;
+}
+HMCont2D::PCollection RectForClosedArea::MapToReal(const vector<const Point*>& p) const{
+	_THROW_NOT_IMP_;
+}
+
+// ========================== MappedMesher
+double MappedMesher::conf2top(double w) const {
+	auto p = rect->MapToReal(Point(w, 1));
+	return std::get<1>(rect->TopContour().coord_at(p));
+};
+double MappedMesher::conf2bot(double w) const {
+	auto p = rect->MapToReal(Point(w, 0));
+	return std::get<1>(rect->BottomContour().coord_at(p));
+}
+double MappedMesher::top2conf(double w) const {
+	auto col = HMCont2D::Contour::WeightPoints(rect->TopContour(), {w});
+	return rect->MapToSquare(*col.point(0)).x;
+}
+double MappedMesher::bot2conf(double w) const {
+	auto col = HMCont2D::Contour::WeightPoints(rect->BottomContour(), {w});
+	return rect->MapToSquare(*col.point(0)).x;
+}
+double MappedMesher::top2bot(double w) const{ return conf2bot(top2conf(w)); }
+double MappedMesher::bot2top(double w) const{ return conf2top(bot2conf(w)); }
+
+double MappedMesher::right2conf(double w) const{
+	auto col = HMCont2D::Contour::WeightPoints(rect->RightContour(), {w});
+	return rect->MapToSquare(*col.point(0)).y;
+}
+
+double MappedMesher::left2conf(double w) const{
+	auto col = HMCont2D::Contour::WeightPoints(rect->LeftContour(), {w});
+	return rect->MapToSquare(*col.point(0)).y;
 }
 
 void MappedMesher::Fill(TBotPart bottom_partitioner, TVertPart vertical_partitioner){
-	//0) Build partitions
 	HMCont2D::Contour bt = rect->BottomContour();
-	double blen = bt.length();
-	auto bpart = bottom_partitioner(wstart*blen, wend*blen);
+	//1) get real weights from conformal weights at bottom source
+	double wbot_start = conf2bot(wstart);
+	double wbot_end = conf2bot(wend);
+
+	//if bottom is one-edge contour with wrong direction
+	assert(wbot_start<wbot_end);
+
+	//2) Build bottom partitions
+	auto bpart = bottom_partitioner(wbot_start, wbot_end);
+
+	//3) Build partitions of vertical lines
 	vector<vector<double>> vlines;
 	for (auto v: bpart) vlines.push_back(vertical_partitioner(v));
+	
 	int isz = bpart.size();
 	int jsz = std::max_element(vlines.begin(), vlines.end(),
 		[](vector<double>& x, vector<double>& y){ return x.size() < y.size(); })->size();
-	double jmax = std::max_element(vlines.begin(), vlines.end(),
-		[](vector<double>& x, vector<double>& y){ return x.back() < y.back(); })->back();
 
-	//1) build regular grid.
+	//4) build regular grid.
 	GridGeom g4 = GGeom::Constructor::RectGrid01(isz, jsz);
-	//2) copy left/right points to pcollections
+	//5) copy left/right points to pcollections
 	vector<int> right_indicies, left_indicies;
 	for (int j=0; j<jsz; ++j){
 		left_indicies.push_back(j*isz);
@@ -96,8 +231,7 @@ void MappedMesher::Fill(TBotPart bottom_partitioner, TVertPart vertical_partitio
 	}
 	left_points.add_values(GGeom::Info::SharePoints(g4, left_indicies));
 	right_points.add_values(GGeom::Info::SharePoints(g4, right_indicies));
-
-	//2) delete unused cells
+	//6) delete unused cells
 	vector<const Cell*> ucells;
 	int kc = 0;
 	for (int j=0; j<jsz-1; ++j){
@@ -108,23 +242,21 @@ void MappedMesher::Fill(TBotPart bottom_partitioner, TVertPart vertical_partitio
 		}
 	}
 	GGeom::Modify::RemoveCells(g4, ucells);
-
-	//4) Remove deleted points from left/right
+	//7) Remove deleted points from left/right
 	left_points.RemoveUnused();
 	right_points.RemoveUnused();
 
-	//3) stretch grid points according to partition and fit to [0, 1] square
-	auto stretchfun = [&](GridPoint* p){
-		int i = std::lround(p->x*(isz-1));
-		int j = std::lround(p->y*(jsz-1));
-		p->x = bpart[i];
-		p->y = vlines[i][j];
-		p->x/=blen;
-		p->y/=jmax;
+	//8) weight coordinates
+	for_each(bpart.begin(), bpart.end(), [&](double& x){ x = bot2conf(x); });
+	double hx = 1.0/(isz-1);
+	double hy = 1.0/(jsz-1);
+	auto toweights = [&](GridPoint* p){
+		int i = lround(p->x/hx), j = lround(p->y/hy);
+		p->set(bpart[i], vlines[i][j]);
 	};
-	GGeom::Modify::PointModify(g4, stretchfun);
+	GGeom::Modify::PointModify(g4, toweights);
 	
-	//5) modify points using mapping
+	//9) modify points using mapping
 	vector<const Point*> p(g4.n_points());
 	for (int i=0; i<g4.n_points(); ++i) p[i] = g4.get_point(i);
 	HMCont2D::PCollection mp = rect->MapToReal(p);
@@ -134,7 +266,7 @@ void MappedMesher::Fill(TBotPart bottom_partitioner, TVertPart vertical_partitio
 	};
 	GGeom::Modify::PointModify(g4, mapfunc);
 
-	//6) copy to results
+	//10) copy to results
 	GGeom::Modify::ShallowAdd(&g4, &result);
 }
 

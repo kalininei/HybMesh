@@ -77,7 +77,7 @@ vector<Options> Options::CreateFromParent(const vector<HMBlay::Input>& par){
 		for(auto& p: r.partition) p/=sc->L;
 	}
 	
-	//4) Put start, end points to contours, make a partitions
+	//4) Put start, end points to contours
 	//   Fill Option.path field
 	for (auto& r: ret) r.Initialize();
 	return ret;

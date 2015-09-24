@@ -45,12 +45,18 @@ end
 #call from build/bin directory with crossgrid_test:
 # gdb -x ../../src/libs/dbgscripts/a.gdb
 
-#file ./hybmesh_contours2d_test
-#file ./crossgrid_test
-file ./hmblay_test
+file ./hmmath_test
+
+skip file /usr/include/c++/4.8/functional
+skip file /usr/include/c++/4.8/bits/shared_ptr_base.h
+skip file /usr/include/c++/4.8/bits/stl_algo.h
+skip file /usr/include/c++/4.8/bits/stl_iterator.h
+skip file /usr/include/c++/4.8/bits/allocator.h
+skip file /usr/include/c++/4.8/bits/stl_vector.h
+
 b main
 run 
-b bgrid.cpp:108
+b hmmath_test.cpp:85
 
 #====================================
 #call from gui/HybMesh.py directory with HybMesh

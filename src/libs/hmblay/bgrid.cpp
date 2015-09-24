@@ -1,5 +1,5 @@
 #include "bgrid.hpp"
-#include "simple_bgrid.hpp"
+#include "fileproc.h"
 #include "canonic_bgrid.hpp"
 
 using namespace HMBlay::Impl;
@@ -28,7 +28,9 @@ struct FillerConnector: public MConnector{
 protected:
 	shared_ptr<MappedMesher> connection_grid;
 	shared_ptr<MappedRect> connection_area;
-	FillerConnector(MappedMesher* _prev, MappedMesher* _next): MConnector(_prev, _next){}
+	bool use_rect_approx;
+	FillerConnector(MappedMesher* _prev, MappedMesher* _next): MConnector(_prev, _next),
+		use_rect_approx(_prev->rect->use_rect_approx()){}
 public:
 	void Add(shared_ptr<BGrid>& g) override{
 		//1) add previous grid if it has not been add yet
@@ -46,40 +48,32 @@ private:
 	HMCont2D::Container<HMCont2D::Contour> left, bot;
 	HMCont2D::Contour right, top;
 	void BuildInternals() override {
+		Point realpoint1 = prev->rect->MapToReal(Point(prev->wend, 0));
+		Point realpoint2 = next->rect->MapToReal(Point(next->wstart, 0));
 		//1) assemble borders
 		HMCont2D::Contour _left = prev->rect->BottomContour();
-		left = HMCont2D::Contour::CutByWeight(_left, prev->wend, 1.0); 
+		left = HMCont2D::Constructor::CutContour(_left, realpoint1, *_left.last()); 
 		left.ReallyReverse();
 		HMCont2D::Contour _bot = next->rect->BottomContour();
-		bot = HMCont2D::Contour::CutByWeight(_bot, 0.0, next->wstart); 
+		bot = HMCont2D::Constructor::CutContour(_bot, *_bot.first(), realpoint2); 
 		HMCont2D::Contour right = next->LeftContour();
 		HMCont2D::Contour top = prev->RightContour();
 
 		//2) assemble connector
-		connection_area = FourLineRect::Factory(left, right, bot, top);
+		connection_area = MappedRect::Factory(left, right, bot, top,
+				use_rect_approx);
 		connection_grid.reset(new MappedMesher(connection_area.get(), 0.0, 1.0));
 
 		//3) build a grid there
-		auto bot_part=[&](double, double)->vector<double>{
-			//This function is called once since its ok to calculate here
-			//get a partition from top and stretch it
-			vector<double> ret {0};
-			auto lens = HMCont2D::Contour::ELengths(top);
-			std::copy(lens.begin(), lens.end(), std::back_inserter(ret));
-			std::partial_sum(ret.begin(), ret.end(), ret.begin());
-			double lentop = std::accumulate(lens.begin(), lens.end(), 0.0);
-			double lenbot = bot.length();
-			for (auto& v: ret) v = v/lentop*lenbot;
-			return ret;
-		};
-		vector<double> f2out {0};
-		auto lens = HMCont2D::Contour::ELengths(right);
-		std::copy(lens.begin(), lens.end(), std::back_inserter(f2out));
-		std::partial_sum(f2out.begin(), f2out.end(), f2out.begin());
-		auto vert_part=[&f2out](double)->vector<double>{
-			//calculate before since function is called multiple times
-			return f2out;
-		};
+		auto f1out = HMCont2D::Contour::EWeights(top);
+		for (auto& x: f1out) x = connection_grid->top2bot(x); 
+		auto bot_part=[&f1out](double, double)->vector<double>{ return f1out; };
+
+		//using conform weights instead of real weighs to match adjacent partition
+		vector<double> f2out = HMCont2D::Contour::EWeights(right);
+		for(auto& x: f2out) x = connection_grid->right2conf(x);
+		auto vert_part=[&f2out](double)->vector<double>{ return f2out; };
+
 		connection_grid->Fill(bot_part, vert_part);
 	}
 public:
@@ -91,9 +85,12 @@ public:
 		std::tuple<bool, Point, double, double> cross =
 			HMCont2D::Contour::Cross(prev_top, next_top);
 		assert(std::get<0>(cross));
+		//find crosspoint in conformal rectangle
+		Point pcross_prev = prev->rect->MapToSquare(std::get<1>(cross));
+		Point pcross_next = next->rect->MapToSquare(std::get<1>(cross));
 		//cut meshed area by found weights
-		prev->wend = std::get<2>(cross);
-		next->wstart = std::get<3>(cross);
+		prev->wend = pcross_prev.x;
+		next->wstart = pcross_next.x;
 	}
 };
 
@@ -132,24 +129,20 @@ private:
 		right.add_value(HMCont2D::Edge { bot.last(), &top_right_pnt});
 
 		//3) assemble connector
-		connection_area = FourLineRect::Factory(left, right, bot, top);
+		connection_area = MappedRect::Factory(left, right, bot, top, use_rect_approx);
 		connection_grid.reset(new MappedMesher(connection_area.get(), 0.0, 1.0));
 
-		//4) build a grid there
+		//3) build a grid there
 		auto bot_part=[&](double, double)->vector<double>{
-			vector<double> ret {0};
-			auto lens = HMCont2D::Contour::ELengths(bot);
-			std::copy(lens.begin(), lens.end(), std::back_inserter(ret));
-			std::partial_sum(ret.begin(), ret.end(), ret.begin());
-			return ret;
+			return HMCont2D::Contour::EWeights(bot);
 		};
-		vector<double> f2out {0};
-		auto lens = HMCont2D::Contour::ELengths(left);
-		std::copy(lens.begin(), lens.end(), std::back_inserter(f2out));
-		std::partial_sum(f2out.begin(), f2out.end(), f2out.begin());
-		auto vert_part=[&f2out](double)->vector<double>{
-			return f2out;
-		};
+
+		//calculate before because this function is called multiple times
+		//using conform weights instead of real weighs to match adjacent partition
+		vector<double> f2out = HMCont2D::Contour::EWeights(left);
+		for(auto& x: f2out) x = connection_grid->left2conf(x);
+		auto vert_part=[&f2out](double)->vector<double>{ return f2out; };
+
 		connection_grid->Fill(bot_part, vert_part);
 	}
 public:
@@ -182,9 +175,11 @@ shared_ptr<BGrid> BGrid::MeshFullPath(const ExtPath& epath){
 
 	//2. build conform mapping for each subpath
 	ShpVector<MappedRect> mps;
+	bool use_rect_approx = !epath.ext_data[0].opt->force_conformal;
 	for (auto& p: pths){
 		double h = p.largest_depth();
-		mps.push_back(MappedCavity::Factory(p.leftbc, p.rightbc, p, h));
+		mps.push_back(MappedRect::Factory(p.leftbc, p.rightbc, p, h,
+					use_rect_approx));
 	}
 
 	//3. build rectangular meshers
@@ -206,11 +201,17 @@ shared_ptr<BGrid> BGrid::MeshFullPath(const ExtPath& epath){
 	//5. build rectangular meshes
 	for (int i=0; i<mesher4.size(); ++i){
 		ExtPath& ipth = pths[i];
-		auto bpart = [&ipth](double len1, double len2)->vector<double>{
-			return ipth.PathPartition(len1, len2);
+		double ilen = ipth.length();
+		double depth = ipth.largest_depth();
+		auto bpart = [&](double w1, double w2)->vector<double>{
+			vector<double> reallen = ipth.PathPartition(w1*ilen, w2*ilen);
+			for (auto& x: reallen) x/=ilen;
+			return reallen;
 		};
-		auto wpart = [&ipth](double len1)->vector<double>{
-			return ipth.VerticalPartition(len1);
+		auto wpart = [&](double w1)->vector<double>{
+			vector<double> realdep = ipth.VerticalPartition(w1*ilen);
+			for (auto& x: realdep) x/=depth;
+			return realdep;
 		};
 		mesher4[i]->Fill(bpart, wpart);
 	}
@@ -220,8 +221,13 @@ shared_ptr<BGrid> BGrid::MeshFullPath(const ExtPath& epath){
 	
 	//7. Gather all resulting meshes
 	shared_ptr<BGrid> g;
-	for (auto& c: connectors) c->Add(g);
-	g->merge_congruent_points();
+	if (connectors.size() > 0){
+		for (auto& c: connectors) c->Add(g);
+		g->merge_congruent_points();
+	} else {
+		assert(mesher4.size() == 1);
+		g.reset(new BGrid(mesher4[0]->result));
+	}
 
 	return g;
 }
@@ -247,6 +253,7 @@ shared_ptr<BGrid> BGrid::MeshSequence(vector<Options*>& data){
 }
 
 shared_ptr<BGrid> BGrid::NoSelfIntersections(shared_ptr<BGrid> g){
+	return g;
 	auto cont = GGeom::Info::Contour(*g);
 	//check for no self-contacts in resulting tree
 	assert( cont.cont_count() > 0 && HMCont2D::ContourTree::CheckNoContact(cont) );

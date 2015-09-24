@@ -31,7 +31,7 @@
 
 cmake_minimum_required(VERSION 3.1)
 
-project(HybMesh)
+project(HybMesh C CXX Fortran)
 
 # ========================== Project defines
 # name of resulting installed executable
@@ -156,9 +156,11 @@ set(CROSSGRID_TARGET crossgrid)
 #libhmblay: global definition of HMBLAY_INCLUDE, HMBLAY_TARGET
 set(HMBLAY_INCLUDE "${CMAKE_SOURCE_DIR}/src/libs/hmblay")
 set(HMBLAY_TARGET hmblay)
-#libhmblay: global definition of HMFEM_INCLUDE, HMFEM_TARGET
-set(HMFEM_INCLUDE "${CMAKE_SOURCE_DIR}/src/libs/hmfem")
-set(HMFEM_TARGET hmfem)
+#libhmmath: global definition of HMMATH_INCLUDE, HMMATH_TARGET
+set(HMMATH_INCLUDE "${CMAKE_SOURCE_DIR}/src/libs/hmmath")
+set(HMMATH_TARGET hmmath)
+#libscpack: SCPACK_TARGET
+set(SCPACK_TARGET scpack)
 #libhmcport: global definition of HMCPORT_INCLUDE, HMCPORT_TARGET
 set(HMCPORT_INCLUDE "${CMAKE_SOURCE_DIR}/src/libs/hmcport")
 set(HMCPORT_TARGET hmcport)

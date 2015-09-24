@@ -34,6 +34,8 @@ struct ExtPath: public HMCont2D::Contour{
 	double largest_depth();
 
 
+	//makes a partition of path from given lengths of start point to given
+	//length of end point. Returns length coordinates of partitions
 	vector<double> PathPartition(double, double) const;
 	vector<double> VerticalPartition(double) const;
 

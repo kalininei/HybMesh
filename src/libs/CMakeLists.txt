@@ -8,7 +8,7 @@ add_subdirectory(bgeom2d)
 add_subdirectory(hybmesh_contours2d)
 add_subdirectory(crossgrid)
 add_subdirectory(hmblay)
-add_subdirectory(hmfem)
+add_subdirectory(hmmath)
 add_subdirectory(hmcport)
 
 

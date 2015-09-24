@@ -101,7 +101,6 @@ void test03(){
 	std::string cn("5-points polyline. Left layer");
 	auto col1 = HMCont2D::Constructor::ContourFromPoints(
 			{0,0, 1,1, 2,1.9, 4,3.5, 7,6.1});
-	HMCont2D::Debug::geogebra_contour(col1);
 	inp.direction = HMBlay::DirectionFromString("LEFT");
 	inp.start = Point(0,0);
 	inp.end = Point(7,6.1);
@@ -130,6 +129,7 @@ void test03(){
 		for (int i=0; i<Ans3.n_points(); ++i) if (Ans3.get_point(i)->y<0.0) return false;
 		return true;
 	}(), cn);
+	save_vtk(Ans3, "_dbgout.vtk");
 }
 
 void test04(){
@@ -333,11 +333,12 @@ void test10(){
 	inp1.corner_angle = 150;
 	inp1.regular_angle = 200;
 	inp1.direction = HMBlay::DirectionFromString("INNER");
-	inp1.partition = {0, 0.1, 0.2, 0.3, 0.4};
+	inp1.partition = {0, 0.05, 0.2, 0.3, 0.4};
 	inp1.start = Point(0, 0);
 	inp1.end = Point(5, -1);
 	inp1.bnd_step = 0.1;
 	inp1.edges = &c;
+	inp1.force_conformal = false;
 	GridGeom Ans1 = HMBlay::BuildBLayerGrid({inp1});
 	add_check(Ans1.n_cells() == 232 && Ans1.n_points() == 295, "Mesh");
 };
@@ -346,7 +347,6 @@ void test10(){
 int main(){
 	//test01();
 	//test02();
-	test03();
 	//test04();
 	//test05();
 	//test06();
@@ -355,7 +355,8 @@ int main(){
 	//test09();
 
 
-	//test10();
+	test10();
+	test03();
 
 	if (FAILED_CHECKS ==1){
 		std::cout<<FAILED_CHECKS<<" test failed <<<<<<<<<<<<<<<<<<<"<<std::endl;

@@ -31,12 +31,14 @@ vector<Point*> Contour::ordered_points() const{
 }
 
 vector<Point*> Contour::corner_points() const{
+	bool cl = is_closed();
 	auto pnt = ordered_points();
 	vector<Point*> ret;
+	if (!cl) ret.push_back(pnt[0]);
 	for (int i=0; i<pnt.size()-1; ++i){
 		Point *pprev, *p, *pnext;
 		if (i == 0){
-			if (is_closed()) pprev = pnt[pnt.size() - 2];
+			if (cl) pprev = pnt[pnt.size() - 2];
 			else continue;
 		} else pprev = pnt[i-1];
 		p = pnt[i];
@@ -45,6 +47,7 @@ vector<Point*> Contour::corner_points() const{
 		if (fabs(triarea(*pprev, *p, *pnext)) > geps)
 			ret.push_back(p);
 	}
+	if (!cl) ret.push_back(pnt.back());
 	return ret;
 }
 
@@ -64,6 +67,21 @@ std::array<Point*, 3> Contour::point_siblings(Point* p) const{
 	if (is_closed() && (e1==data.begin() && e2 != data.begin()+1)) std::swap(ret[0], ret[2]);
 
 	return ret;
+}
+
+bool Contour::correctly_directed_edge(int i) const{
+	if (size() == 1) return true;
+	if (is_closed() && size() == 2) return true;
+	Point* p2;
+	Edge* e2;
+	if (i == 0){
+		p2 = edge(i)->pend;
+		e2 = edge(i+1);
+	} else {
+		p2 = edge(i)->pstart;
+		e2 = edge(i-1);
+	}
+	return e2->contains(p2);
 }
 
 vector<Contour::PInfo> Contour::ordered_info() const{
@@ -103,6 +121,23 @@ vector<Contour::PInfo> Contour::ordered_info() const{
 
 	}
 	return ret;
+}
+
+std::tuple<double, double, int, double, double>
+Contour::coord_at(const Point& p) const{
+	auto fnd = FindClosestEdge(*this, p);
+	int ind = get_index(std::get<0>(fnd));
+	auto lens = ELengths(*this);
+	double outlen = 0;
+	for (int i=0; i<ind; ++i) outlen+=lens[i];
+	
+	if (correctly_directed_edge(ind))
+		outlen += lens[ind]*std::get<2>(fnd);
+	else
+		outlen += lens[ind]*(1-std::get<2>(fnd));
+
+	double outw = outlen/std::accumulate(lens.begin(), lens.end(), 0.0);
+	return std::make_tuple(outlen, outw, ind, std::get<2>(fnd), std::get<1>(fnd));
 }
 
 void Contour::DirectEdges(){
@@ -160,13 +195,14 @@ Contour::GuaranteePoint(const Point& p, PCollection& pcol){
 			shared_ptr<Point> pnew(new Point(Point::Weigh(*p1, *p2, std::get<2>(ce))));
 			pcol.add_value(pnew);
 			int ind = get_index(std::get<0>(ce));
+			bool dircorrect = correctly_directed_edge(ind);
 			//cannot simply rewrite data to indexed edge because it can be
 			//used by another owners.
 			RemoveAt({ind});
-			AddAt(ind, {
-				std::make_shared<Edge>(p1, pnew.get()),
-				std::make_shared<Edge>(pnew.get(), p2)
-			});
+			auto e1 = std::make_shared<Edge>(p1, pnew.get());
+			auto e2 = std::make_shared<Edge>(pnew.get(), p2);
+			if (dircorrect) AddAt(ind, {e1, e2});
+			else AddAt(ind, {e2, e1});
 			std::get<0>(ret) = true;
 			std::get<1>(ret) = pnew.get();
 		}
@@ -178,6 +214,20 @@ Contour::GuaranteePoint(const Point& p, PCollection& pcol){
 Container<ContourTree> Contour::Offset(const Contour& source, double delta, OffsetTp tp){
 	Impl::ClipperPath cp(source);
 	return cp.Offset(delta, tp);
+};
+
+Container<Contour> Contour::OffsetOuter(const Contour& source, double delta){
+	Container<ContourTree> ans;
+	if (source.is_closed()){
+		if (Contour::Area(source) < 0) ans = Offset(source, -fabs(delta), OffsetTp::CLOSED_POLY);
+		else ans = Offset(source, fabs(delta), OffsetTp::CLOSED_POLY);
+	} else
+		ans = Offset(source, fabs(delta), OffsetTp::OPEN_ROUND);
+	assert(ans.cont_count() == 1);
+	Container<Contour> ret;
+	ret.pdata = ans.pdata;
+	ret.data = ans.nodes[0]->data;
+	return ret;
 };
 
 double Contour::Area(const Contour& c){
@@ -444,26 +494,28 @@ Contour Contour::Assemble(const ECollection& col, const Point* pnt_start){
 Contour Contour::Assemble(const Contour& col, const Point* pnt_start, int direction, double len){
 	assert(col.contains_point(pnt_start));
 	if (col.size() == 1) return Contour(col);
-	if (direction == -1){
-		Contour c2(col);
-		c2.Reverse();
-		return Assemble(c2, pnt_start, 1.0, len);
+
+	//assemble ordered points taking into account the direction
+	vector<Point*> op = col.ordered_points();
+	if (direction == -1) std::reverse(op.begin(), op.end());
+	int index = std::find(op.begin(), op.end(), pnt_start) - op.begin();
+	//if is_closed place start point at the begining
+	if (col.is_closed()){
+		op.pop_back();
+		std::rotate(op.begin(), op.begin() + index, op.end());
+		index = 0;
+		op.push_back(op[0]);
 	}
-	auto oi = col.ordered_info();
-	auto fnd = std::find_if(oi.begin(), oi.end(), [&](PInfo& info){ return info.p == pnt_start; });
-	assert(fnd != oi.end());
-	double used_len = 0;
-	Contour ret;
-	while(used_len<len){
-		if (!fnd->enext){
-			if (col.is_closed()) fnd = oi.begin();
-			else return ret;
-		}
-		double dist = fnd->enext->length();
-		used_len += dist;
-		ret.add_value(fnd->enext);
-	}
-	return ret;
+	//go from start till distance is more then len in order to find
+	//last point
+	double dist = 0;
+	Point* pnt_end;
+	do{
+		pnt_end = op[++index];
+		dist += Point::dist(*op[index-1], *op[index]);
+		if (ISEQGREATER(dist, len)) break;
+	} while (index<op.size());
+	return Assemble(col, pnt_start, pnt_end);
 }
 
 PCollection Contour::WeightPoints(const Contour& p, vector<double> vw){
@@ -484,11 +536,21 @@ PCollection Contour::WeightPointsByLen(const Contour& p, vector<double> vw){
 	
 	int icur=1;
 	for (auto w: vw){
-		while (elens[icur]<w && icur<pseq.size()) ++icur;
+		while (icur<pseq.size()-1 && ISEQLOWER(elens[icur], w)) ++icur;
 		Point *pprev = pseq[icur-1], *pnext = pseq[icur];
 		double t = (w - elens[icur-1])/(elens[icur] - elens[icur-1]);
 		ret.add_value( (*pseq[icur-1]) * (1-t) + (*pseq[icur]) * t );
 	}
+	return ret;
+}
+
+vector<double> Contour::EWeights(const Contour& c){
+	vector<double> ret {0};
+	vector<double> lens = ELengths(c);
+	std::copy(lens.begin(), lens.end(), std::back_inserter(ret));
+	std::partial_sum(ret.begin(), ret.end(), ret.begin());
+	double L = ret.back();
+	std::for_each(ret.begin(), ret.end(), [&L](double& x){ x/=L; });
 	return ret;
 }
 
@@ -511,7 +573,7 @@ Contour::Cross(const Contour& c1, const Contour& c2){
 				std::get<2>(ret) =
 					(L1 + lens1[i]*ksieta[0])/std::accumulate(lens1.begin(), lens1.end(), 0.0);
 				std::get<3>(ret) = 
-					(L2 + lens2[i]*ksieta[1])/std::accumulate(lens2.begin(), lens2.end(), 0.0);
+					(L2 + lens2[j]*ksieta[1])/std::accumulate(lens2.begin(), lens2.end(), 0.0);
 				return ret;
 			} else {
 				L2+=lens2[j];
@@ -535,7 +597,10 @@ Container<Contour> Contour::CutByWeight(const Contour& source, double w1, double
 	return ret;
 }
 
-
+Container<Contour> Contour::CutByLen(const Contour& source, double len1, double len2){
+	double len = source.length();
+	return CutByWeight(source, len1/len, len2/len);
+}
 
 
 

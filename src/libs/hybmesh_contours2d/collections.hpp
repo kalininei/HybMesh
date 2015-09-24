@@ -153,7 +153,7 @@ struct Collection{
 		vector<Tentry> cp; cp.reserve(size() + v.size());
 		std::copy(data.begin(), data.begin()+ind, std::back_inserter(cp));
 		std::copy(v.begin(), v.end(), std::back_inserter(cp));
-		std::copy(data.begin()+ind+1, data.end(), std::back_inserter(cp));
+		std::copy(data.begin()+ind, data.end(), std::back_inserter(cp));
 		std::swap(data, cp);
 	}
 
@@ -171,7 +171,7 @@ struct Collection{
 
 	//DeepCopy using predefined generator of shared object.
 	template<class TTarget, class = IsBase<Collection, TTarget>>
-	static TDeepCopyResult DeepCopy(const Collection& from, TTarget& to, ShpGen& gen) {
+	static TDeepCopyResult DeepCopy(const Collection& from, TTarget& to, const ShpGen& gen) {
 		TDeepCopyResult res;
 		std::transform(from.data.begin(), from.data.end(), std::back_inserter(to.data),
 			[&gen](const Tentry& e){ return gen.deepcopy(e.get()); }

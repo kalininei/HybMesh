@@ -25,9 +25,11 @@ struct Debug{
 	static std::ostream& Cout();
 
 	//aux data
-	Debug():ptr(0), i(0){}
+	Debug():ptr(0), i(0){ pre(); }
 	void* ptr;
 	int i;
+
+	void pre();
 };
 extern Debug _dbg;
 

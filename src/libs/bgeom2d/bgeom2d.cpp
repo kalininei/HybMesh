@@ -20,7 +20,7 @@ double Point::meas_section(const Point& p, const Point& L1, const Point& L2) noe
 	return meas_section(p, L1, L2, k);
 }
 
-bool isOnSection(const Point& p, const Point& start, const Point& end, double& ksi, double eps){
+bool isOnSection(const Point& p, const Point& start, const Point& end, double& ksi, double eps) noexcept{
 	ksi = gbig;
 	//check if p is ouside section square
 	if ( (p.x+eps < start.x && p.x+eps < end.x) ||

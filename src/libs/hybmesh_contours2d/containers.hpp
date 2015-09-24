@@ -22,6 +22,17 @@ struct Container: public ECol{
 
 	PCol pdata;
 
+	Container():ECol(){}
+	explicit Container(const Container& c): ECol(c), pdata(c.pdata){}
+	Container(Container&& c) noexcept: ECol(c), pdata(c.pdata){}
+	Container& operator=(const Container& c){
+		if (&c != this){
+			ECol::operator=(c);
+			pdata = c.pdata;
+		}
+		return *this;
+	}
+
 	//get/set
 	Point* point(int i){return pdata.pvalue(i);}
 	void clear(){ pdata.clear(); ECol::clear(); }
@@ -50,6 +61,11 @@ struct Container: public ECol{
 	template<class TFrom, class = Tpp::IsBase<TParent, TFrom>> 
 	static typename TFrom::TDeepCopyResult 
 	DeepCopy(const TFrom& from, Container& to);
+
+	//constructible version (from another ECol or another Container)
+	//takes all possible generators from 'from' object
+	template<class TFrom, class = Tpp::IsBase<TParent, TFrom>>
+	static Container DeepCopy(const TFrom& from);
 };
 
 
@@ -63,14 +79,14 @@ struct TDeepEGenerator: public Cont::EShpGen{
 	typedef typename Cont::PCol PCol;
 	typedef typename Cont::TParent ECol;
 	typedef std::map<typename PCol::Tvalue*, typename PCol::Tentry> TMap;
-	EShpGen* pogen;
-	TMap* pmp;
-	TDeepEGenerator(EShpGen& ogen, TMap& mp): EShpGen(), pogen(&ogen), pmp(&mp){}
+	const EShpGen* pogen;
+	const TMap* pmp;
+	TDeepEGenerator(const EShpGen& ogen, const TMap& mp): EShpGen(), pogen(&ogen), pmp(&mp){}
 
 	shared_ptr<typename ECol::Tvalue> deepcopy(const typename ECol::Tvalue* x) const override {
 		auto r = pogen->deepcopy(x);
-		r->pstart = (*pmp)[r->pstart].get();
-		r->pend = (*pmp)[r->pend].get();
+		r->pstart = (*pmp).at(r->pstart).get();
+		r->pend = (*pmp).at(r->pend).get();
 		return r;
 	}
 };
@@ -82,9 +98,8 @@ struct Core{
 	typedef typename TTo::PShpGen PShpGen;
 	typedef typename TTo::PCol PCol;
 	typedef TTo ECol;
-	static
-	typename TFrom::TDeepCopyResult
-	exe(const TFrom& from, TTo& to, EShpGen& egen, PShpGen& pgen){
+	static typename TFrom::TDeepCopyResult
+	exe(const TFrom& from, TTo& to, const EShpGen& egen, const PShpGen& pgen){
 		//copy points
 		vector<Point*> allpnt = from.all_points();
 		std::map<Point*, shared_ptr<Point>> oldnew;
@@ -101,6 +116,11 @@ struct Core{
 		return TFrom::DeepCopy(from, to, deepgen);
 	};
 
+	//takes generators from Tfrom
+	static typename TFrom::TDeepCopyResult
+	exe_1(const TFrom& from, TTo& to){
+		return exe(from, to, from._generator, to.pdata._generator);
+	}
 };
 
 //TForm - Another container
@@ -113,9 +133,9 @@ struct Core<
 	typedef typename TTo::PShpGen PShpGen;
 	typedef typename TTo::PCol PCol;
 	typedef typename TTo::TParent ECol;
-	static 
-	typename TFrom::TDeepCopyResult
-	exe(const TFrom& from, TTo& to, EShpGen& egen, PShpGen& pgen){
+
+	static typename TFrom::TDeepCopyResult
+	exe(const TFrom& from, TTo& to, const EShpGen& egen, const PShpGen& pgen){
 		//make points copy
 		auto res1 = PCol::DeepCopy(from.pdata, to.pdata, pgen);
 		//set generator so it can deal with new points pointers
@@ -124,6 +144,12 @@ struct Core<
 		auto res2 = ECol::DeepCopy(from, to, deepgen);
 		//assemble result
 		return typename TFrom::TDeepCopyResult {res1.oldnew, res1.newold, res2.oldnew, res2.newold};
+	}
+
+	//takes generators from Tfrom
+	static typename TFrom::TDeepCopyResult
+	exe_1(const TFrom& from, TTo& to){
+		return exe(from, to, from._generator, from.pdata._generator);
 	}
 };
 
@@ -145,6 +171,15 @@ template<class TFrom, class>
 typename TFrom::TDeepCopyResult 
 Container<ECol>::DeepCopy(const TFrom& from, Container& to){
 	return ContainersDeepCopy::Core<TFrom, Container>::exe(from, to, to._generator, to.pdata._generator);
+}
+
+//Constructible version
+template<class ECol>
+template<class TFrom, class>
+Container<ECol> Container<ECol>::DeepCopy(const TFrom& from){
+	Container<ECol> ret;
+	ContainersDeepCopy::Core<TFrom, Container>::exe_1(from, ret);
+	return ret;
 }
 
 

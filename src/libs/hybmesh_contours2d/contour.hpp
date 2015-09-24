@@ -8,22 +8,26 @@ namespace HMCont2D{
 
 // ============== Contour: collection of connected edges
 struct Contour: public ECollection{
-	Contour(ECollection& col) = delete;
+	Contour(const Contour& col): ECollection(col){}
 	Contour(): ECollection(){};
 	//get info
 	//endpoints
 	Point* first() const;
 	Point* last() const;
-	bool is_closed() const { return first() == last(); }
 	//first point == last point for closed paths
 	vector<Point*> ordered_points() const;
-	//list of all non-corner points
+	//list of all corner points in correct order without doubling
+	//the last point for closed contours
 	vector<Point*> corner_points() const;
 	//returns [point previous, point currant, point next]
 	//or NULLS if no such points
 	std::array<Point*, 3> point_siblings(Point* p) const;
 	//return next point or null
 	Point* next_point(Point* p) const{ return std::get<2>(point_siblings(p));}
+	//properties
+	bool is_closed() const { return first() == last(); }
+	bool is_straight() const { return (is_closed()) ? false : corner_points().size() == 2; }
+	bool correctly_directed_edge(int i) const;
 
 	struct PInfo{
 		Point *p, *pprev, *pnext;
@@ -33,6 +37,16 @@ struct Contour: public ECollection{
 	//returns vector of length (size()+1)
 	//detailed information about each node connection.
 	vector<PInfo> ordered_info() const;
+
+	//gives
+	//	contour length coordinate, 
+	//	contour weight coordinate,
+	//	index of edge
+	//	edge weight coordinate
+	//	distance to contour
+	//of the contour point closest to given one.
+	std::tuple<double, double, int, double, double>
+	coord_at(const Point& p) const;
 	
 	// ====== overridden from Collection
 	//only if TTarget is also a contour.
@@ -77,15 +91,28 @@ struct Contour: public ECollection{
 	static std::tuple<bool, Point, double, double> Cross(const Contour& c1, const Contour& c2);
 		
 	static double Area(const Contour& c);
-	//weigth points by [0,1] weights of full contour length
+	//weigth points by [0,1] weights of full contour length.
+	//Returns point in sorted order from start to end point of c
 	static PCollection WeightPoints(const Contour& c, vector<double> w);
+	static Point WeightPoint(const Contour& c, double len){
+		return *WeightPoints(c, {len}).point(0);
+	}
 	//weigth points by lenght
 	static PCollection WeightPointsByLen(const Contour& c, vector<double> lens);
+	static Point WeightPointByLen(const Contour& c, double len){
+		return *WeightPointsByLen(c, {len}).point(0);
+	}
+
+	//return weights of points as given by c.ordered_points()
+	//first is 0, last is always 1.
+	static vector<double> EWeights(const Contour& c);
 
 	//Offset
 	static Container<ContourTree> Offset(const Contour& source, double delta, OffsetTp tp);
+	static Container<Contour> OffsetOuter(const Contour& source, double delta);
 	//Cut contour
 	static Container<Contour> CutByWeight(const Contour& source, double w1, double w2);
+	static Container<Contour> CutByLen(const Contour& source, double len1, double len2);
 
 	//Assemble from shattered edges
 	static Contour Assemble(const ECollection& col, const Point* pnt_start, const Point* pnt_end);
@@ -135,9 +162,10 @@ void Contour::Unite(const TTarget& c){
 	else if (self0 == self1 || target0 == target1) goto THROW;
 	else if (c.size() == 1 && c.edge(0)->contains(self0)) goto COPY03;
 	else if (c.size() == 1 && c.edge(0)->contains(self1)) goto COPY12;
-	//try to unite to the end first
+	//try to add new contour to the end of current
 	else if (self1 == target0) goto COPY12;
 	else if (self1 == target1) goto NEED_REVERSE;
+	//if failed try to add before the start
 	else if (self0 == target1) goto COPY03;
 	else if (self0 == target0) goto NEED_REVERSE;
 	else goto THROW;

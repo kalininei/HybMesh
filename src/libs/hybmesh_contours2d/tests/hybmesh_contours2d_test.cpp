@@ -136,10 +136,6 @@ void test4(){
 	in4.Reverse();
 	auto out4 = Contour::Partition(0.1, in4, PartitionTp::KEEP_SHAPE);
 	add_check(fabs(Area(in4) - Area(out4))<1e-8, "negative closed path, keep shape");
-	std::cout<<Area(in4)<<",  "<<Area(out4)<<std::endl;
-	SaveVtk(in4, "1.vtk");
-	SaveVtk(out4, "2.vtk");
-
 }
 
 void test5(){
@@ -222,6 +218,24 @@ void test6(){
 
 }
 
+void test7(){
+	std::cout<<"Contour point coordinate by weight"<<std::endl;
+	auto top = HMCont2D::Constructor::ContourFromPoints({
+		Point{0.43701993, 0.07659573},
+		Point{0.44410482, 0.07840499},
+		Point{0.45201250, 0.07960025},
+		Point{0.46000000, 0.08000000},
+		Point{1.00000000, 0.08000000}});
+
+	Point p(0.519522452, 0.08);
+	auto coord = top.coord_at(p);
+	double w = std::get<1>(coord);
+	Point p1 = Contour::WeightPoint(top, w);
+	Point diff = p-p1;
+	add_check(ISZERO(diff.x) && ISZERO(diff.y),
+			"weight by point -> point by weight");
+}
+
 int main(){
 	std::cout<<"hybmesh_contours2d testing"<<std::endl;
 	if (hybmesh_contours2d_ping(1) == 2) 
@@ -233,6 +247,7 @@ int main(){
 	test4();
 	test5();
 	test6();
+	test7();
 	
 
 	if (FAILED_CHECKS == 1){

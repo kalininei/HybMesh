@@ -216,6 +216,7 @@ vector<double> ExtPath::PathPartition(double len1, double len2) const{
 		std::copy(lens.begin(), lens.end(), std::back_inserter(ret));
 	}
 	std::partial_sum(ret.begin(), ret.end(), ret.begin());
+
 	assert(ISEQ(ret.back(), len2));
 	return ret;
 }

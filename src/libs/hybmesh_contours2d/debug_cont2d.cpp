@@ -2,11 +2,16 @@
 
 #include "debug_cont2d.hpp"
 #include "stdarg.h"
+#include "nan_handler.h"
 
 using namespace HMCont2D;
 
-Debug _dbg;
+Debug HMCont2D::_dbg;
 int Debug::tabs = 0;
+
+void Debug::pre(){
+	NanSignalHandler::StartCheck();
+}
 
 void Debug::Print(const char* fmt, ...){
 	std::string s;
