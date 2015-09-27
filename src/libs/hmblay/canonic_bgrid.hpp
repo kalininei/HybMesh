@@ -11,8 +11,8 @@ class MappedRect{
 protected:
 	HMCont2D::Container<HMCont2D::Contour> left, right, bottom, top;
 
-	MappedRect(HMCont2D::Contour& _left, HMCont2D::Contour& _right,
-			HMCont2D::Contour& _bottom, HMCont2D::Contour& _top,
+	MappedRect(const HMCont2D::Contour& _left, const HMCont2D::Contour& _right,
+			const HMCont2D::Contour& _bottom, const HMCont2D::Contour& _top,
 			bool rect_approx):
 		_use_rect_approx(rect_approx),
 		left(HMCont2D::Container<HMCont2D::Contour>::DeepCopy(_left)),
@@ -30,15 +30,27 @@ public:
 	HMCont2D::Contour LeftContour() const { return HMCont2D::Contour(left); }
 	//real contour mapped by {u=1, v=0->1 }
 	HMCont2D::Contour RightContour() const { return HMCont2D::Contour(right); }
+
 	//real coordinates from normalized in [0,1] square
 	virtual HMCont2D::PCollection MapToReal(const vector<const Point*>& p) const = 0;
 	Point MapToReal(const Point& p) const{ return *(MapToReal({&p}).point(0)); }
+	
 	//square coordinates from real coordinates
 	virtual HMCont2D::PCollection MapToSquare(const vector<const Point*>& p) const = 0;
 	HMCont2D::PCollection MapToSquare(const vector<Point*>& p) const{
 		return MapToSquare(vector<const Point*>(p.begin(), p.end()));
 	}
-	Point MapToSquare(const Point& p) const{ return *(MapToSquare({&p}).point(0)); }
+	Point MapToSquare(const Point& p) const { return *(MapToSquare({&p}).point(0)); }
+	
+	//weights transformer
+	virtual double conf2top(double w) const = 0;
+	virtual double conf2bot(double w) const = 0;
+	virtual double top2conf(double w) const = 0;
+	virtual double bot2conf(double w) const = 0;
+	virtual double right2conf(double w) const = 0;
+	virtual double left2conf(double w) const = 0;
+	double top2bot(double w) const;
+	double bot2top(double w) const;
 
 	// ================ constructors:
 	//1. From four lines
@@ -66,17 +78,43 @@ public:
 			HMCont2D::Contour& bottom, HMCont2D::Contour& top,
 			bool use_rect_approx);
 	HMCont2D::PCollection MapToReal(const vector<const Point*>& p) const override;
-
 	HMCont2D::PCollection MapToSquare(const vector<const Point*>& p) const override;
+
+	double conf2top(double w) const override;
+	double conf2bot(double w) const override;
+	double top2conf(double w) const override;
+	double bot2conf(double w) const override;
+	double right2conf(double w) const override;
+	double left2conf(double w) const override;
 };
 
 
 class RectForClosedArea: public MappedRect{
+	shared_ptr<HMMath::Conformal::Annulus> core;
+	bool top_is_outer;
 public:
-	RectForClosedArea(HMCont2D::Contour& side, HMCont2D::Contour& bottom,
-			HMCont2D::Contour& top, bool rect_approx);
+	RectForClosedArea(const HMCont2D::Contour& side, const HMCont2D::Contour& bottom,
+			const HMCont2D::Contour& top);
+
+	//pstart should lie in bottom
+	//if bottom is in anti-clockwise direction -> top is an outer contour
+	static shared_ptr<RectForClosedArea>
+	Build(const HMCont2D::Contour& bottom, const Point* pstart, double h);
+
+	//bottom.first(), top.first() will be connected
+	static shared_ptr<RectForClosedArea>
+	Build(const HMCont2D::Contour& bottom, const HMCont2D::Contour& top);
+
+	//mapping functions
 	HMCont2D::PCollection MapToReal(const vector<const Point*>& p) const override;
-	HMCont2D::PCollection MapToSquare(const vector<const Point*>& p) const override {_THROW_NOT_IMP_;}
+	HMCont2D::PCollection MapToSquare(const vector<const Point*>& p) const override;
+
+	double conf2top(double w) const override;
+	double conf2bot(double w) const override;
+	double top2conf(double w) const override;
+	double bot2conf(double w) const override;
+	double right2conf(double w) const override;
+	double left2conf(double w) const override;
 };
 
 
@@ -109,15 +147,6 @@ public:
 	HMCont2D::Contour LeftContour();
 	HMCont2D::Contour RightContour();
 	
-	//weights transformer
-	double conf2top(double w) const;
-	double conf2bot(double w) const;
-	double top2conf(double w) const;
-	double bot2conf(double w) const;
-	double top2bot(double w) const;
-	double bot2top(double w) const;
-	double right2conf(double w) const;
-	double left2conf(double w) const;
 };
 
 

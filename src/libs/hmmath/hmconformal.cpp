@@ -1,5 +1,6 @@
 #include "hmconformal.hpp"
 #include "scpack_port.hpp"
+#include "dscpack_port.hpp"
 #include "hmcompute.hpp"
 
 using namespace HMMath::Conformal;
@@ -83,7 +84,7 @@ shared_ptr<Rect> Rect::Factory(
 	//Lets check if polygon is not
 	//too oblong and we can use SCPACK routines
 	if (opt.CanUseSCPACK(path, i1, i2, i3)){
-		ret = Impl::ScPack::ToRect::Build(path, i1, i2, i3);
+		ret = Impl::SCPack::ToRect::Build(path, i1, i2, i3);
 	}
 	if (ret && std::max(ret->module(), 1.0/ret->module()) < opt.SCPACK_RATIO_LIMIT) return ret;
 	
@@ -351,5 +352,26 @@ HMCont2D::Container<HMCont2D::Contour> Rect::RectContour() const{
 	return HMCont2D::Constructor::ContourFromPoints(pts, true);
 }
 
+// ==================================== Annulus
+shared_ptr<Annulus> Annulus::Factory(
+		const vector<Point>& outerpnt,
+		const vector<Point>& innerpnt
+){
+	shared_ptr<Annulus> ret;
+	//1) try DSCPACK procedure
+	ret = Impl::DSCPack::ToAnnulus::Build(outerpnt, innerpnt);
+	if (ret) return ret;
 
+	//2) FEM procedure
+	_THROW_NOT_IMP_;
+}
+
+HMCont2D::Container<HMCont2D::Contour> Annulus::InnerCircleContour() const{
+	auto pts = InnerCirclePoints();
+	return HMCont2D::Constructor::ContourFromPoints(pts, true);
+}
+HMCont2D::Container<HMCont2D::Contour> Annulus::OuterCircleContour() const{
+	auto pts = OuterCirclePoints();
+	return HMCont2D::Constructor::ContourFromPoints(pts, true);
+}
 

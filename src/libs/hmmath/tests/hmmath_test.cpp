@@ -1,6 +1,7 @@
 #include "fileproc.h"
 #include "hybmesh_contours2d.hpp"
 #include "scpack_port.hpp"
+#include "dscpack_port.hpp"
 
 int FAILED_CHECKS = 0;
 
@@ -19,7 +20,7 @@ void add_check(bool ex, std::string info){
 };
 
 void test01(){
-	using namespace HMMath::Conformal::Impl::ScPack;
+	using namespace HMMath::Conformal::Impl::SCPack;
 	std::cout<<"SCPACK conformal mapping"<<std::endl;
 	auto left = HMCont2D::Constructor::ContourFromPoints({
 			Point {0.4, 0.2},
@@ -87,14 +88,34 @@ void test02(){
 	diff = p-topoly;
 	add_check(ISZERO(diff.x) && ISZERO(diff.y), "map internal point: forward, backward");
 
+}
+
+void test03(){
+	using namespace HMMath::Conformal::Impl::DSCPack;
+	std::cout<<"DSCPack conformal mapping"<<std::endl; 
+
+	auto bot1 = HMCont2D::Constructor::Circle(8, 2, Point(0,0.1));
+	auto top1 = HMCont2D::Constructor::Circle(10, 4, Point(0,0.1));
+	auto trans1 = ToAnnulus::Build(top1, bot1);
+
+	auto p10 = vector<Point> {Point(2.5, 1.5)};
+	auto p11 = trans1->MapToAnnulus(p10);
+	auto p12 = trans1->MapToOriginal(p11);
+	add_check(
+		ISEQ(trans1->PhiInner(0),trans1->PhiOuter(0)) &&
+		ISEQ(trans1->PhiInner(4),trans1->PhiOuter(5)) &&
+		p10[0] == p12[0],
+		"Uniform points distribution"
+	);
 
 }
 
 
 
 int main(){
-	test01();
-	test02();
+	//test01();
+	//test02();
+	test03();
 
 
 	if (FAILED_CHECKS ==1){

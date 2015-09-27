@@ -18,6 +18,7 @@ struct Contour: public ECollection{
 	vector<Point*> ordered_points() const;
 	//list of all corner points in correct order without doubling
 	//the last point for closed contours
+	//for closed contours may not include first and last points
 	vector<Point*> corner_points() const;
 	//returns [point previous, point currant, point next]
 	//or NULLS if no such points

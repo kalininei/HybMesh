@@ -94,24 +94,24 @@ void Debug::geogebra_contour(const Contour& c){
 	std::string id = random_id(3);
 	for (int i=0; i<op.size(); ++i){
 		if (i == op.size() - 1 && c.is_closed()) break;
-		printf("P%s_%i = (%10.8f, %10.8f)\n", id.c_str(), i+1, op[i]->x, op[i]->y);
+		printf("P%s_{%i} = (%10.8f, %10.8f)\n", id.c_str(), i+1, op[i]->x, op[i]->y);
 	}
 	if (op.size() == 2){
 		std::cout<<"L"+id<<" = Segment[";
-		std::cout<<"P"+id+"_1, ";
-		std::cout<<"P"+id+"_2]"<<std::endl;
+		std::cout<<"P"+id+"_{1}, ";
+		std::cout<<"P"+id+"_{2}]"<<std::endl;
 	} else if (!c.is_closed()){
 		std::cout<<"L"+id<<" = Polyline[";
 		for (int i=0; i<op.size(); ++i){
 			if (i>0) std::cout<<", ";
-			std::cout<<"P"+id+"_"<<i+1;
+			std::cout<<"P"+id+"_{"<<i+1<<"}";
 		}
 		std::cout<<"]"<<std::endl;
 	} else {
 		std::cout<<"L"+id<<" = Polygon[";
 		for (int i=0; i<op.size()-1; ++i){
 			if (i>0) std::cout<<", ";
-			std::cout<<"P"+id+"_"<<i+1;
+			std::cout<<"P"+id+"_{"<<i+1<<"}";
 		}
 		std::cout<<"]"<<std::endl;
 	}

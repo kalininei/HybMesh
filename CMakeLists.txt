@@ -161,6 +161,8 @@ set(HMMATH_INCLUDE "${CMAKE_SOURCE_DIR}/src/libs/hmmath")
 set(HMMATH_TARGET hmmath)
 #libscpack: SCPACK_TARGET
 set(SCPACK_TARGET scpack)
+#libscpack: DSCPACK_TARGET
+set(DSCPACK_TARGET dscpack)
 #libhmcport: global definition of HMCPORT_INCLUDE, HMCPORT_TARGET
 set(HMCPORT_INCLUDE "${CMAKE_SOURCE_DIR}/src/libs/hmcport")
 set(HMCPORT_TARGET hmcport)

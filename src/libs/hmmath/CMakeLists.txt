@@ -3,6 +3,7 @@ set (HEADERS
 	hmconformal.hpp
 	hmcompute.hpp
 	scpack_port.hpp
+	dscpack_port.hpp
 	hmfem.hpp
 	femgrid43.hpp
 	femmat.hpp
@@ -14,11 +15,14 @@ set (SOURCES
 	hmcompute.cpp
 	scpack_port.cpp
 	scpack_port.f
+	dscpack_port.cpp
+	dscpack_port.f
 	hmfem.cpp
 	femgrid43.cpp
 	femmat.cpp
 	femassembly.cpp
 	$<TARGET_OBJECTS:${SCPACK_TARGET}>
+	$<TARGET_OBJECTS:${DSCPACK_TARGET}>
 )
 
 source_group ("Header Files" FILES ${HEADERS} ${HEADERS})

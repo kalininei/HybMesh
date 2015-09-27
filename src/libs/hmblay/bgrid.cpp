@@ -66,12 +66,12 @@ private:
 
 		//3) build a grid there
 		auto f1out = HMCont2D::Contour::EWeights(top);
-		for (auto& x: f1out) x = connection_grid->top2bot(x); 
+		for (auto& x: f1out) x = connection_area->top2bot(x); 
 		auto bot_part=[&f1out](double, double)->vector<double>{ return f1out; };
 
 		//using conform weights instead of real weighs to match adjacent partition
 		vector<double> f2out = HMCont2D::Contour::EWeights(right);
-		for(auto& x: f2out) x = connection_grid->right2conf(x);
+		for(auto& x: f2out) x = connection_area->right2conf(x);
 		auto vert_part=[&f2out](double)->vector<double>{ return f2out; };
 
 		connection_grid->Fill(bot_part, vert_part);
@@ -140,7 +140,7 @@ private:
 		//calculate before because this function is called multiple times
 		//using conform weights instead of real weighs to match adjacent partition
 		vector<double> f2out = HMCont2D::Contour::EWeights(left);
-		for(auto& x: f2out) x = connection_grid->left2conf(x);
+		for(auto& x: f2out) x = connection_area->left2conf(x);
 		auto vert_part=[&f2out](double)->vector<double>{ return f2out; };
 
 		connection_grid->Fill(bot_part, vert_part);
@@ -195,7 +195,10 @@ shared_ptr<BGrid> BGrid::MeshFullPath(const ExtPath& epath){
 		CornerTp t = pths[i].ext_data.back().tp;
 		connectors.push_back(MConnector::Build(t, mesher4[i].get(), mesher4[i+1].get()));
 	}
-	if (epath.is_closed()){ _THROW_NOT_IMP_; }
+	if (epath.is_closed() && mps.size() > 1){
+		CornerTp t = pths[0].ext_data[0].tp;
+		connectors.push_back(MConnector::Build(t, mesher4.back().get(), mesher4[0].get()));
+	}
 
 
 	//5. build rectangular meshes

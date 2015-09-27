@@ -40,11 +40,12 @@ void test01(){
 	GridGeom Ans1 = HMBlay::BuildBLayerGrid({inp});
 	add_check(fabs(Ans1.area() - 10.606602)<0.00001, cn);
 	HMCont2D::SaveVtk(col, "orig.vtk");
+	save_vtk(Ans1, "_dbgout.vtk");
 
-	cn = "Outer full circle";
-	inp.direction = HMBlay::DirectionFromString("OUTER");
-	GridGeom Ans2 = HMBlay::BuildBLayerGrid({inp});
-	add_check(fabs(Ans2.area() - 23.3345237) <1e-6, cn);
+	//cn = "Outer full circle";
+	//inp.direction = HMBlay::DirectionFromString("OUTER");
+	//GridGeom Ans2 = HMBlay::BuildBLayerGrid({inp});
+	//add_check(fabs(Ans2.area() - 23.3345237) <1e-6, cn);
 }
 
 void test02(){
@@ -345,7 +346,6 @@ void test10(){
 
 
 int main(){
-	//test01();
 	//test02();
 	//test04();
 	//test05();
@@ -355,8 +355,9 @@ int main(){
 	//test09();
 
 
-	test10();
-	test03();
+	//test10();
+	//test03();
+	test01();
 
 	if (FAILED_CHECKS ==1){
 		std::cout<<FAILED_CHECKS<<" test failed <<<<<<<<<<<<<<<<<<<"<<std::endl;

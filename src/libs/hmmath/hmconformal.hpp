@@ -32,7 +32,7 @@ public:
 	virtual double module() const = 0;
 	virtual vector<Point> MapToPolygon(const vector<Point>& input) const = 0;
 	virtual vector<Point> MapToRectangle(const vector<Point>& input) const =0;
-	//get rectangle
+	//get canonic rectangle containing all original points
 	virtual vector<Point> RectPoints() const = 0;
 	HMCont2D::Container<HMCont2D::Contour> RectContour() const;
 
@@ -54,9 +54,38 @@ public:
 		const HMCont2D::Contour& bot, const HMCont2D::Contour& top);
 };
 
+class Annulus{
+public:
+	//points should be ordered in anti-clockwise direction
+	//inner should lie strictly within outer
+	//all points should be unique
+	static shared_ptr<Annulus> Factory(
+		const vector<Point>& outerpnt,
+		const vector<Point>& innerpnt
+	);
+
+	//= RadInner < 1.0
+	virtual double module() const = 0;
+	//get original points mapped to inner circle
+	virtual vector<Point> InnerCirclePoints() const = 0;
+	//get original points mapped to outer circle
+	virtual vector<Point> OuterCirclePoints() const = 0;
+	//mapping functions
+	virtual vector<Point> MapToOriginal(const vector<Point>& input) const = 0;
+	virtual vector<Point> MapToAnnulus(const vector<Point>& input) const = 0;
+
+	//calculate angle at which i-th point is mapped to annulus
+	virtual double PhiInner(int i) const = 0;
+	virtual double PhiOuter(int i) const = 0;
+	
+	HMCont2D::Container<HMCont2D::Contour> InnerCircleContour() const;
+	HMCont2D::Container<HMCont2D::Contour> OuterCircleContour() const;
+};
+
 
 namespace Impl{
 
+//Approximatin of conformal mapping to rectangle using simple geometry
 class RectApprox: public Rect{
 	double _len_top, _len_bot, _len_left, _len_right;
 	double _module;

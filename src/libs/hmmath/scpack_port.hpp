@@ -3,7 +3,7 @@
 #include "hmconformal.hpp"
 
 namespace HMMath{ namespace Conformal{ namespace Impl{
-namespace ScPack{
+namespace SCPack{
 
 struct Pt{
 	double x, y;
@@ -30,17 +30,21 @@ class ToRect: public HMMath::Conformal::Rect{
 	//conformal module
 	double _module;
 
+	//prec is number of Gauss-Jacobi integration points.
+	//Result will be approximated as O(1E-prec)
 	ToRect(const vector<Pt>& pnt, Pt p0, std::array<int, 4> cor, int prec);
 public:
 	//assemble from path given by ordered set of points
 	//in an anti-clockwise direction
 	//corners are (0, i1, i2, i3)
+	//prec = 12
 	static shared_ptr<ToRect>
 	Build(const vector<Point>& pnt, int i1, int i2, int i3);
 
 	//assemble from 4 open contours directed in such a way that
 	//area is bounded in an anti-clockwise direction by
 	//  reverse(left), bottom, right, reverse(top)
+	//prec = 12
 	static shared_ptr<ToRect>
 	Build(const HMCont2D::Contour& left, const HMCont2D::Contour& right,
 		const HMCont2D::Contour& bot, const HMCont2D::Contour& top);

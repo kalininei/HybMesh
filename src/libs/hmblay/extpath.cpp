@@ -167,7 +167,7 @@ vector<ExtPath> ExtPath::DivideByAngle(const ExtPath& pth, vector<CornerTp> tps)
 	ret.back().ext_data.push_back(pth.ext_data[info.back().index]);
 	for (auto& r: ret){
 		r.FillEndConditions();
-		assert(r.ext_data.size() == r.all_points().size());
+		assert(r.ext_data.size() == r.ordered_points().size());
 	}
 	return ret;
 }
@@ -253,6 +253,7 @@ vector<ExtPath> ExtPath::DivideByBndPart(const ExtPath& pth){
 			last_step = step;
 		}
 	}
+	if (rpoints.size() == 1) { return vector<ExtPath> {pth}; }
 	if (rpoints.back() != ap.back()) rpoints.push_back(ap.back());
 	vector<ExtPath> subs;
 	for (int i=0; i<rpoints.size()-1; ++i){
