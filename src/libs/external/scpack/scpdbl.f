@@ -70,8 +70,10 @@ c*******************************************************************
 c* scsolv                                     primary subroutine  **
 c*******************************************************************
 c
-      subroutine scsolv(iprint,iguess,tol,errest,n,c,z,wc,
+      integer
+     &function scsolv(iprint,iguess,tol,errest,n,c,z,wc,
      &   w,betam,nptsq,qwork)
+c returns 0 if error occured. 1 otherwise
 c
 c this subroutine computes the accessory parameters c and
 c z(k) for the schwarz-christoffel transformation
@@ -184,7 +186,8 @@ c
       nm = n-1
 c
 c check input data:
-      call check(tol,n,w,betam)
+      scsolv = check(tol,n,w,betam)
+      if (scsolv == 0) return
 c
 c determine number of boundary components, etc.:
 c   pass 1: one fixed point for each infinite vertex:
@@ -374,7 +377,7 @@ c get initial guess zi from program ode:
 c
 c refine answer by newton iteration:
     3 continue
-      do 4 iter = 1,10
+      do 4 iter = 1,100
         zfnwt = ww - wsc(zi,0,z0,w0,k0,n,c,z,betam,nptsq,qwork)
         zi = zi + zfnwt/(c*zprod(zi,0,n,z,betam))
         if (abs(zi).ge.1.1d0) zi = .5d0 * zi/abs(zi)
@@ -386,7 +389,7 @@ c refine answer by newton iteration:
     5 zsc = zi
 c
   201 format (/' *** nonstandard return from ode in zsc: iflag =',i2/)
-  202 format (/' *** possible error in zsc: no convergence in 10'/
+  202 format (/' *** possible error in zsc: no convergence in 100'/
      &      '     iterations.  may need a better initial guess zinit')
       return
       end
@@ -414,47 +417,51 @@ c*******************************************************************
 c* check                          subordinate(scsolv) subroutine  **
 c*******************************************************************
 c
-      subroutine check(eps,n,w,betam)
+      function check(eps,n,w,betam)
 c
 c checks geometry of the problem to make sure it is a form usable
-c by scsolv.
+c by scsolv. returns 0 if data is incorrect. 1 otherwise.
 c
       implicit double precision (a-b,d-h,o-v,x-y)
       implicit complex*16(c,w,z)
       dimension w(n),betam(n)
 c
+      check = 0
       sum = 0.d0
       do 1 k = 1,n
     1   sum = sum + betam(k)
       if (abs(sum+2.d0).lt.eps) goto 2
       write (6,301)
+      return
     2 if (betam(1).gt.-1.d0) goto 3
       write (6,302)
-      stop
+      return
     3 if (betam(n).gt.-1.d0) goto 4
       write (6,303)
-      stop
+      return
     4 if (abs(betam(n-1)).gt.eps) goto 5
       write (6,304)
       write (6,306)
+      return
     5 if (abs(betam(n-1)-1.d0).gt.eps) goto 6
       write (6,305)
       write (6,306)
-      stop
+      return
     6 do 7 k = 2,n
         if (betam(k).le.-1.d0.or.betam(k-1).le.-1.d0) goto 7
         if (abs(w(k)-w(k-1)).le.eps) goto 8
     7   continue
       if (abs(w(1)-w(n)).gt.eps) goto 9
     8 write (6,307)
-      stop
-    9 if (n.ge.3) goto 11
+      return
+    9 if (n.ge.3) goto 10
       write (6,309)
-      stop
-c   10 if (n.le.20) goto 11
-c      write (6,310)
-c      stop
+      return
+   10 if (n.le.20) goto 11
+      write (6,310)
+      return
    11 continue
+      check = 1
       return
 c
   301 format (/' *** error in check: angles do not add up to 2'/)
@@ -627,7 +634,9 @@ c
       dimension z(n),betam(n),qwork(1)
 c
       if (abs(za).gt.1.1d0.or.abs(zb).gt.1.1d0) write (6,301)
-  301 format (/' *** warning in zquad: z outside the disk')
+     &            abs(za), abs(zb)
+  301 format (/' *** warning in zquad: z outside the disk', F10.5,
+     &        '  ', F10.5)
 c
       zmid = (za + zb) / 2.d0
       zquad = zquad1(za,zmid,ka,n,z,betam,nptsq,qwork)

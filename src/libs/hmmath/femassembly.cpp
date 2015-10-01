@@ -1,6 +1,6 @@
 #include "femassembly.hpp"
 
-using namespace HMFem::Impl;
+using namespace HMFem;
 
 namespace{
 
@@ -10,17 +10,30 @@ shared_ptr<LocMat> LaplasLocalMatrix3(const vector<const GridPoint*>& points){
 	shared_ptr<LocMat3Sym> ret(new LocMat3Sym());
 	const double &x1 = points[0]->x, &x2 = points[1]->x, &x3 = points[2]->x;
 	const double &y1 = points[0]->y, &y2 = points[1]->y, &y3 = points[2]->y;
-	double J11 = x2 - x1, J12 = x3 - x1;
-	double J21 = y2 - y1, J22 = y3 - y1;
-	double modJ = J22*J11 - J21*J12;
-	double J2122 = J21 - J22, J1112 = J11 - J12;
 
-	(*ret)[0] = ( sqr(J2122) + sqr(J1112));
-	(*ret)[1] = ( J22*J2122  + J12*J1112 );
-	(*ret)[2] = (-J11*J1112  - J21*J2122 );
-	(*ret)[3] = ( sqr(J22)   + sqr(J12)  );
-	(*ret)[4] = (-J21*J22    - J12*J11   );
-	(*ret)[5] = ( sqr(J11)   + sqr(J21)  );
+	// x(k, e) = k*(x2-x1) + e*(x3-x1) + x1
+	// y(k, e) = k*(y2-y1) + e*(y3-y1) + y1
+	//
+	// J    = |dxdk dydk|
+	//        |dxde dyde|
+	//
+	// InvJ =  1  | J22  -J12|
+	//        |J| |-J21   J11|
+	//
+	// |dfdx| = InvJ * |dfdk|
+	// |dfdy|          |dfde|
+
+	double j11 = x2 - x1, j21 = x3 - x1;
+	double j12 = y2 - y1, j22 = y3 - y1;
+	double modjx2 = 2*(j22*j11 - j21*j12);
+	double j1222 = j12 - j22, j1121 = j11 - j21;
+
+	(*ret)[0] = ( sqr(j1222) + sqr(j1121))/modjx2;
+	(*ret)[1] = ( j22*j1222  + j21*j1121 )/modjx2;
+	(*ret)[2] = (-j11*j1121  - j12*j1222 )/modjx2;
+	(*ret)[3] = ( sqr(j22)   + sqr(j21)  )/modjx2;
+	(*ret)[4] = (-j12*j22    - j21*j11   )/modjx2;
+	(*ret)[5] = ( sqr(j11)   + sqr(j12)  )/modjx2;
 
 	return ret;
 }
@@ -165,15 +178,15 @@ shared_ptr<LocMat> LaplasLocalMatrix(const vector<const GridPoint*>& points){
 }
 
 // ============================== Global assembling
-Mat Assemble::PureLaplas(const Grid43& grid){
-	Mat ret;
+shared_ptr<Mat> Assemble::PureLaplas(const Grid43& grid){
+	shared_ptr<Mat> ret(new Mat());
 	for (int i=0; i<grid.n_cells(); ++i){
 		vector<const GridPoint*> pp = grid.get_cell(i)->get_points();
 		shared_ptr<LocMat> A = LaplasLocalMatrix(pp);
 		vector<int> pind(pp.size());
 		std::transform(pp.begin(), pp.end(), pind.begin(), 
 				[](const GridPoint* p){ return p->get_ind(); });
-		A->ToMat(pind, ret);
+		A->ToMat(pind, *ret);
 	}
 	return ret;
 }

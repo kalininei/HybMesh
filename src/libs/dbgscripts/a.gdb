@@ -53,10 +53,12 @@ skip file /usr/include/c++/4.8/bits/stl_algo.h
 skip file /usr/include/c++/4.8/bits/stl_iterator.h
 skip file /usr/include/c++/4.8/bits/allocator.h
 skip file /usr/include/c++/4.8/bits/stl_vector.h
+skip file /usr/include/c++/4.8/tuple
+skip file /usr/include/c++/4.8/array
 
 b main
 run 
-b dscpack.f:1940
+b femassembly.cpp:169
 
 #====================================
 #call from gui/HybMesh.py directory with HybMesh

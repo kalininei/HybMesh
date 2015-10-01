@@ -139,3 +139,11 @@ vector<Point> TriGrid::cell_centers() const{
 	return ret;
 }
 
+shared_ptr<TriGrid>
+TriGrid::TriangulateArea(const vector<Point>& pts, double h){
+	Contour c(pts);
+	ContoursCollection cc({c});
+	vector<double> lc (c.n_points(), h);
+	shared_ptr<TriGrid> ret(new TriGrid(cc, lc, 7.0));
+	return ret;
+}

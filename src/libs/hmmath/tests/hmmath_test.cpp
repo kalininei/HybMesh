@@ -2,6 +2,9 @@
 #include "hybmesh_contours2d.hpp"
 #include "scpack_port.hpp"
 #include "dscpack_port.hpp"
+#include "hmfem.hpp"
+#include "fileproc.h"
+#include "confrect_fem.hpp"
 
 int FAILED_CHECKS = 0;
 
@@ -107,15 +110,82 @@ void test03(){
 		p10[0] == p12[0],
 		"Uniform points distribution"
 	);
-
 }
 
+void test04(){
+	std::cout<<"Conformal mapping to rectangle: FEM vs SCPACK"<<std::endl;
+	int sz1 = 13;
+	auto r1 = HMCont2D::Constructor::Circle(sz1, 10, Point(0,0));
+	auto inp1 = HMMath::Conformal::Rect::FactoryInput(r1, {0, sz1/4, sz1/2, 3*sz1/4});
 
+	HMMath::Conformal::Options opt;
+	//fem 1
+	//opt.fem_segment_partition = 12;
+	//auto trans1 = HMMath::Conformal::Impl::ConfFem::ToRect::Build(
+	//                std::get<0>(inp1), sz1/4, sz1/2, 3*sz1/4, opt);
+
+	//fem 2
+	opt.fem_segment_partition = 11;
+	auto trans2 = HMMath::Conformal::Impl::ConfFem::ToRect::Build(
+			std::get<0>(inp1), sz1/4, sz1/2, 3*sz1/4, opt);
+
+	//scpack
+	auto trans3 = HMMath::Conformal::Impl::SCPack::ToRect::Build(
+			std::get<0>(inp1), sz1/4, sz1/2, 3*sz1/4);
+			
+
+	//TODO why even number of nodes gives such a bad answer??
+	//add_check(fabs(trans1->module() - 1.05)<0.05, "fem even partition module");
+	add_check(fabs(trans2->module() - 1.05)<0.05, "fem odd partition module");
+	add_check(fabs(trans3->module() - 1.05)<0.05, "scpack module");
+}
+
+void test05(){
+	std::cout<<"fem in square"<<std::endl;
+	Point p1{0.0, 0.0}, p2{2.0, 0.0}, p3{2.0, 1.0}, p4{0.0, 1.0};
+
+	auto dotest = [&](shared_ptr<HMFem::Grid43> g){
+		auto cont = GGeom::Info::Contour1(*g);
+		GridPoint* gp1 = static_cast<GridPoint*>(HMCont2D::ECollection::FindClosestNode(cont, p1));
+		GridPoint* gp2 = static_cast<GridPoint*>(HMCont2D::ECollection::FindClosestNode(cont, p2));
+		GridPoint* gp3 = static_cast<GridPoint*>(HMCont2D::ECollection::FindClosestNode(cont, p3));
+		GridPoint* gp4 = static_cast<GridPoint*>(HMCont2D::ECollection::FindClosestNode(cont, p4));
+		auto contbot = HMCont2D::Contour::Assemble(cont, gp1, gp2);
+		auto conttop = HMCont2D::Contour::Assemble(cont, gp3, gp4);
+
+		auto p = HMFem::LaplasProblem(g);
+		p.SetDirichlet(contbot, [](const GridPoint* p){ return 1.0; });
+		p.SetDirichlet(conttop, [](const GridPoint* p){ return 6.0; });
+
+
+		auto v = vector<double>(g->n_points(), 0.0);
+		p.Solve(v);
+
+		double I = p.IntegralDfDn(contbot, v);
+
+		return I;
+	};
+
+	//1) structured grid
+	auto g4 = GGeom::Constructor::RectGrid01(20, 20);
+	GGeom::Modify::PointModify(g4, [](GridPoint* p){ p->x*=2; });
+	auto g1 = HMFem::Grid43::Build3(&g4);
+	double I1 = dotest(g1);
+	add_check(fabs(I1+10)<1e-6, "structured triangle grid, DfDn");
+
+	//2) unstructured grid
+	double h = 0.05;
+	auto g2 = HMFem::Grid43::Build3( {p1, p2, p3, p4}, h);
+	double I2 = dotest(g2);
+	add_check(fabs(I2+10)<1e-6, "unstructured triangle grid, DfDn");
+}
 
 int main(){
-	//test01();
-	//test02();
+	test01();
+	test02();
 	test03();
+	test04();
+	test05();
 
 
 	if (FAILED_CHECKS ==1){

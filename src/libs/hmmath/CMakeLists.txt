@@ -8,6 +8,7 @@ set (HEADERS
 	femgrid43.hpp
 	femmat.hpp
 	femassembly.hpp
+	confrect_fem.hpp
 )
 
 set (SOURCES
@@ -17,6 +18,7 @@ set (SOURCES
 	scpack_port.f
 	dscpack_port.cpp
 	dscpack_port.f
+	confrect_fem.cpp
 	hmfem.cpp
 	femgrid43.cpp
 	femmat.cpp

@@ -126,7 +126,7 @@ RectForOpenArea::RectForOpenArea(HMCont2D::Contour& left, HMCont2D::Contour& rig
 	for (Point* p: tmp) path.push_back(*p);
 	path.pop_back();
 	//2. build conformal transformation into rectangle [0,m]x[0,1]
-	HMMath::Conformal::Rect::Option opt;
+	HMMath::Conformal::Options opt;
 	opt.use_rect_approx = use_rect_approx;
 	opt.right_angle_eps = M_PI/8.0;
 	opt.length_weight = 1.05;

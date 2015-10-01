@@ -3,11 +3,11 @@
 
 #include "femmat.hpp"
 
-namespace HMFem{ namespace Impl{
+namespace HMFem{
 
 namespace Assemble{
 
-Mat PureLaplas(const Grid43& grid);
+shared_ptr<Mat> PureLaplas(const Grid43& grid);
 
 
 }//Assemble
@@ -21,7 +21,7 @@ Mat PureLaplas(const Grid43& grid);
 
 
 
-}}
+}
 
 
 

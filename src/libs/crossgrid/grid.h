@@ -175,7 +175,8 @@ public:
 	static GridGeom sum(const vector<GridGeom*>& g);
 
 	friend class BufferGrid;
-	friend class GGeom::Constructor;
+
+	friend struct GGeom::Constructor;
 	friend struct GGeom::Modify;
 	friend struct GGeom::Info;
 };
@@ -184,8 +185,29 @@ public:
 //This is a new style interface.
 //Old interface should be completely changed to new one during grid refactoring.
 #include "hybmesh_contours2d.hpp"
+#include <sstream>
 namespace GGeom{
 
+// === exceptions
+//basic exception
+class EException: public std::runtime_error{
+public:
+	EException(std::string m) noexcept: std::runtime_error(
+			std::string("Grid geometry exception: ") + m){};
+};
+//point is out of area
+class EOutOfArea: public EException{
+	static std::string Msg(Point p){
+		std::ostringstream s;
+		s<<"Point "<<p<<" lies outside grid area"<<std::endl;
+		return s.str();
+	};
+public:
+	EOutOfArea(Point p) noexcept: EException(Msg(p)){};
+};
+
+
+// === builders
 struct Constructor{
 
 static GridGeom RectGrid(const vector<double>& part_x, vector<double>& part_y);
@@ -193,28 +215,46 @@ static GridGeom RectGrid01(int Nx, int Ny);
 
 };
 
-
+// === modifiers
 struct Modify{
 
 static void RemoveCells(GridGeom& grid, const std::vector<const Cell*>& cls);
 static void PointModify(GridGeom& grid, std::function<void(GridPoint*)> fun);
-static void ShallowAdd(GridGeom* from, GridGeom* to);
+static void ShallowAdd(const GridGeom* from, GridGeom* to);
+static void DeepAdd(const GridGeom* from, GridGeom* to);
 
 };
 
+// === grid structure information
 struct Info{
 
+//points
 static ShpVector<GridPoint> SharePoints(const GridGeom& grid, const vector<int>& indicies);
+static ShpVector<GridPoint> BoundaryPoints(const GridGeom& grid);
+//collection of all outer contours
 static HMCont2D::ContourTree Contour(const GridGeom& grid);
+//only the first contour of tree.
+//Used for grids which are definitly singly connected
+static HMCont2D::Contour Contour1(const GridGeom& grid);
+
+//Finders
+class CellFinder{
+	const GridGeom* grid;
+	const int Nx, Ny;
+public:
+	CellFinder(const GridGeom* g, int nx, int ny);
+	//Find cell containing point.
+	//Throws EOutOfArea if failed to find the point.
+	const Cell* Find(const Point& p);
+};
+
+
 
 };
 
 
 
 }
-
-
-
 
 
 

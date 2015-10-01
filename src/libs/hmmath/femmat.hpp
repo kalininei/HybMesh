@@ -3,7 +3,7 @@
 #include "hmproject.h"
 #include "femgrid43.hpp"
 
-namespace HMFem{ namespace Impl{
+namespace HMFem{
 
 //Sparce Matrix
 struct Mat{
@@ -17,6 +17,7 @@ public:
 	double get(int i, int j) const;
 	void add(int i, int j, double val);
 	vector<double> diag() const;
+	int row_size(int irow) const { return data[irow].size(); }
 
 	//Methods
 	double RowMultVec(const vector<double>& u, int irow) const;
@@ -47,5 +48,5 @@ public:
 
 
 
-}}//Impl
+}
 #endif

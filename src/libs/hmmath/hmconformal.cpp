@@ -2,6 +2,7 @@
 #include "scpack_port.hpp"
 #include "dscpack_port.hpp"
 #include "hmcompute.hpp"
+#include "confrect_fem.hpp"
 
 using namespace HMMath::Conformal;
 
@@ -18,7 +19,7 @@ double get_len(const vector<Point>& path, int i0, int i2){
 
 }
 
-bool Rect::Option::CanUseRectApprox(const vector<Point>& path, int i1, int i2, int i3) const{
+bool Options::CanUseRectApprox(const vector<Point>& path, int i1, int i2, int i3) const{
 	if (!use_rect_approx) return false;
 	//check length
 	if (length_weight >= 1.0){
@@ -46,7 +47,7 @@ bool Rect::Option::CanUseRectApprox(const vector<Point>& path, int i1, int i2, i
 	return true;
 }
 
-bool Rect::Option::CanUseSCPACK(const vector<Point>& path, int i1, int i2, int i3) const{
+bool Options::CanUseSCPACK(const vector<Point>& path, int i1, int i2, int i3) const{
 	double lenmin = get_len(path, 0, i1);
 	double lenmax = lenmin;
 	double l2 = get_len(path, i1, i2);
@@ -59,13 +60,13 @@ bool Rect::Option::CanUseSCPACK(const vector<Point>& path, int i1, int i2, int i
 	lenmax = std::max(lenmax, l3);
 	lenmax = std::max(lenmax, l4);
 	double hap = std::max(lenmin/lenmax, lenmax/lenmin);
-	return (hap < SCPACK_RATIO_LIMIT);
+	return (hap < scpack_ratio_limit);
 }
 
 shared_ptr<Rect> Rect::Factory(
 		const vector<Point>& _path,
 		std::array<int, 4> corners,
-		const Option& opt){
+		const Options& opt){
 	//rebuild path so that corners[0] = 0;
 	vector<Point> path(_path);
 	std::rotate(path.begin(), path.begin() + corners[0], path.end());
@@ -86,9 +87,9 @@ shared_ptr<Rect> Rect::Factory(
 	if (opt.CanUseSCPACK(path, i1, i2, i3)){
 		ret = Impl::SCPack::ToRect::Build(path, i1, i2, i3);
 	}
-	if (ret && std::max(ret->module(), 1.0/ret->module()) < opt.SCPACK_RATIO_LIMIT) return ret;
+	if (ret && std::max(ret->module(), 1.0/ret->module()) < opt.scpack_ratio_limit) return ret;
 	
-
+/*
 	//Maybe rectangle can be mirrored into a closed
 	//doubly connected one and be mapped into a ring?
 	_THROW_NOT_IMP_;
@@ -97,12 +98,20 @@ shared_ptr<Rect> Rect::Factory(
 	//using modified Schwarz-Christoffel algorithm
 	//see "A modified Schwarz-Christoffel transformation for elongated regions (1990)"
 	//     by Louis H , Howellt , Lloyd N. Trefethen 
-	//TODO
+	_THROW_NOT_IMP_;
+*/
 	
 	//The only chance left is a direct fem solution
 	//of the Laplas problem
-	_THROW_NOT_IMP_;
+	ret = Impl::ConfFem::ToRect::Build(path, i1, i2, i3, opt);
+
+	if (!ret) throw std::runtime_error(
+		"Failed to build mapping to rectangle"
+	);
+
+	return ret;
 }
+
 std::tuple<vector<Point>, std::array<int, 4>>
 Rect::FactoryInput(const HMCont2D::Contour& left, const HMCont2D::Contour& right,
 		const HMCont2D::Contour& bot, const HMCont2D::Contour& top){
@@ -126,6 +135,33 @@ Rect::FactoryInput(const HMCont2D::Contour& left, const HMCont2D::Contour& right
 	int i2 = i1 + bp.size()-1;
 	int i3 = i2 + rp.size()-1;
 	crn = {0, i1, i2, i3};
+	return ret;
+}
+
+std::tuple<vector<Point>, std::array<int, 4>>
+Rect::FactoryInput(const HMCont2D::Contour& cont, const std::array<int,4>& a){
+	assert(cont.is_closed());
+	assert(a[0]<a[1] && a[1]<a[2] && a[2]<a[3]);
+	assert(a[0]>=0 && a[3]<cont.size());
+
+	std::tuple<vector<Point>, std::array<int, 4>> ret;
+	auto& rcont = std::get<0>(ret);
+	auto& ra = std::get<1>(ret);
+
+	//copy points from contour
+	for (auto p: cont.ordered_points()) rcont.push_back(*p);
+	rcont.pop_back();
+	ra = a;
+
+	//rotating points to ensure ra[0] = 0
+	if (ra[0] > 0){
+		std::rotate(rcont.begin(), rcont.begin()+ra[0], rcont.end());
+		ra[1]-=ra[0]; if (ra[1] < 0) ra[1] += cont.size();
+		ra[2]-=ra[0]; if (ra[2] < 0) ra[2] += cont.size();
+		ra[3]-=ra[0]; if (ra[3] < 0) ra[3] += cont.size();
+		ra[0] = 0;
+	}
+
 	return ret;
 }
 

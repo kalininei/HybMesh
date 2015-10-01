@@ -10,7 +10,7 @@
      &  )
 
 C Builds a map from arbitrary polygon to rectangle
-C Returns conformal module of input polygon
+C Returns conformal module of input polygon or -1 if errors
 C input
         integer n, corners(4), prec
         complex*16 wcoords(n), w0
@@ -21,6 +21,7 @@ C output
 C internal
         real*8 typical_size, tol, eest, betam2(4)
         complex*16 z2(4), zero, wsc
+        integer scsolv, scsolv_res
 
 C dimensions
         data zero /(0.d0,0.d0)/
@@ -38,8 +39,13 @@ C calculate tolerance
 C transform from disk to polygon
         call angles(n, wcoords, betam)
         call qinit(n, betam, prec, qwork)
-        call scsolv(-2, 0, tol, eest, n, factor, zcoords, w0, wcoords,
-     &          betam, prec, qwork)
+        scsolv_res = scsolv(-2, 0, tol, eest, n, factor, zcoords, 
+     &                      w0, wcoords,
+     &                      betam, prec, qwork)
+        if (scsolv_res /= 1) then
+                scpack_init = -1.0d0
+                return
+        endif
 
 c map from disk to rectangle
         do 200 k = 1, 4

@@ -301,6 +301,20 @@ public:
 	bool has_common_points(const BoundingBox& bb) const;
 	//does this contain any part of [p1, p2] segment
 	bool contains(const Point& p1, const Point& p2) const;
+
+	//Filter points from container of Point*
+	template<class Container>
+	Container Filter(const Container& data,
+			bool inside, bool bound, bool outside){
+		Container out;
+		for (auto& p: data){
+			int pos = whereis(*p);
+			if (inside && pos == INSIDE) out.push_back(p);
+			else if (bound && pos == BOUND) out.push_back(p);
+			else if (outside && pos == OUTSIDE) out.push_back(p);
+		}
+		return out;
+	}
 };
 
 #endif

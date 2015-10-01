@@ -766,15 +766,26 @@ void GGeom::Modify::PointModify(GridGeom& grid, std::function<void(GridPoint*)> 
 			[&fun](shared_ptr<GridPoint> gp){ fun(gp.get()); });
 }
 
-void GGeom::Modify::ShallowAdd(GridGeom* from, GridGeom* to){
+void GGeom::Modify::ShallowAdd(const GridGeom* from, GridGeom* to){
 	std::copy(from->points.begin(), from->points.end(), std::back_inserter(to->points));
 	std::copy(from->cells.begin(), from->cells.end(), std::back_inserter(to->cells));
 	to->set_indicies();
 }
 
+void GGeom::Modify::DeepAdd(const GridGeom* from, GridGeom* to){
+	to->add_data(*from);
+}
+
 ShpVector<GridPoint> GGeom::Info::SharePoints(const GridGeom& grid, const vector<int>& indicies){
 	ShpVector<GridPoint> ret;
 	for (int i: indicies) ret.push_back(grid.points[i]);
+	return ret;
+}
+
+ShpVector<GridPoint> GGeom::Info::BoundaryPoints(const GridGeom& grid){
+	auto pntset = grid.get_bnd_points();
+	ShpVector<GridPoint> ret;
+	for (auto pv: pntset) ret.push_back(grid.points[pv->get_ind()]);
 	return ret;
 }
 
@@ -792,5 +803,16 @@ HMCont2D::ContourTree GGeom::Info::Contour(const GridGeom& grid){
 	return ret;
 }
 
+HMCont2D::Contour GGeom::Info::Contour1(const GridGeom& grid){
+	HMCont2D::ContourTree ct = Contour(grid);
+	return *ct.nodes[0];
+}
 
+GGeom::Info::CellFinder::CellFinder(const GridGeom* g, int nx, int ny):
+		grid(g), Nx(nx), Ny(ny){
+}
+
+const Cell* GGeom::Info::CellFinder::Find(const Point& p){
+	_THROW_NOT_IMP_;
+}
 

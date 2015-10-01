@@ -96,9 +96,9 @@ ToRect::Build(const vector<Point>& pnt, int i1, int i2, int i3){
 			[](const Point& p){ return Pt{p.x, p.y}; }
 	);
 	
-	//TODO error handler and return 0 if scpack_init fails
 	auto ret =  new ToRect(input, pc, std::array<int, 4>{0, i1, i2, i3}, 12);
-	return shared_ptr<ToRect>(ret);
+	if (ret->module() < 0) return 0;
+	else return shared_ptr<ToRect>(ret);
 }
 
 shared_ptr<ToRect>

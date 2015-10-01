@@ -2,19 +2,6 @@
 #include <fstream>
 
 namespace{
-int _dbgmode = 0;
-}
-void set_debug_mode(int i){
-	std::cout<<"Debug mode was set to "<<i<<std::endl;
-	_dbgmode = i;
-}
-
-int get_debug_mode(){
-	return _dbgmode;
-}
-
-
-namespace{
 
 void add_vtk_point_data(const vector<double>& data, const char* name, const char* fn, bool is_first = false){
 	std::ofstream f(fn, std::ios_base::app);
@@ -52,6 +39,11 @@ void save_vtk(const GridGeom* g, const char* fn){
 	fs<<"CELL_TYPES  "<<g->n_cells()<<std::endl;
 	for (int i=0;i<g->n_cells();++i) fs<<7<<std::endl;
 	fs.close();
+}
+
+void save_vtk(const GridGeom* g, const vector<double>& data, const char* fn){
+	save_vtk(g, fn);
+	add_vtk_point_data(data, "data", fn, true);
 }
 
 void save_vtk(const PContour* c, const char* fn){
@@ -149,6 +141,7 @@ void save_vtk(const ContoursCollection& c, const vector<double>& pdata, const ch
 	save_vtk(c.contours_list(), pdata, fn);
 }
 void save_vtk(const GridGeom& g, const char* fn){ save_vtk(&g, fn);}
+void save_vtk(const GridGeom& g, const vector<double>& data, const char* fn){ save_vtk(&g, data, fn);}
 void save_vtk(const PtsGraph& g, const char* fn){ save_vtk(&g, fn);}
 
 TicToc::TicToc(bool start, const char* _name):name(_name), dur(TDuration::zero()){

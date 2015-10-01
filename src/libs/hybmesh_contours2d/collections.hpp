@@ -211,6 +211,9 @@ struct PCollection: public Tpp::Collection<Point>{
 	static ScaleBase Scale01(PCollection&);
 	static void Scale(PCollection&, const ScaleBase& sc);
 	static void Unscale(PCollection&, const ScaleBase& sc);
+
+	//bounding box + geps
+	static BoundingBox BBox(const PCollection& p, double eps=geps);
 };
 
 
@@ -240,6 +243,9 @@ struct ECollection: public Tpp::Collection<Edge>{
 	FindClosestEdge(const ECollection& dt, const Point& p);
 	//length of each edge
 	static vector<double> ELengths(const ECollection& dt);
+	
+	//bounding box + geps
+	static BoundingBox BBox(const ECollection& p, double eps=geps);
 };
 
 

@@ -112,6 +112,10 @@ vector<double> ECollection::ELengths(const ECollection& dt){
 }
 
 
+BoundingBox ECollection::BBox(const ECollection& p, double eps){
+	auto ap = p.all_points();
+	return BoundingBox::Build(ap.begin(), ap.end());
+}
 
 
 

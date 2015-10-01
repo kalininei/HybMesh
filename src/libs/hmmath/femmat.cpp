@@ -1,11 +1,11 @@
 #include "femmat.hpp"
 
-using namespace HMFem::Impl;
+using namespace HMFem;
 
 namespace{
 
 void SeidelSolve(const Mat& M, const vector<double>& rhs, vector<double>& u){
-	const double tol = 1e-6;
+	const double tol = 1e-9;
 	const int maxit = 10000;
 
 	vector<double> diag = M.diag();
@@ -17,7 +17,7 @@ void SeidelSolve(const Mat& M, const vector<double>& rhs, vector<double>& u){
 			u[i] += r/diag[i];
 			if (fabs(r)>rNorm) rNorm = fabs(r);
 		}
-		if (rNorm<=tol) break;
+		if (rNorm<=tol) return;
 	}
 	throw std::runtime_error("Seidel solver failed to converge");
 }

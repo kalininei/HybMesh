@@ -23,6 +23,9 @@ public:
 
 	//laplas smooth
 	void smooth(double w);
+
+	static shared_ptr<TriGrid>
+	TriangulateArea(const vector<Point>& pts, double h);
 };
 
 
