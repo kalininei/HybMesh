@@ -46,7 +46,11 @@ class Rect{
 public:
 	virtual double module() const = 0;
 	virtual vector<Point> MapToPolygon(const vector<Point>& input) const = 0;
-	virtual vector<Point> MapToRectangle(const vector<Point>& input) const =0;
+	virtual vector<Point> MapToRectangle(const vector<Point>& input) const = 0;
+
+	Point MapToPolygon1(Point p) const { return MapToPolygon(vector<Point> {p})[0]; }
+	Point MapToRectangle1(Point p) const { return MapToRectangle(vector<Point> {p})[0]; }
+
 	//get canonic rectangle containing all original points
 	virtual vector<Point> RectPoints() const = 0;
 	HMCont2D::Container<HMCont2D::Contour> RectContour() const;
@@ -92,6 +96,9 @@ public:
 	//mapping functions
 	virtual vector<Point> MapToOriginal(const vector<Point>& input) const = 0;
 	virtual vector<Point> MapToAnnulus(const vector<Point>& input) const = 0;
+
+	Point MapToOriginal1(Point p){ return MapToOriginal(vector<Point> {p})[0]; }
+	Point MapToAnnulus1(Point p){ return MapToAnnulus(vector<Point> {p})[0]; }
 
 	//calculate angle at which i-th point is mapped to annulus
 	virtual double PhiInner(int i) const = 0;

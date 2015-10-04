@@ -21,6 +21,7 @@ public:
 
 	//Methods
 	double RowMultVec(const vector<double>& u, int irow) const;
+	void MultVec(const vector<double>& u, vector<double>& res) const;
 };
 
 
@@ -30,6 +31,10 @@ struct LocMat{
 };
 
 struct LocMat3Sym: public LocMat, public std::array<double, 6>{
+	void ToMat(const vector<int>& pind, Mat& target) const;
+};
+
+struct LocMat3: public LocMat, public std::array<double, 9>{
 	void ToMat(const vector<int>& pind, Mat& target) const;
 };
 

@@ -14,7 +14,7 @@
 	gmsh_load
 	Memcheck:Leak
 	...
-	obj:/usr/lib64/libGmsh.so
+	obj:/usr/lib64/libGmsh.so*
 	fun:call_init.part.0
 }
 {
@@ -29,4 +29,10 @@
 	Memcheck:Leak
 	...
 	fun:_GLOBAL__sub_I_Options.cpp
+}
+{
+	gmsh_init2
+	Memcheck:Cond
+	...
+	fun:*GmshInitialize*
 }

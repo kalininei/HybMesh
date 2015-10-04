@@ -38,6 +38,53 @@ shared_ptr<LocMat> LaplasLocalMatrix3(const vector<const GridPoint*>& points){
 	return ret;
 }
 
+shared_ptr<LocMat> DDxLocalMatrix3(const vector<const GridPoint*>& points){
+	assert(points.size() == 3);
+	shared_ptr<LocMat3> ret(new LocMat3());
+	const double &y1 = points[0]->y, &y2 = points[1]->y, &y3 = points[2]->y;
+	double j12 = y2 - y1, j22 = y3 - y1;
+
+	(*ret)[0] = (*ret)[3] = (*ret)[6] = (-j22+j12)/6.0;
+	(*ret)[1] = (*ret)[4] = (*ret)[7] = j22/6.0;
+	(*ret)[2] = (*ret)[5] = (*ret)[8] = -j12/6.0;
+
+	return ret;
+}
+
+shared_ptr<LocMat> DDyLocalMatrix3(const vector<const GridPoint*>& points){
+	assert(points.size() == 3);
+	shared_ptr<LocMat3> ret(new LocMat3());
+	const double &x1 = points[0]->x, &x2 = points[1]->x, &x3 = points[2]->x;
+
+	double j11 = x2 - x1, j21 = x3 - x1;
+
+	(*ret)[0] = (*ret)[3] = (*ret)[6] = (j21-j11)/6.0;
+	(*ret)[1] = (*ret)[4] = (*ret)[7] = -j21/6.0;
+	(*ret)[2] = (*ret)[5] = (*ret)[8] = j11/6.0;
+
+	return ret;
+}
+
+shared_ptr<LocMat> FullMassLocalMatrix3(const vector<const GridPoint*>& points){
+	assert(points.size() == 3);
+	shared_ptr<LocMat3Sym> ret(new LocMat3Sym());
+	const double &x1 = points[0]->x, &x2 = points[1]->x, &x3 = points[2]->x;
+	const double &y1 = points[0]->y, &y2 = points[1]->y, &y3 = points[2]->y;
+	double j11 = x2 - x1, j21 = x3 - x1;
+	double j12 = y2 - y1, j22 = y3 - y1;
+	double v1 = (j22*j11 - j21*j12)/12.0;
+	double v2 = v1/2.0;
+
+	(*ret)[0] = v1;
+	(*ret)[1] = v2;
+	(*ret)[2] = v2;
+	(*ret)[3] = v1;
+	(*ret)[4] = v2;
+	(*ret)[5] = v1;
+
+	return ret;
+}
+
 // ============================ 4 node cells
 //integration in [-1, 1]x[-1, 1] square
 struct _Integration{
@@ -169,20 +216,45 @@ shared_ptr<LocMat> LaplasLocalMatrix4(const vector<const GridPoint*>& points){
 	return ret;
 }
 
+shared_ptr<LocMat> DDxLocalMatrix4(const vector<const GridPoint*>& points){
+	_THROW_NOT_IMP_;
+}
+shared_ptr<LocMat> DDyLocalMatrix4(const vector<const GridPoint*>& points){
+	_THROW_NOT_IMP_;
+}
+shared_ptr<LocMat> FullMassLocalMatrix4(const vector<const GridPoint*>& points){
+	_THROW_NOT_IMP_;
+}
+
 shared_ptr<LocMat> LaplasLocalMatrix(const vector<const GridPoint*>& points){
 	if (points.size() == 3) return LaplasLocalMatrix3(points);
 	else return LaplasLocalMatrix4(points);
+}
+shared_ptr<LocMat> FullMassLocalMatrix(const vector<const GridPoint*>& points){
+	if (points.size() == 3) return FullMassLocalMatrix3(points);
+	else return FullMassLocalMatrix4(points);
+}
+shared_ptr<LocMat> DDxLocalMatrix(const vector<const GridPoint*>& points){
+	if (points.size() == 3) return DDxLocalMatrix3(points);
+	else return DDxLocalMatrix4(points);
+}
+shared_ptr<LocMat> DDyLocalMatrix(const vector<const GridPoint*>& points){
+	if (points.size() == 3) return DDyLocalMatrix3(points);
+	else return DDyLocalMatrix4(points);
 }
 
 
 }
 
 // ============================== Global assembling
-shared_ptr<Mat> Assemble::PureLaplas(const Grid43& grid){
+namespace{
+
+shared_ptr<Mat> GlobAssembly(const Grid43& grid, 
+		decltype(LaplasLocalMatrix)& fun){
 	shared_ptr<Mat> ret(new Mat());
 	for (int i=0; i<grid.n_cells(); ++i){
 		vector<const GridPoint*> pp = grid.get_cell(i)->get_points();
-		shared_ptr<LocMat> A = LaplasLocalMatrix(pp);
+		shared_ptr<LocMat> A = fun(pp);
 		vector<int> pind(pp.size());
 		std::transform(pp.begin(), pp.end(), pind.begin(), 
 				[](const GridPoint* p){ return p->get_ind(); });
@@ -191,4 +263,28 @@ shared_ptr<Mat> Assemble::PureLaplas(const Grid43& grid){
 	return ret;
 }
 
+}
+shared_ptr<Mat> Assemble::PureLaplas(const Grid43& grid){
+	return GlobAssembly(grid, LaplasLocalMatrix);
+}
+
+shared_ptr<Mat> Assemble::FullMass(const Grid43& grid){
+	return GlobAssembly(grid, FullMassLocalMatrix);
+}
+
+shared_ptr<Mat> Assemble::DDx(const Grid43& grid){
+	return GlobAssembly(grid, DDxLocalMatrix);
+}
+
+shared_ptr<Mat> Assemble::DDy(const Grid43& grid){
+	return GlobAssembly(grid, DDyLocalMatrix);
+}
+
+vector<double> Assemble::LumpMass(const Grid43& grid){
+	shared_ptr<Mat> m = FullMass(grid);
+	vector<double> tmp(m->rows(), 1.0);
+	vector<double> ret(m->rows(), 0.0);
+	m->MultVec(tmp, ret);
+	return ret;
+}
 

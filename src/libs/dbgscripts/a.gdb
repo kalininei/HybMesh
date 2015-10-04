@@ -58,7 +58,7 @@ skip file /usr/include/c++/4.8/array
 
 b main
 run 
-b femassembly.cpp:169
+b confrect_fem.cpp:240
 
 #====================================
 #call from gui/HybMesh.py directory with HybMesh

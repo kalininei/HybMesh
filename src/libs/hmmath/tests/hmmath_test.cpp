@@ -5,6 +5,7 @@
 #include "hmfem.hpp"
 #include "fileproc.h"
 #include "confrect_fem.hpp"
+#include "femassembly.hpp"
 
 int FAILED_CHECKS = 0;
 
@@ -117,34 +118,48 @@ void test04(){
 	int sz1 = 13;
 	auto r1 = HMCont2D::Constructor::Circle(sz1, 10, Point(0,0));
 	auto inp1 = HMMath::Conformal::Rect::FactoryInput(r1, {0, sz1/4, sz1/2, 3*sz1/4});
+	Point po(7.2, 1.1);
 
 	HMMath::Conformal::Options opt;
 	//fem 1
-	//opt.fem_segment_partition = 12;
-	//auto trans1 = HMMath::Conformal::Impl::ConfFem::ToRect::Build(
-	//                std::get<0>(inp1), sz1/4, sz1/2, 3*sz1/4, opt);
+	opt.fem_segment_partition = 12;
+	auto trans1 = HMMath::Conformal::Impl::ConfFem::ToRect::Build(
+			std::get<0>(inp1), sz1/4, sz1/2, 3*sz1/4, opt);
+	Point p1  = trans1->MapToRectangle1(po);
+	Point p11 = trans1->MapToPolygon1(p1);
 
 	//fem 2
 	opt.fem_segment_partition = 11;
 	auto trans2 = HMMath::Conformal::Impl::ConfFem::ToRect::Build(
 			std::get<0>(inp1), sz1/4, sz1/2, 3*sz1/4, opt);
+	Point p2  = trans2->MapToRectangle1(po);
+	Point p22 = trans2->MapToPolygon1(p2);
 
 	//scpack
 	auto trans3 = HMMath::Conformal::Impl::SCPack::ToRect::Build(
 			std::get<0>(inp1), sz1/4, sz1/2, 3*sz1/4);
+	Point p3 =  trans3->MapToRectangle1(po);
+	Point p33 = trans3->MapToPolygon1(p3);
 			
 
-	//TODO why even number of nodes gives such a bad answer??
-	//add_check(fabs(trans1->module() - 1.05)<0.05, "fem even partition module");
-	add_check(fabs(trans2->module() - 1.05)<0.05, "fem odd partition module");
-	add_check(fabs(trans3->module() - 1.05)<0.05, "scpack module");
+	add_check(fabs(trans1->module() - 1.05)<0.02, "fem, even partition: module");
+	add_check(fabs(trans2->module() - 1.05)<0.02, "fem, odd partition: module");
+	add_check(fabs(trans3->module() - 1.05)<0.02, "scpack: module");
+
+	add_check(po == p11, "fem, even: forward->backward");
+	add_check(po == p22, "fem, odd: forward->backward");
+	add_check(po == p33, "scpack: forward->backward");
+
+	add_check(Point::dist(p1, p3)<0.01, "fem, even vs scpack: forward");
+	add_check(Point::dist(p2, p3)<0.01, "fem, odd vs scpack: forward");
 }
 
 void test05(){
 	std::cout<<"fem in square"<<std::endl;
 	Point p1{0.0, 0.0}, p2{2.0, 0.0}, p3{2.0, 1.0}, p4{0.0, 1.0};
 
-	auto dotest = [&](shared_ptr<HMFem::Grid43> g){
+	//-> Dfdn(bottom), Dfdx(area), DfDy(area)
+	auto dotest = [&](shared_ptr<HMFem::Grid43> g)->std::array<double, 3>{
 		auto cont = GGeom::Info::Contour1(*g);
 		GridPoint* gp1 = static_cast<GridPoint*>(HMCont2D::ECollection::FindClosestNode(cont, p1));
 		GridPoint* gp2 = static_cast<GridPoint*>(HMCont2D::ECollection::FindClosestNode(cont, p2));
@@ -161,23 +176,81 @@ void test05(){
 		auto v = vector<double>(g->n_points(), 0.0);
 		p.Solve(v);
 
-		double I = p.IntegralDfDn(contbot, v);
+		double I1 = p.IntegralDfDn(contbot, v);
 
-		return I;
+		auto mass = HMFem::Assemble::LumpMass(*g);
+
+		vector<double> dx(g->n_points());
+		HMFem::Assemble::DDx(*g)->MultVec(v, dx);
+		for (int i=0; i<dx.size(); ++i) dx[i]/=mass[i];
+		double I2 = std::inner_product(dx.begin(), dx.end(), mass.begin(), 0.0);
+
+		vector<double> dy(g->n_points());
+		HMFem::Assemble::DDy(*g)->MultVec(v, dy);
+		for (int i=0; i<dy.size(); ++i) dy[i]/=mass[i];
+		double I3 = std::inner_product(dy.begin(), dy.end(), mass.begin(), 0.0);
+
+		return {I1, I2, I3};
 	};
 
 	//1) structured grid
-	auto g4 = GGeom::Constructor::RectGrid01(20, 20);
+	auto g4 = GGeom::Constructor::RectGrid01(21, 21);
 	GGeom::Modify::PointModify(g4, [](GridPoint* p){ p->x*=2; });
 	auto g1 = HMFem::Grid43::Build3(&g4);
-	double I1 = dotest(g1);
-	add_check(fabs(I1+10)<1e-6, "structured triangle grid, DfDn");
+	auto I1 = dotest(g1);
+	add_check(fabs(I1[0]+10)<1e-6, "structured triangle grid, DfDn");
+	add_check(fabs(I1[1])<1e-6, "structured triangle grid, DfDx");
+	add_check(fabs(I1[2]-10)<1e-6, "structured triangle grid, DfDy");
 
 	//2) unstructured grid
 	double h = 0.05;
 	auto g2 = HMFem::Grid43::Build3( {p1, p2, p3, p4}, h);
-	double I2 = dotest(g2);
-	add_check(fabs(I2+10)<1e-6, "unstructured triangle grid, DfDn");
+	auto I2 = dotest(g2);
+	add_check(fabs(I2[0]+10)<1e-6, "unstructured triangle grid, DfDn");
+	add_check(fabs(I2[1])<1e-6, "unstructured triangle grid, DfDx");
+	add_check(fabs(I2[2]-10)<1e-6, "unstructured triangle grid, DfDy");
+}
+
+void test06(){
+	std::cout<<"Conformal mapping to annulus: FEM vs DSCPACK"<<std::endl;
+
+	auto top = HMCont2D::Constructor::Circle(12, 1.5, Point(10,0.1));
+	auto bot = HMCont2D::Constructor::Circle(5, 0.4, Point(10.5,0.2));
+	vector<Point> topp, botp;
+	for (auto p: top.ordered_points()) topp.push_back(*p); topp.pop_back();
+	for (auto p: bot.ordered_points()) botp.push_back(*p); botp.pop_back();
+
+	Point tp(11.12415, 0.40282);
+
+	//dscpack
+	auto trans1 = HMMath::Conformal::Impl::DSCPack::ToAnnulus::Build(topp, botp);
+	Point tp1 = trans1->MapToAnnulus1(tp);
+	Point tp11 = trans1->MapToOriginal1(tp1);
+	add_check(Point::dist(tp, tp11)<1e-2, "dscpack forward->backward");
+
+	//fem
+	HMMath::Conformal::Options opt;
+	opt.fem_segment_partition = 5;
+	auto trans2 = HMMath::Conformal::Impl::ConfFem::ToAnnulus::Build(
+			topp, botp, opt);
+	Point tp2 = trans2->MapToAnnulus1(tp);
+	Point tp22 = trans2->MapToOriginal1(tp2);
+	add_check(Point::dist(tp, tp22)<1e-2, "fem forward->backward");
+
+	add_check(fabs(trans1->module() - trans2->module())<1e-2, "modulus");
+	add_check([&]()->bool{
+		double a1 = ToAngle(trans1->PhiInner(0) - trans1->PhiInner(2));
+		double a2 = ToAngle(trans2->PhiInner(0) - trans2->PhiInner(2));
+		if (fabs(a1-a2)>1e-1) return false;
+		return true;
+	}(), "Inner contour angles");
+		
+	add_check([&]()->bool{
+		double a1 = ToAngle(trans1->PhiInner(0) - trans1->PhiOuter(3));
+		double a2 = ToAngle(trans2->PhiInner(0) - trans2->PhiOuter(3));
+		if (fabs(a1-a2)>1e-1) return false;
+		return true;
+	}(), "Outer contour angles");
 }
 
 int main(){
@@ -186,6 +259,7 @@ int main(){
 	test03();
 	test04();
 	test05();
+	test06();
 
 
 	if (FAILED_CHECKS ==1){

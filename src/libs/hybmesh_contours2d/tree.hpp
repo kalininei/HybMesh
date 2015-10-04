@@ -28,9 +28,15 @@ struct ContourTree: public ECollection {
 
 	//get contour by point
 	virtual Contour* get_contour(Point* p) const;
+	//get contour by index
+	virtual Contour* get_contour(int i) const;
 
 	//Methods
 	virtual void AddContour(shared_ptr<Contour>& c);
+
+	//Returns true if point lies strictly within/without closed contour
+	bool IsWithin(const Point& p) const;
+	bool IsWithout(const Point& p) const;
 
 	//using node->parents calculate children + checks direction
 	void UpdateTopology();
@@ -50,10 +56,12 @@ struct ExtendedTree: public ContourTree {
 	ShpVector<Contour> open_contours;
 
 	Contour* get_contour(Point* p) const override;
+	Contour* get_contour(int i) const override;
 	int cont_count() const override { return nodes.size() + open_contours.size(); }
 	
 	//Methods
 	void AddContour(shared_ptr<Contour>& c) override;
+	void AddOpenContour(shared_ptr<Contour>& c);
 
 	//Algos
 	static ExtendedTree Assemble(const ECollection&);

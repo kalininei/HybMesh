@@ -30,7 +30,8 @@ class ToAnnulus: public HMMath::Conformal::Annulus{
 	ToAnnulus(const vector<Pt>& outer, const vector<Pt>& inner, int prec);
 
 	//calculates minimum distance between original points in
-	//canonic area. Used for detection of the crowding problem.
+	//canonic area. Used for detection of the crowding problem
+	//within Build procedure
 	double min_wdist() const;
 public:
 	//all contours are in anti-clockwise direction

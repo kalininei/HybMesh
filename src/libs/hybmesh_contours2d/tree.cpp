@@ -81,14 +81,35 @@ void ContourTree::UpdateTopology(){
 	}
 }
 
+bool ContourTree::IsWithin(const Point& p) const{
+	_THROW_NOT_IMP_;
+}
+
+bool ContourTree::IsWithout(const Point& p) const{
+	for (auto nd: nodes) if (HMCont2D::Contour::Area(*nd) > 0){
+		if (!nd->IsWithout(p)){
+			for (auto ch: nd->children){
+				if (ch->IsWithin(p)) goto NEXTNODE;
+			}
+			return false;
+		}
+	NEXTNODE:;
+	}
+	return true;
+}
+
 
 void ExtendedTree::AddContour(shared_ptr<Contour>& c){
 	if (c->is_closed()){
 		ContourTree::AddContour(c);
 	} else {
-		open_contours.push_back(c);
-		Unite(*c);
+		AddOpenContour(c);
 	}
+}
+
+void ExtendedTree::AddOpenContour(shared_ptr<Contour>& c){
+	open_contours.push_back(c);
+	Unite(*c);
 }
 
 ExtendedTree ExtendedTree::Assemble(const ECollection& col){
@@ -164,7 +185,17 @@ bool ContourTree::CheckNoContact(const ContourTree& tree){
 }
 
 
+Contour* ContourTree::get_contour(int i) const{
+	return nodes[i].get();
+}
 
+Contour* ExtendedTree::get_contour(int i) const{
+	if (i < ContourTree::cont_count()) return ContourTree::get_contour(i);
+	else{
+		i = i - ContourTree::cont_count();
+		return open_contours[i].get();
+	}
+}
 
 
 

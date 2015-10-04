@@ -765,10 +765,19 @@ void GGeom::Modify::PointModify(GridGeom& grid, std::function<void(GridPoint*)> 
 	std::for_each(grid.points.begin(), grid.points.end(),
 			[&fun](shared_ptr<GridPoint> gp){ fun(gp.get()); });
 }
+void GGeom::Modify::CellModify(GridGeom& grid, std::function<void(Cell*)> fun){
+	std::for_each(grid.cells.begin(), grid.cells.end(),
+			[&fun](shared_ptr<Cell> gp){ fun(gp.get()); });
+}
 
 void GGeom::Modify::ShallowAdd(const GridGeom* from, GridGeom* to){
 	std::copy(from->points.begin(), from->points.end(), std::back_inserter(to->points));
 	std::copy(from->cells.begin(), from->cells.end(), std::back_inserter(to->cells));
+	to->set_indicies();
+}
+
+void GGeom::Modify::ShallowAdd(const ShpVector<GridPoint>& from, GridGeom* to){
+	std::copy(from.begin(), from.end(), std::back_inserter(to->points));
 	to->set_indicies();
 }
 
@@ -808,11 +817,69 @@ HMCont2D::Contour GGeom::Info::Contour1(const GridGeom& grid){
 	return *ct.nodes[0];
 }
 
+BoundingBox GGeom::Info::BBox(const GridGeom& grid, double eps){
+	auto ret = BoundingBox::Build(grid.points.begin(), grid.points.end());
+	ret.widen(eps);
+	return ret;
+}
+std::set<int> GGeom::Info::CellFinder::IndSet(const BoundingBox& bbox) const{
+	Point b0 = bbox.BottomLeft() - p0, b1 = bbox.TopRight() - p0;
+	int ix0 = std::floor(b0.x / Hx);
+	int iy0 = std::floor(b0.y / Hy);
+	int ix1 = std::floor(b1.x / Hx);
+	int iy1 = std::floor(b1.y / Hy);
+
+	std::set<int> ret;
+	for (int j=iy0; j<iy1+1; ++j){
+		if (j>=Ny) break;
+		for (int i=ix0; i<ix1+1; ++i){
+			if (i>=Nx) break;
+			ret.insert(i+j*Nx);
+		}
+	}
+	return ret;
+}
 GGeom::Info::CellFinder::CellFinder(const GridGeom* g, int nx, int ny):
 		grid(g), Nx(nx), Ny(ny){
+	BoundingBox bbox = GGeom::Info::BBox(*g);
+	p0 = bbox.BottomLeft();
+	Hx = bbox.lenx() / nx;
+	Hy = bbox.leny() / nx;
+	cells_by_square.resize(Nx*Ny);
+	//associate cells with squares
+	for (int i=0; i<g->n_cells(); ++i){
+		const Cell* c = g->get_cell(i);
+		auto bbox = BoundingBox::Build(c->points.begin(), c->points.end());
+		bbox.widen(geps);
+		std::set<int> inds = IndSet(bbox);
+		for (auto j: inds){
+			cells_by_square[j].push_back(c);
+		}
+	}
 }
 
-const Cell* GGeom::Info::CellFinder::Find(const Point& p){
-	_THROW_NOT_IMP_;
+int GGeom::Info::CellFinder::GetSquare(const Point& p) const{
+	int ix = std::floor((p.x - p0.x) / Hx);
+	int iy = std::floor((p.y - p0.y) / Hy);
+	if (ix >= Nx) ix = Nx-1; if (ix<0) ix = 0;
+	if (iy >= Ny) iy = Ny-1; if (iy<0) iy = 0;
+	return ix + iy*Nx;
+}
+
+const Cell* GGeom::Info::CellFinder::Find(const Point& p) const{
+	vector<const Cell*> candidates = CellCandidates(p);
+	bool hint = true;
+	for (auto c: candidates){
+		int w = c->get_contour().is_inside(p, &hint);
+		if (w != OUTSIDE) return c;
+	}
+	throw GGeom::EOutOfArea(p);
+}
+
+vector<const Cell*> GGeom::Info::CellFinder::CellCandidates(const Point& p) const{
+	//get square of point
+	int ind = GetSquare(p);
+	//return
+	return cells_by_square[ind];
 }
 

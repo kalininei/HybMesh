@@ -6,7 +6,7 @@ namespace{
 
 void SeidelSolve(const Mat& M, const vector<double>& rhs, vector<double>& u){
 	const double tol = 1e-9;
-	const int maxit = 10000;
+	const int maxit = 100000;
 
 	vector<double> diag = M.diag();
 	assert(std::all_of(diag.begin(), diag.end(), [](double x){ return x>0; }));
@@ -63,6 +63,10 @@ double Mat::RowMultVec(const vector<double>& u, int irow) const {
 	);
 }
 
+void Mat::MultVec(const vector<double>& u, vector<double>& res) const{
+	for (int i=0; i<data.size(); ++i) res[i] = RowMultVec(u, i);
+}
+
 
 void MatSolve::Init(Mat& mat){
 	m = &mat;
@@ -86,6 +90,18 @@ void LocMat3Sym::ToMat(const vector<int>& pind, Mat& target) const {
 	target.add(pind[2], pind[1], (*this)[4]);
 
 	target.add(pind[2], pind[2], (*this)[5]);
+}
+
+void LocMat3::ToMat(const vector<int>& pind, Mat& target) const{
+	target.add(pind[0], pind[0], (*this)[0]);
+	target.add(pind[0], pind[1], (*this)[1]);
+	target.add(pind[0], pind[2], (*this)[2]);
+	target.add(pind[1], pind[0], (*this)[3]);
+	target.add(pind[1], pind[1], (*this)[4]);
+	target.add(pind[1], pind[2], (*this)[5]);
+	target.add(pind[2], pind[0], (*this)[6]);
+	target.add(pind[2], pind[1], (*this)[7]);
+	target.add(pind[2], pind[2], (*this)[8]);
 }
 
 void LocMat4Sym::ToMat(const vector<int>& pind, Mat& target) const {

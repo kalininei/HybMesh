@@ -22,11 +22,11 @@ public:
 };
 
 class Cell{
-	vector<GridPoint*> points;
 	int ind;
 	//reverses points array if neseccary
 	void check_ordering();
 public:
+	vector<GridPoint*> points;
 	explicit Cell(int _ind = 0):ind(_ind){}
 	int dim() const { return points.size(); }
 	const GridPoint* get_point(int i) const {
@@ -220,7 +220,9 @@ struct Modify{
 
 static void RemoveCells(GridGeom& grid, const std::vector<const Cell*>& cls);
 static void PointModify(GridGeom& grid, std::function<void(GridPoint*)> fun);
+static void CellModify(GridGeom& grid, std::function<void(Cell*)> fun);
 static void ShallowAdd(const GridGeom* from, GridGeom* to);
+static void ShallowAdd(const ShpVector<GridPoint>& from, GridGeom* to);
 static void DeepAdd(const GridGeom* from, GridGeom* to);
 
 };
@@ -236,16 +238,26 @@ static HMCont2D::ContourTree Contour(const GridGeom& grid);
 //only the first contour of tree.
 //Used for grids which are definitly singly connected
 static HMCont2D::Contour Contour1(const GridGeom& grid);
+//Build a bounding box
+static BoundingBox BBox(const GridGeom& grid, double eps=geps);
+
 
 //Finders
 class CellFinder{
 	const GridGeom* grid;
 	const int Nx, Ny;
+	double Hx, Hy;
+	Point p0;
+	vector<vector<const Cell*>> cells_by_square;
+
+	int GetSquare(const Point& p) const;
+	vector<const Cell*> CellCandidates(const Point& p) const;
+	std::set<int> IndSet(const BoundingBox& bbox) const;
 public:
 	CellFinder(const GridGeom* g, int nx, int ny);
 	//Find cell containing point.
 	//Throws EOutOfArea if failed to find the point.
-	const Cell* Find(const Point& p);
+	const Cell* Find(const Point& p) const;
 };
 
 

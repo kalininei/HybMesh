@@ -6,6 +6,7 @@
 #include "crossgrid.h"
 #include "fileproc.h"
 #include "hmcport.h"
+#include "trigrid.h"
 
 int FAILED_CHECKS = 0;
 
@@ -532,6 +533,50 @@ void test20(){
 	cont_free(c1);
 };
 
+void test21(){
+	std::cout<<"21. Constrained triangulation"<<std::endl;
+	auto no_edge_intersections = [](Point p0, Point p1, const GridGeom& g){
+		auto edges = g.get_edges();
+		double ksieta[2];
+		for (auto& e: edges){
+			auto gp1 = g.get_point(e.p1);
+			auto gp2 = g.get_point(e.p2);
+			if (SectCross(p0, p1, *gp1, *gp2, ksieta)){
+				if (ksieta[1] > geps && ksieta[1] < 1-geps){
+					return false;
+				}
+			}
+		}
+		return true;
+	};
+	// === 
+	vector<Point> outer1 { Point(0,0), Point(1,0), Point(1,1) , Point(0.6, 1.0), Point (0, 1)};
+	vector<Point> cons1 { Point(0.1, 0.1), Point(0.8, 0.8)};
+	auto g1 = TriGrid::TriangulateAreaConstrained({outer1}, {cons1}, 0.05);
+	add_check(no_edge_intersections(cons1[0], cons1[1], *g1),
+			"One line constraint");
+	// === 
+	vector<Point> cons2 { Point(0.1, 0.1), Point(0.8, 0.8), Point (0.6, 1.0)};
+	auto g2 = TriGrid::TriangulateAreaConstrained({outer1}, {cons2}, 0.05);
+	add_check(no_edge_intersections(cons2[0], cons2[1], *g2) &&
+		  no_edge_intersections(cons2[1], cons2[2], *g2),
+			"Two lines constraint, common point");
+	// === 
+	vector<Point> outer3 { Point(0,0), Point(1,0), Point(1,1), Point (0, 1)};
+	vector<Point> cons3 { Point(0.1, 0.1), Point(0.8, 0.8), Point(0.6, 1.0)};
+	auto g3 = TriGrid::TriangulateAreaConstrained({outer3}, {cons3}, 0.05);
+	add_check(no_edge_intersections(cons3[0], cons3[1], *g3) &&
+		  no_edge_intersections(cons3[1], cons3[2], *g3),
+			"Two lines constraint, no common point");
+	// ===
+	vector<Point> outer4 { Point(0.3, 0.3), Point(0.6, 0.3), Point(0.6, 0.6), Point(0.3, 0.6)};
+	vector<Point> cons4 { Point(0.3, 0.6), Point(0.85, 1) };
+	auto g4 = TriGrid::TriangulateAreaConstrained({outer3, outer4}, {cons4}, 0.05);
+	add_check(no_edge_intersections(cons4[0], cons4[1], *g4),
+			"Doubly connected contour");
+	
+};
+
 int main(){
 	crossgrid_silent_callback();
 	crossgrid_internal_tests();
@@ -555,6 +600,7 @@ int main(){
 	test18();
 	test19();
 	test20();
+	test21();
 
 
 	if (FAILED_CHECKS ==1){

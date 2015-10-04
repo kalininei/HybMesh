@@ -38,13 +38,14 @@ struct Contour: public ECollection{
 	//returns vector of length (size()+1)
 	//detailed information about each node connection.
 	vector<PInfo> ordered_info() const;
+	PInfo pinfo(Point* p) const;
 
 	//gives
-	//	contour length coordinate, 
-	//	contour weight coordinate,
-	//	index of edge
-	//	edge weight coordinate
-	//	distance to contour
+	//<0>  contour length coordinate, 
+	//<1>  contour weight coordinate,
+	//<2>  index of edge
+	//<3>  edge weight coordinate
+	//<4>  distance to contour
 	//of the contour point closest to given one.
 	std::tuple<double, double, int, double, double>
 	coord_at(const Point& p) const;
@@ -77,8 +78,9 @@ struct Contour: public ECollection{
 	std::tuple<bool, Point*>
 	GuaranteePoint(const Point& p, PCollection& pcol);
 
-	//Returns true if point lies strictly within closed contour
+	//Returns true if point lies strictly within/without closed contour
 	bool IsWithin(const Point& p) const;
+	bool IsWithout(const Point& p) const;
 
 	// ======= Algorithms
 	//calculates vector representing direction of contour at point p smoother by lengh len

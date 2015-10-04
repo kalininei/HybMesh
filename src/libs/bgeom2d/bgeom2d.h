@@ -255,8 +255,8 @@ vector<double> RefineSection(double a, double b, double Len, double Den);
 class BoundingBox{
 protected:
 	void init();
-	void widen(double e);
 public:
+
 	double xmin, xmax, ymin, ymax;
 
 	BoundingBox():xmin(0), xmax(1), ymin(0), ymax(1){}
@@ -286,6 +286,8 @@ public:
 
 	//Enlarge if point lies outside box
 	void WidenWithPoint(const Point& p);
+	//widen to all directions at certain distance
+	void widen(double e);
 
 	Point Center() const;
 

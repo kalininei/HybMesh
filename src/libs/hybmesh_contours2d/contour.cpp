@@ -84,6 +84,13 @@ bool Contour::correctly_directed_edge(int i) const{
 	return e2->contains(p2);
 }
 
+Contour::PInfo Contour::pinfo(Point* p) const{
+	auto oi = ordered_info();
+	for (auto& i: oi){
+		if (i.p == p) return i;
+	}
+	assert(false);
+}
 vector<Contour::PInfo> Contour::ordered_info() const{
 	vector<PInfo> ret;
 	if (size() == 0) return ret;
@@ -172,6 +179,13 @@ bool Contour::IsWithin(const Point& p) const{
 	//use clipper procedure
 	Impl::ClipperPath cp(*this);
 	return cp.WhereIs(p) == 1;
+}
+
+bool Contour::IsWithout(const Point& p) const{
+	assert(is_closed());
+	//use clipper procedure
+	Impl::ClipperPath cp(*this);
+	return cp.WhereIs(p) == 0;
 }
 
 std::tuple<bool, Point*>
