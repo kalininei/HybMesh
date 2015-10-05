@@ -39,7 +39,7 @@ class LaplasProblem{
 	shared_ptr<HMFem::Mat> laplas_mat;
 
 	HMFem::Mat solution_mat;
-	HMFem::MatSolve solver;
+	shared_ptr<HMFem::MatSolve> solver;
 	vector<double> rhs;
 	//boundary condition data
 	std::list<TNeuFunc> _neufunc;

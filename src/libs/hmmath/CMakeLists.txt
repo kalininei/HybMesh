@@ -36,11 +36,13 @@ add_library(${HMMATH_TARGET} SHARED ${HEADERS} ${SOURCES})
 target_link_libraries(${HMMATH_TARGET} ${BGEOM2D_TARGET})
 target_link_libraries(${HMMATH_TARGET} ${CROSSGRID_TARGET})
 target_link_libraries(${HMMATH_TARGET} ${HYBMESH_CONTOURS2D_TARGET})
+target_link_libraries(${HMMATH_TARGET} ${SUITESPARSE_LIBRARIES})
 
 include_directories(${CommonInclude})
 include_directories(${BGEOM2D_INCLUDE})
 include_directories(${CROSSGRID_INCLUDE})
 include_directories(${HYBMESH_CONTOURS2D_INCLUDE})
+include_directories(${SUITESPARSE_INCLUDE_DIRS})
 
 install(TARGETS ${HMMATH_TARGET}
 	DESTINATION ${LIB_INSTALL_DIR})

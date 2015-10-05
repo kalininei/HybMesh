@@ -144,6 +144,15 @@ else()
 	set(CLIPPER_TARGET ${FIND_LIBCLIPPER})
 	find_path(CLIPPER_INCLUDE NAMES clipper.hpp)
 endif()
+
+#suitesparse: defines
+# SUITESPARSE_FOUND: TRUE iff SuiteSparse and all dependencies have been found.
+# SUITESPARSE_INCLUDE_DIRS: Include directories for all SuiteSparse components.
+# SUITESPARSE_LIBRARIES: Libraries for all SuiteSparse component libraries and dependencies.
+# ------------- Detect SuiteSparse libraries:
+LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/")
+find_package(SuiteSparse REQUIRED)
+
 #libbgeom2d: global definition of BGEOM2D_INCLUDE, BGEOM2D_TARGET
 set(BGEOM2D_INCLUDE "${CMAKE_SOURCE_DIR}/src/libs/bgeom2d")
 set(BGEOM2D_TARGET bgeom2d)

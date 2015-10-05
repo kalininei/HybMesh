@@ -9,3 +9,4 @@
 -I /home/ek/Work/HybMesh/src/libs/crossgrid/
 -I /home/ek/Work/HybMesh/src/libs/hmmath/
 -I /home/ek/Work/HybMesh/src/libs/hmblay/
+-I /usr/include/suitesparse/

@@ -63,7 +63,7 @@ void LaplasProblem::RebuildSolutionMatrix(){
 	}
 
 	//solver initialization
-	solver.Init(solution_mat);
+	solver = MatSolve::Factory(solution_mat);
 }
 
 
@@ -75,7 +75,7 @@ void LaplasProblem::Solve(vector<double>& ans){
 
 
 void LaplasProblem::QuickSolve(vector<double>& ans){
-	solver.Solve(rhs, ans);
+	solver->Solve(rhs, ans);
 }
 
 double LaplasProblem::IntegralDfDn(const vector<const GridPoint*>& pnt,
