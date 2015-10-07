@@ -110,6 +110,11 @@ class ToAnnulus: public HMMath::Conformal::Annulus{
 	//hrec - recommended linear size
 	static double HEstimate(const vector<Point>& outer_path,
 			const vector<Point>& inner_path, int segn, int nmax);
+
+	// ===================== mapping subroutins and data
+	mutable shared_ptr<HMCont2D::Contour> _inv_cont;
+	const HMCont2D::Contour* InvGridContour() const;
+
 public:
 	static shared_ptr<ToAnnulus>
 	Build(const vector<Point>& outer_path, const vector<Point>& inner_path,

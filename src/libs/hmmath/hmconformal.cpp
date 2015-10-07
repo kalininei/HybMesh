@@ -371,7 +371,6 @@ Point Impl::RectApprox::MapToRectangle_yeta(const Point& p) const{
 		return Point::meas_section(p, start, end);
 	};
 	double ksi = HMMath::Compute::GoldenRatioMin(0.0, 1.0, func1, 100, 1e-16);
-	
 	assert(ksi>-geps && ksi<1+geps);
 
 	double eta;
@@ -380,6 +379,7 @@ Point Impl::RectApprox::MapToRectangle_yeta(const Point& p) const{
 	start = HMCont2D::Contour::WeightPoint(bot, ksi);
 	end = HMCont2D::Contour::WeightPoint(top, ksi);
 	isOnSection(p, start, end, eta);
+	assert(eta>-geps && eta<1+geps);
 	return Point(ksi*_module, eta);
 }
 
@@ -393,13 +393,24 @@ shared_ptr<Annulus> Annulus::Factory(
 		const vector<Point>& outerpnt,
 		const vector<Point>& innerpnt
 ){
+	assert([&]()->bool{
+		//anti-clockwise check
+		auto oc = HMCont2D::Constructor::ContourFromPoints(outerpnt, true);
+		auto ic = HMCont2D::Constructor::ContourFromPoints(innerpnt, true);
+		if (HMCont2D::Area(oc)<=0) return false;
+		if (HMCont2D::Area(ic)<=0) return false;
+		return true;
+	}());
 	shared_ptr<Annulus> ret;
 	//1) try DSCPACK procedure
 	ret = Impl::DSCPack::ToAnnulus::Build(outerpnt, innerpnt);
 	if (ret) return ret;
 
 	//2) FEM procedure
-	_THROW_NOT_IMP_;
+	ret = Impl::ConfFem::ToAnnulus::Build(outerpnt, innerpnt);
+	if (ret) return ret;
+
+	return 0;
 }
 
 HMCont2D::Container<HMCont2D::Contour> Annulus::InnerCircleContour() const{

@@ -785,6 +785,12 @@ void GGeom::Modify::DeepAdd(const GridGeom* from, GridGeom* to){
 	to->add_data(*from);
 }
 
+void GGeom::Modify::Heal(GridGeom& grid){
+	grid.merge_congruent_points();
+	grid.delete_unused_points();
+	grid.force_cells_ordering();
+}
+
 ShpVector<GridPoint> GGeom::Info::SharePoints(const GridGeom& grid, const vector<int>& indicies){
 	ShpVector<GridPoint> ret;
 	for (int i: indicies) ret.push_back(grid.points[i]);

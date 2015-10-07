@@ -13,6 +13,19 @@ void PCollection::Unscale(PCollection& pc, const ScaleBase& sc){
 	sc.p_unscale(pc.data.begin(), pc.data.end());
 }
 
+Point* PCollection::FindClosestNode(const PCollection& dt, const Point& p){
+	double m = 1e20;
+	Point* ret = 0;
+	for (auto it: dt){
+		double m2 = Point::dist(p, *it);
+		if (m2<m){
+			m = m2;
+			ret = it.get();
+		}
+	}
+	return ret;
+}
+
 vector<Point*> ECollection::all_points() const{
 	std::set<Point*> tmp;
 	std::for_each(data.begin(), data.end(), [&tmp](const Tentry& e){

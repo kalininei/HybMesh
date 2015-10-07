@@ -44,8 +44,12 @@ vector<Point*> Contour::corner_points() const{
 		p = pnt[i];
 		pnext = pnt[i+1];
 		//build triangle. if its area = 0 -> that is not a corner point
-		if (fabs(triarea(*pprev, *p, *pnext)) > geps)
+		//if (fabs(triarea(*pprev, *p, *pnext)) > geps)
+			//ret.push_back(p);
+		double ksi = Point::meas_section(*p, *pprev, *pnext);
+		if (ksi>=geps*geps){
 			ret.push_back(p);
+		}
 	}
 	if (!cl) ret.push_back(pnt.back());
 	return ret;
@@ -165,6 +169,13 @@ void Contour::ReallyReverse(){
 	}
 }
 
+void Contour::AddLastPoint(Point* p){
+	auto np = _generator.allocate();
+	np->pstart = last();
+	np->pend = p;
+	add_value(np);
+}
+
 bool Contour::ForceDirection(bool dir){
 	if (Area(*this) < 0){
 		if (dir){ Reverse(); return true;}
@@ -224,24 +235,31 @@ Contour::GuaranteePoint(const Point& p, PCollection& pcol){
 	return ret;
 }
 
+Point Contour::ClosestPoint(const Point& p) const{
+	std::tuple<Edge*, double, double> ce = FindClosestEdge(*this, p);
+	if (ISEQ(std::get<2>(ce), 0)){
+		return *std::get<0>(ce)->pstart;
+	} else if (ISEQ(std::get<2>(ce), 1)){
+		return *std::get<0>(ce)->pend;
+	} else {
+		Point* p1 = std::get<0>(ce)->pstart;
+		Point* p2 = std::get<0>(ce)->pend;
+		return Point::Weigh(*p1, *p2, std::get<2>(ce));
+	}
+}
 
 Container<ContourTree> Contour::Offset(const Contour& source, double delta, OffsetTp tp){
 	Impl::ClipperPath cp(source);
+	if (source.is_closed() && Contour::Area(source) < 0) delta = -delta;
 	return cp.Offset(delta, tp);
 };
 
-Container<Contour> Contour::OffsetOuter(const Contour& source, double delta){
+Container<Contour> Contour::Offset1(const Contour& source, double delta){
 	Container<ContourTree> ans;
-	if (source.is_closed()){
-		if (Contour::Area(source) < 0) ans = Offset(source, -fabs(delta), OffsetTp::CLOSED_POLY);
-		else ans = Offset(source, fabs(delta), OffsetTp::CLOSED_POLY);
-	} else
-		ans = Offset(source, fabs(delta), OffsetTp::OPEN_ROUND);
+	if (source.is_closed()) ans = Offset(source, delta, OffsetTp::CLOSED_POLY);
+	else ans = Offset(source, delta, OffsetTp::OPEN_ROUND);
 	assert(ans.cont_count() == 1);
-	Container<Contour> ret;
-	ret.pdata = ans.pdata;
-	ret.data = ans.nodes[0]->data;
-	return ret;
+	return Container<Contour>::DeepCopy(*ans.get_contour(0));
 };
 
 double Contour::Area(const Contour& c){
@@ -508,10 +526,14 @@ Contour Contour::Assemble(const ECollection& col, const Point* pnt_start){
 Contour Contour::Assemble(const Contour& col, const Point* pnt_start, int direction, double len){
 	assert(col.contains_point(pnt_start));
 	if (col.size() == 1) return Contour(col);
+	if (direction == -1){
+		Contour col2(col);
+		col2.Reverse();
+		return Assemble(col2, pnt_start, 1, len);
+	}
 
 	//assemble ordered points taking into account the direction
 	vector<Point*> op = col.ordered_points();
-	if (direction == -1) std::reverse(op.begin(), op.end());
 	int index = std::find(op.begin(), op.end(), pnt_start) - op.begin();
 	//if is_closed place start point at the begining
 	if (col.is_closed()){
@@ -529,6 +551,7 @@ Contour Contour::Assemble(const Contour& col, const Point* pnt_start, int direct
 		dist += Point::dist(*op[index-1], *op[index]);
 		if (ISEQGREATER(dist, len)) break;
 	} while (index<op.size());
+
 	return Assemble(col, pnt_start, pnt_end);
 }
 

@@ -27,6 +27,66 @@ MappedRect::Factory(HMCont2D::Contour& left, HMCont2D::Contour& right,
 	);
 };
 
+namespace{
+
+//takes two closed contours (c1, c2) and builds
+//averaged one which goes from p1 (in c1) to p2 (in c2)
+HMCont2D::Container<HMCont2D::Contour>
+ContoursWeight(const HMCont2D::Contour& c1, Point p1,
+		const HMCont2D::Contour& c2, Point p2){
+	assert(c1.is_closed() && c2.is_closed());
+	assert(ISZERO(Point::dist(p1, c1.ClosestPoint(p1))) &&
+	       ISZERO(Point::dist(p2, c2.ClosestPoint(p2))));
+	assert(HMCont2D::Area(c1)*HMCont2D::Area(c2) > 0);
+	//place points p1, p2 to both contours
+	auto line1 = HMCont2D::Constructor::CutContour(c1, p1, p2);
+	auto line2 = HMCont2D::Constructor::CutContour(c2, p1, p2);
+	//assemble points->weights map
+	std::map<double, Point*> line1map, line2map;
+	auto ew1 = HMCont2D::Contour::EWeights(line1);
+	auto op1 = line1.ordered_points();
+	for (int i=0; i<ew1.size(); ++i) line1map[ew1[i]] = op1[i];
+	auto ew2 = HMCont2D::Contour::EWeights(line2);
+	auto op2 = line2.ordered_points();
+	for (int i=0; i<ew2.size(); ++i) line2map[ew2[i]] = op2[i];
+	
+	//concatenate maps
+	std::map<double, std::pair<Point, Point>> fullmap;
+	for (auto& it: line1map){
+		if (fullmap.find(it.first) != fullmap.end()) continue;
+		std::pair<Point, Point> dt;
+		dt.first = *it.second;
+		dt.second = HMCont2D::Contour::WeightPoint(line2, it.first);
+		fullmap[it.first] = dt;
+	}
+	for (auto& it: line2map){
+		if (fullmap.find(it.first) != fullmap.end()) continue;
+		std::pair<Point, Point> dt;
+		dt.second = *it.second;
+		dt.first = HMCont2D::Contour::WeightPoint(line1, it.first);
+		fullmap[it.first] = dt;
+	}
+	//remove entries which lie to close to each other
+	std::map<double, std::pair<Point, Point>> fullmap1;
+	fullmap1.insert(*fullmap.begin());
+	fullmap1.insert(*fullmap.rbegin());
+	double lastw = 0;
+	for (auto& it: fullmap){
+		if (fabs(it.first-lastw)<0.01 || fabs(it.first-1.0)<0.01) continue;
+		fullmap1.insert(it);
+		lastw = it.first;
+	}
+	//build points and return
+	std::vector<Point> ret;
+	for (auto& it: fullmap1){
+		ret.push_back(Point::Weigh(it.second.first,
+					it.second.second, it.first));
+	}
+	return HMCont2D::Constructor::ContourFromPoints(ret);
+}
+
+}
+
 shared_ptr<MappedRect>
 MappedRect::Factory(HMCont2D::Contour& left, HMCont2D::Contour& right,
 		HMCont2D::Contour& bottom, double h,
@@ -55,7 +115,7 @@ MappedRect::Factory(HMCont2D::Contour& left, HMCont2D::Contour& right,
 	double an2 = Angle(*op_bottom[op_bottom.size()-2], *op_right[0], *op_right[1]);
 	auto is90 = [](double a)->bool { double u = a*32/M_PI; return u>14.9 && u<17.1; };
 	if (straight_left && straight_right && straight_bottom &&
-			is90(an1), is90(an2)){
+			is90(an1) && is90(an2)){
 		HMCont2D::Contour top;
 		top.add_value(HMCont2D::Edge(op_left.back(), op_right.back()));
 		return Factory(left2, right2, bottom, top, use_rect_approx);
@@ -66,18 +126,62 @@ MappedRect::Factory(HMCont2D::Contour& left, HMCont2D::Contour& right,
 	HMCont2D::Container<HMCont2D::Contour> top;
 	if (straight_left && straight_right &&
 			ISEQGREATER(an1, M_PI/2) && ISEQGREATER(an2, M_PI/2)){
-		auto ellipse = HMCont2D::Contour::OffsetOuter(bottom, h);
+		auto ellipse = HMCont2D::Contour::Offset1(bottom, h);
 		auto pl = ellipse.GuaranteePoint(*left2.last(), ellipse.pdata);
 		auto pr = ellipse.GuaranteePoint(*right2.last(), ellipse.pdata);
 		top = HMCont2D::Constructor::CutContour(ellipse, *right2.last(), *left2.last());
 		top.ReallyReverse();
+		//getting rid of numerical errors
 		*left2.last() = *top.first();
 		*right2.last() = *top.last();
 		goto GEOMETRY_RESULT_CHECK;
 	}
 
 	//6) try weighted geometric procedures
-	_THROW_NOT_IMP_;
+	{
+		//central ellipse and central point
+		auto cellipse = HMCont2D::Contour::Offset1(bottom, h);
+		cellipse.ReallyReverse();
+		Point vecp1 = HMCont2D::Contour::WeightPoint(bottom, 0.5);
+		Point vecp2 = HMCont2D::Contour::WeightPoint(bottom, 0.51);
+		Vect v=vecp2-vecp1; vecSetLen(v, 100); v=vecRotate(v, M_PI/2);
+		auto perp = HMCont2D::Constructor::ContourFromPoints({vecp1, vecp1+v});
+		auto crres = HMCont2D::Contour::Cross(perp, cellipse);
+		assert(std::get<0>(crres));
+		Point cpoint = std::get<1>(crres);
+		//get distances
+		double hleft = Point::dist(*left2.last(),
+				bottom.ClosestPoint(*left2.last()));
+		double hright = Point::dist(*right2.last(),
+				bottom.ClosestPoint(*right2.last()));
+		//weight from left
+		HMCont2D::Container<HMCont2D::Contour> top1;
+		if (!ISEQ(hleft, h)){
+			auto ellipse2 = HMCont2D::Contour::Offset1(bottom, hleft);
+			ellipse2.ReallyReverse();
+			top1 = ContoursWeight(ellipse2, *left2.last(),
+					cellipse, cpoint);
+		} else top1 = HMCont2D::Constructor::CutContour(cellipse, *left2.last(), cpoint);
+		//weight from right
+		HMCont2D::Container<HMCont2D::Contour> top2;
+		if (!ISEQ(hright, h)){
+			auto ellipse2 = HMCont2D::Contour::Offset1(bottom, hright);
+			ellipse2.ReallyReverse();
+			top2 = ContoursWeight(cellipse, cpoint,
+					ellipse2, *right2.last());
+		} else top2 = HMCont2D::Constructor::CutContour(cellipse, cpoint, *right2.last());
+		assert(*top1.last() == *top2.first());
+		//assemple top
+		vector<Point> topp;
+		for (auto p: top1.ordered_points()) topp.push_back(*p);
+		auto _tp2 = top2.ordered_points();
+		for (auto p = _tp2.begin() + 1; p!=_tp2.end(); ++p) topp.push_back(**p);
+		top = HMCont2D::Constructor::ContourFromPoints(topp);
+		//getting rid of numerical errors
+		*left2.last() = *top.first();
+		*right2.last() = *top.last();
+		goto GEOMETRY_RESULT_CHECK;
+	}
 
 GEOMETRY_RESULT_CHECK:
 	if (top.size() > 0){
@@ -211,8 +315,11 @@ RectForClosedArea::RectForClosedArea(const HMCont2D::Contour& side, const HMCont
 	//correct direction
 	double a1 = HMCont2D::Contour::Area(top);
 	double a2 = HMCont2D::Contour::Area(bottom);
-	if (a1<0) std::reverse(ptop.begin(), ptop.end());
-	if (a2<0) std::reverse(pbot.begin(), pbot.end());
+	assert(a1*a2>0);
+	if (a1<0){
+		std::reverse(ptop.begin()+1, ptop.end());
+		std::reverse(pbot.begin()+1, pbot.end());
+	}
 	//set top, bottom so that top be outer and bot - inner contour
 	if (fabs(a1)<fabs(a2)) std::swap(ptop, pbot);
 	top_is_outer = (fabs(a1)>fabs(a2));
@@ -223,21 +330,14 @@ RectForClosedArea::RectForClosedArea(const HMCont2D::Contour& side, const HMCont
 shared_ptr<RectForClosedArea>
 RectForClosedArea::Build(const HMCont2D::Contour& bottom, const Point* pstart, double h){
 	HMCont2D::Container<HMCont2D::ContourTree> toptree =
-		HMCont2D::Contour::Offset(bottom, h, HMCont2D::OffsetTp::CLOSED_POLY);
+		HMCont2D::Contour::Offset(bottom, -h, HMCont2D::OffsetTp::CLOSED_POLY);
 	//if failed to build single connected area -> do smth
 	if (toptree.cont_count() != 1) _THROW_NOT_IMP_;
 	auto top = *toptree.nodes[0];
+	if (HMCont2D::Area(bottom) < 0) top.Reverse();
 	//find point on a cross between normal from bottom.first() and top contour
 	//and set it as a start point for top
-	auto first3 = bottom.point_siblings(bottom.first());
-	double a = Angle(*first3[2], *first3[1], *first3[0])/2.0;
-	Vect q = vecRotate(*first3[0] - *first3[1], a);
-	Point np1 = *first3[1], np2 = *first3[1] + q*1000;
-	HMCont2D::Contour normal;
-	normal.add_value(HMCont2D::Edge(&np1, &np2));
-	auto cr = HMCont2D::Contour::Cross(top, normal);
-	assert(std::get<0>(cr));
-	auto gp = top.GuaranteePoint(std::get<1>(cr), toptree.pdata);
+	auto gp = top.GuaranteePoint(*bottom.first(), toptree.pdata);
 	auto top2 = HMCont2D::Contour::Assemble(top, std::get<1>(gp), std::get<1>(gp));
 	//all 4 contours were set. call main routine
 	return Build(bottom, top2);
@@ -254,22 +354,18 @@ RectForClosedArea::Build(const HMCont2D::Contour& bottom, const HMCont2D::Contou
 
 
 HMCont2D::PCollection RectForClosedArea::MapToReal(const vector<const Point*>& pnt) const{
-	//length of curve of inner circle
-	double il = 2*M_PI*core->module(); 
 	//length of curve of first point of inner circle
-	Point p0 = core->InnerCirclePoints()[0];
-	double az = atan2(p0.y, p0.x)*core->module();
+	double phi0 = (top_is_outer) ? core->PhiInner(0) : core->PhiOuter(0);
 	//vector of points in canonic area
 	vector<Point> cp;
 	for (auto p: pnt){
-		//l0 - curve length of current point projected to inner circle
-		double l0 = p->x*il + az;
-		while (l0>il) l0-=il;
-		//canonic angle
-		double an = l0/(core->module());
-		//canonic radius 
-		double y = (top_is_outer) ? p->y : 1.0 - p->y;
-		double r = y*(1.0 - core->module()) + core->module();
+		double an, r;
+		an = ToAngle(2*M_PI*p->x + phi0);
+		if (top_is_outer){
+			r  = p->y*(1-core->module()) + core->module();
+		} else {
+			r  = (1 - p->y)*(1-core->module()) + core->module();
+		}
 		//point
 		cp.push_back(Point(r*cos(an), r*sin(an)));
 	}
@@ -300,7 +396,7 @@ HMCont2D::PCollection RectForClosedArea::MapToSquare(const vector<const Point*>&
 	double x0 = core->module()*core->PhiInner(0);
 	std::transform(pout.begin(), pout.end(), pout.begin(), [&](const Point& p){
 		Point ret(p.x - x0, p.y);
-		if (ret.x < 0) ret.x += 2*M_PI*m;
+		while (ret.x < 0) ret.x += 2*M_PI*m;
 		ret.x/=maxx; ret.y/=maxy;
 		return ret;
 	});
@@ -385,7 +481,7 @@ void MappedMesher::Fill(TBotPart bottom_partitioner, TVertPart vertical_partitio
 	int kc = 0;
 	for (int j=0; j<jsz-1; ++j){
 		for (int i=0; i<isz-1; ++i){
-			if (vlines[i].size() < j+1 || vlines[i+1].size() < j+1)
+			if (vlines[i].size() < j+2 || vlines[i+1].size() < j+2)
 				ucells.push_back(g4.get_cell(kc));
 			++kc;
 		}
@@ -401,6 +497,13 @@ void MappedMesher::Fill(TBotPart bottom_partitioner, TVertPart vertical_partitio
 	double hy = 1.0/(jsz-1);
 	auto toweights = [&](GridPoint* p){
 		int i = lround(p->x/hx), j = lround(p->y/hy);
+		assert(i<bpart.size());
+		assert(i<vlines.size());
+		//#####################
+		if (j>=vlines[i].size()){
+			std::cout<<i<<"  "<<j<<std::endl;
+		}
+		assert(j<vlines[i].size());
 		p->set(bpart[i], vlines[i][j]);
 	};
 	GGeom::Modify::PointModify(g4, toweights);
@@ -417,6 +520,7 @@ void MappedMesher::Fill(TBotPart bottom_partitioner, TVertPart vertical_partitio
 
 	//10) copy to results
 	GGeom::Modify::ShallowAdd(&g4, &result);
+	GGeom::Modify::Heal(result);
 }
 
 HMCont2D::Contour MappedMesher::LeftContour(){

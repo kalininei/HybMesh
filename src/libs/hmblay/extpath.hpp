@@ -52,6 +52,9 @@ struct ExtPath: public HMCont2D::Contour{
 	//each resulting section has the same boundary partition
 	static vector<ExtPath> DivideByBndPart(const ExtPath& pth);
 
+	//divides at a node which is the closest one to path half point
+	static vector<ExtPath> DivideByHalf(const ExtPath& pth);
+
 	//if corner angle section is very short then
 	//make it sharp or regular depending on adjecent corner types
 	static void ReinterpretCornerTp(ExtPath& pth);
@@ -59,8 +62,8 @@ struct ExtPath: public HMCont2D::Contour{
 private:
 	//builds end perpendicular depending on full source contour
 	void FillEndConditions();
-	void PerpendicularStart();
-	void PerpendicularEnd();
+	void PerpendicularStart(double angle=M_PI/2);
+	void PerpendicularEnd(double angle=M_PI/2);
 
 	ExtPath SubPath(const Point* p1, const Point* p2) const;
 	ExtPath SubPath(double len1, double len2, HMCont2D::PCollection&) const;

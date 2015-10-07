@@ -14,7 +14,7 @@ public:
 
 namespace Tpp{
 
-//Basis implementation of shared pointer generator
+//Basic implementation of shared pointer generator
 template<class C>
 struct ShpGenerator{
 	typedef shared_ptr<C> Tsh;
@@ -206,6 +206,8 @@ struct PCollection: public Tpp::Collection<Point>{
 
 	//Methods
 	static void SaveVtk(const PCollection& dt, const char* fn);
+	//pointer to closest point
+	static Point* FindClosestNode(const PCollection& dt, const Point& p);
 
 	//Scaling
 	static ScaleBase Scale01(PCollection&);

@@ -18,7 +18,7 @@ struct Contour: public ECollection{
 	vector<Point*> ordered_points() const;
 	//list of all corner points in correct order without doubling
 	//the last point for closed contours
-	//for closed contours may not include first and last points
+	//for open contours includes first and last points by default
 	vector<Point*> corner_points() const;
 	//returns [point previous, point currant, point next]
 	//or NULLS if no such points
@@ -64,6 +64,8 @@ struct Contour: public ECollection{
 	void DirectEdges();
 	//reverse edge order and internal points order within edges
 	void ReallyReverse();
+	//adds edge (last(), p) to the end
+	void AddLastPoint(Point* p);
 
 	//force positive(true)/negative(false) direction.
 	//->true if contour was reversed
@@ -77,6 +79,9 @@ struct Contour: public ECollection{
 	//    <1> pointer to a new added point or existed one which equals p
 	std::tuple<bool, Point*>
 	GuaranteePoint(const Point& p, PCollection& pcol);
+
+	//find coordinates of closest contour point
+	Point ClosestPoint(const Point& p) const;
 
 	//Returns true if point lies strictly within/without closed contour
 	bool IsWithin(const Point& p) const;
@@ -111,8 +116,11 @@ struct Contour: public ECollection{
 	static vector<double> EWeights(const Contour& c);
 
 	//Offset
+	//takes into account direction of source and sign of delta: all positives -> offsets to
+	//the left
 	static Container<ContourTree> Offset(const Contour& source, double delta, OffsetTp tp);
-	static Container<Contour> OffsetOuter(const Contour& source, double delta);
+	//forces singly connected output contour. tp = CLOSED_POLY or OPEN_ROUND
+	static Container<Contour> Offset1(const Contour& source, double delta);
 	//Cut contour
 	static Container<Contour> CutByWeight(const Contour& source, double w1, double w2);
 	static Container<Contour> CutByLen(const Contour& source, double len1, double len2);

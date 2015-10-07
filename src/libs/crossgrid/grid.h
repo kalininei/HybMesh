@@ -219,11 +219,15 @@ static GridGeom RectGrid01(int Nx, int Ny);
 struct Modify{
 
 static void RemoveCells(GridGeom& grid, const std::vector<const Cell*>& cls);
+//primitives modifications
 static void PointModify(GridGeom& grid, std::function<void(GridPoint*)> fun);
 static void CellModify(GridGeom& grid, std::function<void(Cell*)> fun);
+//adds data
 static void ShallowAdd(const GridGeom* from, GridGeom* to);
 static void ShallowAdd(const ShpVector<GridPoint>& from, GridGeom* to);
 static void DeepAdd(const GridGeom* from, GridGeom* to);
+//merges congruent, deletes unused, forces cells rotation
+static void Heal(GridGeom& grid);
 
 };
 

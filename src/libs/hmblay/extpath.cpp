@@ -28,48 +28,43 @@ ExtPath ExtPath::Assemble(const vector<Options*>& data){
 	//data[i]->path are in strict sequence.
 	//all data may have different options
 	ExtPath ret;
+	vector<Options*> edgeopt;
 	for (auto d: data){
 		auto p = d->get_path();
 		//check for ordering
 		assert(ret.size() == 0 || ret.last() == p->first());
-		auto pnt = p->ordered_points();
-		//add empty extended data object.
-		//conflicting i=0 edge: set priority to longest partition
-		if (ret.size()>0){
-			auto L1 = ret.ext_data.back().opt->partition.back();
-			auto L2 = d->partition.back();
-			if (L2>L1) ret.ext_data.back().opt = d;
-		} else ret.ext_data.push_back(PathPntData(d));
-		for (int i=1; i<pnt.size(); ++i){
-			ret.ext_data.push_back(PathPntData(d));
-		}
 		//add edges
 		ret.Unite(*p);
+		for (int i=0; i<p->size(); ++i) edgeopt.push_back(d);
 	}
-	//fill extended data
+	//add empty options
+	for (int i=0; i<edgeopt.size(); ++i){
+		ret.ext_data.push_back(PathPntData(edgeopt[i]));
+	}
+	//fill options
 	auto p = ret.ordered_points();
-	if (ret.is_closed()){
-		//conflicting first-last
-		auto L1 = ret.ext_data[0].opt->partition.back(),
-		     L2 = ret.ext_data.back().opt->partition.back();
-		if (L1>=L2) ret.ext_data.back().opt = ret.ext_data[0].opt;
-		else ret.ext_data[0].opt = ret.ext_data.back().opt;
-		//take into account last-first connection
-		for (int i=0; i<p.size(); ++i){
-			Point* pcur = p[i];
-			Point* pprev = (i==0) ? p[p.size()-2] : p[i-1];
-			Point* pnext = (i==p.size()-1) ? p[1] : p[i+1];
-			ret.ext_data[i].fill(pprev, pcur, pnext);
-		}
-	} else {
-		//assemble without additional connections
-		for (int i=0; i<p.size(); ++i){
-			Point* pcur = p[i];
-			Point* pprev = (i==0) ? 0 : p[i-1];
-			Point* pnext = (i==p.size()-1) ? 0 :p[i+1];
-			ret.ext_data[i].fill(pprev, pcur, pnext);
-		}
+	for (int i=0; i<edgeopt.size(); ++i){
+		Point* pprev = (i==0) ? 0 : p[i-1];
+		Point* pnext = p[i+1];
+		ret.ext_data[i].fill(pprev, p[i], pnext);
 	}
+	//for closed contours take into account first-last connection
+	if (ret.is_closed()){
+		Point* p0 = p[p.size()-3];
+		Point* p1 = p[p.size()-2];
+		Point* p2 = p[0];
+		Point* p3 = p[1];
+		ret.ext_data[0].fill(p1,p2,p3);
+		ret.ext_data.back().fill(p0,p1,p2);
+	}
+	//add one fictive entry to match ordered_points() length
+	if (ret.is_closed()){
+		ret.ext_data.push_back(ret.ext_data[0]);
+	} else {
+		ret.ext_data.push_back(ret.ext_data.back());
+		ret.ext_data.back().fill(p[p.size()-2], p.back(), 0);
+	}
+		
 	ret.FillEndConditions();
 	return ret;
 }
@@ -85,15 +80,20 @@ void ExtPath::FillEndConditions(){
 	// ============ start point
 	double h1 = ext_data[0].opt->partition.back();
 	Point* p1 = first();
-	if (!is_closed() && p1!=full_source->first() && p1!=full_source->last()){ 
+	if (!full_source->is_closed() && (p1 == full_source->first() || p1 == full_source->last()))
+		PerpendicularStart();
+	else{
 		Vect direct1 = Contour::SmoothedDirection(*full_source, p1,  1, HCOEF*h1);
 		Vect direct2 = Contour::SmoothedDirection(*full_source, p1, -1, HCOEF*h1);
 		double angle = Angle(direct2, Point(0,0), direct1);
 		CornerTp tp = ext_data[0].opt->CornerType(angle);
 		switch (tp){
-			case CornerTp::ZERO: case CornerTp::REGULAR: case CornerTp::NO:
+			case CornerTp::ZERO: case CornerTp::NO:
 			case CornerTp::OBTUSE: case CornerTp::NEGLECTABLE:
 				PerpendicularStart();
+				break;
+			case CornerTp::REGULAR:
+				PerpendicularStart(angle/2.0);
 				break;
 			case CornerTp::SHARP: case CornerTp::CORNER:
 				leftbc = HMCont2D::Constructor::CutContour(*full_source, *p1, -1, HCOEF*h1);
@@ -102,44 +102,49 @@ void ExtPath::FillEndConditions(){
 				if (*p1 != *leftbc.first()) leftbc.ReallyReverse();
 				break;
 		}
-	} else PerpendicularStart();
+	}
 
 	// ============= end point
 	double h2 = ext_data.back().opt->partition.back();
 	Point* p2 = last();
-	if (!is_closed() && p2!=full_source->first() && p2!=full_source->last()){ 
+	if (!full_source->is_closed() && (p2 == full_source->first() || p2 == full_source->last()))
+		PerpendicularEnd();
+	else{
 		Vect direct1 = Contour::SmoothedDirection(*full_source, p2,  1, HCOEF*h2);
 		Vect direct2 = Contour::SmoothedDirection(*full_source, p2, -1, HCOEF*h2);
 		double angle = Angle(direct2, Point(0,0), direct1);
 		CornerTp tp = ext_data.back().opt->CornerType(angle);
 		switch (tp){
-			case CornerTp::ZERO: case CornerTp::REGULAR: case CornerTp::NO:
+			case CornerTp::ZERO: case CornerTp::NO:
 			case CornerTp::OBTUSE: case CornerTp::NEGLECTABLE:
 				PerpendicularEnd();
+				break;
+			case CornerTp::REGULAR:
+				PerpendicularEnd(angle/2.0);
 				break;
 			case CornerTp::SHARP: case CornerTp::CORNER:
 				rightbc = HMCont2D::Constructor::CutContour(*full_source, *p2, 1, HCOEF*h2);
 				if (*rightbc.first() != *p2) rightbc.ReallyReverse();
 				break;
 		}
-	} else PerpendicularEnd();
+	};
 }
 
-void ExtPath::PerpendicularStart(){
+void ExtPath::PerpendicularStart(double a){
 	double h1 = ext_data[0].opt->partition.back();
 	Vect v = HMCont2D::Contour::SmoothedDirection(*full_source, first(), 1, HCOEF*h1);
 	//this is infinite since we use normalized geometry
-	v = vecRotate(v*100.0, M_PI/2);
+	v = vecRotate(v*100.0, a);
 	auto c = HMCont2D::Constructor::ContourFromPoints({*first(), *first()+v});
 	leftbc.clear();
 	leftbc.Unite(c);
 }
 
-void ExtPath::PerpendicularEnd(){
+void ExtPath::PerpendicularEnd(double a){
 	double h1 = ext_data.back().opt->partition.back();
 	Vect v = HMCont2D::Contour::SmoothedDirection(*full_source, last(), -1, HCOEF*h1);
 	//this is infinite since we use normalized geometry
-	v = vecRotate(v*100.0, 3*M_PI/2);
+	v = vecRotate(v*100.0, 2*M_PI-a);
 	auto c = HMCont2D::Constructor::ContourFromPoints({*last(), *last()+v});
 	rightbc.clear();
 	rightbc.Unite(c);
@@ -152,12 +157,17 @@ vector<ExtPath> ExtPath::DivideByAngle(const ExtPath& pth, CornerTp tp){
 
 vector<ExtPath> ExtPath::DivideByAngle(const ExtPath& pth, vector<CornerTp> tps){
 	vector<ExtPath> ret;
-	if (pth.size()<2) return ret;
+	if (pth.size()==0) return ret;
+	if (pth.size()==1) return {pth};
 	auto info = pth.ordered_info();
 	ret.push_back(ExtPath());
+	auto istps = [&](CornerTp t){
+		return std::find(tps.begin(), tps.end(), t)
+				!= tps.end();
+	};
 	for (int i=0; i<info.size()-1; ++i){
 		auto& it=info[i];
-		if (i>0 && std::find(tps.begin(), tps.end(), pth.ext_data[it.index].tp) != tps.end()){
+		if (i>0 && istps(pth.ext_data[it.index].tp)){
 			ret.back().ext_data.push_back(pth.ext_data[it.index]);
 			ret.push_back(ExtPath());
 		}
@@ -165,10 +175,49 @@ vector<ExtPath> ExtPath::DivideByAngle(const ExtPath& pth, vector<CornerTp> tps)
 		ret.back().ext_data.push_back(pth.ext_data[it.index]);
 	}
 	ret.back().ext_data.push_back(pth.ext_data[info.back().index]);
+	//if this is a closed contour get rid of division at the first point
+	if (pth.is_closed() && ret.size()>1 && !istps(ret[0].ext_data[0].tp)){
+		ExtPath np(ret.back());
+		np.Unite(ret[0]);
+		for (int i=1; i<ret[0].ext_data.size(); ++i){
+			np.ext_data.push_back(ret[0].ext_data[i]);
+		}
+		vector<ExtPath> nret { np };
+		for (int i=1; i<ret.size()-1; ++i) nret.push_back(ret[i]);
+		std::swap(ret, nret);
+	}
+
 	for (auto& r: ret){
 		r.FillEndConditions();
 		assert(r.ext_data.size() == r.ordered_points().size());
 	}
+	return ret;
+}
+
+vector<ExtPath> ExtPath::DivideByHalf(const ExtPath& pth){
+	// === find half point
+	assert(pth.size() > 2);
+	Point* hp = HMCont2D::ECollection::FindClosestNode(
+			pth, HMCont2D::Contour::WeightPoint(pth, 0.5));
+	vector<Point*> dp = pth.ordered_points();
+	int hind = std::find(dp.begin(), dp.end(), hp) - dp.begin();
+	if (hind == 0) hind = 1;
+	if (hind == dp.size()-1) hind = dp.size()-2;
+	// === wright data
+	vector<ExtPath> ret(2);
+	//first edges
+	ret[0].add_value(HMCont2D::Edge(dp[0], dp[1]));
+	for (int i=2; i<hind+1; ++i) ret[0].AddLastPoint(dp[i]);
+	//second edges
+	ret[1].add_value(HMCont2D::Edge(dp[hind], dp[hind+1]));
+	for (int i = hind+2; i<dp.size(); ++i) ret[1].AddLastPoint(dp[i]);
+	//first ext_data
+	for (int i=0; i<hind+1; ++i) ret[0].ext_data.push_back(pth.ext_data[i]);
+	//second ext_data
+	for (int i=hind; i<dp.size(); ++i) ret[1].ext_data.push_back(pth.ext_data[i]);
+	// === fill ends and return
+	ret[0].FillEndConditions();
+	ret[1].FillEndConditions();
 	return ret;
 }
 
@@ -299,11 +348,32 @@ Point* ExtPath::AddPoint(double len, HMCont2D::PCollection& apoints){
 vector<double> ExtPath::VerticalPartition(double len) const{
 	int i=0;
 	double used_len = 0;
-	while (ISGREATER(len, used_len)) {used_len += edge(i)->length(); ++i;}
+	while (ISGREATER(len, used_len) && i<size()-1) {used_len += edge(i)->length(); ++i;}
+	if (ISGREATER(used_len, len)) --i;
+	Options* ret;
+	//if point lies exactly on edge division point choose longest partition
+	if (ISEQ(used_len, len)){
+		Options *cand1 = 0, *cand2 = 0;
+		cand1 = ext_data[i].opt;
+		if (i == 0){
+			if (is_closed()){
+				cand2 = ext_data[size()-1].opt;
+			} else {
+				cand2 = 0;
+			}
+		} else{
+			cand2 = ext_data[i-1].opt;
+		}
+		if (cand2 == 0) ret = cand1;
+		else{
+			double L1 = cand1->partition.back();
+			double L2 = cand2->partition.back();
+			if (L1>L2) ret = cand1;
+			else ret = cand2;
+		}
+	} else ret = ext_data[i].opt;
 
-	if (i>=ext_data.size()) i = ext_data.size() - 1;
-
-	return ext_data[i].opt->partition;
+	return ret->partition;
 }
 
 

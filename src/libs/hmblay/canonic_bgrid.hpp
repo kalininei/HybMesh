@@ -93,6 +93,8 @@ class RectForClosedArea: public MappedRect{
 	shared_ptr<HMMath::Conformal::Annulus> core;
 	bool top_is_outer;
 public:
+	//if |area(bottom)|<|area(top)| => contours have negative direction
+	//else => positive
 	RectForClosedArea(const HMCont2D::Contour& side, const HMCont2D::Contour& bottom,
 			const HMCont2D::Contour& top);
 

@@ -56,7 +56,7 @@ public:
 	virtual ~MatSolve(){}
 	struct Options{
 		Options():
-			direct_solver_max_nnz(100000),
+			direct_solver_max_nnz(200000),
 			iter_tol(geps),
 			iter_maxit(10000)
 		{}

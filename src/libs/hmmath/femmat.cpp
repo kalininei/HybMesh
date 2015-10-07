@@ -137,13 +137,14 @@ void SeidelSolver::Solve(const vector<double>& rhs, vector<double>& u){
 namespace QRImpl{
 
 struct SPQR{
-	SPQR(): A(0){ cholmod_l_start(&common); }
+	SPQR(): A(0), x(0), b(0), QR(0){ cholmod_l_start(&common); }
 	~SPQR(){
-		if (A!=0) cholmod_l_free_sparse(&A, &common); A=0;
-		if (x!=0) cholmod_l_free_dense(&x, &common); x=0;
-		if (b!=0) cholmod_l_free_dense(&b, &common); b=0;
-		if (y!=0) cholmod_l_free_dense(&y, &common); y=0;
-		if (QR!=0) SuiteSparseQR_C_free(&QR, &common); QR=0;
+		if (A!=0) {cholmod_l_free_sparse(&A, &common); A=0;}
+		if (x!=0) {cholmod_l_free_dense(&x, &common); x=0;}
+		if (b!=0) {cholmod_l_free_dense(&b, &common); b=0;}
+		if (y!=0) {cholmod_l_free_dense(&y, &common); y=0;}
+		if (QR!=0) {SuiteSparseQR_C_free(&QR, &common); QR=0;}
+		cholmod_l_finish(&common);
 	}
 	void InitMat(const Mat& m){
 		cholmod_triplet *T = cholmod_l_allocate_triplet(

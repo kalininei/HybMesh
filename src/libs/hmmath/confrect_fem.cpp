@@ -57,6 +57,8 @@ vector<const GridPoint*> ExtractPoints(const GridGeom& grid, const vector<int>& 
 	return ret;
 }
 
+double LinTriangleSize(double area, int ncells){ return 1.5*sqrt(4.0*(area/ncells)/sqrt(3));}
+
 
 }
 
@@ -151,7 +153,7 @@ double ToRect::HEstimate(const vector<Point>& path, int segn, int nmax){
 	A = fabs(A);
 	int Nest = A/(h*h);
 	if (Nest<=nmax) return h;
-	else return sqrt(A/nmax);
+	else return LinTriangleSize(A, nmax);
 }
 
 shared_ptr<ToRect>
@@ -221,7 +223,7 @@ double ToAnnulus::HEstimate(const vector<Point>& outer_path, const vector<Point>
 	//using +1 because of TriGrid::TriangulateArea implementation
 	h /= (segn+1);
 	//2) estimate total number of cells and correct h if necessary
-	double A;
+	double A=0;
 	for (int i=1; i<outer_path.size()-1; ++i){
 		A += triarea(outer_path[0], outer_path[i], outer_path[i+1]);
 	}
@@ -231,7 +233,7 @@ double ToAnnulus::HEstimate(const vector<Point>& outer_path, const vector<Point>
 	A = fabs(A);
 	int Nest = A/(h*h);
 	if (Nest<=nmax) return h;
-	else return sqrt(A/nmax);
+	else return LinTriangleSize(A, nmax);
 }
 
 void ToAnnulus::BuildGrid1(const vector<Point>& outer_path, const vector<Point>& inner_path,
@@ -283,6 +285,13 @@ HMCont2D::Container<HMCont2D::Contour> ToAnnulus::SteepestDescentUCurve(){
 	if (outerc.IsWithout(ret.back())){
 		auto cr = HMCont2D::Contour::Cross(outerc, cont);
 		*(cont.last()) = std::get<1>(cr);
+	}
+	//if distance beween last point and one before last is very short
+	//remove point before last
+	if (cont.data.back()->length()<h/4){
+		Point *pp = cont.last();
+		cont.data.pop_back();
+		*cont.last() = *pp;
 	}
 	return cont;
 }
@@ -461,8 +470,20 @@ vector<Point> ToAnnulus::MapToAnnulus(const vector<Point>& input) const{
 vector<Point> ToAnnulus::MapToOriginal(const vector<Point>& input) const{
 	vector<Point> ret;
 	vector<const vector<double>*> funs {&inv_u, &inv_v};
+	vector<double> s(2);
 	for (auto& p: input){
-		auto s = inv_approx->Vals(p, funs);
+		try{
+			s = inv_approx->Vals(p, funs);
+		} catch (GGeom::EOutOfArea& e){
+			//if point was not found due to circle geom. approximation error
+			//project point to inv_grid boundary and try again
+			double rad = vecLen(p);
+			Point pnew;
+			if (fabs(rad-1.0)<geps || fabs(rad-_module)<geps){
+				pnew = InvGridContour()->ClosestPoint(p);
+				s = inv_approx->Vals(pnew, funs);
+			} else throw;
+		}
 		ret.push_back(Point(s[0], s[1]));
 	}
 	return ret;
@@ -473,4 +494,12 @@ double ToAnnulus::PhiInner(int i) const{
 }
 double ToAnnulus::PhiOuter(int i) const{
 	return v[outer_origs[i]];
+}
+
+const HMCont2D::Contour* ToAnnulus::InvGridContour() const{
+	if (!_inv_cont){
+		_inv_cont = std::make_shared<HMCont2D::Contour>(
+				GGeom::Info::Contour1(*inv_grid));
+	}
+	return _inv_cont.get();
 }

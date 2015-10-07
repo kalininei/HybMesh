@@ -39,13 +39,31 @@ end
 
 define gg_contour
 	call HMCont2D::Debug::geogebra_contour($arg0)
+	if ($argc>1)
+		call HMCont2D::Debug::geogebra_contour($arg1)
+	end
+	if ($argc>2)
+		call HMCont2D::Debug::geogebra_contour($arg2)
+	end
+	if ($argc>3)
+		call HMCont2D::Debug::geogebra_contour($arg3)
+	end
+	if ($argc>4)
+		call HMCont2D::Debug::geogebra_contour($arg4)
+	end
+	if ($argc>5)
+		call HMCont2D::Debug::geogebra_contour($arg5)
+	end
+	if ($argc>6)
+		call HMCont2D::Debug::geogebra_contour($arg6)
+	end
 end
 
 
 #call from build/bin directory with crossgrid_test:
 # gdb -x ../../src/libs/dbgscripts/a.gdb
 
-file ./hmmath_test
+file ./hmblay_test
 
 skip file /usr/include/c++/4.8/functional
 skip file /usr/include/c++/4.8/bits/shared_ptr_base.h
@@ -55,10 +73,11 @@ skip file /usr/include/c++/4.8/bits/allocator.h
 skip file /usr/include/c++/4.8/bits/stl_vector.h
 skip file /usr/include/c++/4.8/tuple
 skip file /usr/include/c++/4.8/array
+#skip file /usr/include/c++/4.8/bits/shared_ptr.h
 
 b main
 run 
-b confrect_fem.cpp:240
+b bgrid.cpp:173
 
 #====================================
 #call from gui/HybMesh.py directory with HybMesh

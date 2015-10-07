@@ -7,7 +7,7 @@ using namespace HMBlay::Impl;
 namespace{
 struct MConnector{
 private:
-	virtual void ModifyAdjecents(){};
+	virtual void ModifyAdjacents(){};
 	virtual void BuildInternals(){};
 protected:
 	MappedMesher *prev, *next;
@@ -18,10 +18,28 @@ public:
 	
 	//modifies prev, next meshes,
 	//build connection mesh if nessessary.
-	void Apply(){ ModifyAdjecents(); BuildInternals();}
+	void Apply(){ ModifyAdjacents(); BuildInternals();}
 
 	//adds next grid along with connection section to g
-	virtual void Add(shared_ptr<BGrid>& g) = 0;
+	virtual void Add(shared_ptr<BGrid>& g, bool with_prev, bool with_next) = 0;
+};
+
+struct PlainConnector: public MConnector{
+//connects grids which have congruent left|right nodes
+	void ModifyAdjacents() override{
+		//make left points of next equal to right points of prev
+		int imin = std::min(prev->left_points.size(), next->right_points.size());
+		for (int i=0; i<imin; ++i){
+			*next->left_points.point(i) =
+				*prev->right_points.point(i);
+		}
+	}
+public:
+	PlainConnector(MappedMesher* prev, MappedMesher* next): MConnector(prev, next){};
+	void Add(shared_ptr<BGrid>& g, bool with_prev, bool with_next){
+		if (with_prev) GGeom::Modify::ShallowAdd(&prev->result, g.get());
+		if (with_next) GGeom::Modify::ShallowAdd(&next->result, g.get());
+	}
 };
 
 struct FillerConnector: public MConnector{
@@ -32,14 +50,13 @@ protected:
 	FillerConnector(MappedMesher* _prev, MappedMesher* _next): MConnector(_prev, _next),
 		use_rect_approx(_prev->rect->use_rect_approx()){}
 public:
-	void Add(shared_ptr<BGrid>& g) override{
+	void Add(shared_ptr<BGrid>& g, bool with_prev, bool with_next) override{
 		//1) add previous grid if it has not been add yet
-		if (!g) g.reset(new BGrid());
-		if (g->n_cells() == 0) GGeom::Modify::ShallowAdd(&prev->result, g.get());
+		if (with_prev) GGeom::Modify::ShallowAdd(&prev->result, g.get());
 		//2) add connection grid
 		GGeom::Modify::ShallowAdd(&connection_grid->result, g.get());
 		//3) add next grid
-		GGeom::Modify::ShallowAdd(&next->result, g.get());
+		if (with_next) GGeom::Modify::ShallowAdd(&next->result, g.get());
 	}
 };
 
@@ -82,8 +99,9 @@ public:
 		//next mesh_areas
 		HMCont2D::Contour prev_top = prev->rect->TopContour();
 		HMCont2D::Contour next_top = next->rect->TopContour();
+		//first cross from start of next_top contour (essential)
 		std::tuple<bool, Point, double, double> cross =
-			HMCont2D::Contour::Cross(prev_top, next_top);
+			HMCont2D::Contour::Cross(next_top, prev_top);
 		assert(std::get<0>(cross));
 		//find crosspoint in conformal rectangle
 		Point pcross_prev = prev->rect->MapToSquare(std::get<1>(cross));
@@ -154,7 +172,7 @@ struct SharpConnector: public MConnector{
 	SharpConnector(MappedMesher* _prev, MappedMesher* _next): MConnector(_prev, _next){
 		_THROW_NOT_IMP_;
 	}
-	void Add(shared_ptr<BGrid>& g) override{ _THROW_NOT_IMP_; }
+	void Add(shared_ptr<BGrid>& g, bool with_prev, bool with_next) override{ _THROW_NOT_IMP_; }
 };
 
 shared_ptr<MConnector> MConnector::Build(CornerTp tp, MappedMesher* prev, MappedMesher* next){
@@ -162,6 +180,8 @@ shared_ptr<MConnector> MConnector::Build(CornerTp tp, MappedMesher* prev, Mapped
 		case CornerTp::SHARP:  return std::make_shared<SharpConnector>(prev, next);
 		case CornerTp::OBTUSE:  return std::make_shared<ObtuseConnector>(prev, next);
 		case CornerTp::CORNER: return std::make_shared<RightConnector>(prev, next);
+		case CornerTp::ZERO: case CornerTp::REGULAR:
+			return std::make_shared<PlainConnector>(prev, next);
 		default: assert(false);
 	}
 }
@@ -172,6 +192,13 @@ shared_ptr<BGrid> BGrid::MeshFullPath(const ExtPath& epath){
 	//1. divide by angles
 	vector<ExtPath> pths = ExtPath::DivideByAngle(epath,
 			{CornerTp::CORNER, CornerTp::OBTUSE, CornerTp::SHARP});
+	//if closed path with one special corner divide it into two
+	if (epath.is_closed() && pths.size() == 1 &&
+			(pths[0].ext_data.back().tp == CornerTp::CORNER ||
+			 pths[0].ext_data.back().tp == CornerTp::OBTUSE ||
+			 pths[0].ext_data.back().tp == CornerTp::SHARP)){
+		pths = ExtPath::DivideByHalf(pths[0]);
+	}
 
 	//2. build conform mapping for each subpath
 	ShpVector<MappedRect> mps;
@@ -195,9 +222,12 @@ shared_ptr<BGrid> BGrid::MeshFullPath(const ExtPath& epath){
 		CornerTp t = pths[i].ext_data.back().tp;
 		connectors.push_back(MConnector::Build(t, mesher4[i].get(), mesher4[i+1].get()));
 	}
-	if (epath.is_closed() && mps.size() > 1){
+	//add first->last connection
+	if (epath.is_closed()){
 		CornerTp t = pths[0].ext_data[0].tp;
-		connectors.push_back(MConnector::Build(t, mesher4.back().get(), mesher4[0].get()));
+		if (mps.size() > 1){
+			connectors.push_back(MConnector::Build(t, mesher4.back().get(), mesher4[0].get()));
+		}
 	}
 
 
@@ -223,9 +253,16 @@ shared_ptr<BGrid> BGrid::MeshFullPath(const ExtPath& epath){
 	for (auto& c: connectors) c->Apply();
 	
 	//7. Gather all resulting meshes
-	shared_ptr<BGrid> g;
+	shared_ptr<BGrid> g(new BGrid());
 	if (connectors.size() > 0){
-		for (auto& c: connectors) c->Add(g);
+		for (auto& c: connectors){
+			//add_previous with grid is empty
+			bool with_prev = (g->n_cells() == 0);
+			//add next always except if this
+			//is an end connector for closed path
+			bool with_next = (!epath.is_closed() || &c != &connectors.back());
+			c->Add(g, with_prev, with_next);
+		}
 		g->merge_congruent_points();
 	} else {
 		assert(mesher4.size() == 1);
@@ -242,7 +279,7 @@ shared_ptr<BGrid> BGrid::MeshSequence(vector<Options*>& data){
 	ExtPath fullpath = ExtPath::Assemble(data);
 
 	//2) if corner angle section is very short then
-	//   make it sharp or regular depending on adjecent corner types
+	//   make it sharp or regular depending on adjacent corner types
 	ExtPath::ReinterpretCornerTp(fullpath);
 
 	//3) build grid for a path

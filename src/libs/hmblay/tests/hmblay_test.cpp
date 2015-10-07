@@ -26,7 +26,7 @@ void test01(){
 	// 2. set inp
 	HMBlay::Input inp;
 	inp.edges = &col;
-	inp.direction = HMBlay::DirectionFromString("INNER");
+	inp.direction = HMBlay::DirectionFromString("OUTER");
 	inp.bnd_step_method = HMBlay::MethFromString("NO");
 	inp.partition = {0.0, 0.2, 0.4, 1.5};
 	inp.bnd_step = 0.1;
@@ -36,16 +36,18 @@ void test01(){
 	inp.regular_angle = 300;
 	inp.start = inp.end = Point(0,0);
 	//3. Calculations
-	cn = "Inner full circle";
+	cn = "Outer full circle";
 	GridGeom Ans1 = HMBlay::BuildBLayerGrid({inp});
-	add_check(fabs(Ans1.area() - 10.606602)<0.00001, cn);
-	HMCont2D::SaveVtk(col, "orig.vtk");
-	save_vtk(Ans1, "_dbgout.vtk");
+	add_check(Ans1.n_points() == 32 &&
+		  Ans1.n_cells() == 24 &&
+		  fabs(Ans1.area() - 23.35)<0.1, cn);
 
-	//cn = "Outer full circle";
-	//inp.direction = HMBlay::DirectionFromString("OUTER");
-	//GridGeom Ans2 = HMBlay::BuildBLayerGrid({inp});
-	//add_check(fabs(Ans2.area() - 23.3345237) <1e-6, cn);
+	cn = "Inner full circle";
+	inp.direction = HMBlay::DirectionFromString("INNER");
+	GridGeom Ans2 = HMBlay::BuildBLayerGrid({inp});
+	add_check(Ans2.n_points() == 32 &&
+	          Ans2.n_cells() == 24 &&
+	          fabs(Ans2.area() - 10.903)<0.1, cn);
 }
 
 void test02(){
@@ -68,8 +70,9 @@ void test02(){
 	GridGeom Ans1 = HMBlay::BuildBLayerGrid({inp});
 
 	vector<double> area1;
-	for(int i = 2; i<Ans1.n_cells(); i+=3) area1.push_back(Ans1.get_cell(i)->area());
-	//maximum outer element is bigger not more then two times then minimum
+	for(int i = 2*Ans1.n_cells()/3+1; i<Ans1.n_cells(); ++i)
+		area1.push_back(Ans1.get_cell(i)->area());
+	//maximum outer element is no more then two times bigger then minimum
 	double mina1 = *(std::min_element(area1.begin(), area1.end()));
 	double maxa1 = *(std::max_element(area1.begin(), area1.end()));
 	add_check(mina1>0 && maxa1/mina1<2.1, cn);
@@ -79,7 +82,8 @@ void test02(){
 	inp.partition = {0.0, 0.02, 0.08, 0.2};
 	GridGeom Ans2 = HMBlay::BuildBLayerGrid({inp});
 	vector<double> area2;
-	for(int i = 2; i<Ans2.n_cells(); i+=3) area2.push_back(Ans2.get_cell(i)->area());
+	for(int i = 0; i<Ans2.n_cells()/3; ++i)
+		area2.push_back(Ans2.get_cell(i)->area());
 	//maximum outer element is bigger not more then two times then minimum
 	double mina2 = *(std::min_element(area2.begin(), area2.end()));
 	double maxa2 = *(std::max_element(area2.begin(), area2.end()));
@@ -130,10 +134,11 @@ void test03(){
 		for (int i=0; i<Ans3.n_points(); ++i) if (Ans3.get_point(i)->y<0.0) return false;
 		return true;
 	}(), cn);
-	save_vtk(Ans3, "_dbgout.vtk");
 }
 
 void test04(){
+	std::cout<<"04. Different partitions"<<std::endl;
+
 	auto col1 = HMCont2D::Constructor::Circle(8, 10, Point(0, 0));
 	//basic inp1
 	HMBlay::Input inp1;
@@ -151,11 +156,16 @@ void test04(){
 	GridGeom Ans1 = HMBlay::BuildBLayerGrid({inp1});
 	add_check([&](){
 		for (int i=0; i<Ans1.n_cells(); ++i) if (Ans1.get_cell(i)->area()<0) return false;
-		for (int i=0; i<Ans1.n_points(); ++i) if (Ans1.get_point(i)->y<0.0) return false;
+		for (int i=0; i<Ans1.n_points(); ++i) if (Ans1.get_point(i)->y<-1e-3) return false;
+		bool hasp1=false, hasp2=false;
+		for (int i=0; i<Ans1.n_points(); ++i){
+			if (Point::dist(*Ans1.get_point(i), Point(10.4, 0))<1e-2) hasp1 = true;
+			if (Point::dist(*Ans1.get_point(i),Point(-10.4, 0))<1e-2) hasp2 = true;
+		}
 		return true;
 	}(), cn);
 
-	cn = std::string("Two layer with same partition depth count: outer");
+	cn = std::string("Two layers with same partition depth count: outer");
 	HMBlay::Input inp2(inp1);
 	inp2.partition = {0, 0.1, 0.2, 0.3, 0.8};
 	std::swap(inp2.start, inp2.end);
@@ -166,10 +176,16 @@ void test04(){
 		if (Ans2.n_cells()/4 != Ans2.n_points()/5) return false;
 		for (int i=0; i<Ans2.n_points(); ++i) if (Ans2.get_point(i)->y<-10-0.8-1e-12) return false;
 		for (int i=0; i<Ans2.n_points(); ++i) if (Ans2.get_point(i)->y>10+0.4+1e-12) return false;
+		bool hasp1=false, hasp2=false;
+		for (int i=0; i<Ans2.n_points(); ++i){
+			if (Point::dist(*Ans2.get_point(i), Point(10.8, 0))<1e-2) hasp1 = true;
+			if (Point::dist(*Ans2.get_point(i),Point(-10.8, 0))<1e-2) hasp2 = true;
+		}
+		if (!hasp1 || !hasp2) return false;
 		return true;
 	}(), cn);
 
-	cn = std::string("Two layer with same partition depth count: inner");
+	cn = std::string("Two layers with same partition depth count: inner");
 	inp1.direction = inp2.direction = HMBlay::DirectionFromString("INNER");
 	GridGeom Ans3 = HMBlay::BuildBLayerGrid({inp1, inp2});
 	add_check([&](){
@@ -177,13 +193,13 @@ void test04(){
 		if (Ans3.n_cells()/4 != Ans3.n_points()/5) return false;
 		for (int i=0; i<Ans3.n_points(); ++i){
 			const GridPoint* p=Ans3.get_point(i);
-			if (p->y>10+1e-12 || p->y<-10-1e-12) return false;
-			if (ISEQ(p->x, 0) && (p->y>-10+0.8+1e-12 && p->y<10-0.4-1e-12)) return false;
+			if (p->y>10+1e-3 || p->y<-10-1e-3) return false;
+			if (ISEQ(p->x, 0) && (p->y>-9.13 && p->y<9.45)) return false;
 		}
 		return true;
 	}(), cn);
 
-	cn = std::string("Two layer with different partition depth count");
+	cn = std::string("Two layers with different partition depth count");
 	inp1.direction = inp2.direction = HMBlay::DirectionFromString("OUTER");
 	inp2.partition.push_back(1.0); inp2.partition.push_back(1.2);
 	GridGeom Ans4 = HMBlay::BuildBLayerGrid({inp1, inp2});
@@ -191,9 +207,12 @@ void test04(){
 		for (int i=0; i<Ans4.n_cells(); ++i) if (Ans4.get_cell(i)->area()<0) return false;
 		int cp = 0;
 		for (int i=0; i<Ans4.n_points(); ++i){
-			if (*Ans4.get_point(i) == Point(-10.8, 0) || *Ans4.get_point(i) == Point(10.8, 0)) ++cp;
+			if (fabs(Ans4.get_point(i)->y)<0.02){
+				if (Ans4.get_point(i)->x >  10.81) ++cp;
+				if (Ans4.get_point(i)->x < -10.81) ++cp;
+			}
 		}
-		if (cp!=2) return false;
+		if (cp!=4) return false;
 		return true;
 	}(), cn);
 }
@@ -206,8 +225,6 @@ void test05(){
 
 	HMBlay::Input inp1;
 	inp1.bnd_step_method = HMBlay::MethFromString("KEEP_ALL");
-	inp1.sharp_angle = inp1.corner_angle = 0.0;
-	inp1.regular_angle = 300;
 	inp1.direction = HMBlay::DirectionFromString("INNER");
 	inp1.edges = &col1;
 	inp1.partition = {0, 0.1, 0.2, 0.3, 0.4};
@@ -217,9 +234,8 @@ void test05(){
 
 	std::string cn = std::string("mesh half of closed contour");
 	GridGeom Ans1 = HMBlay::BuildBLayerGrid({inp1});
-	std::cout<<Ans1.area()<<std::endl;
 	add_check([&](){
-		if (fabs(Ans1.area()-1.97)>0.01) return false;
+		if (fabs(Ans1.area()-1.93)>0.01) return false;
 		for (int i=0; i<Ans1.n_cells(); ++i) if (Ans1.get_cell(i)->area()<0) return false;
 		return true;
 	}(), cn);
@@ -301,7 +317,6 @@ void test07(){
 	con1.add_value(HMCont2D::Edge(con1.last(), apoints.point(0)));
 	con1.add_value(HMCont2D::Edge(apoints.point(0), apoints.point(1)));
 	con1.add_value(HMCont2D::Edge(apoints.point(1), con1.first()));
-	HMCont2D::SaveVtk(con1, "_dbgout.vtk");
 	
 	HMBlay::Input inp1;
 	inp1.bnd_step_method = HMBlay::MethFromString("KEEP_SHAPE");
@@ -313,15 +328,44 @@ void test07(){
 	inp1.start = inp1.end = Point(0, 0);
 	inp1.bnd_step = 0.3;
 	inp1.edges = &con1;
-	GridGeom Ans5 = HMBlay::BuildBLayerGrid({inp1});
+	GridGeom Ans1 = HMBlay::BuildBLayerGrid({inp1});
+	add_check(Ans1.n_points() == 545 && Ans1.n_cells() == 436,
+			"domain with a half-cirlce");
 }
 
 void test08(){
-	std::cout<<"08 Obtuse angle algorithm basic test"<<std::endl;
+	std::cout<<"08 Single angle connection"<<std::endl;
+	auto c1 = HMCont2D::Constructor::Circle(36, 3, Point(0, 0));
+	HMCont2D::PCollection apoints;
+	apoints.add_value(Point(3, -3));
+	HMCont2D::Contour con1 = HMCont2D::Contour::Assemble(c1,
+			HMCont2D::ECollection::FindClosestNode(c1, Point(3,0)),
+			HMCont2D::ECollection::FindClosestNode(c1, Point(0,-3)));
+	con1.add_value(HMCont2D::Edge(con1.last(), apoints.point(0)));
+	con1.add_value(HMCont2D::Edge(apoints.point(0), con1.first()));
+
+	HMBlay::Input inp1;
+	inp1.bnd_step_method = HMBlay::MethFromString("KEEP_SHAPE");
+	inp1.direction = HMBlay::DirectionFromString("INNER");
+	inp1.partition = {0, 0.02, 0.05, 0.1, 0.2};
+	inp1.start = inp1.end = Point(0, 0);
+	inp1.bnd_step = 0.2;
+	inp1.edges = &con1;
+
+	GridGeom Ans1 = HMBlay::BuildBLayerGrid({inp1});
+	add_check(Ans1.n_points() == 565 && Ans1.n_cells() == 452, "Mesh inner");
+
+	inp1.direction = HMBlay::DirectionFromString("OUTER");
+	GridGeom Ans2 = HMBlay::BuildBLayerGrid({inp1});
+	add_check(Ans2.n_points() == 575 && Ans2.n_cells() == 460, "Mesh outer");
 }
 
 void test09(){
 	std::cout<<"09 Throw on crossing intervals"<<std::endl;
+	//HMFem::Mat m;
+	//for (int i=0; i<100; ++i) m.set(i,i,1);
+	//for (int i=0; i<99; ++i) m.set(i, i+1, 0.3);
+	//auto slv = HMFem::MatSolve::Factory(m);
 }
 
 void test10(){
@@ -346,18 +390,16 @@ void test10(){
 
 
 int main(){
-	//test02();
-	//test04();
-	//test05();
-	//test06();
-	//test07();
-	//test08();
-	//test09();
-
-
-	//test10();
-	//test03();
 	test01();
+	test02();
+	test03();
+	test04();
+	test05();
+	test06();
+	test07();
+	test08();
+	test09();
+	test10();
 
 	if (FAILED_CHECKS ==1){
 		std::cout<<FAILED_CHECKS<<" test failed <<<<<<<<<<<<<<<<<<<"<<std::endl;
