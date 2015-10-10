@@ -142,8 +142,10 @@ public:
 	//depth = 1 is the height of rect at certain weight
 	typedef std::function<vector<double>(double)>  TVertPart;
 
-	//Build a grid
-	void Fill(TBotPart bottom_partitioner, TVertPart vertical_partitioner);
+	//Build a grid.
+	//source is used for weight calculation
+	// 1 - left, 2 - bottom, 3 - right, 4 - top
+	void Fill(TBotPart bottom_partitioner, TVertPart vertical_partitioner, int source);
 
 	//returns grid boundaries as shallow copy
 	HMCont2D::Contour LeftContour();

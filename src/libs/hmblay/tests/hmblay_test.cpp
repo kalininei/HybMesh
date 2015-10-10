@@ -369,7 +369,7 @@ void test09(){
 }
 
 void test10(){
-	std::cout<<"10. Corner + Obtuse angle"<<std::endl;
+	std::cout<<"10. right + re-entrant angle"<<std::endl;
 	auto c = HMCont2D::Constructor::ContourFromPoints(
 		{0,0, 2,0, 2.3,-1,  5,-1});
 	HMBlay::Input inp1;
@@ -388,6 +388,27 @@ void test10(){
 	add_check(Ans1.n_cells() == 232 && Ans1.n_points() == 295, "Mesh");
 };
 
+void test11(){
+	std::cout<<"11. Acute angle"<<std::endl;
+	auto c = HMCont2D::Constructor::ContourFromPoints(
+			{-10,0, 5,0, 0,1.5});
+	HMBlay::Input inp1;
+	inp1.bnd_step_method = HMBlay::MethFromString("KEEP_SHAPE");
+	inp1.direction = HMBlay::DirectionFromString("INNER");
+	inp1.edges = &c;
+	inp1.bnd_step = 0.1;
+	inp1.start = Point(0,0);
+	inp1.end = Point(0,1.5);
+	inp1.partition = {0, 0.01, 0.05, 0.1, 0.15, 0.2};
+
+	GridGeom Ans1 = HMBlay::BuildBLayerGrid({inp1});
+	add_check(Ans1.n_cells() == 558 && Ans1.n_points() == 596, "Mesh1");
+
+	inp1.partition = {0, 0.01, 0.02, 0.05, 0.1, 0.15, 0.2};
+	GridGeom Ans2 = HMBlay::BuildBLayerGrid({inp1});
+	add_check(Ans2.n_cells() == 678 && Ans2.n_points() == 715, "Mesh2");
+};
+
 
 int main(){
 	test01();
@@ -400,6 +421,7 @@ int main(){
 	test08();
 	test09();
 	test10();
+	test11();
 
 	if (FAILED_CHECKS ==1){
 		std::cout<<FAILED_CHECKS<<" test failed <<<<<<<<<<<<<<<<<<<"<<std::endl;

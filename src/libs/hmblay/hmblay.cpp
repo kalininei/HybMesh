@@ -11,6 +11,16 @@ using namespace HMBlay::Impl;
 // ========================= Main Algo
 GridGeom HMBlay::BuildBLayerGrid(const vector<HMBlay::Input>& orig_opt){
 	if (orig_opt.size() == 0) return GridGeom(0, 0, 0, 0);
+	//0) check input
+	for (auto& o: orig_opt){
+		if (o.edges == 0 || o.edges->size() == 0){
+			throw EBuildError("source edges were not set");
+		}
+		if (o.partition.size() < 2 || !ISZERO(o.partition[0])){
+			throw EBuildError("invalid partition");
+		}
+	}
+
 	//1,2) internal, non-dimensional copy of orig_options
 	std::vector<Options> opt = Options::CreateFromParent(orig_opt);
 

@@ -87,4 +87,3 @@ HMCont2D::Container<Contour> cns::CutContour(const HMCont2D::Contour& cont,
 }
 
 
-

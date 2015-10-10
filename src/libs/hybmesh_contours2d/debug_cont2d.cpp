@@ -2,6 +2,7 @@
 
 #include "debug_cont2d.hpp"
 #include "stdarg.h"
+#include "constructor.hpp"
 #include "nan_handler.h"
 
 using namespace HMCont2D;
@@ -120,6 +121,16 @@ void Debug::geogebra_contour(const Contour& c){
 void Debug::geogebra_tree(const ContourTree& c){
 	for (auto n: c.nodes) geogebra_contour(*n);
 }
+
+void Debug::geogebra_box(const BoundingBox& c){
+	return geogebra_contour(HMCont2D::Constructor::ContourFromPoints(c.FourPoints(), true));
+}
+
+void Debug::geogebra_etree(const ExtendedTree& c){
+	geogebra_tree(c);
+	for (auto n: c.open_contours) geogebra_contour(*n);
+}
+
 
 
 #endif

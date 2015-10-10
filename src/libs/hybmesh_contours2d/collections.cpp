@@ -48,22 +48,25 @@ Point* ECollection::FindClosestNode(const ECollection& dt, const Point& p){
 	return res;
 }
 
-std::tuple<Edge*, double, double>
+std::tuple<Edge*, double, double, int>
 ECollection::FindClosestEdge(const ECollection& dt, const Point& p){
-	std::tuple<Edge*, double, double> ret;
+	std::tuple<Edge*, double, double, int> ret;
 	Edge*& edge = std::get<0>(ret);
 	double& dist = std::get<1>(ret);
 	double& ksi = std::get<2>(ret);
-	edge = 0; dist = 1e99; ksi = 1e99;
+	int& ind = std::get<3>(ret);
+	edge = 0; dist = 1e99; ksi = 1e99; ind = -1;
 
 	double k;
-	for (auto e: dt.data){
+	for (int i=0; i<dt.size(); ++i){
+		auto& e = dt.data[i];
 		double dnew = Point::meas_section(p, *e->pstart, *e->pend, k);
 		if (dnew < dist){
 			edge = e.get();
 			dist = dnew;
 			ksi = k;
-			if (ISZERO(dist)) break;
+			ind = i;
+			if (dist<geps*geps) break;
 		}
 	}
 

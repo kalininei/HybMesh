@@ -73,6 +73,37 @@ std::array<Point*, 3> Contour::point_siblings(Point* p) const{
 	return ret;
 }
 
+std::array<Point*, 3> Contour::point_siblings(int i) const{
+	assert((is_closed() && i<size()) || (!is_closed() && i<=size()));
+	//get edges
+	//e1
+	HMCont2D::Edge *e1 = data[i].get(), *e2;
+	//e2
+	if (i>0 && i<size()){
+		e2 = data[i-1].get();
+	} else if (is_closed()){
+		if (i==0) e2 = data.back().get();
+		else e2 = data[i-1].get();
+	} else {
+		e2 = 0;
+		if (i == size()) std::swap(e1,e2);
+	}
+	
+	//siblings
+	if (e1!=0 && e2!=0){
+		if (e1->pstart == e2->pstart) return {e1->pend, e1->pstart, e2->pend};
+		if (e1->pstart == e2->pend) return {e1->pend, e1->pstart, e2->pstart};
+		if (e1->pend == e2->pstart) return {e1->pstart, e1->pend, e2->pend};
+		return {e1->pstart, e1->pend, e2->pstart};
+	} else if (e1!=0){
+		Point* ps = first();
+		return {0, ps, e1->sibling(ps)};
+	} else {
+		Point* ps = last();
+		return {e2->sibling(ps), ps, 0};
+	}
+}
+
 bool Contour::correctly_directed_edge(int i) const{
 	if (size() == 1) return true;
 	if (is_closed() && size() == 2) return true;
@@ -176,6 +207,26 @@ void Contour::AddLastPoint(Point* p){
 	add_value(np);
 }
 
+void Contour::RemoveEdge(int i){
+	Point *p1 = data[i]->pstart, *p2 = data[i]->pend;
+	auto connect = [&](int k){
+		if (data[k]->pstart == p2) data[k]->pstart = p1;
+		if (data[k]->pend == p2) data[k]->pend = p1;
+	};
+	if (size()>2){
+		if (!is_closed()){
+			if (i!=0 && i==size()-1){
+				connect(i+1);
+				connect(i-1);
+			}
+		} else {
+			connect( (i==0) ? size()-1 : i-1 );
+			connect( (i==size()-1) ? 0 : i+1 );
+		}
+	}
+	data.erase(data.begin()+i);
+}
+
 bool Contour::ForceDirection(bool dir){
 	if (Area(*this) < 0){
 		if (dir){ Reverse(); return true;}
@@ -199,6 +250,13 @@ bool Contour::IsWithout(const Point& p) const{
 	return cp.WhereIs(p) == 0;
 }
 
+bool Contour::AllWithout(const vector<Point>& p) const{
+	assert(is_closed());
+	Impl::ClipperPath cp(*this);
+	for (auto& it: p) if (cp.WhereIs(it) != 0) return false;
+	return true;
+}
+
 std::tuple<bool, Point*>
 Contour::GuaranteePoint(const Point& p, PCollection& pcol){
 	std::tuple<bool, Point*> ret;
@@ -207,7 +265,7 @@ Contour::GuaranteePoint(const Point& p, PCollection& pcol){
 		std::get<0>(ret) = false;
 		std::get<1>(ret) = pc;
 	} else {
-		std::tuple<Edge*, double, double> ce = FindClosestEdge(*this, p);
+		auto ce = FindClosestEdge(*this, p);
 		if (ISEQ(std::get<2>(ce), 0)){
 			std::get<0>(ret) = false;
 			std::get<1>(ret) = std::get<0>(ce)->pstart;
@@ -236,7 +294,7 @@ Contour::GuaranteePoint(const Point& p, PCollection& pcol){
 }
 
 Point Contour::ClosestPoint(const Point& p) const{
-	std::tuple<Edge*, double, double> ce = FindClosestEdge(*this, p);
+	auto ce = FindClosestEdge(*this, p);
 	if (ISEQ(std::get<2>(ce), 0)){
 		return *std::get<0>(ce)->pstart;
 	} else if (ISEQ(std::get<2>(ce), 1)){
@@ -442,6 +500,27 @@ Contour Contour::Partition(double step, const Contour& contour, PCollection& pst
 	return partition_core(step, contour, pstore, keep_sorted);
 }
 
+bool Contour::DoIntersect(const Contour& c1, const Contour& c2){
+	auto bbox1 = Contour::BBox(c1);
+	auto bbox2 = Contour::BBox(c2);
+	if (!bbox1.has_common_points(bbox2)) return false;
+	auto c = HMCont2D::Clip::Union(c1, c2);
+	if (c.cont_count() > 1) return false;
+	else return true;
+}
+
+bool Contour::DoReallyIntersect(const Contour& c1, const Contour& c2){
+	auto bbox1 = Contour::BBox(c1);
+	auto bbox2 = Contour::BBox(c2);
+	if (!bbox1.has_common_points(bbox2)) return false;
+	auto c = HMCont2D::Clip::Union(c1, c2);
+	if (c.cont_count() > 1) return false;
+	double a1 = fabs(HMCont2D::Area(c1));
+	double a2 = fabs(HMCont2D::Area(c2));
+	double suma = fabs(HMCont2D::Area(*c.nodes[0]));
+	return (!ISZERO(a1+a2 - suma));
+}
+
 namespace{
 
 Contour assemble_core(const Contour& con, int estart, int eend){
@@ -555,6 +634,11 @@ Contour Contour::Assemble(const Contour& col, const Point* pnt_start, int direct
 	return Assemble(col, pnt_start, pnt_end);
 }
 
+Contour Contour::Simplified(const Contour& cont){
+	auto p = cont.corner_points();
+	return HMCont2D::Constructor::ContourFromPoints(p, cont.is_closed());
+}
+
 PCollection Contour::WeightPoints(const Contour& p, vector<double> vw){
 	double len = p.length();
 	for (auto& v: vw) v*=len;
@@ -591,35 +675,64 @@ vector<double> Contour::EWeights(const Contour& c){
 	return ret;
 }
 
-std::tuple<bool, Point, double, double>
-Contour::Cross(const Contour& c1, const Contour& c2){
-	std::tuple<bool, Point, double, double> ret;
+namespace{
+vector<std::tuple<bool, Point, double, double>>
+cross_core(const Contour& c1, const Contour& c2, bool is1){
+	vector<std::tuple<bool, Point, double, double>> retv;
 	vector<Point*> op1 = c1.ordered_points();
 	vector<Point*> op2 = c2.ordered_points();
-	
-	auto lens1 = ELengths(c1), lens2 = ELengths(c2);
 
+	auto lens1 = ECollection::ELengths(c1), lens2 = ECollection::ELengths(c2);
+	double flen1 = std::accumulate(lens1.begin(), lens1.end(), 0.0);
+	double flen2 = std::accumulate(lens2.begin(), lens2.end(), 0.0);
+
+	auto addcross = [&](Point p, double w1, double w2){
+		retv.push_back(std::make_tuple(true, p, w1, w2));
+	};
 	double ksieta[2];
 	double L1=0.0, L2=0.0;
 	for (int i=0; i<op1.size()-1; ++i){
 		L2 = 0;
 		for (int j=0; j<op2.size()-1; ++j){
 			if (SectCross(*op1[i], *op1[i+1], *op2[j], *op2[j+1], ksieta)){
-				std::get<0>(ret) = true;
-				std::get<1>(ret) = Point::Weigh(*op1[i], *op1[i+1], ksieta[0]);
-				std::get<2>(ret) =
-					(L1 + lens1[i]*ksieta[0])/std::accumulate(lens1.begin(), lens1.end(), 0.0);
-				std::get<3>(ret) = 
-					(L2 + lens2[j]*ksieta[1])/std::accumulate(lens2.begin(), lens2.end(), 0.0);
-				return ret;
-			} else {
-				L2+=lens2[j];
+				addcross(
+					Point::Weigh(*op1[i], *op1[i+1], ksieta[0]),
+					(L1 + lens1[i]*ksieta[0])/flen1,
+					(L2 + lens2[j]*ksieta[1])/flen2
+				);
+				if (is1) return retv;
 			}
+			L2+=lens2[j];
 		}
 		L1 += lens1[i];
 	}
-	std::get<0>(ret) = false;
+	if (retv.size() < 2) return retv;
+
+	//clear doublicates
+	TCoordSet<double> w1;
+	vector<std::tuple<bool, Point, double, double>> ret;
+	for (auto& v: retv){
+		if (w1.find(std::get<2>(v)) == w1.end()){
+			w1.insert(std::get<2>(v));
+			ret.push_back(v);
+		}
+	}
+	if (ret.size() == 1) return ret;
+
 	return ret;
+}
+}
+
+std::tuple<bool, Point, double, double>
+Contour::Cross(const Contour& c1, const Contour& c2){
+	auto retv = cross_core(c1, c2, true);
+	if (retv.size() == 0) return std::make_tuple(false, Point(0,0), 0.0, 0.0);
+	else return retv[0];
+}
+
+vector<std::tuple<bool, Point, double, double>>
+Contour::CrossAll(const Contour& c1, const Contour& c2){
+	return cross_core(c1, c2, false);
 }
 
 Container<Contour> Contour::CutByWeight(const Contour& source, double w1, double w2){

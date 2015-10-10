@@ -11,6 +11,14 @@ void add_vtk_point_data(const vector<double>& data, const char* name, const char
 	for (auto v: data) f<<v<<std::endl;
 	f.close();
 }
+void add_vtk_cell_data(const vector<double>& data, const char* name, const char* fn, bool is_first = false){
+	std::ofstream f(fn, std::ios_base::app);
+	if (is_first) f<<"CELL_DATA "<<data.size()<<std::endl;
+	f<<"SCALARS "<<name<<" float 1"<<std::endl;
+	f<<"LOOKUP_TABLE default"<<std::endl;
+	for (auto v: data) f<<v<<std::endl;
+	f.close();
+}
 
 }
 
@@ -43,7 +51,8 @@ void save_vtk(const GridGeom* g, const char* fn){
 
 void save_vtk(const GridGeom* g, const vector<double>& data, const char* fn){
 	save_vtk(g, fn);
-	add_vtk_point_data(data, "data", fn, true);
+	if (data.size() == g->n_cells()) add_vtk_cell_data(data, "data", fn, true);
+	else add_vtk_point_data(data, "data", fn, true);
 }
 
 void save_vtk(const PContour* c, const char* fn){

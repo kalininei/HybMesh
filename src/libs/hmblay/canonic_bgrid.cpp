@@ -446,7 +446,7 @@ double RectForClosedArea::left2conf(double w) const{
 }
 
 // ========================== MappedMesher
-void MappedMesher::Fill(TBotPart bottom_partitioner, TVertPart vertical_partitioner){
+void MappedMesher::Fill(TBotPart bottom_partitioner, TVertPart vertical_partitioner, int source){
 	HMCont2D::Contour bt = rect->BottomContour();
 	//1) get real weights from conformal weights at bottom source
 	double wbot_start = (ISEQ(wstart, 0.0)) ? 0.0 : rect->conf2bot(wstart);
@@ -468,7 +468,29 @@ void MappedMesher::Fill(TBotPart bottom_partitioner, TVertPart vertical_partitio
 
 	//4) build regular grid.
 	GridGeom g4 = GGeom::Constructor::RectGrid01(isz, jsz);
-	//5) copy left/right points to pcollections
+
+	//5) fill layer weights and feature
+	std::map<const Cell*, int> lweights;
+	shared_ptr<int> pfeat(new int());
+	std::map<const Cell*, shared_ptr<int>> feat;
+	int k = 0;
+	for (int j = 0; j<jsz-1; ++j){
+		for (int i=0; i<isz-1; ++i){
+			int w;
+			switch (source){
+				case 1: w = i+1; break;
+				case 2: w = j+1; break;
+				case 3: w = isz-1-i; break;
+				case 4: w = jsz-1-j; break;
+				default: assert(false);
+			}
+			lweights[g4.get_cell(k)] = w;
+			feat[g4.get_cell(k)] = pfeat;
+			++k;
+		}
+	}
+
+	//6) copy left/right points to pcollections
 	vector<int> right_indicies, left_indicies;
 	for (int j=0; j<jsz; ++j){
 		left_indicies.push_back(j*isz);
@@ -476,7 +498,7 @@ void MappedMesher::Fill(TBotPart bottom_partitioner, TVertPart vertical_partitio
 	}
 	left_points.add_values(GGeom::Info::SharePoints(g4, left_indicies));
 	right_points.add_values(GGeom::Info::SharePoints(g4, right_indicies));
-	//6) delete unused cells
+	//7) delete unused cells
 	vector<const Cell*> ucells;
 	int kc = 0;
 	for (int j=0; j<jsz-1; ++j){
@@ -487,11 +509,11 @@ void MappedMesher::Fill(TBotPart bottom_partitioner, TVertPart vertical_partitio
 		}
 	}
 	GGeom::Modify::RemoveCells(g4, ucells);
-	//7) Remove deleted points from left/right
+	//8) Remove deleted points from left/right
 	left_points.RemoveUnused();
 	right_points.RemoveUnused();
 
-	//8) weight coordinates
+	//9) weight coordinates
 	for_each(bpart.begin(), bpart.end(), [&](double& x){ x = rect->bot2conf(x); });
 	double hx = 1.0/(isz-1);
 	double hy = 1.0/(jsz-1);
@@ -499,16 +521,12 @@ void MappedMesher::Fill(TBotPart bottom_partitioner, TVertPart vertical_partitio
 		int i = lround(p->x/hx), j = lround(p->y/hy);
 		assert(i<bpart.size());
 		assert(i<vlines.size());
-		//#####################
-		if (j>=vlines[i].size()){
-			std::cout<<i<<"  "<<j<<std::endl;
-		}
 		assert(j<vlines[i].size());
 		p->set(bpart[i], vlines[i][j]);
 	};
 	GGeom::Modify::PointModify(g4, toweights);
 
-	//9) modify points using mapping
+	//10) modify points using mapping
 	vector<const Point*> p(g4.n_points());
 	for (int i=0; i<g4.n_points(); ++i) p[i] = g4.get_point(i);
 	HMCont2D::PCollection mp = rect->MapToReal(p);
@@ -520,7 +538,11 @@ void MappedMesher::Fill(TBotPart bottom_partitioner, TVertPart vertical_partitio
 
 	//10) copy to results
 	GGeom::Modify::ShallowAdd(&g4, &result);
-	GGeom::Modify::Heal(result);
+	GGeom::Repair::Heal(result);
+
+	//11) fill weights
+	result.AddWeights(lweights);
+	result.AddSourceFeat(feat);
 }
 
 HMCont2D::Contour MappedMesher::LeftContour(){

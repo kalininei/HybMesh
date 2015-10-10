@@ -9,6 +9,7 @@ namespace GGeom{
 struct Modify;
 struct Constructor;
 struct Info;
+struct Repair;
 };
 
 class GridPoint: public Point{
@@ -179,6 +180,7 @@ public:
 	friend struct GGeom::Constructor;
 	friend struct GGeom::Modify;
 	friend struct GGeom::Info;
+	friend struct GGeom::Repair;
 };
 
 
@@ -211,6 +213,7 @@ public:
 struct Constructor{
 
 static GridGeom RectGrid(const vector<double>& part_x, vector<double>& part_y);
+//Nx, Ny - number of nodes in x, y directions
 static GridGeom RectGrid01(int Nx, int Ny);
 
 };
@@ -219,6 +222,7 @@ static GridGeom RectGrid01(int Nx, int Ny);
 struct Modify{
 
 static void RemoveCells(GridGeom& grid, const std::vector<const Cell*>& cls);
+static void AddCell(GridGeom& grid, const std::vector<Point>& cell);
 //primitives modifications
 static void PointModify(GridGeom& grid, std::function<void(GridPoint*)> fun);
 static void CellModify(GridGeom& grid, std::function<void(Cell*)> fun);
@@ -226,9 +230,6 @@ static void CellModify(GridGeom& grid, std::function<void(Cell*)> fun);
 static void ShallowAdd(const GridGeom* from, GridGeom* to);
 static void ShallowAdd(const ShpVector<GridPoint>& from, GridGeom* to);
 static void DeepAdd(const GridGeom* from, GridGeom* to);
-//merges congruent, deletes unused, forces cells rotation
-static void Heal(GridGeom& grid);
-
 };
 
 // === grid structure information
@@ -245,6 +246,9 @@ static HMCont2D::Contour Contour1(const GridGeom& grid);
 //Build a bounding box
 static BoundingBox BBox(const GridGeom& grid, double eps=geps);
 
+//calculates area on plain. May differ from value of grid->area()
+//if grid is not singly connected.
+//static double GeomArea(const GridGeom& grid);
 
 //Finders
 class CellFinder{
@@ -255,18 +259,31 @@ class CellFinder{
 	vector<vector<const Cell*>> cells_by_square;
 
 	int GetSquare(const Point& p) const;
-	vector<const Cell*> CellCandidates(const Point& p) const;
 	std::set<int> IndSet(const BoundingBox& bbox) const;
 public:
 	CellFinder(const GridGeom* g, int nx, int ny);
 	//Find cell containing point.
 	//Throws EOutOfArea if failed to find the point.
 	const Cell* Find(const Point& p) const;
+	const Cell* FindExcept(const Point& p, const std::set<const Cell*>& exc) const;
+
+	//vector of cells which can contain given point
+	const vector<const Cell*>& CellCandidates(const Point& p) const;
+	const vector<const Cell*>& CellsBySquare(int i) const { return cells_by_square[i]; }
+	//adds cell to info vector
+	void AddCell(const Cell* c);
 };
 
+};
 
+struct Repair{
+
+//merges congruent, deletes unused, forces cells rotation
+static void Heal(GridGeom& grid);
+static bool HasSelfIntersections(const GridGeom& grid);
 
 };
+
 
 
 

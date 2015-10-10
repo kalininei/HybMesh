@@ -761,6 +761,13 @@ void GGeom::Modify::RemoveCells(GridGeom& grid, const std::vector<const Cell*>& 
 	grid.remove_cells(bc);
 }
 
+void GGeom::Modify::AddCell(GridGeom& grid, const std::vector<Point>& cell){
+	shared_ptr<Cell> c(new Cell);
+	for (auto& p: cell) c->points.push_back(aa::add_shared(grid.points, GridPoint(p)));
+	grid.cells.push_back(c);
+	grid.set_indicies();
+}
+
 void GGeom::Modify::PointModify(GridGeom& grid, std::function<void(GridPoint*)> fun){
 	std::for_each(grid.points.begin(), grid.points.end(),
 			[&fun](shared_ptr<GridPoint> gp){ fun(gp.get()); });
@@ -785,11 +792,55 @@ void GGeom::Modify::DeepAdd(const GridGeom* from, GridGeom* to){
 	to->add_data(*from);
 }
 
-void GGeom::Modify::Heal(GridGeom& grid){
+void GGeom::Repair::Heal(GridGeom& grid){
 	grid.merge_congruent_points();
 	grid.delete_unused_points();
 	grid.force_cells_ordering();
 }
+
+bool GGeom::Repair::HasSelfIntersections(const GridGeom& grid){
+	int n = 20;
+	GGeom::Info::CellFinder cfinder(&grid, n, n);
+	double ksieta[2];
+	for (int i=0; i<n*n; ++i){
+		auto cls = cfinder.CellsBySquare(i);
+		//assemble cell edges
+		std::set<Edge> edges;
+		for (auto c: cls){
+			int jprev = c->dim() - 1;
+			for (int j=0; j<c->dim(); ++j){
+				int i1 = c->points[jprev]->get_ind();
+				int i2 = c->points[j]->get_ind();
+				edges.emplace(i1, i2);
+			}
+		}
+		//find intersections
+		auto it1 = edges.begin();
+		while (it1!= edges.end()){
+			auto it2=std::next(it1);
+			while (it2!=edges.end()){
+				if (it1->p1 != it2->p1 &&
+						it1->p1 != it2->p2 &&
+						it1->p2 != it2->p1 &&
+						it1->p2 != it2->p2){
+					auto p1 = grid.get_point(it1->p1);
+					auto p2 = grid.get_point(it1->p2);
+					auto p3 = grid.get_point(it2->p1);
+					auto p4 = grid.get_point(it2->p2);
+					SectCross(*p1, *p2, *p3, *p4, ksieta);
+					if (ksieta[0] > geps && ksieta[0] < 1-geps &&
+						ksieta[1]>geps && ksieta[1] < 1-geps){
+						return true;
+					}
+				}
+				++it2;
+			}
+			++it1;
+		}
+	}
+	return false;
+}
+
 
 ShpVector<GridPoint> GGeom::Info::SharePoints(const GridGeom& grid, const vector<int>& indicies){
 	ShpVector<GridPoint> ret;
@@ -853,15 +904,7 @@ GGeom::Info::CellFinder::CellFinder(const GridGeom* g, int nx, int ny):
 	Hy = bbox.leny() / nx;
 	cells_by_square.resize(Nx*Ny);
 	//associate cells with squares
-	for (int i=0; i<g->n_cells(); ++i){
-		const Cell* c = g->get_cell(i);
-		auto bbox = BoundingBox::Build(c->points.begin(), c->points.end());
-		bbox.widen(geps);
-		std::set<int> inds = IndSet(bbox);
-		for (auto j: inds){
-			cells_by_square[j].push_back(c);
-		}
-	}
+	for (int i=0; i<g->n_cells(); ++i) AddCell(g->get_cell(i));
 }
 
 int GGeom::Info::CellFinder::GetSquare(const Point& p) const{
@@ -873,7 +916,7 @@ int GGeom::Info::CellFinder::GetSquare(const Point& p) const{
 }
 
 const Cell* GGeom::Info::CellFinder::Find(const Point& p) const{
-	vector<const Cell*> candidates = CellCandidates(p);
+	auto candidates = CellCandidates(p);
 	bool hint = true;
 	for (auto c: candidates){
 		int w = c->get_contour().is_inside(p, &hint);
@@ -882,10 +925,49 @@ const Cell* GGeom::Info::CellFinder::Find(const Point& p) const{
 	throw GGeom::EOutOfArea(p);
 }
 
-vector<const Cell*> GGeom::Info::CellFinder::CellCandidates(const Point& p) const{
+const Cell* GGeom::Info::CellFinder::FindExcept(const Point& p,
+		const std::set<const Cell*>& exc) const{
+	auto candidates = CellCandidates(p);
+	bool hint = true;
+	bool foundany = false;
+	for (auto c: candidates){
+		int w = c->get_contour().is_inside(p, &hint);
+		if (w != OUTSIDE){
+			foundany = true;
+			if (exc.find(c) == exc.end()) return c;
+		}
+	}
+
+	if (!foundany) throw GGeom::EOutOfArea(p);
+	else return 0;
+}
+
+void GGeom::Info::CellFinder::AddCell(const Cell* c){
+	auto bbox = BoundingBox::Build(c->points.begin(), c->points.end());
+	bbox.widen(geps);
+	std::set<int> inds = IndSet(bbox);
+	for (auto j: inds){
+		cells_by_square[j].push_back(c);
+	}
+}
+
+const vector<const Cell*>& GGeom::Info::CellFinder::CellCandidates(const Point& p) const{
 	//get square of point
 	int ind = GetSquare(p);
 	//return
 	return cells_by_square[ind];
 }
+
+//double GGeom::Info::GeomArea(const GridGeom& grid){
+//        vector<HMCont2D::Contour> all_cells;
+//        for (int i=0; i<grid.n_cells(); ++i){
+//                const Cell* c = grid.get_cell(i);
+//                all_cells.push_back(HMCont2D::Constructor::ContourFromPoints(
+//                                c->points.begin(), c->points.end(), true));
+//        }
+//        auto allcross = HMCont2D::Clip::Union(all_cells);
+//        return fabs(HMCont2D::Area(allcross));
+//}
+
+
 

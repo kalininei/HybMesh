@@ -1,6 +1,7 @@
 #include "bgrid.hpp"
-#include "fileproc.h"
 #include "canonic_bgrid.hpp"
+#include "trigrid.h"
+#include "bgrid_impose.hpp"
 
 using namespace HMBlay::Impl;
 
@@ -26,6 +27,8 @@ public:
 
 struct PlainConnector: public MConnector{
 //connects grids which have congruent left|right nodes
+private:
+	//TODO: set same source feature to next and prev mesh cells
 	void ModifyAdjacents() override{
 		//make left points of next equal to right points of prev
 		int imin = std::min(prev->left_points.size(), next->right_points.size());
@@ -37,10 +40,75 @@ struct PlainConnector: public MConnector{
 public:
 	PlainConnector(MappedMesher* prev, MappedMesher* next): MConnector(prev, next){};
 	void Add(shared_ptr<BGrid>& g, bool with_prev, bool with_next){
-		if (with_prev) GGeom::Modify::ShallowAdd(&prev->result, g.get());
-		if (with_next) GGeom::Modify::ShallowAdd(&next->result, g.get());
+		if (with_prev) g->ShallowAdd(prev->result);
+		if (with_next) g->ShallowAdd(next->result);
 	}
 };
+
+struct SharpConnector: public MConnector{
+private:
+	shared_ptr<BGrid> filler;
+	void BuildInternals(){
+		//small triangle is found at intersection of first level cells
+		//it is used to fill acute corner.
+		//1) find two cells which contain corner point
+		Point pc = *prev->rect->BottomContour().last();
+		auto get_cell = [](BGrid& g, Point& pc)->const Cell*{
+			for (int i=0; i<g.n_cells(); ++i){
+				const Cell* c = g.get_cell(i);
+				for (int i=0; i<c->dim(); ++i){
+					if (*c->points[i] == pc) return c;
+				}
+			}
+			return 0;
+		};
+		const Cell* c1 = get_cell(prev->result, pc);
+		const Cell* c2 = get_cell(next->result, pc);
+		if (c1 == 0 || c2 == 0) return;
+		//2) intersect
+		auto cc1 = Cell2Cont(c1), cc2 = Cell2Cont(c2);
+		auto icont = HMCont2D::Clip::Intersection(cc1, cc2);
+		Point* pc2=HMCont2D::ECollection::FindClosestNode(icont, pc);
+		//return if intersection was not found.
+		//Anyway we can safely proceed without this triangle
+		if (icont.cont_count() != 1 || *pc2 != pc) return;
+		//3) get 3 points for a triangle
+		std::array<Point*, 3> cl = icont.nodes[0]->point_siblings(pc2);
+		//4) build grid with one triangle
+		filler.reset(new BGrid());
+		GGeom::Modify::AddCell(*filler, {*cl[0], *cl[1], *cl[2]});
+		//5) set highest priority
+		filler->weight[filler->get_cell(0)] = 0;
+	};
+
+	void ModifyAdjacents() override{
+		//point of intersection to grid point
+		auto crosses = HMCont2D::Contour::CrossAll(prev->rect->TopContour(),
+				next->rect->TopContour());
+		auto prevcont = GGeom::Info::Contour1(prev->result);
+		auto nextcont = GGeom::Info::Contour1(next->result);
+		for (auto c: crosses){
+			Point p = std::get<1>(c);
+			Point* p1 = HMCont2D::ECollection::FindClosestNode(prevcont, p);
+			Point* p2 = HMCont2D::ECollection::FindClosestNode(nextcont, p);
+			p = Point::Weigh(*p1, *p2, 0.5);
+			p1->set(p.x, p.y);
+			p2->set(p.x, p.y);
+		}
+	}
+public:
+	SharpConnector(MappedMesher* _prev, MappedMesher* _next): MConnector(_prev, _next){}
+
+	void Add(shared_ptr<BGrid>& g, bool with_prev, bool with_next) override{
+		//Simply adds cells. Imposition will be done in the postprocessing
+		//routine
+		if (with_prev) g->ShallowAdd(prev->result);
+		if (with_next) g->ShallowAdd(next->result);
+		//triangle cell to fill the acute angle with highest priority
+		if (filler) g->ShallowAdd(*filler);
+	}
+};
+
 
 struct FillerConnector: public MConnector{
 protected:
@@ -52,11 +120,11 @@ protected:
 public:
 	void Add(shared_ptr<BGrid>& g, bool with_prev, bool with_next) override{
 		//1) add previous grid if it has not been add yet
-		if (with_prev) GGeom::Modify::ShallowAdd(&prev->result, g.get());
+		if (with_prev) g->ShallowAdd(prev->result);
 		//2) add connection grid
-		GGeom::Modify::ShallowAdd(&connection_grid->result, g.get());
+		g->ShallowAdd(connection_grid->result);
 		//3) add next grid
-		if (with_next) GGeom::Modify::ShallowAdd(&next->result, g.get());
+		if (with_next) g->ShallowAdd(next->result);
 	}
 };
 
@@ -91,7 +159,7 @@ private:
 		for(auto& x: f2out) x = connection_area->right2conf(x);
 		auto vert_part=[&f2out](double)->vector<double>{ return f2out; };
 
-		connection_grid->Fill(bot_part, vert_part);
+		connection_grid->Fill(bot_part, vert_part, 1);
 	}
 public:
 	RightConnector(MappedMesher* _prev, MappedMesher* _next): FillerConnector(_prev, _next){
@@ -161,18 +229,11 @@ private:
 		for(auto& x: f2out) x = connection_area->left2conf(x);
 		auto vert_part=[&f2out](double)->vector<double>{ return f2out; };
 
-		connection_grid->Fill(bot_part, vert_part);
+		connection_grid->Fill(bot_part, vert_part, 1);
 	}
 public:
 	ObtuseConnector(MappedMesher* _prev, MappedMesher* _next): FillerConnector(_prev, _next){
 	}
-};
-
-struct SharpConnector: public MConnector{
-	SharpConnector(MappedMesher* _prev, MappedMesher* _next): MConnector(_prev, _next){
-		_THROW_NOT_IMP_;
-	}
-	void Add(shared_ptr<BGrid>& g, bool with_prev, bool with_next) override{ _THROW_NOT_IMP_; }
 };
 
 shared_ptr<MConnector> MConnector::Build(CornerTp tp, MappedMesher* prev, MappedMesher* next){
@@ -246,7 +307,7 @@ shared_ptr<BGrid> BGrid::MeshFullPath(const ExtPath& epath){
 			for (auto& x: realdep) x/=depth;
 			return realdep;
 		};
-		mesher4[i]->Fill(bpart, wpart);
+		mesher4[i]->Fill(bpart, wpart, 2);
 	}
 
 	//6. Connection procedures
@@ -285,30 +346,66 @@ shared_ptr<BGrid> BGrid::MeshSequence(vector<Options*>& data){
 	//3) build grid for a path
 	ret = BGrid::MeshFullPath(fullpath);
 
-	//4) guarantee no self-intersections
-	ret = NoSelfIntersections(ret);
-
+	//4) guarantee no self-intersections.
+	//   Includes acute angle postprocessing.
+	ret = NoSelfIntersections(ret, fullpath);
 
 	return ret;
 }
 
-shared_ptr<BGrid> BGrid::NoSelfIntersections(shared_ptr<BGrid> g){
-	return g;
-	auto cont = GGeom::Info::Contour(*g);
-	//check for no self-contacts in resulting tree
-	assert( cont.cont_count() > 0 && HMCont2D::ContourTree::CheckNoContact(cont) );
-	//area as sum of cells areas
-	double area1 = g->area();
-	//area as bnd area
-	double area2 = HMCont2D::ContourTree::Area(cont);
-	if (ISEQ(area1, area2)) return g;
-	else{
-		_THROW_NOT_IMP_;
-	}
+shared_ptr<BGrid> BGrid::NoSelfIntersections(shared_ptr<BGrid> g, const HMCont2D::Contour& source){
+	//does grid have intersections
+	if (!GGeom::Repair::HasSelfIntersections(*g)) return g;
+	//else do imposition on the basis of cells weights
+	auto wfun = [&](const Cell* c){
+		int w = g->get_weight(c);
+		if (w == 0) return 1e3;
+		else return 1.0/g->get_weight(c);
+	};
+	return BGridImpose(g, wfun, source);
 }
 
 shared_ptr<BGrid> BGrid::ImposeBGrids(ShpVector<BGrid>& gg){
 	if (gg.size() == 0) return shared_ptr<BGrid>();
 	if (gg.size() == 1) return gg[0];
 	_THROW_NOT_IMP_;
+}
+
+void BGrid::AddWeights(const std::map<const Cell*, int>& w){
+	for (auto it: w){
+		auto fnd = std::find_if(cells.begin(), cells.end(),
+				[&it](shared_ptr<Cell> c){ return c.get() == it.first; });
+		if (fnd != cells.end()) weight[it.first] = it.second;
+	}
+}
+void BGrid::AddSourceFeat(const std::map<const Cell*, shared_ptr<int>>& f){
+	for (auto it: f){
+		auto fnd = std::find_if(cells.begin(), cells.end(),
+				[&it](shared_ptr<Cell> c){ return c.get() == it.first; });
+		if (fnd != cells.end()) source_feat[it.first] = it.second;
+	}
+}
+
+void BGrid::ShallowAdd(const BGrid& g){
+	GGeom::Modify::ShallowAdd(&g, this);
+	AddWeights(g.weight);
+	AddSourceFeat(g.source_feat);
+}
+
+void BGrid::ShallowAddCell(shared_ptr<Cell> c, const Cell* same_feat_cell){
+	cells.push_back(c);
+	if (same_feat_cell != 0){
+		auto fnd1 = weight.find(same_feat_cell);
+		auto fnd2 = source_feat.find(same_feat_cell);
+		if (fnd1 != weight.end()) weight[c.get()] = fnd1->second;
+		if (fnd2 != source_feat.end()) source_feat[c.get()] = fnd2->second;
+	}
+	set_indicies();
+}
+
+void BGrid::RemoveFeatures(const Cell* c){
+	auto fnd1 = weight.find(c);
+	auto fnd2 = source_feat.find(c);
+	if (fnd1 != weight.end()) weight.erase(fnd1);
+	if (fnd2 != source_feat.end()) source_feat.erase(fnd2);
 }

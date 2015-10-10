@@ -83,6 +83,14 @@ bool SectCross(const Point& p1S, const Point& p1E, const Point& p2S, const Point
 	return (ksieta[0]>=0 && ksieta[0]<=1 && ksieta[1]>=0 && ksieta[1]<=1); 
 }
 
+int LinePointWhereIs(const Point& p, const Point& L1, const Point& L2) noexcept{
+	if (L1 == L2) return -1;
+	double A[3] = { L1.y-L2.y, L2.x-L1.x, vecCrossZ(L1,L2) };
+	double v = A[0]*p.x + A[1]*p.y + A[2];
+	if (ISZERO(v)) return 1;
+	else return (v>0) ? 0 : 2;
+}
+
 vector<double> RefineSection(double a, double b, double Len, double Den){
 	//get number of points
 	double amean = (a+b)/2.0;
@@ -227,14 +235,14 @@ bool BoundingBox::has_common_points(const BoundingBox& bb) const{
 		ISGREATER(res.leny(), sum.leny())) return false;
 
 	//if one lies inside the other
-	if (ISEQ(lenx(), res.lenx()) && ISEQ(leny(), res.lenx())){
-		return whereis(Point(bb.xmin, bb.ymin)) == INSIDE &&
-			whereis(Point(bb.xmax, bb.ymax)) == INSIDE;
-	}
-	if (ISEQ(bb.lenx(), res.lenx()) && ISEQ(bb.leny(), res.leny())){
-		return bb.whereis(Point(xmin, ymin)) == INSIDE &&
-			bb.whereis(Point(xmax, ymax)) == INSIDE;
-	}
+	//if (ISEQ(lenx(), res.lenx()) && ISEQ(leny(), res.lenx())){
+	//        return whereis(Point(bb.xmin, bb.ymin)) == INSIDE &&
+	//                whereis(Point(bb.xmax, bb.ymax)) == INSIDE;
+	//}
+	//if (ISEQ(bb.lenx(), res.lenx()) && ISEQ(bb.leny(), res.leny())){
+	//        return bb.whereis(Point(xmin, ymin)) == INSIDE &&
+	//                bb.whereis(Point(xmax, ymax)) == INSIDE;
+	//}
 	//has intersections
 	return true;
 }
@@ -249,4 +257,9 @@ bool BoundingBox::contains(const Point& p1, const Point& p2) const{
 	int s = func(xmin, ymax);
 	return !(s == func(xmax, ymin) && s == func(xmax, ymax) && s == func(xmin, ymax));
 
+}
+
+vector<Point> BoundingBox::FourPoints() const{
+	return { Point(xmin, ymin), Point(xmax, ymin),
+		Point(xmax, ymax), Point(xmin, ymax) };
 }

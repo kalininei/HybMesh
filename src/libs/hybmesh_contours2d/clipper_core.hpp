@@ -55,8 +55,39 @@ struct ClipperPath: public ClipperObject{
 	// 1 - point is in polygon
 	int WhereIs(Point p) const;
 
-	Container<Contour> ToHMContainer() const;
-	static Container<Contour> HMContainer(const ClipperLib::Path&, const BoundingBox& bbox);
+	Container<Contour> ToHMContainer();
+	static Container<Contour> HMContainer(ClipperLib::Path&, const BoundingBox& bbox, bool is_closed=true);
+
+	//intersection of closed contours.
+	//if embedded1/2 is true then contours in сorresponding vector is treated as a tree.
+	static Container<ContourTree> Intersect(
+			vector<ClipperPath>& pths1,
+			vector<ClipperPath>& pths2,
+			bool embedded1,
+			bool embedded2);
+
+	//union of closed contours. 
+	//if embedded1/2 is true then contours in сorresponding vector is treated as a tree.
+	static Container<ContourTree> Union(
+			vector<ClipperPath>& pths1,
+			vector<ClipperPath>& pths2,
+			bool embedded1,
+			bool embedded2);
+
+	//substruction of closed contours. 
+	//if embedded1/2 is true then contours in сorresponding vector is treated as a tree.
+	static Container<ContourTree> Substruct(
+			vector<ClipperPath>& pths1,
+			vector<ClipperPath>& pths2,
+			bool embedded1,
+			bool embedded2);
+
+	//cuts lines by area intersection
+	static Container<ExtendedTree> CutLines(
+			vector<ClipperPath>& area,
+			vector<ClipperPath>& lines,
+			bool embedded_area);
+
 };
 
 

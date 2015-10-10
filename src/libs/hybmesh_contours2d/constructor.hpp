@@ -31,7 +31,6 @@ HMCont2D::Container<Contour> CutContour(const HMCont2D::Contour& cont,
 HMCont2D::Container<Contour> CutContour(const HMCont2D::Contour& cont,
 		const Point& pstart, const Point& pend);
 
-
 }};
 
 #endif

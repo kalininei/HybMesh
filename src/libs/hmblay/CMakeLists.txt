@@ -6,6 +6,7 @@ set (HEADERS
 	bgrid.hpp
 	extpath.hpp
 	canonic_bgrid.hpp
+	bgrid_impose.hpp
 )
 
 set (SOURCES
@@ -14,6 +15,7 @@ set (SOURCES
 	bgrid.cpp
 	extpath.cpp
 	canonic_bgrid.cpp
+	bgrid_impose.cpp
 )
 
 source_group ("Header Files" FILES ${HEADERS} ${HEADERS})

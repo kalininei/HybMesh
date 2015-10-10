@@ -18,6 +18,8 @@ struct Debug{
 	//contour in geogebra script format
 	static void geogebra_contour(const Contour& c);
 	static void geogebra_tree(const ContourTree& c);
+	static void geogebra_etree(const ExtendedTree& c);
+	static void geogebra_box(const BoundingBox& c);
 
 	//printing with tabulation
 	static int tabs;

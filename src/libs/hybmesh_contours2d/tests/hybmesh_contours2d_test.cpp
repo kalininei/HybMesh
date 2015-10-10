@@ -236,6 +236,97 @@ void test7(){
 			"weight by point -> point by weight");
 }
 
+void test8(){
+	std::cout<<"Contours Cross"<<std::endl;
+	auto c1 = HMCont2D::Constructor::ContourFromPoints(
+		{0,0, 1,0, 1,1, 0,1}, true);
+	auto c2 = HMCont2D::Constructor::ContourFromPoints(
+		{0.5,0.5, 1,3, 0.5,2}, true);
+	auto res1 = HMCont2D::Clip::Intersection(c1, c2);
+	add_check(ISEQ(HMCont2D::Area(res1), 0.025), "square cross triangle");
+
+	auto c3 = HMCont2D::Constructor::ContourFromPoints(
+		{0.5,1, 1,3, 0.5,2}, true);
+	auto res2 = HMCont2D::Clip::Intersection(c1, c3);
+	add_check(ISEQ(HMCont2D::Area(res2), 0.0), "Only one common point");
+
+	auto c4 = HMCont2D::Constructor::ContourFromPoints(
+		{0.5, 0.5, 0.6,0.6, 0.5,0.6}, true);
+	auto res3 = HMCont2D::Clip::Intersection(c4, c1);
+	add_check(ISEQ(HMCont2D::Area(res3), HMCont2D::Area(c4)), "One within the other");
+
+	auto c5 = HMCont2D::Constructor::ContourFromPoints(
+		{1.1, 0.5, 0.5, 1.1, 2,2, 2,-1, 0,-0.1}, true);
+	auto res4 = HMCont2D::Clip::Intersection(c5, c1);
+	add_check(res4.cont_count()==2 && ISEQ(HMCont2D::Area(res4), 0.2618939276),
+			"Multiple contours in result");
+}
+
+void test9(){
+	std::cout<<"Contours union"<<std::endl;
+	auto c1 = HMCont2D::Constructor::ContourFromPoints(
+		{0,0, 1,0, 1,1, 0,1}, true);
+	auto c2 = HMCont2D::Constructor::ContourFromPoints(
+		{0.5,0.5, 1,3, 0.5,2}, true);
+	auto res1 = HMCont2D::Clip::Union(c1, c2);
+	add_check(ISEQ(HMCont2D::Area(res1), 1.35), "square union triangle");
+
+	auto c3 = HMCont2D::Constructor::ContourFromPoints(
+		{1,0, 2,0, 2,1, 1,1}, true);
+	auto res2 = HMCont2D::Clip::Union({c1, c2, c3});
+	add_check(fabs(HMCont2D::Area(res2)-2.35)<1e-7, "squares with common edge");
+
+	auto c4 = HMCont2D::Constructor::ContourFromPoints(
+		{1.5,1, 2,3, 1.5,2}, true);
+	auto res3 = HMCont2D::Clip::Union({c1, c2, c3, c4});
+	add_check(fabs(HMCont2D::Area(res3) - 2.6)<1e-7, "common point");
+
+	auto c5 = HMCont2D::Constructor::ContourFromPoints(
+		{0.2,0.2, 0.7,0.2, 0.7,0.7, 0.2,0.7}, true);
+
+	HMCont2D::ContourTree tree;
+	auto p1 = shared_ptr<HMCont2D::Contour>(new HMCont2D::Contour(c1));
+	auto p2 = shared_ptr<HMCont2D::Contour>(new HMCont2D::Contour(c5));
+	tree.AddContour(p1);
+	tree.AddContour(p2);
+
+	auto res4 = HMCont2D::Clip::Union(tree, c2);
+	add_check(fabs(HMCont2D::Area(res4) - 1.104)<1e-7, "union with a tree");
+}
+
+void test10(){
+	std::cout<<"Contours substruct"<<std::endl;
+	auto c1 = HMCont2D::Constructor::ContourFromPoints(
+		{0,0, 1,0, 1,1, 0,1}, true);
+	auto c2 = HMCont2D::Constructor::ContourFromPoints(
+		{0.5,0.5, 1,3, 0.5,2}, true);
+	auto res1 = HMCont2D::Clip::Difference(c1, c2);
+	add_check(ISEQ(HMCont2D::Area(res1), 0.975), "square minus triangle");
+
+
+	auto c5 = HMCont2D::Constructor::ContourFromPoints(
+		{0.2,0.2, 0.7,0.2, 0.7,0.7, 0.2,0.7}, true);
+	HMCont2D::ContourTree tree;
+	auto p1 = shared_ptr<HMCont2D::Contour>(new HMCont2D::Contour(c1));
+	auto p2 = shared_ptr<HMCont2D::Contour>(new HMCont2D::Contour(c5));
+	tree.AddContour(p1);
+	tree.AddContour(p2);
+
+	auto res2 = HMCont2D::Clip::Difference(tree, c2);
+	add_check(fabs(HMCont2D::Area(res2) - 0.729)<1e-7, "substruction from a tree");
+}
+
+void test11(){
+	//std::cout<<"Line cut"<<std::endl;
+	//auto c1 = HMCont2D::Constructor::ContourFromPoints(
+	//        {0,0, 1,0, 1,1, 0,1}, true);
+	//auto line1 = HMCont2D::Constructor::ContourFromPoints(
+	//                {-5,0, 0.5,0, 0.5,10});
+
+	//auto res2 = HMCont2D::Clip::CutLine(c1, line1);
+	//HMCont2D::Debug::geogebra_etree(res2);
+}
+
 int main(){
 	std::cout<<"hybmesh_contours2d testing"<<std::endl;
 	if (hybmesh_contours2d_ping(1) == 2) 
@@ -248,6 +339,10 @@ int main(){
 	test5();
 	test6();
 	test7();
+	test8();
+	test9();
+	test10();
+	test11();
 	
 
 	if (FAILED_CHECKS == 1){

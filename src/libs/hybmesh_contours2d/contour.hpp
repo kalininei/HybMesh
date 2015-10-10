@@ -23,6 +23,7 @@ struct Contour: public ECollection{
 	//returns [point previous, point currant, point next]
 	//or NULLS if no such points
 	std::array<Point*, 3> point_siblings(Point* p) const;
+	std::array<Point*, 3> point_siblings(int i) const;
 	//return next point or null
 	Point* next_point(Point* p) const{ return std::get<2>(point_siblings(p));}
 	//properties
@@ -66,6 +67,7 @@ struct Contour: public ECollection{
 	void ReallyReverse();
 	//adds edge (last(), p) to the end
 	void AddLastPoint(Point* p);
+	void RemoveEdge(int i);
 
 	//force positive(true)/negative(false) direction.
 	//->true if contour was reversed
@@ -86,6 +88,8 @@ struct Contour: public ECollection{
 	//Returns true if point lies strictly within/without closed contour
 	bool IsWithin(const Point& p) const;
 	bool IsWithout(const Point& p) const;
+	bool AllWithin(const vector<Point>& p) const;
+	bool AllWithout(const vector<Point>& p) const;
 
 	// ======= Algorithms
 	//calculates vector representing direction of contour at point p smoother by lengh len
@@ -96,8 +100,12 @@ struct Contour: public ECollection{
 	//returns <0>: if cross was found
 	//        <1>: cross point
 	//        <2,3>: normalized length coordinate of intersection
-	static std::tuple<bool, Point, double, double> Cross(const Contour& c1, const Contour& c2);
+	static std::tuple<bool, Point, double, double> 
+	Cross(const Contour& c1, const Contour& c2);
 		
+	static vector<std::tuple<bool, Point, double, double>>
+	CrossAll(const Contour& c1, const Contour& c2);
+
 	static double Area(const Contour& c);
 	//weigth points by [0,1] weights of full contour length.
 	//Returns point in sorted order from start to end point of c
@@ -134,6 +142,10 @@ struct Contour: public ECollection{
 	//resulting contour will be more then len
 	static Contour Assemble(const Contour& col, const Point* pnt_start, int direction, double len);
 
+	//remove points which lie on the same edge
+	static Contour Simplified(const Contour& cont);
+
+
 	//Partition contour.
 	//step - step of partitioning
 	//pstore - point collection where to put new generated points with defined ShpGenerator
@@ -143,6 +155,11 @@ struct Contour: public ECollection{
 	//make a partition keeping points defined in keepit
 	static Contour Partition(double step, const Contour& contour, PCollection& pstore,
 			const std::vector<Point*>& keepit = {});
+
+	//returns true if c1 and c2 have common area (not a point, but may be an edge)
+	static bool DoIntersect(const Contour& c1, const Contour& c2);
+	//returns true if c1 and c2 have common area (not a point, not an edge)
+	static bool DoReallyIntersect(const Contour& c1, const Contour& c2);
 
 	//this can be called with Container<Contour> object.
 	template<class TContainer,

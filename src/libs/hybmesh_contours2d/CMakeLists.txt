@@ -9,6 +9,7 @@ set (HEADERS
 	contour.hpp
 	constructor.hpp
 	clipper_core.hpp
+	contclipping.hpp
 	debug_cont2d.hpp
 )
 
@@ -19,6 +20,7 @@ set (SOURCES
 	contour.cpp
 	clipper_core.cpp
 	tree.cpp
+	contclipping.cpp
 	debug_cont2d.cpp
 )
 

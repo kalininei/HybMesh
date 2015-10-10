@@ -88,14 +88,14 @@ void ExtPath::FillEndConditions(){
 		double angle = Angle(direct2, Point(0,0), direct1);
 		CornerTp tp = ext_data[0].opt->CornerType(angle);
 		switch (tp){
-			case CornerTp::ZERO: case CornerTp::NO:
+			case CornerTp::ZERO: case CornerTp::NO: case CornerTp::SHARP:
 			case CornerTp::OBTUSE: case CornerTp::NEGLECTABLE:
 				PerpendicularStart();
 				break;
 			case CornerTp::REGULAR:
 				PerpendicularStart(angle/2.0);
 				break;
-			case CornerTp::SHARP: case CornerTp::CORNER:
+			case CornerTp::CORNER:
 				leftbc = HMCont2D::Constructor::CutContour(*full_source, *p1, -1, HCOEF*h1);
 				//if leftbc contains only single edge its direction is not defined
 				//we have to guarantee direction of bnd.
@@ -115,14 +115,14 @@ void ExtPath::FillEndConditions(){
 		double angle = Angle(direct2, Point(0,0), direct1);
 		CornerTp tp = ext_data.back().opt->CornerType(angle);
 		switch (tp){
-			case CornerTp::ZERO: case CornerTp::NO:
+			case CornerTp::ZERO: case CornerTp::NO: case CornerTp::SHARP:
 			case CornerTp::OBTUSE: case CornerTp::NEGLECTABLE:
 				PerpendicularEnd();
 				break;
 			case CornerTp::REGULAR:
 				PerpendicularEnd(angle/2.0);
 				break;
-			case CornerTp::SHARP: case CornerTp::CORNER:
+			case CornerTp::CORNER:
 				rightbc = HMCont2D::Constructor::CutContour(*full_source, *p2, 1, HCOEF*h2);
 				if (*rightbc.first() != *p2) rightbc.ReallyReverse();
 				break;

@@ -6,11 +6,12 @@ define contvtk
 	end
 end
 
-document contvtk
-visualize HMCont2D data to _dbgout.vtk file or specified file
-Usage: contvtk arg0 [arg1]
-	arg0 -- HMCont2D::EdgeGeom object
-	arg1 -- string filename
+define gridvtk
+	if $argc ==1
+		call save_vtk($arg0, "_dbgout.vtk")
+	else
+		call save_vtk($arg0, $arg1)
+	end
 end
 
 define ppvec
@@ -59,6 +60,28 @@ define gg_contour
 	end
 end
 
+define gg_tree
+	call HMCont2D::Debug::geogebra_tree($arg0)
+	if ($argc>1)
+		call HMCont2D::Debug::geogebra_tree($arg1)
+	end
+	if ($argc>2)
+		call HMCont2D::Debug::geogebra_tree($arg2)
+	end
+	if ($argc>3)
+		call HMCont2D::Debug::geogebra_tree($arg3)
+	end
+	if ($argc>4)
+		call HMCont2D::Debug::geogebra_tree($arg4)
+	end
+	if ($argc>5)
+		call HMCont2D::Debug::geogebra_tree($arg5)
+	end
+	if ($argc>6)
+		call HMCont2D::Debug::geogebra_tree($arg6)
+	end
+end
+
 
 #call from build/bin directory with crossgrid_test:
 # gdb -x ../../src/libs/dbgscripts/a.gdb
@@ -77,7 +100,7 @@ skip file /usr/include/c++/4.8/array
 
 b main
 run 
-b bgrid.cpp:173
+b bgrid.cpp:358
 
 #====================================
 #call from gui/HybMesh.py directory with HybMesh

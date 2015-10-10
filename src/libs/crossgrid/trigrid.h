@@ -24,6 +24,9 @@ class TriGrid: public GridGeom{
 	//GModel* gmod
 	void FillFromGModel(void* gmod);
 
+	void FillFromTree(const HMCont2D::ContourTree& cont, 
+			const ShpVector<HMCont2D::Contour>& constraints,
+			const std::map<Point*, double>& w, double h);
 public:
 	TriGrid(){}
 	//constrcut from non-overlapping contours list and additional points
@@ -32,6 +35,10 @@ public:
 	explicit TriGrid(const HMCont2D::ContourTree& cont, 
 			const ShpVector<HMCont2D::Contour>& constraints,
 			double h);
+
+	explicit TriGrid(const HMCont2D::ContourTree& cont, 
+			const ShpVector<HMCont2D::Contour>& constraints,
+			const std::map<Point*, double>& w, double h);
 
 	static shared_ptr<TriGrid> FromGmshGeo(const char* fn);
 
@@ -45,10 +52,15 @@ public:
 	TriangulateArea(const vector<Point>& pts, double h);
 	static shared_ptr<TriGrid>
 	TriangulateArea(const vector<vector<Point>>& pts, double h);
+	static shared_ptr<TriGrid>
+	TriangulateArea(const HMCont2D::ContourTree& cont, double h);
+	static shared_ptr<TriGrid>
+	TriangulateArea(const HMCont2D::ContourTree& cont, const std::map<Point*, double>& w, double h);
 
 	static shared_ptr<TriGrid>
 	TriangulateAreaConstrained(const vector<vector<Point>>& bnd,
 			const vector<vector<Point>>& cns, double h);
+
 };
 
 

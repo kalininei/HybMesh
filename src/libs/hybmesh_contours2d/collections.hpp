@@ -239,9 +239,12 @@ struct ECollection: public Tpp::Collection<Edge>{
 	static void SaveVtk(const ECollection& dt, const char* fn);
 	//pointer to closest point
 	static Point* FindClosestNode(const ECollection& dt, const Point& p);
-	//closest edge-> returns Edge, distance, weight of closest
-	//point within edge.
-	static std::tuple<Edge*, double, double>
+	//closest edge-> returns 
+	//<0> Edge,
+	//<1> distance,
+	//<2> weight of closest point within edge.
+	//<3> edge index
+	static std::tuple<Edge*, double, double, int>
 	FindClosestEdge(const ECollection& dt, const Point& p);
 	//length of each edge
 	static vector<double> ELengths(const ECollection& dt);

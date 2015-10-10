@@ -155,10 +155,21 @@ TriGrid::ConstraintsPreproc(const HMCont2D::ContourTree& cont,
 	return ret;
 }
 
-
 TriGrid::TriGrid(const HMCont2D::ContourTree& cont, 
 		const ShpVector<HMCont2D::Contour>& constraints,
 		double h){
+	FillFromTree(cont, constraints, std::map<Point*,double>(), h);
+}
+
+TriGrid::TriGrid(const HMCont2D::ContourTree& cont, 
+		const ShpVector<HMCont2D::Contour>& constraints,
+		const std::map<Point*, double>& w, double h){
+	FillFromTree(cont, constraints, w, h);
+}
+
+void TriGrid::FillFromTree(const HMCont2D::ContourTree& cont, 
+		const ShpVector<HMCont2D::Contour>& constraints,
+		const std::map<Point*, double>& w, double h){
 	auto ap = ConstraintsPreproc(cont, constraints);
 
 	//build mesh in gmsh
@@ -176,7 +187,9 @@ TriGrid::TriGrid(const HMCont2D::ContourTree& cont,
 
 	std::map<const Point*, GVertex*> verticies;
 	for (auto& p: allpoints){
-		verticies[p] = m.addVertex(p->x, p->y, 0, h);
+		auto wfnd = w.find(const_cast<Point*>(p));
+		double hh = (wfnd == w.end()) ? h : wfnd->second;
+		verticies[p] = m.addVertex(p->x, p->y, 0, hh);
 	}
 	
 
@@ -340,4 +353,15 @@ TriGrid::TriangulateAreaConstrained(const vector<vector<Point>>& bnd,
 	shared_ptr<TriGrid> ret(new TriGrid(tree, cconstraints, h));
 	return ret;
 }
+
+shared_ptr<TriGrid>
+TriGrid::TriangulateArea(const HMCont2D::ContourTree& cont, double h){
+	return shared_ptr<TriGrid>(new TriGrid(cont, {}, h));
+}
+
+shared_ptr<TriGrid>
+TriGrid::TriangulateArea(const HMCont2D::ContourTree& cont, const std::map<Point*, double>& w, double h){
+	return shared_ptr<TriGrid>(new TriGrid(cont, {}, w, h));
+}
+
 

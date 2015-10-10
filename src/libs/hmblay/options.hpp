@@ -61,7 +61,7 @@ struct Input{
 		round_off(false),
 		start(Point(0,0)),
 		end(Point(0, 0)),
-		sharp_angle(60),
+		sharp_angle(45),
 		corner_angle(120),
 		regular_angle(235),
 		force_conformal(false){}

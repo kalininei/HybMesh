@@ -144,6 +144,13 @@ bool isOnSection(const Point& p, const Point& start, const Point& end, double& k
 //if sections are parallel: ksieta[0,1]=gbig, returns false
 bool SectCross(const Point& p1S, const Point& p1E, const Point& p2S, const Point& p2E, double* ksieta) noexcept;
 
+//=>
+//  0 if p lies to the left of [L1->L2] line
+//  1 if p lies on [L1->L2] line
+//  2 if p lies to the right of [L1->L2] line
+// -1 if (L1 == L2) 
+int LinePointWhereIs(const Point& p, const Point& L1, const Point& L2) noexcept;
+
 //scaling
 struct ScaleBase{
 	Point p0;
@@ -296,6 +303,7 @@ public:
 	double leny() const { return ymax-ymin; }
 	Point BottomLeft() const { return Point(xmin, ymin); }
 	Point TopRight() const { return Point(xmax, ymax); }
+	vector<Point> FourPoints() const;
 
 	//-> INSIDE, OUTSIDE, BOUND
 	int whereis(const Point& p) const;
