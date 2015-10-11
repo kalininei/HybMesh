@@ -6,10 +6,18 @@ using namespace HMCont2D;
 namespace cns = Constructor;
 
 Container<Contour> cns::Circle(int N, double rad, Point cnt){
+	Point poc = cnt + Point(rad, 0);
+	return Circle(N, cnt, poc);
+};
+
+HMCont2D::Container<Contour> cns::Circle(int N, Point cnt, Point poc){
 	typedef Container<Contour> TRes;
 	TRes res;
+	Point p = poc-cnt;
+	double rad = Point::dist(poc, cnt);
+	double angle0 = atan2(p.y, p.x);
 	for (int i=0; i<N; ++i){
-		double angle = 2*M_PI/N*i;
+		double angle = 2*M_PI/N*i + angle0;
 		Point a(rad*cos(angle), rad*sin(angle));
 		a += cnt;
 
@@ -19,7 +27,7 @@ Container<Contour> cns::Circle(int N, double rad, Point cnt){
 	}
 	res.add_value(Edge(res.point(N-1), res.point(0)));
 	return res;
-};
+}
 
 Contour cns::ContourFromPoints(const vector<Point*>& pnt, bool force_closed){
 	Contour ret;

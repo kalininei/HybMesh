@@ -7,6 +7,7 @@ namespace HMCont2D{ namespace Constructor{
 
 //Shaped contours
 HMCont2D::Container<Contour> Circle(int N, double rad, Point cnt);
+HMCont2D::Container<Contour> Circle(int N, Point cnt, Point point_on_curve);
 
 //Contour from points
 HMCont2D::Contour ContourFromPoints(const vector<Point*>& pnt, bool force_closed=false);

@@ -4,6 +4,7 @@ set (HEADERS
 	hmblay.hpp
 	options.hpp
 	bgrid.hpp
+	connectors.hpp
 	extpath.hpp
 	canonic_bgrid.hpp
 	bgrid_impose.hpp
@@ -13,6 +14,7 @@ set (SOURCES
 	hmblay.cpp
 	options.cpp
 	bgrid.cpp
+	connectors.cpp
 	extpath.cpp
 	canonic_bgrid.cpp
 	bgrid_impose.cpp

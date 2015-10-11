@@ -27,12 +27,10 @@ MappedRect::Factory(HMCont2D::Contour& left, HMCont2D::Contour& right,
 	);
 };
 
-namespace{
-
 //takes two closed contours (c1, c2) and builds
 //averaged one which goes from p1 (in c1) to p2 (in c2)
 HMCont2D::Container<HMCont2D::Contour>
-ContoursWeight(const HMCont2D::Contour& c1, Point p1,
+HMBlay::Impl::ContoursWeight(const HMCont2D::Contour& c1, Point p1,
 		const HMCont2D::Contour& c2, Point p2){
 	assert(c1.is_closed() && c2.is_closed());
 	assert(ISZERO(Point::dist(p1, c1.ClosestPoint(p1))) &&
@@ -83,8 +81,6 @@ ContoursWeight(const HMCont2D::Contour& c1, Point p1,
 					it.second.second, it.first));
 	}
 	return HMCont2D::Constructor::ContourFromPoints(ret);
-}
-
 }
 
 shared_ptr<MappedRect>
@@ -210,8 +206,13 @@ double MappedRect::bot2top(double w) const{ return conf2top(bot2conf(w)); }
 
 // ============ Open area
 RectForOpenArea::RectForOpenArea(HMCont2D::Contour& left, HMCont2D::Contour& right,
-			HMCont2D::Contour& bottom, HMCont2D::Contour& top, bool use_rect_approx):
+			HMCont2D::Contour& bottom, HMCont2D::Contour& top,
+			bool use_rect_approx, bool force_rect_approx):
 			MappedRect(left, right, bottom, top, use_rect_approx){
+	if (force_rect_approx){
+		core = HMMath::Conformal::Impl::RectApprox::Build(left, right, bottom, top);
+		return;
+	}
 	//1. assemble polygon
 	std::vector<Point> path;
 	std::array<int, 4> corners;
@@ -233,9 +234,13 @@ RectForOpenArea::RectForOpenArea(HMCont2D::Contour& left, HMCont2D::Contour& rig
 	HMMath::Conformal::Options opt;
 	opt.use_rect_approx = use_rect_approx;
 	opt.right_angle_eps = M_PI/8.0;
-	opt.length_weight = 1.05;
+	opt.length_weight = 1.02;
 	core = HMMath::Conformal::Rect::Factory(path, corners, opt);
-}
+};
+
+//void RectMappedRect::BuildCore(bool use_rect_approx){
+//        core = HMMath::Conformal::Impl::RectApprox::Build(left, right, bottom, top);
+//}
 
 HMCont2D::PCollection RectForOpenArea::MapToReal(const vector<const Point*>& p) const{
 	vector<Point> ret(p.size());

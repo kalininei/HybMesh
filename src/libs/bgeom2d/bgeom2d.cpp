@@ -4,6 +4,7 @@
 
 double Point::meas_section(const Point& p, const Point& L1, const Point& L2, double& ksi) noexcept{
 	Vect a = L2-L1, b = p - L1;
+	if (L1==L2) return Point::meas(p, L1);
 	ksi=vecDot(a,b)/vecDot(a,a);
 	if (ksi>=1) { ksi=1.0; return meas(p,L2);}
 	else if (ksi<=0) { ksi=0.0; return meas(p,L1);}
@@ -45,7 +46,7 @@ bool isOnSection(const Point& p, const Point& start, const Point& end, double& k
 	}
 
 	if (ISEQ(start.x, end.x)){
-		assert(!ISEQ(start.y, end.y));
+		if(ISEQ(start.y, end.y)) {ksi=0.5; return p==start;}
 		ksi=(pproj.y-start.y)/(end.y-start.y);
 	}else{
 		ksi=(pproj.x-start.x)/(end.x-start.x);

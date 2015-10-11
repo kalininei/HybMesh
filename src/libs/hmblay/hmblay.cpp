@@ -19,6 +19,14 @@ GridGeom HMBlay::BuildBLayerGrid(const vector<HMBlay::Input>& orig_opt){
 		if (o.partition.size() < 2 || !ISZERO(o.partition[0])){
 			throw EBuildError("invalid partition");
 		}
+		if (o.acute_angle>80) throw EBuildError("invalid acute angle");
+		if (o.right_angle>150) throw EBuildError("invalid right angle");
+		if (o.straight_angle<185) throw EBuildError("invalid straight angle");
+		if (o.reentrant_angle<185) throw EBuildError("invalid reentrant angle");
+		if (o.acute_angle>o.right_angle ||
+				o.right_angle>o.straight_angle ||
+				o.straight_angle>o.reentrant_angle)
+			throw EBuildError("invalid angles set");
 	}
 
 	//1,2) internal, non-dimensional copy of orig_options

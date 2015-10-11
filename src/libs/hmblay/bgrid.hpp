@@ -22,6 +22,10 @@ public:
 	//gets features (weight, source_feat) from same_feat_cell
 	void ShallowAddCell(shared_ptr<Cell> c, const Cell* same_feat_cell=0);
 	void ShallowAddNode(shared_ptr<GridPoint> p) { points.push_back(p); set_indicies(); }
+	void ShallowAddNodes(const ShpVector<GridPoint>& p) {
+		std::copy(p.begin(), p.end(), std::back_inserter(points));
+		set_indicies();
+	}
 
 	//Removes all source features
 	void RemoveFeatures(const Cell* c);

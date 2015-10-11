@@ -151,11 +151,19 @@ vector<vector<Options*>> Options::BuildSequence(vector<Options>& inp){
 }
 
 CornerTp Options::CornerType(double a){
+	double a1 = DegToAngle(acute_angle);
+	double a2 = DegToAngle(right_angle);
+	double a3 = DegToAngle(straight_angle);
+	double a4 = DegToAngle(reentrant_angle);
+	if (ISZERO(a3)) a3 = 2*M_PI+1;
+	if (ISZERO(a4)) a4 = 2*M_PI+1;
+
 	CornerTp tp;
 	if (fabs(a)<1e-6) tp = CornerTp::ZERO;
-	else if (a<DegToAngle(sharp_angle)) tp = CornerTp::SHARP;
-	else if (a<DegToAngle(corner_angle)) tp = CornerTp::CORNER;
-	else if (a<DegToAngle(regular_angle)) tp = CornerTp::REGULAR;
-	else tp = CornerTp::OBTUSE;
+	else if (a<a1) tp = CornerTp::ACUTE;
+	else if (a<a2) tp = CornerTp::RIGHT;
+	else if (a<a3) tp = CornerTp::STRAIGHT;
+	else if (a<a4) tp = CornerTp::REENTRANT;
+	else tp = CornerTp::ROUND;
 	return tp;
 };

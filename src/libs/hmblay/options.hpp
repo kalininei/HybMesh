@@ -43,9 +43,15 @@ struct Input{
 	Point start, end;
 
 	//angles
-	double sharp_angle;
-	double corner_angle;
-	double regular_angle;
+	//0-acute: acute algorithm
+	//acute-right: right algorithm
+	//right-straight: straight algorithm
+	//straight-reentrant: reentrant algorithm
+	//reentrant-360: round algorithm
+	double acute_angle;
+	double right_angle;
+	double straight_angle;
+	double reentrant_angle;
 
 	//force conformal mapping for all areas.
 	//no rectangle approximation if true.
@@ -61,16 +67,18 @@ struct Input{
 		round_off(false),
 		start(Point(0,0)),
 		end(Point(0, 0)),
-		sharp_angle(45),
-		corner_angle(120),
-		regular_angle(235),
+		acute_angle(45),
+		right_angle(120),
+		straight_angle(240),
+		reentrant_angle(300),
 		force_conformal(false){}
 };
 
 namespace Impl{
 
-//corner type: no (start of path), sharp, corner (right), regular (plain), obtuse
-enum class CornerTp {NO, ZERO, SHARP, CORNER, REGULAR, OBTUSE, NEGLECTABLE};
+//corner type: no (start of path), acute, right, straight, reentrant, round,
+//neglectable (treat as straight)
+enum class CornerTp {NO, ZERO, ACUTE, RIGHT, STRAIGHT, REENTRANT, ROUND, NEGLECTABLE};
 
 //Input options with additional fields. Created by Create From Parent Command.
 //All data is deepcopied.

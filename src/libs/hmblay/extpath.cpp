@@ -88,14 +88,14 @@ void ExtPath::FillEndConditions(){
 		double angle = Angle(direct2, Point(0,0), direct1);
 		CornerTp tp = ext_data[0].opt->CornerType(angle);
 		switch (tp){
-			case CornerTp::ZERO: case CornerTp::NO: case CornerTp::SHARP:
-			case CornerTp::OBTUSE: case CornerTp::NEGLECTABLE:
+			case CornerTp::ZERO: case CornerTp::NO: case CornerTp::ACUTE:
+			case CornerTp::REENTRANT: case CornerTp::NEGLECTABLE: case CornerTp::ROUND:
 				PerpendicularStart();
 				break;
-			case CornerTp::REGULAR:
+			case CornerTp::STRAIGHT:
 				PerpendicularStart(angle/2.0);
 				break;
-			case CornerTp::CORNER:
+			case CornerTp::RIGHT:
 				leftbc = HMCont2D::Constructor::CutContour(*full_source, *p1, -1, HCOEF*h1);
 				//if leftbc contains only single edge its direction is not defined
 				//we have to guarantee direction of bnd.
@@ -115,14 +115,14 @@ void ExtPath::FillEndConditions(){
 		double angle = Angle(direct2, Point(0,0), direct1);
 		CornerTp tp = ext_data.back().opt->CornerType(angle);
 		switch (tp){
-			case CornerTp::ZERO: case CornerTp::NO: case CornerTp::SHARP:
-			case CornerTp::OBTUSE: case CornerTp::NEGLECTABLE:
+			case CornerTp::ZERO: case CornerTp::NO: case CornerTp::ACUTE:
+			case CornerTp::REENTRANT: case CornerTp::NEGLECTABLE: case CornerTp::ROUND:
 				PerpendicularEnd();
 				break;
-			case CornerTp::REGULAR:
+			case CornerTp::STRAIGHT:
 				PerpendicularEnd(angle/2.0);
 				break;
-			case CornerTp::CORNER:
+			case CornerTp::RIGHT:
 				rightbc = HMCont2D::Constructor::CutContour(*full_source, *p2, 1, HCOEF*h2);
 				if (*rightbc.first() != *p2) rightbc.ReallyReverse();
 				break;
@@ -225,20 +225,19 @@ void ExtPath::ReinterpretCornerTp(ExtPath& pth){
 	vector<Point*> op = pth.ordered_points();
 	//calculate smoothed angles and place neglactable feature
 	for (int i=0; i<op.size(); ++i){
-		if (pth.ext_data[i].tp == CornerTp::OBTUSE ||
-				pth.ext_data[i].tp == CornerTp::SHARP  ||
-				pth.ext_data[i].tp == CornerTp::CORNER){
+		if (pth.ext_data[i].tp == CornerTp::REENTRANT ||
+				pth.ext_data[i].tp == CornerTp::ROUND ||
+				pth.ext_data[i].tp == CornerTp::ACUTE  ||
+				pth.ext_data[i].tp == CornerTp::RIGHT){
 			
 			double h = pth.ext_data[i].opt->partition.back();
 			Vect direct1 = SmoothedDirection(pth, op[i],  1, HCOEF*h);
 			Vect direct2 = SmoothedDirection(pth, op[i], -1, HCOEF*h);
 			double angle = Angle(direct2, Point(0, 0), direct1);
 			CornerTp realtp = pth.ext_data[i].opt->CornerType(angle);
-			if (realtp == CornerTp::ZERO || realtp == CornerTp::REGULAR)
+			if (realtp != pth.ext_data[i].tp){
 				pth.ext_data[i].tp = CornerTp::NEGLECTABLE;
-			else if (realtp != pth.ext_data[i].tp)
-				//using sharp here as the most straightforward method
-				pth.ext_data[i].tp = CornerTp::SHARP;
+			}
 		}
 	}
 }

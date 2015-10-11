@@ -32,8 +32,8 @@ void test01(){
 	inp.bnd_step = 0.1;
 	inp.round_off = true;
 	inp.start=inp.end=Point(0,0);
-	inp.sharp_angle = inp.corner_angle = 0.0;
-	inp.regular_angle = 300;
+	inp.acute_angle = inp.right_angle = 0.0;
+	inp.straight_angle = 300;
 	inp.start = inp.end = Point(0,0);
 	//3. Calculations
 	cn = "Outer full circle";
@@ -60,8 +60,8 @@ void test02(){
 	inp.partition = {0.0, 0.2, 0.4, 1.5};
 	inp.bnd_step = 0.05;
 	inp.start=inp.end=Point(0,0);
-	inp.sharp_angle = inp.corner_angle = 0.0;
-	inp.regular_angle = 300;
+	inp.acute_angle = inp.right_angle = 0.0;
+	inp.straight_angle = 300;
 	inp.start = inp.end = Point(0,0);
 
 	std::string cn("8-side polygon with outer layer");
@@ -100,8 +100,8 @@ void test03(){
 	inp.partition = {0.0, 0.2, 0.4, 1.5};
 	inp.bnd_step = 0.3;
 	inp.start=inp.end=Point(0,0);
-	inp.sharp_angle = inp.corner_angle = 0.0;
-	inp.regular_angle = 300;
+	inp.acute_angle = inp.right_angle = 0.0;
+	inp.straight_angle = 300;
 
 	std::string cn("5-points polyline. Left layer");
 	auto col1 = HMCont2D::Constructor::ContourFromPoints(
@@ -143,8 +143,8 @@ void test04(){
 	//basic inp1
 	HMBlay::Input inp1;
 	inp1.bnd_step_method = HMBlay::MethFromString("KEEP_ALL");
-	inp1.sharp_angle = inp1.corner_angle = 0.0;
-	inp1.regular_angle = 300;
+	inp1.acute_angle = inp1.right_angle = 0.0;
+	inp1.straight_angle = 300;
 	inp1.direction = HMBlay::DirectionFromString("OUTER");
 	inp1.edges = &col1;
 
@@ -249,8 +249,8 @@ void test06(){
 
 	HMBlay::Input inp1;
 	inp1.bnd_step_method = HMBlay::MethFromString("NO");
-	inp1.sharp_angle = inp1.corner_angle = 0.0;
-	inp1.regular_angle = 300;
+	inp1.acute_angle = inp1.right_angle = 0.0;
+	inp1.straight_angle = 300;
 	inp1.partition = {0, 0.1};
 	inp1.bnd_step = 0.1;
 
@@ -320,9 +320,9 @@ void test07(){
 	
 	HMBlay::Input inp1;
 	inp1.bnd_step_method = HMBlay::MethFromString("KEEP_SHAPE");
-	inp1.sharp_angle = 0;
-	inp1.corner_angle = 120;
-	inp1.regular_angle = 235;
+	inp1.acute_angle = 0;
+	inp1.right_angle = 120;
+	inp1.straight_angle = 235;
 	inp1.direction = HMBlay::DirectionFromString("INNER");
 	inp1.partition = {0, 0.1, 0.2, 0.3, 0.4};
 	inp1.start = inp1.end = Point(0, 0);
@@ -374,9 +374,9 @@ void test10(){
 		{0,0, 2,0, 2.3,-1,  5,-1});
 	HMBlay::Input inp1;
 	inp1.bnd_step_method = HMBlay::MethFromString("KEEP_SHAPE");
-	inp1.sharp_angle = 0;
-	inp1.corner_angle = 150;
-	inp1.regular_angle = 200;
+	inp1.acute_angle = 0;
+	inp1.right_angle = 150;
+	inp1.straight_angle = 200;
 	inp1.direction = HMBlay::DirectionFromString("INNER");
 	inp1.partition = {0, 0.05, 0.2, 0.3, 0.4};
 	inp1.start = Point(0, 0);
@@ -409,6 +409,28 @@ void test11(){
 	add_check(Ans2.n_cells() == 678 && Ans2.n_points() == 715, "Mesh2");
 };
 
+void test12(){
+	std::cout<<"12. Different kinds of reflex angles"<<std::endl;
+	auto c = HMCont2D::Constructor::ContourFromPoints(
+			{0,0, 1,0.3, 2,0, 1.8,-3, 1.5,-1});
+
+	HMBlay::Input inp1;
+	inp1.bnd_step_method = HMBlay::MethFromString("KEEP_SHAPE");
+	inp1.direction = HMBlay::DirectionFromString("LEFT");
+	inp1.edges = &c;
+	inp1.bnd_step = 0.05;
+	inp1.start = Point(0,0);
+	inp1.end = Point(1.5,-1);
+	inp1.partition = {0, 0.01, 0.02, 0.04, 0.07, 0.1};
+	inp1.acute_angle = 30;
+	inp1.right_angle = 100;
+	inp1.straight_angle = 240;
+	inp1.reentrant_angle = 300;
+
+	GridGeom Ans1 = HMBlay::BuildBLayerGrid({inp1});
+	add_check(Ans1.n_points() == 938 && Ans1.n_cells() == 785, "Mesh");
+}
+
 
 int main(){
 	test01();
@@ -422,6 +444,7 @@ int main(){
 	test09();
 	test10();
 	test11();
+	test12();
 
 	if (FAILED_CHECKS ==1){
 		std::cout<<FAILED_CHECKS<<" test failed <<<<<<<<<<<<<<<<<<<"<<std::endl;

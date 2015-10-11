@@ -5,6 +5,12 @@
 
 namespace HMBlay{ namespace Impl{
 
+//takes two closed contours (c1, c2) and builds
+//averaged one which goes from p1 (in c1) to p2 (in c2)
+HMCont2D::Container<HMCont2D::Contour>
+ContoursWeight(const HMCont2D::Contour& c1, Point p1,
+		const HMCont2D::Contour& c2, Point p2);
+
 
 class MappedRect{
 	bool _use_rect_approx;
@@ -63,6 +69,10 @@ public:
 	Factory(HMCont2D::Contour& left, HMCont2D::Contour& right,
 			HMCont2D::Contour& bottom, HMCont2D::Contour& top,
 			bool use_rect_approx);
+	//build forcing usage of rectangle approximation
+	static shared_ptr<MappedRect>
+	RectApprox(HMCont2D::Contour& left, HMCont2D::Contour& right,
+			HMCont2D::Contour& bottom, HMCont2D::Contour& top);
 
 	//2. From three lines (no top) and vertical distance h
 	static shared_ptr<MappedRect>
@@ -72,11 +82,12 @@ public:
 };
 
 class RectForOpenArea: public MappedRect{
+protected:
 	shared_ptr<HMMath::Conformal::Rect> core;
 public:
 	RectForOpenArea(HMCont2D::Contour& left, HMCont2D::Contour& right,
 			HMCont2D::Contour& bottom, HMCont2D::Contour& top,
-			bool use_rect_approx);
+			bool use_rect_approx, bool force_rect_approx=false);
 	HMCont2D::PCollection MapToReal(const vector<const Point*>& p) const override;
 	HMCont2D::PCollection MapToSquare(const vector<const Point*>& p) const override;
 
@@ -87,7 +98,6 @@ public:
 	double right2conf(double w) const override;
 	double left2conf(double w) const override;
 };
-
 
 class RectForClosedArea: public MappedRect{
 	shared_ptr<HMMath::Conformal::Annulus> core;

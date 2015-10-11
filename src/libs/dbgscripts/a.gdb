@@ -100,7 +100,7 @@ skip file /usr/include/c++/4.8/array
 
 b main
 run 
-b bgrid.cpp:358
+b connectors.cpp:202
 
 #====================================
 #call from gui/HybMesh.py directory with HybMesh
