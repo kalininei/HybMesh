@@ -8,3 +8,6 @@ dscpack -- the schwarz-christoffel transformation for doubly connected regions
            author:
            Chenglie Hu   april,1994 (revised july,1995) at Wichita State Univ.
                          a further revision was done at fhsu (july, 1997)
+winlib -- blas, lapack (VERSION 3.6.0 : November 2015) 
+          suitesparse (Feb 1, 2016.  VERSION 4.5.1)
+		  built on mingw-w64

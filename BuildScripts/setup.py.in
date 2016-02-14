@@ -7,6 +7,7 @@ import re
 import os
 import os.path
 from distutils.core import setup
+import shutil
 
 rootdir = os.path.abspath('@PYROOTDIR@')
 packdir = os.path.join(rootdir, '@PyPack@')
@@ -23,8 +24,17 @@ def find_packages(path, relpath):
             ret.append(re.sub('^[^A-z0-9_]+', '', root.replace('/', '.')))
     return ret
 
+# place config_installed to package directory before setup
+conf_orig = '@CONFIG_PY@'
+conf_src = os.path.join('@PYROOTDIR@', '@PyPack@',
+        os.path.basename(conf_orig))
+shutil.copyfile(conf_orig, conf_src)
+
 setup(name="@APPNAME@",
     version="@APPVERSION@",
     package_dir={'': rootdir},
-    packages=find_packages(packdir, rootdir)
+    packages=find_packages(packdir, rootdir),
       )
+
+# remove config_installed from package directory after setup
+os.remove(conf_src)

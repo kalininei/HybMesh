@@ -251,8 +251,10 @@ c sequence in subroutine scfun.)
     7   qwork2(i) = qwork(i)
 c
 c solve nonlinear system with ns01a:
-      call ns01a(nm,y,fval,ajinv,dstep,dmax,tol,maxfun,
+      scsolv = ns01a(nm,y,fval,ajinv,dstep,dmax,tol,maxfun,
      &  iprint,scr,scfun)
+      if (scsolv == 0) return
+
 c
 c copy output data from /param1/:
       c = c2

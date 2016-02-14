@@ -83,11 +83,6 @@ define gg_tree
 end
 
 
-#call from build/bin directory with crossgrid_test:
-# gdb -x ../../src/libs/dbgscripts/a.gdb
-
-file ./hmblay_test
-
 skip file /usr/include/c++/4.8/functional
 skip file /usr/include/c++/4.8/bits/shared_ptr_base.h
 skip file /usr/include/c++/4.8/bits/stl_algo.h
@@ -98,16 +93,22 @@ skip file /usr/include/c++/4.8/tuple
 skip file /usr/include/c++/4.8/array
 #skip file /usr/include/c++/4.8/bits/shared_ptr.h
 
-b main
-run 
-b connectors.cpp:202
+
+#call from build/bin directory with crossgrid_test:
+# gdb -x ../../src/libs/dbgscripts/a.gdb
+
+# file ./hmblay_test
+# b main
+# run 
+# b hmcport.cpp:334
 
 #====================================
 #call from gui/HybMesh.py directory with HybMesh
 # gdb -x ../libs/dbgscripts/a.gdb
 
-#file python
-#set args ./HybMesh.py ~/.HybMesh/_debug.hmp
-#set breakpoint pending on
-#b boundary_layer_grid.cpp:49
-#run 
+file python
+# set args ./HybMesh.py ~/.HybMesh/_debug.hmp
+set args ../src/HybMeshPy/HybMesh.py -sx scr1.py
+set breakpoint pending on
+b hmcport.cpp:334
+run 

@@ -1,29 +1,41 @@
 # ================ Python distribution
-set(PYROOTDIR "${CMAKE_SOURCE_DIR}/src")
+set(PYROOTDIR "${CMAKE_SOURCE_DIR}/src/py")
 set(PYOUTDIR "${CMAKE_BINARY_DIR}/python-build")
 set(SETUP_PY_IN "${CMAKE_SOURCE_DIR}/BuildScripts/setup.py.in")
 set(SETUP_PY "${PYOUTDIR}/setup.py")
 set(SETUP_CFG_IN "${CMAKE_SOURCE_DIR}/BuildScripts/setup.cfg.in")
 set(SETUP_CFG "${PYOUTDIR}/setup.cfg")
+set(CONFIG_PY_IN "${CMAKE_SOURCE_DIR}/BuildScripts/config_installed.py.in")
+set(CONFIG_PY "${PYOUTDIR}/config_installed.py")
+# =========================== configuration file 
+if (WIN32)
+	set(LIB_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/lib")
+	set(HYBMESH_HOMEDIR "$ENV{PROGRAMDATA}\\HybMesh")
+else()
+	set(LIB_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/lib/${APPNAME}")
+	set(HYBMESH_HOMEDIR "~/.HybMesh")
+endif()
+configure_file(${CONFIG_PY_IN} ${CONFIG_PY} @ONLY)
 configure_file(${SETUP_PY_IN} ${SETUP_PY} @ONLY)
 configure_file(${SETUP_CFG_IN} ${SETUP_CFG} @ONLY)
 
-# ============= TODO for assembling installer
-#set(DEPS "${PYROOTDIR}/${PyPack}/__init__.py")
-#add_custom_command(
-	#OUTPUT ${PYOUTDIR}/timestamp
-	#COMMAND ${PYTHON} ${SETUP_PY} build
-	#COMMAND ${CMAKE_COMMAND} -E touch ${PYOUTDIR}/timestamp
-	#DEPENDS ${DEPS}
-#)
-#add_custom_target(pydistr ALL DEPENDS ${PYOUTDIR}/timestamp)
+
+# ============= for assembling installer
+set(DEPS "${PYROOTDIR}/${PyPack}/__init__.py")
+add_custom_command(
+	OUTPUT ${PYOUTDIR}/timestamp
+	COMMAND ${PYTHON} ${SETUP_PY} build
+	COMMAND ${CMAKE_COMMAND} -E touch ${PYOUTDIR}/timestamp
+	DEPENDS ${DEPS}
+)
+add_custom_target(pydistr ALL DEPENDS ${PYOUTDIR}/timestamp)
 
 #installs python packages to system
 install(CODE "execute_process(COMMAND ${PYTHON} ${SETUP_PY} install)")
 
 if (WIN32)
 	#install main python script to py directory
-	install(PROGRAMS "${PYROOTDIR}/${MainGui}.py"
+	install(PROGRAMS "${PYROOTDIR}/${MainBin}.py"
 		DESTINATION py)
 	
 	# =========  run pyinstaller
@@ -32,16 +44,16 @@ if (WIN32)
 		if (CMAKE_BUILD_TYPE STREQUAL "Debug")
 			set(PYINST_OPT "-y")
 		else()
-			set(PYINST_OPT "-y -w --clean")
+			#set(PYINST_OPT "-y -w --clean")
+			set(PYINST_OPT "-y --clean")
 		endif()
 		set(PYINST_OUTDIR "${CMAKE_BINARY_DIR}/pyinstaller-build")
-		set(PYINST_TARGET "${CMAKE_INSTALL_PREFIX}/py/${MainGui}.py")
-		set(PYINST_ICON "${CMAKE_SOURCE_DIR}/misc/${MainGui}.ico")
+		set(PYINST_TARGET "${CMAKE_INSTALL_PREFIX}/py/${MainBin}.py")
+		#set(PYINST_ICON "${CMAKE_SOURCE_DIR}/misc/${MainGui}.ico")
 		configure_file(${PYINST_IN} 
 			"${CMAKE_BINARY_DIR}/RunPyinstaller.cmake" @ONLY)
-
 		install(SCRIPT "${CMAKE_BINARY_DIR}/RunPyinstaller.cmake")
-		install(DIRECTORY "${PYINST_OUTDIR}/${MainGui}/"
+		install(DIRECTORY "${PYINST_OUTDIR}/${MainBin}/"
 			DESTINATION bin
 		)
 	endif()
@@ -56,7 +68,7 @@ if (WIN32)
 		endif()
 		set(NSIS_INSTALLER_NAME "${APPNAME}-v${APPVERSION}-win${NSIS_INSTALLER_BIT}") 
 		set(NSIS_INSTALLER_APPNAME "${APPNAME}")
-		set(NSIS_INSTALLER_EXENAME "${MainGui}.exe")
+		set(NSIS_INSTALLER_EXENAME "${MainBin}.exe")
 		
 		set(NSIS_INSTALLER_DESCRIPTION "${APPDESCRIPTION}")
 		string(REPLACE "/" "\\" _TMP "${CMAKE_INSTALL_PREFIX}/bin")
@@ -80,7 +92,8 @@ if (WIN32)
 		)
 	endif()
 else()
-	install(PROGRAMS "${CMAKE_SOURCE_DIR}/src/${MainGui}.py" 
+	# console application
+	install(PROGRAMS "${CMAKE_SOURCE_DIR}/src/py/${MainBin}.py" 
 		DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
 		RENAME ${APPNAME})
 endif()

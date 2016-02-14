@@ -19,11 +19,11 @@ file(TO_NATIVE_PATH "@PYINST_OUTDIR@" _PBINDIR)
 file(TO_NATIVE_PATH "@PYINST_OUTDIR@/trash" _PTRASH)
 file(TO_NATIVE_PATH "@PYINST_ICON@" _PICON)
 
-execute_process(COMMAND "@PYINSTALLER@" @PYINST_OPT@ 
+execute_process(COMMAND "@PYINSTALLER@" @PYINST_OPT@
 		--distpath=${_PBINDIR}
 		--workpath=${_PTRASH}
 		--specpath=${_PTRASH} 
-		-i ${_PICON}
+#		-i ${_PICON}
 		${_PTARGET}
 		RESULT_VARIABLE _PRESULT)
 

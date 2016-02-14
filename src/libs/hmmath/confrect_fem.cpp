@@ -151,7 +151,7 @@ double ToRect::HEstimate(const vector<Point>& path, int segn, int nmax){
 		A += triarea(path[0], path[i], path[i+1]);
 	}
 	A = fabs(A);
-	int Nest = A/(h*h);
+	double Nest = A/(h*h);
 	if (Nest<=nmax) return h;
 	else return LinTriangleSize(A, nmax);
 }

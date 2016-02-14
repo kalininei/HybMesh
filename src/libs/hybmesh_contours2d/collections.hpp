@@ -101,8 +101,8 @@ struct Collection{
 	}
 
 	//set methods: templates are used because
-	virtual void clear() { data.clear(); }
 	//data internal structure can differ from TValue (derived from it) declared here.
+	virtual void clear() { data.clear(); }
 	template<class Inp>
 	using Valid = IsBase<Tvalue, Inp>;
 

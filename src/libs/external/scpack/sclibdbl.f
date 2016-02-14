@@ -1064,7 +1064,7 @@ c
    35   yout(l) = y(l) + hi*yout(l)
       return
       end
-      subroutine ns01a (n,x,f,ajinv,dstep,dmax,acc,maxfun,iprint,w,
+      function ns01a(n,x,f,ajinv,dstep,dmax,acc,maxfun,iprint,w,
      2                 calfun)
 c
 c    this subroutine solves a system of nonlinear algebraic equations o
@@ -1182,6 +1182,7 @@ c
       integer ipvt(20)
       external calfun
 c     set various parameters
+      ns01a = 1
       maxc=0
 c     'maxc' counts the number of calls of calfun
       nt=n+4
@@ -1240,6 +1241,7 @@ c     test for error return because f(x) does not decrease
    14 print 16,nt
    16 format (///5x,'error return from ns01a because',i5,
      1' calls of calfun failed to improve the residuals')
+      ns01a = 0
    17 do 18 i=1,n
       x(i)=w(nx+i)
       f(i)=w(nf+i)
@@ -1250,6 +1252,7 @@ c     error return because a new jacobian is unsuccessful
    13 print 19
    19 format (///5x,'error return from ns01a because f(x) ',
      1'failed to decrease using a new jacobian')
+      ns01a = 0
       go to 17
    15 ntest=nt
 c     test whether there have been maxfun calls of calfun
@@ -1257,6 +1260,7 @@ c     test whether there have been maxfun calls of calfun
    21 print 23,maxc
    23 format (///5x,'error return from ns01a because there have been',
      1i5,' calls of calfun')
+      ns01a = 0
       if (fsq-fmin) 3,17,17
 c     provide printing if requested
    22 if (iprint) 24,998,25
@@ -1328,6 +1332,7 @@ c     if so then return or revise jacobian
    44 print 45
    45 format (///5x,'error return from ns01a because a nearby ',
      1'stationary point of f(x) is predicted')
+      ns01a = 0
       go to 17
    43 ntest=0
       do 46 i=1,n

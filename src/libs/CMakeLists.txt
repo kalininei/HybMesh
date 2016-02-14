@@ -21,6 +21,10 @@ if (WIN32)
 	else()
 		find_library(RUNTIME_LIB3 "libgcc_s_dw2-1.dll")
 	endif()
+	find_library(RUNTIME_LIB4 "libquadmath-0.dll")
+	find_library(RUNTIME_LIB5 "libgfortran-3.dll")
+	find_library(RUNTIME_LIB6 "libgomp-1.dll")
 	install(FILES ${RUNTIME_LIB1} ${RUNTIME_LIB2} ${RUNTIME_LIB3}
+		${RUNTIME_LIB4} ${RUNTIME_LIB5}	${RUNTIME_LIB6} ${SUITESPARSE_LIBRARIES}
 		DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 endif()

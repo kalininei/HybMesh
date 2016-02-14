@@ -337,7 +337,12 @@ double Contour::Area(const Contour& c){
 namespace{
 Vect smoothed_direction_core(const vector<Point*>& p){
 	assert(p.size() > 1);
-	Vect ret = *p.back() - *p[0];
+	Vect ret1 = *p[1] - *p[0];
+	Vect ret2 = *p.back() - *p[0];
+	double a = Angle(ret1, Point(0, 0), ret2);
+	Vect ret;
+	if (a<M_PI/4 || a>3*M_PI/4) ret = ret1;
+	else ret = ret2;
 	vecNormalize(ret);
 	return ret;
 }
@@ -400,7 +405,7 @@ Vect Contour::SmoothedDirection(const Contour& c, Point* p, int direction, doubl
 	//6 .go backward if necessary
 	int istart = pindex;
 	if (ISGREATER(len, usedx)){
-		_THROW_NOT_IMP_;
+		//_THROW_NOT_IMP_;
 	}
 	
 	//7. leave only [istart-iend] points and calculate

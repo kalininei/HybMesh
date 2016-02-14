@@ -213,8 +213,10 @@ public:
 struct Constructor{
 
 static GridGeom RectGrid(const vector<double>& part_x, vector<double>& part_y);
+static GridGeom RectGrid(Point p0, Point p1, int Nx, int Ny);
 //Nx, Ny - number of nodes in x, y directions
 static GridGeom RectGrid01(int Nx, int Ny);
+
 
 };
 

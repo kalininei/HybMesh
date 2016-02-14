@@ -259,13 +259,14 @@ vector<double> ExtPath::PathPartition(double len1, double len2) const{
 
 	//4) get lengths of each subcontour segments and gather result
 	vector<double> ret {len1};
-	for (auto& p: conts2){
-		vector<double> lens = HMCont2D::ECollection::ELengths(p);
-		std::copy(lens.begin(), lens.end(), std::back_inserter(ret));
+	for (auto& c: conts2){
+		bool is0 = true;
+		for (auto& p: c.ordered_points()){
+			if (is0) {is0=false; continue; }
+			auto coord = coord_at(*p);
+			ret.push_back(std::get<0>(coord));
+		}
 	}
-	std::partial_sum(ret.begin(), ret.end(), ret.begin());
-
-	assert(ISEQ(ret.back(), len2));
 	return ret;
 }
 

@@ -1,6 +1,7 @@
 #include "hmcport.h"
 #include "fileproc.h"
 #include "grid.h"
+#include "hmblay.hpp"
 
 namespace{
 
@@ -246,6 +247,27 @@ void add_contour_bc(Cont* src, Cont* tar, int* vsrc, int* vtar, int def){
 	}
 }
 
+void* create_ecollection_container(int Npts, double* pts, int Nedgs, int* edges){
+	try{
+		auto ret = new HMCont2D::Container<HMCont2D::ECollection>();
+		//points
+		for (int i=0; i<Npts; ++i){
+			ret->pdata.add_value(Point(pts[2*i], pts[2*i+1]));
+		}
+		//edges
+		for (int i=0; i<Nedgs; ++i){
+			ret->add_value(HMCont2D::Edge(ret->point(edges[2*i]), ret->point(edges[2*i+1])));
+		}
+		return ret;
+	} catch (const std::exception &e){
+		std::cout<<"crossgrid error: "<<e.what()<<std::endl;
+		return 0;
+	}
+}
+void free_ecollection_container(void* ecol){
+	delete static_cast<HMCont2D::Container<HMCont2D::ECollection>*>(ecol);
+}
+
 void contour_get_info(Cont* c, int* Npnt, int* Neds,
 		double** pts,
 		int** eds){
@@ -327,27 +349,30 @@ C string_option(std::string opt,
 	throw std::runtime_error("impossible to parse option " + opt);
 }
 
-//Grid* boundary_layer_grid_wcb(int N, BoundaryLayerGridOption* popt, 
-//                crossgrid_callback cb_fun){
-//        try{
-//                vector<BLayerGridInput> vinp(N);
-//                for (int i=0; i<N; ++i){
-//                        auto& opt = popt[i];
-//                        auto& inp = vinp[i];
-//                        inp.edges = static_cast<HMCont2D::EdgeCollection*>(opt.cont);
-//                        inp.direction = inp.DirectFromString(opt.tp);
-//                        inp.bnd_step_method = inp.MethFromString(opt.mesh_cont);
-//                        inp.bnd_step = opt.mesh_cont_step;
-//                        inp.maxsharp = opt.maxsharp;
-//                        inp.round_off = opt.round_off != 0;
-//                        inp.start = Point(opt.start[0], opt.start[1]);
-//                        inp.end = Point(opt.end[0], opt.end[1]);
-//                        inp.partition = vector<double>(opt.part, opt.part + opt.Npart);
-//                }
-//                GridGeom* ret = new GridGeom(BuildBLayerGrid(vinp));
-//                return ret;
-//        } catch (const std::exception &e){
-//                std::cout<<"crossgrid error: "<<e.what()<<std::endl;
-//                return 0;
-//        }
-//}
+Grid* boundary_layer_grid_wcb(int N, BoundaryLayerGridOption* popt, 
+		crossgrid_callback cb_fun){
+	try{
+		vector<HMBlay::Input> vinp(N);
+		for (int i=0; i<N; ++i){
+			auto& opt = popt[i];
+			auto& inp = vinp[i];
+			inp.edges = static_cast<HMCont2D::ECollection*>(opt.cont);
+			inp.direction = HMBlay::DirectionFromString(opt.tp);
+			inp.bnd_step_method = HMBlay::MethFromString(opt.mesh_cont);
+			inp.bnd_step = opt.mesh_cont_step;
+			inp.acute_angle = opt.angle_range[0];
+			inp.right_angle = opt.angle_range[1];
+			inp.straight_angle = opt.angle_range[2];
+			inp.reentrant_angle = opt.angle_range[3];
+			inp.start = Point(opt.start[0], opt.start[1]);
+			inp.end = Point(opt.end[0], opt.end[1]);
+			inp.partition = vector<double>(opt.part, opt.part + opt.Npart);
+			inp.force_conformal = (opt.force_conformal == 1);
+		}
+		GridGeom* ret = new GridGeom(HMBlay::BuildBLayerGrid(vinp));
+		return ret;
+	} catch (const std::exception &e){
+		std::cout<<"crossgrid error: "<<e.what()<<std::endl;
+		return 0;
+	}
+}

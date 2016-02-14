@@ -747,9 +747,15 @@ GridGeom GGeom::Constructor::RectGrid(const vector<double>& part_x,vector<double
 	return GridGeom(Npts, Ncls, &points[0], &cells[0]);
 }
 
+GridGeom GGeom::Constructor::RectGrid(Point p0, Point p1, int Nx, int Ny){
+	vector<double> x(Nx), y(Ny);
+	for (int i=0; i<x.size(); ++i){ x[i] = (p1.x-p0.x)*(double)i/(Nx-1)+p0.x; }
+	for (int i=0; i<y.size(); ++i){ y[i] = (p1.y-p0.y)*(double)i/(Ny-1)+p0.y; }
+	return RectGrid(x, y);
+}
+
 GridGeom GGeom::Constructor::RectGrid01(int Nx, int Ny){
-	vector<double> x(Nx);
-	vector<double> y(Ny);
+	vector<double> x(Nx), y(Ny);
 	for (int i=0; i<x.size(); ++i){ x[i] = (double)i/(Nx-1); }
 	for (int i=0; i<y.size(); ++i){ y[i] = (double)i/(Ny-1); }
 	return RectGrid(x, y);

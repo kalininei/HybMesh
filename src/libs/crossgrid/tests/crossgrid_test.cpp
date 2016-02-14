@@ -143,6 +143,9 @@ bool check_convexity(Grid* g, int nconv_cells, int hang_cells){
 }
 
 void test1(){
+	//#############################################################
+	//auto g1 = TriGrid::TriangulateArea({Point(0,0), Point(1,0), Point(1,1), Point(0,1)}, 0.1);
+	//#############################################################
 	std::cout<<"1. grid creation and communication"<<std::endl;
 	double points[] = {0,0, 1,0, 1,1, 0,1, 1,0.5};
 	int cells[] = {3,0,1,4, 4,0,4,2,3};

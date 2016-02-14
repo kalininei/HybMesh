@@ -314,7 +314,7 @@ Container<ExtendedTree> ClipperPath::CutLines(
 
 	for (auto& path: op){
 		auto hm = ClipperPath::HMContainer(path, bbox, false);
-		HMCont2D::Debug::geogebra_contour(hm);
+		//HMCont2D::Debug::geogebra_contour(hm);
 	}
 
 	return ret;

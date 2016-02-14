@@ -37,9 +37,9 @@ project(HybMesh C CXX Fortran)
 # name of resulting installed executable
 set(APPNAME HybMesh)
 # names of files and directories in the file tree
-set(MainGui HybMesh)
-set(MainConf HybMesh_conf)
-set(PyPack HybMeshGui)
+set(MainGui HybMesh-gui)
+set(MainBin HybMesh)
+set(PyPack HybMeshPyPack)
 # description
 set(APPDESCRIPTION "composite grid generator")
 
@@ -84,23 +84,11 @@ if (WIN32)
 endif(WIN32)
 
 # ============================ Version
-# provides ${APPVERSION} string
-execute_process(COMMAND
-	${PYTHON} ${CMAKE_SOURCE_DIR}/src/setup.py --version
-	RESULT_VARIABLE _PRESULT
-	OUTPUT_VARIABLE APPVERSION)
-if (NOT _PRESULT EQUAL 0)
-	message(FATAL_ERROR "setup.py doesn't process --version argument")
-endif()
-string(STRIP ${APPVERSION} APPVERSION)
-string(LENGTH "${APPVERSION}" APPVERSION_LENGTH)
-if(APPVERSION_LENGTH EQUAL 0 OR APPVERSION_LENGTH GREATER 8)
-	message(FATAL_ERROR "${MainGui}.py --version returns invalid version string")
-endif()
+set(APPVERSION 0.2.0)
 
 # =========================== linking libraries flags
 #libGmsh: global definition of BUILD_GMSH, GMSH_TARGET, GMSH_INCLUDE
-find_library(FIND_LIBGMSH Gmsh)
+find_library(FIND_LIBGMSH NAMES Gmsh)
 if (FIND_LIBGMSH)
 	option(USE_INTERNAL_LIBGMSH "use internal build of libgmsh" OFF)
 	message(STATUS "LibGmsh found at ${FIND_LIBGMSH}")
@@ -127,23 +115,10 @@ else()
 	find_path(GMSH_INCLUDE NAMES Gmsh.h GModel.h PATH_SUFFIXES gmsh)
 endif()
 #libpolyclipping: global definition of BUILD_CLIPPER, CLIPPER_TARGET, CLIPPER_INCLUDE
-find_library(FIND_LIBCLIPPER polyclipping)
-if (FIND_LIBCLIPPER)
-	option(USE_INTERNAL_LIBCLIPPER "use internal build of libpolyclipping" OFF)
-	message(STATUS "clipper found at ${FIND_LIBGMSH}")
-else()
-	message(STATUS "clipper not found")
-endif()
-if (NOT FIND_LIBCLIPPER OR USE_INTERNAL_LIBCLIPPER)
-	set(CLIPPER_TARGET polyclipping)
-	set(BUILD_CLIPPER on)
-	set(CLIPPER_INCLUDE "${CMAKE_SOURCE_DIR}/src/libs/external/clipper")
-else()
-	message(STATUS "Using system libpolyclipping")
-	set(BUILD_CLIPPER off)
-	set(CLIPPER_TARGET ${FIND_LIBCLIPPER})
-	find_path(CLIPPER_INCLUDE NAMES clipper.hpp)
-endif()
+set(CLIPPER_TARGET polyclipping)
+set(BUILD_CLIPPER on)
+set(CLIPPER_INCLUDE "${CMAKE_SOURCE_DIR}/src/libs/external/clipper")
+
 
 #suitesparse: defines
 # SUITESPARSE_FOUND: TRUE iff SuiteSparse and all dependencies have been found.
@@ -151,7 +126,20 @@ endif()
 # SUITESPARSE_LIBRARIES: Libraries for all SuiteSparse component libraries and dependencies.
 # ------------- Detect SuiteSparse libraries:
 LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/")
-find_package(SuiteSparse REQUIRED)
+if (WIN32)
+	set(SUITESPARSE_WINDIR ${CMAKE_SOURCE_DIR}/src/libs/external/winlib/)
+	set(SUITESPARSE_INCLUDE_DIRS ${SUITESPARSE_WINDIR}include)
+	set(SSTMP "")
+	list(APPEND SSTMP spqr.2.0.5 cholmod.3.0.9 ccolamd.2.9.4 camd.2.4.4 umfpack.5.7.4 
+	                          colamd.2.9.4 amd.2.4.4 suitesparseconfig.4.5.1 blas
+							  lapack metis)
+	foreach(T ${SSTMP})
+		list(APPEND SUITESPARSE_LIBRARIES "${SUITESPARSE_WINDIR}lib${T}.dll")
+	endforeach()
+	set(SUITESPARSE_FOUND TRUE)
+else(WIN32)
+	find_package(SuiteSparse REQUIRED)
+endif()
 
 #libbgeom2d: global definition of BGEOM2D_INCLUDE, BGEOM2D_TARGET
 set(BGEOM2D_INCLUDE "${CMAKE_SOURCE_DIR}/src/libs/bgeom2d")
@@ -175,27 +163,6 @@ set(DSCPACK_TARGET dscpack)
 #libhmcport: global definition of HMCPORT_INCLUDE, HMCPORT_TARGET
 set(HMCPORT_INCLUDE "${CMAKE_SOURCE_DIR}/src/libs/hmcport")
 set(HMCPORT_TARGET hmcport)
-
-
-# =========================== configuration file 
-if (WIN32)
-	set(LIB_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/lib")
-	set(HYBMESH_HOMEDIR "$ENV{PROGRAMDATA}\\HybMesh")
-else()
-	set(LIB_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/lib/${APPNAME}")
-	set(HYBMESH_HOMEDIR "~/.HybMesh")
-endif()
-configure_file(${CMAKE_SOURCE_DIR}/BuildScripts/config_hybmesh.in
-	config_hybmesh)
-if (UNIX)
-	install(FILES "${CMAKE_BINARY_DIR}/config_hybmesh"
-		DESTINATION /etc/HybMesh)
-else()
-	install(FILES "${CMAKE_BINARY_DIR}/config_hybmesh"
-		DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
-	install(FILES "${CMAKE_BINARY_DIR}/config_hybmesh"
-		DESTINATION "${CMAKE_INSTALL_PREFIX}/py")
-endif()
 
 
 # ============================ build source

@@ -64,6 +64,13 @@ double contour_area(Cont* c);
 //target edge lies on source edge. Else assigns def value.
 void add_contour_bc(Cont* src, Cont* tar, int* vsrc, int* vtar, int def);
 
+// === hybmesh_contours2d management
+//builds HMBlay::Container<HMBlay::ECollection>.
+//pts[2*Npts], edges[2*Nedges]
+void* create_ecollection_container(int Npts, double* pts, int Nedgs, int* edges);
+void free_ecollection_container(void* ecol);
+
+
 // === set default callbacks
 //crossgrid callback pointer is the function of the following arguments:
 //	(global procedure name, local procedure name, global percentage, local percentage)
@@ -101,16 +108,16 @@ Grid* grid_exclude_cont_wcb(Grid* grd, Cont* cont, int is_inner,
 // Build a boundary layer grid around a contour tree
 // Returns 0 if fails or resulting Grid object.
 struct BoundaryLayerGridOption{
-	void* cont;  // HMCont2::ContourTree
-	double start[2]; //start point
-	double end[2];   //end point
-	const char* tp;  //INSIDE, OUTSIDE, LEFT, RIGHT, AROUND
-	int round_off;   //round off sharp angles
-	double maxsharp; //maximum sharp angle
-	const char* mesh_cont; //'NO', 'KEEP_ORIGIN', 'KEEP_SHAPE', 'IGNORE_ALL'
-	double mesh_cont_step; //contour step if mesh_cont is not 'NO'
+	void* cont;  // HMCont2::ECollection
 	int Npart;  //length of part
 	double* part; //partition array starts with 0
+	const char* tp;  //INSIDE, OUTSIDE, LEFT, RIGHT, AROUND
+	const char* mesh_cont; //'NO', 'KEEP_ORIGIN', 'KEEP_SHAPE', 'IGNORE_ALL'
+	double mesh_cont_step; //contour step if mesh_cont is not 'NO'
+	double start[2]; //start point
+	double end[2];   //end point
+	int force_conformal;   //force conformal
+	double angle_range[4]; //maximum acute/right/straight/reentrant angles
 };
 
 Grid* boundary_layer_grid_wcb(int N, BoundaryLayerGridOption* opt, 

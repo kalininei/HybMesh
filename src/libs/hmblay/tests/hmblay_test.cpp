@@ -1,5 +1,6 @@
 #include "hmblay.hpp"
 #include "fileproc.h"
+#include "hmconformal.hpp"
 
 int FAILED_CHECKS = 0;
 
@@ -331,6 +332,8 @@ void test07(){
 	GridGeom Ans1 = HMBlay::BuildBLayerGrid({inp1});
 	add_check(Ans1.n_points() == 545 && Ans1.n_cells() == 436,
 			"domain with a half-cirlce");
+
+	save_vtk(Ans1, "t7.vtk");
 }
 
 void test08(){
@@ -358,6 +361,9 @@ void test08(){
 	inp1.direction = HMBlay::DirectionFromString("OUTER");
 	GridGeom Ans2 = HMBlay::BuildBLayerGrid({inp1});
 	add_check(Ans2.n_points() == 575 && Ans2.n_cells() == 460, "Mesh outer");
+
+	save_vtk(Ans1, "t8_1.vtk");
+	save_vtk(Ans2, "t8_2.vtk");
 }
 
 void test09(){
@@ -386,6 +392,7 @@ void test10(){
 	inp1.force_conformal = false;
 	GridGeom Ans1 = HMBlay::BuildBLayerGrid({inp1});
 	add_check(Ans1.n_cells() == 232 && Ans1.n_points() == 295, "Mesh");
+	save_vtk(Ans1, "t10.vtk");
 };
 
 void test11(){
@@ -407,6 +414,8 @@ void test11(){
 	inp1.partition = {0, 0.01, 0.02, 0.05, 0.1, 0.15, 0.2};
 	GridGeom Ans2 = HMBlay::BuildBLayerGrid({inp1});
 	add_check(Ans2.n_cells() == 678 && Ans2.n_points() == 715, "Mesh2");
+	save_vtk(Ans1, "t11_1.vtk");
+	save_vtk(Ans2, "t11_2.vtk");
 };
 
 void test12(){
@@ -429,22 +438,189 @@ void test12(){
 
 	GridGeom Ans1 = HMBlay::BuildBLayerGrid({inp1});
 	add_check(Ans1.n_points() == 938 && Ans1.n_cells() == 785, "Mesh");
+	save_vtk(Ans1, "t12.vtk");
 }
 
+void test13(){
+	std::cout<<"13. Cylinder in channel meshing"<<std::endl;
+	//g1
+	auto g1 = GGeom::Constructor::RectGrid(Point(0,0), Point(30, 10), 90, 30);
+	//g2
+	HMBlay::Input inp1, inp2;
+	auto c = HMCont2D::Constructor::ContourFromPoints({0, 0, 30, 0});
+	inp1.bnd_step_method = HMBlay::MethFromString("KEEP_SHAPE");
+	inp1.direction = HMBlay::DirectionFromString("LEFT");
+	inp1.edges = &c;
+	inp1.bnd_step = 0.2;
+	inp1.start = Point(0,0);
+	inp1.end = Point(30, 0);
+	inp1.partition = {0, 0.03, 0.07, 0.12, 0.2, 0.3, 0.45, 0.7};
+	GridGeom g2_1 = HMBlay::BuildBLayerGrid({inp1});
+	c = HMCont2D::Constructor::ContourFromPoints({30, 10, 0, 10});
+	inp1.edges = &c;
+	inp1.start = Point(30,10); inp1.end = Point(0, 10);
+	GridGeom g2_2 = HMBlay::BuildBLayerGrid({inp1});
+	GridGeom g2 = GridGeom::sum(vector<GridGeom*> {&g2_1, &g2_2});
+	//g3
+	c = HMCont2D::Constructor::Circle(64, 0.5, Point(10, 5));
+	inp1.direction = HMBlay::DirectionFromString("RIGHT");
+	inp1.edges = &c;
+	inp1.bnd_step = 0.05;
+	inp1.partition = {0, 0.03, 0.07, 0.12, 0.18, 0.24};
+	inp1.start = Point(10.6, 7);
+	inp1.end = Point(10.6, 3);
+	inp2 = inp1;
+	inp2.bnd_step = 0.02;
+	inp2.start = Point(10.6, 3);
+	inp2.end = Point(10.6, 7);
+	inp2.partition = {0, 0.03, 0.07, 0.12, 0.18, 0.24, 0.3, 0.36, 0.42, 0.48, 0.54, 0.6};
+	GridGeom g3 = HMBlay::BuildBLayerGrid({inp1, inp2});
+	//g4
+	auto conf = HMMath::Conformal::Rect::Factory(
+		{Point(10.38, 4.07), Point(15.33, 3), Point(15.33, 7), Point(10.38, 5.93)},
+		{0,1,2,3});
+	auto g4 = GGeom::Constructor::RectGrid(Point(0, 0), Point(conf->module(), 1), 30, 50);
+	GGeom::Modify::PointModify(g4, [conf](GridPoint* p){ Point a = conf->MapToPolygon1(*p); p->set(a.x, a.y);});
+	//g5
+	auto g5 = GGeom::Constructor::RectGrid(Point(14.5, 2.5), Point(30, 7.5), 92, 30);
+
+	//gcommon
+	auto gr1 = GridGeom::cross_grids(&g1, &g5, 0.3, 7, false, false, CrossGridCallback::to_cout());
+	auto gr2 = GridGeom::cross_grids(gr1, &g4, 0.1, 7, false, false, CrossGridCallback::to_cout());
+	auto gr3 = GridGeom::cross_grids(gr2, &g2, 0.1, 7, false, false, CrossGridCallback::to_cout());
+	auto gr4 = GridGeom::cross_grids(gr3, &g3, 0.2, 7, false, true, CrossGridCallback::to_cout());
+
+	//save to file
+	save_vtk(g1, "t13_g1.vtk");
+	save_vtk(g2, "t13_g2.vtk");
+	save_vtk(g3, "t13_g3.vtk");
+	save_vtk(g4, "t13_g4.vtk");
+	save_vtk(g5, "t13_g5.vtk");
+	save_vtk(gr4, "t13_gres.vtk");
+
+	delete gr1; delete gr2; delete gr3; delete gr4;
+}
+
+GridGeom* grid_minus_cont(GridGeom& g, const HMCont2D::Contour& cont){
+	vector<Point> pp;
+	vector<int> eds;
+	for (auto p: cont.ordered_points()) pp.push_back(*p);
+	pp.resize(pp.size()-1);
+	for (int i=0; i<pp.size(); ++i){
+		eds.push_back(i);
+		eds.push_back(i+1);
+	}
+	eds.back() = 0;
+	PointsContoursCollection col(pp, eds);
+	return GridGeom::grid_minus_cont(&g, &col, false, CrossGridCallback::to_cout());
+}
+
+void test14(){
+	std::cout<<"14. Four angle types"<<std::endl;
+
+	//right angle
+	auto fx = [](double t){ return 0.01*sin(2.0*M_PI*3.0*t); };
+	auto fy = [](double t){ return 0.013*(-sin(2.0*M_PI*5.0*t)); };
+	double h=0.01;
+	double t=1-h;
+	HMCont2D::PCollection pc1;
+	while (t>h/2.0){
+		pc1.add_value(Point(fx(t)+0.08*t, t));
+		t-=h;
+	}
+	while (t<1+h/2.0){
+		pc1.add_value(Point(t, fy(t)));
+		t+=h;
+	}
+	pc1.add_value(Point(1,1));
+	auto c1 = HMCont2D::Constructor::ContourFromPoints(pc1, true); 
+	HMBlay::Input inp1;
+	inp1.bnd_step_method = HMBlay::MethFromString("IGNORE_ALL");
+	inp1.direction = HMBlay::DirectionFromString("LEFT");
+	inp1.edges = &c1;
+	inp1.bnd_step = 0.03;
+	inp1.force_conformal = true;
+	inp1.partition = {0, 0.01, 0.02, 0.03, 0.04, 0.053, 0.07, 0.095, 0.12};
+
+	GridGeom g1 = HMBlay::BuildBLayerGrid({inp1});
+	GridGeom basgrid1 = GGeom::Constructor::RectGrid(Point(-0.1, -0.1), Point(1.1, 1.1), 30, 30);
+	GridGeom* b1 = grid_minus_cont(basgrid1, *GGeom::Info::Contour(g1).roots()[0]);
+	GridGeom* gr1 = GridGeom::cross_grids(b1, &g1, 0.03, 7, false, false, CrossGridCallback::to_cout());
+	save_vtk(gr1, "t14_g1.vtk");
+
+	//reentrant
+	vector<Point> pc2;
+	for (auto an = -M_PI/2.0; an<=0.0; an+=M_PI/2.0/20){
+		pc2.push_back(Point(cos(an)-1, sin(an)));
+	}
+	for (auto an = -M_PI/2.0; an<=0.0; an+=M_PI/2.0/20){
+		pc2.push_back(Point(cos(an), sin(an)));
+	}
+	pc2.push_back(Point(4, 0.4));
+	pc2.push_back(Point(4, 1.5));
+	pc2.push_back(Point(-1, 1.0));
+	auto c2 = HMCont2D::Constructor::ContourFromPoints(pc2, true);
+	inp1.edges=&c2;
+	inp1.bnd_step = 0.02;
+	inp1.start =inp1.end = Point(0, 0);
+	GridGeom g2 = HMBlay::BuildBLayerGrid({inp1});
+	GridGeom basgrid2 = GGeom::Constructor::RectGrid(Point(-2.1, -1.1), Point(2.8, 2.1), 150, 100);
+	GridGeom* b2 = grid_minus_cont(basgrid2, *GGeom::Info::Contour(g2).roots()[0]);
+	GridGeom* gr2 = GridGeom::cross_grids(b2, &g2, 0.03, 7, false, false, CrossGridCallback::to_cout());
+	save_vtk(gr2, "t14_g2.vtk");
+
+	//acute angle
+	auto c3 = HMCont2D::Constructor::ContourFromPoints(
+			{0,0, 5,0, 0,1.5}, true);
+	HMBlay::Input inp2;
+	inp2.bnd_step_method = HMBlay::MethFromString("KEEP_SHAPE");
+	inp2.direction = HMBlay::DirectionFromString("INNER");
+	inp2.edges = &c3;
+	inp2.bnd_step = 0.07;
+	inp2.force_conformal = true;
+	inp2.start = inp2.end = Point(0,0);
+	inp2.partition = {0, 0.02, 0.05, 0.1, 0.15, 0.2};
+	GridGeom g3 = HMBlay::BuildBLayerGrid({inp2});
+	GridGeom basgrid3 = GGeom::Constructor::RectGrid(Point(-0.1, -0.1), Point(4.5, 2), 80 , 40);
+	GridGeom* r3 = GridGeom::cross_grids(&basgrid3, &g3, 0.03, 7, true, false, CrossGridCallback::to_cout());
+	GridGeom* gr3 = grid_minus_cont(*r3, c3);
+	save_vtk(gr3, "t14_g3.vtk");
+	
+};
+
+void test15(){
+	std::cout<<"15. Geometry noise"<<std::endl;
+
+	auto c1 = HMCont2D::Constructor::ContourFromPoints({0,0, 0.5, -0.03, 0.55, 0, 0.68, 0, 0.7, 0.02, 0.75, 0, 1, 0, 1.01, -0.02, 1.03, 0, 1.1, 0}); 
+	HMBlay::Input inp1;
+	inp1.bnd_step_method = HMBlay::MethFromString("KEEP_SHAPE");
+	inp1.direction = HMBlay::DirectionFromString("LEFT");
+	inp1.edges = &c1;
+	inp1.bnd_step = 0.05;
+	inp1.start = Point(0, 0);
+	inp1.end = Point(10, 0);
+	inp1.partition = {0, 0.01, 0.02, 0.04, 0.08, 0.12, 0.16, 0.2};
+	GridGeom g1 = HMBlay::BuildBLayerGrid({inp1});
+
+	save_vtk(g1, "t15.vtk");
+}
 
 int main(){
-	test01();
-	test02();
-	test03();
-	test04();
-	test05();
-	test06();
-	test07();
-	test08();
-	test09();
-	test10();
-	test11();
-	test12();
+	//test01();
+	//test02();
+	//test03();
+	//test04();
+	//test05();
+	//test06();
+	//test07();
+	//test08();
+	//test09();
+	//test10();
+	//test11();
+	//test12();
+	//test13();
+	test14();
+	//test15();
 
 	if (FAILED_CHECKS ==1){
 		std::cout<<FAILED_CHECKS<<" test failed <<<<<<<<<<<<<<<<<<<"<<std::endl;
