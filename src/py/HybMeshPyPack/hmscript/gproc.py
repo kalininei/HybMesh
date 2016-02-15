@@ -5,28 +5,39 @@ from HybMeshPyPack.basic.geom import Point2
 
 
 def RemoveGeom(obj):
-    """ delete grid or contour:
-        obj - string identifier of object
+    """ Completely removes object
+
+    Args:
+       obj: identifier of object
+
     """
     c = com.objcom.RemoveGeom({"names": [obj]})
     flow.exec_command(c)
 
 
 def MoveGeom(objs, dx, dy):
-    """ moves list of grids or contours
-        objs - list of string identifiers of moving objects
-        dx, dy - shifts in x and y direction
+    """ Moves list of objects
+
+    Args:
+       objs: list of identifiers of moving objects
+
+       dx, dy (float): shifts in x and y direction
+
     """
     c = com.objcom.MoveGeom({"names": objs, "dy": dy, "dx": dx})
     flow.exec_command(c)
 
 
 def RotateGeom(objs, angle, pc=[0.0, 0.0]):
-    """ rotates group of grids and contours
-       objs - list of string identifiers of moving objects
-       angle - degree of rotation. Positive angle corresponds to
-               counterclockwise rotation
-       pc - center of rotation as [x, y]
+    """ Rotates group of objects
+    
+    Args:
+      objs: list of string identifiers of moving objects
+      
+      angle (float): degree of rotation. Positive angle corresponds to
+      counterclockwise rotation
+
+      pc (list-of-float): center of rotation
     """
     c = com.objcom.RotateGeom({"names": objs, "angle": angle,
        "p0": Point2(*pc)})
@@ -34,10 +45,15 @@ def RotateGeom(objs, angle, pc=[0.0, 0.0]):
 
 
 def ScaleGeom(objs, xpc, ypc, refp=[0.0, 0.0]):
-    """ scales grids and contours
-       objs - list of string identifiers of scaled objects
-       xpc, ypc - percentages of scalint in x, y directions
-       pc - refference point as [x, y]
+    """ Scales objects
+
+    Args:
+       objs: list of string identifiers of scaled objects
+
+       xpc, ypc (float): percentages of scaling in x, y directions
+
+       refp (list-of-float): reference point which stays
+       fixed after transformation
     """
     c = com.objcom.ScaleGeom({"names": objs, "xpc": xpc, "ypc": ypc,
         "p0": Point2(*refp)})
@@ -45,9 +61,13 @@ def ScaleGeom(objs, xpc, ypc, refp=[0.0, 0.0]):
 
 
 def CopyGeom(objs):
-    """ creates deep copies of contours and grids
-        objs - list of string identifiers of copied objects
-        Returns list of identifiers of copied objects
+    """ Creates deep copies of objects
+
+    Args:
+       objs: list of identifiers of objects to copy
+
+    Returns:
+       list of identifiers of copied objects
     """
     if isinstance(objs, list):
         ret = []

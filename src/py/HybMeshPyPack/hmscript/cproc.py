@@ -4,18 +4,30 @@ from HybMeshPyPack.basic.geom import Point2
 from HybMeshPyPack.hmscript import flow, data
 
 
-def AddRectCont(p0, p1, bnd):
-    """ add rectangular contour
-        p0, p1 - corner points as [x0, y0], [x1, y1]
-        bnd - boundary type >=0,
-            integer or list of 4 integers for each segment.
-        returns contour identifier
+def AddRectCont(p0, p1, bnd=0):
+    """Adds four point rectangular contour
+
+    Args:
+       p0, p1 (list-of-floats): bottom left and top right coordinates of
+       the contour
+
+    Kwargs:
+       bnd (boundary identifier): single or list of 4 boundary
+       identifiers (bottom, left, top, right) for contour segments.
+       With the default value no boundary types will be set.
+
+    Returns:
+       Contour identifier
+
+    Example:
+       >>> hmscript.AddRectCont([0, 0], [1,1], [b1, b2, b1, b2])
+
     """
-    b = [0, 0, 0, 0]
-    if isinstance(bnd, int):
-        b = [bnd, bnd, bnd, bnd]
-    elif isinstance(bnd, list):
+    b = None
+    if isinstance(bnd, list):
         b = bnd[0:4]
+    elif bnd is not None:
+        b = [bnd, bnd, bnd, bnd]
     c = com.contcom.AddRectCont({"p0": Point2(*p0),
         "p1": Point2(*p1), "bnds": b})
     flow.exec_command(c)
@@ -24,9 +36,16 @@ def AddRectCont(p0, p1, bnd):
 
 def GridBndToCont(g1, simplify=True):
     """ Extracts grid boundary to user contour
-        g1 - grid identifier
-        simplify - if true deletes all non-significant edges
-        returns contour identifier
+
+    Args:
+       g1: grid identifier
+
+    Kwargs:
+       simplify (bool): if true deletes all non-significant points. Otherwise
+       resulting contour will contain all boundary grid edges.
+
+    Returns:
+       contour identifier
     """
     c = com.contcom.GridBndToContour({"grid_name": g1,
         "simplify": simplify})
@@ -35,15 +54,25 @@ def GridBndToCont(g1, simplify=True):
 
 
 def SimplifyContour(cont, simplify=False, angle=0, separate=False):
-    """ Separate and simplify user contour
-        cont - source contours ids
-        simplify - do simplification: make all segments non-collinear
-                   Edges will not be splitted if they have different
-                   boundary types.
-        angle - minimum acute angle between segments
-                after simplification (deg)
-        separate - separate contour to ones with not-connected geometry
-        returns new contour ids
+    """ Separates and simplify user contour
+
+    Args:
+       cont: source contour or grid identifier
+
+    Kwargs:
+       simplify (bool): do simplification, i.e. make all segments non-collinear
+       Collinear segments will not be splitted if they have different
+       boundary types.
+
+       angle (float): minimum acute angle between segments
+       after simplification (deg, >=0)
+
+       separate (bool): assemble list of singly connected contours from
+       multiply connected source contour
+
+    Returns:
+        list of created contours ids
+
     """
     c = com.contcom.SimplifyContours(
             {"names": [cont],
@@ -51,14 +80,23 @@ def SimplifyContour(cont, simplify=False, angle=0, separate=False):
                 "angle": angle,
                 "separate": separate})
     flow.exec_command(c)
-    return c._get_added_names()[1][0]
+    return c._get_added_names()[1]
 
 
 def UniteContours(conts):
-    """
-        Unite contours to single contour with complicated connectivity
-        conts - list of contours ids to unite
-        returns new contour identifier
+    """ Unites contours to single multiply-connected contour
+
+    Args:
+       conts: list of contours identifiers to unite
+
+    Returns:
+       contour identifier
+
+    .. note::
+
+       Input contours should not overlap each other.
+       This procedure doesn't make checks for it.
+
     """
     c = com.contcom.UniteContours({"sources": conts})
     flow.exec_command(c)
@@ -67,9 +105,20 @@ def UniteContours(conts):
 
 def AddBoundaryType(index, name="boundary1"):
     """ Creates boundary type
-         index - integer index of boundary
-         name - string name of the boundary
-         returns boundary identifier
+
+    Args:
+       index (int) - index of boundary (>0)
+
+    Kwargs:
+       name (str) - user defined name of the boundary
+
+    Returns:
+       boundary identifier
+
+    If boundary with `index` already exists it will be overwriten.
+    Name of the boundary should be unique. If it already exists it will
+    be changed.
+
     """
     c = com.contcom.EditBoundaryType({"index": index, "name": name})
     flow.exec_command(c)
@@ -78,11 +127,35 @@ def AddBoundaryType(index, name="boundary1"):
 
 def SetBTypeToContour(cont, btps=None, bfun=None):
     """ Mark user or grid contour segments with btypes.
-        cont - contour identifier
-        btps - list of btypes identifiers for each segment
-            or single identifier for the whole contour
-        bfun - function: (x0, y0, x1, y1, bt)->btype identifyer or None
-            which returns btype from segment endpoints and old boundary type
+
+    Args:
+       cont - contour or grid identifier
+
+    Kwargs:
+       btps - list of boundary types identifiers for each segment
+       or single identifier for the whole contour
+
+       bfun - function (x0, y0, x1, y1, bt) -> btype
+       which returns boundary type from segment endpoints and old boundary type
+
+    Example:
+
+      .. code-block:: python
+
+         # create rectangular contour
+         cont = hmscript.AddRectContour([0, 0], [1, 1])
+         # create boundary types
+         b1 = hmscript.AddBoundaryType(1, "vertical")
+         b2 = hmscript.AddBoundaryType(2, "horizontal")
+         # mark contour using `btps`
+         hmscript.SetBTypeToContour(cont, btps=[b2, b1, b2, b1])
+         # same command using `bfun`
+         def bfun(x0, y0, x1, y1, bold):
+            global b1, b2
+            return if x0 == x1 b1 else b2
+         hmscript.SetBTypeToContour(cont, bfun=bf)
+
+    Only one of `btps`, `bfun` arguments should be defined.
     """
     cdata = data.get_any_contour(cont)
     args = {"name": cont}
@@ -111,11 +184,21 @@ def SetBTypeToContour(cont, btps=None, bfun=None):
 
 
 def CreateContour(pnts, bnds=0):
-    """ Create contour from sequence of points
-        pnts - points list as [[x0, y0], [x1, y1], ... ]. If last point
-            cooordinate equals first one then contour is considered closed.
-        bnds - list of btype identifiers for each contour segment or
-            single identifier for the whole contour.
+    """ Create singly connected contour from sequence of points
+
+    Args:
+       pnts(list-of-list-of-floats): sequence of points
+
+    Kwargs:
+       bnds(single or list-of boundary identifiers): boundary type for
+       each contour segment or single identifier for the whole contour.
+
+    Example:
+       >>> hmscript.CreateContour([[0, 0], [1, 0], [1, 1], [0, 0]])
+
+    If coordinates of first and last points are equal
+    then contour is considered closed.
+
     """
     pt = []
     for p in pnts:

@@ -6,10 +6,16 @@ from HybMeshPyPack.hmscript import flow
 
 # Prototype grids
 def AddUnfRectGrid(p0, p1, nx, ny):
-    """ add rectangular grid
-        p0, p1 -- corner points as [x0, y0], [x1, y1]
-        nx, ny -- partition in x, y direction
-        returns grid identifier
+    """Builds rectangular grid
+    
+    Args:
+       p0, p1 (list-of-float): bottom left, top right points as [x, y] list
+
+       nx, ny (int): partition in x, y direction
+       
+    Returns:
+       created grid identifier
+
     """
     c = com.gridcom.AddUnfRectGrid({"p0": Point2(*p0),
         "p1": Point2(*p1), "nx": nx, "ny": ny})
@@ -18,15 +24,27 @@ def AddUnfRectGrid(p0, p1, nx, ny):
 
 
 def AddUnfCircGrid(p0, rad, na, nr, coef=1, is_trian=True):
-    """ add circular grid
-        p0 - center coordinate as [x, y]
-        rad - radius
-        na, nr - partitions in arc and radius directions
-        coef - refinement coefficient
-            coef = 1: equidistant radius division
-            coef > 1: refinement towards center of circle
-            0< coef <1:  refinement towards outer arc
-        is_trian - True if center should be triangulated
+    """Builds circular grid
+
+    Args:
+       p0 (list-of-float): center coordinate as [x, y]
+
+       rad (float): radius
+
+       na, nr (int): partitions of arc and radius respepctively
+
+    Kwargs:
+       coef (float): refinement coefficient::
+
+         coef = 1: equidistant radius division
+         coef > 1: refinement towards center of circle
+         0<coef<1:  refinement towards outer arc
+
+       is_trian (bool): True if center cell should be triangulated
+
+    Returns:
+       created grid identifier
+
     """
     c = com.gridcom.AddUnfCircGrid({
         "p0": Point2(*p0),
@@ -41,14 +59,25 @@ def AddUnfCircGrid(p0, rad, na, nr, coef=1, is_trian=True):
 def AddUnfRingGrid(p0,
                 radinner, radouter,
                 na, nr, coef=1.0):
-    """ add ring grid
-        p0 - center coordinates as [x, y]
-        radinner, radouter - inner and outer radii
-        na, nr - arc and radius partition
-        coef - refinement coefficient
-            coef = 1: equidistant radius division
-            coef > 1: refinement towards inner arc
-            0< coef <1:  refinement towards outer arc
+    """Builds ring grid
+
+    Args:
+       p0 (list-of-float): center coordinates as [x, y]
+
+       radinner, radouter (float): inner and outer radii
+
+       na, nr (int): arc and radius partition respectiverly
+
+    Kwargs:
+       coef (float): refinement coefficient::
+
+         coef = 1: equidistant radius division
+         coef > 1: refinement towards center of circle
+         0<coef<1:  refinement towards outer arc
+
+    Returns:
+       created grid identifier
+
     """
     c = com.gridcom.AddUnfRingGrid({
         "p0": Point2(*p0),
@@ -57,6 +86,3 @@ def AddUnfRingGrid(p0,
         "coef": coef})
     flow.exec_command(c)
     return c._get_added_names()[0][0]
-
-
-# Contours

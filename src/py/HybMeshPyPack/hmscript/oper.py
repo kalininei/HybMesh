@@ -5,11 +5,42 @@ from HybMeshPyPack.basic.geom import Point2
 
 
 def ExcludeContours(grid, conts, exclude_outer=True):
-    """ Builds a new grid by excluding contour area from existing grid.
-        grid - source grid identifier
-        conts - contour or list of contours identifiers for exclusion
-        exclude_outer - exclude inner or outer region of contours
-        returns new grid identifier
+    """Builds a grid by excluding contour area from existing grid.
+
+    Args:
+       grid: source grid identifier
+
+       conts: contour or list of contours/grids identifiers for exclusion.
+
+    Kwargs:
+       exclude_outer - exclude inner or outer region of contours
+
+    Returns:
+       new grid identifier
+
+    All input contours should bound a domain. Open contours are not allowed.
+
+    .. note::
+
+       All countours from `cont` list are excluded consecutively.
+       If you want to exclude multiply connected domain area you should first
+       assemle multiply connected domain by list of singly connected ones
+       using :func:`HybMeshPyPack.hmscript.UniteContours` procedure.
+
+    Example:
+
+       .. code-block:: python
+
+          # source grid
+          g1 = hmscript.AddUnfCircGrid([0, 0], 5, 16, 5)
+          # outer domain border
+          c1 = hmscript.AddRectContour([-4, -4], [4, 4])
+          # inner domain border
+          c2 = hmscript.CreateContour([[-2, -2], [2, -2], [0, 2], [-2, -2]])
+          # multiply connected domain
+          c3 = hmscript.UniteContours([c1, c2])
+          # exclusion
+          g2 = hmscript.ExcludeContours(g2, c3)
     """
     if not isinstance(conts, list):
         conts = [conts]
@@ -21,15 +52,40 @@ def ExcludeContours(grid, conts, exclude_outer=True):
 
 
 def UniteGrids(base_grid, imp_grids, empty_holes=False, fix_bnd=False):
-    """ Makes grids impositions
-        base_grid - basic grid identifier
-        imp_grids - list of grids for imposition as [(grid_id, buffer), () ...]
-            where grid_id is imposed grid identifier,
-                  buffer - size of the buffer for current imposition
-            Each next grid will be imposed on the result of previous imposition
-        empty_holes - keep all empty zone in imposed grids
-        fix_bnd - whether to fix all boundary nodes
-        Returns identifier of the newly created grid
+    """Makes grids impositions
+
+    Args:
+      base_grid: basic grid identifier
+
+      imp_grids (list-of-tuples): sequence of grids for imposition as
+      ``[(grid_id, buffer), () ...]`` where
+      ``grid_id`` is an imposed grid identifier,
+      ``buffer`` - size of the buffer for current imposition
+
+    Kwargs:
+      empty_holes (bool): keep all empty zones (in case of multle connectivity)
+      of imposed grids in the resulting grid.
+
+      fix_bnd (bool): whether to fix all boundary nodes
+
+    Returns:
+       identifier of the newly created grid
+
+    Each next grid will be imposed on the result of previous imposition
+
+    Example:
+
+       .. code-block:: python
+
+          # lower level grid
+          g1 = hmscript.AddUnfRectGrid([0, 0], [10, 10], 10, 10)
+          # first imposition grid
+          g2 = hmscript.AddUnfRectGrid([0, 0], [3, 3], 7, 7)
+          # second imposition grid
+          g3 = hmscript.AddUnfCircGrid([5, 5], 3, 20, 8)
+          # impose grids
+          impgrid = hmscript.UniteGrids(g1, [(g1, 2.0), (g2, 2.0)])
+
     """
     args = {"base": base_grid, "empty_holes": empty_holes,
             "fix_bnd": fix_bnd, "plus": []}
@@ -41,44 +97,58 @@ def UniteGrids(base_grid, imp_grids, empty_holes=False, fix_bnd=False):
 
 
 class BoundaryGridOption(object):
+    """Options for building boundary grid
+
+    :ivar contour_id:
+      identifier of input contour or grid
+    :ivar list-of-floats partition:
+      partition in perpendicular direction.
+      List of ascending floats starting with zero which
+      represents distances from contour to grid layers
+    :ivar int direction:
+      1/-1. Boundary grid will be built to the left/right
+      from the contour (with respect to positive tracing)
+    :ivar str bnd_stepping:
+      algorithm for stepping along the contour
+
+      * 'no': no artificial stepping. Only contour edges will
+        be used as grid nodes
+      * 'const': use artificial stepping and ignore contour
+        nodes
+      * 'keep_shape': use stepping and keep significant
+        contour nodes
+      * 'keep_all': use stepping and keep all contour nodes
+    :ivar list-of-floats range_angles:
+      list of 4 angle (deg) values which define algorithms
+      for treatment of contour bends:
+
+      * ``[0,     ra[0]]``: acute angle algorithm
+      * ``[ra[0], ra[1]]``: right angle algorithm
+      * ``[ra[1], ra[2]]``: straight angle algorithm
+      * ``[ra[2], ra[3]]``: reentrant angle algorithm
+      * ``[ra[3],   360]``:  round algorithm
+    :ivar float bnd_step:
+      float size of artificial stepping along the contour
+    :ivar bool force_conformal:
+      use strictly conformal mappings
+    :ivar list-of-floats start_point, end_point:
+      points in [x, y] format which define
+      the exact segment of the contour for building grid.
+      If both are None hence whole contour will be used.
+      If point is not located on the source contour then it will be
+      projected to it.
+    """
+
     def __init__(self, contour_id=None,
                 partition=[0],
-                direction="left",
+                direction=1,
                 bnd_stepping="no",
                 bnd_step=0.1,
                 range_angles=[30, 135, 225, 275],
                 force_conformal=False,
                 start_point=None,
                 end_point=None):
-        """ Create boundary grid options object
-            contour_id - string id of user or grid contour
-            partition - partition in perpendicular direction. List of
-                        ascending floats starting with zero
-                        which represents the distance from contour to grid
-                        layer
-            direction - "left"/"right". Grid will be built to the left/right
-                        from the contour (using positive tracing)
-            bnd_stepping - partition along the contour.
-                        "no" - no artificial stepping. Only contour edges will
-                               be used as grid nodes.
-                        "const" - use artificial stepping and ignore contour
-                               edges
-                        "keep_shape" - use stepping and keep significant
-                               contour edges
-                        "keep_all" - use stepping and keep all contour edges
-            bnd_step - float size of artificial stepping along the contour
-            range_angles - list of 4 angle (deg) values which define algorithms
-                               for corners treatment:
-                           [0,     ra[0]]: acute angle algo
-                           [ra[0], ra[1]]: right angle algo
-                           [ra[1], ra[2]]: straight angle algo
-                           [ra[2], ra[3]]: reentrant angle algo
-                           [ra[3], 360]:  round algo
-            start_point, end_point - points in [x, y] format which define
-                 segment of the contour for building grid.
-                 If Both are None -> whole contour will be used.
-            force_conformal - if true then algorithm will use
-                 strictly conformal mappings
+        """ Constructor with default attributes values given
         """
         self.contour_id = contour_id
         self.partition = partition
@@ -92,8 +162,55 @@ class BoundaryGridOption(object):
 
 
 def BuildBoundaryGrid(opts):
-    """ Builds a boundary grid near contour
-        opts - BoundaryGridOption objects (list or single object)
+    """Builds a boundary grid near contour
+
+    Args:
+       opts: single or list of
+       :class:`HybMeshPyPack.hmscript.BoundaryGridOption` objects
+
+    Returns:
+       identifier of the newly created grid.
+
+    .. note::
+      If different options for different segements of the contour are required
+      (e.g. different partitions) then multiple option instances with the same
+      target contour should be passed. For example this code
+      creates boundary grid along a square with different settings
+      for vertical and horizontal edges of the source square:
+
+      .. code-block:: python
+
+        # create source contour
+        cont = hmscript.AddRectCont([0, 0], [1, 1])
+        # basic options for horizontal segments
+        opvert = hmscript.BoundaryGridOption(cont,
+           partition=[0, 0.01, 0.02, 0.03],
+           bnd_stepping='keep_shape',
+           bnd_step=0.05)
+        # basic options for vertical segments
+        ophoriz = hmscript.BoundaryGridOption(cont,
+           partition=[0, 0.01, 0.02, 0.03, 0.05, 0.1],
+           bnd_stepping='keep_shape',
+           bnd_step=0.03)
+        # option for bottom segment
+        op1 = copy.deepcopy(ophoriz)
+        op1.start_point = [0, 0]
+        op1.end_point = [1, 0]
+        # option for left segment
+        op2 = copy.deepcopy(opvert)
+        op2.start_point = [1, 0]
+        op2.end_point = [1, 1]
+        # option for top segment
+        op3 = copy.deepcopy(ophoriz)
+        op3.start_point = [1, 1]
+        op3.end_point = [0, 1]
+        # option for right segment
+        op4 = copy.deepcopy(opvert)
+        op4.start_point = [0, 1]
+        op4.end_point = [0, 0]
+        # building boundary grid
+        bgrid = hmscript.BuildBoundaryGrid([op1, op2, op3, op4])
+
     """
     inp = []
     if not isinstance(opts, list):
