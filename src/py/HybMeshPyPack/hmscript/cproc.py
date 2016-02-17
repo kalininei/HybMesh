@@ -194,7 +194,8 @@ def create_contour(pnts, bnds=0):
        each contour segment or single identifier for the whole contour.
 
     Example:
-       >>> hmscript.CreateContour([[0, 0], [1, 0], [1, 1], [0, 0]])
+       >>> hmscript.CreateContour([[0, 0], [1, 0], [1, 1], [0, 0]],
+                                  [b1, b2, b3])
 
     If coordinates of first and last points are equal
     then contour is considered closed.

@@ -73,13 +73,13 @@ def export_contour(fmt, fn, name, fw=None, flow=None):
         try:
             _, _, cont = fw.get_ucontour(name=name)
         except KeyError:
-            _, _, cont = fw.get_grid(name=name).cont
+            cont = fw.get_grid(name=name)[2].cont
     except:
-        raise Exception('Can not find grid for exporting')
+        raise Exception('Can not find contour for exporting')
     # 2. Export regarding to format
     if fmt == 'vtk':
         contexport.vtk(cont, fn)
-    elif fmt == 'hmg':
+    elif fmt == 'hmc':
         contexport.hmg(cont, fn)
     else:
-        raise Exception('Unknown grid format %s' % fmt)
+        raise Exception('Unknown contour format %s' % fmt)

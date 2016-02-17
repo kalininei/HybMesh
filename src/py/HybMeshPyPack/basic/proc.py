@@ -203,7 +203,7 @@ class NamedList(OrderedDict):
         try:
             return self.items()[ind]
         except IndexError:
-            raise IndexError(ind + " is not in NamedList")
+            raise IndexError(str(ind) + " is not in NamedList")
 
     def get_by_value(self, val):
         ' -> (index, key) for certain value . '
@@ -211,7 +211,7 @@ class NamedList(OrderedDict):
             ind = self.values().index(val)
             return ind, self.keys()[ind]
         except ValueError:
-            raise ValueError(val + " is not in NamedList")
+            raise ValueError(str(val) + " is not in NamedList")
 
     def get_by_key(self, key):
         ' -> (index, value) for certain key '
@@ -219,7 +219,7 @@ class NamedList(OrderedDict):
             ind = self.keys().index(key)
             return ind, self.values()[ind]
         except ValueError:
-            raise KeyError(key + " is not in NamedList")
+            raise KeyError(str(key) + " is not in NamedList")
 
     def get(self, ind=None, key=None, val=None):
         '-> (index, key, value). Get full entry information'

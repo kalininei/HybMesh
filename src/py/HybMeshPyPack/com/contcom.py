@@ -149,37 +149,35 @@ class SimplifyContours(objcom.AbstractAddRemove):
             [self.options[x] for x in
              ['simplify', 'separate', 'angle', 'keep_src', 'new_names']]
         added, removed = [], []
-        #operate
+
+        #make copies
         for i, nm in enumerate(self.options['names']):
-            cont = self.receiver.get_ucontour(name=nm)
-            res = []
+            try:
+                cont = self.receiver.get_ucontour(name=nm)[2]
+                if not keep:
+                    removed.append(nm)
+            except KeyError:
+                cont = self.receiver.get_grid(name=nm)[2].cont
 
-            #simplify
-            if simp:
-                s = cont[2].simplify(an)
-                if s:
-                    res = [s]
+            added.append((nnames[i],
+                          contour2.Contour2.create_from_abstract(cont)))
 
-            #separate
-            if sep:
-                if res:
-                    s = res[0].separate()
-                    if s:
-                        res = s
+        #simplify
+        if simp:
+            for i in range(len(added)):
+                added[i] = (added[i][0], added[i][1].simplify(an))
+
+        #separate
+        if sep:
+            newadded = []
+            for i in range(len(added)):
+                sep = added[i][1].separate()
+                if sep is None:
+                    newadded.append(added[i])
                 else:
-                    res = cont[2].separate()
-
-            #continue if no result
-            if not res:
-                continue
-
-            #delete
-            # simplify + separate (keep src)
-            if not keep:
-                removed.append(cont[1])
-            #add
-            for r in res:
-                added.append((nnames[i], r))
+                    for s in sep:
+                        newadded.append((added[i][0], s))
+            added = newadded
 
         return [], [], added, removed
 
