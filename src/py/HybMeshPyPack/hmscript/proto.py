@@ -1,29 +1,30 @@
-from HybMeshPyPack import basic, com
-import HybMeshPyPack.com.gridcom
+from HybMeshPyPack import com
 from HybMeshPyPack.basic.geom import Point2
 from HybMeshPyPack.hmscript import flow
 
 
 # Prototype grids
-def AddUnfRectGrid(p0, p1, nx, ny):
+def add_unf_rect_grid(p0, p1, nx, ny):
     """Builds rectangular grid
-    
+
     Args:
        p0, p1 (list-of-float): bottom left, top right points as [x, y] list
 
        nx, ny (int): partition in x, y direction
-       
+
     Returns:
        created grid identifier
 
     """
     c = com.gridcom.AddUnfRectGrid({"p0": Point2(*p0),
-        "p1": Point2(*p1), "nx": nx, "ny": ny})
+                                    "p1": Point2(*p1),
+                                    "nx": nx,
+                                    "ny": ny})
     flow.exec_command(c)
     return c._get_added_names()[0][0]
 
 
-def AddUnfCircGrid(p0, rad, na, nr, coef=1, is_trian=True):
+def add_unf_circ_grid(p0, rad, na, nr, coef=1, is_trian=True):
     """Builds circular grid
 
     Args:
@@ -56,9 +57,8 @@ def AddUnfCircGrid(p0, rad, na, nr, coef=1, is_trian=True):
     return c._get_added_names()[0][0]
 
 
-def AddUnfRingGrid(p0,
-                radinner, radouter,
-                na, nr, coef=1.0):
+def add_unf_ring_grid(p0, radinner, radouter,
+                      na, nr, coef=1.0):
     """Builds ring grid
 
     Args:

@@ -29,9 +29,8 @@ def hmg(grid, fname):
 
 
 def vtk(grid, fname):
-    out = [
-        "# vtk DataFile Version 3.0",
-        grid.__class__.__name__, "ASCII"]
+    out = ["# vtk DataFile Version 3.0",
+           grid.__class__.__name__, "ASCII"]
     #Points
     out.append("DATASET UNSTRUCTURED_GRID")
     out.append("POINTS %i float" % grid.n_points())
@@ -69,14 +68,14 @@ def ggen(grid, fname):
 
     def write_points(pts):
         out.extend(
-                ['%s %i %i' % (str(p), b, i + 1) for i, (p, b) in
-                    enumerate(zip(pts, bnd))]
+            ['%s %i %i' % (str(p), b, i + 1)
+             for i, (p, b) in enumerate(zip(pts, bnd))]
         )
 
     def write_eds3(eds):
         out.extend(
-                ['%i %i %i  %i' % (c[0] + 1, c[1] + 1, c[2] + 1, i + 1)
-                    for i, c in enumerate(eds)]
+            ['%i %i %i  %i' % (c[0] + 1, c[1] + 1, c[2] + 1, i + 1)
+             for i, c in enumerate(eds)]
         )
 
     if c4 == 0:
@@ -92,9 +91,9 @@ def ggen(grid, fname):
             write_points(grid.points)
             write_eds3(cells3)
             out.extend(
-                    ['%i %i %i %i  %i' % (c[0] + 1, c[1] + 1,
-                        c[2] + 1, c[3] + 1, i + 1)
-                        for i, c in enumerate(cn)]
+                ['%i %i %i %i  %i' % (c[0] + 1, c[1] + 1,
+                                      c[2] + 1, c[3] + 1, i + 1)
+                 for i, c in enumerate(cn)]
             )
         else:
             for c in cn:
@@ -118,9 +117,9 @@ def msh(grid, fname, btypes=None):
 
     c3, c4 = _check_for_34_grid(grid)
     out = [
-            """(0 "HybMesh to Fluent File")""",
-            """(0 "Dimensions")""",
-            """(2 2)""",
+        """(0 "HybMesh to Fluent File")""",
+        """(0 "Dimensions")""",
+        """(2 2)""",
     ]
     #Zones:
     #0    - no zone
@@ -131,7 +130,7 @@ def msh(grid, fname, btypes=None):
 
     #faces by zone
     ns = {i: 0 if (c[0] == -1 or c[1] == -1) else -1
-            for i, c in enumerate(grid.edges_cells_connect())}
+          for i, c in enumerate(grid.edges_cells_connect())}
     for k, v in grid.bt.iteritems():
         ns[k] = v
     tps, tpind = [], [-1]
@@ -140,16 +139,16 @@ def msh(grid, fname, btypes=None):
             tpind.append(v)
     for v in tpind:
         tps.append([x[0] for x in filter(lambda x: x[1] == v,
-            ns.iteritems())])
+                                         ns.iteritems())])
 
     #verticies
     out.extend([
-            """(0 "Verticies")""",
-            "(10 (0 1 %s 1 2))" % toh(grid.n_points()),
-            "(10 (1 1 %s 1 2)(" % toh(grid.n_points()),
+        """(0 "Verticies")""",
+        "(10 (0 1 %s 1 2))" % toh(grid.n_points()),
+        "(10 (1 1 %s 1 2)(" % toh(grid.n_points()),
     ])
     out.extend(['  %16.12e %16.12e' % (p.x, p.y)
-        for p in grid.points])
+                for p in grid.points])
     out.extend(["))"])
     #faces
     fconnect = grid.edges_cells_connect()
@@ -160,26 +159,22 @@ def msh(grid, fname, btypes=None):
     #interior faces
     out.append("(13 (3 1 %s 2 0)(" % toh(len(tps[0])))
     out.extend(["2 %s %s %s %s" % (
-            toh(grid.edges[i][0] + 1),
-            toh(grid.edges[i][1] + 1),
-            toh(fconnect[i][0] + 1),
-            toh(fconnect[i][1] + 1)
+        toh(grid.edges[i][0] + 1),
+        toh(grid.edges[i][1] + 1),
+        toh(fconnect[i][0] + 1),
+        toh(fconnect[i][1] + 1)
     ) for i in tps[0]])
     out.append('))')
     #boundary nodes
     c0 = len(tps[0])
     for i, t in enumerate(tps[1:]):
         c1 = c0 + len(t)
-        out.append("(13 (%s %s %s 3 0)(" % (
-                     toh(4 + i), toh(c0 + 1), toh(c1)
-                )
-        )
-        out.extend(["2 %s %s %s %s" % (
-                    toh(grid.edges[i][0] + 1),
-                    toh(grid.edges[i][1] + 1),
-                    toh(fconnect[i][0] + 1),
-                    toh(fconnect[i][1] + 1))
-            for i in t])
+        out.append("(13 (%s %s %s 3 0)(" % (toh(4 + i), toh(c0 + 1), toh(c1)))
+        out.extend(["2 %s %s %s %s" % (toh(grid.edges[i][0] + 1),
+                                       toh(grid.edges[i][1] + 1),
+                                       toh(fconnect[i][0] + 1),
+                                       toh(fconnect[i][1] + 1))
+                    for i in t])
         out.append('))')
         c0 = c1
 
@@ -230,7 +225,7 @@ def gmsh(grid, fname, btypes=None):
     out.append(' '.join(["2", str(intphys), "\"interior\""]))
     for b in bset:
         out.append(' '.join(["1", str(b),
-            '"' + btypes.get(index=b).name + '"']))
+                   '"' + btypes.get(index=b).name + '"']))
     out.append("$EndPhysicalNames")
     # nodes
     out.append("$Nodes")
@@ -250,13 +245,13 @@ def gmsh(grid, fname, btypes=None):
         etp = "2" if len(c) == 3 else "3"
         nind = ' '.join(map(lambda x: str(x + 1), cn[i]))
         out.append(' '.join([str(i + 1), etp, "2", str(intphys),
-            str(intphys), nind]))
+                   str(intphys), nind]))
     # line elements
     for i, b in enumerate(be):
         n = str(i + 1 + grid.n_cells())
         nind = ' '.join(map(lambda x: str(x + 1), grid.edges[b]))
         out.append(' '.join([n, "1", "2", str(grid.bt[b]),
-            str(grid.bt[b]), nind]))
+                   str(grid.bt[b]), nind]))
 
     out.append("$EndElements")
 

@@ -69,7 +69,8 @@ void add_contour_bc(Cont* src, Cont* tar, int* vsrc, int* vtar, int def);
 //pts[2*Npts], edges[2*Nedges]
 void* create_ecollection_container(int Npts, double* pts, int Nedgs, int* edges);
 void free_ecollection_container(void* ecol);
-
+//calculates area with respect to multiplicity
+double ecollection_area(void* ecol);
 
 // === set default callbacks
 //crossgrid callback pointer is the function of the following arguments:

@@ -268,6 +268,12 @@ void free_ecollection_container(void* ecol){
 	delete static_cast<HMCont2D::Container<HMCont2D::ECollection>*>(ecol);
 }
 
+double ecollection_area(void* ecol){
+	auto c = static_cast<HMCont2D::ECollection*>(ecol);
+	auto tree = HMCont2D::ExtendedTree::Assemble(*c);
+	return HMCont2D::Area(tree);
+}
+
 void contour_get_info(Cont* c, int* Npnt, int* Neds,
 		double** pts,
 		int** eds){

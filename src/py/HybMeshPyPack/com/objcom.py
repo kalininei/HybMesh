@@ -44,11 +44,11 @@ class RenameGeom(command.Command):
 
     def _undo(self):
         if self.renamed_object == 'grid':
-            self.receiver.grids2.change_key(self.backup_newname,
-                    self.options['oldname'])
+            self.receiver.grids2.change_key(
+                self.backup_newname, self.options['oldname'])
         elif self.renamed_object == 'ucontour':
-            self.receiver.contours2.change_key(self.backup_newname,
-                    self.options['oldname'])
+            self.receiver.contours2.change_key(
+                self.backup_newname, self.options['oldname'])
 
     def _redo(self):
         self._exec()

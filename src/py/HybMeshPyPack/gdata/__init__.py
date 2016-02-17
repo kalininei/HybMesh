@@ -58,7 +58,7 @@ class Framework(object):
 
     def get_all_names(self):
         '-> [list of all grid and user contours]'
-        return self.get_contour_names() + self.get_grid_names()
+        return self.get_ucontour_names() + self.get_grid_names()
 
     #grid + user
     def get_any_contour(self, name):

@@ -200,17 +200,26 @@ class NamedList(OrderedDict):
 
     def get_by_index(self, ind):
         '-> (key, value). Get kv pair for certain index '
-        return self.items()[ind]
+        try:
+            return self.items()[ind]
+        except IndexError:
+            raise IndexError(ind + " is not in NamedList")
 
     def get_by_value(self, val):
         ' -> (index, key) for certain value . '
-        ind = self.values().index(val)
-        return ind, self.keys()[ind]
+        try:
+            ind = self.values().index(val)
+            return ind, self.keys()[ind]
+        except ValueError:
+            raise ValueError(val + " is not in NamedList")
 
     def get_by_key(self, key):
         ' -> (index, value) for certain key '
-        ind = self.keys().index(key)
-        return ind, self.values()[ind]
+        try:
+            ind = self.keys().index(key)
+            return ind, self.values()[ind]
+        except ValueError:
+            raise KeyError(key + " is not in NamedList")
 
     def get(self, ind=None, key=None, val=None):
         '-> (index, key, value). Get full entry information'
@@ -302,6 +311,11 @@ def set_if_no(dic, key, val):
 
 
 if __name__ == '__main__':
-    a = [[1, 2, 4], [2, 4, 5], [2, 4, 2]]
-    for [x, y, z] in a:
-        print x, y
+    lst = NamedList()
+    lst['a'] = 1
+    lst['b'] = 2
+    lst['c'] = 3
+    lst['c'] = 4
+    
+    print lst
+    print lst.get_by_key('ff')

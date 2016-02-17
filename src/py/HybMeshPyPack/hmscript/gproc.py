@@ -1,10 +1,9 @@
-from HybMeshPyPack import com, basic
-import HybMeshPyPack.com.objcom
+from HybMeshPyPack import com
 from HybMeshPyPack.hmscript import flow
 from HybMeshPyPack.basic.geom import Point2
 
 
-def RemoveGeom(obj):
+def remove_geom(obj):
     """ Completely removes object
 
     Args:
@@ -15,7 +14,13 @@ def RemoveGeom(obj):
     flow.exec_command(c)
 
 
-def MoveGeom(objs, dx, dy):
+def remove_all():
+    """ Completely removes all grids, contours and btypes
+    """
+    flow.to_zero_state()
+
+
+def move_geom(objs, dx, dy):
     """ Moves list of objects
 
     Args:
@@ -28,23 +33,23 @@ def MoveGeom(objs, dx, dy):
     flow.exec_command(c)
 
 
-def RotateGeom(objs, angle, pc=[0.0, 0.0]):
+def rotate_geom(objs, angle, pc=[0.0, 0.0]):
     """ Rotates group of objects
-    
+
     Args:
       objs: list of string identifiers of moving objects
-      
+
       angle (float): degree of rotation. Positive angle corresponds to
       counterclockwise rotation
 
       pc (list-of-float): center of rotation
     """
     c = com.objcom.RotateGeom({"names": objs, "angle": angle,
-       "p0": Point2(*pc)})
+                               "p0": Point2(*pc)})
     flow.exec_command(c)
 
 
-def ScaleGeom(objs, xpc, ypc, refp=[0.0, 0.0]):
+def scale_geom(objs, xpc, ypc, refp=[0.0, 0.0]):
     """ Scales objects
 
     Args:
@@ -56,11 +61,11 @@ def ScaleGeom(objs, xpc, ypc, refp=[0.0, 0.0]):
        fixed after transformation
     """
     c = com.objcom.ScaleGeom({"names": objs, "xpc": xpc, "ypc": ypc,
-        "p0": Point2(*refp)})
+                              "p0": Point2(*refp)})
     flow.exec_command(c)
 
 
-def CopyGeom(objs):
+def copy_geom(objs):
     """ Creates deep copies of objects
 
     Args:
@@ -72,7 +77,7 @@ def CopyGeom(objs):
     if isinstance(objs, list):
         ret = []
         for s in objs:
-            ret.append(CopyGeom(s))
+            ret.append(copy_geom(s))
         return ret
     elif isinstance(objs, str):
         c = com.objcom.CopyGeom({"names": [objs], "newnames": [objs]})

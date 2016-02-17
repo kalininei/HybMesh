@@ -1,6 +1,0 @@
-<?xml version='1.0' encoding='utf-8'?>
-<CONTOUR2 name="ascii_contour.txt" tp="Contour2">
-	<COORDS>0.0 0.0 1.5 0.0 -3.0 2.0 1.6 1.0</COORDS>
-		<EDGES>0 1 1 3 3 2 2 0</EDGES>
-	<BOUNDARY>0 0 0 0</BOUNDARY>
-</CONTOUR2>

@@ -37,6 +37,12 @@ class AbstractContour2(bgeom.Point2SetStruct):
         """
         raise NotImplementedError
 
+    def sorted_edges(self):
+        """ -> [[e1, e2, e3, ...], []] - indicies of connected edges.
+            direction is arbitrary
+        """
+        raise NotImplementedError
+
     def xml_save(self, xmlnode):
         'save to xml Node'
         xmlnode.attrib["tp"] = self.__class__.__name__
@@ -246,7 +252,7 @@ class Contour2(AbstractContour2):
         ep = acont.edges_points()
         ret.bnds = {i: b[2] for i, b in enumerate(ep) if b[2] != 0}
         ret.edges = [[ret.points[i], ret.points[j]]
-                for [i, j, _] in ep]
+                     for [i, j, _] in ep]
         ret._pnts_ind = {p: i for i, p in enumerate(ret.points)}
         return ret
 
@@ -261,7 +267,7 @@ class Contour2(AbstractContour2):
         ret.points = copy.deepcopy(pts)
         ret.bnds = {i: b for i, b in enumerate(bnd) if b != 0}
         ret.edges = [[ret.points[i], ret.points[j]]
-                for [i, j] in edpnt]
+                     for [i, j] in edpnt]
         ret._pnts_ind = {p: i for i, p in enumerate(ret.points)}
         return ret
 
@@ -305,6 +311,12 @@ class ClosedContour2(AbstractContour2):
         ret = [[i, i + 1, self.edge_bnd(i)] for i in range(self.n_edges())]
         ret[-1][1] = 0
         return ret
+
+    def sorted_edges(self):
+        """ -> [[e1, e2, e3, ...], []] - indicies of connected edges.
+            direction is arbitrary
+        """
+        return [range(self.n_edges())]
 
     def xml_save(self, xmlnode):
         super(ClosedContour2, self).xml_save(xmlnode)
@@ -397,15 +409,21 @@ class ContourFromGrid2(AbstractContour2):
         ret[-1][1] = 0
         return ret
 
+    def sorted_edges(self):
+        """ -> [[e1, e2, e3, ...], []] - indicies of connected edges.
+            direction is arbitrary
+        """
+        return [range(self.n_edges())]
+
 
 class GridContour2(AbstractContour2):
-    "Contour collection from grid2"
+    "Contours collection from grid2"
     def __init__(self, g2=None):
         super(GridContour2, self).__init__()
         self.g2 = g2
         if g2 is not None:
             self.cnts = [ContourFromGrid2(g2, x)
-                    for x in g2.boundary_contours()]
+                         for x in g2.boundary_contours()]
             self.points = sum([x.points for x in self.cnts], [])
             g2.add_subscriber_change_geom(self._geom_changed)
 
@@ -424,7 +442,7 @@ class GridContour2(AbstractContour2):
     def _pts_loc2glob(self, cont_index, pnt_index):
         '->int. Conversation from local point index to self.points index'
         return sum([self.cnts[i].n_points() for i in range(cont_index)]) + \
-                pnt_index
+            pnt_index
 
     def _ed_i2gi(self, ed_ind):
         "->int. Conversation from contour edge index to grid edge index"
@@ -438,7 +456,7 @@ class GridContour2(AbstractContour2):
         """
         cont = cls()
         cont.cnts = [ContourFromGrid2.copy_from_source(src_grid, tar_grid, c1)
-                for c1 in src_grid.cont.cnts]
+                     for c1 in src_grid.cont.cnts]
         cont.points = sum([x.points for x in cont.cnts], [])
         tar_grid.add_subscriber_change_geom(cont._geom_changed)
         tar_grid.cont = cont
@@ -489,4 +507,16 @@ class GridContour2(AbstractContour2):
                 a[j][0] = self._pts_loc2glob(ic, a[j][0])
                 a[j][1] = self._pts_loc2glob(ic, a[j][1])
             ret.extend(a)
+        return ret
+
+    def sorted_edges(self):
+        """ -> [[e1, e2, e3, ...], []] - indicies of connected edges.
+            direction is arbitrary
+        """
+        loc = [x.sorted_edges()[0] for x in self.cnts]
+        ret = []
+        s = 0
+        for x in loc:
+            ret.append([y + s for y in x])
+            s += len(loc)
         return ret

@@ -1,10 +1,9 @@
-from HybMeshPyPack import com, basic
-import HybMeshPyPack.com.contcom
+from HybMeshPyPack import com
 from HybMeshPyPack.basic.geom import Point2
 from HybMeshPyPack.hmscript import flow, data
 
 
-def AddRectCont(p0, p1, bnd=0):
+def add_rect_cont(p0, p1, bnd=None):
     """Adds four point rectangular contour
 
     Args:
@@ -23,18 +22,20 @@ def AddRectCont(p0, p1, bnd=0):
        >>> hmscript.AddRectCont([0, 0], [1,1], [b1, b2, b1, b2])
 
     """
-    b = None
     if isinstance(bnd, list):
         b = bnd[0:4]
     elif bnd is not None:
         b = [bnd, bnd, bnd, bnd]
+    else:
+        b = [0, 0, 0, 0]
     c = com.contcom.AddRectCont({"p0": Point2(*p0),
-        "p1": Point2(*p1), "bnds": b})
+                                 "p1": Point2(*p1),
+                                 "bnds": b})
     flow.exec_command(c)
     return c._get_added_names()[1][0]
 
 
-def GridBndToCont(g1, simplify=True):
+def grid_bnd_to_cont(g1, simplify=True):
     """ Extracts grid boundary to user contour
 
     Args:
@@ -48,12 +49,12 @@ def GridBndToCont(g1, simplify=True):
        contour identifier
     """
     c = com.contcom.GridBndToContour({"grid_name": g1,
-        "simplify": simplify})
+                                      "simplify": simplify})
     flow.exec_command(c)
     return c._get_added_names()[1][0]
 
 
-def SimplifyContour(cont, simplify=False, angle=0, separate=False):
+def simplify_contour(cont, simplify=False, angle=0, separate=False):
     """ Separates and simplify user contour
 
     Args:
@@ -74,16 +75,15 @@ def SimplifyContour(cont, simplify=False, angle=0, separate=False):
         list of created contours ids
 
     """
-    c = com.contcom.SimplifyContours(
-            {"names": [cont],
-                "simplify": simplify,
-                "angle": angle,
-                "separate": separate})
+    c = com.contcom.SimplifyContours({"names": [cont],
+                                      "simplify": simplify,
+                                      "angle": angle,
+                                      "separate": separate})
     flow.exec_command(c)
     return c._get_added_names()[1]
 
 
-def UniteContours(conts):
+def unite_contours(conts):
     """ Unites contours to single multiply-connected contour
 
     Args:
@@ -103,7 +103,7 @@ def UniteContours(conts):
     return c._get_added_names()[1][0]
 
 
-def AddBoundaryType(index, name="boundary1"):
+def add_boundary_type(index, name="boundary1"):
     """ Creates boundary type
 
     Args:
@@ -125,7 +125,7 @@ def AddBoundaryType(index, name="boundary1"):
     return index
 
 
-def SetBTypeToContour(cont, btps=None, bfun=None):
+def set_btype_to_contour(cont, btps=None, bfun=None):
     """ Mark user or grid contour segments with btypes.
 
     Args:
@@ -152,7 +152,7 @@ def SetBTypeToContour(cont, btps=None, bfun=None):
          # same command using `bfun`
          def bfun(x0, y0, x1, y1, bold):
             global b1, b2
-            return if x0 == x1 b1 else b2
+            return b1 if x0 == x1 else b2
          hmscript.SetBTypeToContour(cont, bfun=bf)
 
     Only one of `btps`, `bfun` arguments should be defined.
@@ -183,7 +183,7 @@ def SetBTypeToContour(cont, btps=None, bfun=None):
     flow.exec_command(c)
 
 
-def CreateContour(pnts, bnds=0):
+def create_contour(pnts, bnds=0):
     """ Create singly connected contour from sequence of points
 
     Args:
@@ -204,7 +204,6 @@ def CreateContour(pnts, bnds=0):
     for p in pnts:
         pt.append(Point2(*p))
     c = com.contcom.CreateContour({"points": pt,
-        "bnds": bnds})
+                                   "bnds": bnds})
     flow.exec_command(c)
     return c._get_added_names()[1][0]
-

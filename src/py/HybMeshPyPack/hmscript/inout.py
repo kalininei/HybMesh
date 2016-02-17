@@ -1,10 +1,9 @@
 from HybMeshPyPack import imex, com
-import HybMeshPyPack.com.imcom
 from HybMeshPyPack.hmscript import flow, data
 
 
 # Exporting grids
-def ExportVTK(g1, fname):
+def export_grid_vtk(g1, fname):
     """exports grid to vtk format
 
     Args:
@@ -16,7 +15,7 @@ def ExportVTK(g1, fname):
     imex.gridexport.vtk(g, fname)
 
 
-def ExportHMG(g1, fname):
+def export_grid_hmg(g1, fname):
     """exports grid to hybmesh native format
 
     Args:
@@ -27,7 +26,7 @@ def ExportHMG(g1, fname):
     imex.export_grid("hmg", fname, g1, flow=flow)
 
 
-def ExportMSH(g1, fname):
+def export_grid_msh(g1, fname):
     """Exports grid to fluent msh format
 
     Args:
@@ -40,7 +39,7 @@ def ExportMSH(g1, fname):
     imex.export_grid("msh", fname, g1, flow=flow)
 
 
-def ExportGMSH(g1, fname):
+def export_grid_gmsh(g1, fname):
     """exports grid to gmsh ascii format
 
     Args:
@@ -53,9 +52,32 @@ def ExportGMSH(g1, fname):
     imex.export_grid("gmsh", fname, g1, flow=flow)
 
 
+# Exporting contours
+def export_contour_vtk(c1, fname):
+    """exports contour to vtk format
+
+    Args:
+       c1: contour identifier
+
+       fname: output filename
+    """
+    imex.export_contour("vtk", fname, c1, flow=flow)
+
+
+# Exporting contours
+def export_contour_hmc(c1, fname):
+    """exports contour to native format
+
+    Args:
+       c1: contour identifier
+
+       fname: output filename
+    """
+    imex.export_contour("hmc", fname, c1, flow=flow)
+
 
 # Importing grids
-def ImportGridHMG(fname):
+def import_grid_hmg(fname):
     """Imports grid from native \*.hmg file
 
     Args:
@@ -69,7 +91,7 @@ def ImportGridHMG(fname):
     return c._get_added_names()[0][0]
 
 
-def ImportGridMSH(fname):
+def import_grid_msh(fname):
     """Imports grid from fluent \*.msh file
 
     Args:
@@ -83,7 +105,7 @@ def ImportGridMSH(fname):
     return c._get_added_names()[0][0]
 
 
-def ImportGridGMSH(fname):
+def import_grid_gmsh(fname):
     """Imports grid from gmsh ascii file
 
     Args:
@@ -98,8 +120,9 @@ def ImportGridGMSH(fname):
 
 
 # Importing contours
-def ImportContourASCII(fname, wbtype=False, force_closed=False):
-    """Imports contour as a sequence of points from ascii file.
+def import_contour_ascii(fname, wbtype=False, force_closed=False):
+    """Imports singly connected contour as a sequence of points
+    from ascii file.
 
     Args:
        fname: file name
@@ -114,13 +137,14 @@ def ImportContourASCII(fname, wbtype=False, force_closed=False):
        contour identifier
     """
     c = com.imcom.ImportContourASCII({"filename": fname,
-        "btypes": wbtype, "force_closed": force_closed})
+                                      "btypes": wbtype,
+                                      "force_closed": force_closed})
     flow.exec_command(c)
     return c._get_added_names()[1][0]
 
 
 # save data
-def SaveProject(fname):
+def save_project(fname):
     """saves current command flow and data to
     HybMesh project file
 
@@ -128,4 +152,3 @@ def SaveProject(fname):
        fname: file name
     """
     imex.write_flow_and_framework_to_file(flow, fname)
-

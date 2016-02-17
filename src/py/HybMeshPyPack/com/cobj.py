@@ -1,6 +1,5 @@
 ' procedures for communication with c libraries'
 import ctypes as ct
-import sys
 import os
 from HybMeshPyPack.gdata.grid2 import Grid2
 from HybMeshPyPack.basic.geom import Point2
@@ -55,8 +54,9 @@ def cont_to_c(c):
         c_edg[2 * i] = ce[0]
         c_edg[2 * i + 1] = ce[1]
 
-    return lib_fa.contour_construct(ct.c_int(c.n_points()),
-            ct.c_int(c.n_edges()), c_pnt, c_edg)
+    return lib_fa.contour_construct(
+        ct.c_int(c.n_points()),
+        ct.c_int(c.n_edges()), c_pnt, c_edg)
 
 
 def grid_from_c(c_gr):
@@ -71,11 +71,13 @@ def grid_from_c(c_gr):
     npt, ned, ncl = ct.c_int(), ct.c_int(), ct.c_int()
     pt, ed, cdims, ced = ct_pd(), ct_pint(), ct_pint(), ct_pint()
     #call c function
-    lib_fa.grid_get_edges_info.argtypes = [ct.c_void_p, ct_pint, ct_pint,
-            ct_pint, ct_ppd, ct_ppint, ct_ppint, ct_ppint]
-    lib_fa.grid_get_edges_info(c_gr, ct.byref(npt), ct.byref(ned),
-            ct.byref(ncl), ct.byref(pt), ct.byref(ed),
-            ct.byref(cdims), ct.byref(ced))
+    lib_fa.grid_get_edges_info.argtypes = [
+        ct.c_void_p, ct_pint, ct_pint,
+        ct_pint, ct_ppd, ct_ppint, ct_ppint, ct_ppint]
+    lib_fa.grid_get_edges_info(
+        c_gr, ct.byref(npt), ct.byref(ned),
+        ct.byref(ncl), ct.byref(pt), ct.byref(ed),
+        ct.byref(cdims), ct.byref(ced))
     # ---- construct grid
     ret = Grid2()
     #points
@@ -93,16 +95,15 @@ def grid_from_c(c_gr):
         ret.cells.append(ied)
     #free c memory
     lib_fa.grid_free_edges_info.argtypes = [ct_ppd, ct_ppint, ct_ppint,
-            ct_ppint]
+                                            ct_ppint]
     lib_fa.grid_free_edges_info(ct.byref(pt), ct.byref(ed), ct.byref(cdims),
-            ct.byref(ced))
+                                ct.byref(ced))
 
     return ret
 
 
 def cont2_to_c(cont):
     """ return c pointer to a contours2.AbstractContour2 objects
-        works for contours of hybmesh_contours2 library.
     """
     lib_c2 = cport_lib()
     # arguments
@@ -119,7 +120,4 @@ def cont2_to_c(cont):
         c_edges[2 * i + 1] = i1
 
     return lib_c2.create_ecollection_container(c_npnt, c_pnts,
-        c_nedges, c_edges)
-
-
-
+                                               c_nedges, c_edges)

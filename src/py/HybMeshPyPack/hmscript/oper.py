@@ -1,10 +1,9 @@
-from HybMeshPyPack import com, basic
+from HybMeshPyPack import com
 from HybMeshPyPack.hmscript import flow
-import HybMeshPyPack.com.gridcom
 from HybMeshPyPack.basic.geom import Point2
 
 
-def ExcludeContours(grid, conts, exclude_outer=True):
+def exclude_contours(grid, conts, exclude_outer=True):
     """Builds a grid by excluding contour area from existing grid.
 
     Args:
@@ -45,13 +44,13 @@ def ExcludeContours(grid, conts, exclude_outer=True):
     if not isinstance(conts, list):
         conts = [conts]
     c = com.gridcom.ExcludeContours({"grid_name": grid,
-        "cont_names": conts,
-        "is_inner": not exclude_outer})
+                                     "cont_names": conts,
+                                     "is_inner": not exclude_outer})
     flow.exec_command(c)
     return c._get_added_names()[0][0]
 
 
-def UniteGrids(base_grid, imp_grids, empty_holes=False, fix_bnd=False):
+def unite_grids(base_grid, imp_grids, empty_holes=False, fix_bnd=False):
     """Makes grids impositions
 
     Args:
@@ -140,14 +139,14 @@ class BoundaryGridOption(object):
     """
 
     def __init__(self, contour_id=None,
-                partition=[0],
-                direction=1,
-                bnd_stepping="no",
-                bnd_step=0.1,
-                range_angles=[30, 135, 225, 275],
-                force_conformal=False,
-                start_point=None,
-                end_point=None):
+                 partition=[0],
+                 direction=1,
+                 bnd_stepping="no",
+                 bnd_step=0.1,
+                 range_angles=[30, 135, 225, 275],
+                 force_conformal=False,
+                 start_point=None,
+                 end_point=None):
         """ Constructor with default attributes values given
         """
         self.contour_id = contour_id
@@ -161,7 +160,7 @@ class BoundaryGridOption(object):
         self.end_point = end_point
 
 
-def BuildBoundaryGrid(opts):
+def build_boundary_grid(opts):
     """Builds a boundary grid near contour
 
     Args:

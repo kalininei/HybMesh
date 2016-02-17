@@ -145,8 +145,9 @@ class SimplifyContours(objcom.AbstractAddRemove):
         return "Simplify contours: %s" % ' '.join(self.conts)
 
     def _addrem_objects(self):
-        simp, sep, an, keep, nnames = [self.options[x] for x in
-                ['simplify', 'separate', 'angle', 'keep_src', 'new_names']]
+        simp, sep, an, keep, nnames = \
+            [self.options[x] for x in
+             ['simplify', 'separate', 'angle', 'keep_src', 'new_names']]
         added, removed = [], []
         #operate
         for i, nm in enumerate(self.options['names']):
@@ -208,13 +209,23 @@ class UniteContours(objcom.AbstractAddRemove):
                 }
 
     def _addrem_objects(self):
-        conts = [self.receiver.contours2[n] for n in self.options['sources']]
+        conts = []
+        for n in self.options['sources']:
+            try:
+                conts.append(self.receiver.contours2[n])
+            except KeyError:
+                conts.append(self.receiver.grids2[n].cont)
+
         #operate
         newcont = contour2.Contour2.create_from_abstract(conts[0])
         for c in conts[1:]:
             newcont.add_from_abstract(c)
         ac = [(self.options['name'], newcont)]
-        rc = [] if self.options['keep_src'] else self.options['sources']
+        rc = []
+        if not self.options['keep_src']:
+            for c in self.options['sources']:
+                if c in self.receiver.contours2:
+                    rc.append(c)
         return [], [], ac, rc
 
 
@@ -255,16 +266,16 @@ class EditBoundaryType(command.Command):
 
     def _exec(self):
         ri, i, n, c = [self.options[x] for x in ['remindex', 'index', 'name',
-            'color']]
+                                                 'color']]
         #1 remove
         if ri is not None:
             self._backup1 = copy.deepcopy(
-                    self.receiver.boundary_types.get(index=ri))
+                self.receiver.boundary_types.get(index=ri))
             self.receiver.boundary_types.rem_bnd(ri)
         #2 set
         if i is not None:
             self._backup2 = copy.deepcopy(
-                    self.receiver.boundary_types.get(index=i))
+                self.receiver.boundary_types.get(index=i))
             self.receiver.boundary_types.set_bnd(i, n, c)
         return True
 
@@ -276,11 +287,11 @@ class EditBoundaryType(command.Command):
         if self.options['index'] is not None:
             self.receiver.boundary_types.rem_bnd(self.options['index'])
         if self._backup2 is not None:
-            self.receiver.boundary_types.set_bnd(self._backup2.index,
-                    self._backup2.name, self._backup2.color)
+            self.receiver.boundary_types.set_bnd(
+                self._backup2.index, self._backup2.name, self._backup2.color)
         if self._backup1 is not None:
-            self.receiver.boundary_types.set_bnd(self._backup1.index,
-                    self._backup1.name, self._backup1.color)
+            self.receiver.boundary_types.set_bnd(
+                self._backup1.index, self._backup1.name, self._backup1.color)
         self._clear()
 
     def _redo(self):
@@ -317,8 +328,8 @@ class SetBTypeToContour(command.Command):
         self.new_bnd = []
 
     def doc(self):
-        return "Set boundary types to contours: " + ', '.join(
-                [x.name for x in self.conts_opts])
+        return "Set boundary types to contours: " + \
+            ', '.join([x.name for x in self.conts_opts])
 
     @classmethod
     def _arguments_types(cls):
@@ -400,6 +411,6 @@ class CreateContour(objcom.AbstractAddRemove):
         if p0.x == plast.x and p0.y == plast.y:
             eds[-1][1] = 0
             pt = pt[:-1]
-        cont = contour2.Contour2.create_from_point_set(pt,
-                eds, self.options["bnds"])
+        cont = contour2.Contour2.create_from_point_set(
+            pt, eds, self.options["bnds"])
         return [], [], [(self.options["name"], cont)], []

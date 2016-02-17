@@ -2,6 +2,7 @@ import xml.etree.ElementTree as ET
 import writexml
 import readxml
 import gridexport
+import contexport
 from HybMeshPyPack import com
 from HybMeshPyPack import gdata
 
@@ -34,9 +35,9 @@ def read_flow_and_framework_from_file(filename):
 
 
 def export_grid(fmt, fn, name, fw=None, flow=None):
-    """ exports grid from framework fw or flow receiver to
-        filename fn using format fmt. Possible formats:
-            vtk, hmg, msh, ggen, gmsh
+    """exports grid from framework fw or flow receiver to
+    filename fn using format fmt. Possible formats:
+        vtk, hmg, msh, ggen, gmsh
     """
     # 1. Find grid
     try:
@@ -56,5 +57,29 @@ def export_grid(fmt, fn, name, fw=None, flow=None):
         gridexport.ggen(grid, fn)
     elif fmt == "gmsh":
         gridexport.gmsh(grid, fn, fw.boundary_types)
+    else:
+        raise Exception('Unknown grid format %s' % fmt)
+
+
+def export_contour(fmt, fn, name, fw=None, flow=None):
+    """exports contour from framework 'fw' or 'flow' receiver to
+    filename fn using format fmt. Possible formats:
+        vtk, hmc
+    """
+    # Find contour
+    try:
+        if fw is None:
+            fw = flow.get_receiver()
+        try:
+            _, _, cont = fw.get_ucontour(name=name)
+        except KeyError:
+            _, _, cont = fw.get_grid(name=name).cont
+    except:
+        raise Exception('Can not find grid for exporting')
+    # 2. Export regarding to format
+    if fmt == 'vtk':
+        contexport.vtk(cont, fn)
+    elif fmt == 'hmg':
+        contexport.hmg(cont, fn)
     else:
         raise Exception('Unknown grid format %s' % fmt)

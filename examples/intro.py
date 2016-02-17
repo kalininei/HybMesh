@@ -1,5 +1,4 @@
 from HybMeshPyPack import hmscript as hm
-import copy
 
 # create a base square grid
 sqr = hm.AddUnfRectGrid([0, 0], [1, 1], 20, 20)

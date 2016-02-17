@@ -102,9 +102,8 @@ def rotate_points(pnts, x0, y0, angle):
     angle = angle / 180.0 * math.pi
     sina, cosa = math.sin(angle), math.cos(angle)
     newpoints = map(lambda p: Point2(
-                            (p.x - x0) * cosa - (p.y - y0) * sina + x0,
-                            (p.x - x0) * sina + (p.y - y0) * cosa + y0),
-                pnts)
+        (p.x - x0) * cosa - (p.y - y0) * sina + x0,
+        (p.x - x0) * sina + (p.y - y0) * cosa + y0), pnts)
     return newpoints
 
 
@@ -113,7 +112,8 @@ def scale_points(pnts, p0, xpc, ypc):
         and xpc% and ypc% as scaling procentages
     """
     sx, sy = xpc / 100.0, ypc / 100.0
-    newpoints = map(lambda p: Point2((p.x - p0.x) * sx + p0.x,
+    newpoints = map(lambda p: Point2(
+        (p.x - p0.x) * sx + p0.x,
         (p.y - p0.y) * sy + p0.y), pnts)
     return newpoints
 
@@ -200,6 +200,7 @@ class Point2SetStruct(GeomStruct):
     def __str_to_pnts(data):
         it = iter(map(float, data.split()))
         return map(Point2, it, it)
+
 
 if __name__ == "__main__":
     print div_range(0, 5, 10, 1)
