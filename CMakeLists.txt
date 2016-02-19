@@ -119,6 +119,10 @@ set(CLIPPER_TARGET polyclipping)
 set(BUILD_CLIPPER on)
 set(CLIPPER_INCLUDE "${CMAKE_SOURCE_DIR}/src/libs/external/clipper")
 
+#libgpc: global definition of GPC_TARGET, GPC_INCLUDE
+set(GPC_TARGET gpc)
+set(GPC_INCLUDE "${CMAKE_SOURCE_DIR}/src/libs/external/gpc")
+
 
 #suitesparse: defines
 # SUITESPARSE_FOUND: TRUE iff SuiteSparse and all dependencies have been found.

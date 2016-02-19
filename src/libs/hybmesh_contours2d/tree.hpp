@@ -35,6 +35,7 @@ struct ContourTree: public ECollection {
 	virtual void AddContour(shared_ptr<Contour>& c);
 
 	//Returns true if point lies strictly within/without closed contour
+	//for points on edges result is unpredirctable
 	bool IsWithin(const Point& p) const;
 	bool IsWithout(const Point& p) const;
 

@@ -11,6 +11,7 @@ set (HEADERS
 	clipper_core.hpp
 	contclipping.hpp
 	debug_cont2d.hpp
+	gpc_core.hpp
 )
 
 set (SOURCES
@@ -22,6 +23,7 @@ set (SOURCES
 	tree.cpp
 	contclipping.cpp
 	debug_cont2d.cpp
+	gpc_core.cpp
 )
 
 source_group ("Header Files" FILES ${HEADERS} ${HEADERS})
@@ -30,11 +32,13 @@ source_group ("Source Files" FILES ${SOURCES} ${SOURCES})
 add_library(${HYBMESH_CONTOURS2D_TARGET} SHARED ${HEADERS} ${SOURCES})
 
 # =========== linkage
+target_link_libraries(${HYBMESH_CONTOURS2D_TARGET} ${GPC_TARGET})
 target_link_libraries(${HYBMESH_CONTOURS2D_TARGET} ${CLIPPER_TARGET})
 target_link_libraries(${HYBMESH_CONTOURS2D_TARGET} ${BGEOM2D_TARGET})
 
 include_directories(${CommonInclude})
 include_directories(${CLIPPER_INCLUDE})
+include_directories(${GPC_INCLUDE})
 include_directories(${BGEOM2D_INCLUDE})
 
 install(TARGETS ${HYBMESH_CONTOURS2D_TARGET}

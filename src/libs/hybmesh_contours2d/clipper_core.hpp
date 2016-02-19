@@ -67,7 +67,7 @@ struct ClipperPath: public ClipperObject{
 			bool embedded2);
 
 	//union of closed contours. 
-	//if embedded1/2 is true then contours in сorresponding vector is treated as a tree.
+	//if embedded1/2 is true then contours in сorresponding vector are treated as a tree.
 	static Container<ContourTree> Union(
 			vector<ClipperPath>& pths1,
 			vector<ClipperPath>& pths2,
@@ -75,7 +75,7 @@ struct ClipperPath: public ClipperObject{
 			bool embedded2);
 
 	//substruction of closed contours. 
-	//if embedded1/2 is true then contours in сorresponding vector is treated as a tree.
+	//if embedded1/2 is true then contours in сorresponding vector are treated as a tree.
 	static Container<ContourTree> Substruct(
 			vector<ClipperPath>& pths1,
 			vector<ClipperPath>& pths2,
