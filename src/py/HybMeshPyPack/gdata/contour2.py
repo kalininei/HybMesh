@@ -39,7 +39,7 @@ class AbstractContour2(bgeom.Point2SetStruct):
 
     def sorted_edges(self):
         """ -> [[e1, e2, e3, ...], []] - indicies of connected edges.
-            direction is arbitrary
+        direction is arbitrary
         """
         raise NotImplementedError
 

@@ -86,3 +86,36 @@ def add_unf_ring_grid(p0, radinner, radouter,
         "coef": coef})
     flow.exec_command(c)
     return c._get_added_names()[0][0]
+
+
+# Contour prototypes
+def add_rect_cont(p0, p1, bnd=None):
+    """Adds four point rectangular contour
+
+    Args:
+       p0, p1 (list-of-floats): bottom left and top right coordinates of
+       the contour
+
+    Kwargs:
+       bnd (boundary identifier): single or list of 4 boundary
+       identifiers (bottom, left, top, right) for contour segments.
+       With the default value no boundary types will be set.
+
+    Returns:
+       Contour identifier
+
+    Example:
+       >>> hmscript.AddRectCont([0, 0], [1,1], [b1, b2, b1, b2])
+
+    """
+    if isinstance(bnd, list):
+        b = bnd[0:4]
+    elif bnd is not None:
+        b = [bnd, bnd, bnd, bnd]
+    else:
+        b = [0, 0, 0, 0]
+    c = com.contcom.AddRectCont({"p0": Point2(*p0),
+                                 "p1": Point2(*p1),
+                                 "bnds": b})
+    flow.exec_command(c)
+    return c._get_added_names()[1][0]

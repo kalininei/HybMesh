@@ -50,7 +50,7 @@ class ObjectNotFound(ExecutionError):
 
 
 class BasicOption(object):
-    """ Represent option transformation before it would be
+    """ Represent option transformation before
         str(Command.option) will be called.
         For types like int, float, str, [int], {int: int}, ...
         Base class will be enough.
@@ -83,6 +83,22 @@ class ListOfOptions(BasicOption):
 
     def unserial(self, v):
         return [self.tp.unserial(x) for x in v]
+
+
+class NoneOr(BasicOption):
+    "simple data or None"
+    def __init__(self, tp):
+        'tp - another BasicOption object'
+        super(NoneOr, self).__init__(tp)
+
+    def serial(self, v):
+        return None if v is None else self.tp.serial(v)
+
+    def unserial(self, v):
+        if v is None or v == 'None':
+            return None
+        else:
+            return self.tp.unserial(v)
 
 
 class SubDictOption(BasicOption):
@@ -294,7 +310,7 @@ class Command(object):
         if name in self.receiver.get_grid_names():
             return self.receiver.get_grid(name=name)[2].cont
         elif name in self.receiver.get_ucontour_names():
-            return self.receiver.get_ucontour(name=name)
+            return self.receiver.get_ucontour(name=name)[2]
         else:
             raise ObjectNotFound(name, self)
 
@@ -303,7 +319,6 @@ class Command(object):
             Returns proper callback object
             tp - callback types from interf.
         """
-        import HybMeshPyPack.basic.interf
         try:
             return self.parent_flow.get_interface().ask_for_callback(tp)
         except:

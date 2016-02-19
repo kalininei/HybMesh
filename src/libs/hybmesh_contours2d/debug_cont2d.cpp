@@ -131,6 +131,11 @@ void Debug::geogebra_etree(const ExtendedTree& c){
 	for (auto n: c.open_contours) geogebra_contour(*n);
 }
 
+void Debug::vtk_contours(const ShpVector<HMCont2D::Contour>& c, const char* fn){
+	HMCont2D::ECollection ecol;
+	for (auto& x: c) ecol.Unite(*x);
+	HMCont2D::ECollection::SaveVtk(ecol, fn);
+}
 
 
 #endif

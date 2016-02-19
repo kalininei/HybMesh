@@ -18,11 +18,10 @@ void PathPntData::fill(Point* p1, Point* p2, Point* p3){
 
 double ExtPath::largest_depth(){
 	double k = 0;
-	for (auto& e: ext_data){
-		if (e.opt->partition.back() > k)
-			k = e.opt->partition.back();
-	}
-	return k;
+	vector<double> h; h.reserve(ext_data.size());
+	for (auto& e: ext_data) h.push_back(e.opt->partition.back());
+	if (!is_closed()) h.resize(h.size() - 1);
+	return *std::max_element(h.begin(), h.end());
 }
 ExtPath ExtPath::Assemble(const vector<Options*>& data){
 	//data[i]->path are in strict sequence.

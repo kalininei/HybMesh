@@ -101,7 +101,7 @@ void Options::Initialize(){
 	if (!(start==end && full_source.is_closed())){
 		pnt_start = std::get<1>(full_source.GuaranteePoint(start, __all_data->pdata));
 		pnt_end   = std::get<1>(full_source.GuaranteePoint(end, __all_data->pdata));
-		//throw if points are coincide
+		//throw if points coincide
 		if (pnt_start == pnt_end)
 			throw std::runtime_error("Zero length boundary layer section");
 	}
@@ -129,11 +129,11 @@ vector<vector<Options*>> Options::BuildSequence(vector<Options>& inp){
 		std::list<Options*> lst;
 		//1) place first
 		lst.push_back(*setop.begin()); setop.erase(setop.begin());
-		//2) in a loop find if edge->last==lst.first->push_front
-		//                  if edge->first==lst.last->push_back
+		//2) in a loop find if edge->last==lst.first => push_front
+		//                  if edge->first==lst.last => push_back
 		for (auto it=setop.begin(); it!=setop.end();){
 			Point* p0 = lst.front()->path.first();
-			Point* p1 = lst.front()->path.last();
+			Point* p1 = lst.back()->path.last();
 			//path is already closed
 			if (p0 == p1) break;
 			//last=first

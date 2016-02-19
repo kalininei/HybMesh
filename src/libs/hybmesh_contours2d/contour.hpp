@@ -86,10 +86,15 @@ struct Contour: public ECollection{
 	Point ClosestPoint(const Point& p) const;
 
 	//Returns true if point lies strictly within/without closed contour
+	//Direction is not taken into account
 	bool IsWithin(const Point& p) const;
 	bool IsWithout(const Point& p) const;
 	bool AllWithin(const vector<Point>& p) const;
 	bool AllWithout(const vector<Point>& p) const;
+	//-1 - point is on polygon
+	// 0 - point is outside polygon
+	// 1 - point is in polygon
+	int WhereIs(const Point& p) const;
 
 	// ======= Algorithms
 	//calculates vector representing direction of contour at point p smoother by lengh len
@@ -106,7 +111,9 @@ struct Contour: public ECollection{
 	static vector<std::tuple<bool, Point, double, double>>
 	CrossAll(const Contour& c1, const Contour& c2);
 
+	//positive/negative value for inner/outer contours
 	static double Area(const Contour& c);
+
 	//weigth points by [0,1] weights of full contour length.
 	//Returns point in sorted order from start to end point of c
 	static PCollection WeightPoints(const Contour& c, vector<double> w);
@@ -188,8 +195,8 @@ void Contour::Unite(const TTarget& c){
 	//choosing option for unition
 	if (size() == 0 || c.size() == 0 ) goto COPY12;
 	else if (self0 == self1 || target0 == target1) goto THROW;
-	else if (c.size() == 1 && c.edge(0)->contains(self0)) goto COPY03;
 	else if (c.size() == 1 && c.edge(0)->contains(self1)) goto COPY12;
+	else if (c.size() == 1 && c.edge(0)->contains(self0)) goto COPY03;
 	//try to add new contour to the end of current
 	else if (self1 == target0) goto COPY12;
 	else if (self1 == target1) goto NEED_REVERSE;

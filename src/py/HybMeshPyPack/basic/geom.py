@@ -18,6 +18,11 @@ class Point2(object):
         x, y = p1.x - self.x, p1.y - self.y
         return math.sqrt(x * x + y * y)
 
+    def dist2(self, p1):
+        "-> squared distance between self and p1 "
+        x, y = p1.x - self.x, p1.y - self.y
+        return (x * x + y * y)
+
     def dist0(self):
         " -> distance between self and (0, 0) "
         x, y = self.x, self.y
@@ -155,6 +160,12 @@ class Point2SetStruct(GeomStruct):
         x = [p.x for p in self.points]
         y = [p.y for p in self.points]
         return Point2(min(x), min(y)), Point2(max(x), max(y))
+
+    def closest_point_index(self, p):
+        """ -> index of point, closest to p """
+        d2 = map(lambda x: x.dist2(p), self.points)
+        min_index, _ = min(enumerate(d2), key=lambda x: x[1])
+        return min_index
 
     # ---- Transformations
     def move(self, dx, dy):

@@ -16,6 +16,7 @@ struct Edge{
 	bool contains(const Point* p) const { return (pstart == p || pend == p); }
 	double meas() const { return Point::meas(*pstart, *pend); }
 	double length() const { return sqrt(meas()); }
+	Point center() const { return Point::Weigh(*pstart, *pend, 0.5); }
 
 	Point* sibling(const Point* p) const {
 		if (p == pstart) return pend;

@@ -209,7 +209,12 @@ Cont* contour_construct(int Npts, int Ned, double* pts, int* edges){
 	for (int i=0; i<Npts; ++i){
 		p.push_back(Point(pts[2*i], pts[2*i+1]));
 	}
-	return new PointsContoursCollection(p, e);
+	try{
+		return new PointsContoursCollection(p, e);
+	} catch (const std::exception &e){
+		std::cout<<"crossgrid error: "<<e.what()<<std::endl;
+		return 0;
+	}
 }
 
 void cont_free(Cont* c){
@@ -260,7 +265,7 @@ void* create_ecollection_container(int Npts, double* pts, int Nedgs, int* edges)
 		}
 		return ret;
 	} catch (const std::exception &e){
-		std::cout<<"crossgrid error: "<<e.what()<<std::endl;
+		std::cout<<"hybmesh_contours2d error: "<<e.what()<<std::endl;
 		return 0;
 	}
 }
@@ -268,10 +273,36 @@ void free_ecollection_container(void* ecol){
 	delete static_cast<HMCont2D::Container<HMCont2D::ECollection>*>(ecol);
 }
 
+int set_ecollection_bc(void* src, void* tar, int def, int* vsrc, int* vtar){
+	try{
+		auto esrc = static_cast<HMCont2D::ECollection*>(src);
+		auto etar = static_cast<HMCont2D::ECollection*>(tar);
+		for (int i=0; i<etar->size(); ++i){
+			Point cpoint = etar->edge(i)->center();
+			auto ce = HMCont2D::ECollection::FindClosestEdge(*esrc, cpoint);
+			if (ISZERO(std::get<1>(ce))){
+				vtar[i] = vsrc[std::get<3>(ce)];
+			} else {
+				vtar[i] = def;
+			}
+		}
+		return 0;
+	} catch (const std::exception &e){
+		std::cout<<"set_ecollection_bc error: "<<e.what()<<std::endl;
+		return 1;
+	}
+}
+
+
 double ecollection_area(void* ecol){
-	auto c = static_cast<HMCont2D::ECollection*>(ecol);
-	auto tree = HMCont2D::ExtendedTree::Assemble(*c);
-	return HMCont2D::Area(tree);
+	try{
+		auto c = static_cast<HMCont2D::ECollection*>(ecol);
+		auto tree = HMCont2D::ExtendedTree::Assemble(*c);
+		return HMCont2D::Area(tree);
+	} catch (const std::exception &e){
+		std::cout<<"domain area calculation error: "<<e.what()<<std::endl;
+		return 0;
+	}
 }
 
 void contour_get_info(Cont* c, int* Npnt, int* Neds,
@@ -310,33 +341,6 @@ double grid_area(Grid* g){
 double contour_area(Cont* c){
 	return static_cast<PointsContoursCollection*>(c)->area();
 }
-
-//Grid* boundary_layer_grid(void* cont, int is_inner, int Npart, double* part,
-//                int mesh_cont_type, double mesh_cont_step,
-//                int round_off, double minsharp){
-//        try{
-//                BLayerGridInput inp;
-//                inp.tree = static_cast<HMCont2D::ContourTree*>(cont);
-//                inp.direction = is_inner == 1 ? INSIDE : OUTSIDE;
-//                switch (mesh_cont_type){
-//                        case 0: inp.bnd_step_method = BLayerGridInput::NO_BND_STEPPING; break;
-//                        case 1: inp.bnd_step_method = BLayerGridInput::CONST_BND_STEP; break;
-//                        case 2: inp.bnd_step_method = BLayerGridInput::CONST_BND_STEP_KEEP_SHAPE; break;
-//                        case 3: inp.bnd_step_method = BLayerGridInput::CONST_BND_STEP_KEEP_ALL; break;
-//                        default: throw std::runtime_error("Invalid mesh_cont_type");
-//                }
-//                inp.bnd_step = mesh_cont_step;
-//                inp.round_off = round_off == 1;
-//                inp.minsharp = minsharp/180.0*M_PI;
-//                for (int i=0; i<Npart; ++i) inp.partition.push_back(part[i]);
-//                std::unique_ptr<BLayerGrid> res(new BLayerGrid(inp));
-//                return res.release();
-//        } catch (std::exception& e){
-//                std::cout<<e.what()<<std::endl;
-//                return 0;
-//        }
-//}
-
 
 template <class C>
 C string_option(std::string opt,
@@ -378,7 +382,7 @@ Grid* boundary_layer_grid_wcb(int N, BoundaryLayerGridOption* popt,
 		GridGeom* ret = new GridGeom(HMBlay::BuildBLayerGrid(vinp));
 		return ret;
 	} catch (const std::exception &e){
-		std::cout<<"crossgrid error: "<<e.what()<<std::endl;
+		std::cout<<"Boundary layer builder error: "<<e.what()<<std::endl;
 		return 0;
 	}
 }

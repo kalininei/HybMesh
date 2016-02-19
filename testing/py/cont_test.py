@@ -1,4 +1,5 @@
 from HybMeshPyPack import hmscript as hm
+global hm, check
 
 
 def check(cond):
@@ -7,7 +8,6 @@ def check(cond):
 
 
 def check_cont(cont, nn, ne, scont, btypes):
-    global hm, check
     info = hm.info_contour(cont)
     check(info['Nnodes'] == nn)
     check(info['Nedges'] == ne)

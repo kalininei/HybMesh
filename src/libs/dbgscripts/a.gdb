@@ -38,6 +38,10 @@ define info_contour
 	call HMCont2D::Debug::info_contour($arg0)
 end
 
+define info_ecollection
+	call HMCont2D::Debug::info_ecollection($arg0)
+end
+
 define gg_contour
 	call HMCont2D::Debug::geogebra_contour($arg0)
 	if ($argc>1)
@@ -107,8 +111,7 @@ skip file /usr/include/c++/4.8/array
 # gdb -x ../libs/dbgscripts/a.gdb
 
 file python
-# set args ./HybMesh.py ~/.HybMesh/_debug.hmp
-set args ../src/HybMeshPy/HybMesh.py -sx scr1.py
+set args ../../src/py/HybMesh.py -sx bgrid_test.py
 set breakpoint pending on
-b hmcport.cpp:334
+b bgrid_impose.cpp:467
 run 

@@ -2,10 +2,8 @@ import copy
 import command
 import objcom
 from HybMeshPyPack import gdata, basic
-from HybMeshPyPack.gdata import grid2
-from HybMeshPyPack.basic.geom import Point2
 from unite_grids import (unite_grids, grid_excl_cont, setbc_from_conts,
-    boundary_layer_grid)
+                         boundary_layer_grid)
 
 
 class NewGridCommand(objcom.AbstractAddRemove):
@@ -47,7 +45,7 @@ class AddUnfRectGrid(NewGridCommand):
     def _build_grid(self):
         so = self.options
         return gdata.grid2.UnfRectGrid(so['p0'], so['p1'],
-                so['nx'], so['ny'])
+                                       so['nx'], so['ny'])
 
 
 class AddUnfCircGrid(NewGridCommand):
@@ -74,8 +72,9 @@ class AddUnfCircGrid(NewGridCommand):
 
     def _build_grid(self):
         opt = self.options
-        return gdata.grid2.UnfCircGrid(opt['p0'], opt['rad'],
-                opt['na'], opt['nr'], opt['coef'], opt['is_trian'])
+        return gdata.grid2.UnfCircGrid(
+            opt['p0'], opt['rad'], opt['na'], opt['nr'],
+            opt['coef'], opt['is_trian'])
 
 
 class AddUnfRingGrid(NewGridCommand):
@@ -100,8 +99,9 @@ class AddUnfRingGrid(NewGridCommand):
 
     def _build_grid(self):
         opt = self.options
-        return gdata.grid2.UnfRingGrid(opt['p0'], opt['radinner'],
-                opt['radouter'], opt['na'], opt['nr'], opt['coef'])
+        return gdata.grid2.UnfRingGrid(
+            opt['p0'], opt['radinner'], opt['radouter'],
+            opt['na'], opt['nr'], opt['coef'])
 
 
 class ExcludeContours(objcom.AbstractAddRemove):
@@ -131,7 +131,6 @@ class ExcludeContours(objcom.AbstractAddRemove):
 
     #overriden from NewGridCommand keeping self.remove_com
     def __build_grid(self):
-        import HybMeshPyPack.basic.interf
         try:
             _, _, base = self.receiver.get_grid(name=self.options['grid_name'])
         except:
@@ -177,9 +176,9 @@ class UniteGrids(objcom.AbstractAddRemove):
         'name, buf, den - dictionary'
         def __init__(self):
             super(UniteGrids.Option, self).__init__(
-                    name=command.BasicOption(str),
-                    buf=command.BasicOption(float),
-                    den=command.BasicOption(int)
+                name=command.BasicOption(str),
+                buf=command.BasicOption(float),
+                den=command.BasicOption(int)
             )
 
     @classmethod
@@ -211,12 +210,11 @@ class UniteGrids(objcom.AbstractAddRemove):
             d = self.options['plus'][ind - 1]['den']
         if gname not in self.receiver.get_grid_names():
             raise command.ExecutionError('Grid was not found: %s' % gname,
-                    self)
+                                         self)
         _, _, g = self.receiver.get_grid(name=gname)
         return g, b, d
 
     def _addrem_objects(self):
-        import HybMeshPyPack.basic.interf
         opt = self.options
         #basic grid
         ret, _, _ = self._get_grid(0)
@@ -229,10 +227,10 @@ class UniteGrids(objcom.AbstractAddRemove):
                 cb = self.ask_for_callback(basic.interf.Callback.CB_CANCEL2)
                 #execute
                 ret = unite_grids(ret, g, b,
-                        opt['fix_bnd'], opt['empty_holes'], cb)
+                                  opt['fix_bnd'], opt['empty_holes'], cb)
             except Exception as e:
                 raise command.ExecutionError('Unition Error: %s' % str(e),
-                        self, e)
+                                             self, e)
             if (ret is None):
                 return [], [], [], []
 
@@ -259,7 +257,8 @@ class BuildBoundaryGrid(NewGridCommand):
             kwargs["name"] = "Grid1"
         for op in kwargs['opt']:
             if 'start' not in op or 'end' not in op:
-                op['start'] = op['end'] = Point2(0, 0)
+                op['start'] = None
+                op['end'] = None
         super(BuildBoundaryGrid, self).__init__(kwargs)
 
     class Option(command.SubDictOption):
@@ -274,8 +273,8 @@ class BuildBoundaryGrid(NewGridCommand):
                 algo_right=command.BasicOption(float),
                 algo_straight=command.BasicOption(float),
                 algo_reentr=command.BasicOption(float),
-                start=command.Point2Option(),
-                end=command.Point2Option(),
+                start=command.NoneOr(command.Point2Option()),
+                end=command.NoneOr(command.Point2Option()),
                 force_conf=command.BoolOption()
             )
 
@@ -301,16 +300,97 @@ class BuildBoundaryGrid(NewGridCommand):
                 }, ...]
         """
         return {
-                'name': command.BasicOption(str),
-                'opt': command.ListOfOptions(cls.Option())
+            'name': command.BasicOption(str),
+            'opt': command.ListOfOptions(cls.Option())
         }
 
-    #function for overloading
-    def _build_grid(self):
-        '-> grid2.Grid2'
-        import HybMeshPyPack.basic.interf
-        arg = copy.deepcopy(self.options['opt'])
+    def __find_open_subcont(self, cont, pts):
+        """ -> (p0, p1) or None.
+        finds closest to pts subcontour in cont.
+        if it is open -> returns its first and last points
+        else returns None
+        """
+        # edges points
+        ep = cont.edges_points()
+        # array of subcontours
+        edss = cont.sorted_edges()
+        # subcontour closest to pts
+        eds = None
+        if len(edss) == 1:
+            eds = edss[0]
+        elif len(edss) == 0:
+            return None
+        else:
+            pi = cont.closest_point_index(pts)
+            for lst in edss:
+                for e in lst:
+                    if pi in ep[e][:2]:
+                        eds = lst
+                        break
+                if eds is not None:
+                    break
+
+        # first/last point of subcontour
+        if len(eds) > 1:
+            e0, e1, em1, em2 = [ep[eds[i]][:2] for i in [0, 1, -1, -2]]
+            p0 = e0[0] if e0[1] in e1 else e0[1]
+            p1 = em1[1] if em1[0] in em2 else em1[1]
+        elif len(eds) == 1:
+            [p0, p1] = eds[0][:2]
+        else:
+            return None
+
+        # return if subcontour is open
+        return None if p0 == p1 else (cont.points[p0], cont.points[p1])
+
+    def __adjust_arg(self, arg):
+        """ changes 'source' from name to AbstractContour object
+            if end points are None changes them to actual values
+            and adds options for multiply connected domains
+        """
         for op in arg:
             op['source'] = self.any_cont_by_name(op['source'])
-        cb = self.ask_for_callback(basic.interf.Callback.CB_CANCEL2)
-        return boundary_layer_grid(arg, cb)
+
+        # if end points are None:
+        #    transform them to real contour point
+        #    create set of options for multiply connected domains
+        newops = []
+        for op in arg:
+            if op['start'] is None or op['end'] is None:
+                eds = op['source'].sorted_edges()
+                epoints = op['source'].edges_points()
+                p0 = op['source'].points[epoints[eds[0][0]][0]]
+                op['start'] = op['end'] = copy.deepcopy(p0)
+                for e in eds[1:]:
+                    newop = op
+                    pi = op['source'].points[epoints[e[0]][0]]
+                    newop['start'] = newop['end'] = copy.deepcopy(pi)
+        arg.extend(newops)
+
+        # if contour is open and points coincide
+        # write first/last point of the contour
+        for op in arg:
+            if op['start'].x == op['end'].x and op['start'].y == op['end'].y:
+                subcont = self.__find_open_subcont(op['source'], op['start'])
+                if subcont is not None:
+                    op['start'] = subcont[0]
+                    op['end'] = subcont[-1]
+
+    def _build_grid(self):
+        '-> grid2.Grid2'
+        arg = copy.deepcopy(self.options['opt'])
+        self.__adjust_arg(arg)
+
+        try:
+            cb = self.ask_for_callback(basic.interf.Callback.CB_CANCEL2)
+            ret = boundary_layer_grid(arg, cb)
+        except Exception as e:
+            raise command.ExecutionError(str(e), self, e)
+
+        #boundary conditions
+        if ret is not None:
+            ret.build_contour()
+            srccont = [op['source'] for op in arg]
+            setbc_from_conts(ret.cont, srccont)
+
+        return ret

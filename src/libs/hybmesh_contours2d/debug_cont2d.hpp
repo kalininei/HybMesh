@@ -21,13 +21,16 @@ struct Debug{
 	static void geogebra_etree(const ExtendedTree& c);
 	static void geogebra_box(const BoundingBox& c);
 
+	//contour in vtk format
+	static void vtk_contours(const ShpVector<HMCont2D::Contour>& c, const char* fn="_debug.vtk");
+
 	//printing with tabulation
 	static int tabs;
 	static void Print(const char* fmt, ...);
 	static std::ostream& Cout();
 
 	//aux data
-	Debug():ptr(0), i(0){ pre(); }
+	Debug(): ptr(0), i(0) { pre(); }
 	void* ptr;
 	int i;
 

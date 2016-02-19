@@ -165,7 +165,9 @@ class SimplifyContours(objcom.AbstractAddRemove):
         #simplify
         if simp:
             for i in range(len(added)):
-                added[i] = (added[i][0], added[i][1].simplify(an))
+                cc = added[i][1].simplify(an)
+                if cc is not None:
+                    added[i] = (added[i][0], cc)
 
         #separate
         if sep:

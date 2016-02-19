@@ -1,0 +1,6 @@
+#!/usr/bin/sh
+
+python ../../src/py/HybMesh.py -sx cont_test.py -silent
+python ../../src/py/HybMesh.py -sx exclude_test.py -silent
+python ../../src/py/HybMesh.py -sx bgrid_test.py -silent
+

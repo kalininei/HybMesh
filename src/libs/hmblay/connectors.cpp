@@ -137,15 +137,16 @@ void RightConnector::BuildInternals() {
 // ============================ Reentrant connector
 void ReentrantConnector::BuildInternals(){
 	//1) assemble left/bot:
-	// left/bot are straight lines. Otherwise there was an error
-	// during ExtPath division
 	left = prev->RightContour();
 	bot = next->LeftContour();
+	// left/bot are straight lines. Otherwise there was an error
+	// during ExtPath division
 	assert(ISEQ( left.length(), Point::dist(*left.first(), *left.last()) ));
 	assert(ISEQ( bot.length(),  Point::dist(*bot.first(), *bot.last())  ));
-	int sz = std::min(left.size(), bot.size());
-	if (left.size()>sz) left = HMCont2D::ECollection::ShallowCopy(left, 0, sz);
-	if (bot.size()>sz) bot = HMCont2D::ECollection::ShallowCopy(bot, 0, sz);
+	//why is it here?
+	//int sz = std::min(left.size(), bot.size());
+	//if (left.size()>sz) left = HMCont2D::ECollection::ShallowCopy(left, 0, sz);
+	//if (bot.size()>sz) bot = HMCont2D::ECollection::ShallowCopy(bot, 0, sz);
 
 	//2) assembling top/right
 	// Find a corner point and draw lines from left/bot to it
@@ -155,13 +156,7 @@ void ReentrantConnector::BuildInternals(){
 	v2 = vecRotate(v2, M_PI/2);
 	double ksieta[2];
 	SectCross(*left.last(), *left.last() + v1, *bot.last(), *bot.last() + v2, ksieta);
-	if (ksieta[0]<2 && ksieta[1]<2){
-		top_right_pnt = Point::Weigh(*left.last(), *left.last() + v1, ksieta[0]);
-	} else {
-		//Circle grid is needed
-		std::cout<<"CIRCLE GRID IS NEEDED"<<std::endl;
-		top_right_pnt = Point::Weigh(*left.last(), *left.last() + v1, ksieta[0]);
-	}
+	top_right_pnt = Point::Weigh(*left.last(), *left.last() + v1, ksieta[0]);
 	top.clear(); right.clear();
 	top.add_value(HMCont2D::Edge { left.last(), &top_right_pnt});
 	right.add_value(HMCont2D::Edge { bot.last(), &top_right_pnt});
@@ -189,7 +184,6 @@ void ReentrantConnector::BuildInternals(){
 }
 
 // =========================== RoundConnector
-#include "fileproc.h"
 void RoundConnector::BuildInternals(){
 	assert(next->left_points.size()>1);
 	assert(prev->right_points.size()>1);

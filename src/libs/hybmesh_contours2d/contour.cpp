@@ -256,6 +256,13 @@ bool Contour::AllWithout(const vector<Point>& p) const{
 	for (auto& it: p) if (cp.WhereIs(it) != 0) return false;
 	return true;
 }
+int Contour::WhereIs(const Point& p) const{
+	assert(is_closed());
+	//use clipper procedure
+	Impl::ClipperPath cp(*this);
+	return cp.WhereIs(p);
+}
+
 
 std::tuple<bool, Point*>
 Contour::GuaranteePoint(const Point& p, PCollection& pcol){

@@ -41,7 +41,7 @@ public:
 	void AddWeights(const std::map<const Cell*, int>& w);
 
 	//all cells which were created from the same source
-	//has unique address at source_feat. Value by it self doesn't matter.
+	//has unique address at source_feat. Value by itself doesn't matter.
 	//Cells are considered to belong to same source if
 	//source_feat[c1].get() == source_feat[c2].get()
 	std::map<const Cell*, shared_ptr<int>> source_feat;

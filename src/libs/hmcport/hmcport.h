@@ -65,12 +65,23 @@ double contour_area(Cont* c);
 void add_contour_bc(Cont* src, Cont* tar, int* vsrc, int* vtar, int def);
 
 // === hybmesh_contours2d management
+
 //builds HMBlay::Container<HMBlay::ECollection>.
 //pts[2*Npts], edges[2*Nedges]
 void* create_ecollection_container(int Npts, double* pts, int Nedgs, int* edges);
 void free_ecollection_container(void* ecol);
+
 //calculates area with respect to multiplicity
 double ecollection_area(void* ecol);
+
+//Fill target boundary values from source contour values if
+//target edge lies on source edge.
+//def - value which will be assigned if no source boundary was found
+//src, tar - ecollection objects for source and target boundaries
+//vsrc[src.size()], vtar[tar.size()] - input and output boudnary values
+//return 0 if ok and 1 if error
+int set_ecollection_bc(void* src, void* tar, int def, int* vsrc, int* vtar);
+
 
 // === set default callbacks
 //crossgrid callback pointer is the function of the following arguments:

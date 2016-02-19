@@ -3,15 +3,15 @@ import ctypes as ct
 import cobj
 
 
-def add_bc_from_cont(tar_cont, src_cont, c_src=None, c_tar=None):
-    """ (contour2.Contour2, contour2.Contour2) -> None
+def add_bc_from_cont(tar_cont, src_cont, c_tar=None, c_src=None):
+    """ (contour2.AbstractContour, contour2.AbstractContour) -> None
 
-        Adds boundary condition to tar_cont from src_cont
-        if grid boundary edge lies on the contour edge.
-        Changes grd.cont data.
+    Adds boundary condition to tar_cont from src_cont
+    if grid boundary edge lies on the contour edge.
+    Changes tar_cont data.
 
-        Helper c_src and c_tar are the c representation of
-        target and source contours of ct.c_void_p type.
+    Helper c_src and c_tar are the c representation of
+    target and source contours of ct.c_void_p type.
     """
     lib_fa = cobj.cport_lib()
 
@@ -19,11 +19,11 @@ def add_bc_from_cont(tar_cont, src_cont, c_src=None, c_tar=None):
     need_src_clear, need_tar_clear = False, False
     if c_src is None:
         need_src_clear = True
-        c_src = cobj.cont_to_c(src_cont)
+        c_src = cobj.cont2_to_c(src_cont)
 
     if c_tar is None:
         need_tar_clear = True
-        c_tar = cobj.cont_to_c(tar_cont)
+        c_tar = cobj.cont2_to_c(tar_cont)
 
     #create contours boundary array
     c_src_bnd = (ct.c_int * src_cont.n_edges())()  # input
@@ -32,7 +32,8 @@ def add_bc_from_cont(tar_cont, src_cont, c_src=None, c_tar=None):
         c_src_bnd[i] = src_cont.edge_bnd(i)
 
     #call lib_fa function
-    lib_fa.add_contour_bc(c_src, c_tar, c_src_bnd, c_tar_bnd, ct.c_int(-1))
+    out = lib_fa.set_ecollection_bc(
+        c_src, c_tar, ct.c_int(-1), c_src_bnd, c_tar_bnd)
 
     #write data to target contour
     new_bnd = {}
@@ -44,13 +45,16 @@ def add_bc_from_cont(tar_cont, src_cont, c_src=None, c_tar=None):
 
     #clear c data
     if need_src_clear:
-        lib_fa.cont_free(c_src)
+        lib_fa.free_ecollection_container(c_src)
     if need_tar_clear:
-        lib_fa.cont_free(c_tar)
+        lib_fa.free_ecollection_container(c_tar)
+
+    if int(out) != 0:
+        raise Exception("Error at boundary assignment")
 
 
 def setbc_from_conts(tar_cont, src):
-    """ (contour2.Contour2, [contour2.Contour2]) -> None
+    """ (contour2.AbstractContour, [contour2.AbstractContour]) -> None
         Sets boundary condition to tar_cont from list of source contours.
     """
     lib_fa = cobj.cport_lib()
@@ -58,12 +62,12 @@ def setbc_from_conts(tar_cont, src):
     tar_cont.set_edge_bnd({i: 0 for i in range(tar_cont.n_edges())})
 
     #loop over each source contours
-    c_tar = cobj.cont_to_c(tar_cont)
+    c_tar = cobj.cont2_to_c(tar_cont)
     for cont in src:
-        c_src = cobj.cont_to_c(cont)
-        add_bc_from_cont(tar_cont, cont, c_src, c_tar)
-        lib_fa.cont_free(c_src)
-    lib_fa.cont_free(c_tar)
+        c_src = cobj.cont2_to_c(cont)
+        add_bc_from_cont(tar_cont, cont, c_tar, c_src)
+        lib_fa.free_ecollection_container(c_src)
+    lib_fa.free_ecollection_container(c_tar)
 
 
 def unite_grids(g1, g2, buf, fix_bnd, empty_holes, cb):
@@ -118,13 +122,13 @@ def grid_excl_cont(grd, cnt, is_inner, cb):
         #assign boundary conditions
         bs = cnt.bnd_types().union(grd.cont.bnd_types()).difference(set([0]))
         if len(bs) > 0:
-            res_cont = cobj.cont_to_c(newg.cont)
+            res_cont = cobj.cont2_to_c(newg.cont)
             #1. from source grid
             add_bc_from_cont(newg.cont, grd.cont, c_tar=res_cont)
             #2. from contour
-            add_bc_from_cont(newg.cont, cnt, c_tar=res_cont, c_src=c_c)
+            add_bc_from_cont(newg.cont, cnt, c_tar=res_cont)
             #3. free contour memory
-            lib_fa.cont_free(res_cont)
+            lib_fa.free_ecollection_container(res_cont)
 
         #free grid memory
         lib_fa.grid_free(res)
@@ -145,8 +149,6 @@ def boundary_layer_grid(opt, cb):
               All fields must be filled
         cb - callback of CB_CANCEL2 type
     """
-    import ctypes as ct
-
     # prepare c input data
     class COptStruct(ct.Structure):
         usedconts = {}
@@ -157,34 +159,34 @@ def boundary_layer_grid(opt, cb):
             self.Npartition = ct.c_int(n)
             self.partition = (ct.c_double * n)(*opt_entry['partition'])
             self.direction = ct.c_char_p(
-                    {1: 'LEFT', -1: 'RIGHT'}[opt_entry['direction']])
+                {1: 'LEFT', -1: 'RIGHT'}[opt_entry['direction']])
             self.mesh_cont = ct.c_char_p({
                 0: 'NO', 1: 'KEEP_ORIGIN', 2: 'KEEP_SHAPE', 3: 'IGNORE_ALL'
             }[opt_entry['mesh_cont']])
             self.mesh_cont_step = ct.c_double(opt_entry['mesh_cont_step'])
             self.start = (ct.c_double * 2)(opt_entry['start'].x,
-                    opt_entry['start'].y)
+                                           opt_entry['start'].y)
             self.end = (ct.c_double * 2)(opt_entry['end'].x,
-                    opt_entry['end'].y)
+                                         opt_entry['end'].y)
             self.force_conformal = ct.c_int(
-                    1 if opt_entry['force_conf'] else 0)
+                1 if opt_entry['force_conf'] else 0)
             self.angle_range = (ct.c_double * 4)(
-                    opt_entry['algo_acute'],
-                    opt_entry['algo_right'],
-                    opt_entry['algo_straight'],
-                    opt_entry['algo_reentr'])
+                opt_entry['algo_acute'],
+                opt_entry['algo_right'],
+                opt_entry['algo_straight'],
+                opt_entry['algo_reentr'])
 
         _fields_ = [
-                ('cont', ct.c_void_p),
-                ('Npartition', ct.c_int),
-                ('partition', ct.POINTER(ct.c_double)),
-                ('direction', ct.c_char_p),
-                ('mesh_cont', ct.c_char_p),
-                ('mesh_cont_step', ct.c_double),
-                ('start', ct.c_double * 2),
-                ('end', ct.c_double * 2),
-                ('force_conformal', ct.c_int),
-                ('angle_range', ct.c_double * 4),
+            ('cont', ct.c_void_p),
+            ('Npartition', ct.c_int),
+            ('partition', ct.POINTER(ct.c_double)),
+            ('direction', ct.c_char_p),
+            ('mesh_cont', ct.c_char_p),
+            ('mesh_cont_step', ct.c_double),
+            ('start', ct.c_double * 2),
+            ('end', ct.c_double * 2),
+            ('force_conformal', ct.c_int),
+            ('angle_range', ct.c_double * 4),
         ]
 
     lib_fa = cobj.cport_lib()
@@ -212,7 +214,11 @@ def boundary_layer_grid(opt, cb):
     # 4) take result
     if cres.value is not None:
         ret = cobj.grid_from_c(cres)
+    elif cb._proceed:
+        # if no result and no cancel -> there was an error
+        raise Exception("Boundary grid builder error")
     else:
+        # if cancel -> return None
         ret = None
 
     # 5) free data

@@ -1,6 +1,7 @@
 from HybMeshPyPack import com
 from HybMeshPyPack.hmscript import flow
 from HybMeshPyPack.basic.geom import Point2
+from . import ExecError
 
 
 def exclude_contours(grid, conts, exclude_outer=True):
@@ -16,6 +17,9 @@ def exclude_contours(grid, conts, exclude_outer=True):
 
     Returns:
        new grid identifier
+
+    Raises:
+       hmscript.ExecError
 
     All input contours should bound a domain. Open contours are not allowed.
 
@@ -70,6 +74,9 @@ def unite_grids(base_grid, imp_grids, empty_holes=False, fix_bnd=False):
     Returns:
        identifier of the newly created grid
 
+    Raises:
+       hmscript.ExecError
+
     Each next grid will be imposed on the result of previous imposition
 
     Example:
@@ -105,8 +112,11 @@ class BoundaryGridOption(object):
       List of ascending floats starting with zero which
       represents distances from contour to grid layers
     :ivar int direction:
-      1/-1. Boundary grid will be built to the left/right
+      'left'/'right'. Boundary grid will be built to the left/right
       from the contour (with respect to positive tracing)
+    :ivar float bnd_step:
+      float size of artificial stepping along the contour (used only if
+      `bnd_stepping` is not "no")
     :ivar str bnd_stepping:
       algorithm for stepping along the contour
 
@@ -119,15 +129,13 @@ class BoundaryGridOption(object):
       * 'keep_all': use stepping and keep all contour nodes
     :ivar list-of-floats range_angles:
       list of 4 angle (deg) values which define algorithms
-      for treatment of contour bends:
+      for contour bends treatment:
 
       * ``[0,     ra[0]]``: acute angle algorithm
       * ``[ra[0], ra[1]]``: right angle algorithm
       * ``[ra[1], ra[2]]``: straight angle algorithm
       * ``[ra[2], ra[3]]``: reentrant angle algorithm
-      * ``[ra[3],   360]``:  round algorithm
-    :ivar float bnd_step:
-      float size of artificial stepping along the contour
+      * ``[ra[3],   360]``: round algorithm
     :ivar bool force_conformal:
       use strictly conformal mappings
     :ivar list-of-floats start_point, end_point:
@@ -140,10 +148,10 @@ class BoundaryGridOption(object):
 
     def __init__(self, contour_id=None,
                  partition=[0],
-                 direction=1,
-                 bnd_stepping="no",
+                 direction="left",
                  bnd_step=0.1,
-                 range_angles=[30, 135, 225, 275],
+                 bnd_stepping="keep_shape",
+                 range_angles=[40, 135, 225, 275],
                  force_conformal=False,
                  start_point=None,
                  end_point=None):
@@ -169,6 +177,9 @@ def build_boundary_grid(opts):
 
     Returns:
        identifier of the newly created grid.
+
+    Raises:
+       hmscript.ExecError, ValueError
 
     .. note::
       If different options for different segements of the contour are required
@@ -221,14 +232,22 @@ def build_boundary_grid(opts):
         d['source'] = op.contour_id
         d['partition'] = op.partition
         d['direction'] = op.direction
+        if op.direction == "left":
+            d['direction'] = 1
+        elif op.direction == "right":
+            d['direction'] = -1
+        else:
+            raise ValueError("Invalid direction: " + str(op.direction))
         if op.bnd_stepping == "no":
             d['mesh_cont'] = 0
         elif op.bnd_stepping == "const":
             d['mesh_cont'] = 3
         elif op.bnd_stepping == "keep_shape":
             d['mesh_cont'] = 2
-        else:
+        elif op.bnd_stepping == "keep_all":
             d['mesh_cont'] = 1
+        else:
+            raise ValueError("Invalid bnd_stepping: " + str(op.bnd_stepping))
         d['mesh_cont_step'] = op.bnd_step
         d['algo_acute'] = op.range_angles[0]
         d['algo_right'] = op.range_angles[1]
@@ -237,11 +256,12 @@ def build_boundary_grid(opts):
         if (op.start_point is not None and op.end_point is not None):
             d['start'] = Point2(*op.start_point)
             d['end'] = Point2(*op.end_point)
-        else:
-            d['start'] = d['end'] = Point2(0, 0)
         d['force_conf'] = op.force_conformal
         inp.append(d)
 
     c = com.gridcom.BuildBoundaryGrid({"opt": inp})
-    flow.exec_command(c)
-    return c._get_added_names()[0][0]
+    try:
+        flow.exec_command(c)
+        return c._get_added_names()[0][0]
+    except Exception:
+        raise ExecError('build_boundary_grid')

@@ -7,7 +7,9 @@ namespace HMBlay{namespace Impl{
 struct MConnector{
 protected:
 	virtual BGrid* ConnectionGrid(){ return 0;}
+	// modifies prev and next meshes
 	virtual void ModifyAdjacents(){};
+	// builds grid in a connection area itself
 	virtual void BuildInternals(){};
 	MappedMesher *prev, *next;
 	MConnector(MappedMesher* _prev, MappedMesher* _next): prev(_prev), next(_next){}
