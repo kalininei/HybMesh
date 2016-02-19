@@ -44,7 +44,7 @@ Copyright: (C) Advanced Interfaces Group,
 
 /* Increase GPC_EPSILON to encourage merging of near coincident edges    */
 
-#define GPC_EPSILON (DBL_EPSILON)
+#define GPC_EPSILON 128*(DBL_EPSILON)
 
 #define GPC_VERSION "2.32"
 

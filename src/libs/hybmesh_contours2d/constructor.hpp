@@ -25,6 +25,7 @@ ContourFromPoints(Iter first, Iter last, bool force_closed=false){
 
 HMCont2D::Container<Contour> ContourFromPoints(vector<double> pnt, bool force_closed=false);
 HMCont2D::Container<Contour> ContourFromPoints(vector<Point> pnt, bool force_closed=false);
+HMCont2D::Container<Contour> ContourFromBBox(BoundingBox bbox);
 
 //Contour from another contours with deep copy
 HMCont2D::Container<Contour> CutContour(const HMCont2D::Contour& cont,

@@ -97,7 +97,7 @@ void ci::Heal(TRet& c1){
 	//remove zero length edges
 	for (auto& path: c1.nodes){
 		auto pts = path->corner_points();
-		if (pts.size() < 3){ 
+		if (path->size() < 3){ 
 			//invalid contour. Will be removed.
 			path->data.resize(2);
 			continue;
@@ -204,10 +204,48 @@ TRet ci::Union(const vector<ECont>& cont){
 }
 
 TRet ci::Difference(const ETree& c1, const vector<ECont>& cont){
-	_THROW_NOT_IMP_;
+	if (cont.size() == 0) return TRet::DeepCopy(c1);
+	Impl::GpcTree p1(c1);
+	for (auto& c: cont){
+		Impl::GpcTree g(c);
+		p1 = Impl::GpcTree::Substract(p1, g);
+	}
+	return p1.ToContourTree();
 }
 
 void ci::Heal(TRet& c1){
+	//remove zero length edges
+	for (auto& path: c1.nodes){
+		auto pts = path->ordered_points();
+		if (path->size() < 3){ 
+			//invalid contour. Will be removed.
+			path->data.resize(2);
+			continue;
+		}
+		//doubled points
+		std::set<int> not_needed;
+		for (int i=0; i<pts.size(); ++i){
+			auto iprev = (i==0) ? pts.size()-1 : i-1;
+			if (Point::meas(*pts[iprev], *pts[i])<sqr(geps)) not_needed.insert(i);
+		}
+		aa::remove_entries(pts, not_needed);
+		not_needed.clear();
+		//wright simplified contour
+		if (pts.size() != path->size()){
+			auto c = HMCont2D::Constructor::ContourFromPoints(pts, true);
+			path->data = c.data;
+		}
+	}
+	//remove invalid contours with less then 3 edges
+	std::set<int> not_needed;
+	for (int i=0; i<c1.cont_count(); ++i){
+		if (c1.nodes[i]->size()<3) not_needed.insert(i);
+	}
+	if (not_needed.size() > 0){
+		aa::remove_entries(c1.nodes, not_needed);
+		//updates topology
+		c1.UpdateTopology();
+	}
 }
 #endif
 

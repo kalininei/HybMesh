@@ -1,4 +1,5 @@
 #include "clipper_core.hpp"
+#include <limits>
 
 using namespace HMCont2D;
 using namespace HMCont2D::Impl;
@@ -8,6 +9,7 @@ void ClipperObject::ApplyBoundingBox(const BoundingBox& newbbox){
 	//factor and p0, p1
 	long double maxlen = (long double) std::max(bbox.lenx(), bbox.leny()) / 2.0;
 	factor = (long double)CLIPPER_RESOLUTION / maxlen;
+	factor = std::min(factor, (long double) std::numeric_limits<ClipperLib::cInt>::max()/100.0);
 	p0 = newbbox.Center();
 }
 
@@ -136,7 +138,7 @@ bool clipper_heal(ClipperLib::Path& path, const ClipperObject& bbox, bool is_clo
 		long int y0 = path[i1].Y - path[i0].Y;
 		long int y1 = path[i2].Y - path[i0].Y;
 		long int ar = x0*y1 - y0*x1;
-		return fabs(ar)<=eps;
+		return std::abs(ar)<=eps;
 	};
 	if (is_closed){
 		if (path.size() < 3) return false;

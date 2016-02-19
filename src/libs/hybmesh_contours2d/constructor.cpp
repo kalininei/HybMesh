@@ -31,7 +31,7 @@ HMCont2D::Container<Contour> cns::Circle(int N, Point cnt, Point poc){
 
 Contour cns::ContourFromPoints(const vector<Point*>& pnt, bool force_closed){
 	Contour ret;
-	for (int i=0; i<pnt.size() - 1; ++i){
+	for (int i=0; i<(int)pnt.size() - 1; ++i){
 		ret.add_value(Edge(pnt[i], pnt[i+1]));
 	}
 	if (force_closed && pnt[0]!=pnt.back()){
@@ -42,7 +42,7 @@ Contour cns::ContourFromPoints(const vector<Point*>& pnt, bool force_closed){
 
 Container<Contour> cns::ContourFromPoints(vector<double> pnt, bool force_closed){
 	vector<Point> p;
-	for (int i=0; i<pnt.size(); i+=2) p.push_back(Point(pnt[i], pnt[i+1]));
+	for (int i=0; i<(int)pnt.size(); i+=2) p.push_back(Point(pnt[i], pnt[i+1]));
 	return cns::ContourFromPoints(p, force_closed);
 }
 
@@ -63,6 +63,10 @@ Container<Contour> cns::ContourFromPoints(vector<Point> pnt, bool force_closed){
 
 Contour cns::ContourFromPoints(const HMCont2D::PCollection& dt, bool force_closed){
 	return cns::ContourFromPoints(dt.pvalues(), force_closed);
+}
+
+Container<Contour> cns::ContourFromBBox(BoundingBox bbox){
+	return ContourFromPoints(bbox.FourPoints(), true);
 }
 
 Container<Contour> cns::CutContour(const HMCont2D::Contour& cont,

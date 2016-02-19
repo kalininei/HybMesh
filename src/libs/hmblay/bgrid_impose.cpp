@@ -3,21 +3,7 @@
 
 using namespace HMBlay::Impl;
 
-#include "fileproc.h"
 namespace{
-#ifndef NDEBUG
-void SaveVtk(std::list<const Cell*>& lst){
-	GridGeom g(0, 0, 0, 0);
-	for (auto c: lst){
-		std::vector<Point> pc;
-		for (auto pp: c->points){
-			pc.push_back(*pp);
-		}
-		GGeom::Modify::AddCell(g, pc);
-	}
-	save_vtk(g, "_dbgout.vtk");
-}
-#endif
 
 class ContactArea{
 	HMCont2D::PCollection domain_points;
@@ -85,10 +71,13 @@ WidenCellCont(const HMCont2D::Contour& cont){
 	return HMCont2D::Constructor::ContourFromPoints(ret, true);
 }
 
-bool CellsIntersect(const Cell* c1, const Cell* c2,
-		const BGrid& grid1){
+bool CellsIntersect(const Cell* c1, const Cell* c2, const BGrid& grid1){
+	//Finds if widened cells with different source feature area intersected 
+	//Distance of widening is defined in WidenCellCont procedure.
+	
 	//if cells share the same feature return false
 	if (grid1.is_from_same_source(c1, c2)) return false;
+
 	//if have common edge return false
 	for (int i=0; i<c1->dim(); ++i){
 		int cp = 0;
@@ -97,6 +86,7 @@ bool CellsIntersect(const Cell* c1, const Cell* c2,
 			if (cp>=2) return false;
 		}
 	}
+
 	//calculate intersection of widened cells
 	auto tcont1 = Cell2Cont(c1);
 	auto tcont2 = Cell2Cont(c2);
@@ -185,6 +175,7 @@ std::map<Point*, double> TriAreaWeights(const HMCont2D::ContourTree& tree){
 
 HMCont2D::Container<HMCont2D::Contour>
 CutCellContour(const HMCont2D::Contour& cell, const HMCont2D::Contour& line){
+	// --------- this is unused procedure.
 	//find crosspoints
 	auto crosses = HMCont2D::Contour::CrossAll(cell, line);
 	//if two crosspoints do simple connection
@@ -243,21 +234,21 @@ TRIANGULATION_ALGO:
 void PurgeGrid(BGrid& grid, const HMCont2D::Contour& cont){
 	assert(cont.is_closed());
 	bool innercont = HMCont2D::Area(cont) > 0;
-	//fill bad points, good points: those which lie to the right/left of source contour
-	std::set<const GridPoint*> bad_points, good_points;
+	//fill bad points, good points: those which lie to the right of source contour
+	//!! i'm still not sure whether tracking bad points to tell good/bad cells is enough.
+	//Maybe there is a possibility of a not_too_bad_cell which is gathered all by bad points
+	std::set<const GridPoint*> bad_points;
 	for (int i=0; i<grid.n_points(); ++i){
 		const GridPoint* p = grid.get_point(i);
-		//Explicitly check points on contours because whereis is not relieable
+		//Explicitly check points on contours because whereis is not relieable in this case
 		auto res = HMCont2D::ECollection::FindClosestEdge(cont, *p);
 		if (ISZERO(std::get<1>(res))) continue;
 		//check where is point
 		int r = cont.WhereIs(*p);
 		if (innercont){
 			if (r == 0) bad_points.insert(p);
-			if (r == 1) good_points.insert(p);
 		} else {
 			if (r == 1) bad_points.insert(p);
-			if (r == 0) good_points.insert(p);
 		}
 	}
 	//fill bad cells: which contain bad_points (all points are bad/any point is bad)
@@ -271,7 +262,6 @@ void PurgeGrid(BGrid& grid, const HMCont2D::Contour& cont){
 		else continue;
 		if (std::any_of(c->points.begin(), c->points.end(),
 			[&](GridPoint* p){
-				//return good_points.find(p) != good_points.end();
 				return bad_points.find(p) == bad_points.end();
 			})){ not_too_bad_cells.push_back(c);}
 	}
@@ -300,96 +290,89 @@ void PurgeGrid(BGrid& grid, const HMCont2D::Contour& cont){
 	}
 }
 
-////removes all grid area outside the closed cont
-//void PurgeGrid(BGrid& grid, const HMCont2D::Contour& cont){
-//        //fill bad points: those which lie to the right of source contour
-//        std::set<const GridPoint*> bad_points, good_points;
-//        for (int i=0; i<grid.n_points(); ++i){
-//                const GridPoint* p = grid.get_point(i);
-//                auto edfnd = HMCont2D::ECollection::FindClosestEdge(cont, *p);
-//                if (ISZERO(std::get<1>(edfnd))) continue;
-//                Point* L1 = std::get<0>(edfnd)->pstart;
-//                Point* L2 = std::get<0>(edfnd)->pend;
-//                if (!cont.correctly_directed_edge(std::get<3>(edfnd))) std::swap(L1, L2);
-//                int pos = LinePointWhereIs(*p, *L1, *L2);
-//                if (pos == 2) bad_points.insert(p);
-//                if (pos == 0) good_points.insert(p);
-		
-//        }
-
-//        //fill bad cells: which contain bad_points (all points are bad/any point is bad)
-//        std::vector<const Cell*> bad_cells;
-//        std::vector<const Cell*> not_too_bad_cells;
-//        for (int i=0; i<grid.n_cells(); ++i){
-//                const Cell* c = grid.get_cell(i);
-//                if (std::any_of(c->points.begin(), c->points.end(),
-//                        [&](GridPoint* p){
-//                                return bad_points.find(p) != bad_points.end();
-//                        })){ bad_cells.push_back(c);}
-//                else continue;
-//                if (std::any_of(c->points.begin(), c->points.end(),
-//                        [&](GridPoint* p){
-//                                return good_points.find(p) != good_points.end();
-//                        })){ not_too_bad_cells.push_back(c);}
-//        }
-
-//        //restore good areas of deleted cells
-//        vector<HMCont2D::Container<HMCont2D::Contour>> mgoodareas;
-//        vector<HMCont2D::Contour> goodareas;
-//        for (auto c: not_too_bad_cells){
-//                auto ccont = Cell2Cont(c);
-
-//                //start winding from a bad point for CutCellContour algorithm
-//                auto dcont = ccont.ordered_points();
-//                int i=0;
-//                while (i!=dcont.size()-1 && bad_points.find(
-//                                static_cast<GridPoint*>(dcont[i])) == bad_points.end()){
-//                        ++i;
-//                }
-//                assert(i<dcont.size()-1);
-//                std::rotate(ccont.data.begin(), ccont.data.begin() + i, ccont.data.end());
-		
-
-//                mgoodareas.push_back( CutCellContour(ccont, cont) );
-//                goodareas.push_back( HMCont2D::Contour(mgoodareas.back()));
-	
-//        }
-//        auto goodarea = HMCont2D::Clip::Union(goodareas);
-//        HMCont2D::Clip::Heal(goodarea);
-
-//        //get set of singly connected areas.
-//        while (goodarea.roots().size() != goodarea.nodes.size()){
-//                goodareas.clear();
-//                for (auto n: goodarea.roots()) goodareas.push_back(HMCont2D::Contour(*n));
-//                goodarea = HMCont2D::Clip::Union(goodareas);
-//        }
-
-//        //remove bad cells
-//        GGeom::Modify::RemoveCells(grid, bad_cells);
-
-//        //compensate deleted areas
-//        for (auto n: goodarea.nodes){
-//                vector<Point> p;
-//                for (auto pp: n->corner_points()) p.push_back(*pp);
-//                GGeom::Modify::AddCell(grid, p);
-//        }
-//}
 
 //returns a closed contour from open one so that
 //its closure edges not intersect grid area
 const HMCont2D::Contour* ClosedSource(const HMCont2D::Contour* src, const BGrid* grid){
 	if (src->is_closed()) return src;
-	_DUMMY_FUN_;
-	auto closedsrc = new HMCont2D::Container<HMCont2D::Contour>(
-		HMCont2D::Constructor::ContourFromPoints({Point(0, 0), Point(1, 0), *src->last(), Point(0, 1)}, true));
-	return closedsrc;
+	//connecting first/last point of src so it doesn't cross grid area
+	//basic contour for return. it is yet open.
+	auto closedsrc = new HMCont2D::Container<HMCont2D::Contour>();
+	HMCont2D::Container<HMCont2D::Contour>::DeepCopy(*src, *closedsrc);
+	//assemble grid area
+	auto sm = grid->subdivide();
+	vector<HMCont2D::Contour> contvec;
+	for (auto s: sm){
+		auto tc = GGeom::Info::Contour(*s);
+		for (auto r: tc.roots()) contvec.push_back(HMCont2D::Contour(*r));
+	}
+	auto ar = HMCont2D::Clip::Union(contvec);
+	HMCont2D::Clip::Heal(ar);
+
+	//function to detect if section shortened by 4% intersects 
+	//grid area. Shortage is needed to make end points negligible.
+	auto goodline = [&ar, &closedsrc](Point& p1, Point& p2)->bool{
+		Point w1 = Point::Weigh(p1, p2, 0.02);
+		Point w2 = Point::Weigh(p1, p2, 0.98);
+		HMCont2D::Contour wcont; wcont.add_value(HMCont2D::Edge(&w1, &w2));
+		//check cross with a source lint
+		auto cres = HMCont2D::Contour::Cross(wcont, *closedsrc);
+		if (std::get<0>(cres)) return false;
+		//looping only over parent contours
+		for (auto p: ar.roots()){
+			auto cres = HMCont2D::Contour::Cross(wcont, *p);
+			if (std::get<0>(cres)) return false;
+		}
+		return true;
+	};
+	//1) try: direct connection
+	if (goodline(*src->first(), *src->last())){
+		closedsrc->add_value(HMCont2D::Edge(closedsrc->first(), closedsrc->last()));
+		return closedsrc;
+	}
+	//2) try: connection via grid bounding box
+	auto bbox = HMCont2D::ECollection::BBox(ar);
+	bbox.widen(0.1*std::max(bbox.lenx(), bbox.leny()));
+	auto sqrcont = HMCont2D::Constructor::ContourFromBBox(bbox);
+	auto find_good_box_point = [&](Point& src)->shared_ptr<Point>{
+		static double an = 0;
+		double sz = std::max(bbox.lenx(), bbox.leny());
+		//trying different angles until we find non crossing section
+		for (int i=0; i<20; ++i){
+			Point p2 = src + Point(cos(an), sin(an)) * sz;
+			if ((an += 1.0) > 2*M_PI) an -=2*M_PI;
+			if (goodline(src, p2)) return shared_ptr<Point>(new Point(p2));
+		}
+		return shared_ptr<Point>();
+	};
+	auto epoint = find_good_box_point(*closedsrc->last());
+	if (epoint){
+		//add epoint edge to source in order not to disregard possible crossing with newly added edge
+		closedsrc->pdata.add_value(epoint);
+		closedsrc->add_value(HMCont2D::Edge(epoint.get(), closedsrc->last()));
+		auto spoint = find_good_box_point(*closedsrc->first());
+		if (spoint){
+			//build subcontour from a square
+			auto sqrsubcont = HMCont2D::Constructor::CutContour(sqrcont, *epoint, *spoint);
+			//assemble and return
+			auto p1 = closedsrc->ordered_points();
+			auto p2 = sqrsubcont.ordered_points();
+			vector<Point> outp;
+			for (auto p: p1) outp.push_back(*p);
+			for (int i=1; i<p2.size(); ++i) outp.push_back(*p2[i]);
+			delete closedsrc;
+			return new HMCont2D::Container<HMCont2D::Contour>(HMCont2D::Constructor::ContourFromPoints(outp, true));
+		}
+	}
+	//3) failed to close
+	throw std::runtime_error("Can not find a way to close an open source contour");
 }
 
 void IntersectCellsInfo1(const BGrid& grid, std::list<const Cell*>& to_delete, std::list<const Cell*>& to_keep,
 		std::function<double(const Cell*)> prifun){
+	//list of cells with intersections: ones to delete and ones to keep
 	//VERY VERY VERY SLOW BUT
 	//VERY VERY VERY SIMPLE ALGORITHM
-	//list of cells with intersections: ones to delete and ones to keep
 	for (int i=0; i<grid.n_cells(); ++i){
 		std::cout<<i<<" out of "<<grid.n_cells()<<std::endl;
 		const Cell* ci = grid.get_cell(i);
@@ -410,13 +393,6 @@ void IntersectCellsInfo1(const BGrid& grid, std::list<const Cell*>& to_delete, s
 		//adding to list
 		if (!keep_cit) to_delete.push_back(ci);
 		else if (adjcells.size()>0) to_keep.push_back(ci);
-		//######################################
-		if (i == 958){
-			for (auto a: adjcells){
-				std::cout<<"NEI of 958: "<<a->get_ind()<<std::endl;
-			}
-		}
-		//######################################
 	}
 }
 
@@ -434,7 +410,6 @@ void IntersectCellsInfo2(const BGrid& grid, std::list<const Cell*>& to_delete, s
 	}
 	
 	//filter cells
-	std::list<const Cell*> deletec, keepc;
 	auto cit = confc.begin();
 	while (cit != confc.end()){
 		//get all cells which intersect current
@@ -456,8 +431,8 @@ void IntersectCellsInfo2(const BGrid& grid, std::list<const Cell*>& to_delete, s
 			}
 		}
 		//adding to list
-		if (!keep_cit) deletec.push_back(*cit);
-		else keepc.push_back(*cit);
+		if (!keep_cit) to_delete.push_back(*cit);
+		else to_keep.push_back(*cit);
 		++cit;
 	}
 }
@@ -660,7 +635,7 @@ shared_ptr<BGrid> HMBlay::Impl::BGridImpose(shared_ptr<BGrid> grid,
 	//3) analyse grid for intersecting cells.
 	//   returns two sets of intersecting cells: those which should be deleted and keeped
 	std::list<const Cell*> to_delete, to_keep;
-	IntersectCellsInfo1(*grid, to_delete, to_keep, prifun);
+	IntersectCellsInfo2(*grid, to_delete, to_keep, prifun);
 	if (to_delete.size() == 0) return grid;
 	
 	//4) build a grid: non-intersecting cells + to_keep_cells + triangled to_delete area
