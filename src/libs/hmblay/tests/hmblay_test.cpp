@@ -409,11 +409,12 @@ void test11(){
 	inp1.partition = {0, 0.01, 0.05, 0.1, 0.15, 0.2};
 
 	GridGeom Ans1 = HMBlay::BuildBLayerGrid({inp1});
-	add_check(Ans1.n_cells() == 558 && Ans1.n_points() == 596, "Mesh1");
+	add_check(Ans1.n_cells() == 564 && Ans1.n_points() == 596, "Mesh1");
 
 	inp1.partition = {0, 0.01, 0.02, 0.05, 0.1, 0.15, 0.2};
 	GridGeom Ans2 = HMBlay::BuildBLayerGrid({inp1});
-	add_check(Ans2.n_cells() == 678 && Ans2.n_points() == 715, "Mesh2");
+	add_check(Ans2.n_cells() == 713 && Ans2.n_points() == 733, "Mesh2");
+
 	save_vtk(Ans1, "t11_1.vtk");
 	save_vtk(Ans2, "t11_2.vtk");
 };
@@ -546,9 +547,10 @@ void test14(){
 	GridGeom basgrid1 = GGeom::Constructor::RectGrid(Point(-0.1, -0.1), Point(1.1, 1.1), 30, 30);
 	GridGeom* b1 = grid_minus_cont(basgrid1, *GGeom::Info::Contour(g1).roots()[0]);
 	GridGeom* gr1 = GridGeom::cross_grids(b1, &g1, 0.03, 7, false, false, CrossGridCallback::to_cout());
+	add_check(fabs(gr1->area() - 0.955398)<1e-5, "Square with curved boundary");
 	save_vtk(gr1, "t14_g1.vtk");
 
-	//reentrant
+	////reentrant
 	vector<Point> pc2;
 	for (auto an = -M_PI/2.0; an<=0.0; an+=M_PI/2.0/20){
 		pc2.push_back(Point(cos(an)-1, sin(an)));
@@ -567,6 +569,7 @@ void test14(){
 	GridGeom basgrid2 = GGeom::Constructor::RectGrid(Point(-2.1, -1.1), Point(2.8, 2.1), 150, 100);
 	GridGeom* b2 = grid_minus_cont(basgrid2, *GGeom::Info::Contour(g2).roots()[0]);
 	GridGeom* gr2 = GridGeom::cross_grids(b2, &g2, 0.03, 7, false, false, CrossGridCallback::to_cout());
+	add_check(fabs(gr2->area() - 6.26758)<1e-5, "Reentrant area with a hole");
 	save_vtk(gr2, "t14_g2.vtk");
 
 	//acute angle
@@ -584,6 +587,7 @@ void test14(){
 	GridGeom basgrid3 = GGeom::Constructor::RectGrid(Point(-0.1, -0.1), Point(4.5, 2), 80 , 40);
 	GridGeom* r3 = GridGeom::cross_grids(&basgrid3, &g3, 0.03, 7, true, false, CrossGridCallback::to_cout());
 	GridGeom* gr3 = grid_minus_cont(*r3, c3);
+	add_check(fabs(gr3->area() - 3.75)<1e-5, "Closed tringle with acute angle");
 	save_vtk(gr3, "t14_g3.vtk");
 	
 };
@@ -620,6 +624,8 @@ int main(){
 	test12();
 	test13();
 	test14();
+	
+	//UNDONE:
 	//test15();
 
 	if (FAILED_CHECKS ==1){

@@ -147,6 +147,14 @@ void BGrid::AddSourceFeat(const std::map<const Cell*, shared_ptr<int>>& f){
 	}
 }
 
+void BGrid::remove_cells(const vector<int>& bad_cells){
+	for (int ic: bad_cells){
+		weight.erase(get_cell(ic));
+		source_feat.erase(get_cell(ic));
+	}
+	GridGeom::remove_cells(bad_cells);
+}
+
 void BGrid::ShallowAdd(const BGrid& g){
 	GGeom::Modify::ShallowAdd(&g, this);
 	AddWeights(g.weight);

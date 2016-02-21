@@ -44,6 +44,9 @@ struct ContourTree: public ECollection {
 
 	//Algos
 	static double Area(const ContourTree& c);
+	
+	//returns true if c1 and c2 have common area (not a point, but may be an edge)
+	static bool DoIntersect(const ContourTree& t1, const Contour& c2);
 
 	//If tree is ok returns true.
 	//contacts are allowed

@@ -84,6 +84,17 @@ bool SectCross(const Point& p1S, const Point& p1E, const Point& p2S, const Point
 	return (ksieta[0]>=0 && ksieta[0]<=1 && ksieta[1]>=0 && ksieta[1]<=1); 
 }
 
+bool SectCrossWRenorm(const Point& p1S, const Point& p1E, const Point& p2S, const Point& p2E, double* ksieta) noexcept{
+	vector<Point> p {p1S, p1E, p2S, p2E};
+	ScaleBase s = ScaleBase::doscale(p);
+	bool ret = SectCross(p[0], p[1], p[2], p[3], ksieta);
+	if (ksieta[0]<gbig && ksieta[1]<gbig){
+		ksieta[0] *= s.L;
+		ksieta[1] *= s.L;
+	}
+	return ret;
+}
+
 int LinePointWhereIs(const Point& p, const Point& L1, const Point& L2) noexcept{
 	if (L1 == L2) return -1;
 	double A[3] = { L1.y-L2.y, L2.x-L1.x, vecCrossZ(L1,L2) };

@@ -1,4 +1,4 @@
--I /usr/include/gmsh
+-I /usr/local/include/gmsh
 -I /home/ek/Work/HybMesh/src/libs/include
 -I /home/ek/Work/HybMesh/src/libs/bgeom2d
 -I /home/ek/Work/HybMesh/src/libs/hybmesh_contours2d

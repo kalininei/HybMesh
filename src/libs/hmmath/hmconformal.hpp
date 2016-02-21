@@ -7,17 +7,21 @@
 namespace HMMath{ namespace Conformal{
 
 struct Options{
+	//Options are used for both Rect and Annulus constructors
 	Options():
-		use_rect_approx(true),
-		right_angle_eps(geps),
-		length_weight(1.0+geps),
-		scpack_ratio_limit(5.1),
-		fem_segment_partition(4),
-		fem_nmax(10000){}
+		use_rect_approx(true),     //rectangle approximation possibility
+		use_scpack(true),          //scpack/dscpack solution possibility (for rect/annulus)
+		right_angle_eps(geps),     //negligible right angle diviation
+		length_weight(1.0+geps),   //negligible lenght deviation at which polyline is treated as a straight line
+		scpack_ratio_limit(5.1),   //width/height limit at which scpack is used
+		fem_segment_partition(4),  //how many fem points will be set to source segment
+		fem_nmax(10000){}          //maximum number of fem points
 
 	// ===== rectangle approximation settings
 	//if we consider rectangle approximation
 	bool use_rect_approx;
+	//semi-analytical solution possibility (solvers are very unstable and slow)
+	bool use_scpack;
 	//if side angles are outside (pi/2 +/- right_angle_eps) => ignore rect approx
 	double right_angle_eps;
 	//if line.length() > length_weight * (end-start) => ignore rect approx
@@ -26,13 +30,16 @@ struct Options{
 	bool CanUseRectApprox(const vector<Point>& path, int i1, int i2, int i3) const;
 
 	// ===== scpack setting
-	//if module > SCPACK_RATIO_LIMIT => scpack is ignored
-	//due to crowding problem
+	//if module > scpack_ratio_limit => scpack is ignored due to crowding problem
 	double scpack_ratio_limit;
 	//estimate the possibility of using scpack for given polygon
 	bool CanUseSCPACK(const vector<Point>& path, int i1, int i2, int i3) const;
 
-	//fem settings
+	// ===== dcpack setting
+	//if module > scpack_ratio_limit => scpack is ignored due to crowding problem
+	bool CanUseDSCPACK() const;
+
+	//===== fem settings
 	//recommended segment partition
 	int fem_segment_partition;
 	//maximum grid dimension
@@ -84,8 +91,8 @@ public:
 	//all points should be unique
 	static shared_ptr<Annulus> Factory(
 		const vector<Point>& outerpnt,
-		const vector<Point>& innerpnt
-	);
+		const vector<Point>& innerpnt,
+		const Options& opt = Options());
 
 	//= RadInner < 1.0
 	virtual double module() const = 0;

@@ -11,7 +11,7 @@ namespace HMBlay{namespace Impl{
 shared_ptr<BGrid> BGridImpose(shared_ptr<BGrid> grid, std::function<double(const Cell*)> prifun,
 		const HMCont2D::Contour& source);
 
-//Builds a contour from cell
+//Builds a contour from cell non simplified
 HMCont2D::Contour Cell2Cont(const Cell* c);
 
 class NoHangingNodes{

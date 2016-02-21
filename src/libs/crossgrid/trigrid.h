@@ -44,6 +44,8 @@ public:
 
 	//procedures get cell centers
 	vector<Point> cell_centers() const;
+	//cell areas
+	vector<double> cell_areas() const; 
 
 	//laplas smooth
 	void smooth(double w);

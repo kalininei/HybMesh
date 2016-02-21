@@ -286,13 +286,21 @@ void TriGrid::smooth(double w){
 
 vector<Point> TriGrid::cell_centers() const{
 	vector<Point> ret;
-	for (auto c: cells){
+	for (auto& c: cells){
 		auto p = Point(0,0);
 		p += *c->get_point(0);
 		p += *c->get_point(1);
 		p += *c->get_point(2);
 		p/=3;
 		ret.push_back(p);
+	}
+	return ret;
+}
+
+vector<double> TriGrid::cell_areas() const{
+	vector<double> ret;
+	for (auto& c: cells){
+		ret.push_back(triarea(*c->get_point(0), *c->get_point(1), *c->get_point(2)));
 	}
 	return ret;
 }

@@ -16,10 +16,14 @@ struct Contour: public ECollection{
 	Point* last() const;
 	//first point == last point for closed paths
 	vector<Point*> ordered_points() const;
+	//like ordered points but removes zero length sections
+	vector<Point*> unique_points() const;
 	//list of all corner points in correct order without doubling
 	//the last point for closed contours
 	//for open contours includes first and last points by default
 	vector<Point*> corner_points() const;
+	//same as corner_points but doubles end points for open contours
+	vector<Point*> corner_points1() const;
 	//returns [point previous, point currant, point next]
 	//or NULLS if no such points
 	std::array<Point*, 3> point_siblings(Point* p) const;
@@ -150,6 +154,7 @@ struct Contour: public ECollection{
 	static Contour Assemble(const Contour& col, const Point* pnt_start, int direction, double len);
 
 	//remove points which lie on the same edge
+	//removes zero length edges
 	static Contour Simplified(const Contour& cont);
 
 
@@ -166,6 +171,7 @@ struct Contour: public ECollection{
 	//returns true if c1 and c2 have common area (not a point, but may be an edge)
 	static bool DoIntersect(const Contour& c1, const Contour& c2);
 	//returns true if c1 and c2 have common area (not a point, not an edge)
+	//is not realiable if  Area(c1) >> Area(c2) 
 	static bool DoReallyIntersect(const Contour& c1, const Contour& c2);
 
 	//this can be called with Container<Contour> object.

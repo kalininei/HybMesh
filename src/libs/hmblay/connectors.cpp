@@ -57,6 +57,7 @@ void AcuteConnector::BuildInternals(){
 	//2) intersect
 	auto cc1 = Cell2Cont(c1), cc2 = Cell2Cont(c2);
 	auto icont = HMCont2D::Clip::Intersection(cc1, cc2);
+	HMCont2D::Clip::Heal(icont);
 	Point* pc2=HMCont2D::ECollection::FindClosestNode(icont, pc);
 	//return if intersection was not found.
 	//Anyway we can safely proceed without this triangle

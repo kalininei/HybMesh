@@ -179,7 +179,8 @@ TRet ci::Intersection(const ETree& c1, const ETree& c2){
 }
 
 TRet ci::Union(const ETree& c1, const ETree& c2){
-	_THROW_NOT_IMP_;
+	Impl::GpcTree p1(c1), p2(c2);
+	return Impl::GpcTree::Union(p1, p2).ToContourTree();
 }
 
 TRet ci::Difference(const ETree& c1, const ETree& c2){
@@ -216,21 +217,21 @@ TRet ci::Difference(const ETree& c1, const vector<ECont>& cont){
 void ci::Heal(TRet& c1){
 	//remove zero length edges
 	for (auto& path: c1.nodes){
-		auto pts = path->ordered_points();
-		if (path->size() < 3){ 
-			//invalid contour. Will be removed.
-			path->data.resize(2);
-			continue;
+		auto pts = path->corner_points();
+	
+		//remove collinear nodes: 180 and 360 angles)
+STARTFOR:
+		if (pts.size()>2) for (int i=0; i<pts.size(); ++i){
+			Point* p0 = pts[(i==0)?pts.size()-1:i-1];
+			Point* p1 = pts[i];
+			Point* p2 = pts[(i==pts.size()-1)?0:i+1];
+			if (fabs(triarea(*p0, *p1, *p2))<geps2){
+				pts.erase(pts.begin() + i);
+				goto STARTFOR;
+			}
 		}
-		//doubled points
-		std::set<int> not_needed;
-		for (int i=0; i<pts.size(); ++i){
-			auto iprev = (i==0) ? pts.size()-1 : i-1;
-			if (Point::meas(*pts[iprev], *pts[i])<sqr(geps)) not_needed.insert(i);
-		}
-		aa::remove_entries(pts, not_needed);
-		not_needed.clear();
-		//wright simplified contour
+
+		//write simplified contour
 		if (pts.size() != path->size()){
 			auto c = HMCont2D::Constructor::ContourFromPoints(pts, true);
 			path->data = c.data;
@@ -246,6 +247,10 @@ void ci::Heal(TRet& c1){
 		//updates topology
 		c1.UpdateTopology();
 	}
+
+	//refill data
+	c1.data.clear();
+	for (auto& n: c1.nodes) std::copy(n->begin(), n->end(), std::back_inserter(c1.data));
 }
 #endif
 

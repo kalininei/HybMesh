@@ -64,6 +64,7 @@ struct Point{
 	static double dist(const Point& p1, const Point& p2) noexcept{
 		return sqrt(meas(p1,p2));
 	}
+	//measure from p to [L1, L2]. ksi is the weight section coordinate closest to p
 	static double meas_section(const Point& p, const Point& L1, const Point& L2) noexcept;
 	static double meas_section(const Point& p, const Point& L1, const Point& L2, double& ksi) noexcept;
 
@@ -143,6 +144,8 @@ bool isOnSection(const Point& p, const Point& start, const Point& end, double& k
 //Returns true if 0<=ksieta[0,1]<=1.
 //if sections are parallel: ksieta[0,1]=gbig, returns false
 bool SectCross(const Point& p1S, const Point& p1E, const Point& p2S, const Point& p2E, double* ksieta) noexcept;
+//same but with internal renorming. Gives better results aber it is slower.
+bool SectCrossWRenorm(const Point& p1S, const Point& p1E, const Point& p2S, const Point& p2E, double* ksieta) noexcept;
 
 //=>
 //  0 if p lies to the left of [L1->L2] line
@@ -169,6 +172,10 @@ struct ScaleBase{
 		for (auto it=start; it!=end; ++it){ unscale(*it); }
 	}
 	//forces all points in container be in 1x1x1 square preserving aspect ratio
+	template <class Container>
+	static ScaleBase doscale(Container& cont) noexcept{
+		return doscale(cont.begin(), cont.end());
+	}
 	template<class FirstIter, class LastIter>
 	static ScaleBase doscale(FirstIter start, LastIter end) noexcept{
 		auto p0 = Point::GetBot(start, end);

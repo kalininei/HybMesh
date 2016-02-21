@@ -30,12 +30,23 @@ vector<Point*> Contour::ordered_points() const{
 	}
 }
 
+vector<Point*> Contour::unique_points() const{
+	auto op = ordered_points();
+	if (op.size() == 0) return op;
+	vector<Point*> ret {op[0]};
+	for (int i=1; i<op.size(); ++i){
+		if (*op[i] != *ret.back()) ret.push_back(op[i]);
+	}
+	return ret;
+}
+
 vector<Point*> Contour::corner_points() const{
+	auto pnt = unique_points();
+	if (pnt.size() == 0) return {};
 	bool cl = is_closed();
-	auto pnt = ordered_points();
 	vector<Point*> ret;
 	if (!cl) ret.push_back(pnt[0]);
-	for (int i=0; i<pnt.size()-1; ++i){
+	for (int i=0; i<(int)pnt.size()-1; ++i){
 		Point *pprev, *p, *pnext;
 		if (i == 0){
 			if (cl) pprev = pnt[pnt.size() - 2];
@@ -52,6 +63,14 @@ vector<Point*> Contour::corner_points() const{
 		}
 	}
 	if (!cl) ret.push_back(pnt.back());
+	return ret;
+}
+
+vector<Point*> Contour::corner_points1() const{
+	auto ret = corner_points();
+	if (ret.size()>0 && is_closed()){
+		ret.push_back(ret[0]);
+	}
 	return ret;
 }
 

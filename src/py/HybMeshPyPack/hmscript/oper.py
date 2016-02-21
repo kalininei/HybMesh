@@ -151,7 +151,7 @@ class BoundaryGridOption(object):
                  direction="left",
                  bnd_step=0.1,
                  bnd_stepping="keep_shape",
-                 range_angles=[40, 135, 225, 275],
+                 range_angles=[40, 125, 235, 275],
                  force_conformal=False,
                  start_point=None,
                  end_point=None):

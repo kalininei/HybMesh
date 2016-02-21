@@ -48,6 +48,7 @@ bool Options::CanUseRectApprox(const vector<Point>& path, int i1, int i2, int i3
 }
 
 bool Options::CanUseSCPACK(const vector<Point>& path, int i1, int i2, int i3) const{
+	if (!use_scpack) return false;
 	double lenmin = get_len(path, 0, i1);
 	double lenmax = lenmin;
 	double l2 = get_len(path, i1, i2);
@@ -61,6 +62,9 @@ bool Options::CanUseSCPACK(const vector<Point>& path, int i1, int i2, int i3) co
 	lenmax = std::max(lenmax, l4);
 	double hap = std::max(lenmin/lenmax, lenmax/lenmin);
 	return (hap < scpack_ratio_limit);
+}
+bool Options::CanUseDSCPACK() const{
+	return use_scpack;
 }
 
 shared_ptr<Rect> Rect::Factory(
@@ -105,9 +109,7 @@ shared_ptr<Rect> Rect::Factory(
 	//of the Laplas problem
 	ret = Impl::ConfFem::ToRect::Build(path, i1, i2, i3, opt);
 
-	if (!ret) throw std::runtime_error(
-		"Failed to build mapping to rectangle"
-	);
+	if (!ret) throw std::runtime_error("Failed to build mapping to rectangle");
 
 	return ret;
 }
@@ -391,7 +393,8 @@ HMCont2D::Container<HMCont2D::Contour> Rect::RectContour() const{
 // ==================================== Annulus
 shared_ptr<Annulus> Annulus::Factory(
 		const vector<Point>& outerpnt,
-		const vector<Point>& innerpnt
+		const vector<Point>& innerpnt,
+		const Options& opt
 ){
 	assert([&]()->bool{
 		//anti-clockwise check
@@ -403,11 +406,13 @@ shared_ptr<Annulus> Annulus::Factory(
 	}());
 	shared_ptr<Annulus> ret;
 	//1) try DSCPACK procedure
-	ret = Impl::DSCPack::ToAnnulus::Build(outerpnt, innerpnt);
-	if (ret) return ret;
+	if (opt.CanUseDSCPACK()){
+		ret = Impl::DSCPack::ToAnnulus::Build(outerpnt, innerpnt);
+		if (ret) return ret;
+	}
 
 	//2) FEM procedure
-	ret = Impl::ConfFem::ToAnnulus::Build(outerpnt, innerpnt);
+	ret = Impl::ConfFem::ToAnnulus::Build(outerpnt, innerpnt, opt);
 	if (ret) return ret;
 
 	return 0;

@@ -8,8 +8,12 @@ void ClipperObject::ApplyBoundingBox(const BoundingBox& newbbox){
 	bbox = newbbox;
 	//factor and p0, p1
 	long double maxlen = (long double) std::max(bbox.lenx(), bbox.leny()) / 2.0;
-	factor = (long double)CLIPPER_RESOLUTION / maxlen;
-	factor = std::min(factor, (long double) std::numeric_limits<ClipperLib::cInt>::max()/100.0);
+	if (maxlen<geps){
+		factor = (long double)1.0;
+	} else {
+		factor = (long double)CLIPPER_RESOLUTION / maxlen;
+		factor = std::min(factor, (long double) std::numeric_limits<ClipperLib::cInt>::max()/100.0);
+	}
 	p0 = newbbox.Center();
 }
 

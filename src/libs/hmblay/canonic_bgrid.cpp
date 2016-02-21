@@ -1,6 +1,8 @@
 #include "canonic_bgrid.hpp"
 #include "hmfem.hpp"
 
+#define USE_ANALYTICAL_MAPPINGS false
+
 using namespace HMBlay::Impl;
 
 shared_ptr<MappedRect>
@@ -236,6 +238,7 @@ RectForOpenArea::RectForOpenArea(HMCont2D::Contour& left, HMCont2D::Contour& rig
 	opt.use_rect_approx = use_rect_approx;
 	opt.right_angle_eps = M_PI/8.0;
 	opt.length_weight = 1.02;
+	opt.use_scpack = USE_ANALYTICAL_MAPPINGS;
 	core = HMMath::Conformal::Rect::Factory(path, corners, opt);
 };
 
@@ -330,7 +333,9 @@ RectForClosedArea::RectForClosedArea(const HMCont2D::Contour& side, const HMCont
 	if (fabs(a1)<fabs(a2)) std::swap(ptop, pbot);
 	top_is_outer = (fabs(a1)>fabs(a2));
 	//assemble conformal mappint to an annulus
-	core = HMMath::Conformal::Annulus::Factory(ptop, pbot);
+	HMMath::Conformal::Options opt;
+	opt.use_scpack = USE_ANALYTICAL_MAPPINGS;
+	core = HMMath::Conformal::Annulus::Factory(ptop, pbot, opt);
 }
 
 shared_ptr<RectForClosedArea>

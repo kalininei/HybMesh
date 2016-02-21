@@ -96,7 +96,7 @@ protected:
 	//merge points with equal coordinates
 	void merge_congruent_points();
 	//remove cells
-	void remove_cells(const vector<int>& bad_cells);
+	virtual void remove_cells(const vector<int>& bad_cells);
 	//remove cells which lie outside cnt
 	void leave_only(const ContoursCollection& cnt);
 	//remove cells which lie inside cnt

@@ -31,6 +31,7 @@ HMCont2D::Container<Contour> cns::Circle(int N, Point cnt, Point poc){
 
 Contour cns::ContourFromPoints(const vector<Point*>& pnt, bool force_closed){
 	Contour ret;
+	if (pnt.size()<2) return ret;
 	for (int i=0; i<(int)pnt.size() - 1; ++i){
 		ret.add_value(Edge(pnt[i], pnt[i+1]));
 	}

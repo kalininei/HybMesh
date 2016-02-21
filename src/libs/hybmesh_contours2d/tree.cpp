@@ -1,4 +1,5 @@
 #include "tree.hpp"
+#include "contclipping.hpp"
 
 using namespace HMCont2D;
 
@@ -13,6 +14,15 @@ vector<ContourTree::TreeNode*> ContourTree::roots() const{
 double ContourTree::Area(const ContourTree& c){
 	return std::accumulate(c.nodes.begin(), c.nodes.end(), 0.0,
 			[](double s, shared_ptr<Contour> cc){ return s + Contour::Area(*cc); });
+}
+
+bool ContourTree::DoIntersect(const ContourTree& t1, const Contour& c2){
+	auto bbox1 = ContourTree::BBox(t1);
+	auto bbox2 = Contour::BBox(c2);
+	if (!bbox1.has_common_points(bbox2)) return false;
+	auto c = HMCont2D::Clip::Union(t1, c2);
+	if (c.cont_count() > t1.cont_count()) return false;
+	else return true;
 }
 
 Contour* ContourTree::get_contour(Point* p) const{

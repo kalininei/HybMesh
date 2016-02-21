@@ -17,6 +17,9 @@ protected:
 	static ExtPath AssembleExtendedPath(vector<Options*>& data);
 	static shared_ptr<BGrid> NoSelfIntersections(shared_ptr<BGrid> g, const HMCont2D::Contour& source);
 	static shared_ptr<BGrid> MeshFullPath(const ExtPath& p);
+
+	//remove cells overriden to include deletion of features
+	void remove_cells(const vector<int>& bad_cells) override;
 public:
 	//adds cell to the end of cell list.
 	//gets features (weight, source_feat) from same_feat_cell

@@ -6,51 +6,85 @@ using namespace HMBlay::Impl;
 namespace{
 
 class ContactArea{
-	HMCont2D::PCollection domain_points;
-	ShpVector<HMCont2D::Contour> domain;
-	void FillDomain(const BGrid* grid){
-		HMCont2D::Container<HMCont2D::ContourTree> full_cont;
-		HMCont2D::Container<HMCont2D::ContourTree> res;
-		double area_old = 0;
-		for (int i=0; i<grid->n_cells(); ++i){
-			const Cell* c = grid->get_cell(i);
-			auto cc = Cell2Cont(c);
-			full_cont = HMCont2D::Clip::Union(full_cont, cc);
-			double area_cont = HMCont2D::Area(cc);
-			double area_new = HMCont2D::Area(full_cont);
-			if (fabs(area_old+area_cont-area_new)>geps){
-				res = HMCont2D::Clip::Union(res, cc);
+	HMCont2D::Container<HMCont2D::ContourTree> domain;
+	const BGrid* grid;
+	const int n_cfinder = 50; //partition for auxilliary grid
+	HMCont2D::PCollection pdata;
+	vector<HMCont2D::Contour> intersections; //intersection contours
+	std::map<int, int> intersect_results; //cell pair index -> intersection contour index
+	std::set<int> cells_in_area; //all cells which were involved in intersections
+
+	//unique integer fot two cells
+	int __cellcell(const Cell* c1, const Cell* c2){
+		int i1 = c1->get_ind(), i2 = c2->get_ind();
+		if (i1>i2) std::swap(i1, i2);
+		return i1*grid->n_cells()+i2;
+	}
+
+	void __set_cells_intersection(const Cell* c1, const Cell* c2){
+		int ind = __cellcell(c1, c2);
+		//if cells share the same feature they can not intersect
+		if (grid->is_from_same_source(c1, c2)) return;
+		//if result was already obtained
+		if (intersect_results.find(ind) != intersect_results.end()) return;
+		//apply intersection
+		auto cont1 = Cell2Cont(c1);
+		auto cont2 = Cell2Cont(c2);
+		auto res = HMCont2D::Clip::Intersection(cont1, cont2);
+		if (res.cont_count() == 1){
+			cells_in_area.insert(c1->get_ind());
+			cells_in_area.insert(c2->get_ind());
+			intersect_results[ind] = intersections.size();
+			pdata.Unite(res.pdata);
+			intersections.push_back(HMCont2D::Contour(*res.nodes[0]));
+		} else {
+			intersect_results[ind] = -1;
+		}
+	}
+
+	void FillDomain(){
+		GGeom::Info::CellFinder cfinder(grid, n_cfinder, n_cfinder);
+		for (int i=0; i<n_cfinder*n_cfinder; ++i){
+			auto clist = cfinder.CellsBySquare(i);
+			//check all pairs of cells positioned close to each other
+			for (int j=0; j<clist.size(); ++j){
+				for (int k=j+1; k<clist.size(); ++k){
+					__set_cells_intersection(clist[j], clist[k]);
+				}
 			}
-			area_old = area_new;
 		}
-		for (auto& n: res.nodes) if (n->parent == 0){
-			domain.push_back(n);
-		}
-		domain_points = res.pdata;
+		//unite all intersections
+		domain = HMCont2D::Clip::Union(intersections);
+		HMCont2D::Clip::Heal(domain);
 	}
+
 public:
-	ContactArea(const BGrid* grid){
-		FillDomain(grid);
+	ContactArea(const BGrid* _grid): grid(_grid){
+		FillDomain();
 	}
 
-	bool HasContact() const { return domain.size()>0; }
+	bool HasContact() const { return domain.cont_count() > 0; }
 
-	bool IsWithin(const Cell* c){
-		auto cont = Cell2Cont(c);
-		for (int i=0; i<domain.size(); ++i){
-			if (HMCont2D::Contour::DoReallyIntersect(*domain[i], cont)) return true;
-		}
-		return false;
+	std::list<const Cell*> involved_cells() const {
+		std::list<const Cell*> ret;
+		for (auto i: cells_in_area) ret.push_back(grid->get_cell(i));
+		return ret;
 	}
 };
 
 HMCont2D::Container<HMCont2D::Contour>
 WidenCellCont(const HMCont2D::Contour& cont){
 	vector<Point> ret;
-	vector<Point*> op = cont.ordered_points();
+	vector<Point*> op = cont.corner_points1();
+	assert(op.size()>=4);
+	if (op.size() < 4) return HMCont2D::Container<HMCont2D::Contour>();
 	vector<std::pair<Point, Point>> lines(cont.size());
-	auto lens = HMCont2D::ECollection::ELengths(cont);
-	double h = *std::min_element(lens.begin(), lens.end())/2.0;
+	double h = 1e16;
+	for (int i=0; i<(int)op.size()-1; ++i) {
+		double h2 = Point::meas(*op[i], *op[i+1]);
+		if (h2 < h) h = h2;
+	}
+	h = sqrt(h);
 	for (int i=0; i<op.size()-1; ++i){
 		Point* p1 = op[i];
 		Point* p2 = op[i+1];
@@ -64,7 +98,7 @@ WidenCellCont(const HMCont2D::Contour& cont){
 	for (int i=0; i<lines.size(); ++i){
 		auto& ln  = lines[i];
 		auto& ln1 = (i == lines.size()-1) ? lines[0] : lines[i+1];
-		SectCross(ln.first, ln.second, ln1.first, ln1.second, ksieta);
+		SectCrossWRenorm(ln.first, ln.second, ln1.first, ln1.second, ksieta);
 		assert(ksieta[0]<gbig/2 && ksieta[1]<gbig/2);
 		ret.push_back(Point::Weigh(ln.first, ln.second, ksieta[0]));
 	}
@@ -72,7 +106,7 @@ WidenCellCont(const HMCont2D::Contour& cont){
 }
 
 bool CellsIntersect(const Cell* c1, const Cell* c2, const BGrid& grid1){
-	//Finds if widened cells with different source feature area intersected 
+	//Finds if widened cells with different source feature are intersected 
 	//Distance of widening is defined in WidenCellCont procedure.
 	
 	//if cells share the same feature return false
@@ -173,63 +207,6 @@ std::map<Point*, double> TriAreaWeights(const HMCont2D::ContourTree& tree){
 	return ret;
 }
 
-HMCont2D::Container<HMCont2D::Contour>
-CutCellContour(const HMCont2D::Contour& cell, const HMCont2D::Contour& line){
-	// --------- this is unused procedure.
-	//find crosspoints
-	auto crosses = HMCont2D::Contour::CrossAll(cell, line);
-	//if two crosspoints do simple connection
-	if (crosses.size() == 2) goto TWO_CROSS_POINTS;
-	else goto MULTIPLE_CROSS_POINTS;
-
-MULTIPLE_CROSS_POINTS:
-	{
-		TCoordMap<Point> line_cp;
-		for (auto& v: crosses) line_cp[std::get<3>(v)] = std::get<1>(v);
-		vector<HMCont2D::Container<HMCont2D::Contour>> clines;
-		auto it = line_cp.begin();
-		while (it!=line_cp.end()){
-			Point p1 = it->second;
-			if (++it == line_cp.end()) break;
-			Point p2 = it->second;
-			clines.push_back(HMCont2D::Constructor::CutContour(line, p1, p2));
-			//check if we can throw this line away
-			if (clines.back().is_straight()){
-				auto c2 = HMCont2D::Constructor::CutContour(cell, p1, p2);
-				if (c2.is_straight()) {clines.pop_back(); continue;}
-				auto c3 = HMCont2D::Constructor::CutContour(cell, p2, p1);
-				if (c3.is_straight()) {clines.pop_back(); continue;}
-			}
-			
-		}
-		if (clines.size() == 1){
-			std::get<1>(crosses[0]) = *clines[0].last();
-			std::get<1>(crosses[1]) = *clines[0].first();
-			goto TWO_CROSS_POINTS;
-		}
-		else goto TRIANGULATION_ALGO;
-	}
-	
-TWO_CROSS_POINTS:
-	{
-		Point pc1 = std::get<1>(crosses[0]);
-		Point pc2 = std::get<1>(crosses[1]);
-		//assemble parts at each
-		auto c1 = HMCont2D::Constructor::CutContour(cell, pc1, pc2);
-		auto c2 = HMCont2D::Constructor::CutContour(line, pc2, pc1);
-		vector<Point*> c1p = c1.ordered_points();
-		vector<Point*> c2p = c2.ordered_points();
-		vector<Point> ret;
-		for (int i=0; i<c1p.size()-1; ++i) ret.push_back(*c1p[i]);
-		for (int i=0; i<c2p.size()-1; ++i) ret.push_back(*c2p[i]);
-		return HMCont2D::Constructor::ContourFromPoints(ret, true);
-	}
-TRIANGULATION_ALGO:
-	{
-		_THROW_NOT_IMP_;
-	}
-}
-
 //removes all grid area outside the closed cont
 void PurgeGrid(BGrid& grid, const HMCont2D::Contour& cont){
 	assert(cont.is_closed());
@@ -274,6 +251,7 @@ void PurgeGrid(BGrid& grid, const HMCont2D::Contour& cont){
 		HMCont2D::Clip::TRet ret;
 		if (innercont) ret = HMCont2D::Clip::Intersection(ccont, cont);
 		else ret = HMCont2D::Clip::Difference(ccont, cont);
+		if (ret.cont_count() < 1) continue;
 		mgoodareas.push_back(ret);
 		if (ret.nodes.size()>1) _THROW_NOT_IMP_
 		else goodareas.push_back(mgoodareas.back().nodes[0].get());
@@ -283,6 +261,7 @@ void PurgeGrid(BGrid& grid, const HMCont2D::Contour& cont){
 	GGeom::Modify::RemoveCells(grid, bad_cells);
 
 	//compensate deleted areas
+	int i=0;
 	for (auto n: goodareas){
 		vector<Point> p;
 		for (auto pp: n->corner_points()) p.push_back(*pp);
@@ -331,17 +310,23 @@ const HMCont2D::Contour* ClosedSource(const HMCont2D::Contour* src, const BGrid*
 		return closedsrc;
 	}
 	//2) try: connection via grid bounding box
-	auto bbox = HMCont2D::ECollection::BBox(ar);
+	auto bbox1 = HMCont2D::ECollection::BBox(ar), bbox2 = HMCont2D::ECollection::BBox(*src);
+	BoundingBox bbox({bbox1, bbox2}); 
 	bbox.widen(0.1*std::max(bbox.lenx(), bbox.leny()));
 	auto sqrcont = HMCont2D::Constructor::ContourFromBBox(bbox);
+	double sz = 1.1*sqrt(sqr(bbox.lenx()) + sqr(bbox.leny()));
 	auto find_good_box_point = [&](Point& src)->shared_ptr<Point>{
 		static double an = 0;
-		double sz = std::max(bbox.lenx(), bbox.leny());
 		//trying different angles until we find non crossing section
 		for (int i=0; i<20; ++i){
 			Point p2 = src + Point(cos(an), sin(an)) * sz;
 			if ((an += 1.0) > 2*M_PI) an -=2*M_PI;
-			if (goodline(src, p2)) return shared_ptr<Point>(new Point(p2));
+			if (goodline(src, p2)){
+				//find intersection of square and (src, p2) line
+				auto linecont = HMCont2D::Constructor::ContourFromPoints({src, p2});
+				auto crossres = HMCont2D::Contour::Cross(sqrcont, linecont);
+				return shared_ptr<Point>(new Point(std::get<1>(crossres)));
+			}
 		}
 		return shared_ptr<Point>();
 	};
@@ -368,33 +353,6 @@ const HMCont2D::Contour* ClosedSource(const HMCont2D::Contour* src, const BGrid*
 	throw std::runtime_error("Can not find a way to close an open source contour");
 }
 
-void IntersectCellsInfo1(const BGrid& grid, std::list<const Cell*>& to_delete, std::list<const Cell*>& to_keep,
-		std::function<double(const Cell*)> prifun){
-	//list of cells with intersections: ones to delete and ones to keep
-	//VERY VERY VERY SLOW BUT
-	//VERY VERY VERY SIMPLE ALGORITHM
-	for (int i=0; i<grid.n_cells(); ++i){
-		std::cout<<i<<" out of "<<grid.n_cells()<<std::endl;
-		const Cell* ci = grid.get_cell(i);
-		//get all cells which intersect current
-		std::set<const Cell*> adjcells;
-		for (int j=0; j<grid.n_cells(); ++j) if (i!=j) {
-			const Cell* cj = grid.get_cell(j);
-			if (CellsIntersect(ci, cj, grid)) adjcells.insert(cj);
-		}
-		double pri = prifun(ci);
-		bool keep_cit = true;
-		for (auto a: adjcells){
-			double pri2 = prifun(a);
-			if (ISEQGREATER(pri2, pri)){
-				keep_cit = false; break;
-			}
-		}
-		//adding to list
-		if (!keep_cit) to_delete.push_back(ci);
-		else if (adjcells.size()>0) to_keep.push_back(ci);
-	}
-}
 
 void IntersectCellsInfo2(const BGrid& grid, std::list<const Cell*>& to_delete, std::list<const Cell*>& to_keep,
 		std::function<double(const Cell*)> prifun){
@@ -403,13 +361,10 @@ void IntersectCellsInfo2(const BGrid& grid, std::list<const Cell*>& to_delete, s
 	if (!contact.HasContact()) return;
 
 	//choose conflict cells
-	std::list<const Cell*> confc;
-	for (int i=0; i<grid.n_cells(); ++i){
-		const Cell* c = grid.get_cell(i);
-		if (contact.IsWithin(c)) confc.push_back(c);
-	}
+	std::list<const Cell*> confc = contact.involved_cells();
 	
-	//filter cells
+	//filter cells: cannot use ContactArea results
+	//because they were obtained without widening
 	auto cit = confc.begin();
 	while (cit != confc.end()){
 		//get all cells which intersect current
@@ -454,6 +409,11 @@ shared_ptr<BGrid> NonIntersectingGrid(const BGrid& grid, std::list<const Cell*>&
 	
 	//triangulate
 	auto fillg = TriGrid::TriangulateArea(delarea, triweights, 100);
+	//remove zero size triangles which may appear due to singular areas in delarea
+	auto ars3 = fillg->cell_areas();
+	vector<const Cell*> rmcells;
+	for (int i=0; i<ars3.size(); ++i) if (ars3[i]<geps*geps) rmcells.push_back(fillg->get_cell(i));
+	GGeom::Modify::RemoveCells(*fillg, rmcells);
 
 	//add triangle grid and return
 	GGeom::Modify::ShallowAdd(fillg.get(), ret.get());
@@ -481,7 +441,9 @@ void NoHangingNodes::FindCellForNode(GridPoint* p, Cell*& c, int& ind){
 			}
 		}
 	}
-	assert(false);
+	//not found. Perhaps p was put into hanging nodes list by mistake
+	c = 0;
+	ind = -1;
 }
 void NoHangingNodes::PlaceNode(GridPoint* p, Cell* c, int ind){
 	while (ind>=c->dim()) ind-=c->dim();
@@ -578,8 +540,10 @@ void NoHangingNodes::AddHangingNode(GridPoint* p){
 	Cell* cell;
 	int ind;
 	FindCellForNode(p, cell, ind);
-	PlaceNode(p, cell, ind);
-	SimplifyCell(cell, ind+1);
+	if (cell){
+		PlaceNode(p, cell, ind);
+		SimplifyCell(cell, ind+1);
+	}
 }
 
 void NoHangingNodes::AnalyzeSingularContour(
@@ -596,7 +560,7 @@ void NoHangingNodes::AnalyzeSingularContour(
 }
 std::list<GridPoint*> NoHangingNodes::Find(){
 	std::list<GridPoint*> hnodes;
-	//hanging nodes creates zero-area domains in grid contour tree
+	//hanging nodes create zero-area domains in grid contour tree
 	auto gcont = GGeom::Info::Contour(*grid);
 	for (auto n: gcont.nodes){
 		bool status = false;
