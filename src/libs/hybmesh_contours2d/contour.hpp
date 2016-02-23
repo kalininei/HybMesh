@@ -71,7 +71,15 @@ struct Contour: public ECollection{
 	void ReallyReverse();
 	//adds edge (last(), p) to the end
 	void AddLastPoint(Point* p);
+	//deletes edge[i] end point
 	void RemoveEdge(int i);
+
+	//removes edge next to deleted point,
+	//moves previous edge start or end point
+	//closed/open contours stay close/open or become zero sized;
+	//removed edge (if it is shared by someone else) has NULL data entries
+	void RemovePoint(const Point* p);
+	void RemovePoints(const vector<const Point*>& p);
 
 	//force positive(true)/negative(false) direction.
 	//->true if contour was reversed
@@ -97,7 +105,7 @@ struct Contour: public ECollection{
 	bool AllWithout(const vector<Point>& p) const;
 	//-1 - point is on polygon
 	// 0 - point is outside polygon
-	// 1 - point is in polygon
+	// 1 - point is in polygon  -> this is not reliable
 	int WhereIs(const Point& p) const;
 
 	// ======= Algorithms

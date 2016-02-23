@@ -171,12 +171,12 @@ void PContour::delete_by_index(const std::set<int>& badind){
 }
 
 std::tuple<
-	vector<Point*>,  //internal points
-	vector<Point*>,  //points on contour
-	vector<Point*>   //outer points
-> PContour::filter_points(const vector<Point*>& points) const{
+	vector<const Point*>,  //internal points
+	vector<const Point*>,  //points on contour
+	vector<const Point*>   //outer points
+> PContour::filter_points(const vector<const Point*>& points) const{
 	//return value initialization
-	std::tuple<vector<Point*>, vector<Point*>, vector<Point*>> ret;
+	std::tuple<vector<const Point*>, vector<const Point*>, vector<const Point*>> ret;
 	//check whether contours is inner or outer
 	bool is_inner = (area()>0);
 	//points loop

@@ -28,6 +28,7 @@ Console interface for HybMesh. Possible arguments:
 import sys
 from HybMeshPyPack import progdata, imex, basic
 
+
 def main():
     if len(sys.argv) == 1 or sys.argv[1] in ['help', 'h', '-help', '-h']:
         print __doc__
@@ -35,18 +36,18 @@ def main():
 
     if len(sys.argv) == 2:
         if sys.argv[1] == '-v':
-            print progdata.program_version()
+            print progdata.HybMeshVersion.current()
             sys.exit()
         if sys.argv[1] == '-u':
             r = progdata.check_for_updates()
             print 'Current version: %s' % r[0]
-            if r[2] is None:
+            if r[1] is None:
                 print 'Failed to check for latest version'
-            elif r[2] != 1:
-                print 'No updates are availible'
+            elif r[2] == -1:
+                print 'New version %s is availible at %s' % \
+                    (r[1], progdata.project_url())
             else:
-                print 'Latest version: %s is availible at %s' % (
-                            r[1], progdata.project_url())
+                print 'No updates are availible'
             sys.exit()
 
     # execution
@@ -91,7 +92,6 @@ def main():
         sys.exit()
 
     sys.exit('Invalid option string. See -help.')
-	
 
 
 if __name__ == '__main__':

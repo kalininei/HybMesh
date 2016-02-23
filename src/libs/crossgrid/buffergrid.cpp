@@ -1,7 +1,6 @@
 #include <map>
 #include "addalgo.hpp"
 #include "buffergrid.h"
-#include "fileproc.h"
 
 BufferGrid::BufferGrid(GridGeom& main, const PContour& cont, double buffer_size):GridGeom(){
 	orig = &main;
@@ -17,22 +16,21 @@ BufferGrid::BufferGrid(GridGeom& main, const PContour& cont, double buffer_size)
 	{
 		//if any point the main grid lies strongly within the contour -> proceed with the procedure
 		auto fnd1 = std::find_if(meas.begin(), meas.end(), [](double x){ return x>geps2; });
-		if (fnd1 != meas.end()) goto proceed_proc;
+		if (fnd1 != meas.end()) goto PROCEED_PROC;
 	}
 	{
 		//if less then two points of main lie on the cont -> stop procedure
 		int bndcount = std::count_if(meas.begin(), meas.end(), [](double x){ return fabs(x)<geps2; });
-		if (bndcount<2) goto stop_proc;
+		if (bndcount<2) return;
 	}
 	{
 		//if any boundary main edge lies on cont -> proceed
 		for (auto e: main.get_edges()) if (e.is_boundary()){
-			if (fabs(meas[e.p1])<geps2 && fabs(meas[e.p2])<geps2) goto proceed_proc;
+			if (fabs(meas[e.p1])<geps2 && fabs(meas[e.p2])<geps2) goto PROCEED_PROC;
 		}
 	}
-	//stop/proceed points for step 2)
-	stop_proc: return;
-	proceed_proc:;
+	//proceed points for step 2)
+	PROCEED_PROC:;
 
 	//3) find all cells which includes filtered points
 	for (int i=0; i<main.n_cells(); ++i){
@@ -79,41 +77,6 @@ BufferGrid::BufferGrid(GridGeom& main, const PContour& cont, double buffer_size)
 	set_indicies();
 }
 
-std::tuple<
-	std::set<const Point*>,   //inner_bp - boundary points from inner contour
-	std::set<const Point*>,   //outer_bp - boundary points from outer contour
-	std::set<const Point*>    //true_bp  - boundary points from original boundary
-> BufferGrid::build_bedges() const{
-	//return value initializatin
-	std::tuple<
-		std::set<const Point*>,
-		std::set<const Point*>,
-		std::set<const Point*>
-	> ret;
-	auto& inner_bp = std::get<0>(ret);
-	auto& outer_bp = std::get<1>(ret);
-	auto& true_bp = std::get<2>(ret);
-
-	//get contour points
-	auto cnts = get_contours();
-	vector<const Point*> pp;
-	for (auto c: cnts) for (int i=0; i<c.n_points(); ++i){
-		pp.push_back(c.get_point(i));
-	}
-	//get measures of contour points
-	auto meas = source_cont.meas_points(pp);
-	//sort points depending on their meassures
-	for (size_t i=0; i<meas.size(); ++i){
-		//if point lies without buffer zone this is outer contour
-		if (-meas[i]>sqr(buffer-geps)) outer_bp.insert(pp[i]);
-		//if point lies on the contour this is inner contour point
-		else if (fabs(meas[i])<geps2) inner_bp.insert(pp[i]);
-		//if this is boundary point from the original grid
-		else true_bp.insert(pp[i]);
-	}
-	return ret;
-}
-
 void BufferGrid::new_edge_points(Edge& e, const vector<double>& wht){
 	auto p1 = points[e.p1].get(), p2 = points[e.p2].get();
 	vector<GridPoint*> newp;
@@ -152,315 +115,154 @@ void BufferGrid::new_edge_points(Edge& e, const vector<double>& wht){
 //boundary_info helper functions
 namespace{
 
-std::pair<const Point*, double> closest_point(const Point* p, std::set<const Point*>& src){
-	const Point* resp = NULL; double resd = 1e200;
-	for (auto sp: src){
-		double meas = Point::meas(*p, *sp);
-		if (meas < resd){
-			resd = meas;
-			resp = sp;
-		}
-	}
-	return std::make_pair(resp, sqrt(resd));
-};
-
-void clean_noncorner_points(PContour& c, std::set<const Point*>& src, const PContour* cont = NULL){
-	std::set<int> bad_pts;
-	for (int i=0; i<c.n_points(); ++i){
-		const Point* p = c.get_point(i);
-		//if corner point -> ignore
-		if (c.is_corner_point(i)) continue;
-
-		//if coinsides with cont point -> ignore
-		if (cont != NULL){
-			for (int j=0; j<cont->n_points(); ++j){
-				if (*p == *cont->get_point(j)){
-					p = NULL;
-					break;
-				}
-			}
-			if (p == NULL) continue;
-		}
-
-
-		//if lies in src -> delete from c and src
-		auto fnd = src.find(p);
-		if (fnd != src.end()){
-			src.erase(fnd);
-			bad_pts.insert(i);
-		}
-	}
-	c.delete_by_index(bad_pts);
+HMCont2D::Container<HMCont2D::Contour> contour_to_hm(const Contour& c){
+	std::vector<Point> pnt;
+	for (int i=0; i<c.n_points(); ++i) pnt.push_back(*c.get_point(i));
+	return HMCont2D::Constructor::ContourFromPoints(pnt, true);
 }
 
-void boundary_points_dist(const PContour& c, std::map<const Point*, double>& d, std::set<const Point*>& bp){
-	//types: 1 for bp points, 0 for others
-	vector<int> types(c.n_points(), 0);
-	for (int i=0; i<c.n_points(); ++i){
-		if (bp.find(c.get_point(i)) != bp.end()) types[i] = 1;
-	}
-	
-	//loop over contour points
-	for (int i=0; i<c.n_points(); ++i){
-		const Point* p = c.get_point(i);
-		int inext = (i==c.n_points()-1) ? 0 : i+1;
-		int iprev = (i==0) ? c.n_points()-1 : i-1;
-
-		if (types[i] == 1) d[p] = -1;
-		else {
-			if (types[iprev] == 1 && types[inext] == 1){
-				d[p] = -1;
-			} else if (types[iprev] == 1 && types[inext] == 0){
-				d[p] = Point::dist(*p, *c.get_point(inext));
-			} else if (types[inext] == 1 && types[iprev] == 0){
-				d[p] = Point::dist(*p, *c.get_point(iprev));
-			}
+void simplify_bnd_edges(HMCont2D::ContourTree& cont, const HMCont2D::ECollection& bedges){
+	std::vector<const Point*> not_needed_points;
+	auto etree = HMCont2D::ExtendedTree::Assemble(bedges);
+	for (int i=0; i<etree.cont_count(); ++i){
+		auto ap = etree.get_contour(i)->all_points();
+		auto cp = etree.get_contour(i)->corner_points();
+		std::set<const Point*> cps(cp.begin(), cp.end());
+		for (auto a: ap){
+			if (cps.find(a) == cps.end()) not_needed_points.push_back(a);
 		}
 	}
+	cont.RemovePoints(not_needed_points);
 }
 
-void inner_outer_points_dist(const PContour& c, std::map<const Point*, double>& d,
-		std::set<const Point*>& bp1, std::set<const Point*>& bp2){
-	//types: 1 for bp1 points, 2 for bp2
-	vector<int> types(c.n_points(), 0);
-	for (int i=0; i<c.n_points(); ++i){
-		if (bp1.find(c.get_point(i)) != bp1.end()) types[i] = 1;
-		else if (bp2.find(c.get_point(i)) != bp2.end()) types[i] = 2;
+//extracts edges of 'from' which lie on 'where'
+HMCont2D::ECollection extract_edges(const HMCont2D::ECollection& from,
+		const HMCont2D::ECollection& where){
+	std::map<const Point*, double> pdist;
+	for(auto p: from.all_points()){
+		pdist[p] = std::get<1>(HMCont2D::ECollection::FindClosestEdge(where, *p));
 	}
-	
-	//loop over contour points
-	for (int i=0; i<c.n_points(); ++i){
-		const Point* p = c.get_point(i);
-		int inext = (i==c.n_points()-1) ? 0 : i+1;
-		int iprev = (i==0) ? c.n_points()-1 : i-1;
-
-		int tpi = types[i], tpip = types[inext], tpim = types[iprev];
-
-		if (tpi < 1 || tpip < 1 || tpim < 1) continue; //this was treated in boundary_points_dist
-		else if (tpi == tpip == tpim) continue; //normal situation
-		else if (tpi == tpip && tpi != tpim){
-			d[p] = Point::dist(*p, *c.get_point(inext));
-		}
-		else if (tpi != tpim && tpi == tpim){
-			d[p] = Point::dist(*p, *c.get_point(iprev));
-		}
+	HMCont2D::ECollection ret;
+	for(auto e: from){
+		double dist1 = pdist[e->pstart];
+		double dist2 = pdist[e->pend];
+		if (ISZERO(dist1) && ISZERO(dist2)) ret.add_value(e);
 	}
+	return ret;
 }
 
 }//namespace
 
-
+//1) get contour from buffer grid
+//2) mark all edges as built on source contour/original grid contour/internal grid edges
+//3) from resulting contour delete all non-node points from source contour
+//4)                               non-corner points from original grid if preserve_bp==false
+//5) for all points calculate weights as maximum distance to the left/right non-bnd points along contour
+//6) for bnd points calculate weight using closest source and closest internal edge length
 std::tuple<
-	ContoursCollection,
-	std::vector<double>
-> BufferGrid::boundary_info(bool preserve_true_bp) const{
-	//return value
-	std::tuple<ContoursCollection, vector<double>> ret;
-	auto& cc = std::get<0>(ret);
-	auto& lc = std::get<1>(ret);
+	HMCont2D::ContourTree,
+	std::map<Point*, double>
+> BufferGrid::boundary_info(bool preserve_bp) const{
+	//prepare return
+	std::tuple<
+		HMCont2D::ContourTree,
+		std::map<Point*, double>
+	> ret;
+	auto& cont = std::get<0>(ret);
+	auto& bw = std::get<1>(ret);
 
-	//nodes origin info
-	auto origin = build_bedges();
-	auto& inner_bp = std::get<0>(origin); //points on the source contour
-	auto& outer_bp = std::get<1>(origin); //grid points outside bufferzone
-	auto& true_bp = std::get<2>(origin);  //boundary grid points
+	//outer contour initial
+	cont = GGeom::Info::Contour(*this);
 
-	//if there is no outer and boundary points: return only source contour
-	if (outer_bp.size() == 0 && true_bp.size() == 0){
-		cc.add_contour(source_cont);
-		lc = cc.get_contour(0)->chdist();
-		return ret;
-	}
-
-	// --- build real contour
-	//1) initial contour
-	std::vector<PContour> real_contour = get_contours();
-
-	//2) delete points which lie on the segments of the source contour and
-	//are not its edge points. Remove points from c and from inner_bp.
-	for (auto& c: real_contour) clean_noncorner_points(c, inner_bp, &source_cont);
-
-	//3) assemble distances into map
-	std::map<const Point*, double> dist;
-	for (auto& c: real_contour){
-		//calculatate distances for contour points
-		auto cdist = c.max_chdist();
-		for (int i=0; i<c.n_points(); ++i)
-			dist[c.get_point(i)] = cdist[i];
-		//treat distances for true boundary points. it should:
-		//	- equal -1 by itself
-		//	- not affect adjecent points distances
-		boundary_points_dist(c, dist, true_bp);
-		//treat situations when left side of point is inner and right side -- outer.
-		//	- equal its distance to -1
-		inner_outer_points_dist(c, dist, inner_bp, outer_bp);
-	}
+	// ================ building edge types
+	//edges types:
+	//  1 - source contour edges, 
+	//  2 - original grid boundary edges
+	//  3 - original grid internal edges 
+	auto scont = contour_to_hm(source_cont);
+	auto grid_cont = GGeom::Info::Contour(*orig);
+	HMCont2D::ECollection inner_edges = extract_edges(cont, scont);
+	HMCont2D::ECollection bnd_edges = extract_edges(cont, grid_cont);
+	HMCont2D::ECollection outer_edges;
+	std::map<const HMCont2D::Edge*, int> edtypes;
+	for (auto& e: cont) edtypes[e.get()] = 3;
+	for (auto& e: inner_edges) edtypes[e.get()] = 1;
+	for (auto& e: bnd_edges) edtypes[e.get()] = 2;
 	
-	//4) delete all non corner boundary points if necessary
-	if (!preserve_true_bp){
-		for (auto& c: real_contour) clean_noncorner_points(c, true_bp);
+	//inner, bnd, outer edges set. Edges are shared with cont
+	for (auto& ed: cont.data){
+		if (edtypes[ed.get()] == 3) outer_edges.add_value(ed);
 	}
+	assert(inner_edges.size()!=0 || outer_edges.size()!=0);
 
-
-	//5) calculate distances for points with illegal distances (== -1).
-	//as the linear weighted combination of closest inner and closest outer points
-	//distances
-	auto weight = [&](const Point* p)->double{
-		auto d1 = closest_point(p, inner_bp);
-		auto d2 = closest_point(p, outer_bp);
-		if (d1.first == 0) return dist[d2.first];
-		if (d2.first == 0) return dist[d1.first];
-		double w1 = d1.second/(d1.second + d2.second);
-		return (1 - w1)*dist[d1.first] + w1*dist[d2.first];
-	};
-	for (auto& v: dist) if (v.second < 0){
-		v.second = weight(v.first);
-	}
-
-	//6) assemble result
-	for (auto& c: real_contour){
-		//add contour and distances to result
-		cc.add_contour(c);
-	}
-	for (int i=0; i<cc.n_cont(); ++i){
-		auto cont = cc.get_contour(i);
-		for (int i=0; i<cont->n_points(); ++i)
-			lc.push_back(dist[cont->get_point(i)]);
-	}
-
-	return ret;
-}
-
-std::tuple<
-	ContoursCollection,
-	std::vector<double>
-> BufferGrid::boundary_info2(bool preserve_true_bp) const{
-	//return value
-	std::tuple<ContoursCollection, vector<double>> ret;
-	auto& cc = std::get<0>(ret);
-	auto& lc = std::get<1>(ret);
-
-	//nodes origin info
-	auto origin = build_bedges();
-	auto& inner_bp = std::get<0>(origin); //points on the source contour
-	auto& outer_bp = std::get<1>(origin); //points grid points outside bufferzone
-	auto& true_bp = std::get<2>(origin);  //boundary grid points
-
-	//if there is no outer points: set the furthest true_bp point as outer
-	//if there is no outer and boundary points: return only source contour
-	std::shared_ptr<Point> dummy_outer;
-	if (outer_bp.size()==0){
-		if (true_bp.size()>0){
-			double maxmeas = 0;
-			const Point* furthp = 0;
-			for (auto& ptr: true_bp){
-				double minmeas = 1e100;
-				for (auto& pin: inner_bp){
-					double m = Point::meas(*ptr, *pin);
-					if (m<minmeas) minmeas = m;
-				}
-				if (minmeas>maxmeas){
-					maxmeas = minmeas;
-					furthp = ptr;
-				}
-			}
-			//dummy_outer.reset(new Point(furthp->x, furthp->y));
-			//outer_bp.insert(dummy_outer.get());
-			true_bp.erase(true_bp.find(furthp));
-			outer_bp.insert(furthp);
-		} else {
-			cc.add_contour(source_cont);
-			lc = source_cont.chdist();
-			return ret;
-		}
-	}
-
-	// --- build real contour
-	std::vector<PContour> real_contour = get_contours();
-	//delete points which lie on the sections of the source contour
-	//delete all boundary points if necessary
-	for (auto& c: real_contour){
-		std::set<int> bad_points;
-		for (int i=0; i<c.n_points(); ++i){
-			if (!c.is_corner_point(i)){
-				auto p = c.get_point(i);
-				if (inner_bp.find(p)!=inner_bp.end()){
-					//find if p is the edge of source contour
-					for (int j=0; j<source_cont.n_points(); ++j){
-						if (*p == *source_cont.get_point(j)){
-							p=0; break;
-						}
-					}
-					if (p!=0) bad_points.insert(i);
-				} else if (!preserve_true_bp && true_bp.find(p)!=true_bp.end()){
-					//delete all boundary points
-					bad_points.insert(i);
-				}
+	// ================ cont purge procedures
+	//remove source contour points which doesn't equal source contour nodes
+	//to get rid of hanging nodes
+	std::vector<const Point*> bad_points;
+	for (auto c: cont.nodes){
+		auto cinfo = c->ordered_info(); cinfo.resize(cinfo.size()-1);
+		for (auto& ci: cinfo){
+			if (edtypes[ci.eprev.get()] == 1 && edtypes[ci.enext.get()] == 1){
+				auto dst = HMCont2D::PCollection::FindClosestNode(scont.pdata, *ci.p);
+				if (!ISZERO(sqrt(std::get<2>(dst)))) bad_points.push_back(ci.p);
 			}
 		}
-		c.delete_by_index(bad_points);
 	}
-	//build characteristic steps
-	int _npt=0; for (auto& c: real_contour) _npt+=c.n_points();
-	lc.reserve(_npt);  //dist_dict points to lc data hence reserve is necessary
-	std::map<const Point*, double*> dist_dict;
-	for (auto& c: real_contour){
-		//types of vertices: inner, outer, true boundary
-		vector<int> types;
-		for (int i=0; i<c.n_points(); ++i){
-			if (inner_bp.find(c.get_point(i))!=inner_bp.end()) types.push_back(0);
-			else if (true_bp.find(c.get_point(i))!=true_bp.end()) types.push_back(2);
-			else types.push_back(1);
-		}
-		//calculating distances
-		vector<double> dist = c.section_lenghts();
-		//characteristic steps
-		for (int i=0; i<c.n_points(); ++i){
-			int iprev = (i==0)?c.n_points()-1:i-1;
-			int inext = (i==c.n_points()-1)?0:i+1;
-			double d = (dist[iprev]+dist[i])/2.0 ;
-			if (types[i]==types[inext] && types[i]!=types[iprev]) d = dist[i];
-			else if (types[i]!=types[inext] && types[i]==types[iprev]) d = dist[iprev];
+	cont.RemovePoints(bad_points);
+	
+	//simplify bnd edges if needed:
+	//  for connected sequence of bnd_edges changes last point of first edge
+	//  and deletes all others from contour tree
+	if (!preserve_bp) simplify_bnd_edges(cont, bnd_edges);
 
-			lc.push_back(d);
-			dist_dict.emplace(c.get_point(i), &lc.back());
+	//Edges deleted from cont still present in bnd_edges collection but have NULL data.
+	//clear *_edges ecollections from NULL data edges for further weight calculations
+	auto rmfun = [](shared_ptr<HMCont2D::Edge> e){return e->pstart == 0;};
+	inner_edges.data.resize(std::remove_if(inner_edges.begin(), inner_edges.end(), rmfun)-inner_edges.begin());
+	outer_edges.data.resize(std::remove_if(outer_edges.begin(), outer_edges.end(), rmfun)-outer_edges.begin());
+	bnd_edges.data.resize(std::remove_if(bnd_edges.begin(), bnd_edges.end(), rmfun)-bnd_edges.begin());
+
+	// ========================= calculate weight procedures
+	//set weights for all edges points (-1 for boundaries to process it further)
+	auto calc_weight = [](double len_prev, double len_next, int tp_prev, int tp_next)->double{
+			if (tp_prev == 1 && tp_next == 1) return std::max(len_prev, len_next);
+			if (tp_prev == 1 && tp_next == 2) return len_prev;
+			if (tp_prev == 1 && tp_next == 3) return std::max(len_prev, len_next);
+			if (tp_prev == 2 && tp_next == 1) return len_next;
+			if (tp_prev == 2 && tp_next == 2) return -1;
+			if (tp_prev == 2 && tp_next == 3) return len_next;
+			if (tp_prev == 3 && tp_next == 1) return std::max(len_prev, len_next);
+			if (tp_prev == 3 && tp_next == 2) return len_prev;
+			if (tp_prev == 3 && tp_next == 3) return std::max(len_prev, len_next);
+			return -1;
+		};
+	for (auto& c: cont.nodes){
+		auto oinfo = c->ordered_info();
+		auto olens = HMCont2D::ECollection::ELengths(*c);
+		for (int i=0; i<c->size(); ++i){
+			double iprev = (i==0)?c->size()-1:i-1;
+			const HMCont2D::Edge *eprev=oinfo[i].eprev.get();
+			const HMCont2D::Edge *enext=oinfo[i].enext.get();
+			bw[oinfo[i].p] = calc_weight(olens[iprev], olens[i], edtypes[eprev], edtypes[enext]);
 		}
-	}
-	//filter points origin to preserve only points from dist_dict
-	auto filter_origin = [&dist_dict](std::set<const Point*>& st){
-		auto it = st.begin();
-		while (it!=st.end()){
-			if (dist_dict.find(*it)==dist_dict.end()){
-				auto it2 = it++;
-				st.erase(it2);
-			} else ++it;
-		}
-	};
-	filter_origin(inner_bp);
-	filter_origin(outer_bp);
-	filter_origin(true_bp);
-	//for true boundary points find closest inner and outer points
-	auto closest_point = [](const Point* pnt, const std::set<const Point*>& col)
-			->std::pair<const Point*, double>{
-		double dist = gbig;
-		const Point* closest = 0;
-		for (auto& p2: col){
-			double d = Point::meas(*pnt, *p2);
-			if (d<dist) { dist = d; closest = p2; }
-		}
-		return std::make_pair(closest, sqrt(dist));
-	};
-	for (auto& p: true_bp){
-		auto closest_inner = closest_point(p, inner_bp);
-		auto closest_outer = closest_point(p, outer_bp);
-		double f1 = *dist_dict[closest_inner.first];
-		double f2 = *dist_dict[closest_outer.first];
-		double d1 = closest_inner.second, d2 = closest_outer.second;
-		*dist_dict[p] = (f1*d2+f2*d1)/(d1+d2);
 	}
 
-	//assemble contours collection and return
-	for (auto& c: real_contour) cc.add_contour(c);
+	//calculate weights for points which have no distance set yet:
+	//   boundary points of original grid
+	for (auto& d: bw) if (d.second<0){
+		auto d1 = HMCont2D::ECollection::FindClosestEdge(inner_edges, *d.first);
+		auto d2 = HMCont2D::ECollection::FindClosestEdge(outer_edges, *d.first);
+		if (std::get<0>(d1) == 0) d.second = std::get<0>(d2)->length();
+		else if (std::get<0>(d2) == 0) d.second = std::get<0>(d1)->length();
+		else{
+			double dist1 = std::get<1>(d1), dist2 = std::get<1>(d2);
+			double len1 = std::get<0>(d1)->length(), len2 = std::get<0>(d2)->length();
+			double w1 = dist1/(dist1 + dist2);
+			d.second = (1 - w1)*len1 + w1*len2;
+		}
+	}
+
+	//return
 	return ret;
 }
 

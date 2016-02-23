@@ -5,8 +5,10 @@ global hm, check
 
 
 def check(cond):
+    import traceback
     if not cond:
-        raise Exception("Test Failed")
+        print "TEST FAILED <<<<<<<<<<<<<<<<<<<<<<<"
+        traceback.print_exc()
 
 
 def check_cont(cont, nn, ne, scont, btypes):
@@ -64,7 +66,7 @@ check_cont(g4, 244, 244, [106, 138], {0: 138, 5: 106})
 check_grid(g3, 576, 1042, 466, {4: 466})
 check_grid(g4, 632, 1142, 510, {4: 510})
 
-print "increasing angle test"
+print "increasing angle"
 start, end, diff_ac, diff = 20, 350, 2, 50
 angle = start
 while angle < end:
@@ -90,3 +92,29 @@ while angle < end:
 
     hm.remove_geom([cont, grid])
     angle += diff_ac if angle < op.range_angles[0] else diff
+
+
+print "doubly connected area: all outer"
+inner_cont = hm.add_rect_cont([0, 0], [1, 1], 1)
+outer_cont = hm.add_circ_cont([0, 0], 3, 16, 2)
+full_cont = hm.unite_contours([inner_cont, outer_cont])
+op = hm.BoundaryGridOption(full_cont, [0, 0.01, 0.02, 0.03, 0.04],
+                           'left', 0.01)
+g5 = hm.build_boundary_grid(op)
+check_grid(g5, 11440, 20592, 9152, {4: 9152})
+check_cont(g5, 4576, 4576, [400, 432, 1872, 1872], {0: 2304, 1: 400, 2: 1872})
+
+print "doubly connected area: all inner"
+op.direction = 'right'
+g6 = hm.build_boundary_grid(op)
+check_grid(g6, 11280, 20304, 9024, {4: 9024})
+check_cont(g6, 4512, 4512, [400, 368, 1872, 1872], {0: 2240, 1: 400, 2: 1872})
+
+print "doubly connected area: only single contour"
+op.start_point = op.end_point = [0, 0]
+g7 = hm.build_boundary_grid(op)
+check_grid(g7, 1920, 3456, 1536, {4: 1536})
+check_cont(g7, 768, 768, [400, 368], {0: 368, 1: 400})
+
+check(len(hm.registered_contours()) == 4)
+check(len(hm.registered_grids()) == 7)

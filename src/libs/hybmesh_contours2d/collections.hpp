@@ -206,8 +206,12 @@ struct PCollection: public Tpp::Collection<Point>{
 
 	//Methods
 	static void SaveVtk(const PCollection& dt, const char* fn);
-	//pointer to closest point
-	static Point* FindClosestNode(const PCollection& dt, const Point& p);
+	//pointer to closest point:
+	//<0> - point pointer
+	//<1> - point index
+	//<2> - squared distance to point
+	static std::tuple<Point*, int, double>
+	FindClosestNode(const PCollection& dt, const Point& p);
 
 	//Scaling
 	static ScaleBase Scale01(PCollection&);
@@ -240,7 +244,7 @@ struct ECollection: public Tpp::Collection<Edge>{
 	//pointer to closest point
 	static Point* FindClosestNode(const ECollection& dt, const Point& p);
 	//closest edge-> returns 
-	//<0> Edge,
+	//<0> Edge,  NULL if no edges in Collection
 	//<1> distance,
 	//<2> weight of closest point within edge.
 	//<3> edge index

@@ -70,6 +70,28 @@ void ContourTree::AddContour(shared_ptr<Contour>& c){
 	UpdateTopology();
 }
 
+void ContourTree::RemovePoints(const vector<const Point*>& p){
+	for (auto& n: nodes) n->RemovePoints(p);
+	ReloadEdges();
+}
+
+void ContourTree::ReloadEdges(){
+	data.clear();
+	for (auto& n: nodes) data.insert(data.end(), n->data.begin(), n->data.end());
+}
+
+void ExtendedTree::RemovePoints(const vector<const Point*>& p){
+	for (auto& n: nodes) n->RemovePoints(p);
+	for (auto& n: open_contours) n->RemovePoints(p);
+	ReloadEdges();
+}
+
+void ExtendedTree::ReloadEdges(){
+	data.clear();
+	for (auto& n: nodes) data.insert(data.end(), n->data.begin(), n->data.end());
+	for (auto& n: open_contours) data.insert(data.end(), n->data.begin(), n->data.end());
+}
+
 void ContourTree::UpdateTopology(){
 	//clear children array
 	std::for_each(nodes.begin(), nodes.end(),

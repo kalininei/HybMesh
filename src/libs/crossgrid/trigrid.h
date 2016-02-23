@@ -50,6 +50,8 @@ public:
 	//laplas smooth
 	void smooth(double w);
 
+	//h is the default size of section
+	//w is the function for boundary point -> grid size association
 	static shared_ptr<TriGrid>
 	TriangulateArea(const vector<Point>& pts, double h);
 	static shared_ptr<TriGrid>

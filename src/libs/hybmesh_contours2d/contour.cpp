@@ -246,6 +246,37 @@ void Contour::RemoveEdge(int i){
 	data.erase(data.begin()+i);
 }
 
+void Contour::RemovePoint(const Point* p){
+	auto op = ordered_points();
+	int edge_to_delete = -1;
+	auto change_edge_point = [&](int i, const Point* from, Point* to){
+		if (data[i]->pstart == from) data[i]->pstart = to;
+		else if (data[i]->pend == from) data[i]->pend = to;
+	};
+	for (int i=0; i<op.size(); ++i){
+		if (op[i] == p){
+			edge_to_delete = i;
+			if (!is_closed()){
+				if (i == op.size() - 1) edge_to_delete = i-1;
+				else if (i != 0) change_edge_point(i-1, p, op[i+1]);
+			} else {
+				if (i == 0) change_edge_point(size()-1, p, op[i+1]);
+				else change_edge_point(i-1, p, op[i+1]);
+			}
+			break;
+		}
+	}
+	if (edge_to_delete>=0){
+		data[edge_to_delete]->pstart = 0;
+		data[edge_to_delete]->pend = 0;
+		data.erase(data.begin()+edge_to_delete);
+	}
+}
+
+void Contour::RemovePoints(const vector<const Point*>& vp){
+	for (auto pnt: vp) RemovePoint(pnt);
+}
+
 bool Contour::ForceDirection(bool dir){
 	if (Area(*this) < 0){
 		if (dir){ Reverse(); return true;}

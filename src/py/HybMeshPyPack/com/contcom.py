@@ -1,5 +1,6 @@
 "contour commands"
 import copy
+import math
 import HybMeshPyPack.basic.proc as bp
 from HybMeshPyPack.basic.geom import Point2
 import HybMeshPyPack.gdata.contour2 as contour2
@@ -38,6 +39,43 @@ class AddRectCont(objcom.AbstractAddRemove):
         p0, p1 = op0, Point2(op1.x, op0.y)
         p2, p3 = op1, Point2(op0.x, op1.y)
         c.append_points([p0, p1, p2, p3], b)
+        return [], [], [(self.options['name'], c)], []
+
+
+class AddCircCont(objcom.AbstractAddRemove):
+    "Add circular contour"
+    def __init__(self, argsdict):
+        if 'name' not in argsdict:
+            argsdict['name'] = "Contour1"
+        if 'bnd' not in argsdict:
+            argsdict['bnd'] = 0
+        super(AddCircCont, self).__init__(argsdict)
+
+    @classmethod
+    def _arguments_types(cls):
+        return {'name': command.BasicOption(str),
+                'p0': command.Point2Option(),
+                'rad': command.BasicOption(float),
+                'na': command.BasicOption(int),
+                'bnd': command.BasicOption(int),
+                }
+
+    def doc(self):
+        return "Add circlular contour"
+
+    def _addrem_objects(self):
+        c = contour2.ClosedContour2()
+        op0 = self.options['p0']
+        b = self.options['bnd']
+        rad = self.options['rad']
+        na = self.options['na']
+        astep = 2 * math.pi / na
+        pts = []
+        for i in range(na):
+            angle = i * astep
+            pts.append(Point2(op0.x + rad * math.cos(angle),
+                              op0.y + rad * math.sin(angle)))
+        c.append_points(pts, [b] * len(pts))
         return [], [], [(self.options['name'], c)], []
 
 

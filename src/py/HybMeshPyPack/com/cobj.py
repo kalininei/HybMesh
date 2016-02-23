@@ -36,6 +36,11 @@ def grid_to_c(g):
     return lib_fa.grid_construct(ct.c_int(npt), ct.c_int(ncls), c_pnt, c_cls)
 
 
+def free_c_grid(cgrid):
+    lib_fa = cport_lib()
+    lib_fa.grid_free(cgrid)
+
+
 def cont_to_c(c):
     """ return c pointer to a contours2.Contour2 object
         works for contours of crossgrid library.
@@ -121,3 +126,39 @@ def cont2_to_c(cont):
 
     return lib_c2.create_ecollection_container(c_npnt, c_pnts,
                                                c_nedges, c_edges)
+
+
+def get_skewness(grid, threshold):
+    """ reports skewness of the grid ->
+           {'max_skew': float, 'max_skew_cell': int,
+            'bad_cells': [cell indicies: int],
+            'bad_skew': [cell skew: float]}
+        returns {} if error
+    """
+    cgrid = grid_to_c(grid)
+    lib_fa = cport_lib()
+
+    ms = ct.c_double()
+    msc = ct.c_int()
+    num_bs = ct.c_int()
+    bc = (ct.c_int * grid.n_cells())()
+    bs = (ct.c_double * grid.n_cells())()
+    cret = lib_fa.report_skewness(
+        cgrid, ct.c_double(threshold),
+        ct.byref(ms), ct.byref(msc), ct.byref(num_bs),
+        bc, bs)
+    free_c_grid(cgrid)
+    ret = {}
+    if (cret != 0):
+        return ret
+
+    ret['max_skew'] = ms.value
+    ret['max_skew_cell'] = msc.value
+    ret['bad_cells'] = []
+    ret['bad_skew'] = []
+
+    for i in range(num_bs.value):
+        ret['bad_cells'].append(bc[i])
+        ret['bad_skew'].append(bs[i])
+
+    return ret

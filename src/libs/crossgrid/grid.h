@@ -247,6 +247,8 @@ static HMCont2D::ContourTree Contour(const GridGeom& grid);
 static HMCont2D::Contour Contour1(const GridGeom& grid);
 //Build a bounding box
 static BoundingBox BBox(const GridGeom& grid, double eps=geps);
+//calculate skewness
+static vector<double> Skewness(const GridGeom& grid);
 
 //calculates area on plain. May differ from value of grid->area()
 //if grid is not singly connected.

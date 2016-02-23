@@ -98,8 +98,11 @@ def unite_grids(base_grid, imp_grids, empty_holes=False, fix_bnd=False):
     for ig in imp_grids:
         args["plus"].append({"name": ig[0], "buf": ig[1], "den": 7})
     c = com.gridcom.UniteGrids(args)
-    flow.exec_command(c)
-    return c._get_added_names()[0][0]
+    try:
+        flow.exec_command(c)
+        return c._get_added_names()[0][0]
+    except Exception:
+        raise ExecError('build_boundary_grid')
 
 
 class BoundaryGridOption(object):

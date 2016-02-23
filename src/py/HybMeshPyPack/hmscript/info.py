@@ -1,5 +1,6 @@
 from HybMeshPyPack.hmscript import data
 from HybMeshPyPack.com import cobj
+from HybMeshPyPack import progdata
 
 
 def info_grid(g1):
@@ -124,3 +125,67 @@ def domain_area(c):
     lib_fa.free_ecollection_container(ccont)
 
     return ret
+
+
+def check_compatibility(vers, policy=1):
+    """Checks version compatibility. Notifies if current version
+    of hymbesh is not fully compatible with input version.
+
+    Args:
+       vers (str): version in "0.1.2" format
+
+    Kwargs:
+       policy (int): if versions are incompatible then:
+         0 - do nothing
+         1 - report warning to cout
+         2 - raise Exception
+
+    Returns:
+        False if versions are incompatible, True otherwise.
+
+    """
+    versc = progdata.HybMeshVersion.current()
+    versi = progdata.HybMeshVersion(vers)
+    # last checked for 0.2.1 version
+    ret = True
+    if (versi > versc):
+        ret = False
+    if (versi < progdata.HybMeshVersion("0.2.1")):
+        ret = False
+    if not ret:
+        message = "Current version of hybmesh %s is not " \
+            "fully compatible with version %s" % (versc, vers)
+        if policy == 1:
+            print "WARNING:", message
+        elif policy == 2:
+            raise Exception(message)
+    return ret
+
+
+def skewness(g, threshold=0.7):
+    """Reports equiangular skewness of grid cells
+
+    Args:
+       g: grid identifier
+
+    Kwargs:
+       threshold (float in [0, 1]): cells with skewness higher than this
+       value are considered bad and will be reported.
+       Set it to -1 to get skewness for all cells.
+
+    Returns:
+       dictionary with keys:
+         'ok' (boolean): True if no bad_cells were found
+         'max_skew' (float): maximum skew value in grid
+         'max_skew_cell' (int): index of cell with maximum skew
+         'bad_cells' (list-of-int): list of bad cell indicies
+         'bad_skew' (list-of-float): list of bad cell skew.
+       'bad_index' and 'bad_skew' list entries correspond to same bad cell.
+
+    """
+    grid = data.get_grid(name=g)[2]
+    skew = cobj.get_skewness(grid, threshold)
+    if (len(skew) == 0):
+        raise Exception("Can not calculate skewness")
+    skew['ok'] = (len(skew['bad_cells']) == 0)
+    return skew

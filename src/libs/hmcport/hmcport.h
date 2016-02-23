@@ -14,6 +14,12 @@ int grid_ncells(Grid* g);
 int grid_cellsdim(Grid* g);
 //area
 double grid_area(Grid* g);
+//equiangular skewness
+//returns 0 if ok and 1 on errors
+int report_skewness(void* grid, double threshold, double* max_skew, int* max_skew_cell,
+		int* bad_cells_count, int* bad_indicies, double* bad_skew);
+
+
 //get grid in points, edges->points, cells->edges format
 void grid_get_edges_info(Grid* g, int* Npnt, int* Neds, int* Ncls,
 		double** pts,
@@ -134,6 +140,7 @@ struct BoundaryLayerGridOption{
 
 Grid* boundary_layer_grid_wcb(int N, BoundaryLayerGridOption* opt, 
 		crossgrid_callback cb_fun);
+
 
 }; //extern C
 

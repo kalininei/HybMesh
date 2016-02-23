@@ -362,9 +362,10 @@ class BuildBoundaryGrid(NewGridCommand):
                 p0 = op['source'].points[epoints[eds[0][0]][0]]
                 op['start'] = op['end'] = copy.deepcopy(p0)
                 for e in eds[1:]:
-                    newop = op
+                    newop = copy.deepcopy(op)
                     pi = op['source'].points[epoints[e[0]][0]]
                     newop['start'] = newop['end'] = copy.deepcopy(pi)
+                    newops.append(newop)
         arg.extend(newops)
 
         # if contour is open and points coincide

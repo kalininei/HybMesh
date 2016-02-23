@@ -175,7 +175,8 @@ TRet ci::Difference(const ECont& c1, const ETree& c2){
 
 //two trees
 TRet ci::Intersection(const ETree& c1, const ETree& c2){
-	_THROW_NOT_IMP_;
+	Impl::GpcTree p1(c1), p2(c2);
+	return Impl::GpcTree::Intersect(p1, p2).ToContourTree();
 }
 
 TRet ci::Union(const ETree& c1, const ETree& c2){

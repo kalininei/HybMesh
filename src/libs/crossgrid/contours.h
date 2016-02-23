@@ -43,19 +43,21 @@ public:
 	}
 
 	//returns squared distances to points. Sign depends on whether points lies
-	//outside(-) or inside(+) the contour
+	//outside(-) or inside(+) the contour with respect ot its sence of rotation
 	vector<double> meas_points(const vector<const Point*>& pts) const;
 
 	//additional procedures
 	//return point position with respect to the contour:
 	//    OUTSIDE if outside, INSIDE if inside, BOUND if lies on the contour
+	//contour direction matters
 	int is_inside(const Point& p, const bool* inner_hint = 0) const;
 	//filter inner, outer and contour points from point list
+	//Contour direction matters
 	std::tuple<
-		vector<Point*>,  //internal points
-		vector<Point*>,  //points on contour
-		vector<Point*>   //outer points
-	> filter_points(const vector<Point*>& points) const;
+		vector<const Point*>,  //internal points
+		vector<const Point*>,  //points on contour
+		vector<const Point*>   //outer points
+	> filter_points(const vector<const Point*>& points) const;
 
 	//contour area
 	double area() const;
@@ -90,7 +92,6 @@ public:
 	void add_point(Point* p);
 	void add_point(const Point& p);
 	void add_point(double x, double y){ add_point(Point(x,y)); }
-	
 };
 
 

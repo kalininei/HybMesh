@@ -462,12 +462,12 @@ GridGeom* GridGeom::cross_grids(GridGeom* gmain_inp, GridGeom* gsec_inp,
 				if (cb("Building grid cross", "Filling buffer", 0.5, cb_cur-0.8*cb_step)
 						== CrossGridCallback::CANCEL) return 0;
 				auto bgcont = bg.boundary_info(preserve_bp);
-				TriGrid g3(std::get<0>(bgcont), std::get<1>(bgcont), density);
+				auto g3 = TriGrid::TriangulateArea(std::get<0>(bgcont), std::get<1>(bgcont), 1);
 
 				//3. change the internal of bg by g3ref grid
 				if (cb("Building grid cross", "Filling buffer", 0.5, cb_cur-0.6*cb_step)
 						== CrossGridCallback::CANCEL) return 0;
-				bg.change_internal(g3);
+				bg.change_internal(*g3);
 				
 				//4. update original grid using new filling of buffer grid
 				if (cb("Building grid cross", "Filling buffer", 0.5, cb_cur-0.3*cb_step)
@@ -885,6 +885,34 @@ BoundingBox GGeom::Info::BBox(const GridGeom& grid, double eps){
 	ret.widen(eps);
 	return ret;
 }
+
+vector<double> GGeom::Info::Skewness(const GridGeom& grid){
+	vector<double> ret(grid.n_cells());
+	for (int i=0; i<grid.n_cells(); ++i){
+		const Cell& c = *grid.get_cell(i);
+		if (c.dim() < 3){
+			ret[i] = 1.0;  //very bad cell anyway
+			continue;
+		}
+		vector<double> angles(c.dim());
+		for (int j=1; j<c.dim(); ++j){
+			const Point& p0 = *c.get_point(j-1);
+			const Point& p1 = *c.get_point(j);
+			const Point& p2 = *c.get_point(j+1);
+			angles[j] = Angle(p0, p1, p2);
+		}
+		angles[0] = M_PI *(c.dim() - 2) - 
+			std::accumulate(angles.begin() + 1, angles.begin() + c.dim(), 0.0);
+		auto minmax = std::minmax_element(angles.begin(), angles.end());
+		double minv = *minmax.first;
+		double maxv = *minmax.second;
+		double refan = M_PI * (c.dim() - 2) / c.dim();
+		ret[i] = std::max( (maxv-refan)/(M_PI-refan), (refan-minv)/refan );
+		if (ret[i] > 1.0) ret[i] = 1.0;   //for non-convex cells
+	}
+	return ret;
+}
+
 std::set<int> GGeom::Info::CellFinder::IndSet(const BoundingBox& bbox) const{
 	Point b0 = bbox.BottomLeft() - p0, b1 = bbox.TopRight() - p0;
 	int ix0 = std::floor(b0.x / Hx);

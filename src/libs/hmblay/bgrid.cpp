@@ -128,7 +128,26 @@ shared_ptr<BGrid> BGrid::NoSelfIntersections(shared_ptr<BGrid> g, const HMCont2D
 
 shared_ptr<BGrid> BGrid::ImposeBGrids(ShpVector<BGrid>& gg){
 	if (gg.size() == 0) return shared_ptr<BGrid>();
+	//we can omit self intersections checks for single grid
+	//because it should be done in ::NoSelfIntersections procedure before
 	if (gg.size() == 1) return gg[0];
+	//straight grid addition. This may cause new self intersections which
+	//should be treated correctly
+	bool has_intersections = false;
+	for (int i=1; i<(int)gg.size(); ++i){
+		if (!has_intersections){
+			auto c1 = GGeom::Info::Contour(*gg[0]);
+			auto c2 = GGeom::Info::Contour(*gg[i]);
+			auto inters = HMCont2D::Clip::Intersection(c1, c2);
+			HMCont2D::Clip::Heal(inters);
+			if (inters.cont_count() > 0) has_intersections = true;
+		}
+		gg[0]->ShallowAdd(*gg[i]);
+	}
+	if (!has_intersections) return gg[0];
+	//TODO: here should be a procedure which
+	//      make impositions if grid has self intersections
+	std::cout<<"Self intersected grids treatment is not done yet"<<std::endl;
 	_THROW_NOT_IMP_;
 }
 

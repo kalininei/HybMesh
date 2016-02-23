@@ -13,14 +13,19 @@ void PCollection::Unscale(PCollection& pc, const ScaleBase& sc){
 	sc.p_unscale(pc.data.begin(), pc.data.end());
 }
 
-Point* PCollection::FindClosestNode(const PCollection& dt, const Point& p){
-	double m = 1e20;
-	Point* ret = 0;
-	for (auto it: dt){
-		double m2 = Point::dist(p, *it);
+std::tuple<Point*, int, double>
+PCollection::FindClosestNode(const PCollection& dt, const Point& p){
+	std::tuple<Point*, int, double> ret;
+	Point*& p2 = std::get<0>(ret);
+	int& ind = std::get<1>(ret);
+	double& m = std::get<2>(ret);
+	p2=0; ind=-1; m=1e200;
+	for (int i=0; i<dt.size(); ++i){
+		double m2 = Point::meas(p, *dt.data[i]);
 		if (m2<m){
 			m = m2;
-			ret = it.get();
+			p2 = dt.data[i].get();
+			ind = i;
 		}
 	}
 	return ret;

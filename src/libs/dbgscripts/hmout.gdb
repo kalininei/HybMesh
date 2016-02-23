@@ -86,6 +86,19 @@ define gg_tree
 	end
 end
 
+define gg_ecol
+	call HMCont2D::Debug::geogebra_ecollection($arg0)
+	if ($argc>1)
+		call HMCont2D::Debug::geogebra_ecollection($arg1)
+	end
+	if ($argc>2)
+		call HMCont2D::Debug::geogebra_ecollection($arg2)
+	end
+	if ($argc>3)
+		call HMCont2D::Debug::geogebra_ecollection($arg3)
+	end
+end
+
 
 skip file /usr/include/c++/4.8/functional
 skip file /usr/include/c++/4.8/bits/shared_ptr_base.h

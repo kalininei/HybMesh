@@ -277,15 +277,31 @@ int set_ecollection_bc(void* src, void* tar, int def, int* vsrc, int* vtar){
 	try{
 		auto esrc = static_cast<HMCont2D::ECollection*>(src);
 		auto etar = static_cast<HMCont2D::ECollection*>(tar);
+		auto pntsrc = esrc->all_points();
+		auto pnttar = etar->all_points();
+
+		//scaling
+		ScaleBase sc = ScaleBase::p_doscale(pntsrc.begin(), pntsrc.end()); 
+		sc.p_scale(pnttar.begin(), pnttar.end());
+
+		//searching
 		for (int i=0; i<etar->size(); ++i){
+			vtar[i] = def;
 			Point cpoint = etar->edge(i)->center();
 			auto ce = HMCont2D::ECollection::FindClosestEdge(*esrc, cpoint);
-			if (ISZERO(std::get<1>(ce))){
-				vtar[i] = vsrc[std::get<3>(ce)];
-			} else {
-				vtar[i] = def;
+			if (fabs(std::get<1>(ce)) < 1e-3){
+				int ied = std::get<3>(ce);
+				double m1 = Point::meas_section(*etar->edge(i)->pstart,
+						*esrc->edge(ied)->pstart, *esrc->edge(ied)->pend);
+				double m2 = Point::meas_section(*etar->edge(i)->pend,
+						*esrc->edge(ied)->pstart, *esrc->edge(ied)->pend);
+				if (ISZERO(m1) && ISZERO(m2)) vtar[i] = vsrc[ied];
 			}
 		}
+
+		//unscaling
+		sc.p_unscale(pntsrc.begin(), pntsrc.end());
+		sc.p_unscale(pnttar.begin(), pnttar.end());
 		return 0;
 	} catch (const std::exception &e){
 		std::cout<<"set_ecollection_bc error: "<<e.what()<<std::endl;
@@ -336,6 +352,31 @@ void contour_free_info(double** pts, int** eds){
 
 double grid_area(Grid* g){
 	return static_cast<GridGeom*>(g)->area();
+}
+
+int report_skewness(void* grid, double threshold, double* max_skew, int* max_skew_cell,
+		int* bad_cells_num, int* bad_indicies, double* bad_skew){
+	try{
+		vector<double> sc = GGeom::Info::Skewness(*static_cast<GridGeom*>(grid));
+		*max_skew = 0.0;
+		*max_skew_cell = -1;
+		*bad_cells_num = 0;
+		for (int i=0; i<sc.size(); ++i){
+			if (sc[i]>*max_skew){
+				*max_skew_cell = i;
+				*max_skew = sc[i];
+			}
+			if (sc[i]>=threshold){
+				*bad_cells_num = *bad_cells_num + 1;
+				*bad_indicies++ = i;
+				*bad_skew++ = sc[i];
+			}
+		}
+		return 0;
+	} catch (const std::exception &e){
+		std::cout<<"Skewness calculation error: "<<e.what()<<std::endl;
+		return 1;
+	}
 }
 
 double contour_area(Cont* c){

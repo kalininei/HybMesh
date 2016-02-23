@@ -4,6 +4,7 @@
 #include "stdarg.h"
 #include "constructor.hpp"
 #include "nan_handler.h"
+#include <fstream>
 
 using namespace HMCont2D;
 
@@ -131,10 +132,44 @@ void Debug::geogebra_etree(const ExtendedTree& c){
 	for (auto n: c.open_contours) geogebra_contour(*n);
 }
 
+void Debug::geogebra_ecollection(const ECollection& ecol){
+	auto etree = HMCont2D::ExtendedTree::Assemble(ecol);
+	geogebra_etree(etree);
+}
+
 void Debug::vtk_contours(const ShpVector<HMCont2D::Contour>& c, const char* fn){
 	HMCont2D::ECollection ecol;
 	for (auto& x: c) ecol.Unite(*x);
 	HMCont2D::ECollection::SaveVtk(ecol, fn);
+}
+
+void Debug::vtk_contour(const ECollection& col, std::map<Point*, double>& pdata, double defval, const char* fn){
+	HMCont2D::ECollection::SaveVtk(col, fn);
+	std::ofstream fs(fn, std::ios_base::app);
+	auto ap = col.all_points();
+	fs<<"POINT_DATA "<<ap.size()<<std::endl;
+	fs<<"SCALARS debug_data float 1"<<std::endl;
+	fs<<"LOOKUP_TABLE default"<<std::endl;
+	for (auto p: ap){
+		double val;
+		if (pdata.find(p) != pdata.end()) val = pdata[p];
+		else val = defval;
+		fs<<val<<std::endl;
+	}
+}
+
+void Debug::vtk_contour(const ECollection& col, std::map<Edge*, double>& edata, double defval, const char* fn){
+	HMCont2D::ECollection::SaveVtk(col, fn);
+	std::ofstream fs(fn, std::ios_base::app);
+	fs<<"CELL_DATA "<<col.size()<<std::endl;
+	fs<<"SCALARS debug_data float 1"<<std::endl;
+	fs<<"LOOKUP_TABLE default"<<std::endl;
+	for (auto e: col.data){
+		double val;
+		if (edata.find(e.get()) != edata.end()) val = edata[e.get()];
+		else val = defval;
+		fs<<val<<std::endl;
+	}
 }
 
 

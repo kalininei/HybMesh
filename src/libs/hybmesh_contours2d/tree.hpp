@@ -33,6 +33,7 @@ struct ContourTree: public ECollection {
 
 	//Methods
 	virtual void AddContour(shared_ptr<Contour>& c);
+	virtual void RemovePoints(const vector<const Point*>& p);
 
 	//Returns true if point lies strictly within/without closed contour
 	//for points on edges result is unpredirctable
@@ -41,6 +42,9 @@ struct ContourTree: public ECollection {
 
 	//using node->parents calculate children + checks direction
 	void UpdateTopology();
+	//fills this->data with data from nodes
+	//should be called if nodes edges are added or deleted to make this->data actual
+	virtual void ReloadEdges();
 
 	//Algos
 	static double Area(const ContourTree& c);
@@ -66,6 +70,9 @@ struct ExtendedTree: public ContourTree {
 	//Methods
 	void AddContour(shared_ptr<Contour>& c) override;
 	void AddOpenContour(shared_ptr<Contour>& c);
+	void RemovePoints(const vector<const Point*>& p) override;
+	
+	void ReloadEdges() override;
 
 	//Algos
 	static ExtendedTree Assemble(const ECollection&);

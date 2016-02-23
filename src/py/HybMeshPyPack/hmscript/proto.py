@@ -1,6 +1,7 @@
 from HybMeshPyPack import com
 from HybMeshPyPack.basic.geom import Point2
 from HybMeshPyPack.hmscript import flow
+from . import ExecError
 
 
 # Prototype grids
@@ -114,8 +115,42 @@ def add_rect_cont(p0, p1, bnd=None):
         b = [bnd, bnd, bnd, bnd]
     else:
         b = [0, 0, 0, 0]
-    c = com.contcom.AddRectCont({"p0": Point2(*p0),
-                                 "p1": Point2(*p1),
-                                 "bnds": b})
-    flow.exec_command(c)
-    return c._get_added_names()[1][0]
+
+    try:
+        c = com.contcom.AddRectCont({"p0": Point2(*p0),
+                                     "p1": Point2(*p1),
+                                     "bnds": b})
+        flow.exec_command(c)
+        return c._get_added_names()[1][0]
+    except Exception:
+        raise ExecError('add_rect_cont')
+
+
+def add_circ_cont(p0, rad, n_arc, bnd=None):
+    """Adds circle contour
+
+    Args:
+       p0 (list-of-floats): circle center
+
+       rad (float): circle radius
+
+       n_arc (int): partition of circle arc
+
+    Kwargs:
+       bnd (boundary identifier): boundary identifier for contour.
+       With the default value no boundary types will be set.
+
+    Returns:
+       Contour identifier
+
+    """
+    try:
+        if bnd is None:
+            bnd = 0
+
+        c = com.contcom.AddCircCont({"p0": Point2(*p0), "rad": rad,
+                                     "na": n_arc, "bnd": bnd})
+        flow.exec_command(c)
+        return c._get_added_names()[1][0]
+    except Exception:
+        raise ExecError('add_circ_cont')
