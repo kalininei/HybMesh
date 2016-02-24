@@ -6,7 +6,7 @@ from HybMeshPyPack import progdata
 def _root_xml():
     'returns root xml node tagged HybMeshProject'
     ret = ET.Element('HybMeshProject')
-    ret.attrib['ver'] = str(progdata.program_version())
+    ret.attrib['ver'] = str(progdata.HybMeshVersion.current())
     return ret
 
 
@@ -73,4 +73,3 @@ def write_framework(fw, xmlnode):
     #boundary types
     bnode = ET.SubElement(xmlnode, "BTYPES")
     fw.boundary_types.xml_save(bnode)
-

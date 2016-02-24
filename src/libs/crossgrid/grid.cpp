@@ -350,6 +350,40 @@ ShpVector<GridGeom> GridGeom::subdivide() const{
 	return ret;
 }
 
+void GridGeom::no_excessive_bnodes(){
+	//get rid of nodes which are hanging + non-significant + boundary
+	vector<std::map<int, int>> used_points_of_cells(n_cells());
+	std::map<int, std::set<int>> hangnodes;
+	auto addhn = [&](int ci, int gp, int ga){
+		Cell* c = cells[ci].get();
+		hangnodes.emplace(ci, std::set<int>());
+		int locp = 0, loca = 0, maxl = c->dim();
+		while (c->points[locp]->get_ind()!=gp && locp<maxl) ++locp;
+		while (c->points[loca]->get_ind()!=ga && loca<maxl) ++loca;
+		assert(locp != maxl && loca != maxl);
+		auto r = used_points_of_cells[ci].emplace(locp, loca);
+		if (!r.second){
+			int locb = r.first->second;
+			if (ISZERO(triarea(*c->points[loca],
+					*c->points[locb], *c->points[locp]))){
+				hangnodes[ci].insert(locp);
+			}
+		}
+	};
+	for (auto& e: get_edges()) if (e.is_boundary()){
+		int ei = e.any_cell();
+		addhn(ei, e.p1, e.p2);
+		addhn(ei, e.p2, e.p1);
+	}
+	if (hangnodes.size() > 0){
+		for (auto& hn: hangnodes){
+			aa::remove_entries(cells[hn.first]->points, hn.second);
+		}
+		delete_unused_points();
+		set_indicies();
+	}
+}
+
 GridGeom* GridGeom::combine(GridGeom* gmain, GridGeom* gsec){
 	//1) build grids contours
 	auto maincont = gmain->get_contours_collection();
@@ -377,6 +411,9 @@ GridGeom* GridGeom::combine(GridGeom* gmain, GridGeom* gsec){
 		}
 		ret->remove_cells(bad_cells);
 	}
+	//7) get rid of hanging + non-significant + boundary nodes
+	//   They appear if boundaries of gmain and gsec partly coincide
+	ret->no_excessive_bnodes();
 	return ret;
 }
 

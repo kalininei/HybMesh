@@ -257,7 +257,7 @@ class RotateGeom(command.Command):
             if n in self.receiver.get_grid_names():
                 self.receiver.grids2[n].rotate(p0.x, p0.y, a)
             elif n in self.receiver.get_ucontour_names():
-                self.receiver.contour2[n].rotate(p0.x, p0.y, a)
+                self.receiver.contours2[n].rotate(p0.x, p0.y, a)
             else:
                 raise command.ExecutionError('Object %s not found' % n, self)
 

@@ -170,6 +170,18 @@ class BoundaryGridOption(object):
         self.start_point = start_point
         self.end_point = end_point
 
+    def uniform_partition(self, fullh, n):
+        """Sets uniform boundary grid vertical 'partition'
+
+        Args:
+           fullh (float): full height of boundary grid
+
+           n (int): number of sections across boundary grid
+
+        Fills self.partition attribute
+        """
+        self.partition = [fullh / n * x for x in range(n + 1)]
+
 
 def build_boundary_grid(opts):
     """Builds a boundary grid near contour

@@ -1,18 +1,39 @@
 #include <map>
 #include "addalgo.hpp"
 #include "buffergrid.h"
+namespace{
+
+//this is a temporary function which will be deleted after
+//crossgrid::Contour class will be completely substituted by HMCont2D classes
+HMCont2D::Container<HMCont2D::Contour> contour_to_hm(const Contour& c){
+	std::vector<Point> pnt;
+	for (int i=0; i<c.n_points(); ++i) pnt.push_back(*c.get_point(i));
+	return HMCont2D::Constructor::ContourFromPoints(pnt, true);
+}
+}
 
 BufferGrid::BufferGrid(GridGeom& main, const PContour& cont, double buffer_size):GridGeom(){
 	orig = &main;
 	buffer = buffer_size;
 	source_cont = Contour(cont);
 
+	//check if cont and main intersection meets requirements for building the buffer
+	auto treeorig = GGeom::Info::Contour(*orig);
+	auto hmcont = contour_to_hm(source_cont);
+	HMCont2D::Container<HMCont2D::ContourTree> cross;
+	if (source_cont.area() > 0) cross = HMCont2D::Clip::Difference(treeorig, hmcont);
+	else cross = HMCont2D::Clip::Intersection(treeorig, hmcont);
+	HMCont2D::Clip::Heal(cross);
+	if (HMCont2D::Area(cross)<geps) return;
+	
 	//1) find measures to all points
 	vector<const Point*> pp;
 	for (int i=0; i<main.n_points(); ++i) pp.push_back(main.get_point(i));
 	auto meas = cont.meas_points(pp);
 
-	//2) check if cont and main intersection meets requirements for building the buffer
+	//2) some other checks. I'm not sure why it is here. It was there before i've added intersection check.
+	//May be these are artefacts from very old algos or smth. test07 falls without it.
+	//Consider removing with refactoring.
 	{
 		//if any point the main grid lies strongly within the contour -> proceed with the procedure
 		auto fnd1 = std::find_if(meas.begin(), meas.end(), [](double x){ return x>geps2; });
@@ -29,7 +50,6 @@ BufferGrid::BufferGrid(GridGeom& main, const PContour& cont, double buffer_size)
 			if (fabs(meas[e.p1])<geps2 && fabs(meas[e.p2])<geps2) goto PROCEED_PROC;
 		}
 	}
-	//proceed points for step 2)
 	PROCEED_PROC:;
 
 	//3) find all cells which includes filtered points
@@ -114,12 +134,6 @@ void BufferGrid::new_edge_points(Edge& e, const vector<double>& wht){
 
 //boundary_info helper functions
 namespace{
-
-HMCont2D::Container<HMCont2D::Contour> contour_to_hm(const Contour& c){
-	std::vector<Point> pnt;
-	for (int i=0; i<c.n_points(); ++i) pnt.push_back(*c.get_point(i));
-	return HMCont2D::Constructor::ContourFromPoints(pnt, true);
-}
 
 void simplify_bnd_edges(HMCont2D::ContourTree& cont, const HMCont2D::ECollection& bedges){
 	std::vector<const Point*> not_needed_points;

@@ -82,6 +82,7 @@ protected:
 	static void delete_point_of_cell(Cell* c, int j){ c->points.erase(c->points.begin()+j); }
 	static void shallow_copy(GridGeom* from, GridGeom* to){ to->cells = from->cells; to->points = from->points; }
 	void clear(){ points.clear(); cells.clear(); }
+	void no_excessive_bnodes();
 	vector<Point> cells_internal_points() const;
 	//constructors
 	GridGeom(){};

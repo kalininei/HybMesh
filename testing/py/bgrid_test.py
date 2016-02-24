@@ -2,6 +2,7 @@ from HybMeshPyPack import hmscript as hm
 import copy
 import math
 global hm, check
+hm.check_compatibility("0.2.1")
 
 
 def check(cond):
@@ -26,7 +27,7 @@ def check_grid(grid, nn, ne, nc, ct):
     check(info['Nedges'] == ne)
     check(info['Ncells'] == nc)
     for k in ct.keys():
-        check(info['cells_types'][k] == ct[k])
+        check(info['cell_types'][k] == ct[k])
 
 
 def check_zero(a):

@@ -4,6 +4,7 @@ source ../../src/libs/dbgscripts/hmout.gdb
 file python
 set args ../../src/py/HybMesh.py -sx unite_test.py
 set breakpoint pending on
-b buffergrid.cpp:250
+b buffergrid.cpp:171
+b buffergrid.cpp:21
 run 
 

@@ -2,19 +2,29 @@
 
 using namespace HMBlay::Impl;
 
-//smoothing takes place with length = HCOEF * (boundary depth)
-const double HCOEF = 2.1;
 
 void PathPntData::fill(Point* p1, Point* p2, Point* p3){
 	//building of object for 'ext_data' field
 	if (p1 == 0 || p3 == 0){
 		tp = CornerTp::NO;
+		angle = M_PI/2.0;
 	} else {
-		double angle = Angle(*p1, *p2, *p3);
+		angle = Angle(*p1, *p2, *p3);
 		tp = opt->CornerType(angle);
 	}
 	p = p2;
 };
+
+//smoothing takes place with length = HCOEF * (boundary depth)
+const double HCOEF = 2.1;
+void PathPntData::set_smooth_angle(double smooth_len){
+	Vect direct1 = HMCont2D::Contour::SmoothedDirection(*opt->get_full_source(), p,  1, HCOEF*smooth_len);
+	Vect direct2 = HMCont2D::Contour::SmoothedDirection(*opt->get_full_source(), p, -1, HCOEF*smooth_len);
+	angle = Angle(direct2, Point(0,0), direct1);
+	bool negl = tp != CornerTp::STRAIGHT;
+	tp = opt->CornerType(angle);
+	if (tp == CornerTp::STRAIGHT && negl) tp = CornerTp::NEGLECTABLE;
+}
 
 double ExtPath::largest_depth(){
 	double k = 0;
@@ -49,26 +59,37 @@ ExtPath ExtPath::Assemble(const vector<Options*>& data){
 	}
 	//for closed contours take into account first-last connection
 	if (ret.is_closed()){
+		/*
 		Point* p0 = p[p.size()-3];
 		Point* p1 = p[p.size()-2];
 		Point* p2 = p[0];
 		Point* p3 = p[1];
 		ret.ext_data[0].fill(p1,p2,p3);
 		ret.ext_data.back().fill(p0,p1,p2);
+		*/
+		Point* p0 = p[p.size()-2];
+		Point* p1 = p[p.size()-1];
+		Point* p2 = p[0];
+		Point* p3 = p[1];
+		ret.ext_data[0].fill(p0,p2,p3);
+		//ret.ext_data.back().fill(p0,p1,p);
 	}
-	//add one fictive entry to match ordered_points() length
+	//add one entry to match ordered_points() length
 	if (ret.is_closed()){
 		ret.ext_data.push_back(ret.ext_data[0]);
 	} else {
 		ret.ext_data.push_back(ret.ext_data.back());
-		ret.ext_data.back().fill(p[p.size()-2], p.back(), 0);
+		Point *pprev = ret.ext_data[0].opt->get_full_source()->point_siblings(p[0])[0];
+		Point *pnext = ret.ext_data.back().opt->get_full_source()->point_siblings(p.back())[2];
+		ret.ext_data[0].fill(pprev, p[0], p[1]);
+		ret.ext_data.back().fill(p[p.size()-2], p.back(), pnext);
 	}
 		
 	ret.FillEndConditions();
 	return ret;
 }
 
-void ExtPath::FillEndConditions(){
+void ExtPath::FillEndConditions(bool calc_tps){
 	assert(size()>0);
 	full_source = ext_data[0].opt->get_full_source();
 	leftbc.clear();
@@ -82,17 +103,14 @@ void ExtPath::FillEndConditions(){
 	if (!full_source->is_closed() && (p1 == full_source->first() || p1 == full_source->last()))
 		PerpendicularStart();
 	else{
-		Vect direct1 = Contour::SmoothedDirection(*full_source, p1,  1, HCOEF*h1);
-		Vect direct2 = Contour::SmoothedDirection(*full_source, p1, -1, HCOEF*h1);
-		double angle = Angle(direct2, Point(0,0), direct1);
-		CornerTp tp = ext_data[0].opt->CornerType(angle);
-		switch (tp){
+		if (calc_tps) ext_data[0].set_smooth_angle(h1);
+		switch (ext_data[0].tp){
 			case CornerTp::ZERO: case CornerTp::NO: case CornerTp::ACUTE:
 			case CornerTp::REENTRANT: case CornerTp::NEGLECTABLE: case CornerTp::ROUND:
 				PerpendicularStart();
 				break;
 			case CornerTp::STRAIGHT:
-				PerpendicularStart(angle/2.0);
+				PerpendicularStart(ext_data[0].angle/2.0);
 				break;
 			case CornerTp::RIGHT:
 				leftbc = HMCont2D::Constructor::CutContour(*full_source, *p1, -1, HCOEF*h1);
@@ -109,17 +127,14 @@ void ExtPath::FillEndConditions(){
 	if (!full_source->is_closed() && (p2 == full_source->first() || p2 == full_source->last()))
 		PerpendicularEnd();
 	else{
-		Vect direct1 = Contour::SmoothedDirection(*full_source, p2,  1, HCOEF*h2);
-		Vect direct2 = Contour::SmoothedDirection(*full_source, p2, -1, HCOEF*h2);
-		double angle = Angle(direct2, Point(0,0), direct1);
-		CornerTp tp = ext_data.back().opt->CornerType(angle);
-		switch (tp){
+		if (calc_tps) ext_data.back().set_smooth_angle(h2); 
+		switch (ext_data.back().tp){
 			case CornerTp::ZERO: case CornerTp::NO: case CornerTp::ACUTE:
 			case CornerTp::REENTRANT: case CornerTp::NEGLECTABLE: case CornerTp::ROUND:
 				PerpendicularEnd();
 				break;
 			case CornerTp::STRAIGHT:
-				PerpendicularEnd(angle/2.0);
+				PerpendicularEnd(ext_data.back().angle/2.0);
 				break;
 			case CornerTp::RIGHT:
 				rightbc = HMCont2D::Constructor::CutContour(*full_source, *p2, 1, HCOEF*h2);
@@ -230,13 +245,7 @@ void ExtPath::ReinterpretCornerTp(ExtPath& pth){
 				pth.ext_data[i].tp == CornerTp::RIGHT){
 			
 			double h = pth.ext_data[i].opt->partition.back();
-			Vect direct1 = SmoothedDirection(pth, op[i],  1, HCOEF*h);
-			Vect direct2 = SmoothedDirection(pth, op[i], -1, HCOEF*h);
-			double angle = Angle(direct2, Point(0, 0), direct1);
-			CornerTp realtp = pth.ext_data[i].opt->CornerType(angle);
-			if (realtp != pth.ext_data[i].tp){
-				pth.ext_data[i].tp = CornerTp::NEGLECTABLE;
-			}
+			pth.ext_data[i].set_smooth_angle(h);
 		}
 	}
 }

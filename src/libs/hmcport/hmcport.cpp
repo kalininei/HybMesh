@@ -291,9 +291,9 @@ int set_ecollection_bc(void* src, void* tar, int def, int* vsrc, int* vtar){
 			auto ce = HMCont2D::ECollection::FindClosestEdge(*esrc, cpoint);
 			if (fabs(std::get<1>(ce)) < 1e-3){
 				int ied = std::get<3>(ce);
-				double m1 = Point::meas_section(*etar->edge(i)->pstart,
+				double m1 = Point::meas_line(*etar->edge(i)->pstart,
 						*esrc->edge(ied)->pstart, *esrc->edge(ied)->pend);
-				double m2 = Point::meas_section(*etar->edge(i)->pend,
+				double m2 = Point::meas_line(*etar->edge(i)->pend,
 						*esrc->edge(ied)->pstart, *esrc->edge(ied)->pend);
 				if (ISZERO(m1) && ISZERO(m2)) vtar[i] = vsrc[ied];
 			}

@@ -1,5 +1,6 @@
 from HybMeshPyPack import hmscript as hm
 global hm, check
+hm.check_compatibility("0.2.1")
 
 
 def check(cond):

@@ -20,7 +20,7 @@ def info_grid(g1):
 
         'Nedges': int,
 
-        'cells_types': {cells_dims: n1, ... }}
+        'cell_types': {cells_dims: n1, ... }}
 
     """
     grid = data.get_grid(name=g1)[2]
@@ -28,7 +28,7 @@ def info_grid(g1):
     ret['Nnodes'] = grid.n_points()
     ret['Ncells'] = grid.n_cells()
     ret['Nedges'] = grid.n_edges()
-    ret['cells_types'] = grid.cell_types_info()
+    ret['cell_types'] = grid.cell_types_info()
     return ret
 
 

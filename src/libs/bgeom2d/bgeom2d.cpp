@@ -21,6 +21,15 @@ double Point::meas_section(const Point& p, const Point& L1, const Point& L2) noe
 	return meas_section(p, L1, L2, k);
 }
 
+double Point::meas_line(const Point& p, const Point& L1, const Point& L2) noexcept{
+	if (L1 == L2) return Point::meas(p, L1);
+	Vect a = L2-L1, b = p - L1;
+	double A[3] = { L1.y-L2.y, L2.x-L1.x, vecCrossZ(L1,L2) };
+	double d0=A[0]*p.x+A[1]*p.y+A[2];
+	d0*=d0; d0/=(A[0]*A[0]+A[1]*A[1]);
+	return d0;
+}
+
 bool isOnSection(const Point& p, const Point& start, const Point& end, double& ksi, double eps) noexcept{
 	ksi = gbig;
 	//check if p is ouside section square

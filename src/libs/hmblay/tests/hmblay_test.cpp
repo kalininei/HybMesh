@@ -240,6 +240,7 @@ void test05(){
 		for (int i=0; i<Ans1.n_cells(); ++i) if (Ans1.get_cell(i)->area()<0) return false;
 		return true;
 	}(), cn);
+	save_vtk(Ans1, "t5.vtk");
 }
 
 

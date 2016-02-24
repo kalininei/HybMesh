@@ -12,9 +12,11 @@ namespace Impl{
 struct PathPntData{
 	PathPntData(Options* o):opt(o){}
 	CornerTp tp;
+	double angle;
 	Options* opt;
 	Point* p;
 	void fill(Point*, Point*, Point*);
+	void set_smooth_angle(double smooth_len);
 };
 
 //path with extended info
@@ -61,7 +63,7 @@ struct ExtPath: public HMCont2D::Contour{
 
 private:
 	//builds end perpendicular depending on full source contour
-	void FillEndConditions();
+	void FillEndConditions(bool calc_tps=false);
 	void PerpendicularStart(double angle=M_PI/2);
 	void PerpendicularEnd(double angle=M_PI/2);
 
