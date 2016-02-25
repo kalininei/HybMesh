@@ -19,11 +19,11 @@ Procedure:
     sudo make install
 
 Installation results
-    HybMeshPyPack package will be installed as a standard python package (-> /usr/lib/python2.7/site-packages)
-    Hybmesh executable -> ${CMAKE_INSTALL_PREFIX}/bin/
-    Additional libraries -> ${CMAKE_INSTALL_PREFIX}/lib/HybMesh/
-    basic configuration directory /etc/HybMesh
-    home directory ~/.HybMesh
+    hybmeshpack package will be installed as a standard python package (-> /usr/lib/python2.7/site-packages)
+    hybmesh executable -> ${CMAKE_INSTALL_PREFIX}/bin/
+    Additional libraries -> ${CMAKE_INSTALL_PREFIX}/lib/hybmesh/
+    basic configuration directory /etc/hybmesh
+    home directory ~/.hybmesh
 
 Troubleshooting:
     ImportError: libmpi.so.1 (for vtk 6.2)
@@ -49,10 +49,10 @@ Procedure:
     7) make pack (if nsis installer is needed)
 
 Installation results:
-    HybMeshPyPack package will be installed as a standard python package (-> Python27/Lib/site-packages)
+    hybmeshpack package will be installed as a standard python package (-> Python27/Lib/site-packages)
     Hybmesh main script file -> ${CMAKE_INSTALL_PREFIX}/py/
     Additional libraries -> ${CMAKE_INSTALL_PREFIX}/lib/
-    home directory {ProgramData}/HybMesh
+    home directory {ProgramData}/hybmesh
     if PyInstaller:
         pyinstaller executable with required libs -> ${CMAKE_INSTALL_PREFIX}/bin/
     if NSIS:

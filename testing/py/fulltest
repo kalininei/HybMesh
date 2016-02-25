@@ -1,8 +1,51 @@
 #!/usr/bin/sh
+# no args do all tests
+# args:
+#   -doc : do doc tests
+#   -unit: do unit tests     
+HMCOM="python ../../src/py/hybmesh.py -silent -sx"
+DO_UNIT_TESTS=0
+DO_DOC_TESTS=0
+if [ $# -eq 0 ]
+then
+	DO_UNIT_TESTS=1
+	DO_DOC_TESTS=1
+else
+	for var in $@
+	do
+		if [ $var == "-doc" ]
+		then
+			DO_DOC_TESTS=1
+		elif [ $var == "-unit" ]
+		then
+			DO_UNIT_TESTS=1
+		fi
+	done
+fi
 
-python ../../src/py/HybMesh.py -sx cont_test.py -silent
-python ../../src/py/HybMesh.py -sx exclude_test.py -silent
-python ../../src/py/HybMesh.py -sx bgrid_test.py -silent
-python ../../src/py/HybMesh.py -sx unite_test.py -silent
-python ../../src/py/HybMesh.py -sx imex_test.py -silent
 
+if [ $DO_UNIT_TESTS -eq 1 ]
+then
+	echo "============ doing unit tests"
+	$HMCOM cont_test.py
+	$HMCOM exclude_test.py
+	$HMCOM bgrid_test.py
+	$HMCOM unite_test.py
+	$HMCOM imex_test.py
+else
+	echo "============ ignoring unit tests"
+fi
+
+if [ $DO_DOC_TESTS -eq 1 ]
+then
+	echo "============ doing doc tests"
+	$HMCOM fromdoc/ex_setbtype.py
+	$HMCOM fromdoc/ex_exclude.py
+	$HMCOM fromdoc/ex_unite_grids.py
+	$HMCOM fromdoc/ex_bgrid.py
+	$HMCOM fromdoc/intro_house.py
+	$HMCOM fromdoc/intro_pentagon.py
+	$HMCOM fromdoc/intro_hcyl.py
+else
+	echo "============ ignoring doc tests"
+fi

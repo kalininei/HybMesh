@@ -1,4 +1,4 @@
-from HybMeshPyPack import hmscript as hm
+from hybmeshpack import hmscript as hm
 hm.check_compatibility("0.2.1")
 
 
@@ -46,8 +46,8 @@ print "two squares: with/without fix_bnd, bc check"
 g4 = hm.add_unf_rect_grid([10, 10], [15, 15], 5, 5)
 g5 = hm.add_unf_rect_grid([10, 10], [11, 11], 30, 30)
 hm.move_geom(g5, -0.05, -0.05)
-hm.set_btype_to_contour(g4, 3)
-hm.set_btype_to_contour(g5, bfun=lambda x0, y0, x1, y1, b:
+hm.set_boundary_type(g4, 3)
+hm.set_boundary_type(g5, bfun=lambda x0, y0, x1, y1, b:
                         1 if y0 < 10.8 else 2)
 hm.export_grid_vtk(g4, "g4.vtk")
 hm.export_grid_vtk(g5, "g5.vtk")
@@ -75,7 +75,7 @@ c1 = hm.create_contour(plist, [1] * (len(plist) - 3) + [2, 2])
 hm.rotate_geom(c1, 17)
 g8 = hm.add_unf_rect_grid([-0.1, -0.1], [1.3, 1.3], 20, 20)
 g9 = hm.exclude_contours(g8, c1)
-op1 = hm.BoundaryGridOption(c1, bnd_stepping="keep_all", bnd_step=0.05)
+op1 = hm.BoundaryGridOptions(c1, bnd_stepping="keep_all", bnd_step=0.05)
 op1.uniform_partition(0.1, 5)
 g10 = hm.build_boundary_grid(op1)
 g11 = hm.unite_grids(g9, [(g10, 0.05)])

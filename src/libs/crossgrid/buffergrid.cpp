@@ -24,7 +24,8 @@ BufferGrid::BufferGrid(GridGeom& main, const PContour& cont, double buffer_size)
 	if (source_cont.area() > 0) cross = HMCont2D::Clip::Difference(treeorig, hmcont);
 	else cross = HMCont2D::Clip::Intersection(treeorig, hmcont);
 	HMCont2D::Clip::Heal(cross);
-	if (HMCont2D::Area(cross)<geps) return;
+	double domarea = HMCont2D::Area(cross);
+	if (domarea < geps) return;
 	
 	//1) find measures to all points
 	vector<const Point*> pp;
@@ -62,7 +63,13 @@ BufferGrid::BufferGrid(GridGeom& main, const PContour& cont, double buffer_size)
 			double& m = meas[c->get_point(j)->get_ind()];
 			//point on contour are ambiguous
 			if (fabs(m)<geps2){
-				is_good = true; continue;
+				if (j!=c->dim()-1){ is_good = true; continue; }
+				else {
+					//all points lie on source contour. we have to check intersection
+					auto ccont = GGeom::Info::CellContour(main, c->get_ind());
+					double unarea = HMCont2D::Area(HMCont2D::Clip::Union(cross, ccont));
+					if (fabs(unarea-domarea)>geps) is_good = false;
+				}
 			//if point in buffer zone add cell
 			} else if (-m>0 && -m<sqr(buffer_size-geps) ){
 				is_good=true; break;

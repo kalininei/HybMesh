@@ -28,6 +28,8 @@ struct ContourTree: public ECollection {
 
 	//get contour by point
 	virtual Contour* get_contour(Point* p) const;
+	//get contour by edge
+	virtual Contour* get_contour(Edge* p) const;
 	//get contour by index
 	virtual Contour* get_contour(int i) const;
 
@@ -64,6 +66,7 @@ struct ExtendedTree: public ContourTree {
 	ShpVector<Contour> open_contours;
 
 	Contour* get_contour(Point* p) const override;
+	Contour* get_contour(Edge* p) const override;
 	Contour* get_contour(int i) const override;
 	int cont_count() const override { return nodes.size() + open_contours.size(); }
 	

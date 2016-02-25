@@ -416,7 +416,7 @@ ContoursCollection ContoursCollection::cut_by_level(int ist, int iend) const{
 	ContoursCollection res;
 	for (int i=0; i<n_cont(); ++i){
 		int lv = get_level(i);
-		if (lv>=ist && i<=iend) res.add_contour(contour(i));
+		if (lv>=ist && lv<=iend) res.add_contour(contour(i));
 	}
 	return res;
 }

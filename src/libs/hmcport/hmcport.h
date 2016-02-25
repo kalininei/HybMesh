@@ -80,6 +80,12 @@ void free_ecollection_container(void* ecol);
 //calculates area with respect to multiplicity
 double ecollection_area(void* ecol);
 
+// c1, c2 - ecollection pointers
+// oper = 1 (union), 2 (difference), 3 (intersection), 4 (xor)
+// simplify 1 (true) 0 (false)
+// Returns Null if result is empty or error occurred
+void* domain_clip(void* c1, void* c2, int oper, int simplify);
+
 //Fill target boundary values from source contour values if
 //target edge lies on source edge.
 //def - value which will be assigned if no source boundary was found

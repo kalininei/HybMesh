@@ -269,6 +269,58 @@ void* create_ecollection_container(int Npts, double* pts, int Nedgs, int* edges)
 		return 0;
 	}
 }
+
+void* domain_clip(void* c1, void* c2, int oper, int simplify){
+	auto cont1 = static_cast<HMCont2D::ECollection*>(c1);
+	auto cont2 = static_cast<HMCont2D::ECollection*>(c2);
+	auto pnt1 = cont1->all_points();
+	auto pnt2 = cont2->all_points();
+
+	ScaleBase sc = ScaleBase::p_doscale(pnt1.begin(), pnt1.end()); 
+	sc.p_scale(pnt2.begin(), pnt2.end());
+
+	auto tree1 = HMCont2D::ExtendedTree::Assemble(*cont1);
+	auto tree2 = HMCont2D::ExtendedTree::Assemble(*cont2);
+	try{
+		if (tree1.nodes.size() == 0) throw std::runtime_error("not a closed contour");
+		if (tree2.nodes.size() == 0) throw std::runtime_error("not a closed contour");
+
+		HMCont2D::Container<HMCont2D::ContourTree> res;
+		switch (oper){
+			case 1: res = HMCont2D::Clip::Union(tree1, tree2); break;
+			case 2: res = HMCont2D::Clip::Difference(tree1, tree2); break;
+			case 3: res = HMCont2D::Clip::Intersection(tree1, tree2); break;
+			case 4: res = HMCont2D::Clip::XOR(tree1, tree2); break;
+			default: throw std::runtime_error("unknown operation");
+		}
+		HMCont2D::Clip::Heal(res);
+		if (res.nodes.size() !=0 && !simplify){
+			vector<Point*> allpnt(pnt1); allpnt.insert(allpnt.end(), pnt2.begin(), pnt2.end());
+			for (auto p: allpnt){
+				auto fnd = HMCont2D::ECollection::FindClosestEdge(res, *p);
+				if (std::get<0>(fnd) != 0 && std::get<1>(fnd)<geps && 
+						std::get<2>(fnd) > geps && std::get<3>(fnd) < 1-geps){
+					auto cont = res.get_contour(std::get<0>(fnd));
+					cont->GuaranteePoint(*p, res.pdata);
+				}
+			}
+		}
+		HMCont2D::Container<HMCont2D::ContourTree>* r = 0;
+		if (res.nodes.size() > 0){
+			r = new HMCont2D::Container<HMCont2D::ContourTree>(res);
+			sc.p_unscale(r->pdata.begin(), r->pdata.end());
+		}
+		sc.p_unscale(pnt1.begin(), pnt1.end());
+		sc.p_unscale(pnt2.begin(), pnt2.end());
+		return r;
+	} catch (const std::exception &e){
+		sc.p_unscale(pnt1.begin(), pnt1.end());
+		sc.p_unscale(pnt2.begin(), pnt2.end());
+		std::cout<<"domain clip error: "<<e.what()<<std::endl;
+		return 0;
+	}
+}
+
 void free_ecollection_container(void* ecol){
 	delete static_cast<HMCont2D::Container<HMCont2D::ECollection>*>(ecol);
 }

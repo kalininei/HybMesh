@@ -1,4 +1,4 @@
-from HybMeshPyPack import hmscript as hm
+from hybmeshpack import hmscript as hm
 import copy
 import math
 global hm, check
@@ -34,10 +34,10 @@ def check_zero(a):
     check(abs(a) < 1e-8)
 
 print "simple bgrid around a square"
-c1 = hm.add_rect_cont([0, 0], [1, 1], 5)
-op1 = hm.BoundaryGridOption(c1, [0, 0.01, 0.02], "left", 0.1)
+c1 = hm.add_rect_contour([0, 0], [1, 1], 5)
+op1 = hm.BoundaryGridOptions(c1, [0, 0.01, 0.02], "left", 0.1)
 g1 = hm.build_boundary_grid(op1)
-op2 = hm.BoundaryGridOption(c1, [0, 0.01, 0.02], "right", 0.1)
+op2 = hm.BoundaryGridOptions(c1, [0, 0.01, 0.02], "right", 0.1)
 g2 = hm.build_boundary_grid(op2)
 
 check_grid(g1, 144, 240, 96, {4: 96})
@@ -46,9 +46,9 @@ check_grid(g2, 144, 240, 96, {4: 96})
 check_cont(g2, 96, 96, [56, 40], {0: 56, 5: 40})
 
 print "set of options for a square source"
-ophoriz = hm.BoundaryGridOption(c1, [0, 0.01, 0.02, 0.03],
+ophoriz = hm.BoundaryGridOptions(c1, [0, 0.01, 0.02, 0.03],
                                 "left", 0.05)
-opvert = hm.BoundaryGridOption(c1, [0, 0.01, 0.02, 0.03, 0.05, 0.1],
+opvert = hm.BoundaryGridOptions(c1, [0, 0.01, 0.02, 0.03, 0.05, 0.1],
                                "left", 0.03)
 op1 = copy.deepcopy(ophoriz)
 op1.start_point, op1.end_point = [0, 0], [1, 0]
@@ -75,7 +75,7 @@ while angle < end:
     a = angle / 360.0 * 2 * math.pi
     cont = hm.create_contour([[-1, 0], [0, 0],
                               [-math.cos(a), math.sin(a)]])
-    op = hm.BoundaryGridOption(cont, [0, 0.005, 0.01, 0.017, 0.027, 0.04],
+    op = hm.BoundaryGridOptions(cont, [0, 0.005, 0.01, 0.017, 0.027, 0.04],
                                'left', 0.01)
     grid = hm.build_boundary_grid(op)
     if (angle == 20):
@@ -96,10 +96,10 @@ while angle < end:
 
 
 print "doubly connected area: all outer"
-inner_cont = hm.add_rect_cont([0, 0], [1, 1], 1)
-outer_cont = hm.add_circ_cont([0, 0], 3, 16, 2)
+inner_cont = hm.add_rect_contour([0, 0], [1, 1], 1)
+outer_cont = hm.add_circ_contour([0, 0], 3, 16, 2)
 full_cont = hm.unite_contours([inner_cont, outer_cont])
-op = hm.BoundaryGridOption(full_cont, [0, 0.01, 0.02, 0.03, 0.04],
+op = hm.BoundaryGridOptions(full_cont, [0, 0.01, 0.02, 0.03, 0.04],
                            'left', 0.01)
 g5 = hm.build_boundary_grid(op)
 check_grid(g5, 11440, 20592, 9152, {4: 9152})

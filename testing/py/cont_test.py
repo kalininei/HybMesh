@@ -1,4 +1,4 @@
-from HybMeshPyPack import hmscript as hm
+from hybmeshpack import hmscript as hm
 global hm, check
 hm.check_compatibility("0.2.1")
 
@@ -18,7 +18,7 @@ def check_cont(cont, nn, ne, scont, btypes):
 
 print "contours unite"
 g1 = hm.add_unf_rect_grid([-1, -1], [1, 1], 10, 10)
-c1 = hm.add_rect_cont([-5, -5], [5, 5], [1, 1, 1, 1])
+c1 = hm.add_rect_contour([-5, -5], [5, 5], [1, 1, 1, 1])
 c2 = hm.unite_contours([c1, g1])
 g2 = hm.add_unf_rect_grid([-0.4, -0.4], [0.4, 0.4], 4, 4)
 c3 = hm.unite_contours([c2, g2])
@@ -39,16 +39,16 @@ check(area_full == area_c1 - area_g1 + area_g2)
 
 
 print "grid contours to user contours"
-c5 = hm.grid_bnd_to_cont(g1, True)
-c6 = hm.grid_bnd_to_cont(g2, False)
+c5 = hm.grid_bnd_to_contour(g1, True)
+c6 = hm.grid_bnd_to_contour(g2, False)
 check_cont(c5, 4, 4, [4], {0: 4})
 check_cont(c6, 16, 16, [16], {0: 16})
 
 
 print "set boundary types"
-hm.set_btype_to_contour(c1, btps=[1, 2, 3, 4])
+hm.set_boundary_type(c1, btps=[1, 2, 3, 4])
 check_cont(c1, 4, 4, [4], {1: 1, 2: 1, 3: 1, 4: 1})
-hm.set_btype_to_contour(c1, bfun=lambda x0, y0, x1, y1, bo:
+hm.set_boundary_type(c1, bfun=lambda x0, y0, x1, y1, bo:
                         {1: 0, 2: 0, 3: 0, 4: 15}[bo])
 check_cont(c1, 4, 4, [4], {0: 3, 15: 1})
 g3 = hm.add_unf_ring_grid([0, 0], 1, 2, 10, 5, 1.4)
@@ -64,7 +64,7 @@ def bfun3(x0, y0, x1, y1, bo):
         return 3
 
 
-hm.set_btype_to_contour(g3, bfun=bfun3)
+hm.set_boundary_type(g3, bfun=bfun3)
 check_cont(g3, 20, 20, [10, 10], {1: 10, 2: 5, 3: 5})
 
 print "separate/simplify"

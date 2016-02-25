@@ -8,6 +8,8 @@ application.
 
 Linux Installation
 ------------------
+TODO
 
 Windows Installation
 --------------------
+TODO

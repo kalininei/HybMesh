@@ -35,11 +35,11 @@ project(HybMesh C CXX Fortran)
 
 # ========================== Project defines
 # name of resulting installed executable
-set(APPNAME HybMesh)
+set(APPNAME hybmesh)
 # names of files and directories in the file tree
-set(MainGui HybMesh-gui)
-set(MainBin HybMesh)
-set(PyPack HybMeshPyPack)
+set(MainGui hybmesh-gui)
+set(MainBin hybmesh)
+set(PyPack hybmeshpack)
 # description
 set(APPDESCRIPTION "composite grid generator")
 

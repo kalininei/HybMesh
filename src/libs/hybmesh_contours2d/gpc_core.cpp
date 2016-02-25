@@ -135,3 +135,11 @@ GpcTree GpcTree::Substract(const GpcTree& c1, const GpcTree& c2){
 	gpc_polygon_clip(GPC_DIFF, sub1, sub2, &res.poly);
 	return res;
 }
+
+GpcTree GpcTree::Xor(const GpcTree& c1, const GpcTree& c2){
+	GpcTree res;
+	gpc_polygon* sub1 = const_cast<gpc_polygon*>(&c1.poly);
+	gpc_polygon* sub2 = const_cast<gpc_polygon*>(&c2.poly);
+	gpc_polygon_clip(GPC_XOR, sub1, sub2, &res.poly);
+	return res;
+}

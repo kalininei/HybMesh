@@ -26,7 +26,7 @@ be multiply connected.
 .. warning::
    
   Not every grid format supports arbitrary cells.
-  Most FEM grids (like those used in Fluent or GMsh) could contain
+  Most FEM grids (like those used in GMsh) could contain
   only triangular or quadrangular cells. This should be
   taken into account during grid exporting.
 
@@ -39,9 +39,8 @@ using grid contours addressed by a grid internal name.
 
 Boundary type is a non-geometric object which is defined
 by integer positive boundary index (zero is the default value for non-defined
-segments), unique boundary name and the boundary color (makes sense only in gui
-application).
-Grid exporting procedures try to use boundary names and indicies
+segments) and unique boundary name.
+Grid exporting procedures try to use boundary names and indices
 if export format supports it.
 
 

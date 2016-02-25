@@ -246,6 +246,8 @@ static HMCont2D::ContourTree Contour(const GridGeom& grid);
 //only the first contour of tree.
 //Used for grids which are definitly singly connected
 static HMCont2D::Contour Contour1(const GridGeom& grid);
+//contour from grid cell
+static HMCont2D::Contour CellContour(const GridGeom& grid, int cell_ind);
 //Build a bounding box
 static BoundingBox BBox(const GridGeom& grid, double eps=geps);
 //calculate skewness

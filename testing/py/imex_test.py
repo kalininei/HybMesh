@@ -1,5 +1,5 @@
 import os.path
-from HybMeshPyPack import hmscript as hm
+from hybmeshpack import hmscript as hm
 hm.check_compatibility("0.2.1")
 
 

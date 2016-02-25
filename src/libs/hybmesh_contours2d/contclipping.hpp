@@ -25,6 +25,7 @@ TRet Difference(const ECont& c1, const ETree& c2);
 TRet Intersection(const ETree& c1, const ETree& c2);
 TRet Union(const ETree& c1, const ETree& c2);
 TRet Difference(const ETree& c1, const ETree& c2);
+TRet XOR(const ETree& c1, const ETree& c2);
 
 //multiple contours operation.
 //Direction of each contour is not taken into account.

@@ -1,4 +1,4 @@
-from HybMeshPyPack import hmscript as hm
+from hybmeshpack import hmscript as hm
 global hm, check
 hm.check_compatibility("0.2.1")
 
@@ -32,8 +32,8 @@ def check_zero(a):
 
 print "exclude intersecting domain"
 g1 = hm.add_unf_circ_grid([0, 0], 1, 20, 10, 1.2, False)
-hm.set_btype_to_contour(g1, 1)
-c1 = hm.add_rect_cont([0, 0], [1, 1], [2, 3, 4, 5])
+hm.set_boundary_type(g1, 1)
+c1 = hm.add_rect_contour([0, 0], [1, 1], [2, 3, 4, 5])
 g2 = hm.exclude_contours(g1, c1, True)
 g3 = hm.exclude_contours(g1, c1, False)
 
@@ -46,7 +46,7 @@ check_zero(hm.domain_area(g2) + hm.domain_area(g3) - hm.domain_area(g1))
 
 print "exclude internal domain"
 g4 = hm.add_unf_rect_grid([0, 0], [0.3, 0.3], 2, 2)
-hm.set_btype_to_contour(g4, 6)
+hm.set_boundary_type(g4, 6)
 hm.move_geom(g4, -0.5, 0.03)
 g5 = hm.exclude_contours(g1, g4, True)
 g6 = hm.exclude_contours(g1, g4, False)
@@ -73,7 +73,7 @@ check_cont(g8, 20, 20, [20], {1: 20})
 check_cont(g9, 0, 0, [], {})
 
 print "exclude domain lying within a cell"
-c4 = hm.add_rect_cont([-0.02, -0.02], [0.02, 0.02], [6, 7, 8, 9])
+c4 = hm.add_rect_contour([-0.02, -0.02], [0.02, 0.02], [6, 7, 8, 9])
 g10 = hm.exclude_contours(g1, c4, True)
 g11 = hm.exclude_contours(g1, c4, False)
 

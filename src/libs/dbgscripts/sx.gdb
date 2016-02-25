@@ -1,10 +1,9 @@
-source ../../src/libs/dbgscripts/hmout.gdb
+source ../../../src/libs/dbgscripts/hmout.gdb
 
 #call from testing directory
 file python
-set args ../../src/py/HybMesh.py -sx unite_test.py
+set args ../../../src/py/hybmesh.py -sx intro_house.py
 set breakpoint pending on
-b buffergrid.cpp:171
-b buffergrid.cpp:21
+b grid.cpp:493
 run 
 

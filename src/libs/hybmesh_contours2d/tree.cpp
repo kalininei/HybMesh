@@ -34,6 +34,23 @@ Contour* ContourTree::get_contour(Point* p) const{
 	else return 0;
 }
 
+Contour* ContourTree::get_contour(Edge* p) const{
+	Contour* ret = 0;
+	auto fnd = std::find_if(nodes.begin(), nodes.end(),
+		[&p](shared_ptr<Contour> a){ return a->contains(p); }
+	);
+	if (fnd != nodes.end()) return fnd->get();
+	else return 0;
+}
+
+Contour* ExtendedTree::get_contour(Edge* e) const{
+	Contour* ret = ContourTree::get_contour(e);
+	if (ret != 0) return ret;
+	for (auto& oc: open_contours) if (oc->contains(e)) return oc.get();
+	return 0;
+}
+
+
 namespace{
 
 //returns whether node was embedded

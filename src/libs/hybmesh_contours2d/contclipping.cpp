@@ -186,7 +186,13 @@ TRet ci::Union(const ETree& c1, const ETree& c2){
 }
 
 TRet ci::Difference(const ETree& c1, const ETree& c2){
-	_THROW_NOT_IMP_;
+	Impl::GpcTree p1(c1), p2(c2);
+	return Impl::GpcTree::Substract(p1, p2).ToContourTree();
+}
+
+TRet ci::XOR(const ETree& c1, const ETree& c2){
+	Impl::GpcTree p1(c1), p2(c2);
+	return Impl::GpcTree::Xor(p1, p2).ToContourTree();
 }
 
 

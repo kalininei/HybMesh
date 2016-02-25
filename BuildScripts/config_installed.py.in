@@ -3,7 +3,7 @@ import os.path
 import os
 
 exepath = os.path.abspath(sys.executable)
-if sys.platform.startswith('win') and os.path.split(exepath)[1] == 'HybMesh.exe':
+if sys.platform.startswith('win') and os.path.split(exepath)[1] == 'hybmesh.exe':
 	# if that is windows *.exe program 
 	libdir = os.path.join(os.path.dirname(exepath), '../lib')
 else:

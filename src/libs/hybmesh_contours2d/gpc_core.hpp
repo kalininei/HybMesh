@@ -25,6 +25,7 @@ public:
 	static GpcTree Union(const GpcTree& c1, const GpcTree& c2);
 	static GpcTree Intersect(const GpcTree& c1, const GpcTree& c2);
 	static GpcTree Substract(const GpcTree& c1, const GpcTree& c2);
+	static GpcTree Xor(const GpcTree& c1, const GpcTree& c2);
 };
 
 }}

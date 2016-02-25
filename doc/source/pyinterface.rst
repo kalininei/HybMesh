@@ -5,7 +5,7 @@ Python Interface
 
 Script Invocation
 -----------------
-HybMesh python script is a normal python 2.7 file which
+HybMesh python script is a normal `python2.7` file which
 supports all capabilities of python language and can be invoked using both
 HybMesh standalone application and python interpreter.
 The latter demands HybMesh be installed as a python module
@@ -17,11 +17,11 @@ To invoke a script from python interpreter use a command
 
    > python yourscript.py
 
-For standalone :ref:`consoleapp` in Windows system type
+For standalone :ref:`consoleapp` in Windows type
 
 .. code-block:: bat
 
-   > c:\path\to\bin\HybMesh.exe -sx yourscript.py
+   > c:\path\to\bin\hybmesh.exe -sx yourscript.py
 
 In Linux the default application install path `/usr/local/bin`
 should present in your system paths, so there is no need to type full path
@@ -29,48 +29,22 @@ to executable.
 
 .. code-block:: console
 
-   > HybMesh -sx yourscript.py
+   > hybmesh -sx yourscript.py
 
 HybMesh functionality is scattered across different modules of
-:mod:`HybMeshPyPack` package. However all imports essential for scripting
-are gathered in :mod:`HybMeshPyPack.hmscripts.__init__` module.
+:mod:`hybmeshpack` package. However all imports essential for scripting
+are gathered in ``hybmeshpack.hmscripts.__init__`` module.
 So the HybMesh script file should start with an import line
 
 .. code-block:: python
 
-   from HybMeshPyPack import hmscript
+   from hybmeshpack import hmscript
 
-.. py:currentmodule:: HybMeshPyPack.hmscript
+.. py:module:: hybmeshpack.hmscript
 
 List of Functions
 -----------------
-* :func:`RemoveGeom`
-* :func:`MoveGeom`
-* :func:`RotateGeom`
-* :func:`ScaleGeom`
-* :func:`CopyGeom`
-* :func:`AddBoundaryType`
-* :func:`CreateContour`
-* :func:`AddRectCont`
-* :func:`SetBTypeToContour`
-* :func:`GridBndToCont`
-* :func:`SimplifyContour`
-* :func:`UniteContours`
-* :func:`AddUnfRectGrid`
-* :func:`AddUnfCircGrid`
-* :func:`AddUnfRingGrid`
-* :func:`ExcludeContours`
-* :func:`UniteGrids`
-* :func:`BuildBoundaryGrid`
-* :class:`BoundaryGridOption`
-* :func:`ExportVTK`
-* :func:`ExportHMG`
-* :func:`ExportMSH`
-* :func:`ExportGMSH`
-* :func:`SaveProject`
-* :func:`ImportGridMSH`
-* :func:`ImportGridGMSH`
-* :func:`ImportContourASCII`
+.. include:: functab
 
 Object Procedures
 ------------------
@@ -79,15 +53,17 @@ These geometric procedures are used for both grid
 and contour objects addressed via string identifiers
 returned by object constructors.
 
-.. autofunction:: HybMeshPyPack.hmscript.RemoveGeom
+.. autofunction:: remove_geom
 
-.. autofunction:: HybMeshPyPack.hmscript.MoveGeom
+.. autofunction:: remove_all
 
-.. autofunction:: HybMeshPyPack.hmscript.RotateGeom
+.. autofunction:: move_geom
 
-.. autofunction:: HybMeshPyPack.hmscript.ScaleGeom
+.. autofunction:: rotate_geom
 
-.. autofunction:: HybMeshPyPack.hmscript.CopyGeom
+.. autofunction:: scale_geom
+
+.. autofunction:: copy_geom
 
 Contour Procedures
 ------------------
@@ -96,19 +72,23 @@ Contour procedures could be done for both user and
 grid contours. In the latter case grid identifier
 instead of contour identifier should be used.
 
-.. autofunction:: HybMeshPyPack.hmscript.AddBoundaryType
+.. autofunction:: add_boundary_type
 
-.. autofunction:: HybMeshPyPack.hmscript.CreateContour
+.. autofunction:: set_boundary_type
 
-.. autofunction:: HybMeshPyPack.hmscript.AddRectCont
+.. autofunction:: create_contour
 
-.. autofunction:: HybMeshPyPack.hmscript.SetBTypeToContour
+.. autofunction:: add_rect_contour
 
-.. autofunction:: HybMeshPyPack.hmscript.GridBndToCont
+.. autofunction:: add_circ_contour
 
-.. autofunction:: HybMeshPyPack.hmscript.SimplifyContour
+.. autofunction:: grid_bnd_to_contour
 
-.. autofunction:: HybMeshPyPack.hmscript.UniteContours
+.. autofunction:: simplify_contour
+
+.. autofunction:: unite_contours
+
+.. autofunction:: domain_clip
 
 Grid Procedures
 ---------------
@@ -118,21 +98,37 @@ Prototypes
 
 Building uniform grids in a primitive areas.
 
-.. autofunction:: HybMeshPyPack.hmscript.AddUnfRectGrid
-.. autofunction:: HybMeshPyPack.hmscript.AddUnfCircGrid
-.. autofunction:: HybMeshPyPack.hmscript.AddUnfRingGrid
+.. autofunction:: add_unf_rect_grid
+.. autofunction:: add_unf_circ_grid
+.. autofunction:: add_unf_ring_grid
 
 Transformations
 +++++++++++++++
 See :ref:`functionality` for procedures details.
 
-.. autofunction:: HybMeshPyPack.hmscript.ExcludeContours
-.. autofunction:: HybMeshPyPack.hmscript.UniteGrids
-.. autofunction:: HybMeshPyPack.hmscript.BuildBoundaryGrid
+.. autofunction:: exclude_contours
+.. autofunction:: unite_grids
+.. autofunction:: build_boundary_grid
 
 
-.. autoclass:: HybMeshPyPack.hmscript.BoundaryGridOption()
-   :members: __init__
+.. autoclass:: BoundaryGridOptions()
+   :members: __init__, uniform_partition, incremental_partition
+
+
+Information
+-----------
+Some general characteristics of program state and geometrical objects could be obtained by
+set of special commands.
+
+.. autofunction:: check_compatibility
+.. autofunction:: info_grid
+.. autofunction:: info_contour
+.. autofunction:: registered_contours
+.. autofunction:: registered_grids
+.. autofunction:: registered_btypes
+.. autofunction:: domain_area
+.. autofunction:: skewness
+
 
 Exports
 -------
@@ -140,55 +136,33 @@ Possible Grid export formats are
 
 * Vtk file format could be used to open a grid in `Paraview`.
   No boundary types are saved for this format.
+  To see boundary types use separate vtk contour export command.
 * :ref:`hmg-file`
 * Fluent mesh format 
 * GMsh file format
 
-Current workflow can be also save to a :ref:`hmp-file` which
+The current work flow can be also save to a :ref:`hmp-file` which
 can be opened in a gui application.
 
-.. autofunction:: HybMeshPyPack.hmscript.ExportVTK
-.. autofunction:: HybMeshPyPack.hmscript.ExportHMG
-.. autofunction:: HybMeshPyPack.hmscript.ExportMSH
-.. autofunction:: HybMeshPyPack.hmscript.ExportGMSH
-.. autofunction:: HybMeshPyPack.hmscript.SaveProject
+.. autofunction:: export_grid_vtk
+.. autofunction:: export_grid_hmg
+.. autofunction:: export_grid_msh
+.. autofunction:: export_grid_gmsh
+.. autofunction:: export_contour_vtk
+.. autofunction:: export_contour_hmc
+.. autofunction:: save_project
 
 Imports
 -------
 
-.. autofunction:: HybMeshPyPack.hmscript.ImportGridMSH
-.. autofunction:: HybMeshPyPack.hmscript.ImportGridGMSH
-.. autofunction:: HybMeshPyPack.hmscript.ImportContourASCII
+.. autofunction:: import_grid_msh
+.. autofunction:: import_grid_gmsh
+.. autofunction:: import_contour_ascii
 
-Introductory Example
---------------------
-This example illustrates HybMesh algorithm for meshing
-domain shown in :ref:`introfig1`
-
-.. _introfig1:
-
-.. figure:: picintro1.png
-   :height: 400 px
-
-   fig1. Area for meshing
-
-The building strategy is:
-
-* build a set of primitive rectangular grids
-* exclude pentagon (:ref:`introfig2`)
-* unite all grids (:ref:`introfig3`)
-* to get rid of oblong cells nearby the pentagon build a boundary grid and
-  unite it with the result of previous imposition (:ref:`introfig4`)
-
-Here is the script:
-
-.. literalinclude:: ../../examples/intro.py
-
-+--------------------------+--------------------------+--------------------------+
-|.. _introfig2:            | .. _introfig3:           | .. _introfig4:           |
-|                          |                          |                          |
-|.. figure:: picintro2.png | .. figure:: picintro3.png| .. figure:: picintro4.png|
-|   :height: 400 px        |    :height: 400 px       |    :height: 400 px       |
-|                          |                          |                          |
-|   fig2. Primitive grids  |    fig3. After imposition|    fig4. Final result    |
-+--------------------------+--------------------------+--------------------------+
+Introductory Examples
+---------------------
+.. toctree::
+   
+  intro_example1
+  intro_example2
+  intro_example3

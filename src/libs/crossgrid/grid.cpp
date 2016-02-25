@@ -917,6 +917,12 @@ HMCont2D::Contour GGeom::Info::Contour1(const GridGeom& grid){
 	return *ct.nodes[0];
 }
 
+HMCont2D::Contour GGeom::Info::CellContour(const GridGeom& grid, int cell_ind){
+	const Cell* c=grid.cells[cell_ind].get();
+	vector<Point*> p(c->points.begin(), c->points.end());
+	return HMCont2D::Constructor::ContourFromPoints(p, true);
+}
+
 BoundingBox GGeom::Info::BBox(const GridGeom& grid, double eps){
 	auto ret = BoundingBox::Build(grid.points.begin(), grid.points.end());
 	ret.widen(eps);
