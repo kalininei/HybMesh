@@ -166,7 +166,7 @@ def create_contour(pnts, bnds=0):
     return c._get_added_names()[1][0]
 
 
-def domain_clip(dom1, dom2, operation, simplify=True):
+def clip_domain(dom1, dom2, operation, simplify=True):
     """ Executes domain clipping procedure
 
     Args:

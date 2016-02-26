@@ -45,7 +45,7 @@ then
 	$HMCOM fromdoc/ex_bgrid.py
 	$HMCOM fromdoc/intro_house.py
 	$HMCOM fromdoc/intro_pentagon.py
-	$HMCOM fromdoc/intro_hcyl.py
+	#$HMCOM fromdoc/intro_hcyl.py
 else
 	echo "============ ignoring doc tests"
 fi

@@ -4,7 +4,7 @@ from hybmeshpack.basic.geom import Point2
 from . import ExecError
 
 
-def exclude_contours(grid, conts, exclude_outer=True):
+def exclude_contours(grid, conts, what):
     """Builds a grid by excluding contour area from existing grid.
 
     Args:
@@ -12,15 +12,14 @@ def exclude_contours(grid, conts, exclude_outer=True):
 
        conts: contour or list of contours/grids identifiers for exclusion.
 
-    Kwargs:
-       exclude_outer (bool): exclude inner or outer region of contour domain.
-       Open contours are not allowed.
+       what (str): ``"inner"``/``"outer"``.
+       Describes what part of ``conts`` domain exclude
 
     Returns:
        new grid identifier
 
     Raises:
-       hmscript.ExecError
+       hmscript.ValueError, hmscript.ExecError
 
     .. note::
 
@@ -38,9 +37,15 @@ def exclude_contours(grid, conts, exclude_outer=True):
     """
     if not isinstance(conts, list):
         conts = [conts]
+    if what == "inner":
+        exa = True
+    elif what == "outer":
+        exa = False
+    else:
+        raise ValueError("Invalid domain area: %s" % str(what))
     c = com.gridcom.ExcludeContours({"grid_name": grid,
                                      "cont_names": conts,
-                                     "is_inner": not exclude_outer})
+                                     "is_inner": exa})
     try:
         flow.exec_command(c)
         return c._get_added_names()[0][0]
@@ -105,7 +110,9 @@ class BoundaryGridOptions(object):
       from the contour (with respect to positive tracing)
     :ivar float bnd_step:
       float size of artificial stepping along the contour (used only if
-      ``bnd_stepping`` is not "no")
+      ``bnd_stepping`` is not "no"). If ``bnd_stepping == 'incremental'`` then
+      this should be a list of two floats: boundary partition nearby start
+      and end of the contour
     :ivar str bnd_stepping:
       algorithm for stepping along the contour
 
@@ -116,6 +123,10 @@ class BoundaryGridOptions(object):
       * ``'keep_shape'``: use stepping and keep significant
         contour vertices
       * ``'keep_all'``: use stepping and keep all contour vertices
+      * ``'incremental'``: increase boundary step lineary from ``start_point``
+        to ``end_point``. Valid only for open contours
+        ``start_point`` != ``end_point``. It acts like ``const`` stepping:
+        no initial boundary vertices will be saved.
     :ivar list-of-floats range_angles:
       list of 4 angle values (deg) which define algorithms
       for contour bends treatment:
@@ -131,7 +142,7 @@ class BoundaryGridOptions(object):
       points in [x, y] format which define
       the exact segment of the contour for building grid.
       If both are None hence whole contour (or all subcontours) will be used.
-      if ``start_point``==``end_point`` then whole subcontour closest to
+      if ``start_point`` == ``end_point`` then whole subcontour closest to
       this point will be used.
       If point is not located on the source contour then it will be
       projected to it.
@@ -177,6 +188,18 @@ class BoundaryGridOptions(object):
                 self.partition[-1] +
                 coef * (self.partition[-1] - self.partition[-2]))
 
+    def reentrant_all_square(self):
+        """This guaranties that all reentrant angles will be treated
+        with additional square zone and without rounding.
+        At angles close to 360 degree this may lead to a vary bad cells"""
+        self.range_angles[3] = max(self.range_angles[3], 359)
+
+    def reentrant_all_round(self):
+        """This guaranties that all reentrant angles will be treated
+        with round algorithm.
+        """
+        self.range_angles[3] = self.range_angles[2]
+
 
 def build_boundary_grid(opts):
     """Builds a boundary grid near contour
@@ -192,7 +215,7 @@ def build_boundary_grid(opts):
        hmscript.ExecError, ValueError
 
     .. note::
-      If different options for different segements of the contour are required
+      If different options for different segments of the contour are required
       (e.g. different partitions) then multiple option instances with the same
       target contour should be passed.
 
@@ -230,9 +253,24 @@ def build_boundary_grid(opts):
             d['mesh_cont'] = 2
         elif op.bnd_stepping == "keep_all":
             d['mesh_cont'] = 1
+        elif op.bnd_stepping == "incremental":
+            d['mesh_cont'] = 4
         else:
             raise ValueError("Invalid bnd_stepping: " + str(op.bnd_stepping))
-        d['mesh_cont_step'] = op.bnd_step
+        if op.bnd_stepping != "incremental":
+            if isinstance(op.bnd_step, list):
+                raise ValueError("list values for bnd_step are available "
+                                 "only for incremental stepping")
+            else:
+                d['mesh_cont_step'] = op.bnd_step
+        else:
+            d['mesh_cont_step'] = 0.0
+            if not isinstance(op.bnd_step, list) or len(op.bnd_step) < 2:
+                raise ValueError("Incremental stepping requires list[2] as "
+                                 "bnd_step")
+            d['step_start'] = op.bnd_step[0]
+            d['step_end'] = op.bnd_step[1]
+
         d['algo_acute'] = op.range_angles[0]
         d['algo_right'] = op.range_angles[1]
         d['algo_straight'] = op.range_angles[2]
@@ -241,6 +279,7 @@ def build_boundary_grid(opts):
             d['start'] = Point2(*op.start_point)
             d['end'] = Point2(*op.end_point)
         d['force_conf'] = op.force_conformal
+        # check partition
         for i in range(len(op.partition) - 1):
             if (op.partition[i] >= op.partition[i + 1]):
                 op.partition = [0]

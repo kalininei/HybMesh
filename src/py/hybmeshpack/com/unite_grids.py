@@ -161,7 +161,8 @@ def boundary_layer_grid(opt, cb):
             self.direction = ct.c_char_p(
                 {1: 'LEFT', -1: 'RIGHT'}[opt_entry['direction']])
             self.mesh_cont = ct.c_char_p({
-                0: 'NO', 1: 'KEEP_ORIGIN', 2: 'KEEP_SHAPE', 3: 'IGNORE_ALL'
+                0: 'NO', 1: 'KEEP_ORIGIN', 2: 'KEEP_SHAPE', 3: 'IGNORE_ALL',
+                4: "INCREMENTAL",
             }[opt_entry['mesh_cont']])
             self.mesh_cont_step = ct.c_double(opt_entry['mesh_cont_step'])
             self.start = (ct.c_double * 2)(opt_entry['start'].x,
@@ -175,6 +176,8 @@ def boundary_layer_grid(opt, cb):
                 opt_entry['algo_right'],
                 opt_entry['algo_straight'],
                 opt_entry['algo_reentr'])
+            self.step_start = ct.c_double(opt_entry['step_start'])
+            self.step_end = ct.c_double(opt_entry['step_end'])
 
         _fields_ = [
             ('cont', ct.c_void_p),
@@ -187,10 +190,11 @@ def boundary_layer_grid(opt, cb):
             ('end', ct.c_double * 2),
             ('force_conformal', ct.c_int),
             ('angle_range', ct.c_double * 4),
+            ('step_start', ct.c_double),
+            ('step_end', ct.c_double),
         ]
 
     lib_fa = cobj.cport_lib()
-    lib_c2 = lib_fa
 
     # 1) get contour pointers
     for co in opt:
@@ -224,7 +228,7 @@ def boundary_layer_grid(opt, cb):
     # 5) free data
     lib_fa.grid_free(cres)
     for c in COptStruct.usedconts.values():
-        lib_c2.free_ecollection_container(c)
+        lib_fa.free_ecollection_container(c)
     COptStruct.usedconts = {}
 
     return ret

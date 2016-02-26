@@ -28,7 +28,7 @@ Object       Contour      Grid         Operations   Info           Imp/Exp
 .. |func-c05| replace:: :func:`add_circ_contour`       
 .. |func-c06| replace:: :func:`simplify_contour`    
 .. |func-c07| replace:: :func:`unite_contours`      
-.. |func-c08| replace:: :func:`domain_clip`      
+.. |func-c08| replace:: :func:`clip_domain`      
 .. |func-c09| replace:: :func:`grid_bnd_to_contour`   
 
 .. |func-g01| replace:: :func:`add_unf_rect_grid`

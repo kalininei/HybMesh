@@ -34,8 +34,8 @@ print "exclude intersecting domain"
 g1 = hm.add_unf_circ_grid([0, 0], 1, 20, 10, 1.2, False)
 hm.set_boundary_type(g1, 1)
 c1 = hm.add_rect_contour([0, 0], [1, 1], [2, 3, 4, 5])
-g2 = hm.exclude_contours(g1, c1, True)
-g3 = hm.exclude_contours(g1, c1, False)
+g2 = hm.exclude_contours(g1, c1, "outer")
+g3 = hm.exclude_contours(g1, c1, "inner")
 
 check_grid(g1, 200, 380, 181, {20: 1, 4: 180})
 check_grid(g2, 61, 106, 46, {7: 1, 4: 45})
@@ -48,8 +48,8 @@ print "exclude internal domain"
 g4 = hm.add_unf_rect_grid([0, 0], [0.3, 0.3], 2, 2)
 hm.set_boundary_type(g4, 6)
 hm.move_geom(g4, -0.5, 0.03)
-g5 = hm.exclude_contours(g1, g4, True)
-g6 = hm.exclude_contours(g1, g4, False)
+g5 = hm.exclude_contours(g1, g4, "outer")
+g6 = hm.exclude_contours(g1, g4, "inner")
 [c2] = hm.simplify_contour(g5)
 [c3] = hm.simplify_contour(g6)
 
@@ -63,8 +63,8 @@ check_zero(hm.domain_area(g1) - hm.domain_area(c2) - hm.domain_area(c3))
 
 print "exclude external domain"
 g7 = hm.add_unf_rect_grid([-10, -10], [10, 10], 1, 1)
-g8 = hm.exclude_contours(g1, g7, True)
-g9 = hm.exclude_contours(g1, g7, False)
+g8 = hm.exclude_contours(g1, g7, "outer")
+g9 = hm.exclude_contours(g1, g7, "inner")
 
 check_zero(hm.domain_area(g1) - hm.domain_area(g8) - hm.domain_area(g9))
 check_grid(g8, 200, 380, 181, {20: 1, 4: 180})
@@ -74,8 +74,8 @@ check_cont(g9, 0, 0, [], {})
 
 print "exclude domain lying within a cell"
 c4 = hm.add_rect_contour([-0.02, -0.02], [0.02, 0.02], [6, 7, 8, 9])
-g10 = hm.exclude_contours(g1, c4, True)
-g11 = hm.exclude_contours(g1, c4, False)
+g10 = hm.exclude_contours(g1, c4, "outer")
+g11 = hm.exclude_contours(g1, c4, "inner")
 
 check_zero(hm.domain_area(g1) - hm.domain_area(g10) - hm.domain_area(g11))
 

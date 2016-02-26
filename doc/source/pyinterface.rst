@@ -88,7 +88,7 @@ instead of contour identifier should be used.
 
 .. autofunction:: unite_contours
 
-.. autofunction:: domain_clip
+.. autofunction:: clip_domain
 
 Grid Procedures
 ---------------

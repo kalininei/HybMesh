@@ -107,7 +107,7 @@ std::array<Point*, 3> Contour::point_siblings(int i) const{
 		e2 = 0;
 		if (i == size()) std::swap(e1,e2);
 	}
-	
+
 	//siblings
 	if (e1!=0 && e2!=0){
 		if (e1->pstart == e2->pstart) return {e1->pend, e1->pstart, e2->pend};
@@ -191,7 +191,7 @@ Contour::coord_at(const Point& p) const{
 	auto lens = ELengths(*this);
 	double outlen = 0;
 	for (int i=0; i<ind; ++i) outlen+=lens[i];
-	
+
 	if (correctly_directed_edge(ind))
 		outlen += lens[ind]*std::get<2>(fnd);
 	else
@@ -211,7 +211,7 @@ void Contour::DirectEdges(){
 	}
 }
 
-void Contour::ReallyReverse(){ 
+void Contour::ReallyReverse(){
 	if (size() == 1) data[0]->Reverse();
 	else{
 		Reverse();
@@ -427,7 +427,7 @@ Vect Contour::SmoothedDirection(const Contour& c, Point* p, int direction, doubl
 		pindex = c.get_index(e) + 1;
 		chosen.insert(chosen.begin() + pindex, &apoints.back());
 	}
-	
+
 	//2. revert according to direction
 	if (direction == -1){
 		std::reverse(chosen.begin(), chosen.end());
@@ -464,7 +464,7 @@ Vect Contour::SmoothedDirection(const Contour& c, Point* p, int direction, doubl
 	if (ISGREATER(len, usedx)){
 		//_THROW_NOT_IMP_;
 	}
-	
+
 	//7. leave only [istart-iend] points and calculate
 	chosen = vector<Point*>(chosen.begin()+istart,  chosen.begin() + iend+1);
 	return smoothed_direction_core(chosen);
@@ -479,29 +479,82 @@ Contour Contour::Partition(double step, const Contour& contour, PCollection& pst
 			return Partition(step, contour, pstore, contour.all_points());
 		case PartitionTp::KEEP_SHAPE:
 			return Partition(step, contour, pstore, contour.corner_points());
+		default:
+			assert(false);
 	};
 }
 
+Contour Contour::WeightedPartition(const std::map<double, double>& basis,
+		const Contour& contour, PCollection& pstore, PartitionTp tp){
+	switch (tp){
+		case PartitionTp::IGNORE_ALL:
+			return WeightedPartition(basis, contour, pstore);
+		case PartitionTp::KEEP_ALL:
+			return WeightedPartition(basis, contour, pstore, contour.all_points());
+		case PartitionTp::KEEP_SHAPE:
+			return WeightedPartition(basis, contour, pstore, contour.corner_points());
+		default:
+			assert(false);
+	};
+}
+
+
 namespace {
 
-//build a new contour based on input contour begin/end points
-Contour partition_core(double step, const Contour& contour, PCollection& pstore){
+vector<double> partition_new_points_w(double step, const Contour& contour){
 	double len = contour.length();
 	if (len<1.5*step){
-		if (!contour.is_closed()){
-			Contour ret;
-			ret.add_value(Edge{contour.first(), contour.last()});
-			return ret;
-		} else {
-			step = len/3.1;
-		}
+		if (!contour.is_closed()) return {0.0, 1.0};
+		else step = len/3.1;
 	}
 	//calculates new points
 	int n = (int)round(len/step);
 	vector<double> w;
-	for (int i=1; i<n; ++i) w.push_back((double)i/n);
-	PCollection wp = Contour::WeightPoints(contour, w);
-	//add new poins to pstore
+	for (int i=0; i<n+1; ++i) w.push_back((double)i/n);
+	return w;
+}
+
+vector<double> partition_new_points_w(std::map<double, double> basis, const Contour& contour){
+	_DUMMY_FUN_;
+	assert(basis.size()>0);
+	if (basis.size() == 1) return partition_new_points_w(basis.begin()->second, contour);
+	double len = contour.length();
+	for (auto& m: basis) m.second/=len;
+	auto funcstep = [&](double x)->double{
+		if (x<=basis.begin()->first) return basis.begin()->second;
+		if (x>=basis.rbegin()->first) return basis.rbegin()->second;
+		auto it0 = basis.begin();
+		while (x>it0->first) ++it0;
+		auto it1 = it0--;
+		double ret = (it0->second*(it1->first-x) + it1->second*(x-it0->first));
+		return x + ret/(it1->first - it0->first);
+	};
+	vector<double> ret;
+	ret.push_back(0);
+	while (ret.back()<1.0) ret.push_back(funcstep(ret.back()));
+	//analyze last entry
+	if ((ret.back() - 1.0) > 1.0 - ret[ret.size() - 1]) ret.resize(ret.size()-1);
+	if (ret.size()<3) return {0, 1};
+	double stretch_coef = 1.0/ret.back();
+	for (auto& x: ret) x*=stretch_coef;
+	return ret;
+}
+
+//build a new contour based on input contour begin/end points
+template<class A>
+Contour partition_core(A& step, const Contour& contour, PCollection& pstore){
+	vector<double> w = partition_new_points_w(step, contour);
+	if (w.size() == 2){
+		Contour ret;
+		ret.add_value(Edge{contour.first(), contour.last()});
+		return ret;
+	}
+	if (w.size()<2){
+		partition_core(step, contour, pstore);
+	}
+	vector<double> w2(w.begin()+1, w.end()-1);
+	PCollection wp = Contour::WeightPoints(contour, w2);
+	//add new points to pstore
 	pstore.Unite(wp);
 	//Construct new contour
 	vector<Point*> cpoints;
@@ -512,8 +565,9 @@ Contour partition_core(double step, const Contour& contour, PCollection& pstore)
 	return Constructor::ContourFromPoints(cpoints);
 }
 
-//returns repartitioned copy of a contour 
-Contour partition_core(double step, const Contour& contour, PCollection& pstore, const std::list<Point*>& keep){
+//returns repartitioned copy of a contour
+template<class A>
+Contour partition_core(A& step, const Contour& contour, PCollection& pstore, const std::list<Point*>& keep){
 	auto it0 = keep.begin(), it1 = std::next(it0);
 	Contour ret;
 	while (it1 != keep.end()){
@@ -532,9 +586,8 @@ Contour partition_core(double step, const Contour& contour, PCollection& pstore,
 	return ret;
 }
 
-}
-
-Contour Contour::Partition(double step, const Contour& contour, PCollection& pstore,
+template<class A>
+Contour partition_with_keepit(A& step, const Contour& contour, PCollection& pstore,
 		const std::vector<Point*>& keepit){
 	//sort points in keepit and add start, end point there
 	vector<Point*> orig_pnt = contour.ordered_points();
@@ -544,7 +597,7 @@ Contour Contour::Partition(double step, const Contour& contour, PCollection& pst
 	std::copy_if(orig_pnt.begin(), orig_pnt.end(), std::back_inserter(keep_sorted),
 		[&keepset](Point* p){ return keepset.find(p) != keepset.end(); }
 	);
-	
+
 	//add first, last points
 	if (!contour.is_closed()){
 		if (*keep_sorted.begin() != orig_pnt[0])
@@ -557,9 +610,22 @@ Contour Contour::Partition(double step, const Contour& contour, PCollection& pst
 		keep_sorted.push_back(orig_pnt[0]);
 		keep_sorted.push_back(orig_pnt[0]);
 	}
-	
+
 	//call core procedure
 	return partition_core(step, contour, pstore, keep_sorted);
+}
+
+}//namespace
+
+Contour Contour::Partition(double step, const Contour& contour, PCollection& pstore,
+		const std::vector<Point*>& keepit){
+	return partition_with_keepit(step, contour, pstore, keepit);
+}
+
+Contour Contour::WeightedPartition(const std::map<double, double>& basis,
+		const Contour& contour, PCollection& pstore,
+		const std::vector<Point*>& keepit){
+	return partition_with_keepit(basis, contour, pstore, keepit);
 }
 
 bool Contour::DoIntersect(const Contour& c1, const Contour& c2){
@@ -609,7 +675,7 @@ Contour Contour::Assemble(const Contour& con, const Point* pnt_start, const Poin
 		if (i0 == i1) i1 = i0 + con.size();
 		if (i1 == 0) i1 = con.size();
 	}
-	
+
 	if (i1 >= i0) return assemble_core(con, i0, i1);
 	else {
 		if (con.is_closed()) return assemble_core(con, i0, i1 + con.size());
@@ -631,9 +697,9 @@ Contour Contour::Assemble(const ECollection& col, const Point* pnt_start, const 
 
 Contour Contour::Assemble(const ECollection& col, const Point* pnt_start){
 	std::list<shared_ptr<Edge>> eset(col.begin(), col.end());
-	
+
 	//finds and removes from eset Edge with point
-	auto fnded = [&eset](const Point* p) -> shared_ptr<Edge>{ 
+	auto fnded = [&eset](const Point* p) -> shared_ptr<Edge>{
 		auto fnd = std::find_if(eset.begin(), eset.end(),
 			[&p](shared_ptr<Edge> e){ return e->contains(p); });
 		if (fnd == eset.end()) return nullptr;
@@ -716,7 +782,7 @@ PCollection Contour::WeightPointsByLen(const Contour& p, vector<double> vw){
 	vector<double> elens {0};
 	for (auto& e: p.data) elens.push_back(Point::dist(*e->pstart, *e->pend));
 	std::partial_sum(elens.begin(), elens.end(), elens.begin());
-	
+
 	int icur=1;
 	for (auto w: vw){
 		while (icur<pseq.size()-1 && ISEQLOWER(elens[icur], w)) ++icur;
@@ -803,6 +869,7 @@ Container<Contour> Contour::CutByWeight(const Contour& source, double w1, double
 	PCollection wp = WeightPoints(tmp, {w1, w2});
 	auto p1 = tmp.GuaranteePoint(*wp.point(0), tmp.pdata);
 	auto p2 = tmp.GuaranteePoint(*wp.point(1), tmp.pdata);
+	tmp.DirectEdges();
 	Contour rc = Contour::Assemble(tmp, std::get<1>(p1), std::get<1>(p2));
 	Container<Contour> ret;
 	Container<Contour>::DeepCopy(rc, ret);

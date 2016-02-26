@@ -256,6 +256,10 @@ class BuildBoundaryGrid(NewGridCommand):
         if "name" not in kwargs:
             kwargs["name"] = "Grid1"
         for op in kwargs['opt']:
+            if 'step_start' not in op:
+                op['step_start'] = op['mesh_cont_step']
+            if 'step_end' not in op:
+                op['step_end'] = op['mesh_cont_step']
             if 'start' not in op or 'end' not in op:
                 op['start'] = None
                 op['end'] = None
@@ -269,6 +273,8 @@ class BuildBoundaryGrid(NewGridCommand):
                 direction=command.BasicOption(int),
                 mesh_cont=command.BasicOption(int),
                 mesh_cont_step=command.BasicOption(float),
+                step_start=command.BasicOption(float),
+                step_end=command.BasicOption(float),
                 algo_acute=command.BasicOption(float),
                 algo_right=command.BasicOption(float),
                 algo_straight=command.BasicOption(float),
@@ -286,12 +292,15 @@ class BuildBoundaryGrid(NewGridCommand):
                     source: str - name of source contour
                     partition: [0.0,...] -- layer partition starts from 0
                     direction: int    - 1/-1 for positive/negative direction
-                    mesh_cont: 0/1/2/3 -- contour meshing strategy:
+                    mesh_cont: 0/1/2/3/4 -- contour meshing strategy:
                         0 - No meshing, use original contour nodes
                         1 - keep all original contour nodes,
                         2 - keep only non-collinear contour nodes,
                         3 - ignore all existing contour nodes
+                        4 - incremental stepping
                     mesh_cont_step: double -- contour mesh step if mesh_cont!=0
+                    step_start, step_end: contour mesh step for incremental
+                                          stepping
                     start: Point   -- Start Point of Section.
                     end: Point     -- End Point of Section.
                     force_conf: Bool -- force conformal mappings

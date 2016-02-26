@@ -176,6 +176,14 @@ struct Contour: public ECollection{
 	static Contour Partition(double step, const Contour& contour, PCollection& pstore,
 			const std::vector<Point*>& keepit = {});
 
+	//partition step will be calculated according to basis --
+	//	contour weight in [0,1]: required partition size
+	static Contour WeightedPartition(const std::map<double, double>& basis,
+			const Contour& contour, PCollection& pstore, PartitionTp tp);
+	static Contour WeightedPartition(const std::map<double, double>& basis,
+			const Contour& contour, PCollection& pstore,
+			const std::vector<Point*>& keepit = {});
+	
 	//returns true if c1 and c2 have common area (not a point, but may be an edge)
 	static bool DoIntersect(const Contour& c1, const Contour& c2);
 	//returns true if c1 and c2 have common area (not a point, not an edge)

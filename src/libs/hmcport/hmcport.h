@@ -77,6 +77,10 @@ void add_contour_bc(Cont* src, Cont* tar, int* vsrc, int* vtar, int def);
 void* create_ecollection_container(int Npts, double* pts, int Nedgs, int* edges);
 void free_ecollection_container(void* ecol);
 
+//get ecollection structure
+void ecollection_edges_info(void* ecol, int* npts, int* neds, double** pts, int** eds);
+void free_ecollection_edges_info(double* pts, int* eds);
+
 //calculates area with respect to multiplicity
 double ecollection_area(void* ecol);
 
@@ -136,12 +140,14 @@ struct BoundaryLayerGridOption{
 	int Npart;  //length of part
 	double* part; //partition array starts with 0
 	const char* tp;  //INSIDE, OUTSIDE, LEFT, RIGHT, AROUND
-	const char* mesh_cont; //'NO', 'KEEP_ORIGIN', 'KEEP_SHAPE', 'IGNORE_ALL'
+	const char* mesh_cont; //'NO', 'KEEP_ORIGIN', 'KEEP_SHAPE', 'IGNORE_ALL', 'INCREMENTAL'
 	double mesh_cont_step; //contour step if mesh_cont is not 'NO'
 	double start[2]; //start point
 	double end[2];   //end point
 	int force_conformal;   //force conformal
 	double angle_range[4]; //maximum acute/right/straight/reentrant angles
+	double step_start; //step values for incremental stepping
+	double step_end;
 };
 
 Grid* boundary_layer_grid_wcb(int N, BoundaryLayerGridOption* opt, 

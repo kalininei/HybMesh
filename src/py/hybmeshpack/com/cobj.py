@@ -2,6 +2,7 @@
 import ctypes as ct
 import os
 from hybmeshpack.gdata.grid2 import Grid2
+from hybmeshpack.gdata.contour2 import Contour2
 from hybmeshpack.basic.geom import Point2
 from hybmeshpack import progdata
 
@@ -128,6 +129,28 @@ def cont2_to_c(cont):
                                                c_nedges, c_edges)
 
 
+def cont2_from_c(c_cont):
+    """ returns contours2.Contour2 from c pointer to ecollection """
+    if c_cont == 0:
+        return None
+    lib_fa = cport_lib()
+    c_eds, c_pts = ct.POINTER(ct.c_int)(), ct.POINTER(ct.c_double)()
+    npts, neds = ct.c_int(), ct.c_int()
+    lib_fa.ecollection_edges_info(c_cont,
+                                  ct.byref(npts), ct.byref(neds),
+                                  ct.byref(c_pts), ct.byref(c_eds))
+    # from c arrays to python lists
+    pts = []
+    edcon = []
+    for i in range(0, 2 * npts.value, 2):
+        pts.append(Point2(c_pts[i], c_pts[i + 1]))
+    for i in range(0, 2 * neds.value, 2):
+        edcon.append([c_eds[i], c_eds[i + 1]])
+    lib_fa.free_ecollection_edges_info(c_pts, c_eds)
+    ret = Contour2.create_from_point_set(pts, edcon)
+    return ret
+
+
 def free_cont2(cont):
     """ frees pointer to ecollection container"""
     lib_fa = cport_lib()
@@ -170,7 +193,7 @@ def get_skewness(grid, threshold):
     return ret
 
 
-def domain_clip(cc1, cc2, op, simplify):
+def clip_domain(cc1, cc2, op, simplify):
     """ cc1, cc2 - c pointers to ecollection containers
     op is {1: union, 2: difference, 3: intersection, 4: xor}
     simplify (bool)

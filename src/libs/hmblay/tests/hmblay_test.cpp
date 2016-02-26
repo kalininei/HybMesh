@@ -31,7 +31,6 @@ void test01(){
 	inp.bnd_step_method = HMBlay::MethFromString("NO");
 	inp.partition = {0.0, 0.2, 0.4, 1.5};
 	inp.bnd_step = 0.1;
-	inp.round_off = true;
 	inp.start=inp.end=Point(0,0);
 	inp.acute_angle = inp.right_angle = 0.0;
 	inp.straight_angle = 300;

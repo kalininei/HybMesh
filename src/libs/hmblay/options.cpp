@@ -21,12 +21,13 @@ C string_option(std::string opt,
 
 HMBlay::BndStepMethod HMBlay::MethFromString(const char* str){
 	return string_option(str,
-			{"NO", "KEEP_ORIGIN", "KEEP_SHAPE", "IGNORE_ALL", "KEEP_ALL"},
+			{"NO", "KEEP_ORIGIN", "KEEP_SHAPE", "IGNORE_ALL", "KEEP_ALL", "INCREMENTAL"},
 				{BndStepMethod::NO_BND_STEPPING,
 				 BndStepMethod::CONST_BND_STEP_KEEP_ALL,
 				 BndStepMethod::CONST_BND_STEP_KEEP_SHAPE,
 				 BndStepMethod::CONST_BND_STEP,
-				 BndStepMethod::CONST_BND_STEP_KEEP_ALL});
+				 BndStepMethod::CONST_BND_STEP_KEEP_ALL,
+				 BndStepMethod::INCREMENTAL});
 }
 
 HMBlay::Direction HMBlay::DirectionFromString(const char* str){
@@ -72,6 +73,10 @@ vector<Options> Options::CreateFromParent(const vector<HMBlay::Input>& par){
 		r.edges = r.__edges_data.get();
 		r.scaling = sc;
 		r.bnd_step /= sc->L;
+		for (auto& b: r.bnd_step_basis){
+			sc->scale(b.first);
+			b.second /=sc->L;
+		}
 		sc->scale(r.start);
 		sc->scale(r.end);
 		for(auto& p: r.partition) p/=sc->L;
@@ -93,14 +98,38 @@ void Options::Initialize(){
 	pnt_start = ECol::FindClosestNode(*edges, start);
 	pnt_end = ECol::FindClosestNode(*edges, end);
 
+	//if points were not found as edges vertices then place them straight to __edges_data
+	//pool so that other option instances could find them and don't create their own copies
+	//of these points (only for open contours)
+	if (start != end){
+		auto split_edge = [&](Point psplit)->Point*{
+			auto ce = HMCont2D::ECollection::FindClosestEdge(*__edges_data, psplit);
+			assert(std::get<0>(ce)!=0);
+			HMCont2D::Edge* eold = std::get<0>(ce);
+			if (ISZERO(std::get<2>(ce))) return  eold->pstart;
+			if (ISZERO(1 - std::get<2>(ce))) return  eold->pend;
+			Point* newp = __all_data->pdata.add_value(Point::Weigh(*eold->pstart,
+						*eold->pend, std::get<2>(ce)));
+			HMCont2D::Edge enew1(eold->pstart, newp), enew2(eold->pend, newp);
+			__edges_data->RemoveAt({std::get<3>(ce)});
+			__edges_data->add_value(enew1);
+			__edges_data->add_value(enew2);
+			return newp;
+		};
+		if (*pnt_start != start) pnt_start = split_edge(start);
+		if (*pnt_end != end) pnt_end = split_edge(end);
+	}
+
 	//assemble a tree -> find contour with pnt_start/end -> cut it
 	auto tree = Etree::Assemble(*edges);
-	full_source = HMCont2D::Contour(*tree.get_contour(pnt_start));
+	HMCont2D::Contour* contour_in_tree = tree.get_contour(pnt_start);
+	assert(contour_in_tree != 0);
+	full_source = HMCont2D::Contour(*contour_in_tree);
 	assert(full_source.contains_point(pnt_end));
 	//place Start/End points to contour if necessary
 	if (!(start==end && full_source.is_closed())){
-		pnt_start = std::get<1>(full_source.GuaranteePoint(start, __all_data->pdata));
-		pnt_end   = std::get<1>(full_source.GuaranteePoint(end, __all_data->pdata));
+		//pnt_start = std::get<1>(full_source.GuaranteePoint(start, __all_data->pdata));
+		//pnt_end   = std::get<1>(full_source.GuaranteePoint(end, __all_data->pdata));
 		//throw if points coincide
 		if (pnt_start == pnt_end)
 			throw std::runtime_error("Zero length boundary layer section");

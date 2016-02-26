@@ -478,6 +478,7 @@ class ClipDomain(objcom.AbstractAddRemove):
 
     def _addrem_objects(self):
         import cobj
+        import unite_grids
         cont1 = self.receiver.get_any_contour(self.options['c1'])
         cont2 = self.receiver.get_any_contour(self.options['c2'])
         cc1 = cobj.cont2_to_c(cont1)
@@ -492,9 +493,11 @@ class ClipDomain(objcom.AbstractAddRemove):
             op = 4
         else:
             raise Exception("Invalid operation %s" % str(self.options['oper']))
-        cres = cobj.domain_clip(cc1, cc2, op, self.options['simplify'])
+        cres = cobj.clip_domain(cc1, cc2, op, self.options['simplify'])
         if cres is not None:
             res = cobj.cont2_from_c(cres)
+            unite_grids.add_bc_from_cont(res, cont1, cres, cc1)
+            unite_grids.add_bc_from_cont(res, cont2, cres, cc2)
             cobj.free_cont2(cres)
         else:
             res = None

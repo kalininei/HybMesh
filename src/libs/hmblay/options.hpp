@@ -10,6 +10,7 @@ enum class BndStepMethod{
 	CONST_BND_STEP,
 	CONST_BND_STEP_KEEP_SHAPE,
 	CONST_BND_STEP_KEEP_ALL,
+	INCREMENTAL,
 };
 BndStepMethod MethFromString(const char* str);
 
@@ -34,10 +35,8 @@ struct Input{
 	HMCont2D::ECollection* edges;
 
 	//step along contour length
-	double bnd_step;
-
-	//rounding off sharp angles
-	bool round_off;
+	double bnd_step;     //for const stepping
+	vector<std::pair<Point, double>> bnd_step_basis; //for non-const stepping
 
 	//start, end points of contour tree. Uses hole contour, if they match
 	Point start, end;
@@ -63,8 +62,7 @@ struct Input{
 		bnd_step_method(BndStepMethod::NO_BND_STEPPING),
 		direction(Direction::INNER),
 		edges(NULL),
-		bnd_step(0.1),
-		round_off(false),
+		bnd_step(0.1), bnd_step_basis(),
 		start(Point(0,0)),
 		end(Point(0, 0)),
 		acute_angle(45),
@@ -72,6 +70,7 @@ struct Input{
 		straight_angle(240),
 		reentrant_angle(300),
 		force_conformal(false){}
+
 };
 
 namespace Impl{

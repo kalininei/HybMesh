@@ -305,9 +305,10 @@ void* domain_clip(void* c1, void* c2, int oper, int simplify){
 				}
 			}
 		}
-		HMCont2D::Container<HMCont2D::ContourTree>* r = 0;
+		HMCont2D::Container<HMCont2D::ECollection>* r = 0;
 		if (res.nodes.size() > 0){
-			r = new HMCont2D::Container<HMCont2D::ContourTree>(res);
+			r = new HMCont2D::Container<HMCont2D::ECollection>();
+			r->Unite(res);
 			sc.p_unscale(r->pdata.begin(), r->pdata.end());
 		}
 		sc.p_unscale(pnt1.begin(), pnt1.end());
@@ -319,6 +320,28 @@ void* domain_clip(void* c1, void* c2, int oper, int simplify){
 		std::cout<<"domain clip error: "<<e.what()<<std::endl;
 		return 0;
 	}
+}
+
+void ecollection_edges_info(void* ecol, int* npts, int* neds, double** pts, int** eds){
+	auto c = static_cast<HMCont2D::Container<HMCont2D::ECollection>*>(ecol);
+	std::map<Point*, int> pind;
+	for (auto p: c->all_points()) pind.emplace(p, pind.size());
+	*npts = pind.size();
+	*pts = new double[2 * *npts];
+	for (auto s: pind){
+		(*pts)[2*s.second] = s.first->x;
+		(*pts)[2*s.second+1] = s.first->y;
+	}
+	*neds = c->size();
+	*eds = new int[2 * *neds];
+	for (int i=0; i<*neds; ++i){
+		(*eds)[2*i] = pind[c->data[i]->pstart];
+		(*eds)[2*i+1] = pind[c->data[i]->pend];
+	}
+}
+void free_ecollection_edges_info(double* pts, int* eds){
+	delete[] pts;
+	delete[] eds;
 }
 
 void free_ecollection_container(void* ecol){
@@ -471,6 +494,15 @@ Grid* boundary_layer_grid_wcb(int N, BoundaryLayerGridOption* popt,
 			inp.end = Point(opt.end[0], opt.end[1]);
 			inp.partition = vector<double>(opt.part, opt.part + opt.Npart);
 			inp.force_conformal = (opt.force_conformal == 1);
+
+			if (inp.bnd_step_method == HMBlay::BndStepMethod::INCREMENTAL){
+				if (inp.start == inp.end){
+					throw std::runtime_error("Can not use incremental stepping "
+							         "without divergent start/end points");
+				}
+				inp.bnd_step_basis.push_back(std::make_pair(Point(inp.start), opt.step_start));
+				inp.bnd_step_basis.push_back(std::make_pair(Point(inp.end), opt.step_end));
+			}
 		}
 		GridGeom* ret = new GridGeom(HMBlay::BuildBLayerGrid(vinp));
 		return ret;

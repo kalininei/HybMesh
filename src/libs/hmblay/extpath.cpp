@@ -292,6 +292,27 @@ HMCont2D::Contour ExtPath::Partition(HMCont2D::PCollection& apoints) const{
 		case BndStepMethod::CONST_BND_STEP_KEEP_ALL:
 			return HMCont2D::Contour::Partition(opt.bnd_step, *this,
 					apoints, HMCont2D::PartitionTp::KEEP_ALL);
+		case BndStepMethod::INCREMENTAL:{
+			double wstart = std::get<1>(opt.get_full_source()->coord_at(*first()));
+			double wend = std::get<1>(opt.get_full_source()->coord_at(*last()));
+			double w1 = std::get<1>(opt.get_full_source()->coord_at(opt.bnd_step_basis[0].first));
+			double w2 = std::get<1>(opt.get_full_source()->coord_at(opt.bnd_step_basis[1].first));
+			assert(!ISZERO(wstart-wend) && !ISZERO(w1-w2));
+			if (opt.get_full_source()->is_closed()){
+				if (wstart>wend) wend+=1.0;
+				while (w1-wstart>geps) w1-=1.0;   //to get: w1<=wstart
+				while (wend-w2>geps) w2+=1.0;         //to get: w2>=wend
+			}
+			double b1 = (wstart-w1)*opt.bnd_step_basis[1].second+(w2-wstart)*opt.bnd_step_basis[0].second;
+			double b2 = (wend-w1)*opt.bnd_step_basis[1].second+(w2-wend)*opt.bnd_step_basis[0].second;
+			b1/=(w2-w1); b2/=(w2-w1);
+			std::map<double, double> wbas;
+			wbas[0] = b1; wbas[1] = b2;
+			return HMCont2D::Contour::WeightedPartition(wbas, *this,
+					apoints, HMCont2D::PartitionTp::IGNORE_ALL);
+		}
+		default:
+			throw std::runtime_error("Unsupported partition algorithm");
 	}
 }
 
