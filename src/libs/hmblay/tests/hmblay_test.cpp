@@ -1,6 +1,7 @@
 #include "hmblay.hpp"
 #include "fileproc.h"
 #include "hmconformal.hpp"
+#include "procgrid.h"
 
 int FAILED_CHECKS = 0;
 
@@ -48,6 +49,8 @@ void test01(){
 	add_check(Ans2.n_points() == 32 &&
 	          Ans2.n_cells() == 24 &&
 	          fabs(Ans2.area() - 10.903)<0.1, cn);
+	save_vtk(Ans1, "t01_1.vtk");
+	save_vtk(Ans2, "t01_2.vtk");
 }
 
 void test02(){
@@ -409,11 +412,15 @@ void test11(){
 	inp1.partition = {0, 0.01, 0.05, 0.1, 0.15, 0.2};
 
 	GridGeom Ans1 = HMBlay::BuildBLayerGrid({inp1});
-	add_check(Ans1.n_cells() == 564 && Ans1.n_points() == 596, "Mesh1");
+	int badskew1=0;
+	for (double s: GGeom::Info::Skewness(Ans1)) {if (s>0.7) ++badskew1;}
+	add_check(Ans1.n_cells() > 550 && Ans1.n_points() > 590 && badskew1==1, "Mesh1");
 
 	inp1.partition = {0, 0.01, 0.02, 0.05, 0.1, 0.15, 0.2};
 	GridGeom Ans2 = HMBlay::BuildBLayerGrid({inp1});
-	add_check(Ans2.n_cells() == 713 && Ans2.n_points() == 733, "Mesh2");
+	int badskew2=0;
+	for (double s: GGeom::Info::Skewness(Ans2)) {if (s>0.7) ++badskew2;}
+	add_check(Ans2.n_cells() > 700 && Ans2.n_points() > 720 && badskew2==1, "Mesh2");
 
 	save_vtk(Ans1, "t11_1.vtk");
 	save_vtk(Ans2, "t11_2.vtk");
@@ -547,10 +554,11 @@ void test14(){
 	GridGeom basgrid1 = GGeom::Constructor::RectGrid(Point(-0.1, -0.1), Point(1.1, 1.1), 30, 30);
 	GridGeom* b1 = grid_minus_cont(basgrid1, *GGeom::Info::Contour(g1).roots()[0]);
 	GridGeom* gr1 = GridGeom::cross_grids(b1, &g1, 0.03, 7, false, false, CrossGridCallback::to_cout());
+	GGeom::Modify::SimplifyBoundary(*gr1, M_PI/4);
 	add_check(fabs(gr1->area() - 0.955398)<1e-5, "Square with curved boundary");
 	save_vtk(gr1, "t14_g1.vtk");
 
-	////reentrant
+	//reentrant
 	vector<Point> pc2;
 	for (auto an = -M_PI/2.0; an<=0.0; an+=M_PI/2.0/20){
 		pc2.push_back(Point(cos(an)-1, sin(an)));
@@ -569,6 +577,7 @@ void test14(){
 	GridGeom basgrid2 = GGeom::Constructor::RectGrid(Point(-2.1, -1.1), Point(2.8, 2.1), 150, 100);
 	GridGeom* b2 = grid_minus_cont(basgrid2, *GGeom::Info::Contour(g2).roots()[0]);
 	GridGeom* gr2 = GridGeom::cross_grids(b2, &g2, 0.03, 7, false, false, CrossGridCallback::to_cout());
+	GGeom::Modify::SimplifyBoundary(*gr2, M_PI/4);
 	add_check(fabs(gr2->area() - 6.26758)<1e-5, "Reentrant area with a hole");
 	save_vtk(gr2, "t14_g2.vtk");
 
@@ -609,6 +618,68 @@ void test15(){
 	save_vtk(g1, "t15.vtk");
 }
 
+void test16(){
+	std::cout<<"16. Impostition of a boundary grid with contour conflicts"<<std::endl;
+	//1) cicle grid
+	GridGeom gcirc = GGeom::Constructor::Ring(Point(0, 0), 1, 0.6, 34, 5);
+
+	//2) get boundary from it
+	HMCont2D::ContourTree gcont = GGeom::Info::Contour(gcirc);
+	//3) build a boundary layer around it
+	HMBlay::Input inp1;
+	inp1.bnd_step_method = HMBlay::MethFromString("IGNORE_ALL");
+	inp1.direction = HMBlay::DirectionFromString("LEFT");
+	inp1.edges = &gcont;
+	inp1.bnd_step = 0.06;
+	inp1.start = Point(1, 0);
+	inp1.end = Point(1, 1);
+	inp1.partition = {0, 0.01, 0.02, 0.04};
+	GridGeom bgrid = HMBlay::BuildBLayerGrid({inp1}); 
+	add_check(fabs(GGeom::Info::Area(bgrid)-3.01008e-2)<1e-6, "IGNORE_ALL boundary partition");
+	//simplify boundary tests
+	GridGeom bgrid2 = GGeom::Constructor::DeepCopy(bgrid);
+	GGeom::Modify::SimplifyBoundary(bgrid2, M_PI);
+	add_check(fabs(GGeom::Info::Area(bgrid2)-2.82039e-2)<1e-6, "full simplification of bgrid");
+	GridGeom bgrid3 = GGeom::Constructor::DeepCopy(bgrid);
+	GGeom::Modify::SimplifyBoundary(bgrid3, M_PI/2.0);
+	add_check(fabs(GGeom::Info::Area(bgrid3)-2.88313e-2)<1e-6, "simplification with angle=pi/2");
+	GridGeom bgrid4 = GGeom::Constructor::DeepCopy(bgrid);
+	GGeom::Modify::SimplifyBoundary(bgrid4, M_PI/4.0);
+	add_check(fabs(GGeom::Info::Area(bgrid4)-2.98449e-2)<1e-6, "simplification with angle=pi/4");
+	GridGeom bgrid5 = GGeom::Constructor::DeepCopy(bgrid);
+	GGeom::Modify::SimplifyBoundary(bgrid5, 0.0);
+	add_check(fabs(GGeom::Info::Area(bgrid5)-3.01008e-2)<1e-6, "simplification with angle=0");
+
+
+	//impose
+	GridGeom* impgrid = GridGeom::cross_grids(&gcirc, &bgrid, 0.3, 7,
+			false, false, CrossGridCallback::to_cout());
+	GridGeom* impgrid1 = GridGeom::cross_grids(&gcirc, &bgrid4, 0.3, 7,
+			false, false, CrossGridCallback::to_cout());
+	//5) see the result
+	double arinit = GGeom::Info::Area(gcirc);
+	add_check(ISEQ(arinit, GGeom::Info::Area(*impgrid)), "imposition with non-simplified bgrid: area");
+	add_check(ISEQ(arinit, GGeom::Info::Area(*impgrid1)), "imposition with simplified bgrid: area");
+	GGeom::Modify::SimplifyBoundary(*impgrid, M_PI/4.0);
+	GGeom::Modify::SimplifyBoundary(*impgrid1, M_PI/4.0);
+	add_check((fabs(1.99894 - GGeom::Info::Area(*impgrid))<1e-4), "area1 after simplification");
+	add_check(ISEQ(arinit, GGeom::Info::Area(*impgrid1)), "area2 after simplification. Keep all cell non-degenerate");
+	
+	auto skew1 = GGeom::Info::Skewness(*impgrid);
+	auto skew2 = GGeom::Info::Skewness(*impgrid1);
+	double maxskew1 = *std::max_element(skew1.begin(), skew1.end());
+	double maxskew2 = *std::max_element(skew2.begin(), skew2.end());
+	vector<double> badskew1, badskew2;
+	std::copy_if(skew1.begin(), skew1.end(), std::back_inserter(badskew1), [](double a){return a>0.8;});
+	std::copy_if(skew2.begin(), skew2.end(), std::back_inserter(badskew2), [](double a){return a>0.8;});
+	add_check(badskew1.size() == 0 && badskew2.size() == 4, "skewness check");
+
+	save_vtk(impgrid, "t16_1.vtk");
+	save_vtk(impgrid1, "t16_2.vtk");
+	delete impgrid;
+	delete impgrid1;
+}
+
 int main(){
 	test01();
 	test02();
@@ -627,6 +698,8 @@ int main(){
 	
 	//UNDONE:
 	//test15();
+	
+	test16();
 
 	if (FAILED_CHECKS ==1){
 		std::cout<<FAILED_CHECKS<<" test failed <<<<<<<<<<<<<<<<<<<"<<std::endl;

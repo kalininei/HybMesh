@@ -97,10 +97,6 @@ bool SectCrossWRenorm(const Point& p1S, const Point& p1E, const Point& p2S, cons
 	vector<Point> p {p1S, p1E, p2S, p2E};
 	ScaleBase s = ScaleBase::doscale(p);
 	bool ret = SectCross(p[0], p[1], p[2], p[3], ksieta);
-	if (ksieta[0]<gbig && ksieta[1]<gbig){
-		ksieta[0] *= s.L;
-		ksieta[1] *= s.L;
-	}
 	return ret;
 }
 

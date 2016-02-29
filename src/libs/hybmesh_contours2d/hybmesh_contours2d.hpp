@@ -8,6 +8,7 @@
 #include "contour.hpp"
 #include "tree.hpp"
 #include "constructor.hpp"
+#include "cont_assembler.hpp"
 #include "contclipping.hpp"
 #include "algos.hpp"
 #include "debug_cont2d.hpp"

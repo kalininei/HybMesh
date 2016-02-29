@@ -8,6 +8,7 @@ set (HEADERS
 	wireframegrid.h
 	contours.h
 	intrusion.h
+	procgrid.h
 )
 
 set (SOURCES
@@ -19,6 +20,7 @@ set (SOURCES
 	wireframegrid.cpp
 	contours.cpp
 	intrusion.cpp
+	procgrid.cpp
 )
 
 source_group ("Header Files" FILES ${HEADERS} ${HEADERS})

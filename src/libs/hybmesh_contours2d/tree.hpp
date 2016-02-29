@@ -35,6 +35,7 @@ struct ContourTree: public ECollection {
 
 	//Methods
 	virtual void AddContour(shared_ptr<Contour>& c);
+	void AddContour(const Contour& c);
 	virtual void RemovePoints(const vector<const Point*>& p);
 
 	//Returns true if point lies strictly within/without closed contour
@@ -53,6 +54,10 @@ struct ContourTree: public ECollection {
 	
 	//returns true if c1 and c2 have common area (not a point, but may be an edge)
 	static bool DoIntersect(const ContourTree& t1, const Contour& c2);
+
+	//remove points which lie on the same edge
+	//removes zero length edges from all contours
+	static ContourTree Simplified(const ContourTree& t1);
 
 	//If tree is ok returns true.
 	//contacts are allowed
@@ -78,6 +83,7 @@ struct ExtendedTree: public ContourTree {
 	void ReloadEdges() override;
 
 	//Algos
+	static ExtendedTree Simplified(const ExtendedTree& t1);
 	static ExtendedTree Assemble(const ECollection&);
 	static ContourTree ExtractTree(const ExtendedTree& et){ return ContourTree(et); }
 };

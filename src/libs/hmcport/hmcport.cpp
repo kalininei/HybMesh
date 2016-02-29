@@ -2,6 +2,7 @@
 #include "fileproc.h"
 #include "grid.h"
 #include "hmblay.hpp"
+#include "procgrid.h"
 
 namespace{
 

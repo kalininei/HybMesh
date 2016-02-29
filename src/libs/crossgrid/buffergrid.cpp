@@ -1,6 +1,7 @@
 #include <map>
 #include "addalgo.hpp"
 #include "buffergrid.h"
+#include "procgrid.h"
 namespace{
 
 //this is a temporary function which will be deleted after
@@ -142,18 +143,45 @@ void BufferGrid::new_edge_points(Edge& e, const vector<double>& wht){
 //boundary_info helper functions
 namespace{
 
-void simplify_bnd_edges(HMCont2D::ContourTree& cont, const HMCont2D::ECollection& bedges){
-	std::vector<const Point*> not_needed_points;
-	auto etree = HMCont2D::ExtendedTree::Assemble(bedges);
-	for (int i=0; i<etree.cont_count(); ++i){
-		auto ap = etree.get_contour(i)->all_points();
-		auto cp = etree.get_contour(i)->corner_points();
-		std::set<const Point*> cps(cp.begin(), cp.end());
-		for (auto a: ap){
-			if (cps.find(a) == cps.end()) not_needed_points.push_back(a);
+void simplify_bnd_edges(HMCont2D::ContourTree& cont,
+		std::map<const HMCont2D::Edge*, int>& edtypes){
+	//assemble needed points because there could be cases when a point
+	//is needed from one contour of 'cont' and not needed from the other
+	std::set<const Point*> needed_points;
+	for (auto c: cont.nodes){
+		vector<HMCont2D::Contour::PInfo> info = c->ordered_info();
+		for (auto i: info){
+			bool fnd1 = edtypes[i.eprev.get()] == 2;
+			bool fnd2 = edtypes[i.enext.get()] == 2;
+			//point is not needed only if two adjacent edges are boundary and
+			//form straight angle
+			if (!fnd1 || !fnd2) needed_points.insert(i.p);
+			else {
+				double area3 = triarea(*i.pprev, *i.p, *i.pnext);
+				if (fabs(area3)>geps*geps) needed_points.insert(i.p);
+			}
 		}
 	}
+	vector<const Point*> not_needed_points;
+	for (auto p: cont.all_points()){
+		if (needed_points.find(p) == needed_points.end()) not_needed_points.push_back(p);
+	}
 	cont.RemovePoints(not_needed_points);
+}
+
+void simplify_source_edges(HMCont2D::ContourTree& cont, const HMCont2D::PCollection& srcpnt,
+		std::map<const HMCont2D::Edge*, int>& edtypes){
+	std::vector<const Point*> bad_points;
+	for (auto c: cont.nodes){
+		auto cinfo = c->ordered_info(); cinfo.resize(cinfo.size()-1);
+		for (auto& ci: cinfo){
+			if (edtypes[ci.eprev.get()] == 1 && edtypes[ci.enext.get()] == 1){
+				auto dst = HMCont2D::PCollection::FindClosestNode(srcpnt, *ci.p);
+				if (!ISZERO(sqrt(std::get<2>(dst)))) bad_points.push_back(ci.p);
+			}
+		}
+	}
+	cont.RemovePoints(bad_points);
 }
 
 //extracts edges of 'from' which lie on 'where'
@@ -219,22 +247,12 @@ std::tuple<
 	// ================ cont purge procedures
 	//remove source contour points which doesn't equal source contour nodes
 	//to get rid of hanging nodes
-	std::vector<const Point*> bad_points;
-	for (auto c: cont.nodes){
-		auto cinfo = c->ordered_info(); cinfo.resize(cinfo.size()-1);
-		for (auto& ci: cinfo){
-			if (edtypes[ci.eprev.get()] == 1 && edtypes[ci.enext.get()] == 1){
-				auto dst = HMCont2D::PCollection::FindClosestNode(scont.pdata, *ci.p);
-				if (!ISZERO(sqrt(std::get<2>(dst)))) bad_points.push_back(ci.p);
-			}
-		}
-	}
-	cont.RemovePoints(bad_points);
+	simplify_source_edges(cont, scont.pdata, edtypes);
 	
 	//simplify bnd edges if needed:
 	//  for connected sequence of bnd_edges changes last point of first edge
 	//  and deletes all others from contour tree
-	if (!preserve_bp) simplify_bnd_edges(cont, bnd_edges);
+	if (!preserve_bp) simplify_bnd_edges(cont, edtypes);
 
 	//Edges deleted from cont still present in bnd_edges collection but have NULL data.
 	//clear *_edges ecollections from NULL data edges for further weight calculations

@@ -404,7 +404,8 @@ HMCont2D::PCollection RectForClosedArea::MapToSquare(const vector<const Point*>&
 	});
 	//normalize
 	double maxx = 2*M_PI*m, maxy = 1.0 - m; 
-	double x0 = core->module()*core->PhiInner(0);
+	double phi0 = (top_is_outer)?core->PhiInner(0):core->PhiOuter(0);
+	double x0 = core->module()*phi0;
 	std::transform(pout.begin(), pout.end(), pout.begin(), [&](const Point& p){
 		Point ret(p.x - x0, p.y);
 		while (ret.x < 0) ret.x += 2*M_PI*m;
@@ -547,11 +548,14 @@ void MappedMesher::Fill(TBotPart bottom_partitioner, TVertPart vertical_partitio
 	};
 	GGeom::Modify::PointModify(g4, mapfunc);
 
-	//10) copy to results
+	//10) all bt points should present in g4 (for IGNORE_ALL stepping)
+	GGeom::Modify::SnapToContour(g4, bt); 
+
+	//11) copy to results
 	GGeom::Modify::ShallowAdd(&g4, &result);
 	GGeom::Repair::Heal(result);
 
-	//11) fill weights
+	//12) fill weights
 	result.AddWeights(lweights);
 	result.AddSourceFeat(feat);
 }

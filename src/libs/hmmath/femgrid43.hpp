@@ -1,6 +1,7 @@
 #ifndef HYBMESH_HMFEM_FEMGRID43
 #define HYBMESH_HMFEM_FEMGRID43
 #include "grid.h"
+#include "procgrid.h"
 
 namespace HMFem{ 
 

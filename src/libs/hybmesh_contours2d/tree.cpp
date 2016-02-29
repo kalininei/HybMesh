@@ -25,6 +25,52 @@ bool ContourTree::DoIntersect(const ContourTree& t1, const Contour& c2){
 	else return true;
 }
 
+ContourTree ContourTree::Simplified(const ContourTree& t1){
+	ContourTree ret;
+	//copy all contours to ret with simplified structure
+	for (auto& n: t1.nodes){
+		auto simpcont = HMCont2D::Contour::Simplified(*n);
+		ret.nodes.push_back(std::make_shared<TreeNode>());
+		ret.nodes.back()->data = simpcont.data;
+	}
+
+	//fill parent
+	for (int i=0; i<t1.nodes.size(); ++i){
+		auto oldparent = t1.nodes[i]->parent;
+		if (oldparent == 0) ret.nodes[i]->parent=0;
+		else{
+			int fnd=0;
+			while (fnd<t1.nodes.size()){
+				if (t1.nodes[fnd].get() == oldparent) break;
+				else ++fnd;
+			}
+			assert(fnd<t1.nodes.size());
+			t1.nodes[i]->parent = t1.nodes[fnd].get();
+		}
+	}
+
+	//fill children
+	for (auto& c: ret.nodes){
+		if (c->parent != 0) c->parent->children.push_back(c.get());
+	}
+	//fill ret.data
+	ret.ReloadEdges();
+	return ret;
+}
+
+ExtendedTree ExtendedTree::Simplified(const ExtendedTree& t1){
+	ExtendedTree ret;
+	//insert simplified closed contour nodes
+	auto ct = ContourTree::Simplified(t1);
+	ret.nodes.insert(ret.nodes.end(), ct.nodes.begin(), ct.nodes.end());
+	//insert simplified open contour nodes
+	for (auto& oc: t1.open_contours){
+		ret.open_contours.push_back(std::make_shared<Contour>(HMCont2D::Contour::Simplified(*oc)));
+	}
+	ret.ReloadEdges();
+	return ret;
+}
+
 Contour* ContourTree::get_contour(Point* p) const{
 	Contour* ret = 0;
 	auto fnd = std::find_if(nodes.begin(), nodes.end(),
@@ -54,20 +100,20 @@ Contour* ExtendedTree::get_contour(Edge* e) const{
 namespace{
 
 //returns whether node was embedded
-void AddContourRecursive(ContourTree::TreeNode* node,
+void add_contour_recursive(ContourTree::TreeNode* node,
 		vector<ContourTree::TreeNode*>& level, ContourTree::TreeNode* parent){
-	Point* p = node->first();
+	Point p = node->InnerPoint();
 	for (auto& lv: level){
-		if (lv->IsWithin(*p)){
-			return AddContourRecursive(node, lv->children, lv);
-		}
+		bool node_within_lv = lv->IsWithin(p) &&
+			fabs(HMCont2D::Contour::Area(*lv)) > fabs(HMCont2D::Contour::Area(*node));
+		if (node_within_lv) return add_contour_recursive(node, lv->children, lv);
 	}
 	node->parent = parent;
 	for (auto& lv: level){
-		Point* p2 = lv->first();
-		if (node->IsWithin(*p2)){
-			lv->parent = node;
-		}
+		Point p2 = lv->InnerPoint();
+		bool lv_within_node = node->IsWithin(p2) &&
+			fabs(HMCont2D::Contour::Area(*lv)) < fabs(HMCont2D::Contour::Area(*node));
+		if (lv_within_node) lv->parent = node;
 	}
 }
 
@@ -82,9 +128,14 @@ void ContourTree::AddContour(shared_ptr<Contour>& c){
 	Unite(*node);
 	//call recursive algo
 	auto rs = roots();
-	AddContourRecursive(node.get(), rs, 0);
+	add_contour_recursive(node.get(), rs, 0);
 	nodes.push_back(node);
 	UpdateTopology();
+}
+
+void ContourTree::AddContour(const Contour& c){
+	shared_ptr<Contour> c2(new Contour(c));
+	AddContour(c2);
 }
 
 void ContourTree::RemovePoints(const vector<const Point*>& p){
@@ -149,11 +200,8 @@ bool ContourTree::IsWithout(const Point& p) const{
 
 
 void ExtendedTree::AddContour(shared_ptr<Contour>& c){
-	if (c->is_closed()){
-		ContourTree::AddContour(c);
-	} else {
-		AddOpenContour(c);
-	}
+	if (c->is_closed()) ContourTree::AddContour(c);
+	else AddOpenContour(c);
 }
 
 void ExtendedTree::AddOpenContour(shared_ptr<Contour>& c){

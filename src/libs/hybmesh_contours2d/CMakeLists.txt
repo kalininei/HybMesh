@@ -12,6 +12,7 @@ set (HEADERS
 	contclipping.hpp
 	debug_cont2d.hpp
 	gpc_core.hpp
+	cont_assembler.hpp
 )
 
 set (SOURCES
@@ -24,6 +25,7 @@ set (SOURCES
 	contclipping.cpp
 	debug_cont2d.cpp
 	gpc_core.cpp
+	cont_assembler.cpp
 )
 
 source_group ("Header Files" FILES ${HEADERS} ${HEADERS})

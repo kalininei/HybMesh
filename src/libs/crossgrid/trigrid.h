@@ -3,6 +3,8 @@
 
 #include <map>
 #include "grid.h"
+#include "hybmesh_contours2d.hpp"
+
 class TriGrid: public GridGeom{
 	//properties: edges
 	mutable std::set<Edge> _edges;

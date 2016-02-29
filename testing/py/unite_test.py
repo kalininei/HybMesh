@@ -79,7 +79,7 @@ op1 = hm.BoundaryGridOptions(c1, bnd_stepping="keep_all", bnd_step=0.05)
 op1.uniform_partition(0.1, 5)
 g10 = hm.build_boundary_grid(op1)
 g11 = hm.unite_grids(g9, [(g10, 0.05)])
-check(len(hm.skewness(g11)['bad_cells']) <= 2)
+check(len(hm.skewness(g11)['bad_cells']) <= 3)
 
 print "unition of detached grids"
 g12 = hm.add_unf_ring_grid([0, 0], 20, 10, 300, 10)

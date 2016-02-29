@@ -30,6 +30,7 @@ struct Contour: public ECollection{
 	std::array<Point*, 3> point_siblings(int i) const;
 	//return next point or null
 	Point* next_point(Point* p) const{ return std::get<2>(point_siblings(p));}
+	Point* prev_point(Point* p) const{ return std::get<0>(point_siblings(p));}
 	//properties
 	bool is_closed() const { return first() == last(); }
 	bool is_straight() const { return (is_closed()) ? false : corner_points().size() == 2; }
@@ -107,6 +108,10 @@ struct Contour: public ECollection{
 	// 0 - point is outside polygon
 	// 1 - point is in polygon  -> this is not reliable
 	int WhereIs(const Point& p) const;
+	//Return arbitrary inner point for a closed contour
+	//Direction is not considered
+	Point InnerPoint() const;
+
 
 	// ======= Algorithms
 	//calculates vector representing direction of contour at point p smoother by lengh len

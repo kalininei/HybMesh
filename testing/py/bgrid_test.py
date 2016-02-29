@@ -47,9 +47,9 @@ check_cont(g2, 96, 96, [56, 40], {0: 56, 5: 40})
 
 print "set of options for a square source"
 ophoriz = hm.BoundaryGridOptions(c1, [0, 0.01, 0.02, 0.03],
-                                "left", 0.05)
+                                 "left", 0.05)
 opvert = hm.BoundaryGridOptions(c1, [0, 0.01, 0.02, 0.03, 0.05, 0.1],
-                               "left", 0.03)
+                                "left", 0.03)
 op1 = copy.deepcopy(ophoriz)
 op1.start_point, op1.end_point = [0, 0], [1, 0]
 op2 = copy.deepcopy(opvert)
@@ -76,7 +76,7 @@ while angle < end:
     cont = hm.create_contour([[-1, 0], [0, 0],
                               [-math.cos(a), math.sin(a)]])
     op = hm.BoundaryGridOptions(cont, [0, 0.005, 0.01, 0.017, 0.027, 0.04],
-                               'left', 0.01)
+                                'left', 0.01)
     grid = hm.build_boundary_grid(op)
     if (angle == 20):
         check_zero(hm.domain_area(grid) - 0.0709330292)
@@ -100,7 +100,7 @@ inner_cont = hm.add_rect_contour([0, 0], [1, 1], 1)
 outer_cont = hm.add_circ_contour([0, 0], 3, 16, 2)
 full_cont = hm.unite_contours([inner_cont, outer_cont])
 op = hm.BoundaryGridOptions(full_cont, [0, 0.01, 0.02, 0.03, 0.04],
-                           'left', 0.01)
+                            'left', 0.01)
 g5 = hm.build_boundary_grid(op)
 check_grid(g5, 11440, 20592, 9152, {4: 9152})
 check_cont(g5, 4576, 4576, [400, 432, 1872, 1872], {0: 2304, 1: 400, 2: 1872})

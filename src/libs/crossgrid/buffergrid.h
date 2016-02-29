@@ -3,6 +3,7 @@
 
 #include <map>
 #include "grid.h"
+#include "hybmesh_contours2d.hpp"
 
 class BufferGrid: public GridGeom{
 	//buffer grid which was built within grid 'orig'

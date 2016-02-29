@@ -2,6 +2,7 @@
 #define HYBMESH_BGRID_IMPOSE_HPP
 
 #include "bgrid.hpp"
+#include "procgrid.h"
 
 namespace HMBlay{namespace Impl{
 

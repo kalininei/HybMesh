@@ -6,6 +6,7 @@
 #include "trigrid.h"
 #include "buffergrid.h"
 #include "wireframegrid.h"
+#include "procgrid.h"
 
 void Edge::add_adj_cell(int cell_ind, int i1, int i2) const{
 	if ((i1 == p1) && (i2 == p2)){
@@ -306,6 +307,18 @@ std::pair<Point, Point> GridGeom::outer_rect() const{
 void GridGeom::force_cells_ordering(){
 	for (auto c: cells) c->check_ordering();
 }
+std::vector<std::vector<int>> GridGeom::cell_cell() const{
+	//cell->cell connectivity
+	std::vector<std::vector<int>> cc(n_cells());
+	auto edges = get_edges();
+	for (auto& e: edges){
+		if (e.cell_left>=0 && e.cell_right>=0){
+			cc[e.cell_left].push_back(e.cell_right);
+			cc[e.cell_right].push_back(e.cell_left);
+		}
+	}
+	return cc;
+}
 
 namespace{
 //recursive algorithm of connected cells traversal
@@ -319,15 +332,7 @@ void add_cell(int i, vector<int>& v, const vector<vector<int>>& cell_cell, vecto
 }//namespace
 
 ShpVector<GridGeom> GridGeom::subdivide() const{
-	//cell->cell connectivity
-	std::vector<std::vector<int>> cell_cell(n_cells());
-	auto edges = get_edges();
-	for (auto& e: edges){
-		if (e.cell_left>=0 && e.cell_right>=0){
-			cell_cell[e.cell_left].push_back(e.cell_right);
-			cell_cell[e.cell_right].push_back(e.cell_left);
-		}
-	}
+	auto cc = cell_cell();
 	//vector of cells use status (0 - unused, 1 - used)
 	std::vector<int> cind(n_cells(), 0);
 	//build sets of single connected cells
@@ -337,7 +342,7 @@ ShpVector<GridGeom> GridGeom::subdivide() const{
 		//stop if all cells are already used
 		if (fnd0 == cind.end()) break;
 		sc_cells.push_back(vector<int>());
-		add_cell(fnd0-cind.begin(), sc_cells.back(), cell_cell, cind);
+		add_cell(fnd0-cind.begin(), sc_cells.back(), cc, cind);
 	}
 
 	//assemble new grids
@@ -417,6 +422,31 @@ GridGeom* GridGeom::combine(GridGeom* gmain, GridGeom* gsec){
 	return ret;
 }
 
+namespace { //cross_grids helper functions
+vector<Point> intersection_points(const GridGeom& gmain, const GridGeom& gsec){
+	//finds all points which lie on the intersection of gmain/gsec areas.
+	//Only those points which lie in (gmain-gsec) area are considered
+	//to exclude cases when intersection point is not actual after crossing
+	vector<Point> ret;
+	auto cmain = GGeom::Info::Contour(gmain);
+	auto simp_main = HMCont2D::ContourTree::Simplified(cmain);
+	auto csec = GGeom::Info::Contour(gsec);
+	auto simp_sec = HMCont2D::ContourTree::Simplified(csec);
+	auto cross = HMCont2D::Clip::Difference(simp_main, simp_sec);
+	HMCont2D::Clip::Heal(cross);
+	auto bbox1 = HMCont2D::ECollection::BBox(simp_sec, geps);
+	for (auto p: cross.all_points()){
+		if (bbox1.whereis(*p) == OUTSIDE) continue;
+		auto mainfnd = HMCont2D::ECollection::FindClosestEdge(simp_main, *p);
+		auto secfnd = HMCont2D::ECollection::FindClosestEdge(simp_sec, *p);
+		if (ISZERO(std::get<1>(mainfnd)) && ISZERO(std::get<1>(secfnd))){
+			ret.push_back(*p);
+		}
+	}
+	return ret;
+}
+}
+
 GridGeom* GridGeom::cross_grids(GridGeom* gmain_inp, GridGeom* gsec_inp, 
 		double buffer_size, double density, bool preserve_bp, bool empty_holes,
 		CrossGridCallback::func cb){
@@ -433,8 +463,8 @@ GridGeom* GridGeom::cross_grids(GridGeom* gmain_inp, GridGeom* gsec_inp,
 	auto cmain  = gmain->get_contours();
 	auto csec  = gsec->get_contours();
 
-	if (cb("Building grid cross", "Boundary analyze", 0.05, -1) == CrossGridCallback::CANCEL) return 0;
 	//1 ---- if secondary holes are empty -> remove secondary top level area from main grid
+	if (cb("Building grid cross", "Boundary analyze", 0.05, -1) == CrossGridCallback::CANCEL) return 0;
 	if (empty_holes){
 		ContoursCollection c1(csec);
 		if (c1.n_cont() != c1.n_inner_cont()){
@@ -450,7 +480,8 @@ GridGeom* GridGeom::cross_grids(GridGeom* gmain_inp, GridGeom* gsec_inp,
 	//2 ---- find contours intersection points and place gsec nodes there
 	if (!preserve_bp && buffer_size>geps){
 		//find all intersections
-		vector<Point> bnd_intersections;
+		vector<Point> bnd_intersections = intersection_points(*gmain, *gsec);
+		/*
 		for (int i=0; i<csec.size(); ++i){
 			auto bint = csec[i].intersections(cmain);
 			for (auto in: bint){
@@ -459,6 +490,7 @@ GridGeom* GridGeom::cross_grids(GridGeom* gmain_inp, GridGeom* gsec_inp,
 				}
 			}
 		}
+		*/
 		//move secondary grid boundary points to intersection points
 		if (bnd_intersections.size() > 0){
 			_gs.reset(new GridGeom(*gsec));
@@ -755,296 +787,3 @@ double GridGeom::area() const{
 	for (int i=0; i<n_cells(); ++i) a+=get_cell(i)->area();
 	return a;
 }
-
-
-GridGeom GGeom::Constructor::RectGrid(const vector<double>& part_x,vector<double>& part_y){
-	int Npts = part_x.size()*part_y.size();
-	int Ncls = (part_x.size()-1)*(part_y.size()-1);
-	vector<double> points;
-	for (int j=0; j<part_y.size(); ++j){
-		for (int i=0; i<part_x.size(); ++i){
-			points.push_back(part_x[i]);
-			points.push_back(part_y[j]);
-		}
-	}
-	vector<int> cells;
-	for (int j=0; j<part_y.size() - 1; ++j){
-		for (int i=0; i<part_x.size() - 1; ++i){
-			int i0 = j*part_x.size() + i;
-			int i1 = j*part_x.size() + i + 1;
-			int i2 = (j + 1) * part_x.size() + i + 1;
-			int i3 = (j + 1) * part_x.size() + i;
-			cells.push_back(4);
-			cells.push_back(i0);
-			cells.push_back(i1);
-			cells.push_back(i2);
-			cells.push_back(i3);
-		}
-	}
-	return GridGeom(Npts, Ncls, &points[0], &cells[0]);
-}
-
-GridGeom GGeom::Constructor::RectGrid(Point p0, Point p1, int Nx, int Ny){
-	vector<double> x(Nx), y(Ny);
-	for (int i=0; i<x.size(); ++i){ x[i] = (p1.x-p0.x)*(double)i/(Nx-1)+p0.x; }
-	for (int i=0; i<y.size(); ++i){ y[i] = (p1.y-p0.y)*(double)i/(Ny-1)+p0.y; }
-	return RectGrid(x, y);
-}
-
-GridGeom GGeom::Constructor::RectGrid01(int Nx, int Ny){
-	vector<double> x(Nx), y(Ny);
-	for (int i=0; i<x.size(); ++i){ x[i] = (double)i/(Nx-1); }
-	for (int i=0; i<y.size(); ++i){ y[i] = (double)i/(Ny-1); }
-	return RectGrid(x, y);
-}
-
-void GGeom::Modify::RemoveCells(GridGeom& grid, const std::vector<const Cell*>& cls){
-	vector<int> bc(cls.size());
-	std::transform(cls.begin(), cls.end(), bc.begin(), [](const Cell* c){ return c->get_ind(); });
-	grid.remove_cells(bc);
-}
-
-void GGeom::Modify::AddCell(GridGeom& grid, const std::vector<Point>& cell){
-	shared_ptr<Cell> c(new Cell);
-	for (auto& p: cell) c->points.push_back(aa::add_shared(grid.points, GridPoint(p)));
-	grid.cells.push_back(c);
-	grid.set_indicies();
-}
-
-void GGeom::Modify::PointModify(GridGeom& grid, std::function<void(GridPoint*)> fun){
-	std::for_each(grid.points.begin(), grid.points.end(),
-			[&fun](shared_ptr<GridPoint> gp){ fun(gp.get()); });
-}
-void GGeom::Modify::CellModify(GridGeom& grid, std::function<void(Cell*)> fun){
-	std::for_each(grid.cells.begin(), grid.cells.end(),
-			[&fun](shared_ptr<Cell> gp){ fun(gp.get()); });
-}
-
-void GGeom::Modify::ShallowAdd(const GridGeom* from, GridGeom* to){
-	std::copy(from->points.begin(), from->points.end(), std::back_inserter(to->points));
-	std::copy(from->cells.begin(), from->cells.end(), std::back_inserter(to->cells));
-	to->set_indicies();
-}
-
-void GGeom::Modify::ShallowAdd(const ShpVector<GridPoint>& from, GridGeom* to){
-	std::copy(from.begin(), from.end(), std::back_inserter(to->points));
-	to->set_indicies();
-}
-
-void GGeom::Modify::DeepAdd(const GridGeom* from, GridGeom* to){
-	to->add_data(*from);
-}
-
-void GGeom::Repair::Heal(GridGeom& grid){
-	grid.merge_congruent_points();
-	grid.delete_unused_points();
-	grid.force_cells_ordering();
-}
-
-bool GGeom::Repair::HasSelfIntersections(const GridGeom& grid){
-	int n = 20;
-	GGeom::Info::CellFinder cfinder(&grid, n, n);
-	double ksieta[2];
-	for (int i=0; i<n*n; ++i){
-		auto cls = cfinder.CellsBySquare(i);
-		//assemble cell edges
-		std::set<Edge> edges;
-		for (auto c: cls){
-			int jprev = c->dim() - 1;
-			for (int j=0; j<c->dim(); ++j){
-				int i1 = c->points[jprev]->get_ind();
-				int i2 = c->points[j]->get_ind();
-				edges.emplace(i1, i2);
-			}
-		}
-		//find intersections
-		auto it1 = edges.begin();
-		while (it1!= edges.end()){
-			auto it2=std::next(it1);
-			while (it2!=edges.end()){
-				if (it1->p1 != it2->p1 &&
-						it1->p1 != it2->p2 &&
-						it1->p2 != it2->p1 &&
-						it1->p2 != it2->p2){
-					auto p1 = grid.get_point(it1->p1);
-					auto p2 = grid.get_point(it1->p2);
-					auto p3 = grid.get_point(it2->p1);
-					auto p4 = grid.get_point(it2->p2);
-					SectCross(*p1, *p2, *p3, *p4, ksieta);
-					if (ksieta[0] > geps && ksieta[0] < 1-geps &&
-						ksieta[1]>geps && ksieta[1] < 1-geps){
-						return true;
-					}
-				}
-				++it2;
-			}
-			++it1;
-		}
-	}
-	return false;
-}
-
-
-ShpVector<GridPoint> GGeom::Info::SharePoints(const GridGeom& grid, const vector<int>& indicies){
-	ShpVector<GridPoint> ret;
-	for (int i: indicies) ret.push_back(grid.points[i]);
-	return ret;
-}
-
-ShpVector<GridPoint> GGeom::Info::BoundaryPoints(const GridGeom& grid){
-	auto pntset = grid.get_bnd_points();
-	ShpVector<GridPoint> ret;
-	for (auto pv: pntset) ret.push_back(grid.points[pv->get_ind()]);
-	return ret;
-}
-
-
-HMCont2D::ContourTree GGeom::Info::Contour(const GridGeom& grid){
-	std::set<Edge> edges = grid.get_edges();
-	HMCont2D::ECollection ecol;
-	for (auto& e: edges) if (e.is_boundary()){
-		HMCont2D::Edge newe(grid.points[e.p1].get(), grid.points[e.p2].get());
-		ecol.add_value(newe);
-	}
-	auto ec = HMCont2D::ExtendedTree::Assemble(ecol);
-	auto ret = HMCont2D::ExtendedTree::ExtractTree(ec);
-	assert(ec.cont_count() == ret.cont_count());
-	return ret;
-}
-
-HMCont2D::Contour GGeom::Info::Contour1(const GridGeom& grid){
-	HMCont2D::ContourTree ct = Contour(grid);
-	return *ct.nodes[0];
-}
-
-HMCont2D::Contour GGeom::Info::CellContour(const GridGeom& grid, int cell_ind){
-	const Cell* c=grid.cells[cell_ind].get();
-	vector<Point*> p(c->points.begin(), c->points.end());
-	return HMCont2D::Constructor::ContourFromPoints(p, true);
-}
-
-BoundingBox GGeom::Info::BBox(const GridGeom& grid, double eps){
-	auto ret = BoundingBox::Build(grid.points.begin(), grid.points.end());
-	ret.widen(eps);
-	return ret;
-}
-
-vector<double> GGeom::Info::Skewness(const GridGeom& grid){
-	vector<double> ret(grid.n_cells());
-	for (int i=0; i<grid.n_cells(); ++i){
-		const Cell& c = *grid.get_cell(i);
-		if (c.dim() < 3){
-			ret[i] = 1.0;  //very bad cell anyway
-			continue;
-		}
-		vector<double> angles(c.dim());
-		for (int j=1; j<c.dim(); ++j){
-			const Point& p0 = *c.get_point(j-1);
-			const Point& p1 = *c.get_point(j);
-			const Point& p2 = *c.get_point(j+1);
-			angles[j] = Angle(p0, p1, p2);
-		}
-		angles[0] = M_PI *(c.dim() - 2) - 
-			std::accumulate(angles.begin() + 1, angles.begin() + c.dim(), 0.0);
-		auto minmax = std::minmax_element(angles.begin(), angles.end());
-		double minv = *minmax.first;
-		double maxv = *minmax.second;
-		double refan = M_PI * (c.dim() - 2) / c.dim();
-		ret[i] = std::max( (maxv-refan)/(M_PI-refan), (refan-minv)/refan );
-		if (ret[i] > 1.0) ret[i] = 1.0;   //for non-convex cells
-	}
-	return ret;
-}
-
-std::set<int> GGeom::Info::CellFinder::IndSet(const BoundingBox& bbox) const{
-	Point b0 = bbox.BottomLeft() - p0, b1 = bbox.TopRight() - p0;
-	int ix0 = std::floor(b0.x / Hx);
-	int iy0 = std::floor(b0.y / Hy);
-	int ix1 = std::floor(b1.x / Hx);
-	int iy1 = std::floor(b1.y / Hy);
-
-	std::set<int> ret;
-	for (int j=iy0; j<iy1+1; ++j){
-		if (j>=Ny) break;
-		for (int i=ix0; i<ix1+1; ++i){
-			if (i>=Nx) break;
-			ret.insert(i+j*Nx);
-		}
-	}
-	return ret;
-}
-GGeom::Info::CellFinder::CellFinder(const GridGeom* g, int nx, int ny):
-		grid(g), Nx(nx), Ny(ny){
-	BoundingBox bbox = GGeom::Info::BBox(*g);
-	p0 = bbox.BottomLeft();
-	Hx = bbox.lenx() / nx;
-	Hy = bbox.leny() / nx;
-	cells_by_square.resize(Nx*Ny);
-	//associate cells with squares
-	for (int i=0; i<g->n_cells(); ++i) AddCell(g->get_cell(i));
-}
-
-int GGeom::Info::CellFinder::GetSquare(const Point& p) const{
-	int ix = std::floor((p.x - p0.x) / Hx);
-	int iy = std::floor((p.y - p0.y) / Hy);
-	if (ix >= Nx) ix = Nx-1; if (ix<0) ix = 0;
-	if (iy >= Ny) iy = Ny-1; if (iy<0) iy = 0;
-	return ix + iy*Nx;
-}
-
-const Cell* GGeom::Info::CellFinder::Find(const Point& p) const{
-	auto candidates = CellCandidates(p);
-	bool hint = true;
-	for (auto c: candidates){
-		int w = c->get_contour().is_inside(p, &hint);
-		if (w != OUTSIDE) return c;
-	}
-	throw GGeom::EOutOfArea(p);
-}
-
-const Cell* GGeom::Info::CellFinder::FindExcept(const Point& p,
-		const std::set<const Cell*>& exc) const{
-	auto candidates = CellCandidates(p);
-	bool hint = true;
-	bool foundany = false;
-	for (auto c: candidates){
-		int w = c->get_contour().is_inside(p, &hint);
-		if (w != OUTSIDE){
-			foundany = true;
-			if (exc.find(c) == exc.end()) return c;
-		}
-	}
-
-	if (!foundany) throw GGeom::EOutOfArea(p);
-	else return 0;
-}
-
-void GGeom::Info::CellFinder::AddCell(const Cell* c){
-	auto bbox = BoundingBox::Build(c->points.begin(), c->points.end());
-	bbox.widen(geps);
-	std::set<int> inds = IndSet(bbox);
-	for (auto j: inds){
-		cells_by_square[j].push_back(c);
-	}
-}
-
-const vector<const Cell*>& GGeom::Info::CellFinder::CellCandidates(const Point& p) const{
-	//get square of point
-	int ind = GetSquare(p);
-	//return
-	return cells_by_square[ind];
-}
-
-//double GGeom::Info::GeomArea(const GridGeom& grid){
-//        vector<HMCont2D::Contour> all_cells;
-//        for (int i=0; i<grid.n_cells(); ++i){
-//                const Cell* c = grid.get_cell(i);
-//                all_cells.push_back(HMCont2D::Constructor::ContourFromPoints(
-//                                c->points.begin(), c->points.end(), true));
-//        }
-//        auto allcross = HMCont2D::Clip::Union(all_cells);
-//        return fabs(HMCont2D::Area(allcross));
-//}
-
-
-

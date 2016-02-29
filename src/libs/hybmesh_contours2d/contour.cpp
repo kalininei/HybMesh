@@ -95,9 +95,9 @@ std::array<Point*, 3> Contour::point_siblings(Point* p) const{
 std::array<Point*, 3> Contour::point_siblings(int i) const{
 	assert((is_closed() && i<size()) || (!is_closed() && i<=size()));
 	//get edges
-	//e1
+	//e1: next edge
 	HMCont2D::Edge *e1 = data[i].get(), *e2;
-	//e2
+	//e2: previous edge
 	if (i>0 && i<size()){
 		e2 = data[i-1].get();
 	} else if (is_closed()){
@@ -110,10 +110,17 @@ std::array<Point*, 3> Contour::point_siblings(int i) const{
 
 	//siblings
 	if (e1!=0 && e2!=0){
+		/*
 		if (e1->pstart == e2->pstart) return {e1->pend, e1->pstart, e2->pend};
 		if (e1->pstart == e2->pend) return {e1->pend, e1->pstart, e2->pstart};
 		if (e1->pend == e2->pstart) return {e1->pstart, e1->pend, e2->pend};
 		return {e1->pstart, e1->pend, e2->pstart};
+		*/
+		if (e1->pstart == e2->pstart) return {e2->pend, e1->pstart, e1->pend};
+		if (e1->pstart == e2->pend) return {e2->pstart, e1->pstart, e1->pend};
+		if (e1->pend == e2->pstart) return {e2->pend, e1->pend, e1->pstart};
+		//if e1->pend == e2->pend
+		return {e2->pstart, e1->pend, e1->pstart};
 	} else if (e1!=0){
 		Point* ps = first();
 		return {0, ps, e1->sibling(ps)};
@@ -313,6 +320,88 @@ int Contour::WhereIs(const Point& p) const{
 	return cp.WhereIs(p);
 }
 
+namespace {
+Point inner_point_core(const Contour& c){
+	//c is closed inner contour
+	//1) build vector from first point of c along the median
+	//   of respective angle
+	auto tri = c.point_siblings(0);
+	//this is a workaround if contour has doubled points
+	int iedge1 = 1, iedge2 = c.size()-1;
+	if (*tri[2] == *tri[1]){
+		for (int i=2; i<=c.size()-2; ++i){
+			if (*tri[2] == *tri[1]){
+				tri[2] = c.next_point(tri[2]);
+				++iedge1;
+			} else { break; }
+		}
+	}
+	if (*tri[0] == *tri[1]){
+		for (int i=c.size()-2; i>=1; --i){
+			if (*tri[0] == *tri[1]){
+				tri[0] = c.prev_point(tri[0]);
+				--iedge2;
+			} else { break; }
+		}
+	}
+
+	//degenerate cases
+	int trieq = 0;
+	if (*tri[0] == *tri[1]) trieq+=1;
+	if (*tri[0] == *tri[2]) trieq+=2;
+	switch (trieq){
+		case 1: return Point::Weigh(*tri[0], *tri[2], 0.5);
+		case 2: return Point::Weigh(*tri[0], *tri[1], 0.5);
+		case 3: return *tri[0];
+	}
+	
+	double area3 = triarea(*tri[0], *tri[1], *tri[2]);
+	Vect v;
+	if (fabs(area3)<geps*geps){
+		//perpendicular to first edge
+		v = Vect(-tri[2]->y+tri[1]->y, tri[2]->x-tri[1]->x);
+	} else {
+		//median point - tri[1]
+		Point cp = Point::Weigh(*tri[0], *tri[2], 0.5);
+		v = cp - *tri[1];
+		if (area3 < 0) v *= -1;
+	}
+	//2) make this vector longer then the contour size
+	BoundingBox box = Contour::BBox(c);
+	double len = (box.lenx() + box.leny());
+	vecSetLen(v, len);
+	//3) find first cross point of vector and contour
+	Point a0 = *c.first();
+	Point a1 = a0 + v;
+	double ksieta[2];
+	//using iedge1, iedge2 which are normally equal to 1 and size()-1
+	//until first point is doulbled
+	for (int i=iedge1; i<iedge2; ++i){
+		const Edge* e = c.data[i].get();
+		Point b0 = *e->pstart;
+		Point b1 = *e->pend;
+		SectCrossWRenorm(a0, a1, b0, b1, ksieta);
+		if (ksieta[1]>-geps && ksieta[1]<1+geps){
+			Point crossp = Point::Weigh(b0, b1, ksieta[1]);
+			return Point::Weigh(a0, crossp, 0.5);
+		}
+	}
+	throw std::runtime_error("Failed to find contour inner point");
+}
+}//inner_point
+Point Contour::InnerPoint() const{
+	assert(is_closed());
+	double a = Area(*this);
+	assert(size()>1);
+	if (fabs(a)<geps*geps){
+		//chose arbitrary point on the edge
+		return Point::Weigh(*data[0]->pstart, *data[0]->pend, 0.543);
+	} else if (a<0){
+		Contour c2;
+		c2.data.insert(c2.data.end(), data.rbegin(), data.rend());
+		return inner_point_core(c2);
+	} else return inner_point_core(*this);
+}
 
 std::tuple<bool, Point*>
 Contour::GuaranteePoint(const Point& p, PCollection& pcol){
