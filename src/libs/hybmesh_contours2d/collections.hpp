@@ -255,6 +255,11 @@ struct ECollection: public Tpp::Collection<Edge>{
 	
 	//bounding box + geps
 	static BoundingBox BBox(const ECollection& p, double eps=geps);
+
+	//Scaling
+	static ScaleBase Scale01(ECollection&);
+	static void Scale(ECollection&, const ScaleBase& sc);
+	static void Unscale(ECollection&, const ScaleBase& sc);
 };
 
 

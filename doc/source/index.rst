@@ -21,6 +21,7 @@ Contents:
    functionality
    pyinterface
    fileformats
+   vers
 
 
 

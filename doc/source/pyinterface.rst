@@ -110,10 +110,10 @@ See :ref:`functionality` for procedures details.
 .. autofunction:: unite_grids
 .. autofunction:: build_boundary_grid
 
-
 .. autoclass:: BoundaryGridOptions()
    :members: __init__, uniform_partition, incremental_partition
 
+.. autofunction:: heal_grid
 
 Information
 -----------

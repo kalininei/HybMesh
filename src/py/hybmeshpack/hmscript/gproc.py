@@ -1,6 +1,7 @@
 from hybmeshpack import com
 from hybmeshpack.hmscript import flow
 from hybmeshpack.basic.geom import Point2
+from . import ExecError
 
 
 def remove_geom(objs):
@@ -91,3 +92,42 @@ def copy_geom(objs):
             return c._get_added_names()[0]
         else:
             return c._get_added_names()[1]
+
+
+def heal_grid(grid_id, simplify_boundary=30):
+    """ Set of procedures for simplification of grid geometry
+
+    Args:
+       grid_id: identifier of the grid
+
+    Kwargs:
+       simplify_boundary: angle (deg) in [0, 180].
+          If this parameter is non-negative then edges which
+
+          * are boundary,
+          * belong to the same grid cell,
+          * form an angle no more then ``simplify_boundary`` degree
+          * elimination of intermediate vertices will not lead
+            to cell degeneration
+
+          will be merged. If ``simplify_boundary=0`` then only edges
+          lying on the same line are considered, ``simplify_boundary=180``
+          leads to merging of all doubled boundary edges,
+          ``simplify_boundary=-1`` ignores this simplification option.
+
+    Returns:
+       None
+
+    Raises:
+       ValueError, hmscript.ExecError
+
+    """
+    sb = simplify_boundary
+    if not isinstance(sb, (int, float, long)) or sb > 180 or sb < -1:
+        raise ValueError("Invalid simplify_boundaries option: %s" % str(sb))
+
+    c = com.gridcom.HealGrid({"name": grid_id, "simp_bnd": sb})
+    try:
+        flow.exec_command(c)
+    except:
+        raise ExecError('heal_grid')

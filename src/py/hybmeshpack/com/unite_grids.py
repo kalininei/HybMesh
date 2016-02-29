@@ -3,7 +3,7 @@ import ctypes as ct
 import cobj
 
 
-def add_bc_from_cont(tar_cont, src_cont, c_tar=None, c_src=None):
+def add_bc_from_cont(tar_cont, src_cont, c_tar=None, c_src=None, force=1):
     """ (contour2.AbstractContour, contour2.AbstractContour) -> None
 
     Adds boundary condition to tar_cont from src_cont
@@ -12,6 +12,10 @@ def add_bc_from_cont(tar_cont, src_cont, c_tar=None, c_src=None):
 
     Helper c_src and c_tar are the c representation of
     target and source contours of ct.c_void_p type.
+
+    force = 1: only edges which lie on src will be assigned
+    force = 2: edges which end points lie on src will be assigned
+    force = 3: all edges will be assigned
     """
     lib_fa = cobj.cport_lib()
 
@@ -32,8 +36,12 @@ def add_bc_from_cont(tar_cont, src_cont, c_tar=None, c_src=None):
         c_src_bnd[i] = src_cont.edge_bnd(i)
 
     #call lib_fa function
-    out = lib_fa.set_ecollection_bc(
-        c_src, c_tar, ct.c_int(-1), c_src_bnd, c_tar_bnd)
+    if force == 1:
+        out = lib_fa.set_ecollection_bc(
+            c_src, c_tar, ct.c_int(-1), c_src_bnd, c_tar_bnd)
+    else:
+        out = lib_fa.set_ecollection_bc_force(
+            c_src, c_tar, c_src_bnd, c_tar_bnd, ct.c_int(force))
 
     #write data to target contour
     new_bnd = {}
@@ -53,9 +61,11 @@ def add_bc_from_cont(tar_cont, src_cont, c_tar=None, c_src=None):
         raise Exception("Error at boundary assignment")
 
 
-def setbc_from_conts(tar_cont, src):
+def setbc_from_conts(tar_cont, src, force=1):
     """ (contour2.AbstractContour, [contour2.AbstractContour]) -> None
         Sets boundary condition to tar_cont from list of source contours.
+
+        force is the same as in add_bc_from_cont
     """
     lib_fa = cobj.cport_lib()
     #set default zero to all target boundaries
@@ -65,7 +75,7 @@ def setbc_from_conts(tar_cont, src):
     c_tar = cobj.cont2_to_c(tar_cont)
     for cont in src:
         c_src = cobj.cont2_to_c(cont)
-        add_bc_from_cont(tar_cont, cont, c_tar, c_src)
+        add_bc_from_cont(tar_cont, cont, c_tar, c_src, force)
         lib_fa.free_ecollection_container(c_src)
     lib_fa.free_ecollection_container(c_tar)
 

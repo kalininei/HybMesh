@@ -19,11 +19,11 @@ def exclude_contours(grid, conts, what):
        new grid identifier
 
     Raises:
-       hmscript.ValueError, hmscript.ExecError
+       ValueError, hmscript.ExecError
 
     .. note::
 
-       All countours from `cont` list are excluded consecutively.
+       All contours from `cont` list are excluded consecutively.
        If you want to exclude multiply connected domain area you should first
        assemle multiply connected domain from the list of singly
        connected ones using
@@ -65,7 +65,7 @@ def unite_grids(base_grid, imp_grids, empty_holes=False, fix_bnd=False):
       ``buffer`` - size of the buffer for current imposition
 
     Kwargs:
-      empty_holes (bool): keep all empty zones (in case of multle connectivity)
+      empty_holes (bool): keep all empty zones (in case of multiple connectivity)
       of imposed grids in the resulting grid.
 
       fix_bnd (bool): whether to fix all boundary nodes
@@ -123,10 +123,21 @@ class BoundaryGridOptions(object):
       * ``'keep_shape'``: use stepping and keep significant
         contour vertices
       * ``'keep_all'``: use stepping and keep all contour vertices
-      * ``'incremental'``: increase boundary step lineary from ``start_point``
+      * ``'incremental'``: increase boundary step linearly from ``start_point``
         to ``end_point``. Valid only for open contours
         ``start_point`` != ``end_point``. It acts like ``const`` stepping:
         no initial boundary vertices will be saved.
+
+      .. note::
+
+        While using ``const`` boundary step resulting grid may contain
+        boundary edges with intermediate nodes. They are placed there
+        intentionally to make further grid union operations easier.
+        To get rid of such nodes use :func:`heal_grid` with
+        ``simplify_boundary`` option at the very end of grid creation
+        (see :ref:`example3` for example of elimination of those nodes).
+        
+
     :ivar list-of-floats range_angles:
       list of 4 angle values (deg) which define algorithms
       for contour bends treatment:
@@ -178,7 +189,7 @@ class BoundaryGridOptions(object):
 
     def incremental_partition(self, h0, coef, n):
         """Sets incremental boundary grid vertical `partition`
-        starting from ``h0``, whith each next step is ``coef`` times
+        starting from ``h0``, with each next step is ``coef`` times
         bigger then the previous. Total of ``n`` layers will be built
 
         """
@@ -187,18 +198,6 @@ class BoundaryGridOptions(object):
             self.partition.append(
                 self.partition[-1] +
                 coef * (self.partition[-1] - self.partition[-2]))
-
-    def reentrant_all_square(self):
-        """This guaranties that all reentrant angles will be treated
-        with additional square zone and without rounding.
-        At angles close to 360 degree this may lead to a vary bad cells"""
-        self.range_angles[3] = max(self.range_angles[3], 359)
-
-    def reentrant_all_round(self):
-        """This guaranties that all reentrant angles will be treated
-        with round algorithm.
-        """
-        self.range_angles[3] = self.range_angles[2]
 
 
 def build_boundary_grid(opts):

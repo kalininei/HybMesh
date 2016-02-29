@@ -604,7 +604,6 @@ vector<double> partition_new_points_w(double step, const Contour& contour){
 }
 
 vector<double> partition_new_points_w(std::map<double, double> basis, const Contour& contour){
-	_DUMMY_FUN_;
 	assert(basis.size()>0);
 	if (basis.size() == 1) return partition_new_points_w(basis.begin()->second, contour);
 	double len = contour.length();

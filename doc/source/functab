@@ -4,7 +4,7 @@ Object       Contour      Grid         Operations   Info           Imp/Exp
 |func-o01|   |func-c01|   |func-g01|   |func-op01|  |func-i01|     |func-ie01|
 |func-o02|   |func-c02|   |func-g02|   |func-op02|  |func-i02|     |func-ie02|
 |func-o03|   |func-c03|   |func-g03|   |func-op03|  |func-i03|     |func-ie03|
-|func-o04|   |func-c04|   ..           ..           |func-i04|     |func-ie04|
+|func-o04|   |func-c04|   |func-g04|   ..           |func-i04|     |func-ie04|
 |func-o05|   |func-c05|   ..           ..           |func-i05|     |func-ie05|
 |func-o06|   |func-c06|   ..           ..           |func-i06|     |func-ie06|
 ..           |func-c07|   ..           ..           |func-i07|     |func-ie07|
@@ -34,6 +34,7 @@ Object       Contour      Grid         Operations   Info           Imp/Exp
 .. |func-g01| replace:: :func:`add_unf_rect_grid`
 .. |func-g02| replace:: :func:`add_unf_circ_grid`
 .. |func-g03| replace:: :func:`add_unf_ring_grid`
+.. |func-g04| replace:: :func:`heal_grid`
 
 .. |func-op01| replace:: :func:`unite_grids`
 .. |func-op02| replace:: :func:`build_boundary_grid`

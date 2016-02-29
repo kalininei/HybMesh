@@ -401,6 +401,57 @@ class BuildBoundaryGrid(NewGridCommand):
         if ret is not None:
             ret.build_contour()
             srccont = [op['source'] for op in arg]
-            setbc_from_conts(ret.cont, srccont)
+            setbc_from_conts(ret.cont, srccont, force=2)
 
         return ret
+
+
+class HealGrid(objcom.AbstractAddRemove):
+    "simplification of grid boundaries"
+
+    def __init__(self, arg):
+        if 'simp_bnd' not in arg:
+            arg['simp_bnd'] = -1
+        super(HealGrid, self).__init__(arg)
+
+    @classmethod
+    def _arguments_types(cls):
+        """ name - modified grid name,
+            simp_bnd - angle (degree): is the maximum angles at which
+                two adjacent boundary edges of the same cell will be merged
+                (-1) ignores this procedure.
+        """
+        return {'name': command.BasicOption(str),
+                'simp_bnd': command.BasicOption(float),
+                }
+
+    def __simplify_bnd(self, og):
+        import cobj
+        import ctypes as ct
+        import unite_grids
+        libfa = cobj.cport_lib()
+        gc = cobj.grid_to_c(og)
+        ret = libfa.simplify_grid_boundary(
+            gc, ct.c_double(self.options['simp_bnd']))
+        if ret != 0:
+            cobj.free_c_grid(gc)
+            raise command.ExecutionError('Error in boundary simplification',
+                                         self)
+        ret = cobj.grid_from_c(gc)
+        ret.build_contour()
+        cobj.free_c_grid(gc)
+        # write boundary types from og
+        unite_grids.add_bc_from_cont(ret.cont, og.cont, force=3)
+        return ret
+
+    def _addrem_objects(self):
+        try:
+            _, _, orig = self.receiver.get_grid(name=self.options['name'])
+        except:
+            raise command.ObjectNotFound(self.options['name'])
+        g = orig
+        if self.options['simp_bnd'] >= 0:
+            g = self.__simplify_bnd(g)
+
+        if g != orig:
+            return [(self.options['name'], g)], [self.options['name']], [], []

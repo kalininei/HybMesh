@@ -47,10 +47,32 @@ void test01(){
 	inp.direction = HMBlay::DirectionFromString("INNER");
 	GridGeom Ans2 = HMBlay::BuildBLayerGrid({inp});
 	add_check(Ans2.n_points() == 32 &&
-	          Ans2.n_cells() == 24 &&
-	          fabs(Ans2.area() - 10.903)<0.1, cn);
+		  Ans2.n_cells() == 24 &&
+		  fabs(Ans2.area() - 10.903)<0.1, cn);
 	save_vtk(Ans1, "t01_1.vtk");
 	save_vtk(Ans2, "t01_2.vtk");
+
+	cn = "long edges";
+	auto col2 = HMCont2D::Constructor::Circle(16, 3.0, Point(0, 0));
+	HMBlay::Input inp2;
+	inp2.edges = &col2;
+	inp2.direction = HMBlay::DirectionFromString("OUTER");
+	inp2.bnd_step_method = HMBlay::MethFromString("KEEP_SHAPE");
+	inp2.partition = {0.0, 0.01, 0.02, 0.03, 0.04};
+	inp2.bnd_step = 0.01;
+	inp2.start=inp2.end=Point(0,0);
+	GridGeom Ans3 = HMBlay::BuildBLayerGrid({inp2});
+	save_vtk(Ans3, "t01_3.vtk");
+	add_check( [&]()->bool{
+		//points should lie strictly on the source contour
+		auto gcont = GGeom::Info::Contour(Ans3);
+		HMCont2D::Contour& inner = *gcont.roots()[0]->children[0];
+		for (auto pt: inner.all_points()){
+			double dist = std::get<4>(col2.coord_at(*pt));
+			if (!ISZERO(dist)) {return false;}
+		}
+		return true;
+	}(), cn);
 }
 
 void test02(){

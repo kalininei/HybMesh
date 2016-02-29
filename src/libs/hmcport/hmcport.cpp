@@ -240,6 +240,22 @@ Grid* grid_exclude_cont_wcb(Grid* grd, Cont* cont, int is_inner,
 	}
 }
 
+int simplify_grid_boundary(Grid* grd, double angle){
+	GridGeom* g = static_cast<GridGeom*>(grd);
+	ScaleBase sc = g->do_scale();
+	int ret = 1;
+	try{
+		angle = angle/180*M_PI;
+		if (angle<-geps || angle>M_PI+geps) throw std::runtime_error("invalid angle");
+		GGeom::Modify::SimplifyBoundary(*g, angle);
+		ret = 0;
+	} catch (const std::exception &e){
+		std::cout<<"simplify_grid_boundary error: "<<e.what()<<std::endl;
+	}
+	g->undo_scale(sc);
+	return ret;
+}
+
 void add_contour_bc(Cont* src, Cont* tar, int* vsrc, int* vtar, int def){
 	try{
 		auto src1 = static_cast<PointsContoursCollection*>(src);
@@ -383,6 +399,89 @@ int set_ecollection_bc(void* src, void* tar, int def, int* vsrc, int* vtar){
 		std::cout<<"set_ecollection_bc error: "<<e.what()<<std::endl;
 		return 1;
 	}
+}
+
+int set_ecollection_bc_force(void* src, void* tar, int* vsrc, int* vtar, int algo){
+	HMCont2D::ECollection* src_col = static_cast<HMCont2D::ECollection*>(src);
+	HMCont2D::ECollection* tar_col = static_cast<HMCont2D::ECollection*>(tar);
+	ScaleBase sc = HMCont2D::Scale01(*src_col);
+	HMCont2D::Scale(*tar_col, sc);
+	double ret = 1;
+	try{
+		//target edge->source edge
+		std::map<HMCont2D::Edge*, HMCont2D::Edge*> ans;
+		//set of target edges
+		std::set<HMCont2D::Edge*> unused;
+		for (auto e: *tar_col) unused.insert(e.get());
+		//assemble source contour tree
+		auto stree = HMCont2D::ExtendedTree::Assemble(*src_col);
+		//loop over all tree contours
+		for (int i=0; i<stree.cont_count(); ++i){
+			auto it = unused.begin();
+			while (it!=unused.end()){
+				HMCont2D::Edge* e = *it;
+				HMCont2D::Contour& cont = *stree.get_contour(i);
+				auto fnd1 = HMCont2D::ECollection::FindClosestEdge(cont, *e->pstart);
+				auto fnd2 = HMCont2D::ECollection::FindClosestEdge(cont, *e->pend);
+				auto fndc = HMCont2D::ECollection::FindClosestEdge(cont, e->center());
+				//1) if all 3 edge points lie on contour return bc from center
+				if (ISZERO(std::get<1>(fnd1)) && ISZERO(std::get<1>(fnd2)) && ISZERO(std::get<1>(fndc))){
+					ans[e] = std::get<0>(fndc);
+					it = unused.erase(it);
+					continue;
+				}
+				//2) if start and end lie on contour get boundary of weighted center
+				if (algo > 1 && ISZERO(std::get<1>(fnd1)) && ISZERO(std::get<1>(fnd2))){
+					HMCont2D::Edge* r;
+					if (std::get<0>(fnd1) == std::get<0>(fnd2)) r = std::get<0>(fnd1);
+					else {
+						double w1 = std::get<1>(cont.coord_at(*e->pstart));
+						double w2 = std::get<1>(cont.coord_at(*e->pend));
+						if (!cont.is_closed()){
+							Point p = HMCont2D::Contour::WeightPoint(cont, (w1+w2)/2.0);
+							r = std::get<0>(HMCont2D::ECollection::FindClosestEdge(cont, p));
+						} else {
+							//for closed contour we have to consider two points and
+							//choose one that is closer to edge center
+							double var1 = (w1 + w2)/2.0;
+							double var2 = (1.0 + w1 + w2)/2.0;
+							if (var2>1.0) var2 -= 1.0;
+							Point pvar1 = HMCont2D::Contour::WeightPoint(cont, var1);
+							Point pvar2 = HMCont2D::Contour::WeightPoint(cont, var2);
+							double meas_var1 = Point::meas(pvar1, e->center());
+							double meas_var2 = Point::meas(pvar2, e->center());
+							if (meas_var1 < meas_var2){
+								r = std::get<0>(HMCont2D::ECollection::FindClosestEdge(cont, pvar1));
+							} else {
+								r = std::get<0>(HMCont2D::ECollection::FindClosestEdge(cont, pvar2));
+							}
+						}
+					}
+					ans[e] = r;
+					it = unused.erase(it);
+					continue;
+				}
+				++it;
+			}
+		}
+		//3) for all remaining cells get closest edge from source collection
+		if (algo>2){
+			for (auto e: unused){
+				auto ce = HMCont2D::ECollection::FindClosestEdge(*src_col, e->center());
+				ans[e] = std::get<0>(ce);
+			}
+		}
+		//fill output arrays
+		for (auto a: ans){
+			vtar[tar_col->get_index(a.first)] = vsrc[src_col->get_index(a.second)];
+		}
+		ret = 0;
+	} catch (const std::exception &e){
+		std::cout<<"set_ecollection_bc_force error: "<<e.what()<<std::endl;
+	}
+	HMCont2D::Unscale(*src_col, sc);
+	HMCont2D::Unscale(*tar_col, sc);
+	return ret;
 }
 
 

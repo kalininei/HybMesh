@@ -134,8 +134,8 @@ struct Contour: public ECollection{
 	//weigth points by [0,1] weights of full contour length.
 	//Returns point in sorted order from start to end point of c
 	static PCollection WeightPoints(const Contour& c, vector<double> w);
-	static Point WeightPoint(const Contour& c, double len){
-		return *WeightPoints(c, {len}).point(0);
+	static Point WeightPoint(const Contour& c, double w){
+		return *WeightPoints(c, {w}).point(0);
 	}
 	//weigth points by lenght
 	static PCollection WeightPointsByLen(const Contour& c, vector<double> lens);

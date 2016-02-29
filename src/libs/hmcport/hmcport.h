@@ -98,6 +98,13 @@ void* domain_clip(void* c1, void* c2, int oper, int simplify);
 //return 0 if ok and 1 if error
 int set_ecollection_bc(void* src, void* tar, int def, int* vsrc, int* vtar);
 
+//same as previous but forces boundary assignment depending on algo feature
+// 1 - assign only edges which lie on source
+// 2 - assign edges which endpoints lie on source
+// 3 - assign all
+//vsrc is filled only for those values which were found.
+int set_ecollection_bc_force(void* src, void* tar, int* vsrc, int* vtar, int algo);
+
 
 // === set default callbacks
 //crossgrid callback pointer is the function of the following arguments:
@@ -131,6 +138,9 @@ Grid* grid_exclude_cont(Grid* grd, Cont* cont, int is_inner);
 Grid* grid_exclude_cont_wcb(Grid* grd, Cont* cont, int is_inner,
 		crossgrid_callback cb_fun);
 
+//merges boundary edges of the same cell with angle less than 'angle' in [0, 180]
+//return 0 if ok
+int simplify_grid_boundary(Grid* grd, double angle);
 
 // === Boundary layer grid constructing
 // Build a boundary layer grid around a contour tree
@@ -145,7 +155,7 @@ struct BoundaryLayerGridOption{
 	double start[2]; //start point
 	double end[2];   //end point
 	int force_conformal;   //force conformal
-	double angle_range[4]; //maximum acute/right/straight/reentrant angles
+	double angle_range[4]; //maximum acute/right/straight/reentrant angles (deg)
 	double step_start; //step values for incremental stepping
 	double step_end;
 };

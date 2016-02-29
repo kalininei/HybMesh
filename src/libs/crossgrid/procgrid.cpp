@@ -254,7 +254,23 @@ vector<GridGeom> GGeom::Modify::SubGrids(const GridGeom& grid){
 	return ret;
 }
 
-void GGeom::Modify::SnapToContour(GridGeom& grid, const HMCont2D::Contour& cont){
+void GGeom::Modify::SnapToContour(GridGeom& grid, const HMCont2D::Contour& cont,
+		const std::vector<GridPoint*>& snap_nodes){
+	//snapping nodes
+	for (auto p: snap_nodes){
+		//try to search amoung vertices
+		Point* fpnt = HMCont2D::ECollection::FindClosestNode(cont, *p);
+		if (Point::meas(*fpnt, *p)<geps*geps){
+			*p = *fpnt;
+			continue;
+		}
+		//snap to edge
+		auto fed = HMCont2D::ECollection::FindClosestEdge(cont, *p);
+		HMCont2D::Edge* e = std::get<0>(fed);
+		double w = std::get<2>(fed);
+		*p = Point::Weigh(*e->pstart, *e->pend, w);
+	}
+
 	auto gridbnd = GGeom::Info::Contour(grid);
 	//all contour significant points weights
 	std::map<double, Point*> contw;

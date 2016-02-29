@@ -478,8 +478,12 @@ void MappedMesher::Fill(TBotPart bottom_partitioner, TVertPart vertical_partitio
 	int jsz = std::max_element(vlines.begin(), vlines.end(),
 		[](vector<double>& x, vector<double>& y){ return x.size() < y.size(); })->size();
 
-	//4) build regular grid.
+	//4) build regular grid and get vector of bottom side points
 	GridGeom g4 = GGeom::Constructor::RectGrid01(isz, jsz);
+	ShpVector<GridPoint> botpts;
+	for (auto p: GGeom::Info::BoundaryPoints(g4)){
+		if (ISZERO(p->y)) botpts.push_back(p);
+	}
 
 	//5) fill layer weights and feature
 	std::map<const Cell*, int> lweights;
@@ -549,7 +553,9 @@ void MappedMesher::Fill(TBotPart bottom_partitioner, TVertPart vertical_partitio
 	GGeom::Modify::PointModify(g4, mapfunc);
 
 	//10) all bt points should present in g4 (for IGNORE_ALL stepping)
-	GGeom::Modify::SnapToContour(g4, bt); 
+	vector<GridPoint*> ppbot;
+	for (auto p: botpts) ppbot.push_back(p.get());
+	GGeom::Modify::SnapToContour(g4, bt, ppbot); 
 
 	//11) copy to results
 	GGeom::Modify::ShallowAdd(&g4, &result);

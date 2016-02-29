@@ -63,7 +63,9 @@ static vector<GridGeom> SubGrids(const GridGeom& grid);
 //if boundary edge points (p1, p2) lie on cont then
 //all significant contour points between (p1, p2) will present in grid
 //grid should be located to left of contour
-static void SnapToContour(GridGeom& grid, const HMCont2D::Contour& cont);
+//snap_nodes is a list of points which will be snapped to contour before procedure starts
+static void SnapToContour(GridGeom& grid, const HMCont2D::Contour& cont,
+		const std::vector<GridPoint*>& snap_nodes);
 
 //no complicated boundary cell edges
 //angle is between [0, M_PI]

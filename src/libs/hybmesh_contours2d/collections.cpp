@@ -13,6 +13,21 @@ void PCollection::Unscale(PCollection& pc, const ScaleBase& sc){
 	sc.p_unscale(pc.data.begin(), pc.data.end());
 }
 
+ScaleBase ECollection::Scale01(ECollection& pc){
+	auto pa = pc.all_points();
+	return ScaleBase::p_doscale(pa.begin(), pa.end());
+
+}
+void ECollection::Scale(ECollection& pc, const ScaleBase& sc){
+	auto pa = pc.all_points();
+	sc.p_scale(pa.begin(), pa.end());
+}
+void ECollection::Unscale(ECollection& pc, const ScaleBase& sc){
+	auto pa = pc.all_points();
+	sc.p_unscale(pa.begin(), pa.end());
+}
+
+
 std::tuple<Point*, int, double>
 PCollection::FindClosestNode(const PCollection& dt, const Point& p){
 	std::tuple<Point*, int, double> ret;
