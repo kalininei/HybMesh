@@ -79,7 +79,8 @@ if (WIN32)
 		set(NSIS_INSTALLER_LIBDEST "lib")
 		string(REPLACE "/" "\\" _TMP "${PYINST_ICON}")
 		set(NSIS_INSTALLER_ICON "\"${_TMP}\"")
-		
+		string(REPLACE "/" "\\" _TMP ${CMAKE_SOURCE_DIR}/doc/build/html)
+		set(NSIS_INSTALLER_HTML "/r \"${_TMP}\\*\"")
 		configure_file("${CMAKE_SOURCE_DIR}/BuildScripts/make_installer.nsi.in" 
 			"${CMAKE_BINARY_DIR}/make_installer.nsi" @ONLY)
 		# run at make pack

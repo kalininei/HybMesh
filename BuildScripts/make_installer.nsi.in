@@ -41,8 +41,6 @@ RequestExecutionLevel admin ;Require admin rights on NT6+ (When UAC is turned on
 !include LogicLib.nsh
 !define ProgBit "@NSIS_INSTALLER_BIT@"
 
-InstallDir $PROGRAMFILES\${APPNAME}
-	
 Name "${APPNAME}"
 
 Page directory
@@ -61,9 +59,9 @@ ${EndIf}
 function .onInit
 	setShellVarContext all
 	${If} ${ProgBit} == "64"
-		StrCpy $INSTDIR $PROGRAMFILES64\${APPNAME}
+		StrCpy $INSTDIR $PROGRAMFILES64\HybMesh
 	${Else}
-		StrCpy $INSTDIR $PROGRAMFILES32\${APPNAME}
+		StrCpy $INSTDIR $PROGRAMFILES32\HybMesh
 	${Endif}
 	!insertmacro VerifyUserIsAdmin
 functionEnd
@@ -78,6 +76,10 @@ File @NSIS_INSTALLER_LIB@
 # ======= bin
 SetOutPath $INSTDIR\@NSIS_INSTALLER_BINDEST@
 File @NSIS_INSTALLER_BIN@
+
+# ======== doc
+SetOutPath $INSTDIR\doc\html
+File @NSIS_INSTALLER_HTML@
 
 # ======= additional commands
 # make new configuration file depending on install path
@@ -111,6 +113,11 @@ AccessControl::GrantOnFile "${DTDIR}" "(S-1-5-32-545)" "FullAccess"
 # CreateShortCut "$INSTDIR\${APPNAME}.lnk" \
 # 	"$INSTDIR\@NSIS_INSTALLER_BINDEST@\@NSIS_INSTALLER_EXENAME@" \
 # 	"" "${ShortcutIcon}" "" SW_SHOWMAXIMIZED
+
+
+# Shortcut for index.html file
+# File /oname=$INSTDIR\doc\html\index.html
+CreateShortCut $INSTDIR\index.lnk $INSTDIR\doc\html\index.html
 	
 # ======== uninstaller
 WriteUninstaller $INSTDIR\Uninstall.exe
@@ -161,8 +168,11 @@ section "Uninstall"
 	# Remove files
 	RMDir /r "$INSTDIR\@NSIS_INSTALLER_BINDEST@"
 	RMDir /r "$INSTDIR\@NSIS_INSTALLER_LIBDEST@"
+	RMDir /r "$INSTDIR\doc"
 	${RMDirUP} "$INSTDIR\@NSIS_INSTALLER_BINDEST@"   ;remove parents (if each is empty ONLY)
 	${RMDirUP} "$INSTDIR\@NSIS_INSTALLER_LIBDEST@"   ;remove parents (if each is empty ONLY)
+	${RMDirUP} "$INSTDIR\doc"   ;remove parents (if each is empty ONLY)
+	delete "$INSTDIR\index.lnk"
 #	delete "$INSTDIR\${APPNAME}.lnk"
  
 	# Always delete uninstaller as the last action

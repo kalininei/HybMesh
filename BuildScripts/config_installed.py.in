@@ -19,6 +19,7 @@ proj_url = 'https://api.github.com/repos/kalininei/HybMesh/'
 if sys.platform.startswith('win'):
     import ctypes as ct
     try:
+        ct.cdll.LoadLibrary(os.path.join(libdir, 'libgpc.dll'))
         ct.cdll.LoadLibrary(os.path.join(libdir, 'libwinpthread-1.dll'))
         ct.cdll.LoadLibrary(os.path.join(libdir, 'libgcc_s_seh-1.dll'))
         ct.cdll.LoadLibrary(os.path.join(libdir, 'libquadmath-0.dll'))

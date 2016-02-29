@@ -113,7 +113,7 @@ hm.export_grid_vtk(g6, "_g6.vtk")
 hm.export_contour_vtk(g6, "_c6.vtk")
 check_grid(g6, 11280, 20304, 9024, {4: 9024})
 check_cont(g6, 4512, 4512, [400, 368, 1872, 1872], {0: 2240, 1: 400, 2: 1872})
-exit()
+
 
 print "doubly connected area: only single contour"
 op.start_point = op.end_point = [0, 0]
