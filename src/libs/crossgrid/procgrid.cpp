@@ -261,14 +261,14 @@ void GGeom::Modify::SnapToContour(GridGeom& grid, const HMCont2D::Contour& cont,
 		//try to search amoung vertices
 		Point* fpnt = HMCont2D::ECollection::FindClosestNode(cont, *p);
 		if (Point::meas(*fpnt, *p)<geps*geps){
-			*p = *fpnt;
+			p->set(*fpnt);
 			continue;
 		}
 		//snap to edge
 		auto fed = HMCont2D::ECollection::FindClosestEdge(cont, *p);
 		HMCont2D::Edge* e = std::get<0>(fed);
 		double w = std::get<2>(fed);
-		*p = Point::Weigh(*e->pstart, *e->pend, w);
+		p->set(Point::Weigh(*e->pstart, *e->pend, w));
 	}
 
 	auto gridbnd = GGeom::Info::Contour(grid);
@@ -315,6 +315,7 @@ void GGeom::Modify::SnapToContour(GridGeom& grid, const HMCont2D::Contour& cont,
 		};
 	for (auto e: bndeds){
 		const GridPoint *p1 = grid.get_point(e.p1), *p2 = grid.get_point(e.p2);
+		if (e.cell_left < 0) std::swap(p1, p2);
 		auto fnd1 = bndw.find(p1), fnd2 = bndw.find(p2);
 		//if edge is not on contour ignore it
 		if (fnd1==bndw.end() || fnd2==bndw.end()) continue;

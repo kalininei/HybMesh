@@ -627,6 +627,7 @@ void test15(){
 	std::cout<<"15. Geometry noise"<<std::endl;
 
 	auto c1 = HMCont2D::Constructor::ContourFromPoints({0,0, 0.5, -0.03, 0.55, 0, 0.68, 0, 0.7, 0.02, 0.75, 0, 1, 0, 1.01, -0.02, 1.03, 0, 1.1, 0}); 
+	HMCont2D::SaveVtk(c1, "c15.vtk");
 	HMBlay::Input inp1;
 	inp1.bnd_step_method = HMBlay::MethFromString("KEEP_SHAPE");
 	inp1.direction = HMBlay::DirectionFromString("LEFT");
@@ -702,6 +703,36 @@ void test16(){
 	delete impgrid1;
 }
 
+void test17(){
+	std::cout<<"17. Snapping to source contour"<<std::endl;
+	std::vector<Point> inpx, inpy;
+	for (int i=1; i<20; ++i) inpx.push_back(Point(0.1*i, 0));
+	for (int i=1; i<20; ++i) inpy.push_back(Point(0, 0.1*i));
+	double sx = 0.02, sy = 0.02;
+	int coef=1;
+	for (auto& p: inpx) { p.y += coef * sx; coef *= -1; }
+	for (auto& p: inpy) { p.x += coef * sy; coef *= -1; }
+
+	std::vector<Point> inppts;
+	inppts.insert(inppts.end(), inpy.rbegin(), inpy.rend());
+	inppts.push_back(Point(0, 0));
+	inppts.insert(inppts.end(), inpx.begin(), inpx.end());
+
+	HMCont2D::Container<HMCont2D::Contour>
+	cont = HMCont2D::Constructor::ContourFromPoints(inppts, false);
+
+	HMBlay::Input inp1;
+	inp1.bnd_step_method = HMBlay::MethFromString("NO");
+	inp1.direction = HMBlay::DirectionFromString("LEFT");
+	inp1.edges = &cont;
+	inp1.start = Point(0, 0);
+	inp1.end = Point(2, 0);
+	inp1.partition = {0, 0.01, 0.02, 0.04, 0.08, 0.14, 0.2};
+	GridGeom bgrid = HMBlay::BuildBLayerGrid({inp1}); 
+	HMCont2D::SaveVtk(cont, "t17_1.vtk");
+	save_vtk(bgrid, "t17_2.vtk");
+}
+
 int main(){
 	test01();
 	test02();
@@ -717,11 +748,12 @@ int main(){
 	test12();
 	test13();
 	test14();
+	test16();
+	test17();
 	
 	//UNDONE:
 	//test15();
 	
-	test16();
 
 	if (FAILED_CHECKS ==1){
 		std::cout<<FAILED_CHECKS<<" test failed <<<<<<<<<<<<<<<<<<<"<<std::endl;

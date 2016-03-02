@@ -48,7 +48,55 @@ if export format supports it.
 
 Grid Imposition
 ---------------
-TODO
+This is the basic HybMesh operation. Generally it takes two independent
+grids which have non-zero domain intersection and composes them into a single grid.
+The domain of resulting grid is exactly equal to the domain of geometrical union of parent grids domains and
+its cells reflect the original grids cells everywhere except for a zone around the line of parent grids
+contact which is triangulated providing smooth cell size transition. This zone is later referenced as a
+*buffer zone*.
+
+
+Order of imposition matters. For clarity sake we call the first of two original grids the *base grid*
+and the second one -- *imposed grid*. **Buffer is always built within the base grid**. Cells
+of *imposed grid* are transfered to the resulting grid mostly untouched
+(except for a few boundary vertices near grids intersection zone. See :ref:`fix-bnd-option` for details).
+So, as you can see on the picture below, by swapping the grid roles we obtain different resulting grid geometry.
+
+.. figure:: grid_imposition1.png
+   :height: 400 px
+
+   fig1. Basic imposition example
+
+Hybmesh also supports imposition of the grids chain. In this regime a sequence of
+imposition operations are performed over a list of grids. Each operation takes the result of previous operation
+as a *base grid* and use the next grid in given list as an *imposed grid*.
+You should carefully define the order of grids in a input list to get desirable result.
+
+
+.. figure:: grid_imposition2.png
+   :height: 400 px
+
+   fig2. Chain imposition example
+
+
+2. Imposition only takes place if parent grid has non-zero and non one-point intersection area.
+
+3. Boundary features.
+
+Buffer zone size
+++++++++++++++++
+Buffer zone size.
+
+Sometimes it could be useful to compose grids without building triangulated buffer.
+
+.. _fix-bnd-option:
+
+Fix boundary nodes
+++++++++++++++++++
+
+Empty holes
++++++++++++
+
 
 
 .. _bgrids:

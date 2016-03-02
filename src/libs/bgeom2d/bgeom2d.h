@@ -45,6 +45,7 @@ struct Point{
 		return *this;
 	}
 	void set(double a=0, double b=0) noexcept {x=a; y=b;}
+	void set(const Point& p2) noexcept {x=p2.x; y=p2.y;}
 	//from plain arrays
 	template<int Dim>
 	static vector<Point> read_from_plain(const vector<double>& pcoord){

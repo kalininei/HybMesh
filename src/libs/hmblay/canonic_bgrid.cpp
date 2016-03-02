@@ -552,10 +552,36 @@ void MappedMesher::Fill(TBotPart bottom_partitioner, TVertPart vertical_partitio
 	};
 	GGeom::Modify::PointModify(g4, mapfunc);
 
-	//10) all bt points should present in g4 (for IGNORE_ALL stepping)
+	//10) all bt points should present in g4 (e.g. for IGNORE_ALL stepping)
+	//bottom contour
 	vector<GridPoint*> ppbot;
 	for (auto p: botpts) ppbot.push_back(p.get());
 	GGeom::Modify::SnapToContour(g4, bt, ppbot); 
+	//left and right only if they coincide with physical boundaries
+	if (!bt.is_closed()){
+		if (wbot_start == 0.0){ 
+			ppbot.clear();
+			for (auto p: left_points){
+				ppbot.push_back(static_cast<GridPoint*>(p.get()));
+			}
+			//reversing so that snapping contour have grid on its left side
+			auto lc = HMCont2D::Container<HMCont2D::Contour>::DeepCopy(rect->LeftContour());
+			lc.ReallyReverse();
+			GGeom::Modify::SnapToContour(g4, lc, ppbot); 
+			//!!! here we have to refill left_points array but until now
+			//there was no need in this because grids with curved left/right
+			//contours are not used by complicated connectors.
+			//This could be changed in future and this procedure should be written
+		}
+		if (wbot_end == 1.0){
+			ppbot.clear();
+			for (auto p: right_points){
+				ppbot.push_back(static_cast<GridPoint*>(p.get()));
+			}
+			//no need to reverse because grid lies to the left from RightContour
+			GGeom::Modify::SnapToContour(g4, rect->RightContour(), ppbot); 
+		}
+	}
 
 	//11) copy to results
 	GGeom::Modify::ShallowAdd(&g4, &result);

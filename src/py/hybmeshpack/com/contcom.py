@@ -131,7 +131,7 @@ class GridBndToContour(objcom.AbstractAddRemove):
 
     def _clear(self):
         self.simp_command = None
-        super(GridBndToContour, self).clear()
+        super(GridBndToContour, self)._clear()
 
     def _undo(self):
         if self.simp_command:

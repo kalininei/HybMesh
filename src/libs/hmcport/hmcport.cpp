@@ -316,9 +316,10 @@ void* domain_clip(void* c1, void* c2, int oper, int simplify){
 			for (auto p: allpnt){
 				auto fnd = HMCont2D::ECollection::FindClosestEdge(res, *p);
 				if (std::get<0>(fnd) != 0 && std::get<1>(fnd)<geps && 
-						std::get<2>(fnd) > geps && std::get<3>(fnd) < 1-geps){
+						std::get<2>(fnd) > geps && std::get<2>(fnd) < 1-geps){
 					auto cont = res.get_contour(std::get<0>(fnd));
 					cont->GuaranteePoint(*p, res.pdata);
+					res.ReloadEdges();
 				}
 			}
 		}
