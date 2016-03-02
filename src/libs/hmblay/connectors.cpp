@@ -73,7 +73,7 @@ void AcuteConnector::BuildInternals(){
 
 void AcuteConnector::ModifyAdjacents(){
 	//point of intersection to grid point
-	auto crosses = HMCont2D::Contour::CrossAll(prev->rect->TopContour(),
+	auto crosses = HMCont2D::Algos::CrossAll(prev->rect->TopContour(),
 			next->rect->TopContour());
 	auto prevcont = GGeom::Info::Contour1(prev->result);
 	auto nextcont = GGeom::Info::Contour1(next->result);
@@ -95,7 +95,7 @@ RightConnector::RightConnector(MappedMesher* _prev, MappedMesher* _next): MConne
 	HMCont2D::Contour next_top = next->rect->TopContour();
 	//first cross from start of next_top contour (essential)
 	std::tuple<bool, Point, double, double> cross =
-		HMCont2D::Contour::Cross(next_top, prev_top);
+		HMCont2D::Algos::Cross(next_top, prev_top);
 	assert(std::get<0>(cross));
 	//find crosspoint in conformal rectangle
 	Point pcross_prev = prev->rect->MapToSquare(std::get<1>(cross));

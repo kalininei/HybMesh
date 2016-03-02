@@ -296,8 +296,8 @@ void* domain_clip(void* c1, void* c2, int oper, int simplify){
 	ScaleBase sc = ScaleBase::p_doscale(pnt1.begin(), pnt1.end()); 
 	sc.p_scale(pnt2.begin(), pnt2.end());
 
-	auto tree1 = HMCont2D::ExtendedTree::Assemble(*cont1);
-	auto tree2 = HMCont2D::ExtendedTree::Assemble(*cont2);
+	auto tree1 = HMCont2D::Assembler::ETree(*cont1);
+	auto tree2 = HMCont2D::Assembler::ETree(*cont2);
 	try{
 		if (tree1.nodes.size() == 0) throw std::runtime_error("not a closed contour");
 		if (tree2.nodes.size() == 0) throw std::runtime_error("not a closed contour");
@@ -414,7 +414,7 @@ int set_ecollection_bc_force(void* src, void* tar, int* vsrc, int* vtar, int alg
 		std::set<HMCont2D::Edge*> unused;
 		for (auto e: *tar_col) unused.insert(e.get());
 		//assemble source contour tree
-		auto stree = HMCont2D::ExtendedTree::Assemble(*src_col);
+		auto stree = HMCont2D::Assembler::ETree(*src_col);
 		//loop over all tree contours
 		for (int i=0; i<stree.cont_count(); ++i){
 			auto it = unused.begin();
@@ -488,7 +488,7 @@ int set_ecollection_bc_force(void* src, void* tar, int* vsrc, int* vtar, int alg
 double ecollection_area(void* ecol){
 	try{
 		auto c = static_cast<HMCont2D::ECollection*>(ecol);
-		auto tree = HMCont2D::ExtendedTree::Assemble(*c);
+		auto tree = HMCont2D::Assembler::ETree(*c);
 		return HMCont2D::Area(tree);
 	} catch (const std::exception &e){
 		std::cout<<"domain area calculation error: "<<e.what()<<std::endl;

@@ -3,9 +3,8 @@
 
 source ../../src/libs/dbgscripts/hmout.gdb
 
-file ./hmblay_test
+file ./hybmesh_contours2d_test
 set breakpoint pending on
 b main
 run 
-b hmblay_test.cpp:48
-b grid.cpp: 430
+b hybmesh_contours2d_test.cpp:103

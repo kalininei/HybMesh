@@ -23,11 +23,6 @@ void SaveVtk(const C& obj, const char* fn){
 }
 
 template<class C>
-Container<ContourTree> Offset(const C& obj, double delta, OffsetTp tp){
-	return C::Offset(obj, delta, tp);
-};
-
-template<class C>
 double Area(const C& obj){
 	return C::Area(obj);
 }

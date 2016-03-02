@@ -1,5 +1,6 @@
 #include "tree.hpp"
 #include "contclipping.hpp"
+#include <fstream>
 
 using namespace HMCont2D;
 
@@ -16,58 +17,10 @@ double ContourTree::Area(const ContourTree& c){
 			[](double s, shared_ptr<Contour> cc){ return s + Contour::Area(*cc); });
 }
 
-bool ContourTree::DoIntersect(const ContourTree& t1, const Contour& c2){
-	auto bbox1 = ContourTree::BBox(t1);
-	auto bbox2 = Contour::BBox(c2);
-	if (!bbox1.has_common_points(bbox2)) return false;
-	auto c = HMCont2D::Clip::Union(t1, c2);
-	if (c.cont_count() > t1.cont_count()) return false;
-	else return true;
-}
-
-ContourTree ContourTree::Simplified(const ContourTree& t1){
-	ContourTree ret;
-	//copy all contours to ret with simplified structure
-	for (auto& n: t1.nodes){
-		auto simpcont = HMCont2D::Contour::Simplified(*n);
-		ret.nodes.push_back(std::make_shared<TreeNode>());
-		ret.nodes.back()->data = simpcont.data;
-	}
-
-	//fill parent
-	for (int i=0; i<t1.nodes.size(); ++i){
-		auto oldparent = t1.nodes[i]->parent;
-		if (oldparent == 0) ret.nodes[i]->parent=0;
-		else{
-			int fnd=0;
-			while (fnd<t1.nodes.size()){
-				if (t1.nodes[fnd].get() == oldparent) break;
-				else ++fnd;
-			}
-			assert(fnd<t1.nodes.size());
-			t1.nodes[i]->parent = t1.nodes[fnd].get();
-		}
-	}
-
-	//fill children
-	for (auto& c: ret.nodes){
-		if (c->parent != 0) c->parent->children.push_back(c.get());
-	}
-	//fill ret.data
-	ret.ReloadEdges();
-	return ret;
-}
-
-ExtendedTree ExtendedTree::Simplified(const ExtendedTree& t1){
+ExtendedTree ContourTree::AsExtended(const ContourTree& et){
 	ExtendedTree ret;
-	//insert simplified closed contour nodes
-	auto ct = ContourTree::Simplified(t1);
-	ret.nodes.insert(ret.nodes.end(), ct.nodes.begin(), ct.nodes.end());
-	//insert simplified open contour nodes
-	for (auto& oc: t1.open_contours){
-		ret.open_contours.push_back(std::make_shared<Contour>(HMCont2D::Contour::Simplified(*oc)));
-	}
-	ret.ReloadEdges();
+	ret.data = et.data;
+	ret.nodes = et.nodes;
 	return ret;
 }
 
@@ -204,29 +157,17 @@ void ExtendedTree::AddContour(shared_ptr<Contour>& c){
 	else AddOpenContour(c);
 }
 
+void ExtendedTree::AddContour(const Contour& c){
+	if (c.is_closed()) ContourTree::AddContour(c);
+	else {
+		auto sp = std::make_shared<Contour>(c);
+		AddOpenContour(sp);
+	}
+}
+
 void ExtendedTree::AddOpenContour(shared_ptr<Contour>& c){
 	open_contours.push_back(c);
 	Unite(*c);
-}
-
-ExtendedTree ExtendedTree::Assemble(const ECollection& col){
-	ExtendedTree ret;
-	auto ap = col.all_points();
-	std::set<Point*> unusedpnts(ap.begin(), ap.end());
-	//1) assemble all possible contours
-	ShpVector<Contour> conts;
-	while (unusedpnts.size() > 0){
-		Point* p1 = *unusedpnts.begin();
-		conts.push_back(
-			std::make_shared<Contour>(Contour::Assemble(col, p1))
-		);
-		for (Point* p: conts.back()->all_points()){
-			unusedpnts.erase(p);
-		}
-	}
-	//2) add'em
-	std::for_each(conts.begin(), conts.end(), [&ret](shared_ptr<Contour> a){ ret.AddContour(a); });
-	return ret;
 }
 
 Contour* ExtendedTree::get_contour(Point* p) const{
@@ -294,5 +235,47 @@ Contour* ExtendedTree::get_contour(int i) const{
 	}
 }
 
+void ContourTree::SaveVtk(const ContourTree& ct, const char* fn){
+	auto et = AsExtended(ct);
+	ExtendedTree::SaveVtk(et, fn);
+}
 
+void ExtendedTree::SaveVtk(const ExtendedTree& ct, const char* fn){
+	//save basic collection
+	ECollection::SaveVtk(ct, fn);
+	//set contours ids, local edge indicies
+	vector<int> cont_ids(ct.data.size(), -1);
+	vector<int> loc_ids(ct.data.size(), -1);
+	//closed contours
+	int ind = 0;
+	for (auto cont: ct.nodes){
+		auto locind = 0;
+		for (auto e: *cont){
+			int gind = ct.get_index(e.get());
+			cont_ids[gind] = ind;
+			loc_ids[gind] = locind++;
+		}
+		++ind;
+	}
+	//open contours
+	for (auto cont: ct.open_contours){
+		auto locind = 0;
+		for (auto e: *cont){
+			int gind = ct.get_index(e.get());
+			cont_ids[gind] = ind;
+			loc_ids[gind] = locind++;
+		}
+		++ind;
+	}
+	
+	//write to file
+	std::ofstream of(fn, std::ios::app);
+	of<<"CELL_DATA "<<cont_ids.size()<<std::endl;
+	of<<"SCALARS contour_id int 1"<<std::endl;
+	of<<"LOOKUP_TABLE default"<<std::endl;
+	for (auto i: cont_ids) of<<i<<std::endl;
+	of<<"SCALARS local_edge_index int 1"<<std::endl;
+	of<<"LOOKUP_TABLE default"<<std::endl;
+	for (auto i: loc_ids) of<<i<<std::endl;
 
+}

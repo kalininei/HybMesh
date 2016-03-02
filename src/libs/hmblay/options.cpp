@@ -121,7 +121,7 @@ void Options::Initialize(){
 	}
 
 	//assemble a tree -> find contour with pnt_start/end -> cut it
-	auto tree = Etree::Assemble(*edges);
+	auto tree = HMCont2D::Assembler::ETree(*edges);
 	HMCont2D::Contour* contour_in_tree = tree.get_contour(pnt_start);
 	assert(contour_in_tree != 0);
 	full_source = HMCont2D::Contour(*contour_in_tree);
@@ -136,7 +136,7 @@ void Options::Initialize(){
 	}
 
 	//assemble path
-	path = ECont::Assemble(full_source, pnt_start, pnt_end);
+	path = HMCont2D::Assembler::Contour1(full_source, pnt_start, pnt_end);
 	//all edges in path are directed according to global direction. May be usefull.
 	path.DirectEdges();
 	//if path has only 1 segment we need to implicitly define its direction

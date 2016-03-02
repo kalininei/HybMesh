@@ -21,17 +21,18 @@ ContourFromPoints(Iter first, Iter last, bool force_closed=false){
 	for (auto p = first; p!=last; ++p) pnt.push_back(*p);
 	return ContourFromPoints(pnt, force_closed);
 }
-
-
 HMCont2D::Container<Contour> ContourFromPoints(vector<double> pnt, bool force_closed=false);
 HMCont2D::Container<Contour> ContourFromPoints(vector<Point> pnt, bool force_closed=false);
 HMCont2D::Container<Contour> ContourFromBBox(BoundingBox bbox);
 
-//Contour from another contours with deep copy
+
+//Contour cut from another contours with deep copy
 HMCont2D::Container<Contour> CutContour(const HMCont2D::Contour& cont,
 		const Point& pstart, int direction, double len);
 HMCont2D::Container<Contour> CutContour(const HMCont2D::Contour& cont,
 		const Point& pstart, const Point& pend);
+HMCont2D::Container<Contour> CutContourByWeight(const Contour& source, double w1, double w2);
+HMCont2D::Container<Contour> CutContourByLen(const Contour& source, double len1, double len2);
 
 }};
 

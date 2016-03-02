@@ -99,8 +99,8 @@ MappedRect::Factory(HMCont2D::Contour& left, HMCont2D::Contour& right,
 	}
 
 	//2) cut left and right to size h since we need it
-	auto left2 = HMCont2D::Contour::CutByLen(left, 0, h);
-	auto right2 = HMCont2D::Contour::CutByLen(right, 0, h);
+	auto left2 = HMCont2D::Constructor::CutContourByLen(left, 0, h);
+	auto right2 = HMCont2D::Constructor::CutContourByLen(right, 0, h);
 	bool straight_left = left2.is_straight();
 	bool straight_right = right2.is_straight();
 	bool straight_bottom = bottom.is_straight();
@@ -125,7 +125,7 @@ MappedRect::Factory(HMCont2D::Contour& left, HMCont2D::Contour& right,
 	HMCont2D::Container<HMCont2D::Contour> top;
 	if (straight_left && straight_right &&
 			ISEQGREATER(an1, M_PI/2) && ISEQGREATER(an2, M_PI/2)){
-		auto ellipse = HMCont2D::Contour::Offset1(bottom, h);
+		auto ellipse = HMCont2D::Algos::Offset1(bottom, h);
 		auto pl = ellipse.GuaranteePoint(*left2.last(), ellipse.pdata);
 		auto pr = ellipse.GuaranteePoint(*right2.last(), ellipse.pdata);
 		top = HMCont2D::Constructor::CutContour(ellipse, *right2.last(), *left2.last());
@@ -139,13 +139,13 @@ MappedRect::Factory(HMCont2D::Contour& left, HMCont2D::Contour& right,
 	//6) try weighted geometric procedures
 	{
 		//central ellipse and central point
-		auto cellipse = HMCont2D::Contour::Offset1(bottom, h);
+		auto cellipse = HMCont2D::Algos::Offset1(bottom, h);
 		cellipse.ReallyReverse();
 		Point vecp1 = HMCont2D::Contour::WeightPoint(bottom, 0.5);
 		Point vecp2 = HMCont2D::Contour::WeightPoint(bottom, 0.51);
 		Vect v=vecp2-vecp1; vecSetLen(v, 100); v=vecRotate(v, M_PI/2);
 		auto perp = HMCont2D::Constructor::ContourFromPoints({vecp1, vecp1+v});
-		auto crres = HMCont2D::Contour::Cross(perp, cellipse);
+		auto crres = HMCont2D::Algos::Cross(perp, cellipse);
 		assert(std::get<0>(crres));
 		Point cpoint = std::get<1>(crres);
 		//get distances
@@ -156,7 +156,7 @@ MappedRect::Factory(HMCont2D::Contour& left, HMCont2D::Contour& right,
 		//weight from left
 		HMCont2D::Container<HMCont2D::Contour> top1;
 		if (!ISEQ(hleft, h)){
-			auto ellipse2 = HMCont2D::Contour::Offset1(bottom, hleft);
+			auto ellipse2 = HMCont2D::Algos::Offset1(bottom, hleft);
 			ellipse2.ReallyReverse();
 			top1 = ContoursWeight(ellipse2, *left2.last(),
 					cellipse, cpoint);
@@ -164,7 +164,7 @@ MappedRect::Factory(HMCont2D::Contour& left, HMCont2D::Contour& right,
 		//weight from right
 		HMCont2D::Container<HMCont2D::Contour> top2;
 		if (!ISEQ(hright, h)){
-			auto ellipse2 = HMCont2D::Contour::Offset1(bottom, hright);
+			auto ellipse2 = HMCont2D::Algos::Offset1(bottom, hright);
 			ellipse2.ReallyReverse();
 			top2 = ContoursWeight(cellipse, cpoint,
 					ellipse2, *right2.last());
@@ -186,11 +186,11 @@ GEOMETRY_RESULT_CHECK:
 	if (top.size() > 0){
 		//no crosses for bottom,
 		//cross at the end point for left, right
-		auto cr1 = HMCont2D::Contour::Cross(bottom, top);
+		auto cr1 = HMCont2D::Algos::Cross(bottom, top);
 		if (std::get<0>(cr1) == true) goto GEOMETRY_FAILED;
-		auto cr2 = HMCont2D::Contour::Cross(left2, top);
+		auto cr2 = HMCont2D::Algos::Cross(left2, top);
 		if (std::get<0>(cr2) && !ISEQ(std::get<2>(cr2), 1.0)) goto GEOMETRY_FAILED;
-		auto cr3 = HMCont2D::Contour::Cross(right2, top);
+		auto cr3 = HMCont2D::Algos::Cross(right2, top);
 		if (std::get<0>(cr3) && !ISEQ(std::get<2>(cr3), 1.0)) goto GEOMETRY_FAILED;
 		//all checks were passed
 		return Factory(left2, right2, bottom, top, use_rect_approx);
@@ -341,7 +341,7 @@ RectForClosedArea::RectForClosedArea(const HMCont2D::Contour& side, const HMCont
 shared_ptr<RectForClosedArea>
 RectForClosedArea::Build(const HMCont2D::Contour& bottom, const Point* pstart, double h){
 	HMCont2D::Container<HMCont2D::ContourTree> toptree =
-		HMCont2D::Contour::Offset(bottom, -h, HMCont2D::OffsetTp::CLOSED_POLY);
+		HMCont2D::Algos::Offset(bottom, -h, HMCont2D::OffsetTp::CLOSED_POLY);
 	//if failed to build single connected area -> do smth
 	if (toptree.cont_count() != 1) _THROW_NOT_IMP_;
 	auto top = *toptree.nodes[0];
@@ -349,7 +349,7 @@ RectForClosedArea::Build(const HMCont2D::Contour& bottom, const Point* pstart, d
 	//find point on a cross between normal from bottom.first() and top contour
 	//and set it as a start point for top
 	auto gp = top.GuaranteePoint(*bottom.first(), toptree.pdata);
-	auto top2 = HMCont2D::Contour::Assemble(top, std::get<1>(gp), std::get<1>(gp));
+	auto top2 = HMCont2D::Assembler::Contour1(top, std::get<1>(gp), std::get<1>(gp));
 	//all 4 contours were set. call main routine
 	return Build(bottom, top2);
 }

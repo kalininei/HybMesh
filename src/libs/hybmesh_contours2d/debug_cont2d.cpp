@@ -133,7 +133,7 @@ void Debug::geogebra_etree(const ExtendedTree& c){
 }
 
 void Debug::geogebra_ecollection(const ECollection& ecol){
-	auto etree = HMCont2D::ExtendedTree::Assemble(ecol);
+	auto etree = HMCont2D::Assembler::ETree(ecol);
 	geogebra_etree(etree);
 }
 

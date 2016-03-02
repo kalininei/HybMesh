@@ -165,8 +165,8 @@ void test05(){
 		GridPoint* gp2 = static_cast<GridPoint*>(HMCont2D::ECollection::FindClosestNode(cont, p2));
 		GridPoint* gp3 = static_cast<GridPoint*>(HMCont2D::ECollection::FindClosestNode(cont, p3));
 		GridPoint* gp4 = static_cast<GridPoint*>(HMCont2D::ECollection::FindClosestNode(cont, p4));
-		auto contbot = HMCont2D::Contour::Assemble(cont, gp1, gp2);
-		auto conttop = HMCont2D::Contour::Assemble(cont, gp3, gp4);
+		auto contbot = HMCont2D::Assembler::Contour1(cont, gp1, gp2);
+		auto conttop = HMCont2D::Assembler::Contour1(cont, gp3, gp4);
 
 		auto p = HMFem::LaplasProblem(g);
 		p.SetDirichlet(contbot, [](const GridPoint* p){ return 1.0; });

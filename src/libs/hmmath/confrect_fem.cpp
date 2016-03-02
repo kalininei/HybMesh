@@ -78,10 +78,10 @@ void ToRect::BuildGrid(const vector<Point>& path, int i1, int i2, int i3, double
 	HMCont2D::Contour c = GGeom::Info::Contour1(*grid);
 	origs = GetGridIndicies(path, c.ordered_points());
 	//3) build orig contours
-	auto left = HMCont2D::Contour::Assemble(c, grid->get_point(origs[0]), grid->get_point(origs[i1]));
-	auto bottom = HMCont2D::Contour::Assemble(c, grid->get_point(origs[i1]), grid->get_point(origs[i2]));
-	auto right = HMCont2D::Contour::Assemble(c, grid->get_point(origs[i2]), grid->get_point(origs[i3]));
-	auto top = HMCont2D::Contour::Assemble(c, grid->get_point(origs[i3]), grid->get_point(origs[0]));
+	auto left = HMCont2D::Assembler::Contour1(c, grid->get_point(origs[0]), grid->get_point(origs[i1]));
+	auto bottom = HMCont2D::Assembler::Contour1(c, grid->get_point(origs[i1]), grid->get_point(origs[i2]));
+	auto right = HMCont2D::Assembler::Contour1(c, grid->get_point(origs[i2]), grid->get_point(origs[i3]));
+	auto top = HMCont2D::Assembler::Contour1(c, grid->get_point(origs[i3]), grid->get_point(origs[0]));
 	ileft = GetGridIndicies(left.ordered_points());
 	iright = GetGridIndicies(right.ordered_points());
 	itop = GetGridIndicies(top.ordered_points());
@@ -283,7 +283,7 @@ HMCont2D::Container<HMCont2D::Contour> ToAnnulus::SteepestDescentUCurve(){
 	auto cont = HMCont2D::Constructor::ContourFromPoints(ret);
 	//if last point lies outside outerc cut cont
 	if (outerc.IsWithout(ret.back())){
-		auto cr = HMCont2D::Contour::Cross(outerc, cont);
+		auto cr = HMCont2D::Algos::Cross(outerc, cont);
 		*(cont.last()) = std::get<1>(cr);
 	}
 	//if distance beween last point and one before last is very short

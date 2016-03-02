@@ -13,6 +13,7 @@ set (HEADERS
 	debug_cont2d.hpp
 	gpc_core.hpp
 	cont_assembler.hpp
+	algos.hpp
 )
 
 set (SOURCES
@@ -26,6 +27,7 @@ set (SOURCES
 	debug_cont2d.cpp
 	gpc_core.cpp
 	cont_assembler.cpp
+	algos.cpp
 )
 
 source_group ("Header Files" FILES ${HEADERS} ${HEADERS})

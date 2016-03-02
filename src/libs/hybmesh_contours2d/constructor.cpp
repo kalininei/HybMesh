@@ -77,8 +77,9 @@ Container<Contour> cns::CutContour(const HMCont2D::Contour& cont,
 	vector<Point*> op = cont.ordered_points();
 	auto fnd = std::find_if(op.begin(), op.end(), [&pstart](Point* p){return pstart == *p;});
 	if (fnd != op.end()){
-		Contour c2 = Contour::Assemble(cont, *fnd, direction, len);
+		Contour c2 = Assembler::Contour1(cont, *fnd, direction, len);
 		Container<Contour>::DeepCopy(c2, ret);
+		if (*ret.first() != pstart) ret.ReallyReverse();
 		return ret;
 	}
 	//if not-> place point and try once again
@@ -87,16 +88,24 @@ Container<Contour> cns::CutContour(const HMCont2D::Contour& cont,
 	return cns::CutContour(c2, pstart, direction, len);
 }
 
-HMCont2D::Container<Contour> cns::CutContour(const HMCont2D::Contour& cont,
+Container<Contour> cns::CutContour(const HMCont2D::Contour& cont,
 		const Point& pstart, const Point& pend){
 	PCollection tmpp;
 	Contour tmpc = cont;
 	auto p1 = std::get<1>(tmpc.GuaranteePoint(pstart, tmpp));
 	auto p2 = std::get<1>(tmpc.GuaranteePoint(pend, tmpp));
-	tmpc = Contour::Assemble(tmpc, p1, p2);
+	tmpc = Assembler::Contour1(tmpc, p1, p2);
 	Container<Contour> ret;
 	Container<Contour>::DeepCopy(tmpc, ret);
+	if (*ret.first() != *p1) ret.ReallyReverse();
 	return ret;
 }
 
-
+Container<Contour> cns::CutContourByWeight(const Contour& source, double w1, double w2){
+	PCollection wp = Contour::WeightPoints(source, {w1, w2});
+	return CutContour(source, wp.value(0), wp.value(1));
+}
+Container<Contour> cns::CutContourByLen(const Contour& source, double len1, double len2){
+	double len = source.length();
+	return CutContourByWeight(source, len1/len, len2/len);
+}

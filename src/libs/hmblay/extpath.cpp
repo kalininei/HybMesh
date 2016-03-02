@@ -18,8 +18,8 @@ void PathPntData::fill(Point* p1, Point* p2, Point* p3){
 //smoothing takes place with length = HCOEF * (boundary depth)
 const double HCOEF = 2.1;
 void PathPntData::set_smooth_angle(double smooth_len){
-	Vect direct1 = HMCont2D::Contour::SmoothedDirection(*opt->get_full_source(), p,  1, HCOEF*smooth_len);
-	Vect direct2 = HMCont2D::Contour::SmoothedDirection(*opt->get_full_source(), p, -1, HCOEF*smooth_len);
+	Vect direct1 = HMCont2D::Algos::SmoothedDirection(*opt->get_full_source(), p,  1, HCOEF*smooth_len);
+	Vect direct2 = HMCont2D::Algos::SmoothedDirection(*opt->get_full_source(), p, -1, HCOEF*smooth_len);
 	angle = Angle(direct2, Point(0,0), direct1);
 	bool negl = tp != CornerTp::STRAIGHT;
 	tp = opt->CornerType(angle);
@@ -146,7 +146,7 @@ void ExtPath::FillEndConditions(bool calc_tps){
 
 void ExtPath::PerpendicularStart(double a){
 	double h1 = ext_data[0].opt->partition.back();
-	Vect v = HMCont2D::Contour::SmoothedDirection(*full_source, first(), 1, HCOEF*h1);
+	Vect v = HMCont2D::Algos::SmoothedDirection(*full_source, first(), 1, HCOEF*h1);
 	//this is infinite since we use normalized geometry
 	v = vecRotate(v*100.0, a);
 	auto c = HMCont2D::Constructor::ContourFromPoints({*first(), *first()+v});
@@ -156,7 +156,7 @@ void ExtPath::PerpendicularStart(double a){
 
 void ExtPath::PerpendicularEnd(double a){
 	double h1 = ext_data.back().opt->partition.back();
-	Vect v = HMCont2D::Contour::SmoothedDirection(*full_source, last(), -1, HCOEF*h1);
+	Vect v = HMCont2D::Algos::SmoothedDirection(*full_source, last(), -1, HCOEF*h1);
 	//this is infinite since we use normalized geometry
 	v = vecRotate(v*100.0, 2*M_PI-a);
 	auto c = HMCont2D::Constructor::ContourFromPoints({*last(), *last()+v});
@@ -284,13 +284,13 @@ HMCont2D::Contour ExtPath::Partition(HMCont2D::PCollection& apoints) const{
 		case BndStepMethod::NO_BND_STEPPING:
 			return *this;
 		case BndStepMethod::CONST_BND_STEP:
-			return HMCont2D::Contour::Partition(opt.bnd_step, *this,
+			return HMCont2D::Algos::Partition(opt.bnd_step, *this,
 					apoints, HMCont2D::PartitionTp::IGNORE_ALL);
 		case BndStepMethod::CONST_BND_STEP_KEEP_SHAPE:
-			return HMCont2D::Contour::Partition(opt.bnd_step, *this,
+			return HMCont2D::Algos::Partition(opt.bnd_step, *this,
 					apoints, HMCont2D::PartitionTp::KEEP_SHAPE);
 		case BndStepMethod::CONST_BND_STEP_KEEP_ALL:
-			return HMCont2D::Contour::Partition(opt.bnd_step, *this,
+			return HMCont2D::Algos::Partition(opt.bnd_step, *this,
 					apoints, HMCont2D::PartitionTp::KEEP_ALL);
 		case BndStepMethod::INCREMENTAL:{
 			double wstart = std::get<1>(opt.get_full_source()->coord_at(*first()));
@@ -308,7 +308,7 @@ HMCont2D::Contour ExtPath::Partition(HMCont2D::PCollection& apoints) const{
 			b1/=(w2-w1); b2/=(w2-w1);
 			std::map<double, double> wbas;
 			wbas[0] = b1; wbas[1] = b2;
-			return HMCont2D::Contour::WeightedPartition(wbas, *this,
+			return HMCont2D::Algos::WeightedPartition(wbas, *this,
 					apoints, HMCont2D::PartitionTp::IGNORE_ALL);
 		}
 		default:
@@ -341,7 +341,7 @@ vector<ExtPath> ExtPath::DivideByBndPart(const ExtPath& pth){
 }
 
 ExtPath ExtPath::SubPath(const Point* p1, const Point* p2) const{
-	HMCont2D::Contour c = HMCont2D::Contour::Assemble(*this, p1, p2);
+	HMCont2D::Contour c = HMCont2D::Assembler::Contour1(*this, p1, p2);
 	ExtPath ret;
 	ret.Unite(c);
 	auto orig_pts = ordered_points();

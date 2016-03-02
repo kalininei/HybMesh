@@ -5,6 +5,8 @@
 #include "contour.hpp"
 
 namespace HMCont2D{
+struct ContourTree;
+struct ExtendedTree;
 
 // ============== Tree: set of non-overlapping contours
 struct ContourTree: public ECollection {
@@ -35,7 +37,7 @@ struct ContourTree: public ECollection {
 
 	//Methods
 	virtual void AddContour(shared_ptr<Contour>& c);
-	void AddContour(const Contour& c);
+	virtual void AddContour(const Contour& c);
 	virtual void RemovePoints(const vector<const Point*>& p);
 
 	//Returns true if point lies strictly within/without closed contour
@@ -51,13 +53,10 @@ struct ContourTree: public ECollection {
 
 	//Algos
 	static double Area(const ContourTree& c);
-	
-	//returns true if c1 and c2 have common area (not a point, but may be an edge)
-	static bool DoIntersect(const ContourTree& t1, const Contour& c2);
-
-	//remove points which lie on the same edge
-	//removes zero length edges from all contours
-	static ContourTree Simplified(const ContourTree& t1);
+	//build an extended tree with 0 open contours
+	static ExtendedTree AsExtended(const ContourTree& et);
+	//vtk save
+	static void SaveVtk(const ContourTree& ct, const char* fn);
 
 	//If tree is ok returns true.
 	//contacts are allowed
@@ -77,15 +76,15 @@ struct ExtendedTree: public ContourTree {
 	
 	//Methods
 	void AddContour(shared_ptr<Contour>& c) override;
+	void AddContour(const Contour& c) override;
 	void AddOpenContour(shared_ptr<Contour>& c);
 	void RemovePoints(const vector<const Point*>& p) override;
-	
 	void ReloadEdges() override;
 
 	//Algos
-	static ExtendedTree Simplified(const ExtendedTree& t1);
-	static ExtendedTree Assemble(const ECollection&);
 	static ContourTree ExtractTree(const ExtendedTree& et){ return ContourTree(et); }
+	//vtk save
+	static void SaveVtk(const ExtendedTree& ct, const char* fn);
 };
 
 

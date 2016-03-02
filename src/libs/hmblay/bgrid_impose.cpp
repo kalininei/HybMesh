@@ -126,7 +126,7 @@ bool CellsIntersect(const Cell* c1, const Cell* c2, const BGrid& grid1){
 	auto tcont2 = Cell2Cont(c2);
 	auto cont1 = WidenCellCont(tcont1);
 	auto cont2 = WidenCellCont(tcont2);
-	return HMCont2D::Contour::DoIntersect(cont1, cont2);
+	return HMCont2D::Algos::DoIntersect(cont1, cont2);
 }
 
 shared_ptr<BGrid> GridFromCells(shared_ptr<BGrid> grid, const std::list<const Cell*>& cells){
@@ -163,7 +163,7 @@ AreaFromCells(const std::list<const Cell*>& plus, const std::list<const Cell*>& 
 void TriAreaModify(HMCont2D::Container<HMCont2D::ContourTree>& tree, const BGrid& og){
 	//1) simplify
 	for (auto& n: tree.nodes){
-		HMCont2D::Contour simp = HMCont2D::Contour::Simplified(*n);
+		HMCont2D::Contour simp = HMCont2D::Algos::Simplified(*n);
 		if (simp.size() == n->size()) continue;
 		n->data = simp.data;
 	}
@@ -295,11 +295,11 @@ const HMCont2D::Contour* ClosedSource(const HMCont2D::Contour* src, const BGrid*
 		Point w2 = Point::Weigh(p1, p2, 0.98);
 		HMCont2D::Contour wcont; wcont.add_value(HMCont2D::Edge(&w1, &w2));
 		//check cross with a source lint
-		auto cres = HMCont2D::Contour::Cross(wcont, *closedsrc);
+		auto cres = HMCont2D::Algos::Cross(wcont, *closedsrc);
 		if (std::get<0>(cres)) return false;
 		//looping only over parent contours
 		for (auto p: ar.roots()){
-			auto cres = HMCont2D::Contour::Cross(wcont, *p);
+			auto cres = HMCont2D::Algos::Cross(wcont, *p);
 			if (std::get<0>(cres)) return false;
 		}
 		return true;
@@ -324,7 +324,7 @@ const HMCont2D::Contour* ClosedSource(const HMCont2D::Contour* src, const BGrid*
 			if (goodline(src, p2)){
 				//find intersection of square and (src, p2) line
 				auto linecont = HMCont2D::Constructor::ContourFromPoints({src, p2});
-				auto crossres = HMCont2D::Contour::Cross(sqrcont, linecont);
+				auto crossres = HMCont2D::Algos::Cross(sqrcont, linecont);
 				return shared_ptr<Point>(new Point(std::get<1>(crossres)));
 			}
 		}

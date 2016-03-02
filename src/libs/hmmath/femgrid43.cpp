@@ -218,7 +218,7 @@ Grid43::IsolineBuilder::FromPoint(Point pstart, const vector<double>& fun) const
 	for (int i=0; i<grid->n_cells(); ++i)
 		AddLine(grid->get_cell(i), edges, points, value, fun);
 	//collect into contours
-	auto et = HMCont2D::ExtendedTree::Assemble(edges);
+	auto et = HMCont2D::Assembler::ETree(edges);
 	//choose contour which passes pstart
 	HMCont2D::Contour* cnt;
 	if (et.cont_count() == 1) cnt = et.get_contour(0);

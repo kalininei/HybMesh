@@ -337,7 +337,7 @@ void test07(){
 	HMCont2D::PCollection apoints;
 	apoints.add_value(Point(-3, -7));
 	apoints.add_value(Point(4, -7));
-	HMCont2D::Contour con1 = HMCont2D::Contour::Assemble(c1,
+	HMCont2D::Contour con1 = HMCont2D::Assembler::Contour1(c1,
 			HMCont2D::ECollection::FindClosestNode(c1, Point(3,0)),
 			HMCont2D::ECollection::FindClosestNode(c1, Point(-3,0)));
 	con1.add_value(HMCont2D::Edge(con1.last(), apoints.point(0)));
@@ -366,7 +366,7 @@ void test08(){
 	auto c1 = HMCont2D::Constructor::Circle(36, 3, Point(0, 0));
 	HMCont2D::PCollection apoints;
 	apoints.add_value(Point(3, -3));
-	HMCont2D::Contour con1 = HMCont2D::Contour::Assemble(c1,
+	HMCont2D::Contour con1 = HMCont2D::Assembler::Contour1(c1,
 			HMCont2D::ECollection::FindClosestNode(c1, Point(3,0)),
 			HMCont2D::ECollection::FindClosestNode(c1, Point(0,-3)));
 	con1.add_value(HMCont2D::Edge(con1.last(), apoints.point(0)));

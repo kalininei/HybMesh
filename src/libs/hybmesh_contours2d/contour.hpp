@@ -2,7 +2,6 @@
 #define HMCONT2D_CONTOUR_HPP
 #include "collections.hpp"
 #include "containers.hpp"
-#include "algos.hpp"
 
 namespace HMCont2D{
 
@@ -112,22 +111,7 @@ struct Contour: public ECollection{
 	//Direction is not considered
 	Point InnerPoint() const;
 
-
 	// ======= Algorithms
-	//calculates vector representing direction of contour at point p smoother by lengh len
-	//if p doesn't lie on c -> project it to c and calculate
-	static Vect SmoothedDirection(const Contour& c, Point* p, int direction, double len);
-
-	//finds first cross (with respect to length of c1) of contours c1, c2.
-	//returns <0>: if cross was found
-	//        <1>: cross point
-	//        <2,3>: normalized length coordinate of intersection
-	static std::tuple<bool, Point, double, double> 
-	Cross(const Contour& c1, const Contour& c2);
-		
-	static vector<std::tuple<bool, Point, double, double>>
-	CrossAll(const Contour& c1, const Contour& c2);
-
 	//positive/negative value for inner/outer contours
 	static double Area(const Contour& c);
 
@@ -147,71 +131,6 @@ struct Contour: public ECollection{
 	//first is 0, last is always 1.
 	static vector<double> EWeights(const Contour& c);
 
-	//Offset
-	//takes into account direction of source and sign of delta: all positives -> offsets to
-	//the left
-	static Container<ContourTree> Offset(const Contour& source, double delta, OffsetTp tp);
-	//forces singly connected output contour. tp = CLOSED_POLY or OPEN_ROUND
-	static Container<Contour> Offset1(const Contour& source, double delta);
-	//Cut contour
-	static Container<Contour> CutByWeight(const Contour& source, double w1, double w2);
-	static Container<Contour> CutByLen(const Contour& source, double len1, double len2);
-
-	//Assemble from shattered edges
-	static Contour Assemble(const ECollection& col, const Point* pnt_start, const Point* pnt_end);
-	static Contour Assemble(const ECollection& col, const Point* pnt_start);
-	//Assemble from another contour
-	static Contour Assemble(const Contour& col, const Point* pnt_start, const Point* pnt_end);
-	//assemles for pnt_start in the direction (+-1) til the length of
-	//resulting contour will be more then len
-	static Contour Assemble(const Contour& col, const Point* pnt_start, int direction, double len);
-
-	//remove points which lie on the same edge
-	//removes zero length edges
-	static Contour Simplified(const Contour& cont);
-
-
-	//Partition contour.
-	//step - step of partitioning
-	//pstore - point collection where to put new generated points with defined ShpGenerator
-	//tp: keep all old points/keep only shaped points/ignore all old points except end points
-	static Contour Partition(double step, const Contour& contour, PCollection& pstore, PartitionTp tp);
-
-	//make a partition keeping points defined in keepit
-	static Contour Partition(double step, const Contour& contour, PCollection& pstore,
-			const std::vector<Point*>& keepit = {});
-
-	//partition step will be calculated according to basis --
-	//	contour weight in [0,1]: required partition size
-	static Contour WeightedPartition(const std::map<double, double>& basis,
-			const Contour& contour, PCollection& pstore, PartitionTp tp);
-	static Contour WeightedPartition(const std::map<double, double>& basis,
-			const Contour& contour, PCollection& pstore,
-			const std::vector<Point*>& keepit = {});
-	
-	//returns true if c1 and c2 have common area (not a point, but may be an edge)
-	static bool DoIntersect(const Contour& c1, const Contour& c2);
-	//returns true if c1 and c2 have common area (not a point, not an edge)
-	//is not realiable if  Area(c1) >> Area(c2) 
-	static bool DoReallyIntersect(const Contour& c1, const Contour& c2);
-
-	//this can be called with Container<Contour> object.
-	template<class TContainer,
-		class = Tpp::IsBase<Contour, typename TContainer::TParent>>
-	static TContainer Partition(double step, const TContainer& container, PartitionTp tp){
-		PCollection pc;
-		auto x = Partition(step, container, pc, tp);
-		TContainer ret;
-		TContainer::DeepCopy(x, ret);
-		return ret;
-	}
-
-	template<class TContainer,
-		class = Tpp::IsBase<Contour, typename TContainer::TParent>>
-	static TContainer Partition(double step, const TContainer& container,
-			const vector<Point*>& keepit = {}){
-		return Partition(step, container, container.pdata, keepit);
-	}
 };
 
 

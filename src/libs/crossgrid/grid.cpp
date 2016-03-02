@@ -429,9 +429,9 @@ vector<Point> intersection_points(const GridGeom& gmain, const GridGeom& gsec){
 	//to exclude cases when intersection point is not actual after crossing
 	vector<Point> ret;
 	auto cmain = GGeom::Info::Contour(gmain);
-	auto simp_main = HMCont2D::ContourTree::Simplified(cmain);
+	auto simp_main = HMCont2D::Algos::Simplified(cmain);
 	auto csec = GGeom::Info::Contour(gsec);
-	auto simp_sec = HMCont2D::ContourTree::Simplified(csec);
+	auto simp_sec = HMCont2D::Algos::Simplified(csec);
 	auto cross = HMCont2D::Clip::Difference(simp_main, simp_sec);
 	HMCont2D::Clip::Heal(cross);
 	auto bbox1 = HMCont2D::ECollection::BBox(simp_sec, geps);
