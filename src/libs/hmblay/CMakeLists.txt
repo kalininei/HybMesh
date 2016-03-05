@@ -8,6 +8,7 @@ set (HEADERS
 	extpath.hpp
 	canonic_bgrid.hpp
 	bgrid_impose.hpp
+	hmblay_debug.hpp
 )
 
 set (SOURCES
@@ -18,6 +19,7 @@ set (SOURCES
 	extpath.cpp
 	canonic_bgrid.cpp
 	bgrid_impose.cpp
+	hmblay_debug.cpp
 )
 
 source_group ("Header Files" FILES ${HEADERS} ${HEADERS})

@@ -1,5 +1,5 @@
 from hybmeshpack import hmscript as hm
-hm.check_compatibility("0.2.1")
+hm.check_compatibility("0.2.1", 2)
 
 
 def check(cond):
@@ -48,7 +48,7 @@ g5 = hm.add_unf_rect_grid([10, 10], [11, 11], 30, 30)
 hm.move_geom(g5, -0.05, -0.05)
 hm.set_boundary_type(g4, 3)
 hm.set_boundary_type(g5, bfun=lambda x0, y0, x1, y1, b:
-                        1 if y0 < 10.8 else 2)
+                     1 if y0 < 10.8 else 2)
 hm.export_grid_vtk(g4, "g4.vtk")
 hm.export_grid_vtk(g5, "g5.vtk")
 hm.export_contour_vtk(g5, "gc5.vtk")
@@ -93,3 +93,21 @@ g16 = hm.add_unf_rect_grid([-1, -2], [1, -1], 10, 10)
 g17 = hm.add_unf_rect_grid([-0.7, -3], [0.3, -2], 20, 20)
 g18 = hm.unite_grids(g15, [(g16, 0.3), (g17, 0.3)], fix_bnd=True)
 check(hm.skewness(g18)['ok'] and hm.info_grid(g18)['cell_types'][4] == 540)
+hm.remove_all()
+
+print "examples for documentation/functionality"
+g1 = hm.add_unf_rect_grid([0, 0], [1, 1], 10, 10)
+g2 = hm.add_unf_rect_grid([0.7, 0.7], [1.3, 1.7], 20, 30)
+hm.set_boundary_type(g1, 1)
+hm.set_boundary_type(g1, 2)
+g3 = hm.unite_grids(g1, [(g2, 0.15)])
+g4 = hm.unite_grids(g2, [(g1, 0.15)])
+# hm.export_contour_vtk(g1, "c1.vtk")
+# hm.export_grid_vtk(g1, "g1.vtk")
+# hm.export_contour_vtk(g2, "c2.vtk")
+# hm.export_grid_vtk(g2, "g2.vtk")
+# hm.export_contour_vtk(g3, "c3.vtk")
+# hm.export_contour_vtk(g4, "c4.vtk")
+# hm.export_grid_vtk(g3, "g3.vtk")
+# hm.export_grid_vtk(g4, "g4.vtk")
+check(hm.skewness(g3)['ok'] and hm.skewness(g4)['ok'])

@@ -94,6 +94,8 @@ static BoundingBox BBox(const GridGeom& grid, double eps=geps);
 static vector<double> Skewness(const GridGeom& grid);
 //calculates area as the sum of all cells areas
 static double Area(const GridGeom& grid);
+//gets cells areas as vector
+static vector<double> CellAreas(const GridGeom& grid);
 
 //Finders
 class CellFinder{

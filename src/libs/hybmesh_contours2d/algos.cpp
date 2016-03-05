@@ -394,3 +394,40 @@ Vect cns::SmoothedDirection(const Contour& c, Point* p, int direction, double le
 	return smoothed_direction_core(chosen);
 }
 
+namespace{
+Point smoothed_direction_step(const HMCont2D::Contour& c, double w0, double w_step){
+	double w = w0+w_step;
+	//adjust w_step
+	if (w > 1.0){
+		if (!c.is_closed()) return *c.last();
+		while (w>1) w -= 1.0;
+	}
+	return HMCont2D::Contour::WeightPoint(c, w);
+}
+}
+Vect cns::SmoothedDirection2(const Contour& c, const Point *p, int direction, double len_forward, double len_backward){
+	//preliminary simplification
+	auto cont = HMCont2D::Algos::Simplified(c);
+	//descrease lens to half of contour lengths
+	double full_len = cont.length();
+	if (len_forward > full_len/2) len_forward = full_len/2;
+	if (len_backward > full_len/2) len_backward = full_len/2;
+	//find points
+	double pw = std::get<1>(cont.coord_at(*p));
+	Point p1 = smoothed_direction_step(cont, pw, len_forward/full_len);
+	cont.ReallyReverse();
+	Point p2 = smoothed_direction_step(cont, 1 - pw, len_backward/full_len);
+	
+	//return zero if all lengths are 0
+	if (p1 == p2 && p1 == *p) return Vect(0, 0);
+
+	Vect ret;
+	if (p1 != p2) ret = p1 - p2;
+	else{
+		ret = p1 - *p;
+		vecRotate(ret, -M_PI/2);
+	}
+	if (direction == -1) ret *= -1;
+	vecNormalize(ret);
+	return ret;
+}

@@ -63,7 +63,7 @@ of *imposed grid* are transfered to the resulting grid mostly untouched
 So, as you can see on the picture below, by swapping the grid roles we obtain different resulting grid geometry.
 
 .. figure:: grid_imposition1.png
-   :height: 400 px
+   :height: 600 px
 
    fig1. Basic imposition example
 

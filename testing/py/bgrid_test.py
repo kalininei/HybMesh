@@ -83,7 +83,8 @@ while angle < end:
     if (angle == 30):
         check_zero(hm.domain_area(grid) - 0.0740306424)
     if (angle == 40):
-        check_zero(hm.domain_area(grid) - 0.0756043636)
+        # check_zero(hm.domain_area(grid) - 0.0756043636)
+        check_zero(hm.domain_area(grid) - 0.0705479267)
     if (angle == 90):
         check_zero(hm.domain_area(grid) - 0.0784)
     if (angle == 190):

@@ -381,18 +381,26 @@ void test08(){
 	inp1.edges = &con1;
 
 	GridGeom Ans1 = HMBlay::BuildBLayerGrid({inp1});
-	add_check(Ans1.n_points() == 565 && Ans1.n_cells() == 452, "Mesh inner");
+	save_vtk(Ans1, "t8_1.vtk");
+	auto sz1 = GGeom::Info::CellAreas(Ans1);
+	double minsz1 = *std::min_element(sz1.begin(), sz1.end());
+	double maxsz1 = *std::max_element(sz1.begin(), sz1.end());
+	add_check(Ans1.n_points() == 565 && Ans1.n_cells() == 452 &&
+			fabs(maxsz1 - 0.02)<1e-6 && fabs(minsz1 - 0.0004)<1e-6, "Mesh inner");
 
 	inp1.direction = HMBlay::DirectionFromString("OUTER");
 	GridGeom Ans2 = HMBlay::BuildBLayerGrid({inp1});
-	add_check(Ans2.n_points() == 575 && Ans2.n_cells() == 460, "Mesh outer");
-
-	save_vtk(Ans1, "t8_1.vtk");
 	save_vtk(Ans2, "t8_2.vtk");
+	auto sz2 = GGeom::Info::CellAreas(Ans2);
+	double minsz2 = *std::min_element(sz2.begin(), sz2.end());
+	double maxsz2 = *std::max_element(sz2.begin(), sz2.end());
+	add_check(Ans2.n_points() == 575 && Ans2.n_cells() == 460 && fabs(maxsz2 - 0.0209396)<1e-6 && fabs(minsz2 - 0.0004)<1e-6, "Mesh inner");
+
 }
 
 void test09(){
 	std::cout<<"09 Throw on crossing intervals"<<std::endl;
+	//TODO
 	//HMFem::Mat m;
 	//for (int i=0; i<100; ++i) m.set(i,i,1);
 	//for (int i=0; i<99; ++i) m.set(i, i+1, 0.3);
@@ -754,7 +762,6 @@ int main(){
 	//UNDONE:
 	//test15();
 	
-
 	if (FAILED_CHECKS ==1){
 		std::cout<<FAILED_CHECKS<<" test failed <<<<<<<<<<<<<<<<<<<"<<std::endl;
 	} else if (FAILED_CHECKS > 1) {

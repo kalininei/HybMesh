@@ -21,7 +21,7 @@ struct Contour: public ECollection{
 	//the last point for closed contours
 	//for open contours includes first and last points by default
 	vector<Point*> corner_points() const;
-	//same as corner_points but doubles end points for open contours
+	//same as corner_points but doubles end points for closed contours
 	vector<Point*> corner_points1() const;
 	//returns [point previous, point currant, point next]
 	//or NULLS if no such points

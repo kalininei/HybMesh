@@ -13,10 +13,14 @@ struct PathPntData{
 	PathPntData(Options* o):opt(o){}
 	CornerTp tp;
 	double angle;
+	Vect normal;
 	Options* opt;
 	Point* p;
 	void fill(Point*, Point*, Point*);
-	void set_smooth_angle(double smooth_len);
+	//fill normal, angle according to smoothed contour direction
+	//smooth length is calculated acoording to bgrid height
+	//if (redefine_types) sets tp = NEGLECTABLE if so
+	void set_smooth_angle(int dir, bool redefine_type);
 };
 
 //path with extended info
@@ -63,9 +67,9 @@ struct ExtPath: public HMCont2D::Contour{
 
 private:
 	//builds end perpendicular depending on full source contour
-	void FillEndConditions(bool calc_tps=false);
-	void PerpendicularStart(double angle=M_PI/2);
-	void PerpendicularEnd(double angle=M_PI/2);
+	void FillEndConditions();
+	void PerpendicularStart();
+	void PerpendicularEnd();
 
 	ExtPath SubPath(const Point* p1, const Point* p2) const;
 	ExtPath SubPath(double len1, double len2, HMCont2D::PCollection&) const;

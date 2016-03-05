@@ -435,6 +435,14 @@ double GGeom::Info::Area(const GridGeom& grid){
 	return grid.area();
 }
 
+vector<double> GGeom::Info::CellAreas(const GridGeom& grid){
+	vector<double> ret(grid.n_cells());
+	for (int i=0; i<grid.n_cells(); ++i){
+		ret[i] = grid.get_cell(i)->area();
+	}
+	return ret;
+}
+
 std::set<int> GGeom::Info::CellFinder::IndSet(const BoundingBox& bbox) const{
 	Point b0 = bbox.BottomLeft() - p0, b1 = bbox.TopRight() - p0;
 	int ix0 = std::floor(b0.x / Hx);

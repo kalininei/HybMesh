@@ -42,6 +42,10 @@ define info_ecollection
 	call HMCont2D::Debug::info_ecollection($arg0)
 end
 
+define info_extpath
+	call HMBlay::Debug::info_extpath($arg0)
+end
+
 define gg_contour
 	call HMCont2D::Debug::geogebra_contour($arg0)
 	if ($argc>1)

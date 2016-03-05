@@ -90,6 +90,15 @@ ExtendedTree Simplified(const ExtendedTree& t1);
 //if p doesn't lie on c -> project it to c and calculate
 Vect SmoothedDirection(const Contour& c, Point* p, int direction, double len);
 
+//Gives a vector defining a director of contour in given point p which should be amoung contour points.
+//direction = 1 -> consider contour as it is
+//direction = -1 -> revert contour before procedure
+//len_forward, len_backward - length of smoothing.
+//   *_forward and *_backward are steps along given contour direction
+//   before possible reversion due to `direction=-1` option.
+//result is a unit vector
+Vect SmoothedDirection2(const Contour& c, const Point* p, int direction, double len_forwad, double len_backward);
+
 
 }
 };

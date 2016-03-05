@@ -476,6 +476,15 @@ void test11(){
 	
 }
 
+void test12(){
+	std::cout<<"Contour smoothed direction"<<std::endl;
+	//auto cn1 = HMCont2D::Constructor::Circle(16, 1, Point(0, 0));
+	//auto vec1 = HMCont2D::Algos::SmoothedDirection(cn1, cn1.point(0), 1, 0.1);
+	//auto an1 = atan2(vec1.y, vec1.x)/M_PI*180;
+	//std::cout<<an1<<std::endl;
+
+}
+
 int main(){
 	std::cout<<"hybmesh_contours2d testing"<<std::endl;
 	if (hybmesh_contours2d_ping(1) == 2)
@@ -492,6 +501,7 @@ int main(){
 	test9();
 	test10();
 	test11();
+	test12();
 
 
 	if (FAILED_CHECKS == 1){

@@ -33,8 +33,9 @@ std::ostream& Debug::Cout(){
 
 void Debug::info_contour(const Contour& c){
 	Cout()<<"+++ Contour at "<<&c<<". "<<c.size()<<" edges. ";
-	if (c.is_closed()) std::cout<<"Closed. "<<"Area = "<<Contour::Area(c)<<std::endl;
-	else std::cout<<"Open."<<std::endl;
+	if (c.is_closed()) Cout()<<"Closed. "<<"Area = "<<Contour::Area(c)<<std::endl;
+	else Cout()<<"Open."<<std::endl;
+	Cout()<<"+++ Length = "<<c.length()<<std::endl;
 	int i = 0;
 	for (auto p: c.ordered_points()){
 		Print("Point %p:  (%10.6f, %10.6f)", p, p->x, p->y);
