@@ -1,5 +1,5 @@
 from hybmeshpack import com
-from hybmeshpack.hmscript import flow
+from hybmeshpack.hmscript import flow, data
 from hybmeshpack.basic.geom import Point2
 from . import ExecError
 
@@ -20,6 +20,23 @@ def remove_all():
     """ Completely removes all grids, contours and boundary types
     """
     flow.to_zero_state()
+
+
+def remove_all_but(objs):
+    """ Removes all geometry objects except for listed ones
+
+    Args:
+       objs: identifier or list of identifiers of objects
+       which should not be removed
+
+    """
+    if not isinstance(objs, list):
+        objs = [objs]
+
+    all_obj = data.get_grid_names()
+    all_obj.extend(data.get_ucontour_names())
+    all_obj = [x for x in all_obj if x not in objs]
+    remove_geom(all_obj)
 
 
 def move_geom(objs, dx, dy):
@@ -85,13 +102,32 @@ def copy_geom(objs):
         for s in objs:
             ret.append(copy_geom(s)[0])
         return ret
-    elif isinstance(objs, str):
-        c = com.objcom.CopyGeom({"names": [objs], "newnames": [objs]})
-        flow.exec_command(c)
-        if len(c._get_added_names()[0]) > 0:
-            return c._get_added_names()[0]
-        else:
-            return c._get_added_names()[1]
+
+    c = com.objcom.CopyGeom({"names": [objs], "newnames": [objs]})
+    flow.exec_command(c)
+    if len(c._get_added_names()[0]) > 0:
+        return c._get_added_names()[0]
+    else:
+        return c._get_added_names()[1]
+
+
+def reflect_geom(objs, pnt1, pnt2):
+    """ Makes a reflection of geometry objects
+    over a  given line.
+
+    Args:
+       objs: identifier or list of identifiers of objects to reflect
+
+       pnt1, pnt2: points in [x, y] format which define a line to reflect over
+
+    """
+    if not isinstance(objs, list):
+        ob = [objs]
+    else:
+        ob = objs
+    p1, p2 = Point2(*pnt1), Point2(*pnt2)
+    c = com.objcom.ReflectGeom({"names": ob, "p1": p1, "p2": p2})
+    flow.exec_command(c)
 
 
 def heal_grid(grid_id, simplify_boundary=30):

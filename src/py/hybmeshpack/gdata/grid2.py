@@ -44,6 +44,11 @@ class Grid2(bgeom.Point2SetStruct):
             contour2.GridContour2.copy_from_source(self, ret)
         return ret
 
+    def reflect(self, p1, p2):
+        """ overriden from Point2SetStruct """
+        super(Grid2, self).reflect(p1, p2)
+        self.cells = [c[::-1] for c in self.cells]
+
     @staticmethod
     def from_points_cells(npt, ncls, pts, cls):
         """ create grid from row points and cells->nodes
@@ -212,9 +217,9 @@ class Grid2(bgeom.Point2SetStruct):
         #basic implementation.
         ed_cl = self.edges_cells_connect()
         cand_pos = [(i, self.edges[i])
-                for i, e in enumerate(ed_cl) if e[1] < 0]
+                    for i, e in enumerate(ed_cl) if e[1] < 0]
         cand_neg = [(i, list(reversed(self.edges[i])))
-                for i, e in enumerate(ed_cl) if e[0] < 0]
+                    for i, e in enumerate(ed_cl) if e[0] < 0]
         cand = cand_pos + cand_neg
         ret = []
         while len(cand) > 0:
@@ -260,11 +265,11 @@ class Grid2(bgeom.Point2SetStruct):
     def _xml_write_edges(self, xmlnode):
         #points indicies
         ET.SubElement(xmlnode, "PTS_IND").text = \
-                " ".join(map(str, itertools.chain.from_iterable(self.edges)))
+            " ".join(map(str, itertools.chain.from_iterable(self.edges)))
         #cells connectivity
         ed_cl = self.edges_cells_connect()
         ET.SubElement(xmlnode, "CONNECT").text = \
-                " ".join(map(str, itertools.chain.from_iterable(ed_cl)))
+            " ".join(map(str, itertools.chain.from_iterable(ed_cl)))
 
     # ---- load from xml
     @classmethod
@@ -361,29 +366,21 @@ class TetragonGrid(Grid2):
         for j in range(0, self.Ny + 1):
             for i in range(0, self.Nx):
                 self.edges.append([self.get_point_index(i, j),
-                    self.get_point_index(i + 1, j)])
+                                   self.get_point_index(i + 1, j)])
 
         #vertical edges
         for j in range(0, self.Ny):
             for i in range(0, self.Nx + 1):
                 self.edges.append([self.get_point_index(i, j),
-                    self.get_point_index(i, j + 1)])
+                                   self.get_point_index(i, j + 1)])
 
         #cells
         for j in range(0, self.Ny):
             for i in range(0, self.Nx):
                 self.cells.append([self.get_hedge_index(i, j),
-                    self.get_vedge_index(i + 1, j),
-                    self.get_hedge_index(i, j + 1),
-                    self.get_vedge_index(i, j)])
-
-    def cells_nodes_connect(self):
-        ret = []
-        for j in range(self.Ny):
-            for i in range(self.Nx):
-                p = self.get_point_index(i, j)
-                ret.append([p, p + 1, p + 2 + self.Nx, p + self.Nx + 1])
-        return ret
+                                   self.get_vedge_index(i + 1, j),
+                                   self.get_hedge_index(i, j + 1),
+                                   self.get_vedge_index(i, j)])
 
     def get_point_index(self, i, j):
         return j * (self.Nx + 1) + i
@@ -396,23 +393,6 @@ class TetragonGrid(Grid2):
 
     def get_cell_index(self, i, j):
         return j * self.Nx + i
-
-    #write to xml
-    def _xml_write_nodes(self, xmlnode):
-        ET.SubElement(xmlnode, "DIM").text = str(self.Nx) + " " + str(self.Ny)
-        super(TetragonGrid, self)._xml_write_nodes(xmlnode)
-
-    def _xml_write_edges(self, xmlnode):
-        #no edges is needed since connectivity is postulated
-        pass
-
-    #read from xml
-    @classmethod
-    def _specific_create_from_xml(cls, xmlnode):
-        [Nx, Ny] = map(int, xmlnode.find("POINTS/DIM").text.split())
-        g = cls(Nx, Ny)
-        g._loadNodes(xmlnode.find("POINTS"))
-        return g
 
 
 class UnfRectGrid(TetragonGrid):
@@ -427,37 +407,6 @@ class UnfRectGrid(TetragonGrid):
             for i in range(0, nx + 1):
                 x = p0.x + i * hx
                 self.points.append(bgeom.Point2(x, y))
-
-        self.angle = 0.0
-
-    def rotate(self, x0, y0, angle):
-        self.angle += angle
-        super(UnfRectGrid, self).rotate(x0, y0, angle)
-
-    def _xml_write_nodes(self, xmlnode):
-        p0 = self.points[self.get_point_index(0, 0)]
-        p1 = self.points[self.get_point_index(self.Nx, 0)]
-        p2 = self.points[self.get_point_index(0, self.Ny)]
-        lx, ly = p0.dist(p1), p0.dist(p2)
-        p1 = bgeom.Point2(p0.x + lx, p0.y + ly)
-        ET.SubElement(xmlnode, "P0").text = str(p0)
-        ET.SubElement(xmlnode, "P1").text = str(p1)
-        ET.SubElement(xmlnode, "DIM").text = str(self.Nx) + " " + str(self.Ny)
-        ET.SubElement(xmlnode, "ANGLE").text = str(self.angle)
-
-    #read from xml
-    @classmethod
-    def _specific_create_from_xml(cls, xmlnode):
-        [Nx, Ny] = map(int, xmlnode.find("POINTS/DIM").text.split())
-        p0 = map(float, xmlnode.find("POINTS/P0").text.split())
-        p0 = bgeom.Point2(p0[0], p0[1])
-        p1 = map(float, xmlnode.find("POINTS/P1").text.split())
-        p1 = bgeom.Point2(p1[0], p1[1])
-        ret = cls(p0, p1, Nx, Ny)
-        an = xmlnode.find("POINTS/ANGLE")
-        if an is not None:
-            ret.rotate(p0.x, p0.y, float(an.text))
-        return ret
 
 
 # ============================= Circular structured grids
@@ -520,94 +469,35 @@ class CircularGrid(Grid2):
             for j in range(self.na):
                 jnext = (j + 1) % self.na
                 self.edges.append([self.node_index(i, j),
-                    self.node_index(i, jnext)])
+                                   self.node_index(i, jnext)])
         #radius edges
         for i in range(self.nr - 1):
             for j in range(self.na):
                 self.edges.append([self.node_index(i, j),
-                    self.node_index(i + 1, j)])
+                                   self.node_index(i + 1, j)])
         if self.is_trian:
             for j in range(self.na):
                 self.edges.append([self.node_index(self.nr - 1, j),
-                    self.na * self.nr])
+                                   self.na * self.nr])
         #--- cells
         del self.cells[:]
         for i in range(self.nr - 1):
             for j in range(self.na):
                 jnext = (j + 1) % self.na
                 self.cells.append([self.arch_edge_index(i, j),
-                    self.rad_edge_index(i, jnext),
-                    self.arch_edge_index(i + 1, j),
-                    self.rad_edge_index(i, j)])
+                                   self.rad_edge_index(i, jnext),
+                                   self.arch_edge_index(i + 1, j),
+                                   self.rad_edge_index(i, j)])
         if self.is_trian:
             i = self.nr - 1
             for j in range(self.na):
                 jnext = (j + 1) % self.na
                 self.cells.append([self.arch_edge_index(i, j),
-                    self.rad_edge_index(i, jnext),
-                    self.rad_edge_index(i, j)])
+                                   self.rad_edge_index(i, jnext),
+                                   self.rad_edge_index(i, j)])
         else:
             e = [self.arch_edge_index(self.nr - 1, j) for j in range(self.na)]
             self.cells.append(e)
-
-    def cells_nodes_connect(self):
-        ret = []
-        # general cells
-        for i in range(self.nr - 1):
-            for j in range(self.na):
-                jnext = (j + 1) % self.na
-                ret.append([self.node_index(i, j),
-                    self.node_index(i, jnext),
-                    self.node_index(i + 1, jnext),
-                    self.node_index(i + 1, j)])
-        if self.is_trian:
-            # inner triangles
-            for j in range(self.na):
-                jnext = (j + 1) % self.na
-                ret.append([self.node_index(self.nr - 1, j),
-                    self.node_index(self.nr - 1, jnext),
-                    self.n_points() - 1])
-        else:
-            # inner polygon
-            e = [self.node_index(self.nr - 1, j) for j in range(self.na)]
-            ret.append(e)
-
-        return ret
-
-    #write to xml
-    def _xml_write_nodes(self, xmlnode):
-        ET.SubElement(xmlnode, "DIM").text = str(self.na) + " " + str(self.nr)
-        super(CircularGrid, self)._xml_write_nodes(xmlnode)
-
-    def _xml_write_edges(self, xmlnode):
-        pass
-
-    #read from xml
-    @classmethod
-    def _specific_create_from_xml(cls, xmlnode):
-        [na, nr] = map(int, xmlnode.find("POINTS/DIM").text.split())
-        g = cls(na, nr)
-        g._loadNodes(xmlnode.find("POINTS"))
-        return g
-
-
-class _CircActions:
-    def __init__(self, aname, val):
-        self.aname = aname
-        self.val = val
-
-    def do(self, g):
-        if self.aname == "ROTATE":
-            g.rotate(g.p_center.x, g.p_center.y, self.val)
-        if self.aname == "SCALE":
-            g.scale(g.p_center, 100.0, 100.0 * self.val)
-
-    def toxml(self, nd):
-        ET.SubElement(nd, self.aname).text = str(self.val)
-
-    @staticmethod
-    def fromxml(nd):
-        return _CircActions(nd.tag, float(nd.text))
 
 
 class UnfCircGrid(CircularGrid):
@@ -629,68 +519,10 @@ class UnfCircGrid(CircularGrid):
             for j in range(self.na):
                 a = j * 2 * math.pi / self.na
                 p = bgeom.Point2(r * math.cos(a) + self.p_center.x,
-                        r * math.sin(a) + self.p_center.y)
+                                 r * math.sin(a) + self.p_center.y)
                 self.points.append(p)
         if self.is_trian:
             self.points.append(copy.deepcopy(self.p_center))
-
-    def move(self, dx, dy):
-        self.p_center.x += dx
-        self.p_center.y += dy
-        super(UnfCircGrid, self).move(dx, dy)
-
-    def rotate(self, x0, y0, angle):
-        [self.p_center] = bgeom.rotate_points([self.p_center], x0, y0, angle)
-
-        if len(self.acts) == 0 or self.acts[-1].aname != "ROTATE":
-            self.acts.append(_CircActions("ROTATE", angle))
-        else:
-            self.acts[-1].val += angle
-            if self.acts[-1].val == 0.0:
-                self.acts = self.acts[:-1]
-
-        super(UnfCircGrid, self).rotate(x0, y0, angle)
-
-    def scale(self, p0, xpc, ypc):
-        [self.p_center] = bgeom.scale_points([self.p_center], p0, xpc, ypc)
-        self.rad *= (xpc / 100.0)
-
-        if len(self.acts) == 0 or self.acts[-1].aname != "SCALE":
-            self.acts.append(_CircActions("SCALE", ypc / xpc))
-        else:
-            self.acts[-1].val *= ypc / xpc
-            if self.acts[-1].val == 1.0:
-                self.acts = self.acts[:-1]
-
-        super(UnfCircGrid, self).scale(p0, xpc, ypc)
-
-    def _xml_write_nodes(self, xmlnode):
-        ET.SubElement(xmlnode, "DIM").text = str(self.na) + " " + str(self.nr)
-        ET.SubElement(xmlnode, "CENTER").text = str(self.p_center)
-        ET.SubElement(xmlnode, "RADIUS").text = str(self.rad)
-        ET.SubElement(xmlnode, "RCOEF").text = str(self.coef)
-        if len(self.acts) > 0:
-            nd = ET.SubElement(xmlnode, "ACTIONS")
-            for a in self.acts:
-                a.toxml(nd)
-        if self.is_trian:
-            ET.SubElement(xmlnode, "IN_TRIAN")
-
-    #read from xml
-    @classmethod
-    def _specific_create_from_xml(cls, xmlnode):
-        [na, nr] = map(int, xmlnode.find("POINTS/DIM").text.split())
-        p0 = map(float, xmlnode.find("POINTS/CENTER").text.split())
-        p0 = bgeom.Point2(p0[0], p0[1])
-        rad = float(xmlnode.find("POINTS/RADIUS").text)
-        coef = float(xmlnode.find("POINTS/RCOEF").text)
-        is_trian = xmlnode.find("POINTS/IN_TRIAN") is not None
-        ret = cls(p0, rad, na, nr, coef, is_trian)
-        anode = xmlnode.findall("POINTS/ACTIONS/*")
-        for a in anode:
-            act = _CircActions.fromxml(a)
-            act.do(ret)
-        return ret
 
 
 class UnfRingGrid(CircularGrid):
@@ -715,71 +547,10 @@ class UnfRingGrid(CircularGrid):
             for j in range(self.na):
                 a = j * 2 * math.pi / self.na
                 p = bgeom.Point2(r * math.cos(a) + self.p_center.x,
-                        r * math.sin(a) + self.p_center.y)
+                                 r * math.sin(a) + self.p_center.y)
                 self.points.append(p)
         if self.is_trian:
             self.points.append(copy.deepcopy(self.p_center))
-
-    def move(self, dx, dy):
-        self.p_center.x += dx
-        self.p_center.y += dy
-        super(UnfRingGrid, self).move(dx, dy)
-
-    def rotate(self, x0, y0, angle):
-        [self.p_center] = bgeom.rotate_points([self.p_center], x0, y0, angle)
-
-        if len(self.acts) == 0 or self.acts[-1].aname != "ROTATE":
-            self.acts.append(_CircActions("ROTATE", angle))
-        else:
-            self.acts[-1].val += angle
-            if self.acts[-1].val == 0.0:
-                self.acts = self.acts[:-1]
-
-        super(UnfRingGrid, self).rotate(x0, y0, angle)
-
-    def scale(self, p0, xpc, ypc):
-        [self.p_center] = bgeom.scale_points([self.p_center], p0, xpc, ypc)
-        self.irad *= (xpc / 100.0)
-        self.orad *= (xpc / 100.0)
-
-        if len(self.acts) == 0 or self.acts[-1].aname != "SCALE":
-            self.acts.append(_CircActions("SCALE", ypc / xpc))
-        else:
-            self.acts[-1].val *= ypc / xpc
-            if self.acts[-1].val == 1.0:
-                self.acts = self.acts[:-1]
-
-        super(UnfRingGrid, self).scale(p0, xpc, ypc)
-
-    def cells_nodes_connect(self):
-        return super(UnfRingGrid, self).cells_nodes_connect()[:-1]
-
-    def _xml_write_nodes(self, xmlnode):
-        ET.SubElement(xmlnode, "DIM").text = str(self.na) + " " + str(self.nr)
-        ET.SubElement(xmlnode, "CENTER").text = str(self.p_center)
-        ET.SubElement(xmlnode, "IRADIUS").text = str(self.irad)
-        ET.SubElement(xmlnode, "ORADIUS").text = str(self.orad)
-        ET.SubElement(xmlnode, "RCOEF").text = str(self.coef)
-        if len(self.acts) > 0:
-            nd = ET.SubElement(xmlnode, "ACTIONS")
-            for a in self.acts:
-                a.toxml(nd)
-
-    #read from xml
-    @classmethod
-    def _specific_create_from_xml(cls, xmlnode):
-        [na, nr] = map(int, xmlnode.find("POINTS/DIM").text.split())
-        p0 = map(float, xmlnode.find("POINTS/CENTER").text.split())
-        p0 = bgeom.Point2(p0[0], p0[1])
-        irad = float(xmlnode.find("POINTS/IRADIUS").text)
-        orad = float(xmlnode.find("POINTS/ORADIUS").text)
-        coef = float(xmlnode.find("POINTS/RCOEF").text)
-        ret = cls(p0, irad, orad, na, nr, coef)
-        anode = xmlnode.findall("POINTS/ACTIONS/*")
-        for a in anode:
-            act = _CircActions.fromxml(a)
-            act.do(ret)
-        return ret
 
 if __name__ == "__main__":
     pass

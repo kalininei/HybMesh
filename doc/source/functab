@@ -7,8 +7,8 @@ Object       Contour      Grid         Operations   Info           Imp/Exp
 |func-o04|   |func-c04|   |func-g04|   ..           |func-i04|     |func-ie04|
 |func-o05|   |func-c05|   ..           ..           |func-i05|     |func-ie05|
 |func-o06|   |func-c06|   ..           ..           |func-i06|     |func-ie06|
-..           |func-c07|   ..           ..           |func-i07|     |func-ie07|
-..           |func-c08|   ..           ..           |func-i08|     |func-ie08|
+|func-o07|   |func-c07|   ..           ..           |func-i07|     |func-ie07|
+|func-o08|   |func-c08|   ..           ..           |func-i08|     |func-ie08|
 ..           |func-c09|   ..           ..           ..             |func-ie09|
 ..           ..           ..           ..           ..             |func-ie10|
 ============ ============ ============ ============ =============  =============
@@ -18,8 +18,10 @@ Object       Contour      Grid         Operations   Info           Imp/Exp
 .. |func-o02| replace:: :func:`move_geom`  
 .. |func-o03| replace:: :func:`rotate_geom`
 .. |func-o04| replace:: :func:`scale_geom` 
-.. |func-o05| replace:: :func:`remove_geom`
-.. |func-o06| replace:: :func:`remove_all`  
+.. |func-o05| replace:: :func:`reflect_geom` 
+.. |func-o06| replace:: :func:`remove_geom`
+.. |func-o07| replace:: :func:`remove_all`  
+.. |func-o08| replace:: :func:`remove_all_but`  
 
 .. |func-c01| replace:: :func:`add_boundary_type`   
 .. |func-c02| replace:: :func:`set_boundary_type`

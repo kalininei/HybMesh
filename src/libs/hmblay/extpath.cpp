@@ -4,26 +4,12 @@ using namespace HMBlay::Impl;
 
 
 void PathPntData::fill(Point* p1, Point* p2, Point* p3){
-	//building of object for 'ext_data' field
-	Vect v;
-	if (p1 == 0 || p3 == 0){
-		assert( p1 != 0 || p3 != 0);
-		tp = CornerTp::NO;
-		angle = M_PI;
-		if (p1 == 0) v = *p3 - *p2;
-		else v = *p2 - *p1;
-	} else {
-		angle = Angle(*p1, *p2, *p3);
-		tp = opt->CornerType(angle);
-		v = *p3 - *p2;
-	}
 	p = p2;
-	normal = vecRotate(v, angle/2.0);
-	vecNormalize(normal);
+	set_exact_angle(0, true);
 };
 
 //smoothing takes place with length = HCOEF * (boundary depth)
-const double HCOEF = 0.5;
+const double HCOEF = 2.1;
 void PathPntData::set_smooth_angle(int dir, bool redefine_type){
 	double h = HCOEF*opt->partition.back();
 	if (dir == 0){
@@ -49,9 +35,35 @@ void PathPntData::set_smooth_angle(int dir, bool redefine_type){
 	vecNormalize(normal);
 
 	if (redefine_type){
+		//angles which were non-straight but become straight
+		//are neglectable
 		bool negl = tp != CornerTp::STRAIGHT;
 		tp = opt->CornerType(angle);
 		if (tp == CornerTp::STRAIGHT && negl) tp = CornerTp::NEGLECTABLE;
+	}
+}
+
+void PathPntData::set_exact_angle(int dir, bool redefine_type){
+	Point *p1, *p2, *p3;
+	p2 = p;
+	p1 = (dir != 1) ? opt->get_full_source()->prev_point(p2) : 0;
+	p3 = (dir != -1) ? opt->get_full_source()->next_point(p2) : 0;
+
+	Vect v;
+	if (p1 == 0 || p3 == 0){
+		assert( p1 != 0 || p3 != 0);
+		angle = M_PI;
+		if (p1 == 0) v = *p3 - *p2;
+		else v = *p2 - *p1;
+	} else {
+		angle = Angle(*p1, *p2, *p3);
+		v = *p3 - *p2;
+	}
+	normal = vecRotate(v, angle/2.0);
+	vecNormalize(normal);
+
+	if (redefine_type){
+		tp = opt->CornerType(angle);
 	}
 }
 
@@ -88,14 +100,6 @@ ExtPath ExtPath::Assemble(const vector<Options*>& data){
 	}
 	//for closed contours take into account first-last connection
 	if (ret.is_closed()){
-		/*
-		Point* p0 = p[p.size()-3];
-		Point* p1 = p[p.size()-2];
-		Point* p2 = p[0];
-		Point* p3 = p[1];
-		ret.ext_data[0].fill(p1,p2,p3);
-		ret.ext_data.back().fill(p0,p1,p2);
-		*/
 		Point* p0 = p[p.size()-2];
 		Point* p1 = p[p.size()-1];
 		Point* p2 = p[0];
@@ -125,18 +129,26 @@ void ExtPath::FillEndConditions(){
 	rightbc.clear();
 	// ====== start point angle adjustment
 	switch (ext_data[0].tp){
-		case CornerTp::ACUTE: case CornerTp::ROUND:
-		case CornerTp::REENTRANT:
+		case CornerTp::ACUTE:
 			ext_data[0].set_smooth_angle(1, false);
+			break;
+		case CornerTp::REENTRANT: case CornerTp::ROUND:
+			//Calculating exact angle since smoothing
+			//gives bad result on a circle like curves.
+			//This is a temporary solution and may give
+			//awful results in some cases. Better algo should be done here.
+			ext_data[0].set_exact_angle(1, false);
 			break;
 		default:
 			break;  // no need to adjust
 	}
 	// ===== end point angle adjustment
 	switch (ext_data.back().tp){
-		case CornerTp::ACUTE: case CornerTp::ROUND:
-		case CornerTp::REENTRANT:
+		case CornerTp::ACUTE:
 			ext_data.back().set_smooth_angle(-1, false);
+			break;
+		case CornerTp::REENTRANT: case CornerTp::ROUND:
+			ext_data.back().set_exact_angle(-1, false);
 			break;
 		default:
 			break;  // no need to adjust
@@ -160,56 +172,6 @@ void ExtPath::FillEndConditions(){
 	} else {
 		PerpendicularEnd();
 	}
-
-/*
-
-	//if contour is closed draw an infinite perpendicular as end conditions
-	if (is_closed()){ PerpendicularStart(); PerpendicularEnd(); return;}
-
-	// ============ start point
-	double h1 = ext_data[0].opt->partition.back();
-	Point* p1 = first();
-	if (!full_source->is_closed() && (p1 == full_source->first() || p1 == full_source->last()))
-		PerpendicularStart();
-	else{
-		switch (ext_data[0].tp){
-			case CornerTp::ZERO: case CornerTp::NO: case CornerTp::ACUTE:
-			case CornerTp::REENTRANT: case CornerTp::NEGLECTABLE: case CornerTp::ROUND:
-				PerpendicularStart();
-				break;
-			case CornerTp::STRAIGHT:
-				PerpendicularStart(ext_data[0].angle/2.0);
-				break;
-			case CornerTp::RIGHT:
-				leftbc = HMCont2D::Constructor::CutContour(*full_source, *p1, -1, HCOEF*h1);
-				//if leftbc contains only single edge its direction is not defined
-				//we have to guarantee direction of bnd.
-				if (*p1 != *leftbc.first()) leftbc.ReallyReverse();
-				break;
-		}
-	}
-
-	// ============= end point
-	double h2 = ext_data.back().opt->partition.back();
-	Point* p2 = last();
-	if (!full_source->is_closed() && (p2 == full_source->first() || p2 == full_source->last()))
-		PerpendicularEnd();
-	else{
-		switch (ext_data.back().tp){
-			case CornerTp::ZERO: case CornerTp::NO: case CornerTp::ACUTE:
-			case CornerTp::REENTRANT: case CornerTp::NEGLECTABLE: case CornerTp::ROUND:
-				PerpendicularEnd();
-				break;
-			case CornerTp::STRAIGHT:
-				PerpendicularEnd(ext_data.back().angle/2.0);
-				break;
-			case CornerTp::RIGHT:
-				rightbc = HMCont2D::Constructor::CutContour(*full_source, *p2, 1, HCOEF*h2);
-				if (*rightbc.first() != *p2) rightbc.ReallyReverse();
-				break;
-		}
-	};
-*/
 }
 
 void ExtPath::PerpendicularStart(){
@@ -302,7 +264,8 @@ void ExtPath::ReinterpretCornerTp(ExtPath& pth){
 	//calculate smoothed angles and place neglactable feature
 	for (int i=0; i<op.size(); ++i){
 		auto ct = pth.ext_data[i].tp;
-		if (ct == CornerTp::REENTRANT ||
+		if ((!pth.is_closed() && (i==0 || i==op.size()-1)) ||
+				ct == CornerTp::REENTRANT ||
 				ct == CornerTp::NO ||
 				ct == CornerTp::ROUND ||
 				ct == CornerTp::ACUTE  ||

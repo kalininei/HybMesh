@@ -57,11 +57,15 @@ returned by object constructors.
 
 .. autofunction:: remove_all
 
+.. autofunction:: remove_all_but
+
 .. autofunction:: move_geom
 
 .. autofunction:: rotate_geom
 
 .. autofunction:: scale_geom
+
+.. autofunction:: reflect_geom
 
 .. autofunction:: copy_geom
 

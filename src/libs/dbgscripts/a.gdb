@@ -7,4 +7,4 @@ file ./hmblay_test
 set breakpoint pending on
 b main
 run 
-b bgrid.cpp:105
+b bgrid.cpp:98

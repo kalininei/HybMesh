@@ -21,6 +21,8 @@ struct PathPntData{
 	//smooth length is calculated acoording to bgrid height
 	//if (redefine_types) sets tp = NEGLECTABLE if so
 	void set_smooth_angle(int dir, bool redefine_type);
+	//same but doesn't make smoothing
+	void set_exact_angle(int dir, bool redefine_type);
 };
 
 //path with extended info

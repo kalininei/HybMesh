@@ -101,6 +101,7 @@ void test02(){
 	double mina1 = *(std::min_element(area1.begin(), area1.end()));
 	double maxa1 = *(std::max_element(area1.begin(), area1.end()));
 	add_check(mina1>0 && maxa1/mina1<2.1, cn);
+	save_vtk(Ans1, "t02.vtk");
 
 	cn = std::string("8-side polygon with inner layer");
 	inp.direction = HMBlay::DirectionFromString("INNER");
@@ -665,29 +666,30 @@ void test16(){
 	inp1.start = Point(1, 0);
 	inp1.end = Point(1, 1);
 	inp1.partition = {0, 0.01, 0.02, 0.04};
+
 	GridGeom bgrid = HMBlay::BuildBLayerGrid({inp1}); 
-	add_check(fabs(GGeom::Info::Area(bgrid)-3.01008e-2)<1e-6, "IGNORE_ALL boundary partition");
+	add_check(bgrid.n_points() == 60, "IGNORE_ALL boundary partition");
+
 	//simplify boundary tests
 	GridGeom bgrid2 = GGeom::Constructor::DeepCopy(bgrid);
 	GGeom::Modify::SimplifyBoundary(bgrid2, M_PI);
-	add_check(fabs(GGeom::Info::Area(bgrid2)-2.82039e-2)<1e-6, "full simplification of bgrid");
-	GridGeom bgrid3 = GGeom::Constructor::DeepCopy(bgrid);
-	GGeom::Modify::SimplifyBoundary(bgrid3, M_PI/2.0);
-	add_check(fabs(GGeom::Info::Area(bgrid3)-2.88313e-2)<1e-6, "simplification with angle=pi/2");
+	add_check(bgrid2.n_points() == 52, "full simplification of bgrid");
+
 	GridGeom bgrid4 = GGeom::Constructor::DeepCopy(bgrid);
 	GGeom::Modify::SimplifyBoundary(bgrid4, M_PI/4.0);
-	add_check(fabs(GGeom::Info::Area(bgrid4)-2.98449e-2)<1e-6, "simplification with angle=pi/4");
+	add_check(bgrid4.n_points()==56, "simplification with angle=pi/4");
+
 	GridGeom bgrid5 = GGeom::Constructor::DeepCopy(bgrid);
 	GGeom::Modify::SimplifyBoundary(bgrid5, 0.0);
-	add_check(fabs(GGeom::Info::Area(bgrid5)-3.01008e-2)<1e-6, "simplification with angle=0");
-
+	add_check(fabs(GGeom::Info::Area(bgrid5)-GGeom::Info::Area(bgrid))<1e-6, "simplification with angle=0");
 
 	//impose
 	GridGeom* impgrid = GridGeom::cross_grids(&gcirc, &bgrid, 0.3, 7,
 			false, false, CrossGridCallback::to_cout());
 	GridGeom* impgrid1 = GridGeom::cross_grids(&gcirc, &bgrid4, 0.3, 7,
 			false, false, CrossGridCallback::to_cout());
-	//5) see the result
+
+	//see the result
 	double arinit = GGeom::Info::Area(gcirc);
 	add_check(ISEQ(arinit, GGeom::Info::Area(*impgrid)), "imposition with non-simplified bgrid: area");
 	add_check(ISEQ(arinit, GGeom::Info::Area(*impgrid1)), "imposition with simplified bgrid: area");
@@ -703,7 +705,7 @@ void test16(){
 	vector<double> badskew1, badskew2;
 	std::copy_if(skew1.begin(), skew1.end(), std::back_inserter(badskew1), [](double a){return a>0.8;});
 	std::copy_if(skew2.begin(), skew2.end(), std::back_inserter(badskew2), [](double a){return a>0.8;});
-	add_check(badskew1.size() == 0 && badskew2.size() == 4, "skewness check");
+	add_check(badskew1.size() == 0 && badskew2.size() < 6, "skewness check");
 
 	save_vtk(impgrid, "t16_1.vtk");
 	save_vtk(impgrid1, "t16_2.vtk");
@@ -736,9 +738,35 @@ void test17(){
 	inp1.start = Point(0, 0);
 	inp1.end = Point(2, 0);
 	inp1.partition = {0, 0.01, 0.02, 0.04, 0.08, 0.14, 0.2};
-	GridGeom bgrid = HMBlay::BuildBLayerGrid({inp1}); 
+
+	GridGeom bgrid1 = HMBlay::BuildBLayerGrid({inp1}); 
+	auto bcont1 = GGeom::Info::Contour(bgrid1);
+	add_check(bgrid1.n_points() == 141 &&
+		bcont1.IsWithin(Point(-0.02+1e-3, 0.1)) &&
+		bcont1.IsWithin(Point(1.88046632081399, 0.209839818196609)),
+		"one section with zig-zag bottom and left");
 	HMCont2D::SaveVtk(cont, "t17_1.vtk");
-	save_vtk(bgrid, "t17_2.vtk");
+	save_vtk(bgrid1, "t17_2.vtk");
+
+	inp1.start = Point(-0.02, 1.9);
+	GridGeom bgrid2 = HMBlay::BuildBLayerGrid({inp1});
+	auto bcont2 = GGeom::Info::Contour(bgrid2);
+	add_check(bgrid2.n_points() == 297 &&
+		bcont2.IsWithin(Point(-0.02+1e-3, 0.1)) &&
+		bcont2.IsWithout(Point(0.1, 0.0168026937561729)),
+		"zig-zag bottom and left sections with right angle");
+	save_vtk(bgrid2, "t17_3.vtk");
+
+	inp1.bnd_step_method = HMBlay::MethFromString("IGNORE_ALL");
+	inp1.bnd_step = 0.04;
+	GridGeom bgrid3 = HMBlay::BuildBLayerGrid({inp1});
+	auto bcont3 = GGeom::Info::Contour(bgrid2);
+	add_check(bgrid3.n_points() == 722 &&
+		bcont3.IsWithin(Point(-0.02+1e-3, 0.1)) &&
+		bcont3.IsWithout(Point(0.1, 0.0168026937561729)) && 
+		bcont3.IsWithout(Point(0.0161764309193625, 1.80159049128253)),
+		"same with ignore_all option");
+	save_vtk(bgrid3, "t17_4.vtk");
 }
 
 int main(){

@@ -331,6 +331,47 @@ class ScaleGeom(command.Command):
         self._exec()
 
 
+class ReflectGeom(command.Command):
+    "Reflect objects"
+
+    def __init__(self, argsdict):
+        if (argsdict['p1'].x == argsdict['p2'].x and
+                argsdict['p1'].y == argsdict['p2'].y):
+            raise ValueError("Reflection over a zero vector is imposible")
+
+        super(ReflectGeom, self).__init__(argsdict)
+
+    @classmethod
+    def _arguments_types(cls):
+        return {'names': command.ListOfOptions(command.BasicOption(str)),
+                'p1': command.Point2Option(),
+                'p2': command.Point2Option(),
+                }
+
+    def doc(self):
+        return "Reflect objects: " + ", ".join(self.options['names'])
+
+    def _exec(self):
+        for n in self.options['names']:
+            if n in self.receiver.get_grid_names():
+                ob = self.receiver.grids2[n]
+            elif n in self.receiver.get_ucontour_names():
+                ob = self.receiver.contours2[n]
+            else:
+                raise command.ExecutionError('Object %s not found' % n, self)
+            ob.reflect(self.options['p1'], self.options['p2'])
+        return True
+
+    def _undo(self):
+        self._exec()
+
+    def _clear(self):
+        pass
+
+    def _redo(self):
+        self._exec()
+
+
 class CopyGeom(AbstractAddRemove):
     "Copy objects"
 

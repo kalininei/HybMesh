@@ -135,7 +135,16 @@ void ContourTree::UpdateTopology(){
 }
 
 bool ContourTree::IsWithin(const Point& p) const{
-	_THROW_NOT_IMP_;
+	for (auto nd: nodes) if (HMCont2D::Contour::Area(*nd) > 0){
+		if (nd->IsWithin(p)){
+			for (auto ch: nd->children){
+				if (ch->IsWithin(p)) goto NEXTNODE;
+			}
+			return true;
+		}
+	NEXTNODE:;
+	}
+	return false;
 }
 
 bool ContourTree::IsWithout(const Point& p) const{

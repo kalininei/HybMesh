@@ -1,11 +1,13 @@
 from hybmeshpack import hmscript as hm
 global hm, check
-hm.check_compatibility("0.2.1")
+hm.check_compatibility("0.2.2")
 
 
 def check(cond):
+    import traceback
     if not cond:
-        raise Exception("Test Failed")
+        print "TEST FAILED <<<<<<<<<<<<<<<<<<<<<<<"
+        traceback.print_stack()
 
 
 def check_cont(cont, nn, ne, scont, btypes):
@@ -120,3 +122,10 @@ c6 = hm.clip_domain(c5, c2, "union", False)
 check(abs(hm.domain_area(c6) - 1.0 < 1e-6))
 check(hm.info_contour(c6)['btypes'] == {1: 40})
 hm.remove_all()
+
+print "domain reflection"
+c1 = hm.create_contour([[0, 0], [1, 0], [2, 1]])
+c2 = hm.add_rect_contour([1, 1], [3, 2])
+g3 = hm.add_unf_ring_grid([1, 0], 1, 3, 16, 3)
+hm.reflect_geom([c1, c2, g3], [0, 0], [1, 1])
+hm.remove_all_but([c1])

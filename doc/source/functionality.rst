@@ -74,7 +74,7 @@ You should carefully define the order of grids in a input list to get desirable 
 
 
 .. figure:: grid_imposition2.png
-   :height: 400 px
+   :height: 800 px
 
    fig2. Chain imposition example
 

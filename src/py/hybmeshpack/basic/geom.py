@@ -180,6 +180,20 @@ class Point2SetStruct(GeomStruct):
             p.x, p.y = p2.x, p2.y
         self._geom_changed()
 
+    def reflect(self, p1, p2):
+        lx, ly = p2.x - p1.x, p2.y - p1.y
+        r2 = lx**2 + ly**2
+        lx /= math.sqrt(r2)
+        ly /= math.sqrt(r2)
+        self.move(-p1.x, -p1.y)
+        a = [lx**2 - ly**2, 2 * lx * ly,
+             2 * lx * ly, ly**2 - lx**2]
+        for p in self.points:
+            p.x, p.y = (a[0] * p.x + a[1] * p.y,
+                        a[2] * p.x + a[3] * p.y)
+        self.move(p1.x, p1.y)
+        self._geom_changed()
+
     def scale(self, p0, xpc, ypc):
         """ scale the grid using p0 as reference point
             and xpc% and ypc% as scaling procentages
