@@ -134,7 +134,7 @@ def heal_grid(grid_id, simplify_boundary=30):
     """ Set of procedures for simplification of grid geometry
 
     Args:
-       grid_id: identifier of the grid
+       grid_id: identifier or (list of identifiers) of the grid
 
     Kwargs:
        simplify_boundary: angle (deg) in [0, 180].
@@ -158,6 +158,10 @@ def heal_grid(grid_id, simplify_boundary=30):
        ValueError, hmscript.ExecError
 
     """
+    if isinstance(grid_id, list):
+        for g in grid_id:
+            heal_grid(g, simplify_boundary)
+        return
     sb = simplify_boundary
     if not isinstance(sb, (int, float, long)) or sb > 180 or sb < -1:
         raise ValueError("Invalid simplify_boundaries option: %s" % str(sb))

@@ -320,6 +320,16 @@ std::vector<std::vector<int>> GridGeom::cell_cell() const{
 	return cc;
 }
 
+std::vector<std::vector<int>> GridGeom::point_cell() const{
+	std::vector<std::vector<int>> ret(n_points());
+	for (auto c: cells){
+		for (auto p: c->points){
+			ret[p->get_ind()].push_back(c->get_ind());
+		}
+	}
+	return ret;
+}
+
 namespace{
 //recursive algorithm of connected cells traversal
 void add_cell(int i, vector<int>& v, const vector<vector<int>>& cell_cell, vector<int>& cind){
@@ -449,7 +459,7 @@ vector<Point> intersection_points(const GridGeom& gmain, const GridGeom& gsec){
 
 GridGeom* GridGeom::cross_grids(GridGeom* gmain_inp, GridGeom* gsec_inp, 
 		double buffer_size, double density, bool preserve_bp, bool empty_holes,
-		CrossGridCallback::func cb){
+		double angle0, CrossGridCallback::func cb){
 	//initial scaling before doing anything
 	if (cb("Building grid cross", "Scaling", 0, -1) == CrossGridCallback::CANCEL) return 0;
 	auto sc = gmain_inp->do_scale();
@@ -478,7 +488,8 @@ GridGeom* GridGeom::cross_grids(GridGeom* gmain_inp, GridGeom* gsec_inp,
 	
 	if (cb("Building grid cross", "Boundary analyze", 0.20, -1) == CrossGridCallback::CANCEL) return 0;
 	//2 ---- find contours intersection points and place gsec nodes there
-	if (!preserve_bp && buffer_size>geps){
+	//if (!preserve_bp && buffer_size>geps){
+	if (!preserve_bp){
 		//find all intersections
 		vector<Point> bnd_intersections = intersection_points(*gmain, *gsec);
 		/*
@@ -495,7 +506,7 @@ GridGeom* GridGeom::cross_grids(GridGeom* gmain_inp, GridGeom* gsec_inp,
 		if (bnd_intersections.size() > 0){
 			_gs.reset(new GridGeom(*gsec));
 			gsec = _gs.get();
-			gsec->move_boundary_points(bnd_intersections);
+			gsec->move_boundary_points(bnd_intersections, angle0);
 			csec  = gsec->get_contours();
 		}
 	}
@@ -530,7 +541,7 @@ GridGeom* GridGeom::cross_grids(GridGeom* gmain_inp, GridGeom* gsec_inp,
 				//2. perform triangulation of buffer grid area
 				if (cb("Building grid cross", "Filling buffer", 0.5, cb_cur-0.8*cb_step)
 						== CrossGridCallback::CANCEL) return 0;
-				auto bgcont = bg.boundary_info(preserve_bp);
+				auto bgcont = bg.boundary_info(preserve_bp, angle0);
 				auto g3 = TriGrid::TriangulateArea(std::get<0>(bgcont), std::get<1>(bgcont), 1);
 
 				//3. change the internal of bg by g3ref grid
@@ -711,7 +722,7 @@ vector<vector<int>> GridGeom::point_cell_tab() const{
 	return ret;
 }
 
-void GridGeom::move_boundary_points(const vector<Point>& bp){
+void GridGeom::move_boundary_points(const vector<Point>& bp, double angle0){
 	auto bnd = get_contours();
 	double ksi;
 	auto pct = point_cell_tab();
@@ -722,9 +733,9 @@ void GridGeom::move_boundary_points(const vector<Point>& bp){
 			for (int i=0; i<c.n_points(); ++i){
 				auto p1 = c.get_point(i), p2 = c.get_point(i+1);
 				if (isOnSection(p, *p1, *p2, ksi)){
-					if (!c.is_corner_point(i))
+					if (!c.is_corner_point(i, angle0))
 						b1 = static_cast<const GridPoint*>(p1);
-					if (!c.is_corner_point(i+1))
+					if (!c.is_corner_point(i+1, angle0))
 						b2 = static_cast<const GridPoint*>(p2);
 					//no points which can be moved
 					if (b1 == 0 && b2 == 0) goto edge_not_found;

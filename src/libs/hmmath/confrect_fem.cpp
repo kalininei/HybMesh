@@ -480,7 +480,7 @@ vector<Point> ToAnnulus::MapToOriginal(const vector<Point>& input) const{
 			double rad = vecLen(p);
 			Point pnew;
 			if (fabs(rad-1.0)<geps || fabs(rad-_module)<geps){
-				pnew = InvGridContour()->ClosestPoint(p);
+				pnew = HMCont2D::ECollection::ClosestPoint(*InvGridContour(), p);
 				s = inv_approx->Vals(pnew, funs);
 			} else throw;
 		}

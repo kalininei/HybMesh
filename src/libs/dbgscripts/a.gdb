@@ -3,8 +3,7 @@
 
 source ../../src/libs/dbgscripts/hmout.gdb
 
-file ./hmblay_test
+file ./crossgrid_test
 set breakpoint pending on
-b main
+b procgrid.cpp:433
 run 
-b bgrid.cpp:98

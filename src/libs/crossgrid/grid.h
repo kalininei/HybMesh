@@ -104,7 +104,7 @@ protected:
 	void exclude_area(const ContoursCollection& cnt);
 	//tries to move boundary points to bp.
 	//bp should lie on existing boundary
-	void move_boundary_points(const vector<Point>& bp);
+	void move_boundary_points(const vector<Point>& bp, double angle0);
 	//move point srcp->tarp and check if cell geometry is still ok
 	//returns false if failed to move without breaking geometry
 	bool move_point(const GridPoint* srcp, const Point& tarp, const vector<vector<int>>& point_cell);
@@ -152,6 +152,7 @@ public:
 	std::set<const GridPoint*> get_bnd_points() const;
 	//connectivities
 	std::vector<std::vector<int>> cell_cell() const;
+	std::vector<std::vector<int>> point_cell() const;
 
 	//data modify
 	//change internal structure of the grid with data from another one.
@@ -160,7 +161,7 @@ public:
 
 	//static builders
 	static GridGeom* cross_grids(GridGeom* gmain, GridGeom* gsec, double buffer_size, 
-			double density, bool preserve_bp, bool empty_holes,
+			double density, bool preserve_bp, bool empty_holes, double angle0,
 			CrossGridCallback::func cb);
 	
 	//result = g - area(c). Area could be inner or outer. 

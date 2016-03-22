@@ -3,6 +3,7 @@
 #include "grid.h"
 #include "hmblay.hpp"
 #include "procgrid.h"
+#include "hmmapping.hpp"
 
 namespace{
 
@@ -183,12 +184,12 @@ void grid_free(Grid* g){
 	if (g!=NULL) delete g;
 }
 
-Grid* cross_grids(Grid* gbase, Grid* gsecondary, double buffer_size, int preserve_bp, int eh){
-	return cross_grids_wcb(gbase, gsecondary, buffer_size, preserve_bp, eh, global_callback);
+Grid* cross_grids(Grid* gbase, Grid* gsecondary, double buffer_size, int preserve_bp, int eh, double angle0){
+	return cross_grids_wcb(gbase, gsecondary, buffer_size, preserve_bp, eh, angle0, global_callback);
 }
 
 Grid* cross_grids_wcb(Grid* gbase, Grid* gsecondary, double buffer_size,
-		int preserve_bp, int empty_holes, crossgrid_callback cb_fun){
+		int preserve_bp, int empty_holes, double angle0, crossgrid_callback cb_fun){
 	try{
 		if (gbase == NULL || gsecondary == NULL)
 			throw std::runtime_error("nullptr grid data");
@@ -196,7 +197,7 @@ Grid* cross_grids_wcb(Grid* gbase, Grid* gsecondary, double buffer_size,
 				static_cast<GridGeom*>(gbase),
 				static_cast<GridGeom*>(gsecondary),
 				buffer_size, 0.5, (preserve_bp==1),
-				(empty_holes==1), cb_fun);
+				(empty_holes==1), angle0, cb_fun);
 		return ret;
 	} catch (const std::exception &e) {
 		std::cout<<"crossgrid error: "<<e.what()<<std::endl;
@@ -612,3 +613,28 @@ Grid* boundary_layer_grid_wcb(int N, BoundaryLayerGridOption* popt,
 		return 0;
 	}
 }
+
+Grid* build_grid_mapping(void* base_grid, void* target_contour, int Npnt, double* pbase, double* ptarget, int snap_method){
+	try{
+		GridGeom* g = static_cast<GridGeom*>(base_grid);
+		HMCont2D::ECollection* col = static_cast<HMCont2D::ECollection*>(target_contour);
+		std::vector<Point> p1, p2;
+		for (int i=0; i<Npnt; ++i){
+			p1.push_back(Point(pbase[2*i], pbase[2*i+1]));
+			p2.push_back(Point(ptarget[2*i], ptarget[2*i+1]));
+		}
+		HMGMap::Options opt;
+		switch (snap_method){
+			case 1: opt.snap = "NO"; break;
+			case 2: opt.snap = "ADD_VERTICES"; break;
+			case 3: opt.snap = "SHIFT_VERTICES"; break;
+		}
+		GridGeom ans = HMGMap::MapGrid(*g, *col, p1, p2, opt);
+		return new GridGeom(std::move(ans));
+	} catch (const std::exception &e){
+		std::cout<<e.what()<<std::endl;
+		return 0;
+	}
+}
+
+

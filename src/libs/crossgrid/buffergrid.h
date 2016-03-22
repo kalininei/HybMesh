@@ -10,6 +10,7 @@ class BufferGrid: public GridGeom{
 	//using buffer 'buffer' from source 'source_cont'
 	//it doesn't share points or cells with original grid and source contour
 	Contour source_cont;
+
 	double buffer;
 	GridGeom* orig;
 	vector<const Cell*> orig_cells;  //pointers to cells from orig
@@ -34,7 +35,7 @@ public:
 	std::tuple<
 		HMCont2D::ContourTree,
 		std::map<Point*, double>
-	> boundary_info(bool preserve_true_bp) const;
+	> boundary_info(bool preserve_true_bp, double angle0) const;
 	
 	void update_original() const;
 };

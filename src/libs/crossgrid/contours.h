@@ -69,6 +69,7 @@ public:
 	vector<double> max_chdist() const;
 	//is the i-th point lies on the section between i-1 and i+1 point
 	bool is_corner_point(int i) const;
+	bool is_corner_point(int i, double dev) const;
 
 	//find internal point: cross algorithm
 	//direction is not taken into account

@@ -172,8 +172,8 @@ void test4(){
 	auto grid1 = rectangular_grid(0, 0, 1, 1, 10, 10);
 	auto grid2 = rectangular_grid(1, 1, 2, 2, 10, 10);
 	auto grid3 = rectangular_grid(2,1.85, 3, 2.85, 10, 10);
-	auto cross1 = GridGeom::cross_grids(&grid1, &grid2, 0.0, 0.5, true, false, silent_callback);
-	auto cross2 = GridGeom::cross_grids(cross1, &grid3, 0.0, 0.5, true, false, silent_callback);
+	auto cross1 = GridGeom::cross_grids(&grid1, &grid2, 0.0, 0.5, true, false, 0, silent_callback);
+	auto cross2 = GridGeom::cross_grids(cross1, &grid3, 0.0, 0.5, true, false, 0, silent_callback);
 	save_vtk(cross2, "test4_grid.vtk");
 	add_check(cross2->n_points()==362 && cross2->n_cells()==300, "combined grid topology");
 	auto div = cross2->subdivide();

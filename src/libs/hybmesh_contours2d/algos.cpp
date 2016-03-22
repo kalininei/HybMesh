@@ -192,10 +192,9 @@ ContourTree cns::Simplified(const ContourTree& t1){
 				else ++fnd;
 			}
 			assert(fnd<t1.nodes.size());
-			t1.nodes[i]->parent = t1.nodes[fnd].get();
+			ret.nodes[i]->parent = ret.nodes[fnd].get();
 		}
 	}
-
 	//fill children
 	for (auto& c: ret.nodes){
 		if (c->parent != 0) c->parent->children.push_back(c.get());

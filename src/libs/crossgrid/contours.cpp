@@ -166,6 +166,14 @@ bool PContour::is_corner_point(int i) const{
 	return fabs(area3)>geps2;
 }
 
+bool PContour::is_corner_point(int i, double dev) const{
+	auto p = get_point(i);
+	auto pnext = get_point(i+1);
+	auto pprev = get_point(i-1);
+	auto a = Angle(*pprev, *p, *pnext)/M_PI*180;
+	return fabs(a-180) > dev;
+}
+
 void PContour::delete_by_index(const std::set<int>& badind){
 	aa::remove_entries(pts, badind);
 }

@@ -17,6 +17,7 @@ target_link_libraries(${HMCPORT_TARGET} ${BGEOM2D_TARGET})
 target_link_libraries(${HMCPORT_TARGET} ${HYBMESH_CONTOURS2D_TARGET})
 target_link_libraries(${HMCPORT_TARGET} ${CROSSGRID_TARGET})
 target_link_libraries(${HMCPORT_TARGET} ${HMBLAY_TARGET})
+target_link_libraries(${HMCPORT_TARGET} ${HMMAPPING_TARGET})
 
 include_directories(${CommonInclude})
 include_directories(${GMSH_INCLUDE})
@@ -24,6 +25,7 @@ include_directories(${BGEOM2D_INCLUDE})
 include_directories(${HYBMESH_CONTOURS2D_INCLUDE})
 include_directories(${CROSSGRID_INCLUDE})
 include_directories(${HMBLAY_INCLUDE})
+include_directories(${HMMAPPING_INCLUDE})
 
 install(TARGETS ${HMCPORT_TARGET}
 	RUNTIME DESTINATION ${LIB_INSTALL_DIR}

@@ -160,6 +160,9 @@ set(HMBLAY_TARGET hmblay)
 #libhmmath: global definition of HMMATH_INCLUDE, HMMATH_TARGET
 set(HMMATH_INCLUDE "${CMAKE_SOURCE_DIR}/src/libs/hmmath")
 set(HMMATH_TARGET hmmath)
+#libhmmapping: global definition of HMMAPPING_INCLUDE, HMMAPPING_TARGET
+set(HMMAPPING_INCLUDE "${CMAKE_SOURCE_DIR}/src/libs/hmmapping")
+set(HMMAPPING_TARGET hmmapping)
 #libscpack: SCPACK_TARGET
 set(SCPACK_TARGET scpack)
 #libscpack: DSCPACK_TARGET

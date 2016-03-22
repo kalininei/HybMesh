@@ -168,7 +168,7 @@ class Contour2(AbstractContour2):
     def simplify(self, angle):
         """ -> Contour2
             Returns contour where all angles between each connected edges
-            are grater then angle (degree).
+            are greater then angle (degree).
 
             Edges will not be splitted if they have different boundary types.
 

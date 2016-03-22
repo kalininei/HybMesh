@@ -100,8 +100,10 @@ Point Grid43::Approximator::LocalCoordinates3(const Cell* c, Point p){
 	ksieta.x = ( j22*(p.x - x1) - j21*(p.y - y1))/modj;
 	ksieta.y = (-j12*(p.x - x1) + j11*(p.y - y1))/modj;
 
-	assert( ksieta.x > -0.1 && ksieta.x < 1.1 );
-	assert( ksieta.y > -0.1 && ksieta.y < 1-ksieta.x+0.1 );
+	//
+	//assert( ksieta.x > -0.1 && ksieta.x < 1.1 );
+	//assert( ksieta.y > -0.1 && ksieta.y < 1-ksieta.x+0.1 );
+	//
 
 	return ksieta;
 }

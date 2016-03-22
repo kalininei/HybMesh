@@ -186,7 +186,7 @@ def clip_domain(dom1, dom2, operation, simplify=True):
        created contour identifier or None if resulting domain is empty
     """
     if operation not in ['union', 'difference', 'intersection', 'xor']:
-        raise ValueError("unknows operation" % str(operation))
+        raise ValueError("unknows operation: %s" % str(operation))
     c = com.contcom.ClipDomain({"c1": dom1, "c2": dom2, "oper": operation,
                                 "simplify": simplify})
     flow.exec_command(c)

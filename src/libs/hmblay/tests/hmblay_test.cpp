@@ -524,10 +524,10 @@ void test13(){
 	auto g5 = GGeom::Constructor::RectGrid(Point(14.5, 2.5), Point(30, 7.5), 92, 30);
 
 	//gcommon
-	auto gr1 = GridGeom::cross_grids(&g1, &g5, 0.3, 7, false, false, CrossGridCallback::to_cout());
-	auto gr2 = GridGeom::cross_grids(gr1, &g4, 0.1, 7, false, false, CrossGridCallback::to_cout());
-	auto gr3 = GridGeom::cross_grids(gr2, &g2, 0.1, 7, false, false, CrossGridCallback::to_cout());
-	auto gr4 = GridGeom::cross_grids(gr3, &g3, 0.2, 7, false, true, CrossGridCallback::to_cout());
+	auto gr1 = GridGeom::cross_grids(&g1, &g5, 0.3, 7, false, false, 0, CrossGridCallback::to_cout());
+	auto gr2 = GridGeom::cross_grids(gr1, &g4, 0.1, 7, false, false, 0, CrossGridCallback::to_cout());
+	auto gr3 = GridGeom::cross_grids(gr2, &g2, 0.1, 7, false, false, 0, CrossGridCallback::to_cout());
+	auto gr4 = GridGeom::cross_grids(gr3, &g3, 0.2, 7, false, true, 0, CrossGridCallback::to_cout());
 
 	//save to file
 	save_vtk(g1, "t13_g1.vtk");
@@ -584,7 +584,7 @@ void test14(){
 	GridGeom g1 = HMBlay::BuildBLayerGrid({inp1});
 	GridGeom basgrid1 = GGeom::Constructor::RectGrid(Point(-0.1, -0.1), Point(1.1, 1.1), 30, 30);
 	GridGeom* b1 = grid_minus_cont(basgrid1, *GGeom::Info::Contour(g1).roots()[0]);
-	GridGeom* gr1 = GridGeom::cross_grids(b1, &g1, 0.03, 7, false, false, CrossGridCallback::to_cout());
+	GridGeom* gr1 = GridGeom::cross_grids(b1, &g1, 0.03, 7, false, false, 0, CrossGridCallback::to_cout());
 	GGeom::Modify::SimplifyBoundary(*gr1, M_PI/4);
 	add_check(fabs(gr1->area() - 0.955398)<1e-5, "Square with curved boundary");
 	save_vtk(gr1, "t14_g1.vtk");
@@ -607,7 +607,7 @@ void test14(){
 	GridGeom g2 = HMBlay::BuildBLayerGrid({inp1});
 	GridGeom basgrid2 = GGeom::Constructor::RectGrid(Point(-2.1, -1.1), Point(2.8, 2.1), 150, 100);
 	GridGeom* b2 = grid_minus_cont(basgrid2, *GGeom::Info::Contour(g2).roots()[0]);
-	GridGeom* gr2 = GridGeom::cross_grids(b2, &g2, 0.03, 7, false, false, CrossGridCallback::to_cout());
+	GridGeom* gr2 = GridGeom::cross_grids(b2, &g2, 0.03, 7, false, false, 0, CrossGridCallback::to_cout());
 	GGeom::Modify::SimplifyBoundary(*gr2, M_PI/4);
 	add_check(fabs(gr2->area() - 6.26758)<1e-5, "Reentrant area with a hole");
 	save_vtk(gr2, "t14_g2.vtk");
@@ -625,7 +625,7 @@ void test14(){
 	inp2.partition = {0, 0.02, 0.05, 0.1, 0.15, 0.2};
 	GridGeom g3 = HMBlay::BuildBLayerGrid({inp2});
 	GridGeom basgrid3 = GGeom::Constructor::RectGrid(Point(-0.1, -0.1), Point(4.5, 2), 80 , 40);
-	GridGeom* r3 = GridGeom::cross_grids(&basgrid3, &g3, 0.03, 7, true, false, CrossGridCallback::to_cout());
+	GridGeom* r3 = GridGeom::cross_grids(&basgrid3, &g3, 0.03, 7, true, false, 0, CrossGridCallback::to_cout());
 	GridGeom* gr3 = grid_minus_cont(*r3, c3);
 	add_check(fabs(gr3->area() - 3.75)<1e-5, "Closed tringle with acute angle");
 	save_vtk(gr3, "t14_g3.vtk");
@@ -685,9 +685,9 @@ void test16(){
 
 	//impose
 	GridGeom* impgrid = GridGeom::cross_grids(&gcirc, &bgrid, 0.3, 7,
-			false, false, CrossGridCallback::to_cout());
+			false, false, 0, CrossGridCallback::to_cout());
 	GridGeom* impgrid1 = GridGeom::cross_grids(&gcirc, &bgrid4, 0.3, 7,
-			false, false, CrossGridCallback::to_cout());
+			false, false, 0, CrossGridCallback::to_cout());
 
 	//see the result
 	double arinit = GGeom::Info::Area(gcirc);

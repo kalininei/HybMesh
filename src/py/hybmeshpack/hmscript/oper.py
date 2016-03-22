@@ -1,7 +1,9 @@
 from hybmeshpack import com
-from hybmeshpack.hmscript import flow
+from hybmeshpack.hmscript import flow, data
+from hybmeshpack.gdata.contour2 import Contour2
 from hybmeshpack.basic.geom import Point2
 from . import ExecError
+import copy
 
 
 def exclude_contours(grid, conts, what):
@@ -25,7 +27,7 @@ def exclude_contours(grid, conts, what):
 
        All contours from `cont` list are excluded consecutively.
        If you want to exclude multiply connected domain area you should first
-       assemle multiply connected domain from the list of singly
+       assemble multiply connected domain from the list of singly
        connected ones using
        :func:`unite_contours` procedure.
 
@@ -53,28 +55,32 @@ def exclude_contours(grid, conts, what):
         raise ExecError('exclude_contours')
 
 
-def unite_grids(base_grid, imp_grids, empty_holes=False, fix_bnd=False):
+def unite_grids(base_grid, imp_grids, empty_holes=False, fix_bnd=False,
+                zero_angle_approx=0):
     """Makes grids impositions
 
-    Args:
-      base_grid: basic grid identifier
+    :param base_grid: basic grid identifier
 
-      imp_grids (list-of-tuples): sequence of grids for imposition as
+    :param list-of-tuples imp_grids: sequence of grids for imposition as
       ``[(grid_id, buffer), () ...]`` where
       ``grid_id`` is an imposed grid identifier,
       ``buffer`` - size of the buffer for current imposition
 
-    Kwargs:
-      empty_holes (bool): keep all empty zones (in case of multiple connectivity)
+    :param bool empty_holes: keep all empty zones
+      (in case of multiple connectivity)
       of imposed grids in the resulting grid.
 
-      fix_bnd (bool): whether to fix all boundary nodes
+    :param bool fix_bnd: whether to fix all boundary nodes
 
-    Returns:
-       identifier of the newly created grid
+    :param degree zero_angle_approx:
+      defines deviation from the straight angle which is considered
+      insignificant. Grid boundary vertices which provide insignificant
+      contour turns could be moved in order to obtain better result.
+      Makes sense only if ``fix_bnd = False``.
 
-    Raises:
-       hmscript.ExecError
+    :return: identifier of the newly created grid
+
+    :raises: hmscript.ExecError
 
     Each next grid will be imposed on the result of previous imposition.
 
@@ -85,6 +91,7 @@ def unite_grids(base_grid, imp_grids, empty_holes=False, fix_bnd=False):
 
     """
     args = {"base": base_grid, "empty_holes": empty_holes,
+            "angle0": zero_angle_approx,
             "fix_bnd": fix_bnd, "plus": []}
     for ig in imp_grids:
         args["plus"].append({"name": ig[0], "buf": ig[1], "den": 7})
@@ -113,8 +120,7 @@ class BoundaryGridOptions(object):
       ``bnd_stepping`` is not "no"). If ``bnd_stepping == 'incremental'`` then
       this should be a list of two floats: boundary partition nearby start
       and end of the contour
-    :ivar str bnd_stepping:
-      algorithm for stepping along the contour
+    :ivar str bnd_stepping: algorithm for stepping along the contour
 
       * ``'no'``: no artificial stepping. Only contour vertices will
         be used as grid nodes
@@ -136,7 +142,7 @@ class BoundaryGridOptions(object):
         To get rid of such nodes use :func:`heal_grid` with
         ``simplify_boundary`` option at the very end of grid creation
         (see :ref:`example3` for example of elimination of those nodes).
-        
+
 
     :ivar list-of-floats range_angles:
       list of 4 angle values (deg) which define algorithms
@@ -157,6 +163,12 @@ class BoundaryGridOptions(object):
       this point will be used.
       If point is not located on the source contour then it will be
       projected to it.
+    :ivar str project_to:
+      option which defines **start_point**, **end_point** projection algorithm:
+
+      * ``"line"`` - projects point to source contour line,
+      * ``"vertex"`` - projects to closest source contour vertex,
+      * ``"corner"`` - projects point to closest corner vertex.
     """
 
     def __init__(self, contour_id=None,
@@ -167,18 +179,20 @@ class BoundaryGridOptions(object):
                  range_angles=[40, 125, 235, 275],
                  force_conformal=False,
                  start_point=None,
-                 end_point=None):
+                 end_point=None,
+                 project_to="line"):
         """ Constructor with default attributes values given
         """
         self.contour_id = contour_id
-        self.partition = partition
+        self.partition = copy.deepcopy(partition)
         self.direction = direction
         self.bnd_stepping = bnd_stepping
         self.bnd_step = bnd_step
-        self.range_angles = range_angles
+        self.range_angles = copy.deepcopy(range_angles)
         self.force_conformal = force_conformal
         self.start_point = start_point
         self.end_point = end_point
+        self.project_to = project_to
 
     def uniform_partition(self, fullh, n):
         """Sets uniform boundary grid vertical `partition` with
@@ -277,6 +291,21 @@ def build_boundary_grid(opts):
         if (op.start_point is not None and op.end_point is not None):
             d['start'] = Point2(*op.start_point)
             d['end'] = Point2(*op.end_point)
+            if op.project_to == "line":
+                pass
+            elif op.project_to == "vertex" or op.project_to == "corner":
+                c1 = data.get_any_contour(op.contour_id)
+                if op.project_to == "corner":
+                    c2 = Contour2.create_from_abstract(c1).simplify(0)
+                    if c2 is not None:
+                        c1 = c2
+                i1 = c1.closest_point_index(d['start'])
+                d['start'] = copy.deepcopy(c1.points[i1])
+                i2 = c1.closest_point_index(d['end'])
+                d['end'] = copy.deepcopy(c1.points[i2])
+            else:
+                raise ValueError("Unknown `project_to` = %s" % op.project_to)
+
         d['force_conf'] = op.force_conformal
         # check partition
         for i in range(len(op.partition) - 1):
@@ -294,3 +323,68 @@ def build_boundary_grid(opts):
         return c._get_added_names()[0][0]
     except Exception:
         raise ExecError('build_boundary_grid')
+
+
+def map_grid(base_grid, target_contour, base_points, target_points,
+             snap="no", btypes="from_grid"):
+    """Performs mapping of base grid on another contour
+
+    Args:
+       ``base_grid``: grid identifier
+
+       ``target_contour``: contour identifier
+
+       ``base_points``: collection of points in ``[[x0, y0], [x1, y1], ...]``
+       format
+       which lie on the ``base_grid`` contour (if a point doesn't lie on
+       contour it would be projected to it)
+
+       ``target_points``: collection of points in ``[[x0, y0], [x1, y1], ...]``
+       format which lie on the ``target_contour``
+
+    Kwargs:
+       ``snap`` ("no", "add_vertices", "shift_vertices"):
+       an option which defines postprocessing algorithm of snapping
+       newly created grid to ``target_contour``:
+
+       * *`no`* - no snapping
+       * *`add_vertices`* - snap by adding new vertices if that will not
+         ruin grid topology
+       * *`shift_vertices`* - shift non-corner boundary nodes to corner
+         locations if possible
+
+       ``btypes`` ("from_grid", "from_contour"):
+       defines from what source boundary features for newly created grid
+       would be taken
+
+    Raises:
+       ValueError, hmscript.ExecError
+
+    Returns:
+       identifier of newly created grid
+
+    Area mapping will take place in such a way that i-th point of
+    ``target_points`` will be translated into i-th point of
+    ``contour_points``. Each outer and inner contour of ``base_grid``
+    should contain at least one point in ``target_points`` array.
+    Order of points in given points array doesn't matter.
+    Resulting grid topology will be equal to ``base_grid`` topology
+    until ``snap="add_vertices"`` is defined.
+    """
+    n = max(len(base_points), len(target_points))
+    bpoints = []
+    tpoints = []
+    for i in range(n):
+        bpoints.append(Point2(*base_points[i]))
+        tpoints.append(Point2(*target_points[i]))
+    c = com.gridcom.MapGrid({"base": base_grid,
+                             "target": target_contour,
+                             "base_points": bpoints,
+                             "target_points": tpoints,
+                             "snap": snap,
+                             "btypes": btypes})
+    try:
+        flow.exec_command(c)
+        return c._get_added_names()[0][0]
+    except Exception as e:
+        raise ExecError("map_grid. " + str(e))

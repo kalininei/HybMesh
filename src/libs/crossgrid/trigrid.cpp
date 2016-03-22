@@ -13,6 +13,7 @@ void TriGrid::FillFromGModel(void* gmod){
 	//m->writeGEO("gmsh_geo.geo");
 	m->mesh(2);
 	//m->writeMSH("gmsh_msh.msh");
+	//m->writeVTK("gmsh_msh.vtk");
 	
 	//--- extract mesh from gmsh
 	std::map<MVertex*, GridPoint*> vrt;

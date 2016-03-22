@@ -27,7 +27,7 @@ BufferGrid::BufferGrid(GridGeom& main, const PContour& cont, double buffer_size)
 	HMCont2D::Clip::Heal(cross);
 	double domarea = HMCont2D::Area(cross);
 	if (domarea < geps) return;
-	
+
 	//1) find measures to all points
 	vector<const Point*> pp;
 	for (int i=0; i<main.n_points(); ++i) pp.push_back(main.get_point(i));
@@ -144,7 +144,8 @@ void BufferGrid::new_edge_points(Edge& e, const vector<double>& wht){
 namespace{
 
 void simplify_bnd_edges(HMCont2D::ContourTree& cont,
-		std::map<const HMCont2D::Edge*, int>& edtypes){
+		std::map<const HMCont2D::Edge*, int>& edtypes, double angle0){
+	if (ISZERO(angle0)) angle0 = 1e-6;
 	//assemble needed points because there could be cases when a point
 	//is needed from one contour of 'cont' and not needed from the other
 	std::set<const Point*> needed_points;
@@ -157,8 +158,10 @@ void simplify_bnd_edges(HMCont2D::ContourTree& cont,
 			//form straight angle
 			if (!fnd1 || !fnd2) needed_points.insert(i.p);
 			else {
-				double area3 = triarea(*i.pprev, *i.p, *i.pnext);
-				if (fabs(area3)>geps*geps) needed_points.insert(i.p);
+				//double area3 = triarea(*i.pprev, *i.p, *i.pnext);
+				//if (fabs(area3)>geps*geps) needed_points.insert(i.p);
+				double a = Angle(*i.pprev, *i.p, *i.pnext)/M_PI*180;
+				if (fabs(a-180)>angle0) needed_points.insert(i.p);
 			}
 		}
 	}
@@ -211,7 +214,7 @@ HMCont2D::ECollection extract_edges(const HMCont2D::ECollection& from,
 std::tuple<
 	HMCont2D::ContourTree,
 	std::map<Point*, double>
-> BufferGrid::boundary_info(bool preserve_bp) const{
+> BufferGrid::boundary_info(bool preserve_bp, double angle0) const{
 	//prepare return
 	std::tuple<
 		HMCont2D::ContourTree,
@@ -225,9 +228,9 @@ std::tuple<
 
 	// ================ building edge types
 	//edges types:
-	//  1 - source contour edges, 
+	//  1 - source contour edges,
 	//  2 - original grid boundary edges
-	//  3 - original grid internal edges 
+	//  3 - original grid internal edges
 	auto scont = contour_to_hm(source_cont);
 	auto grid_cont = GGeom::Info::Contour(*orig);
 	HMCont2D::ECollection inner_edges = extract_edges(cont, scont);
@@ -237,7 +240,7 @@ std::tuple<
 	for (auto& e: cont) edtypes[e.get()] = 3;
 	for (auto& e: inner_edges) edtypes[e.get()] = 1;
 	for (auto& e: bnd_edges) edtypes[e.get()] = 2;
-	
+
 	//inner, bnd, outer edges set. Edges are shared with cont
 	for (auto& ed: cont.data){
 		if (edtypes[ed.get()] == 3) outer_edges.add_value(ed);
@@ -245,14 +248,12 @@ std::tuple<
 	assert(inner_edges.size()!=0 || outer_edges.size()!=0);
 
 	// ================ cont purge procedures
-	//remove source contour points which doesn't equal source contour nodes
-	//to get rid of hanging nodes
 	simplify_source_edges(cont, scont.pdata, edtypes);
-	
+
 	//simplify bnd edges if needed:
 	//  for connected sequence of bnd_edges changes last point of first edge
 	//  and deletes all others from contour tree
-	if (!preserve_bp) simplify_bnd_edges(cont, edtypes);
+	if (!preserve_bp) simplify_bnd_edges(cont, edtypes, angle0);
 
 	//Edges deleted from cont still present in bnd_edges collection but have NULL data.
 	//clear *_edges ecollections from NULL data edges for further weight calculations
@@ -343,13 +344,13 @@ void BufferGrid::update_original() const{
 		}
 		if (!find_cong) nocong.push_back(*j);
 	}
-	
+
 	//7) check: all points which have no congruent point should lie on the
 	//original contour (not within)
-	auto flt = cont_orig.filter_points_i(nocong);
-	if (std::get<1>(flt).size() != nocong.size())
-		throw std::runtime_error("Buffer grid does not match original");
-	
+	//auto flt = cont_orig.filter_points_i(nocong);
+	//if (std::get<1>(flt).size() != nocong.size())
+		//throw std::runtime_error("Buffer grid does not match original");
+
 	//8) remove points of the original grid which lie on the source contour.
 	//   this is essential since some original points may lie on the source contour
 	//   but not in the buffer grid.

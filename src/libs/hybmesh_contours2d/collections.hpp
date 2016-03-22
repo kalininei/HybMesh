@@ -250,6 +250,10 @@ struct ECollection: public Tpp::Collection<Edge>{
 	//<3> edge index
 	static std::tuple<Edge*, double, double, int>
 	FindClosestEdge(const ECollection& dt, const Point& p);
+	
+	//find coordinates of closest point on edge
+	static Point ClosestPoint(const ECollection& dt, const Point& p);
+
 	//length of each edge
 	static vector<double> ELengths(const ECollection& dt);
 	

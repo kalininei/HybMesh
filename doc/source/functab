@@ -4,13 +4,14 @@ Object       Contour      Grid         Operations   Info           Imp/Exp
 |func-o01|   |func-c01|   |func-g01|   |func-op01|  |func-i01|     |func-ie01|
 |func-o02|   |func-c02|   |func-g02|   |func-op02|  |func-i02|     |func-ie02|
 |func-o03|   |func-c03|   |func-g03|   |func-op03|  |func-i03|     |func-ie03|
-|func-o04|   |func-c04|   |func-g04|   ..           |func-i04|     |func-ie04|
-|func-o05|   |func-c05|   ..           ..           |func-i05|     |func-ie05|
+|func-o04|   |func-c04|   |func-g04|   |func-op04|  |func-i04|     |func-ie04|
+|func-o05|   |func-c05|   |func-g05|   ..           |func-i05|     |func-ie05|
 |func-o06|   |func-c06|   ..           ..           |func-i06|     |func-ie06|
 |func-o07|   |func-c07|   ..           ..           |func-i07|     |func-ie07|
 |func-o08|   |func-c08|   ..           ..           |func-i08|     |func-ie08|
 ..           |func-c09|   ..           ..           ..             |func-ie09|
-..           ..           ..           ..           ..             |func-ie10|
+..           |func-c10|   ..           ..           ..             |func-ie10|
+..           |func-c11|   ..           ..           ..             ..         
 ============ ============ ============ ============ =============  =============
 
 
@@ -28,19 +29,23 @@ Object       Contour      Grid         Operations   Info           Imp/Exp
 .. |func-c03| replace:: :func:`create_contour`      
 .. |func-c04| replace:: :func:`add_rect_contour`       
 .. |func-c05| replace:: :func:`add_circ_contour`       
-.. |func-c06| replace:: :func:`simplify_contour`    
-.. |func-c07| replace:: :func:`unite_contours`      
-.. |func-c08| replace:: :func:`clip_domain`      
-.. |func-c09| replace:: :func:`grid_bnd_to_contour`   
+.. |func-c06| replace:: :func:`add_circ_contour2`       
+.. |func-c07| replace:: :func:`add_circ_contour3`       
+.. |func-c08| replace:: :func:`simplify_contour`    
+.. |func-c09| replace:: :func:`unite_contours`      
+.. |func-c10| replace:: :func:`clip_domain`      
+.. |func-c11| replace:: :func:`grid_bnd_to_contour`   
 
 .. |func-g01| replace:: :func:`add_unf_rect_grid`
 .. |func-g02| replace:: :func:`add_unf_circ_grid`
 .. |func-g03| replace:: :func:`add_unf_ring_grid`
-.. |func-g04| replace:: :func:`heal_grid`
+.. |func-g04| replace:: :func:`add_triangle_grid`
+.. |func-g05| replace:: :func:`heal_grid`
 
 .. |func-op01| replace:: :func:`unite_grids`
 .. |func-op02| replace:: :func:`build_boundary_grid`
 .. |func-op03| replace:: :func:`exclude_contours`
+.. |func-op04| replace:: :func:`map_grid`
 
 .. |func-i01| replace:: :func:`check_compatibility`
 .. |func-i02| replace:: :func:`info_grid`

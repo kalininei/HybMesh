@@ -29,11 +29,14 @@ public:
 // === builders
 struct Constructor{
 
+static GridGeom EmptyGrid();
 static GridGeom RectGrid(const vector<double>& part_x, vector<double>& part_y);
 static GridGeom RectGrid(Point p0, Point p1, int Nx, int Ny);
 //Nx, Ny - number of nodes in x, y directions
 static GridGeom RectGrid01(int Nx, int Ny);
+//rad1 > rad2
 static GridGeom Ring(Point p0, double rad1, double rad2, int narc, int nrad);
+static GridGeom Circle(Point p0, double rad, int narc, int nrad, bool tri_center);
 static GridGeom DeepCopy(const GridGeom& g);
 };
 
@@ -46,6 +49,7 @@ static void AddCell(GridGeom& grid, const std::vector<Point>& cell);
 //primitives modifications
 static void PointModify(GridGeom& grid, std::function<void(GridPoint*)> fun);
 static void CellModify(GridGeom& grid, std::function<void(Cell*)> fun);
+static void ClearAll(GridGeom& grid);
 //adds data
 //!! as a result of ShallowAdd points and cells indicies are renumbered according to
 //'to' grid index. Be sure that 'from' grid is not used after this procedure.
@@ -66,6 +70,10 @@ static vector<GridGeom> SubGrids(const GridGeom& grid);
 //snap_nodes is a list of points which will be snapped to contour before procedure starts
 static void SnapToContour(GridGeom& grid, const HMCont2D::Contour& cont,
 		const std::vector<GridPoint*>& snap_nodes);
+//shifts boundary grid node to significant contour vertex
+//if it is non-significant by itself. Otherwise does nothing
+static void ShiftToContour(GridGeom& grid, const HMCont2D::Contour& cont,
+		const std::vector<GridPoint*>& snap_nodes);
 
 //no complicated boundary cell edges
 //angle is between [0, M_PI]
@@ -73,6 +81,8 @@ static void SnapToContour(GridGeom& grid, const HMCont2D::Contour& cont,
 //pi -- delete all intermediate points
 static void SimplifyBoundary(GridGeom& grid, double angle);
 
+private:
+	struct _ShiftSnapPreCalc;
 };
 
 // === grid structure information
@@ -96,6 +106,8 @@ static vector<double> Skewness(const GridGeom& grid);
 static double Area(const GridGeom& grid);
 //gets cells areas as vector
 static vector<double> CellAreas(const GridGeom& grid);
+//checks all cells for correct direction and non-intersection
+static bool Check(const GridGeom& grid);
 
 //Finders
 class CellFinder{

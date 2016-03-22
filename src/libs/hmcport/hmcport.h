@@ -124,12 +124,13 @@ void crossgrid_set_callback(crossgrid_callback fun); //user defined callback
 //                If 0 some non-corner nodes could be eliminated or shifted
 // empty_holes -- equals to 1 if all holes in secondary grid should present in
 //                resulting grid. Otherwise (=0) these holes will be filled with gbase mesh.
+// angle0 (degree) - insignificant deviation from the straight angle
 //with callback defined globally
 Grid* cross_grids(Grid* gbase, Grid* gsecondary, double buffer_size, 
-		int preserve_bp, int empty_holes);
+		int preserve_bp, int empty_holes, double angle0);
 //with specified callback function
 Grid* cross_grids_wcb(Grid* gbase, Grid* gsecondary, double buffer_size, 
-		int preserve_bp, int empty_holes, crossgrid_callback cb_fun);
+		int preserve_bp, int empty_holes, double angle0, crossgrid_callback cb_fun);
 
 // === NewGrid = Grid exclude Contour Area
 //with callback defined globally
@@ -162,6 +163,17 @@ struct BoundaryLayerGridOption{
 
 Grid* boundary_layer_grid_wcb(int N, BoundaryLayerGridOption* opt, 
 		crossgrid_callback cb_fun);
+
+
+// === Mapping
+//base_grid - Grid* object 
+//target_contour - ECollection* object
+//pbase, ptarget[2*Npnt] - mapped points given as [x0, y0, x1, y1, ....]
+//snap_method:
+//   1 - no snapping
+//   2 - snap with addition of new nodes
+//   3 - snap by shifting points without addition new vertices
+Grid* build_grid_mapping(void* base_grid, void* target_contour, int Npnt, double* pbase, double* ptarget, int snap_method);
 
 
 }; //extern C

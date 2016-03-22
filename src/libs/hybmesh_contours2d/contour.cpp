@@ -430,19 +430,6 @@ Contour::GuaranteePoint(const Point& p, PCollection& pcol){
 	return ret;
 }
 
-Point Contour::ClosestPoint(const Point& p) const{
-	auto ce = FindClosestEdge(*this, p);
-	if (ISEQ(std::get<2>(ce), 0)){
-		return *std::get<0>(ce)->pstart;
-	} else if (ISEQ(std::get<2>(ce), 1)){
-		return *std::get<0>(ce)->pend;
-	} else {
-		Point* p1 = std::get<0>(ce)->pstart;
-		Point* p2 = std::get<0>(ce)->pend;
-		return Point::Weigh(*p1, *p2, std::get<2>(ce));
-	}
-}
-
 double Contour::Area(const Contour& c){
 	assert(c.is_closed());
 	auto order = c.ordered_points();

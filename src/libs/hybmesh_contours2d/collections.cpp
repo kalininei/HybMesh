@@ -94,6 +94,19 @@ ECollection::FindClosestEdge(const ECollection& dt, const Point& p){
 	return ret;
 }
 
+Point ECollection::ClosestPoint(const ECollection& dt, const Point& p){
+	auto ce = FindClosestEdge(dt, p);
+	if (ISEQ(std::get<2>(ce), 0)){
+		return *std::get<0>(ce)->pstart;
+	} else if (ISEQ(std::get<2>(ce), 1)){
+		return *std::get<0>(ce)->pend;
+	} else {
+		Point* p1 = std::get<0>(ce)->pstart;
+		Point* p2 = std::get<0>(ce)->pend;
+		return Point::Weigh(*p1, *p2, std::get<2>(ce));
+	}
+}
+
 void ECollection::SaveVtk(const ECollection& dt, const char* fn){
 	std::ofstream fs(fn);
 	fs<<"# vtk DataFile Version 3.0"<<std::endl;

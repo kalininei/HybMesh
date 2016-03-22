@@ -33,6 +33,7 @@ then
 	$HMCOM bgrid_test.py
 	$HMCOM unite_test.py
 	$HMCOM imex_test.py
+	$HMCOM mapping_test.py
 else
 	echo "============ ignoring unit tests"
 fi

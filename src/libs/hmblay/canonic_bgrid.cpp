@@ -150,9 +150,9 @@ MappedRect::Factory(HMCont2D::Contour& left, HMCont2D::Contour& right,
 		Point cpoint = std::get<1>(crres);
 		//get distances
 		double hleft = Point::dist(*left2.last(),
-				bottom.ClosestPoint(*left2.last()));
+			HMCont2D::ECollection::ClosestPoint(bottom, *left2.last()));
 		double hright = Point::dist(*right2.last(),
-				bottom.ClosestPoint(*right2.last()));
+			HMCont2D::ECollection::ClosestPoint(bottom, *right2.last()));
 		//weight from left
 		HMCont2D::Container<HMCont2D::Contour> top1;
 		if (!ISEQ(hleft, h)){

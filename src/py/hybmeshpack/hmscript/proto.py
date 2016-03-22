@@ -1,6 +1,7 @@
 from hybmeshpack import com
-from hybmeshpack.basic.geom import Point2
+from hybmeshpack.basic.geom import Point2, angle_3pnt
 from hybmeshpack.hmscript import flow
+import math
 
 
 # Prototype grids
@@ -32,7 +33,7 @@ def add_unf_circ_grid(p0, rad, na, nr, coef=1, is_trian=True):
 
        rad (float): radius
 
-       na, nr (int): partitions of arc and radius respepctively
+       na, nr (int): partitions of arc and radius respectively
 
     Kwargs:
        coef (float): refinement coefficient::
@@ -66,7 +67,7 @@ def add_unf_ring_grid(p0, radinner, radouter,
 
        radinner, radouter (float): inner and outer radii
 
-       na, nr (int): arc and radius partition respectiverly
+       na, nr (int): arc and radius partition respectively
 
     Kwargs:
        coef (float): refinement coefficient::
@@ -84,6 +85,27 @@ def add_unf_ring_grid(p0, radinner, radouter,
         "radinner": radinner, "radouter": radouter,
         "na": na, "nr": nr,
         "coef": coef})
+    flow.exec_command(c)
+    return c._get_added_names()[0][0]
+
+
+def add_triangle_grid(p0, p1, p2, nedge):
+    """Creates structured grid in triangle area
+
+    Args:
+       ``p0, p1, p2``: triangle vertices in [x, y] format
+
+       ``nedge`` (int): partition of triangle edges
+
+    Returns:
+       identifier of newly created grid
+
+    Resulting grid will contain quadrangle cells everywhere except
+    area near ``p0``-``p2`` edge where triangle cells will be built.
+    """
+    v = [Point2(*p0), Point2(*p1), Point2(*p2)]
+    c = com.gridcom.AddTriGrid({
+        "vertices": v, "nedge": nedge})
     flow.exec_command(c)
     return c._get_added_names()[0][0]
 
@@ -118,7 +140,7 @@ def add_rect_contour(p0, p1, bnd=0):
 
 
 def add_circ_contour(p0, rad, n_arc, bnd=0):
-    """Adds circle contour
+    """Adds circle contour from given center and radius
 
     Args:
        p0 (list-of-floats): circle center
@@ -139,3 +161,80 @@ def add_circ_contour(p0, rad, n_arc, bnd=0):
                                  "na": n_arc, "bnd": bnd})
     flow.exec_command(c)
     return c._get_added_names()[1][0]
+
+
+def add_circ_contour2(p0, p1, p2, n_arc, bnd=0):
+    """Adds circle contour from given arc points
+
+    Args:
+       p0, p1, p2: circle arc points as [x, y]
+
+       n_arc (int): partition of circle arc
+
+    Kwargs:
+       bnd (boundary identifier): boundary identifier for contour.
+       With the default value no boundary types will be set.
+
+    Returns:
+       Contour identifier
+
+    """
+    p0, p1, p2 = map(float, p0), map(float, p1), map(float, p2)
+    try:
+        xb, yb = p1[0] - p0[0], p1[1] - p0[1]
+        xc, yc = p2[0] - p0[0], p2[1] - p0[1]
+        A11, A12 = 2.0 * xb, 2.0 * yb
+        A21, A22 = 2.0 * xc, 2.0 * yc
+        B1, B2 = xb * xb + yb * yb, xc * xc + yc * yc
+        d = A11 * A22 - A12 * A21
+        I11, I12, I21, I22 = A22 / d, -A12 / d, -A21 / d, A11 / d
+        cx = I11 * B1 + I12 * B2
+        cy = I21 * B1 + I22 * B2
+        rad = math.sqrt((cx - xb) * (cx - xb) + (cy - yb) * (cy - yb))
+    except:
+        raise ValueError("Failed to build a circle with given parameters")
+    return add_circ_contour([cx + p0[0], cy + p0[1]], rad, n_arc, bnd)
+
+
+def add_circ_contour3(p0, p1, curv, n_arc, bnd=0):
+    """Adds circle contour from given arc points and curvature
+
+    Args:
+       p0, p1: circle arc points
+
+       curv (float): circle curvature. Equals ``1.0/radius``.
+
+       n_arc (int): partition of circle arc
+
+    Kwargs:
+       bnd (boundary identifier): boundary identifier for contour.
+       With the default value no boundary types will be set.
+
+    Returns:
+       Contour identifier
+
+    In the resulting circle ``p0``-``p1`` arc
+    with counterclockwise direction will be shorter then
+    ``p1``-``p0`` arc.
+    """
+    p0, p1, curv = map(float, p0), map(float, p1), float(curv)
+    try:
+        xa, ya = p1[0] - p0[0], p1[1] - p0[1]
+        r = abs(1.0 / curv)
+        a, b, c = -2.0 * xa, -2.0 * ya, xa * xa + ya * ya
+        s = a * a + b * b
+        x0, y0 = -a * c / s, -b * c / s
+        d = r * r - c * c / s
+        mult = math.sqrt(d / s)
+        cx1 = x0 + b * mult
+        cy1 = y0 - a * mult
+        cx2 = x0 - b * mult
+        cy2 = y0 + a * mult
+        a1 = angle_3pnt(Point2(0.0, 0.0), Point2(cx1, cx2), Point2(xa, ya))
+        if (a1 < math.pi):
+            cx, cy = cx1, cy1
+        else:
+            cx, cy = cx2, cy2
+    except:
+        raise ValueError("Failed to build a circle with given parameters")
+    return add_circ_contour([cx + p0[0], cy + p0[1]], r, n_arc, bnd)

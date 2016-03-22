@@ -85,6 +85,8 @@ instead of contour identifier should be used.
 .. autofunction:: add_rect_contour
 
 .. autofunction:: add_circ_contour
+.. autofunction:: add_circ_contour2
+.. autofunction:: add_circ_contour3
 
 .. autofunction:: grid_bnd_to_contour
 
@@ -105,6 +107,7 @@ Building uniform grids in a primitive areas.
 .. autofunction:: add_unf_rect_grid
 .. autofunction:: add_unf_circ_grid
 .. autofunction:: add_unf_ring_grid
+.. autofunction:: add_triangle_grid
 
 Transformations
 +++++++++++++++
@@ -113,6 +116,7 @@ See :ref:`functionality` for procedures details.
 .. autofunction:: exclude_contours
 .. autofunction:: unite_grids
 .. autofunction:: build_boundary_grid
+.. autofunction:: map_grid
 
 .. autoclass:: BoundaryGridOptions()
    :members: __init__, uniform_partition, incremental_partition
@@ -170,3 +174,4 @@ Introductory Examples
   intro_example1
   intro_example2
   intro_example3
+  intro_example4

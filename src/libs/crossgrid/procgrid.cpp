@@ -1,5 +1,9 @@
 #include "procgrid.h"
 
+GridGeom GGeom::Constructor::EmptyGrid(){
+	return GridGeom();
+}
+
 GridGeom GGeom::Constructor::RectGrid(const vector<double>& part_x,vector<double>& part_y){
 	int Npts = part_x.size()*part_y.size();
 	int Ncls = (part_x.size()-1)*(part_y.size()-1);
@@ -42,6 +46,7 @@ GridGeom GGeom::Constructor::RectGrid01(int Nx, int Ny){
 }
 
 GridGeom GGeom::Constructor::Ring(Point p0, double rad1, double rad2, int narc, int nrad){
+	assert(rad1>rad2);
 	vector<double> pts;
 	vector<int> cells;
 	//1) build points
@@ -49,8 +54,8 @@ GridGeom GGeom::Constructor::Ring(Point p0, double rad1, double rad2, int narc, 
 		double r = rad1 + (rad2 - rad1)/nrad*i;
 		for (int j=0; j<narc; ++j){
 			double phi = 2*M_PI/narc*j;
-			pts.push_back(r*cos(phi));
-			pts.push_back(r*sin(phi));
+			pts.push_back(r*cos(phi) + p0.x);
+			pts.push_back(r*sin(phi) + p0.y);
 		}
 	}
 	//2) build cells
@@ -66,6 +71,31 @@ GridGeom GGeom::Constructor::Ring(Point p0, double rad1, double rad2, int narc, 
 	}
 	//3) build grid
 	auto ret = GridGeom(pts.size()/2, cells.size()/5, &pts[0], &cells[0]);
+	return ret;
+}
+
+GridGeom GGeom::Constructor::Circle(Point p0, double rad, int narc, int nrad, bool tri_center){
+	double rad2 = rad*(1.0)/nrad;
+	GridGeom ret = GGeom::Constructor::Ring(p0, rad, rad2, narc, nrad-1);
+	if (!tri_center){
+		auto newcell = aa::add_shared(ret.cells, Cell());
+		for (int i=0; i<narc; ++i){
+			int ind = ret.n_points() - narc + i;
+			ret.add_point_to_cell(newcell, ret.get_point(ind));
+		}
+	} else {
+		aa::add_shared(ret.points, GridPoint(p0));
+		for (int i=0; i<narc; ++i){
+			int ind1 = ret.n_points() - narc - 1 + i;
+			int ind2 = (i == narc - 1) ? ret.n_points() - narc - 1
+			                           : ind1 + 1;
+			auto newcell = aa::add_shared(ret.cells, Cell());
+			ret.add_point_to_cell(newcell, ret.get_point(ind1));
+			ret.add_point_to_cell(newcell, ret.get_point(ind2));
+			ret.add_point_to_cell(newcell, ret.get_point(ret.n_points() - 1));
+		}
+	}
+	ret.set_indicies();
 	return ret;
 }
 
@@ -95,6 +125,11 @@ void GGeom::Modify::PointModify(GridGeom& grid, std::function<void(GridPoint*)> 
 void GGeom::Modify::CellModify(GridGeom& grid, std::function<void(Cell*)> fun){
 	std::for_each(grid.cells.begin(), grid.cells.end(),
 			[&fun](shared_ptr<Cell> gp){ fun(gp.get()); });
+}
+
+void GGeom::Modify::ClearAll(GridGeom& grid){
+	grid.cells.clear();
+	grid.points.clear();
 }
 
 void GGeom::Modify::ShallowAdd(const GridGeom* from, GridGeom* to){
@@ -254,87 +289,167 @@ vector<GridGeom> GGeom::Modify::SubGrids(const GridGeom& grid){
 	return ret;
 }
 
+struct GGeom::Modify::_ShiftSnapPreCalc{
+	GridGeom* g;
+	HMCont2D::ContourTree gridbnd;
+	std::map<double, Point*> contw;
+	vector<Point*> cp;
+	std::map<const GridPoint*, double> bndw;
+	std::set<Edge> bndeds;
+
+	_ShiftSnapPreCalc(GridGeom& grid, const HMCont2D::Contour& cont,
+			const std::vector<GridPoint*>& snap_nodes): g(&grid){
+		//snapping nodes
+		for (auto p: snap_nodes){
+			//try to search amoung vertices
+			Point* fpnt = HMCont2D::ECollection::FindClosestNode(cont, *p);
+			if (Point::meas(*fpnt, *p)<geps*geps){
+				p->set(*fpnt);
+				continue;
+			}
+			//snap to edge
+			auto fed = HMCont2D::ECollection::FindClosestEdge(cont, *p);
+			HMCont2D::Edge* e = std::get<0>(fed);
+			double w = std::get<2>(fed);
+			p->set(Point::Weigh(*e->pstart, *e->pend, w));
+		}
+		gridbnd = GGeom::Info::Contour(grid);
+		//all contour significant points weights
+		cp = cont.corner_points();
+		for (auto p: cp){
+			auto coord = cont.coord_at(*p);
+			contw[std::get<1>(coord)] = p;
+		}
+		//copy one more time with w+1 for closed contours
+		if (cont.is_closed()){
+			auto it = contw.rbegin();
+			while (it!=contw.rend()){
+				contw[it->first + 1.0] = it->second;
+				++it;
+			}
+		}
+		//grid boundary points which lie on cont weights
+		for (auto p: grid.get_bnd_points()){
+			auto coord = cont.coord_at(*p);
+			if (std::get<4>(coord)<geps) bndw[p] = std::get<1>(coord);
+		}
+		//assemble set of boundary grid edges
+		for (auto& e: grid.get_edges()) if (e.is_boundary()) bndeds.insert(e);
+	}
+	std::list<Point*> get_pts_between(double w1, double w2){
+		std::list<Point*> ret;
+		if (ISZERO(w2-w1)) return ret;
+		if (w2<w1) w2+=1.0;
+		assert(w1 < w2 && w2<2.0);
+		for (auto it=contw.lower_bound(w1); it!=contw.end(); ++it){
+			if (it->first>w1+geps && it->first<w2-geps){
+				ret.push_back(it->second);
+			}
+			if (it->first>w2-geps) break;
+		}
+		return ret;
+	}
+
+	std::vector<std::tuple<GridPoint*, GridPoint*, std::list<Point*>, Cell*>>
+	point_pairs(){
+		std::vector<std::tuple<GridPoint*, GridPoint*, std::list<Point*>, Cell*>> ret;
+		for (auto e: bndeds){
+			GridPoint *p1 = g->points[e.p1].get(), *p2 = g->points[e.p2].get();
+			if (e.cell_left < 0) std::swap(p1, p2);
+			auto fnd1 = bndw.find(p1), fnd2 = bndw.find(p2);
+			//if edge is not on contour ignore it
+			if (fnd1==bndw.end() || fnd2==bndw.end()) continue;
+			double w1 = fnd1->second, w2 = fnd2->second;
+			std::list<Point*> ap = get_pts_between(w1, w2);
+			if (ap.size() == 0) continue;
+			Cell* cell = g->cells[e.any_cell()].get();
+			ret.push_back(std::make_tuple(p1, p2, ap, cell));
+		}
+		return ret;
+	}
+};
+
 void GGeom::Modify::SnapToContour(GridGeom& grid, const HMCont2D::Contour& cont,
 		const std::vector<GridPoint*>& snap_nodes){
-	//snapping nodes
-	for (auto p: snap_nodes){
-		//try to search amoung vertices
-		Point* fpnt = HMCont2D::ECollection::FindClosestNode(cont, *p);
-		if (Point::meas(*fpnt, *p)<geps*geps){
-			p->set(*fpnt);
-			continue;
-		}
-		//snap to edge
-		auto fed = HMCont2D::ECollection::FindClosestEdge(cont, *p);
-		HMCont2D::Edge* e = std::get<0>(fed);
-		double w = std::get<2>(fed);
-		p->set(Point::Weigh(*e->pstart, *e->pend, w));
-	}
-
-	auto gridbnd = GGeom::Info::Contour(grid);
-	//all contour significant points weights
-	std::map<double, Point*> contw;
-	auto cp = cont.corner_points();
-	for (auto p: cp){
-		auto coord = cont.coord_at(*p);
-		contw[std::get<1>(coord)] = p;
-	}
-	//copy one more time with w+1 for closed contours
-	if (cont.is_closed()){
-		auto it = contw.rbegin();
-		while (it!=contw.rend()){
-			contw[it->first + 1.0] = it->second;
-			++it;
-		}
-	}
-
-	//grid boundary points which lie on cont weights
-	std::map<const GridPoint*, double> bndw;
-	for (auto p: grid.get_bnd_points()){
-		auto coord = cont.coord_at(*p);
-		if (std::get<4>(coord)<geps) bndw[p] = std::get<1>(coord);
-	}
-
-	//assemble set of boundary grid edges
-	std::set<Edge> bndeds;
-	for (auto& e: grid.get_edges()) if (e.is_boundary()) bndeds.insert(e);
-	//get all cont nodes between p1 and p2
-	std::function<std::list<Point*>(double, double)> get_pts_between;
-	get_pts_between = [&](double w1, double w2)->std::list<Point*>{
-			std::list<Point*> ret;
-			if (ISZERO(w2-w1)) return ret;
-			if (w2<w1) w2+=1.0;
-			assert(w1 < w2 && w2<2.0);
-			for (auto it=contw.lower_bound(w1); it!=contw.end(); ++it){
-				if (it->first>w1+geps && it->first<w2-geps){
-					ret.push_back(it->second);
-				}
-				if (it->first>w2-geps) break;
-			}
-			return ret;
-		};
-	for (auto e: bndeds){
-		const GridPoint *p1 = grid.get_point(e.p1), *p2 = grid.get_point(e.p2);
-		if (e.cell_left < 0) std::swap(p1, p2);
-		auto fnd1 = bndw.find(p1), fnd2 = bndw.find(p2);
-		//if edge is not on contour ignore it
-		if (fnd1==bndw.end() || fnd2==bndw.end()) continue;
-		double w1 = fnd1->second, w2 = fnd2->second;
-		std::list<Point*> ap = get_pts_between(w1, w2);
-		//if no points between edge points ignore edge
-		if (ap.size() == 0) continue;
-		//add points to grid cell
-		Cell* cell = grid.cells[e.any_cell()].get();
-		auto i1 = std::find(cell->points.begin(), cell->points.end(), p1);
-		auto i2 = std::find(cell->points.begin(), cell->points.end(), p2);
-		assert(i2-i1==1 || (i2==cell->points.begin() && i1==cell->points.end()-1)); 
-		//insert additional edges
-		vector<GridPoint*> padds;
+	auto proc = _ShiftSnapPreCalc(grid, cont, snap_nodes);
+	for (auto& p: proc.point_pairs()){
+		GridPoint* p1 = std::get<0>(p), *p2 = std::get<1>(p);
+		auto& ap = std::get<2>(p);
+		Cell* cell = std::get<3>(p);
+		Cell c2(*cell);
+		auto i1 = std::find(c2.points.begin(), c2.points.end(), p1);
+		auto i2 = std::find(c2.points.begin(), c2.points.end(), p2);
+		assert(i2-i1==1 || (i2==c2.points.begin() && i1==c2.points.end()-1)); 
+		//try to insert additional edges
+		ShpVector<GridPoint> padds;
+		vector<GridPoint*> padds2;
 		for (auto it=ap.begin(); it!=ap.end(); ++it){
-			grid.points.push_back(std::make_shared<GridPoint>(**it));
-			padds.push_back(grid.points.back().get());
+			padds2.push_back(aa::add_shared(padds, GridPoint(**it)));
 		}
-		cell->points.insert(i1+1, padds.begin(), padds.end());
+		c2.points.insert(i1+1, padds2.begin(), padds2.end());
+		if (!c2.has_self_crosses()){
+			cell->points = c2.points;
+			std::copy(padds.begin(), padds.end(), std::back_inserter(grid.points));
+		}
+	}
+	grid.set_indicies();
+}
+
+namespace{
+struct ShiftS{
+	GridPoint* from;
+	Point* to;
+	double dist2;
+};
+bool operator<(const ShiftS& a, const ShiftS& b){ return a.dist2<b.dist2;}
+}
+
+void GGeom::Modify::ShiftToContour(GridGeom& grid, const HMCont2D::Contour& cont,
+		const std::vector<GridPoint*>& snap_nodes){
+	auto proc = _ShiftSnapPreCalc(grid, cont, snap_nodes);
+	//get all possible shifts
+	std::list<ShiftS> allshifts;
+	for (auto p: proc.point_pairs()){
+		GridPoint* p1 = std::get<0>(p), *p2 = std::get<1>(p);
+		auto& ap = std::get<2>(p);
+		ShiftS s1 {p1, *ap.begin(), Point::meas(*p1, **ap.begin())};
+		ShiftS s2 {p2, *ap.rbegin(), Point::meas(*p2, **ap.rbegin())};
+		allshifts.push_back(s1);
+		allshifts.push_back(s2);
+	}
+	//leave only point on outer grid contour which are non-significant for cont
+	for (auto& s: allshifts){
+		for (auto p: proc.cp){
+			if (Point::meas(*s.from, *p) < geps*geps){
+				s.from = NULL;
+				break;
+			}
+		}
+	}
+	allshifts.remove_if([](ShiftS s){ return s.from==NULL; });
+	//sort allshifts
+	allshifts.sort();
+	//make shifts
+	std::vector<std::vector<int>> point_cell = grid.point_cell();
+	for (auto& s: allshifts) if (s.from != NULL){
+		//try to shift
+		Point bu(*s.from);
+		s.from->set(*s.to);
+		//check if all cells are still ok
+		auto& ps = point_cell[s.from->get_ind()];
+		bool ok = true;
+		for (auto i=0; i<ps.size(); ++i){
+			if (grid.cells[ps[i]]->has_self_crosses()){
+				ok = false;
+				break;
+			}
+		}
+		if (ok){
+			for (auto& s2: allshifts)
+				if (s.to == s2.to || s.from == s2.from) s2.from = NULL;
+		} else {
+			s.from->set(bu);
+		}
 	}
 	grid.set_indicies();
 }
@@ -441,6 +556,14 @@ vector<double> GGeom::Info::CellAreas(const GridGeom& grid){
 		ret[i] = grid.get_cell(i)->area();
 	}
 	return ret;
+}
+
+bool GGeom::Info::Check(const GridGeom& grid){
+	for (auto& c: grid.cells){
+		double a = c->area();
+		if (a<=0 || c->has_self_crosses()) return false;
+	}
+	return true;
 }
 
 std::set<int> GGeom::Info::CellFinder::IndSet(const BoundingBox& bbox) const{

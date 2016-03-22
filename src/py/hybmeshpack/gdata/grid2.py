@@ -33,6 +33,12 @@ class Grid2(bgeom.Point2SetStruct):
         """
         self.bt = copy.deepcopy(ged)
 
+    def get_edge_bnd(self, iedge):
+        try:
+            return self.bt[iedge]
+        except KeyError:
+            return 0
+
     def deepcopy(self):
         """ overriden from GeomStruct. returns deepcopied grid """
         #avoiding deepcopy of self.cont

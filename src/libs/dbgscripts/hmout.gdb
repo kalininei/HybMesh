@@ -38,6 +38,10 @@ define info_contour
 	call HMCont2D::Debug::info_contour($arg0)
 end
 
+define info_tree
+	call HMCont2D::Debug::info_tree($arg0)
+end
+
 define info_ecollection
 	call HMCont2D::Debug::info_ecollection($arg0)
 end

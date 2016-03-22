@@ -2,8 +2,9 @@ import copy
 import command
 import objcom
 from hybmeshpack import gdata, basic
+import hybmeshpack.basic.geom as bgeom
 from unite_grids import (unite_grids, grid_excl_cont, setbc_from_conts,
-                         boundary_layer_grid)
+                         boundary_layer_grid, map_grid)
 
 
 class NewGridCommand(objcom.AbstractAddRemove):
@@ -104,6 +105,61 @@ class AddUnfRingGrid(NewGridCommand):
             opt['na'], opt['nr'], opt['coef'])
 
 
+class AddTriGrid(NewGridCommand):
+    "Add grid in triangle area"
+    def __init__(self, argsdict):
+        super(AddTriGrid, self).__init__(argsdict)
+
+    @classmethod
+    def _arguments_types(cls):
+        return {'name': command.BasicOption(str),
+                'vertices': command.ListOfOptions(command.Point2Option()),
+                'nedge': command.BasicOption(int)
+                }
+
+    def _build_grid(self):
+        so = self.options
+        ne = so['nedge']
+        # check points order
+        [p0, p1, p2] = map(copy.deepcopy, so['vertices'])
+        x0, y0 = p0.x - p2.x, p0.y - p2.y
+        x1, y1 = p1.x - p2.x, p1.y - p2.y
+        if (x0 * y1 - y0 * x1) > 0:
+            p0, p2 = p2, p0
+        # build points
+        plines = []
+        for i in range(ne + 1):
+            w1 = float(i) / ne
+            x1, y1 = w1 * p2.x + (1 - w1) * p0.x, w1 * p2.y + (1 - w1) * p0.y
+            x2, y2 = w1 * p2.x + (1 - w1) * p1.x, w1 * p2.y + (1 - w1) * p1.y
+            plines.append([])
+            for j in range(ne + 1 - i):
+                w2 = float(j) / (ne - i) if ne != i else 1
+                x3, y3 = (1 - w2) * x1 + w2 * x2, (1 - w2) * y1 + w2 * y2
+                plines[-1].append(bgeom.Point2(x3, y3))
+
+        allpoints = []
+        for p in plines:
+            allpoints.extend(p)
+        # build cells
+        pind = {}
+        for i, p in enumerate(allpoints):
+            pind[p] = i
+        allcells = []
+        for i in range(ne):
+            p1 = pind[plines[i][0]]
+            p2 = pind[plines[i + 1][0]]
+            p3 = pind[plines[i][1]]
+            allcells.append([p1, p2, p3])
+            for j in range(ne - i - 1):
+                p1 = pind[plines[i][j + 1]]
+                p2 = pind[plines[i + 1][j]]
+                p3 = pind[plines[i + 1][j + 1]]
+                p4 = pind[plines[i][j + 2]]
+                allcells.append([p1, p2, p3, p4])
+        return gdata.grid2.Grid2.from_points_cells2(allpoints, allcells)
+
+
 class ExcludeContours(objcom.AbstractAddRemove):
     "Exclude contour area from grids"
 
@@ -178,7 +234,8 @@ class UniteGrids(objcom.AbstractAddRemove):
             super(UniteGrids.Option, self).__init__(
                 name=command.BasicOption(str),
                 buf=command.BasicOption(float),
-                den=command.BasicOption(int)
+                den=command.BasicOption(int),
+                angle0=command.BasicOption(float)
             )
 
     @classmethod
@@ -226,8 +283,9 @@ class UniteGrids(objcom.AbstractAddRemove):
                 #ask parent_flow for callback
                 cb = self.ask_for_callback(basic.interf.Callback.CB_CANCEL2)
                 #execute
-                ret = unite_grids(ret, g, b,
-                                  opt['fix_bnd'], opt['empty_holes'], cb)
+                ret = unite_grids(
+                    ret, g, b, opt['fix_bnd'], opt['empty_holes'],
+                    opt['angle0'], cb)
             except Exception as e:
                 raise command.ExecutionError('Unition Error: %s' % str(e),
                                              self, e)
@@ -455,3 +513,51 @@ class HealGrid(objcom.AbstractAddRemove):
 
         if g != orig:
             return [(self.options['name'], g)], [self.options['name']], [], []
+
+
+class MapGrid(NewGridCommand):
+    "Maps grid area on given contour"
+
+    def __init__(self, kwargs):
+        if "name" not in kwargs:
+            kwargs["name"] = "Grid1"
+        super(MapGrid, self).__init__(kwargs)
+
+    @classmethod
+    def _arguments_types(cls):
+        """ name - modified grid name,
+            base - identifier of the basic grid
+            target - identifier of contour
+            base_points - points of the basic grid contour
+            target_poitns - points of the target contour
+            snap - snapping algo ("no", "add_vertices", "shift_vertices")
+            btypes - source of boundary features ("from_grid", "from_contour")
+        """
+        return {'name': command.BasicOption(str),
+                'base': command.BasicOption(str),
+                'target': command.BasicOption(str),
+                'base_points': command.ListOfOptions(command.Point2Option()),
+                'target_points': command.ListOfOptions(command.Point2Option()),
+                'snap': command.BasicOption(str),
+                'btypes': command.BasicOption(str),
+                }
+
+    def _build_grid(self):
+        '-> grid2.Grid2'
+        try:
+            _, _, g = self.receiver.get_grid(name=self.options['base'])
+        except:
+            raise command.ObjectNotFound(self.options['base'])
+        try:
+            _, _, c = self.receiver.get_ucontour(name=self.options['target'])
+        except:
+            raise command.ObjectNotFound(self.options['target'])
+        try:
+            ret = map_grid(g, c, self.options['base_points'],
+                           self.options['target_points'],
+                           self.options['snap'],
+                           self.options['btypes'])
+        except Exception as e:
+            raise command.ExecutionError('Mapping error: %s' % str(e),
+                                         self, e)
+        return ret

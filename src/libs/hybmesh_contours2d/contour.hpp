@@ -94,9 +94,6 @@ struct Contour: public ECollection{
 	std::tuple<bool, Point*>
 	GuaranteePoint(const Point& p, PCollection& pcol);
 
-	//find coordinates of closest contour point
-	Point ClosestPoint(const Point& p) const;
-
 	//Returns true if point lies strictly within/without closed contour
 	//Direction is not taken into account
 	bool IsWithin(const Point& p) const;

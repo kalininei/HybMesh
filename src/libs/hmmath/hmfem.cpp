@@ -66,7 +66,6 @@ void LaplasProblem::RebuildSolutionMatrix(){
 	solver = MatSolve::Factory(solution_mat);
 }
 
-
 //solve Ax=0
 void LaplasProblem::Solve(vector<double>& ans){
 	RebuildSolutionMatrix();
