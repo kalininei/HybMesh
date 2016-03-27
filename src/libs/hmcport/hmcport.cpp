@@ -8,7 +8,7 @@
 namespace{
 
 // crossgrid callback
-CrossGridCallback::func global_callback;
+CrossGridCallback::func global_callback = CrossGridCallback::silent();
 
 }//namespace
 

@@ -55,28 +55,31 @@ def exclude_contours(grid, conts, what):
         raise ExecError('exclude_contours')
 
 
-def unite_grids(base_grid, imp_grids, empty_holes=False, fix_bnd=False,
+def unite_grids(base_grid, over_grids, empty_holes=False, fix_bnd=False,
                 zero_angle_approx=0):
-    """Makes grids impositions
+    """Makes grids superpositions
 
     :param base_grid: basic grid identifier
 
-    :param list-of-tuples imp_grids: sequence of grids for imposition as
+    :param list-of-tuples over_grids: sequence of grids for superposition as
       ``[(grid_id, buffer), () ...]`` where
-      ``grid_id`` is an imposed grid identifier,
+      ``grid_id`` is an superposed grid identifier,
       ``buffer`` - size of the buffer for current imposition
 
     :param bool empty_holes: keep all empty zones
       (in case of multiple connectivity)
       of imposed grids in the resulting grid.
+      (see :ref:`emptyholes` for details)
 
     :param bool fix_bnd: whether to fix all boundary nodes
+      (see :ref:`fixbnd` for details)
 
-    :param degree zero_angle_approx:
+    :param positive-degree zero_angle_approx:
       defines deviation from the straight angle which is considered
       insignificant. Grid boundary vertices which provide insignificant
       contour turns could be moved in order to obtain better result.
       Makes sense only if ``fix_bnd = False``.
+      (see :ref:`zero-angle-app` for details)
 
     :return: identifier of the newly created grid
 
@@ -89,11 +92,14 @@ def unite_grids(base_grid, imp_grids, empty_holes=False, fix_bnd=False,
            :start-after: START OF EXAMPLE
            :end-before: END OF EXAMPLE
 
+    See also:
+       :ref:`gridimp`
+       
     """
     args = {"base": base_grid, "empty_holes": empty_holes,
             "angle0": zero_angle_approx,
             "fix_bnd": fix_bnd, "plus": []}
-    for ig in imp_grids:
+    for ig in over_grids:
         args["plus"].append({"name": ig[0], "buf": ig[1], "den": 7})
     c = com.gridcom.UniteGrids(args)
     try:

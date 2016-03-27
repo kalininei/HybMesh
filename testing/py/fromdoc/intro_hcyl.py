@@ -139,8 +139,10 @@ hm.export_grid_vtk(grid_final, "g.vtk")
 hm.export_contour_vtk(grid_final, "c.vtk")
 
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-bt = {1: 20, 2: 45, 3: 155, 4: 54, 5: 22}
+bt = {1: 19, 2: 44, 3: 155, 4: 56, 5: 22}
 if hm.info_contour(grid_final)['btypes'] != bt:
+    print hm.info_contour(grid_final)['btypes']
     print "TEST FAILED <<<<<<<<<<<<<<<<<<<< "
 if not hm.skewness(grid_final, 0.6)['ok']:
+    print hm.skewness(grid_final, 0.6)['ok']
     print "TEST FAILED <<<<<<<<<<<<<<<<<<<< "

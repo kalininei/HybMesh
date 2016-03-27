@@ -91,7 +91,8 @@ def unite_grids(g1, g2, buf, fix_bnd, empty_holes, an0, cb):
     c_an0 = ct.c_double(an0)
     c_fix = ct.c_int(1) if fix_bnd else ct.c_int(0)
     c_eh = ct.c_int(1) if empty_holes else ct.c_int(0)
-    args = (c_g1, c_g2, c_buf, c_fix, c_an0, c_eh)
+    #args = (c_g1, c_g2, c_buf, c_fix, c_an0, c_eh)
+    args = (c_g1, c_g2, c_buf, c_fix, c_eh, c_an0)
 
     lib_fa.cross_grids_wcb.restype = ct.c_void_p
     cb.initialize(lib_fa.cross_grids_wcb, args)

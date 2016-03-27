@@ -99,16 +99,23 @@ BufferGrid::BufferGrid(GridGeom& main, const PContour& cont, double buffer_size)
 		bool is_good = false;
 		//if any point lies inside contour ignore cell
 		//if any point lies inside outer buffer zone but not on contour add cell
+		int pnts_with_zero_m = 0;
 		for (int j=0; j<c->dim(); ++j){
 			double& m = meas[c->get_point(j)->get_ind()];
 			//point on contour are ambiguous
 			if (fabs(m)<geps2){
-				if (j!=c->dim()-1){ is_good = true; continue; }
-				else {
+				++pnts_with_zero_m;
+				if (j!=c->dim()-1){
+					is_good = true; continue;
+				} else if (pnts_with_zero_m < c->dim()){
+					is_good =  true;
+				}else{
 					//all points lie on source contour. we have to check intersection
 					auto ccont = GGeom::Info::CellContour(main, c->get_ind());
-					double unarea = HMCont2D::Area(HMCont2D::Clip::Union(cross, ccont));
-					if (fabs(unarea-domarea)>geps*geps) is_good = false;
+					auto intersect = HMCont2D::Clip::Union(cross, ccont);
+					HMCont2D::Clip::Heal(intersect);
+					double unarea = HMCont2D::Area(intersect);
+					if (fabs(unarea-domarea)>100*geps*geps) is_good = false;
 					else is_good = true;
 				}
 			//if point in buffer zone add cell
@@ -571,7 +578,6 @@ std::tuple<
 		double w1 = dist1/(dist1 + dist2);
 		d.second = (1 - w1)*len1 + w1*len2;
 	}
-
 	//simplify bnd edges if needed:
 	//  for connected sequence of bnd_edges changes last point of first edge
 	//  and deletes all others from contour tree

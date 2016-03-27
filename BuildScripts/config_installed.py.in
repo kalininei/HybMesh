@@ -4,10 +4,10 @@ import os
 
 exepath = os.path.abspath(sys.executable)
 if sys.platform.startswith('win') and os.path.split(exepath)[1] == 'hybmesh.exe':
-	# if that is windows *.exe program 
+	# if that is windows *.exe program
 	libdir = os.path.join(os.path.dirname(exepath), '../lib')
 else:
-	# linux or python windows version 
+	# linux or python windows version
 	libdir = '@LIB_INSTALL_DIR@'
 homedir = os.path.expanduser('@HYBMESH_HOMEDIR@')
 version = '@APPVERSION@'
@@ -43,7 +43,7 @@ if sys.platform.startswith('win'):
         ct.cdll.LoadLibrary(os.path.join(libdir, 'libcrossgrid.dll'))
         ct.cdll.LoadLibrary(os.path.join(libdir, 'libhmmath.dll'))
         ct.cdll.LoadLibrary(os.path.join(libdir, 'libhmblay.dll'))
-        ct.cdll.LoadLibrary(os.path.join(libdir, 'libbgeom2d.dll'))
+        ct.cdll.LoadLibrary(os.path.join(libdir, 'libhmmapping.dll'))
         ct.cdll.LoadLibrary(os.path.join(libdir, 'libhmcport.dll'))
     except:
         sys.exit("error in library linking")

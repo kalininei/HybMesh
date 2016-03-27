@@ -167,7 +167,7 @@ vector<Contour::PInfo> Contour::ordered_info() const{
 		}
 		if (i == pts.size() - 1){
 			if (is_closed()){
-				a.pnext = pts[2];
+				a.pnext = pts[1];
 				a.enext = data[0];
 			} else {
 				a.pnext = 0;

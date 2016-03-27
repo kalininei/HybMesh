@@ -421,7 +421,9 @@ Contour partition_with_keepit(A& step, const Contour& contour, PCollection& psto
 			keep_sorted.push_front(orig_pnt[0]);
 		if (*keep_sorted.rbegin() != orig_pnt.back())
 			keep_sorted.push_back(orig_pnt.back());
-	} else if (keep_sorted.size() > 0){
+	} else if (keep_sorted.size() == 1){
+		keep_sorted.push_back(*keep_sorted.begin());
+	} else if (keep_sorted.size() > 0 && *keep_sorted.begin() != *keep_sorted.rbegin()){
 		keep_sorted.push_back(*keep_sorted.begin());
 	} else if (keep_sorted.size() == 0){
 		keep_sorted.push_back(orig_pnt[0]);
