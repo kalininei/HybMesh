@@ -167,6 +167,7 @@ bool PContour::is_corner_point(int i) const{
 }
 
 bool PContour::is_corner_point(int i, double dev) const{
+	if (ISZERO(dev)) dev = 1e-6;
 	auto p = get_point(i);
 	auto pnext = get_point(i+1);
 	auto pprev = get_point(i-1);

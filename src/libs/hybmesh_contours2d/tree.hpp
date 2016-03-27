@@ -63,6 +63,37 @@ struct ContourTree: public ECollection {
 	static bool CheckNoCross(const ContourTree& c);
 	//contacts are forbidden
 	static bool CheckNoContact(const ContourTree& c);
+
+	//DeepCopy overriden from ECollection
+	template<class TTarget, class = Tpp::IsBase<ContourTree, TTarget>>
+	static TDeepCopyResult DeepCopy(const ContourTree& from, TTarget& to, const ShpGen& gen) {
+		TDeepCopyResult res;
+		//copy nodes
+		for (auto c: from.nodes){
+			//to.nodes.push_back(TreeNode());
+			aa::add_shared(to.nodes, TreeNode());
+			TDeepCopyResult dcr = Contour::DeepCopy(*c, *to.nodes.back(), gen);
+			res.oldnew.insert(dcr.oldnew.begin(), dcr.oldnew.end());
+			res.newold.insert(dcr.newold.begin(), dcr.newold.end());
+		}
+		//fill parent and childs
+		for (int i=0; i<from.nodes.size(); ++i){
+			auto par = from.nodes[i]->parent;
+			if (par == NULL) to.nodes[i]->parent = 0;
+			else{
+				for (int j=0; j<from.nodes.size(); ++j){
+					if (from.nodes[j].get() == par){
+						to.nodes[i]->parent = to.nodes[j].get();
+						break;
+					}
+				}
+			}
+		}
+		to.UpdateTopology();
+		//fill data
+		to.ReloadEdges();
+		return res;
+	};
 };
 
 // ContourTree + set of open contours
@@ -72,6 +103,7 @@ struct ExtendedTree: public ContourTree {
 	Contour* get_contour(Point* p) const override;
 	Contour* get_contour(Edge* p) const override;
 	Contour* get_contour(int i) const override;
+	vector<Contour*> all_contours() const;
 	int cont_count() const override { return nodes.size() + open_contours.size(); }
 	
 	//Methods
@@ -85,6 +117,22 @@ struct ExtendedTree: public ContourTree {
 	static ContourTree ExtractTree(const ExtendedTree& et){ return ContourTree(et); }
 	//vtk save
 	static void SaveVtk(const ExtendedTree& ct, const char* fn);
+	
+	//DeepCopy overriden from ECollection
+	template<class TTarget, class = Tpp::IsBase<ExtendedTree, TTarget>>
+	static TDeepCopyResult DeepCopy(const ExtendedTree& from, TTarget& to, const ShpGen& gen) {
+		TDeepCopyResult res = ContourTree::DeepCopy(from, to, gen);
+		//copy open contours
+		for (auto c: from.open_contours){
+			aa::add_shared(to.open_contours, Contour());
+			TDeepCopyResult dcr = Contour::DeepCopy(*c, *to.open_contours.back(), gen);
+			res.oldnew.insert(dcr.oldnew.begin(), dcr.oldnew.end());
+			res.newold.insert(dcr.newold.begin(), dcr.newold.end());
+		}
+		//fill data
+		to.ReloadEdges();
+		return res;
+	};
 };
 
 

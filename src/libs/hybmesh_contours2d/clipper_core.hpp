@@ -9,7 +9,8 @@ class ClipperPath;
 class ClipperTree;
 
 //area of integer arithmetic computing is within [-Resolution, Resolution] square
-const ClipperLib::cInt CLIPPER_RESOLUTION = 1e8;
+//const ClipperLib::cInt CLIPPER_RESOLUTION = 1e8;
+const ClipperLib::cInt CLIPPER_RESOLUTION = 100.0/geps;
 //normalized to [0, 1] distance between true and approximated arcs
 const double ClipperArcTolerance = 0.0001;
 
@@ -92,10 +93,19 @@ struct ClipperPath: public ClipperObject{
 
 
 // ================================ ClipperTree =========================
-//read only object
 struct ClipperTree: public ClipperObject{
+	//overriden
+	void ApplyBoundingBox(const BoundingBox& newbbox) override;
+	//from tree
+	static ClipperTree Build(const ContourTree& tree);
 	//to container
 	static Container<ContourTree> HMContainer(const ClipperLib::PolyTree&, const BoundingBox&);
+	//sorting physical points: INSIDE/OUTSIDE/BOUND for each point
+	vector<int> SortOutPoints(const vector<Point>& pts) const;
+
+private:
+	vector<ClipperPath> data;
+	vector<bool> isopen;
 };
 
 

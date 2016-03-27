@@ -24,7 +24,7 @@ void add_check(bool ex, std::string info){
 void test1(){
 	std::cout<<"Offset closed polygon"<<std::endl;
 	auto c6 = Constructor::Circle(6, 1.0, Point(0,0));
-	auto oret = Algos::Offset(c6, 0.2, OffsetTp::CLOSED_POLY);
+	auto oret = Algos::Offset(c6, 0.2, OffsetTp::RC_CLOSED_POLY);
 	add_check(fabs(Area(oret) - 3.923) < 0.01, "6-sided closed polygon offsetting");
 }
 
@@ -485,6 +485,114 @@ void test12(){
 
 }
 
+void test13(){
+	std::cout<<"Sorting points out"<<std::endl;
+	auto cn1 = HMCont2D::Constructor::ContourFromPoints({0,0, 1,0, 1,1, 0,1}, true);
+	vector<Point> p1 = {Point(-0.5, 0.5), Point(0, 0.5), Point(0.5, 0.5), Point(1, 0.5), Point(1, 0)};
+	auto ans1 = HMCont2D::Algos::SortOutPoints(cn1, p1);
+
+	add_check([&]{
+		if (ans1[0] != OUTSIDE) return false;
+		if (ans1[1] != BOUND) return false;
+		if (ans1[2] != INSIDE) return false;
+		if (ans1[3] != BOUND) return false;
+		if (ans1[4] != BOUND) return false;
+		return true;
+	}(), "square contour");
+
+	auto cn2 = HMCont2D::Constructor::ContourFromPoints({0.1,0.1, 0.9,0.1, 0.9,0.9, 0.1,0.9}, true);
+	HMCont2D::ContourTree ctree;
+	ctree.AddContour(cn1);
+	ctree.AddContour(cn2);
+
+	vector<Point> p2 = {Point(-0.5, 0.5), Point(0, 0.5), Point(0.05, 0.5), Point(0.1, 0.5), Point(0.5, 0.5)};
+	auto ans2 = HMCont2D::Algos::SortOutPoints(ctree, p2);
+	add_check([&]{
+		if (ans2[0] != OUTSIDE) return false;
+		if (ans2[1] != BOUND) return false;
+		if (ans2[2] != INSIDE) return false;
+		if (ans2[3] != BOUND) return false;
+		if (ans2[4] != OUTSIDE) return false;
+		return true;
+	}(), "square contour with a hole");
+
+	auto rotate = [](double angle, Point& pnt){
+		pnt.set(vecRotate(pnt, angle/180.0*M_PI));
+	};
+	for (auto& p: cn1.all_points()) rotate(37, *p);
+	for (auto& p: cn2.all_points()) rotate(37, *p);
+	for (auto& p: p1) rotate(37, p);
+	for (auto& p: p2) rotate(37, p);
+
+	auto ans3 = HMCont2D::Algos::SortOutPoints(cn1, p1);
+	auto ans4 = HMCont2D::Algos::SortOutPoints(ctree, p2);
+	add_check([&]{
+		if (ans3[0] != OUTSIDE) return false;
+		if (ans3[1] != BOUND) return false;
+		if (ans3[2] != INSIDE) return false;
+		if (ans3[3] != BOUND) return false;
+		if (ans3[4] != BOUND) return false;
+		if (ans4[0] != OUTSIDE) return false;
+		if (ans4[1] != BOUND) return false;
+		if (ans4[2] != INSIDE) return false;
+		if (ans4[3] != BOUND) return false;
+		if (ans4[4] != OUTSIDE) return false;
+		return true;
+	}(), "after rotation");
+
+}
+
+void test14(){
+	std::cout<<"Weighted Partition"<<std::endl;
+	HMCont2D::PCollection pstore;
+	auto line01 = HMCont2D::Constructor::ContourFromPoints({-0.3,0, 1.7,0});
+	std::map<double, double> w1;
+	w1[0] = 0.2;
+	w1[0.5] = 0.6;
+	w1[0.75] = 0.4;
+	w1[1.0] = 0.2;
+	auto ans1 = HMCont2D::Algos::WeightedPartition(w1, line01, pstore);
+	add_check(ans1.size() == 5 && fabs(ans1.ordered_points()[1]->x - 0.154386 * 2.0 + 0.3)<1e-4,
+			"symmetrical");
+	std::map<double, double> w2;
+	w2[0] = 0.4; w2[1] = 0.2;
+	w2[0.2] = 0.01; w2[0.25] = 0.05;
+	w2[0.6] = 0.03;
+	auto ans2 = HMCont2D::Algos::WeightedPartition(w2, line01, pstore);
+	add_check(ans2.size() == 34 && fabs(ans2.ordered_points()[6]->x - 0.224817*2.0 + 0.3)<1e-4,
+			"fine grid");
+	std::map<double, double> w3;
+	w3[0] = 1.4; w3[1] = 0.2;
+	auto ans3 = HMCont2D::Algos::WeightedPartition(w3, line01, pstore);
+	add_check(ans3.size() == 3 && fabs(ans3.ordered_points()[2]->x - 0.842779*2.0 + 0.3)<1e-4,
+			"coarse grid");
+	std::map<double, double> w4;
+	w4[0] = 166; w4[1] = 182;
+	auto ans4 = HMCont2D::Algos::WeightedPartition(w4, line01, pstore);
+	add_check(ans4.size() == 1,
+			"very coarse grid");
+
+	auto circ1 = HMCont2D::Constructor::Circle(256, 1, Point(0, 0));
+	std::map<double, double> w5;
+	w5[0] = 0.4; w5[0.5] = 0.2;
+	auto ans5 = HMCont2D::Algos::WeightedPartition(w5, circ1, pstore);
+	add_check(ans5.size() == 22 && fabs(ans5.ordered_points()[11]->x + 1.0)<1e-12,
+			"closed contour");
+	std::map<double, double> w6;
+	w6[0.25] = 0.4; w6[0.75] = 0.2;
+	auto ans6 = HMCont2D::Algos::WeightedPartition(w6, circ1, pstore);
+	add_check(ans6.size() == 22 && fabs(ans6.ordered_points()[5]->x + 0.180351)<1e-4,
+			"closed contour without 0, 1 definition");
+
+	std::map<double, double> w7;
+	w7[0.25] = 18; w7[0.75] = 19;
+	auto ans7 = HMCont2D::Algos::WeightedPartition(w7, circ1, pstore);
+	add_check(ans7.size() == 3,
+			"coarse closed contour");
+
+}
+
+
 int main(){
 	std::cout<<"hybmesh_contours2d testing"<<std::endl;
 	if (hybmesh_contours2d_ping(1) == 2)
@@ -502,6 +610,8 @@ int main(){
 	test10();
 	test11();
 	test12();
+	test13();
+	test14();
 
 
 	if (FAILED_CHECKS == 1){

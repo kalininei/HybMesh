@@ -89,6 +89,7 @@ private:
 struct Info{
 
 //points
+static ShpVector<GridPoint> SharePoints(const GridGeom& grid);
 static ShpVector<GridPoint> SharePoints(const GridGeom& grid, const vector<int>& indicies);
 static ShpVector<GridPoint> BoundaryPoints(const GridGeom& grid);
 //collection of all outer contours

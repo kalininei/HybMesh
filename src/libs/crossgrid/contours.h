@@ -43,7 +43,7 @@ public:
 	}
 
 	//returns squared distances to points. Sign depends on whether points lies
-	//outside(-) or inside(+) the contour with respect ot its sence of rotation
+	//outside(-) or inside(+) the contour with respect to its sence of rotation
 	vector<double> meas_points(const vector<const Point*>& pts) const;
 
 	//additional procedures

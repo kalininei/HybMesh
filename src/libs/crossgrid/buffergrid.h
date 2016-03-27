@@ -17,14 +17,7 @@ class BufferGrid: public GridGeom{
 	
 	void new_edge_points(Edge& e, const vector<double>& wht);
 
-	//filters inner and outer boundary points of the buffer grid
-	//std::tuple<
-	//        std::set<const Point*>,   //inner_bp - boundary points from source contour
-	//        std::set<const Point*>,   //outer_bp - boundary points from internal edges of orig
-	//        std::set<const Point*>,   //true_bp  - boundary points from original grid boundary which lies without buffer
-	//        std::set<const Point*>    //false_bp - boundary points from original grid boundary which lies whihin buffer
-	//> build_bedges() const;
-
+	mutable HMCont2D::PCollection apoints;  //additional storage points
 public:
 	BufferGrid(GridGeom& main, const PContour& cont, double buffer_size);
 	

@@ -414,7 +414,11 @@ GridGeom* GridGeom::combine(GridGeom* gmain, GridGeom* gsec){
 	GridGeom* ret = new GridGeom(wmain.togrid());
 	//6) filter out all cells which lie outside gmain and gsec contours
 	//if gmain and gsec are not simple structures
-	if (maincont.n_cont()>1 || seccont.n_cont()>1){
+	auto t1 = GGeom::Info::Contour(*gmain);
+	auto t2 = GGeom::Info::Contour(*gsec);
+	auto intersect = HMCont2D::Clip::Union(t1, t2);
+	//if (maincont.n_cont()>1 || seccont.n_cont()>1){
+	if (intersect.nodes.size() != intersect.roots().size()){
 		vector<Point> pts = ret->cells_internal_points();
 		auto mainfilt = std::get<2>(maincont.filter_points_i(pts));
 		auto secfilt = std::get<2>(seccont.filter_points_i(pts));
@@ -492,16 +496,6 @@ GridGeom* GridGeom::cross_grids(GridGeom* gmain_inp, GridGeom* gsec_inp,
 	if (!preserve_bp){
 		//find all intersections
 		vector<Point> bnd_intersections = intersection_points(*gmain, *gsec);
-		/*
-		for (int i=0; i<csec.size(); ++i){
-			auto bint = csec[i].intersections(cmain);
-			for (auto in: bint){
-				if (fabs(in.first - round(in.first))>geps){
-					bnd_intersections.push_back(in.second);
-				}
-			}
-		}
-		*/
 		//move secondary grid boundary points to intersection points
 		if (bnd_intersections.size() > 0){
 			_gs.reset(new GridGeom(*gsec));

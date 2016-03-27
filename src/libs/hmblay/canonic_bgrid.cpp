@@ -341,7 +341,7 @@ RectForClosedArea::RectForClosedArea(const HMCont2D::Contour& side, const HMCont
 shared_ptr<RectForClosedArea>
 RectForClosedArea::Build(const HMCont2D::Contour& bottom, const Point* pstart, double h){
 	HMCont2D::Container<HMCont2D::ContourTree> toptree =
-		HMCont2D::Algos::Offset(bottom, -h, HMCont2D::OffsetTp::CLOSED_POLY);
+		HMCont2D::Algos::Offset(bottom, -h, HMCont2D::OffsetTp::RC_CLOSED_POLY);
 	//if failed to build single connected area -> do smth
 	if (toptree.cont_count() != 1) _THROW_NOT_IMP_;
 	auto top = *toptree.nodes[0];

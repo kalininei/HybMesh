@@ -3,7 +3,8 @@
 
 source ../../src/libs/dbgscripts/hmout.gdb
 
-file ./crossgrid_test
+file ./hybmesh_contours2d_test
 set breakpoint pending on
-b procgrid.cpp:433
+#b procgrid.cpp:433
+b cont_partition.cpp:244
 run 

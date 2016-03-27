@@ -49,6 +49,12 @@ Contour* ExtendedTree::get_contour(Edge* e) const{
 	return 0;
 }
 
+vector<Contour*> ExtendedTree::all_contours() const{
+	vector<Contour*> ret;
+	for (auto n: nodes) ret.push_back(n.get());
+	for (auto n: open_contours) ret.push_back(n.get());
+	return ret;
+}
 
 namespace{
 

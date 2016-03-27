@@ -54,7 +54,7 @@ win_frame2 = hm.add_unf_rect_grid([-0.02, -0.15], [0.02, 0.15], 3, 30)
 [win_frame3] = hm.copy_geom([win_frame2])
 hm.rotate_geom(win_frame2, 90)
 
-# to assemble a window we make an imposition of internal frames to outer one
+# to assemble a window we make an superposition of internal frames to outer one
 # and assigns 'Window' boundary type to the whole resulting grid.
 window = hm.unite_grids(win_frame1, [(win_frame2, 0.02), (win_frame3, 0.02)])
 hm.set_boundary_type(window, bwindow)
@@ -81,5 +81,6 @@ hm.export_contour_vtk(house_final, "house_contour.vtk")
 # ^^^^^^^^^^^^^^^^^^^^^^^^
 if (not skew['ok']):
     raise Exception
-if (hm.info_contour(house_final)['btypes'] != {0: 122, 1: 25, 2: 79, 3: 168}):
+if (hm.info_contour(house_final)['btypes'] != {0: 122, 1: 25, 2: 78, 3: 168}):
+    print hm.info_contour(house_final)['btypes']
     raise Exception

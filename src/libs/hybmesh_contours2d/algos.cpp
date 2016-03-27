@@ -6,156 +6,6 @@ using namespace HMCont2D;
 namespace cns = Algos;
 
 
-// ===================================== Partition implementation
-
-namespace {
-vector<double> partition_new_points_w(double step, const Contour& contour){
-	double len = contour.length();
-	if (len<1.5*step){
-		if (!contour.is_closed()) return {0.0, 1.0};
-		else step = len/3.1;
-	}
-	//calculates new points
-	int n = (int)round(len/step);
-	vector<double> w;
-	for (int i=0; i<n+1; ++i) w.push_back((double)i/n);
-	return w;
-}
-vector<double> partition_new_points_w(std::map<double, double> basis, const Contour& contour){
-	assert(basis.size()>0);
-	if (basis.size() == 1) return partition_new_points_w(basis.begin()->second, contour);
-	double len = contour.length();
-	for (auto& m: basis) m.second/=len;
-	auto funcstep = [&](double x)->double{
-		if (x<=basis.begin()->first) return basis.begin()->second;
-		if (x>=basis.rbegin()->first) return basis.rbegin()->second;
-		auto it0 = basis.begin();
-		while (x>it0->first) ++it0;
-		auto it1 = it0--;
-		double ret = (it0->second*(it1->first-x) + it1->second*(x-it0->first));
-		return x + ret/(it1->first - it0->first);
-	};
-	vector<double> ret;
-	ret.push_back(0);
-	while (ret.back()<1.0) ret.push_back(funcstep(ret.back()));
-	//analyze last entry
-	if ((ret.back() - 1.0) > 1.0 - ret[ret.size() - 1]) ret.resize(ret.size()-1);
-	if (ret.size()<3) return {0, 1};
-	double stretch_coef = 1.0/ret.back();
-	for (auto& x: ret) x*=stretch_coef;
-	return ret;
-}
-
-//build a new contour based on input contour begin/end points
-template<class A>
-Contour partition_core(A& step, const Contour& contour, PCollection& pstore){
-	vector<double> w = partition_new_points_w(step, contour);
-	if (w.size() == 2){
-		Contour ret;
-		ret.add_value(Edge{contour.first(), contour.last()});
-		return ret;
-	}
-	if (w.size()<2){
-		partition_core(step, contour, pstore);
-	}
-	vector<double> w2(w.begin()+1, w.end()-1);
-	PCollection wp = Contour::WeightPoints(contour, w2);
-	//add new points to pstore
-	pstore.Unite(wp);
-	//Construct new contour
-	vector<Point*> cpoints;
-	cpoints.push_back(contour.first());
-	std::transform(wp.begin(), wp.end(), std::back_inserter(cpoints),
-			[](shared_ptr<Point> x){ return x.get(); });
-	cpoints.push_back(contour.last());
-	return Constructor::ContourFromPoints(cpoints);
-}
-//returns repartitioned copy of a contour
-template<class A>
-Contour partition_core(A& step, const Contour& contour, PCollection& pstore, const std::list<Point*>& keep){
-	auto it0 = keep.begin(), it1 = std::next(it0);
-	Contour ret;
-	while (it1 != keep.end()){
-		Contour sub = Assembler::Contour1(contour, *it0, *it1);
-		Contour psub = partition_core(step, sub, pstore);
-		ret.Unite(psub);
-		//if sub.size() == 1 then its direction is not defined
-		//so we need to check the resulting direction.
-		//We did it after second Unition when direction matters
-		if (it0 == std::next(keep.begin())){
-			if (ret.last() != *it1) ret.Reverse();
-		}
-
-		++it0; ++it1;
-	}
-	return ret;
-}
-template<class A>
-Contour partition_with_keepit(A& step, const Contour& contour, PCollection& pstore,
-		const std::vector<Point*>& keepit){
-	//sort points in keepit and add start, end point there
-	vector<Point*> orig_pnt = contour.ordered_points();
-	std::set<Point*> keepset(keepit.begin(), keepit.end());
-
-	std::list<Point*> keep_sorted;
-	std::copy_if(orig_pnt.begin(), orig_pnt.end(), std::back_inserter(keep_sorted),
-		[&keepset](Point* p){ return keepset.find(p) != keepset.end(); }
-	);
-
-	//add first, last points
-	if (!contour.is_closed()){
-		if (*keep_sorted.begin() != orig_pnt[0])
-			keep_sorted.push_front(orig_pnt[0]);
-		if (*keep_sorted.rbegin() != orig_pnt.back())
-			keep_sorted.push_back(orig_pnt.back());
-	} else if (keep_sorted.size() == 1){
-		keep_sorted.push_back(*keep_sorted.begin());
-	} else if (keep_sorted.size() == 0){
-		keep_sorted.push_back(orig_pnt[0]);
-		keep_sorted.push_back(orig_pnt[0]);
-	}
-
-	//call core procedure
-	return partition_core(step, contour, pstore, keep_sorted);
-}
-}//namespace
-
-Contour cns::Partition(double step, const Contour& contour, PCollection& pstore, PartitionTp tp){
-	switch (tp){
-		case PartitionTp::IGNORE_ALL:
-			return Partition(step, contour, pstore);
-		case PartitionTp::KEEP_ALL:
-			return Partition(step, contour, pstore, contour.all_points());
-		case PartitionTp::KEEP_SHAPE:
-			return Partition(step, contour, pstore, contour.corner_points());
-		default:
-			assert(false);
-	};
-}
-Contour cns::WeightedPartition(const std::map<double, double>& basis,
-		const Contour& contour, PCollection& pstore, PartitionTp tp){
-	switch (tp){
-		case PartitionTp::IGNORE_ALL:
-			return WeightedPartition(basis, contour, pstore);
-		case PartitionTp::KEEP_ALL:
-			return WeightedPartition(basis, contour, pstore, contour.all_points());
-		case PartitionTp::KEEP_SHAPE:
-			return WeightedPartition(basis, contour, pstore, contour.corner_points());
-		default:
-			assert(false);
-	};
-}
-
-Contour cns::Partition(double step, const Contour& contour, PCollection& pstore,
-		const std::vector<Point*>& keepit){
-	return partition_with_keepit(step, contour, pstore, keepit);
-}
-Contour cns::WeightedPartition(const std::map<double, double>& basis,
-		const Contour& contour, PCollection& pstore,
-		const std::vector<Point*>& keepit){
-	return partition_with_keepit(basis, contour, pstore, keepit);
-}
-
 // ===================================== Offset implementation
 Container<ContourTree> cns::Offset(const Contour& source, double delta, OffsetTp tp){
 	Impl::ClipperPath cp(source);
@@ -165,8 +15,8 @@ Container<ContourTree> cns::Offset(const Contour& source, double delta, OffsetTp
 
 Container<Contour> cns::Offset1(const Contour& source, double delta){
 	Container<ContourTree> ans;
-	if (source.is_closed()) ans = Offset(source, delta, OffsetTp::CLOSED_POLY);
-	else ans = Offset(source, delta, OffsetTp::OPEN_ROUND);
+	if (source.is_closed()) ans = Offset(source, delta, OffsetTp::RC_CLOSED_POLY);
+	else ans = Offset(source, delta, OffsetTp::RC_OPEN_ROUND);
 	assert(ans.cont_count() == 1);
 	return Container<Contour>::DeepCopy(*ans.get_contour(0));
 };
@@ -314,6 +164,24 @@ cns::CrossAll(const Contour& c1, const Contour& c2){
 	return cross_core(c1, c2, false);
 }
 
+vector<int> cns::SortOutPoints(const Contour& t1, const vector<Point>& pnt){
+	ContourTree tree;
+	tree.AddContour(t1);
+	auto ret = cns::SortOutPoints(tree, pnt);
+	//if t1 is inner contour
+	if (t1.data[0] != tree.nodes[0]->data[0]){
+		for (auto& r: ret){
+			if (r == OUTSIDE) r = INSIDE;
+			else if (r == INSIDE) r = OUTSIDE;
+		}
+	}
+	return ret;
+}
+vector<int> cns::SortOutPoints(const ContourTree& t1, const vector<Point>& pnt){
+	auto ctree = Impl::ClipperTree::Build(HMCont2D::Algos::Simplified(t1));
+	return ctree.SortOutPoints(pnt);
+}
+
 // =================================== Smoothing
 namespace{
 Vect smoothed_direction_core(const vector<Point*>& p){
@@ -430,3 +298,4 @@ Vect cns::SmoothedDirection2(const Contour& c, const Point *p, int direction, do
 	vecNormalize(ret);
 	return ret;
 }
+

@@ -326,42 +326,45 @@ def build_boundary_grid(opts):
 
 
 def map_grid(base_grid, target_contour, base_points, target_points,
-             snap="no", btypes="from_grid"):
+             snap="no", project_to="line", btypes="from_grid"):
     """Performs mapping of base grid on another contour
 
-    Args:
-       ``base_grid``: grid identifier
+    :param base_grid: grid identifier
 
-       ``target_contour``: contour identifier
+    :param target_contour: contour identifier
 
-       ``base_points``: collection of points in ``[[x0, y0], [x1, y1], ...]``
-       format
-       which lie on the ``base_grid`` contour (if a point doesn't lie on
-       contour it would be projected to it)
+    :param base_points: collection of points in ``[[x0, y0], [x1, y1], ...]``
+      format which lie on the ``base_grid`` contour (if a point doesn't lie on
+      contour it would be projected to it)
 
-       ``target_points``: collection of points in ``[[x0, y0], [x1, y1], ...]``
-       format which lie on the ``target_contour``
+    :param target_points: collection of points in ``[[x0, y0], [x1, y1], ...]``
+      format which lie on the ``target_contour``
 
-    Kwargs:
-       ``snap`` ("no", "add_vertices", "shift_vertices"):
-       an option which defines postprocessing algorithm of snapping
-       newly created grid to ``target_contour``:
+    :param str snap:
+      an option which defines postprocessing algorithm of snapping
+      newly created grid to ``target_contour``:
 
-       * *`no`* - no snapping
-       * *`add_vertices`* - snap by adding new vertices if that will not
-         ruin grid topology
-       * *`shift_vertices`* - shift non-corner boundary nodes to corner
-         locations if possible
+      * ``"no"`` - no snapping
+      * ``"add_vertices"`` - snap by adding new vertices if that will not
+        ruin grid topology
+      * ``"shift_vertices"`` - shift non-corner boundary nodes to corner
+        locations if possible
 
-       ``btypes`` ("from_grid", "from_contour"):
+    :param str project_to:
+      option which defines **target_points** and **base_points**
+      projection algorithm:
+
+      * ``"line"`` - projects point to source contour line,
+      * ``"vertex"`` - projects to closest source contour vertex,
+      * ``"corner"`` - projects point to closest corner vertex.
+
+    :param str btypes:
        defines from what source boundary features for newly created grid
-       would be taken
+       would be taken: ``"from_grid"`` or ``"from_contour"``.
 
-    Raises:
-       ValueError, hmscript.ExecError
+    :raises: ValueError, hmscript.ExecError
 
-    Returns:
-       identifier of newly created grid
+    :returns: identifier of newly created grid
 
     Area mapping will take place in such a way that i-th point of
     ``target_points`` will be translated into i-th point of
@@ -377,6 +380,26 @@ def map_grid(base_grid, target_contour, base_points, target_points,
     for i in range(n):
         bpoints.append(Point2(*base_points[i]))
         tpoints.append(Point2(*target_points[i]))
+    if project_to == "line":
+        pass
+    elif project_to == "vertex" or project_to == "corner":
+        cbase = data.get_any_contour(base_grid)
+        ctar = data.get_any_contour(target_contour)
+        if project_to == "corner":
+            cbase2 = Contour2.create_from_abstract(cbase).simplify(0)
+            ctar2 = Contour2.create_from_abstract(ctar).simplify(0)
+            if cbase2 is not None:
+                cbase = cbase2
+            if ctar2 is not None:
+                ctar = ctar2
+        for p in bpoints:
+            i = cbase.closest_point_index(p)
+            p.x, p.y = cbase.points[i].x, cbase.points[i].y
+        for p in tpoints:
+            i = ctar.closest_point_index(p)
+            p.x, p.y = ctar.points[i].x, ctar.points[i].y
+    else:
+        raise ValueError("Unknown `project_to` = %s" % project_to)
     c = com.gridcom.MapGrid({"base": base_grid,
                              "target": target_contour,
                              "base_points": bpoints,

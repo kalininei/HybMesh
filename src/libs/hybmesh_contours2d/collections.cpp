@@ -81,7 +81,8 @@ ECollection::FindClosestEdge(const ECollection& dt, const Point& p){
 	for (int i=0; i<dt.size(); ++i){
 		auto& e = dt.data[i];
 		double dnew = Point::meas_section(p, *e->pstart, *e->pend, k);
-		if (dnew < dist){
+		//if (dnew < dist){
+		if (dnew - dist < geps*geps){
 			edge = e.get();
 			dist = dnew;
 			ksi = k;
@@ -163,7 +164,9 @@ vector<double> ECollection::ELengths(const ECollection& dt){
 
 BoundingBox ECollection::BBox(const ECollection& p, double eps){
 	auto ap = p.all_points();
-	return BoundingBox::Build(ap.begin(), ap.end());
+	auto ret = BoundingBox::Build(ap.begin(), ap.end());
+	ret.widen(eps);
+	return ret;
 }
 
 

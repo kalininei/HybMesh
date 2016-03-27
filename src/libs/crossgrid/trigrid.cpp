@@ -48,7 +48,6 @@ TriGrid::TriGrid(const ContoursCollection& cont, const vector<double>& lc, doubl
 	GmshSetOption("Mesh", "Algorithm", 2.0);
 
 	//very rough density parameter implementation: doesn't work in gmsh 2.9.1
-	//##############################################
 	//double maxlc = 0;
 	//for (auto v: lc) if (v>maxlc) maxlc=v;
 	//GmshSetOption("Mesh", "CharacteristicLengthMax", (1.0-0.49*density)*maxlc); 

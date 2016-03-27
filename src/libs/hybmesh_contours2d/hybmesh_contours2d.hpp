@@ -15,7 +15,6 @@
 
 namespace HMCont2D{
 
-
 // =================== Algorithms functions
 template<class C>
 void SaveVtk(const C& obj, const char* fn){

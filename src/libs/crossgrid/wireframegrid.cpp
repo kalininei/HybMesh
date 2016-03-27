@@ -45,6 +45,18 @@ PtsGraph::PtsGraph(const PContour& c){
 	}
 }
 
+PtsGraph::PtsGraph(const HMCont2D::ECollection& cc){
+	std::map<Point*, int> pind;
+	int i=0;
+	for (auto p: cc.all_points()){
+		nodes.push_back(*p);
+		pind[p] = i++;
+	}
+	for (auto e: cc.data){
+		lines.push_back(GraphLine(pind[e->pstart], pind[e->pend]));
+	}
+}
+
 auto PtsGraph::_impose_impl(const PtsGraph& main_graph, const PtsGraph& imp_graph, double eps)
 		-> impResT {
 	auto ret = impResT(main_graph, vector<int>(), vector<double>());
@@ -285,6 +297,17 @@ GridGeom PtsGraph::togrid() const{
 		lev0.push_back(&grids[i]);
 	}
 	return GridGeom::sum(lev0);
+}
+
+HMCont2D::ECollection PtsGraph::toecollection() const{
+	HMCont2D::ECollection ret;
+	for (int i=0; i<Nlines(); ++i){
+		auto pr = get_line(i);
+		Point* p1 = const_cast<Point*>(&nodes[pr.first]);
+		Point* p2 = const_cast<Point*>(&nodes[pr.second]);
+		ret.add_value(HMCont2D::Edge(p1, p2));
+	}
+	return ret;
 }
 
 vector<vector<int>> PtsGraph::lines_lines_tab() const{
@@ -611,9 +634,13 @@ void PtsGraph::exclude_area(const ContoursCollection& cont, int dir){
 	auto flt = cont.filter_points_i(line_cnt);
 	std::vector<int>& badi = (dir==INSIDE) ? std::get<0>(flt) : std::get<2>(flt);
 	std::set<int> bad_lines(badi.begin(), badi.end());
-	aa::remove_entries(lines, bad_lines);
-	delete_unused_points();
+	exclude_lines(bad_lines);
 };
+
+void PtsGraph::exclude_lines(const std::set<int>& exlines){
+	aa::remove_entries(lines, exlines);
+	delete_unused_points();
+}
 
 PtsGraph PtsGraph::overlay(const PtsGraph& wmain, const PtsGraph& wsec){
 	auto ret = impose(wmain, wsec, geps);

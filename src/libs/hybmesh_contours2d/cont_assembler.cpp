@@ -139,6 +139,35 @@ void refill_amap(AMap& mp){
 	for (auto& m: mp) sort_angles(m.first, m.second);
 }
 
+vector<Contour> sort_all_contours(vector<Contour>& ret, std::map<Edge*, int>& edind){
+	for (auto& c: ret){
+		if (c.is_closed()){
+			//close contours always outer and start with edge with minimum index
+			if (HMCont2D::Contour::Area(c) < 0) c.Reverse();
+			int mini = edind[c.data[0].get()]; int mini_ind=0;
+			for (int i=1; i<c.size(); ++i){
+				int ind = edind[c.data[i].get()];
+				if (ind < mini){
+					mini = ind;
+					mini_ind = i;
+				}
+			}
+			std::rotate(c.data.begin(), c.data.begin() + mini_ind, c.data.end());
+		} else {
+			//open contours first edge has lower index than last edge
+			if (edind[c.data[0].get()] > edind[c.data.back().get()]) c.Reverse();
+		}
+	}
+	//sort contours within ret according to first edge global index
+	vector<Contour*> v;
+	for (auto& c: ret) v.push_back(&c);
+	std::sort(v.begin(), v.end(), [&edind](Contour* c1, Contour* c2){
+			return edind[c1->data[0].get()] < edind[c2->data[0].get()];
+		});
+	vector<Contour> ret1;
+	for (auto cp: v) ret1.push_back(*cp);
+	return ret1;
+}
 }
 
 std::vector<Contour> cns::AllContours(const HMCont2D::ECollection& input){
@@ -184,6 +213,14 @@ std::vector<Contour> cns::AllContours(const HMCont2D::ECollection& input){
 	for (auto& c: conts){
 		if (!get_non_crossed(c, ret)) ret.push_back(c);
 	}
+
+	//6) sort contours in order to always obtain the same result with the same given
+	//   ecollection edges order
+	std::map<Edge*, int> edind;
+	int ei = 0;
+	for (auto e: input) edind[e.get()] = ei++;
+	ret = sort_all_contours(ret, edind);
+
 	return ret;
 }
 

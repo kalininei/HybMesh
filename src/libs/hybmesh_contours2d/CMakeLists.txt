@@ -14,6 +14,7 @@ set (HEADERS
 	gpc_core.hpp
 	cont_assembler.hpp
 	algos.hpp
+	cont_partition.hpp
 )
 
 set (SOURCES
@@ -28,6 +29,7 @@ set (SOURCES
 	gpc_core.cpp
 	cont_assembler.cpp
 	algos.cpp
+	cont_partition.cpp
 )
 
 source_group ("Header Files" FILES ${HEADERS} ${HEADERS})

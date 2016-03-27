@@ -2,20 +2,18 @@
 #define HMCONT2D_ALGOS_HPP
 #include "contour.hpp"
 #include "tree.hpp"
+#include "cont_partition.hpp"
 
 namespace HMCont2D{
 
 //Offset contour
 enum class OffsetTp{
-	CLOSED_POLY,
-	OPEN_ROUND,
-	OPEN_BUTT,
-};
-
-enum class PartitionTp{
-	IGNORE_ALL,   //ignore all source vertices
-	KEEP_ALL,     //keep all source vertices
-	KEEP_SHAPE    //keep only shape significant points
+	//rounding at corners
+	RC_CLOSED_POLY,
+	RC_OPEN_ROUND,
+	RC_OPEN_BUTT,
+	//square corners
+	SC_CLOSED_POLY,
 };
 
 namespace Algos{
@@ -26,36 +24,6 @@ Container<ContourTree> Offset(const Contour& source, double delta, OffsetTp tp);
 //forces singly connected output contour. tp = CLOSED_POLY or OPEN_ROUND
 Container<Contour> Offset1(const Contour& source, double delta);
 
-// ================================== Contour Partition
-//step - step of partitioning
-//pstore - point collection where to put new generated points with defined ShpGenerator
-Contour Partition(double step, const Contour& contour, PCollection& pstore, PartitionTp tp);
-//make a partition keeping points defined in keepit
-Contour Partition(double step, const Contour& contour, PCollection& pstore,
-		const std::vector<Point*>& keepit = {});
-//this can be called with Container<Contour> object.
-template<class TContainer,
-	class = Tpp::IsBase<Contour, typename TContainer::TParent>>
-static TContainer Partition(double step, const TContainer& container, PartitionTp tp){
-	PCollection pc;
-	auto x = Partition(step, container, pc, tp);
-	TContainer ret;
-	TContainer::DeepCopy(x, ret);
-	return ret;
-}
-template<class TContainer,
-	class = Tpp::IsBase<Contour, typename TContainer::TParent>>
-static TContainer Partition(double step, const TContainer& container,
-		const vector<Point*>& keepit = {}){
-	return Partition(step, container, container.pdata, keepit);
-}
-//here the partition step will be calculated according to basis:
-//  dictionary that maps  (contour weight in [0,1]) -> (required partition size)
-Contour WeightedPartition(const std::map<double, double>& basis,
-		const Contour& contour, PCollection& pstore, PartitionTp tp);
-Contour WeightedPartition(const std::map<double, double>& basis,
-		const Contour& contour, PCollection& pstore,
-		const std::vector<Point*>& keepit = {});
 
 // ============================ Crosses and intersections
 //finds first cross (with respect to length of c1) of contours c1, c2.
@@ -76,7 +44,11 @@ bool DoIntersect(const ContourTree& t1, const Contour& c2);
 //is not realiable if  Area(c1) >> Area(c2) 
 bool DoReallyIntersect(const Contour& c1, const Contour& c2);
 
-
+//Calculate points position with respect to contour.
+//Contour direction is taken into account.
+//Builds vector with INSIDE/OUTSIDE/BOUND for each point.
+vector<int> SortOutPoints(const Contour& t1, const vector<Point>& pnt);
+vector<int> SortOutPoints(const ContourTree& t1, const vector<Point>& pnt);
 
 // =========================== Simplifications
 //remove points which lie on the same edge

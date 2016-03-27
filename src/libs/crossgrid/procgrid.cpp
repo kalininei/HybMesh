@@ -208,6 +208,7 @@ bool GGeom::Repair::HasSelfIntersections(const GridGeom& grid){
 }
 
 
+ShpVector<GridPoint> GGeom::Info::SharePoints(const GridGeom& grid){ return grid.points; }
 ShpVector<GridPoint> GGeom::Info::SharePoints(const GridGeom& grid, const vector<int>& indicies){
 	ShpVector<GridPoint> ret;
 	for (int i: indicies) ret.push_back(grid.points[i]);

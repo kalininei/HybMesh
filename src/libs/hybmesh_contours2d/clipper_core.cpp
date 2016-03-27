@@ -71,9 +71,10 @@ Container<ContourTree> ClipperPath::Offset(double delta, HMCont2D::OffsetTp tp) 
 	
 	ClipperLib::EndType et;
 	switch (tp){
-		case HMCont2D::OffsetTp::CLOSED_POLY: et = ClipperLib::etClosedPolygon; break;
-		case HMCont2D::OffsetTp::OPEN_ROUND: et = ClipperLib::etOpenRound; break;
-		case HMCont2D::OffsetTp::OPEN_BUTT: et = ClipperLib::etOpenButt; break;
+		case HMCont2D::OffsetTp::RC_CLOSED_POLY: et = ClipperLib::etClosedPolygon; break;
+		case HMCont2D::OffsetTp::RC_OPEN_ROUND: et = ClipperLib::etOpenRound; break;
+		case HMCont2D::OffsetTp::RC_OPEN_BUTT: et = ClipperLib::etOpenButt; break;
+		default: _THROW_NOT_IMP_;
 	}
 	worker.AddPath(this->data, ClipperLib::jtRound, et);
 	worker.ArcTolerance = arctol;
@@ -205,6 +206,69 @@ Container<ContourTree> ClipperTree::HMContainer(const ClipperLib::PolyTree& tree
 	ret.UpdateTopology();
 	return ret;
 }
+
+void ClipperTree::ApplyBoundingBox(const BoundingBox& newbbox){
+	ClipperObject::ApplyBoundingBox(newbbox);
+	for (auto& p: data) p.ApplyBoundingBox(newbbox);
+}
+
+//from tree
+ClipperTree ClipperTree::Build(const ContourTree& tree){
+	ClipperTree ret;
+	ret.ApplyBoundingBox(HMCont2D::ECollection::BBox(tree));
+	for (auto n: tree.nodes){
+		ret.isopen.push_back(false);
+		ret.data.push_back(ClipperPath());
+		ClipperPath& last = ret.data.back();
+		last.ApplyBoundingBox(ret.bbox);
+		auto sp = n->ordered_points();
+		for (int i=0; i<n->size(); ++i){
+			last.data.push_back(ret.ToIntGeom(*sp[i]));
+		}
+	}
+	return ret;
+}
+
+namespace{
+int whereis(const ClipperLib::Paths& paths, const ClipperLib::IntPoint& pnt){
+	int level = 0;
+	for (auto& path: paths){
+		int r = ClipperLib::PointInPolygon(pnt, path);
+		if (r == -1) return BOUND;
+		if (r == 1) level +=1;
+	}
+	return level%2==0 ? OUTSIDE : INSIDE;
+}
+}
+
+//sorting physical points: INSIDE/OUTSIDE/BOUND for each point
+vector<int> ClipperTree::SortOutPoints(const vector<Point>& pts) const{
+	//scaling points
+	vector<ClipperLib::IntPoint> ipts;
+	for (auto& p: pts) ipts.push_back(ToIntGeom(p));
+	//assembling offset procedure
+	ClipperLib::ClipperOffset os;
+	for (int i=0; i<data.size(); ++i) if (!isopen[i]){
+		os.AddPath(data[i].data, ClipperLib::jtSquare, ClipperLib::etClosedPolygon);
+	}
+	//inner, outer
+	ClipperLib::Paths inner, outer;
+	double k = geps * factor;
+	os.Execute(inner, -k);
+	os.Execute(outer, k);
+
+	//sorting points
+	vector<int> ret;
+	for (auto& p: ipts){
+		if (whereis(inner, p) == INSIDE) ret.push_back(INSIDE);
+		else{
+			if (whereis(outer, p) == OUTSIDE) ret.push_back(OUTSIDE);
+			else ret.push_back(BOUND);
+		}
+	}
+	return ret;
+}
+
 
 namespace{
 BoundingBox SameBoundingBox(

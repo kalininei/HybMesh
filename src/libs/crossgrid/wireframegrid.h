@@ -6,6 +6,7 @@
 #include <array>
 #include <list>
 #include <map>
+#include "hybmesh_contours2d.hpp"
 
 struct GraphLine{
 	GraphLine(int a, int b):i0(a), i1(b) { if (i0>i1) std::swap(i0,i1); }
@@ -24,6 +25,7 @@ struct PtsGraph{
 	explicit PtsGraph(const GridGeom& tg);
 	explicit PtsGraph(const PContour& cont);
 	explicit PtsGraph(const ContoursCollection& cc);
+	explicit PtsGraph(const HMCont2D::ECollection& cc);
 
 	//get data
 	int Nnodes() const {return (int)nodes.size();}
@@ -37,12 +39,14 @@ struct PtsGraph{
 	//create 2D grid on the basis of current wireframe
 	//all boundary edges has an adjacent cell with index=-1.
 	GridGeom togrid() const;
+	HMCont2D::ECollection toecollection() const;
 
 	//imposes contour edges.
 	void add_edges(const PContour&);
 
 	//deletes edges which center lies outside (dir = OUTSIDE) or inside (dir = INSIDE) contour
 	void exclude_area(const ContoursCollection& cont, int dir);
+	void exclude_lines(const std::set<int>& exlines);
 
 	//cuts wmain with the contours collection internals
 	//all collection contours lines will be present in the resulting graph
@@ -99,6 +103,7 @@ struct SubGraph{
 
 	static vector<SubGraph> build(const PtsGraph& p);
 	GridGeom togrid() const;
+	HMCont2D::Contour tocontour() const;
 private:
 	SubGraph(const std::list<int>& used_lines, const PtsGraph* p);
 
