@@ -9,4 +9,5 @@
 -I /home/ek/Work/HybMesh/src/libs/hmmath/
 -I /home/ek/Work/HybMesh/src/libs/hmblay/
 -I /home/ek/Work/HybMesh/src/libs/hmmapping/
+-I /home/ek/Work/HybMesh/src/libs/hmgrid3d/
 -I /usr/include/suitesparse/

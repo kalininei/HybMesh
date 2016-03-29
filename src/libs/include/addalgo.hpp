@@ -6,6 +6,7 @@
 #include <vector>
 #include <set>
 #include <map>
+#include <unordered_set>
 
 namespace aa{
 
@@ -180,6 +181,18 @@ class DoubleMap: public std::map<double, Arg, _MapComp>{
 public:
 	DoubleMap(double e): std::map<double, Arg, _MapComp>(_MapComp(e)){}
 };
+
+// ====================== no dublicates in vector preserving the order
+template<class C>
+std::vector<C> no_dublicates(const std::vector<C>& input){
+	//no duplicates preserving the order of input
+	std::unordered_set<C> usedv;
+	std::vector<C> ret; ret.reserve(input.size());
+	for (auto& d: input){
+		if (usedv.emplace(d).second) ret.push_back(d);
+	}
+	return ret;
+}
 
 }//namespace
 

@@ -10,6 +10,7 @@ add_subdirectory(crossgrid)
 add_subdirectory(hmblay)
 add_subdirectory(hmmath)
 add_subdirectory(hmmapping)
+add_subdirectory(hmgrid3d)
 add_subdirectory(hmcport)
 
 
