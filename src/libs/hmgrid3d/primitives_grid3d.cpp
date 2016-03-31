@@ -33,7 +33,8 @@ ShpVector<Vertex> Face::sorted_vertices() const{
 		++it; ++it2;
 	}
 	it2 = edges.begin();
-	if ((*it)->vertices.back() == (*it2)->vertices[0]){
+	if ((*it)->vertices.back() == (*it2)->vertices[0] ||
+	    (*it)->vertices.back() == (*it2)->vertices.back()){
 		ret.insert(ret.end(), (*it)->vertices.begin(), (*it)->vertices.end()-1);
 	} else {
 		ret.insert(ret.end(), (*it)->vertices.rbegin(), (*it)->vertices.rend()-1);
@@ -50,6 +51,17 @@ ShpVector<Vertex> Face::allvertices() const{
 }
 
 // ================== Cell
+int Cell::n_faces() const{
+	return faces.size();
+}
+
+int Cell::n_edges() const{
+	return alledges().size();
+}
+int Cell::n_vertices() const{
+	return allvertices().size();
+}
+
 ShpVector<Vertex> Cell::allvertices() const{
 	ShpVector<Vertex> ret;
 	for (auto f: faces){

@@ -106,88 +106,137 @@ HMGrid3D::Grid cns::Cuboid(HMGrid3D::Vertex leftp, double lx, double ly, double 
 }
 
 HMGrid3D::Grid cns::SweepGrid2D(const GridGeom& g, const vector<double>& zcoords){
+	return SweepGrid2D(g, zcoords,
+			[](int){ return 1; },
+			[](int){ return 2; },
+			[](int){ return 3; });
+}
+
+HMGrid3D::Grid cns::SweepGrid2D(const GridGeom& g, const vector<double>& zcoords,
+		std::function<int(int)> bottom_bt,
+		std::function<int(int)> top_bt,
+		std::function<int(int)> side_bt){
 	HMGrid3D::Grid ret;
-	int n2 = g.n_points(), nz = zcoords.size();
+
+	//Needed Data
+	auto e2d = g.get_edges();
+	vector<::Edge> e2dvector(e2d.begin(), e2d.end());
+	int n2p = g.n_points(), n2c = g.n_cells(), n2e = e2d.size(), nz = zcoords.size();
+	vector<vector<int>> cell_edges2d(n2c);
+	for (int i=0; i<n2c; ++i){
+		auto c2d = g.get_cell(i);
+		for (int j=0; j<c2d->dim(); ++j){
+			int p1 = c2d->get_point(j)->get_ind();
+			int p2 = c2d->get_point(j+1)->get_ind();
+			::Edge e(p1, p2);
+			int fnd = std::find(e2dvector.begin(), e2dvector.end(), e) - e2dvector.begin();
+			cell_edges2d[i].push_back(fnd);
+		}
+	}
+
 	//Vertices
-	ShpVector<Vertex> vert; vert.reserve(n2*nz);
-	for (int i=0; i<nz; ++i){
-		auto p = g.get_point(i);
-		for (auto z: zcoords) vert.emplace_back(new Vertex(p->x, p->y, z));
+	ShpVector<Vertex> vert; vert.reserve(n2p*nz);
+	{
+		for (int i=0; i<nz; ++i){
+			double z = zcoords[i];
+			for (int j=0; j<n2p; ++j){
+				auto p = g.get_point(j);
+				vert.emplace_back(new Vertex(p->x, p->y, z));
+			}
+		}
 	}
 
 	//Edges
-	auto e2d = g.get_edges();
-	ShpVector<Edge> xyedges(e2d.size()*nz), zedges((nz-1)*n2);
-	//xy edges
-	for (int i=0; i<nz; ++i){
+	ShpVector<Edge> xyedges(n2e*nz), zedges((nz-1)*n2p);
+	{
+		//xy edges
 		int j=0;
-		for (auto& e: e2d){
-			int i1 = i*e2d.size() + e.p1;
-			int i2 = i*e2d.size() + e.p2;
-			xyedges[i*nz+j].reset(new Edge(vert[i1], vert[i2]));
-			++j;
+		for (int i=0; i<nz; ++i){
+			for (auto& e: e2dvector){
+				int i1 = i*n2p + e.p1;
+				int i2 = i*n2p + e.p2;
+				xyedges[j++].reset(new Edge(vert[i1], vert[i2]));
+			}
 		}
-	}
-	//z edges
-	for (int i=0; i<n2; ++i){
-		for (int j=0;
+		//z edges
+		int k=0;
+		for (int i=0; i<nz-1; ++i){
+			for (int j=0; j<n2p; ++j){
+				int i1 = i*n2p + j;
+				int i2 = (i+1)*n2p + j;
+				zedges[k++].reset(new Edge(vert[i1], vert[i2]));
+			}
+		}
 	}
 
-	/*
 	//Faces
-	ShpVector<Face> xfaces(N), yfaces(N), zfaces(N);
-	gi=0;
-	for (int k=0; k<nz+1; ++k){
-		for (int j=0; j<ny+1; ++j){
-			for (int i=0; i<nx+1; ++i){
-				//z face
-				if (i<nx && j<ny){
-					auto e1=yedges[gi], e2=xedges[gi+sy], e3=yedges[gi+sx], e4=xedges[gi];
-					zfaces[gi].reset(new Face({e1, e2, e3, e4}));
+	ShpVector<Face> xyfaces; xyfaces.reserve(n2c*nz);
+	ShpVector<Face> zfaces; zfaces.reserve(n2e*(nz-1));
+	{
+		//xyfaces
+		for (int i=0; i<nz; ++i){
+			for (int j=0; j<n2c; ++j){
+				Face* f = new Face();
+				for (auto k: cell_edges2d[j]){
+					f->edges.push_back(xyedges[i*n2e+k]);
 				}
-				//y face
-				if (i<nx && k<nz){
-					auto e1=xedges[gi], e2=zedges[gi+sx], e3=xedges[gi+sz], e4=zedges[gi];
-					yfaces[gi].reset(new Face({e1, e2, e3, e4}));
-				};
-				//x face
-				if (j<ny && k<nz){
-					auto e1=zedges[gi], e2=yedges[gi+sz], e3=zedges[gi+sy], e4=yedges[gi];
-					xfaces[gi].reset(new Face({e1, e2, e3, e4}));
-				}
-				++gi;
+				xyfaces.emplace_back(f);
+			}
+		}
+		//zfaces
+		for (int i=0; i<nz-1; ++i){
+			for (int j=0; j<n2e; ++j){
+				int i12d = e2dvector[j].p1;
+				int i22d = e2dvector[j].p2;
+				Face* f = new Face();
+				auto e1 = xyedges[j + i*n2e];
+				auto e2 = zedges[i22d + i*n2p];
+				auto e3 = xyedges[j+ (i+1)*n2e];
+				auto e4 = zedges[i12d + i*n2p];
+				f->edges = {e1, e2, e3, e4};
+				zfaces.emplace_back(f);
 			}
 		}
 	}
+
 	//Cells
-	ret.cells.reserve(nx*ny*nz);
-	for (int k=0; k<nz; ++k){
-		for (int j=0; j<ny; ++j){
-			for (int i=0; i<nx; ++i){
-				gi = i*sx + j*sy + k*sz;
-				ret.cells.emplace_back(new Cell);
-				auto c = ret.cells.back();
-				auto xleft = xfaces[gi]; xleft->left = c;
-				auto xright = xfaces[gi+sx]; xright->right = c;
-				auto yleft =  yfaces[gi]; yleft->left = c;
-				auto yright = yfaces[gi+sy]; yright->right = c;
-				auto zleft = zfaces[gi]; zleft->left = c;
-				auto zright = zfaces[gi+sz]; zright->right = c;
-				c->faces = {xleft, xright, yleft, yright, zleft, zright};
+	{
+		ret.cells.reserve(n2c*(nz-1));
+		for (int i=0; i<nz-1; ++i){
+			for (int j=0; j<n2c; ++j){
+				ret.cells.emplace_back(new Cell());
+				auto& c = ret.cells.back();
+				int ifc = i*n2c + j;
+				auto bot = xyfaces[ifc]; bot->right = c;
+				auto top = xyfaces[ifc + n2c]; top->left = c;
+				c->faces = {bot, top};
+				for (int k: cell_edges2d[j]){
+					auto f1 = zfaces[k + n2e*i];
+					c->faces.push_back(f1);
+					bool isleft = (e2dvector[k].cell_left == j);
+					if (isleft) f1->left = c;
+					else f1->right = c;
+				}
 			}
 		}
 	}
+
 	//Boundary Types
-	auto setbt = [](shared_ptr<Face> f, int nor, int nol){
-		if (f){
-			if (!f->right) f->boundary_type = nor;
-			if (!f->left) f->boundary_type = nol;
+	{
+		//top, bottom
+		int j = n2c*(nz-1);
+		for (int i=0; i<n2c; ++i){
+			xyfaces[i]->boundary_type = bottom_bt(i);
+			xyfaces[j++]->boundary_type = top_bt(i);
 		}
-	};
-	for (auto f: xfaces) setbt(f, 1, 2);
-	for (auto f: yfaces) setbt(f, 3, 4);
-	for (auto f: zfaces) setbt(f, 5, 6);
-	*/
+		//sides
+		for (int i=0; i<n2e; ++i) if (e2dvector[i].is_boundary()){
+			int bt = side_bt(i);
+			for (int k=0; k<nz-1; ++k){
+				zfaces[i + k*n2e]->boundary_type = bt;
+			}
+		}
+	}
 
 	return ret;
 }

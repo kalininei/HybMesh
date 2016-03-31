@@ -37,7 +37,14 @@ static GridGeom RectGrid01(int Nx, int Ny);
 //rad1 > rad2
 static GridGeom Ring(Point p0, double rad1, double rad2, int narc, int nrad);
 static GridGeom Circle(Point p0, double rad, int narc, int nrad, bool tri_center);
-static GridGeom DeepCopy(const GridGeom& g);
+static GridGeom DeepCopy(const GridGeom& g);   //g should be indexed
+//builds grid from given cells indicies.
+//policy:
+// 0 - make a deep copy of points and cells
+// 1 - shallow copy + set indiceis from returned grid
+// 2 - shallow copy + leave indicies untouched
+//works even if g is not well indexed
+static GridGeom ExtractCells(const GridGeom& g, const std::vector<int>& cind, int policy=0);
 };
 
 

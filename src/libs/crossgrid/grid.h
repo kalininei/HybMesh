@@ -20,6 +20,7 @@ public:
 	int get_ind() const { return ind; }
 
 	friend class GridGeom;
+	friend struct GGeom::Constructor;
 };
 
 class Cell{
@@ -62,6 +63,9 @@ inline bool operator<(const Edge& e1, const Edge& e2){
 	if (e1.p1<e2.p1) return true;
 	else if (e1.p1>e2.p1) return false;
 	else return (e1.p2<e2.p2);
+}
+inline bool operator==(const Edge& e1, const Edge& e2){
+	return (e1.p1 == e2.p1 && e1.p2 == e2.p2);
 }
 
 class GridGeom: public Grid{

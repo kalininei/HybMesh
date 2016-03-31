@@ -38,6 +38,7 @@ struct Face{
 
 	// ===== Features
 	bool is_boundary() const { return left==0 || right==0; }
+	int n_edges() const { return edges.size(); }
 
 	// ===== Data access
 	ShpVector<Vertex> sorted_vertices() const;
@@ -50,6 +51,11 @@ struct Face{
 struct Cell{
 	// ===== Data
 	ShpVector<Face> faces;
+
+	// ==== Features
+	int n_faces() const;
+	int n_edges() const;
+	int n_vertices() const;
 
 	// ===== Data access
 	ShpVector<Vertex> allvertices() const;

@@ -1,7 +1,7 @@
 #include "hmblay.hpp"
 #include "fileproc.h"
-#include "hmconformal.hpp"
 #include "procgrid.h"
+#include "hmconformal.hpp"
 
 int FAILED_CHECKS = 0;
 

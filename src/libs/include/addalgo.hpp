@@ -7,6 +7,7 @@
 #include <set>
 #include <map>
 #include <unordered_set>
+#include <memory>
 
 namespace aa{
 
@@ -192,6 +193,13 @@ std::vector<C> no_dublicates(const std::vector<C>& input){
 		if (usedv.emplace(d).second) ret.push_back(d);
 	}
 	return ret;
+}
+
+// ======================= find pointer in shared pointer container
+template<class C, class V>
+C shp_find(C first, C last, V* data){
+	return std::find_if(first, last,
+		[&data](std::shared_ptr<V> a){ return a.get() == data; });
 }
 
 }//namespace

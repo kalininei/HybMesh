@@ -32,16 +32,16 @@ GridGeom GGeom::Constructor::RectGrid(const vector<double>& part_x,vector<double
 }
 
 GridGeom GGeom::Constructor::RectGrid(Point p0, Point p1, int Nx, int Ny){
-	vector<double> x(Nx), y(Ny);
-	for (int i=0; i<x.size(); ++i){ x[i] = (p1.x-p0.x)*(double)i/(Nx-1)+p0.x; }
-	for (int i=0; i<y.size(); ++i){ y[i] = (p1.y-p0.y)*(double)i/(Ny-1)+p0.y; }
+	vector<double> x(Nx+1), y(Ny+1);
+	for (int i=0; i<x.size(); ++i){ x[i] = (p1.x-p0.x)*(double)i/(Nx)+p0.x; }
+	for (int i=0; i<y.size(); ++i){ y[i] = (p1.y-p0.y)*(double)i/(Ny)+p0.y; }
 	return RectGrid(x, y);
 }
 
 GridGeom GGeom::Constructor::RectGrid01(int Nx, int Ny){
-	vector<double> x(Nx), y(Ny);
-	for (int i=0; i<x.size(); ++i){ x[i] = (double)i/(Nx-1); }
-	for (int i=0; i<y.size(); ++i){ y[i] = (double)i/(Ny-1); }
+	vector<double> x(Nx+1), y(Ny+1);
+	for (int i=0; i<x.size(); ++i){ x[i] = (double)i/(Nx); }
+	for (int i=0; i<y.size(); ++i){ y[i] = (double)i/(Ny); }
 	return RectGrid(x, y);
 }
 
@@ -102,6 +102,40 @@ GridGeom GGeom::Constructor::Circle(Point p0, double rad, int narc, int nrad, bo
 GridGeom GGeom::Constructor::DeepCopy(const GridGeom& from){
 	GridGeom ret;
 	GGeom::Modify::DeepAdd(&from, &ret);
+	return ret;
+}
+
+GridGeom GGeom::Constructor::ExtractCells(const GridGeom& g, const std::vector<int>& cind, int policy){
+	GridGeom ret;
+	for (int i: cind) ret.cells.push_back(g.cells[i]);
+	for (auto c: ret.cells){
+		for (auto p: c->points){
+			int ind = p->get_ind();
+			if (ind >=0 && ind<g.n_points() && g.points[ind].get() == p){
+				ret.points.push_back(g.points[ind]);
+			} else {
+				auto fnd = std::find_if(g.points.begin(), g.points.end(),
+					[&p](shared_ptr<Point> sp){ return sp.get() == p; });
+				if (fnd == g.points.end()) throw EException("cannot find point while exctracting cells");
+				else ret.points.push_back(*fnd);
+			}
+		}
+	}
+	ret.points = aa::no_dublicates(ret.points);
+	if (policy == 2) return ret;
+	if (policy == 1){
+		ret.set_indicies();
+		return ret;
+	}
+	//backup old p indices
+	std::vector<int> bu; bu.reserve(g.n_points());
+	for (auto p: g.points) bu.push_back(p->get_ind());
+	ret.set_indicies();
+	ret = DeepCopy(ret);
+	//set indicies back
+	auto it = bu.begin();
+	for (auto p: g.points) p->ind = *it++;
+	//return deepcopied object
 	return ret;
 }
 
