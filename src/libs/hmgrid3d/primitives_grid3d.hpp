@@ -11,20 +11,53 @@ struct Cell;
 struct Grid;
 
 struct Vertex{
+	//==== data
 	double x, y, z;
+
+	//==== constructor
 	Vertex(double _x=0, double _y=0, double _z=0): x(_x), y(_y), z(_z){}
+
+	//==== features
+	static double measure(const Vertex& a, const Vertex& b);
+
+	//===== algos
+	static std::tuple<
+		Vertex*,     //pointer to closest vertex
+		int,         //index of closest vertex within vec
+		double       //measure to closest vertex
+	> FindClosestVertex(const ShpVector<Vertex>& vec, Vertex v);
 };
 
 struct Edge{
 	// ==== Data
 	ShpVector<Vertex> vertices;
 	
-	// ==== constructor
+	//==== Constructor
 	Edge(shared_ptr<Vertex> p1, shared_ptr<Vertex> p2): vertices {p1, p2}{}
+	Edge(){}
 
-	// ==== features
+	//==== Features
+	shared_ptr<Vertex> first() const { return vertices[0]; }
+	shared_ptr<Vertex> last() const { return vertices.back(); }
 	double measure() const;
 	double length() const;
+
+	//==== Funcs
+	void reverse();
+
+	//==== Algos
+	//connect edges at data starting from vertex closest to v till close or end reached.
+	//chooses direction according to edge which includes v as start vertex
+	//!!! If edge vertex has more then 2 connections or 
+	//    multiple edges include v as start point result is undefined (false assert in debug mode)
+	//!!! Doesn't go backward
+	static ShpVector<Edge> Connect(const ShpVector<Edge>& data, Vertex v);
+
+	// ===== Connectivity tables
+	struct Connectivity{
+		static std::map<shared_ptr<Vertex>, vector<int>>
+		EndVertexEdge(const ShpVector<Edge>& data);
+	};
 };
 
 struct Face{
@@ -42,10 +75,28 @@ struct Face{
 
 	// ===== Data access
 	ShpVector<Vertex> sorted_vertices() const;
+	ShpVector<Edge> alledges() const;
 	ShpVector<Vertex> allvertices() const;
 
 	// ===== Constructor
 	Face(const ShpVector<Edge>& e={}, int bt=0): edges(e), boundary_type(bt){};
+
+	// ===== funcs
+	void reverse();
+	void correct_edge_directions();
+
+	// ===== Algos
+	static std::vector<ShpVector<Face>> SubDivide(const ShpVector<Face>& fvec);
+
+	// ===== Connectivity tables
+	struct Connectivity{
+		static std::map<shared_ptr<Edge>, vector<int>>
+		EdgeFace(const ShpVector<Face>& data);
+		static vector<vector<int>>
+		FaceFace(const ShpVector<Face>& data);
+		static vector<vector<int>>
+		FaceFace(const std::map<shared_ptr<Edge>, vector<int>>& edge_face, int nfaces);
+	};
 };
 
 struct Cell{
@@ -78,6 +129,7 @@ struct Grid{
 	ShpVector<Face> allfaces() const;
 	ShpVector<Cell> allcells() const;
 };
+
 
 }
 

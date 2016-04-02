@@ -29,6 +29,14 @@ HMGrid3D::Grid SweepGrid2D(const GridGeom& g2d, const vector<double>& zcoords,
 		std::function<int(int)> top_bt,        //(g2d cell index) -> boundary type
 		std::function<int(int)> side_bt);      //(g2d edge index) -> boundary type
 
+struct Copy{
+
+//deep copies cells, faces, edges.
+static HMGrid3D::Grid ShallowVertices(const HMGrid3D::Grid& b);
+
+};
+
+
 
 }}
 

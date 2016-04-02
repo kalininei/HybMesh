@@ -153,7 +153,7 @@ void save_vtk(const GridGeom& g, const char* fn){ save_vtk(&g, fn);}
 void save_vtk(const GridGeom& g, const vector<double>& data, const char* fn){ save_vtk(&g, data, fn);}
 void save_vtk(const PtsGraph& g, const char* fn){ save_vtk(&g, fn);}
 
-TicToc::TicToc(bool start, const char* _name):name(_name), dur(TDuration::zero()){
+TicToc::TicToc(bool start, const char* _name):name(_name), is_working(false), dur(TDuration::zero()){
 	if (start) tic();
 }
 void TicToc::tic(){

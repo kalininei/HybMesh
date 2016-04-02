@@ -4,6 +4,7 @@ set (HEADERS
 	construct_grid3d.hpp
 	export_grid3d.hpp
 	debug_grid3d.hpp
+	surface_grid3d.hpp
 )
 
 set (SOURCES
@@ -12,6 +13,8 @@ set (SOURCES
 	construct_grid3d.cpp
 	export_grid3d.cpp
 	debug_grid3d.cpp
+	surface_grid3d.cpp
+	fluent_export_grid3d.cpp
 )
 
 source_group ("Header Files" FILES ${HEADERS} ${HEADERS})

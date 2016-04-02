@@ -4,7 +4,7 @@ GridGeom GGeom::Constructor::EmptyGrid(){
 	return GridGeom();
 }
 
-GridGeom GGeom::Constructor::RectGrid(const vector<double>& part_x,vector<double>& part_y){
+GridGeom GGeom::Constructor::RectGrid(const vector<double>& part_x, const vector<double>& part_y){
 	int Npts = part_x.size()*part_y.size();
 	int Ncls = (part_x.size()-1)*(part_y.size()-1);
 	vector<double> points;

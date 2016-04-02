@@ -8,6 +8,7 @@
 #include <map>
 #include <unordered_set>
 #include <memory>
+#include <cstring>
 
 namespace aa{
 
@@ -200,6 +201,70 @@ template<class C, class V>
 C shp_find(C first, C last, V* data){
 	return std::find_if(first, last,
 		[&data](std::shared_ptr<V> a){ return a.get() == data; });
+}
+
+// ===== ShpContainerIndexing
+//Quick access indicies of elements in shared_ptr containers by their pointers.
+//Class C is any of vector<shared_ptr<>>, list<shared_ptr<>>, set<shared_ptr<>> etc.
+//
+//Example:
+//
+//	vector<shared_ptr<int>> data;
+//	.... fill data ....
+//	int* c = data[8].get();
+//	auto _indexer = shp_container_indexer(data);
+//	_indexer.convert();
+//	int index = _indexer.index(c);   // =8
+//	_indexer.restore();
+//	
+//	!!! Pointers of initial container should not be dereferenced between
+//	convert() and restore() calls since their data is illegal.
+template<class C>
+class ShpContainerIndexer{
+	typedef typename C::value_type::element_type EType;
+	C* p_data;
+	EType* backup;
+	bool converted;
+	EType* next(typename C::iterator& it){ return (*it++).get(); }
+
+	void fill_backup(){
+		backup = (EType*)malloc(p_data->size() * sizeof(EType));
+		EType* bit = backup;
+		auto it = p_data->begin();
+		while (it!=p_data->end()) memcpy(bit++, next(it), sizeof(EType));
+	}
+	void convert_pdata(){
+		auto it = p_data->begin();
+		int i=0;
+		while (it!=p_data->end()) *(int*)next(it) = i++;
+		converted = true;
+	}
+	void restore_pdata(){
+		EType* bit = backup;
+		auto it = p_data->begin();
+		while (it!=p_data->end()) memcpy(next(it), bit++, sizeof(EType));
+		converted = false;
+	}
+public:
+	ShpContainerIndexer(C& vec): p_data(&vec), converted(false){}
+	~ShpContainerIndexer(){ if (converted) restore(); }
+
+	void convert(){
+		fill_backup();
+		convert_pdata();
+	};
+
+	void restore(){
+		restore_pdata();
+		free(backup);
+	};
+
+	int index(EType* e){ return *(int*)e; }
+	int index(std::shared_ptr<EType> e){ return *(int*)(e.get()); }
+};
+template<class C>
+ShpContainerIndexer<C> shp_container_indexer(C& data){
+	return ShpContainerIndexer<C>(data);
 }
 
 }//namespace

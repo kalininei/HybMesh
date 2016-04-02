@@ -240,3 +240,38 @@ HMGrid3D::Grid cns::SweepGrid2D(const GridGeom& g, const vector<double>& zcoords
 
 	return ret;
 }
+
+HMGrid3D::Grid Constructor::Copy::ShallowVertices(const HMGrid3D::Grid& b){
+	HMGrid3D::Grid ret = b;
+	std::map<shared_ptr<Cell>, shared_ptr<Cell>> cells_old_new;
+	std::map<shared_ptr<Face>, shared_ptr<Face>> faces_old_new;
+	std::map<shared_ptr<Edge>, shared_ptr<Edge>> edges_old_new;
+
+	for (auto c: b.allcells()) cells_old_new[c] = shared_ptr<Cell>(new Cell());
+	for (auto f: b.allfaces()) faces_old_new[f] = shared_ptr<Face>(new Face());
+	for (auto e: b.alledges()) edges_old_new[e] = shared_ptr<Edge>(new Edge());
+
+	//edges
+	for (auto& x: edges_old_new) x.second->vertices = x.first->vertices;
+
+	//faces
+	for (auto& x: faces_old_new){
+		x.second->edges.reserve(x.first->edges.size());
+		auto ite = x.first->edges.begin();
+		while (ite!=x.first->edges.end()){
+			x.second->edges.push_back(edges_old_new[*ite++]);
+		}
+		if (x.first->left)  x.second->left = cells_old_new[x.first->left];
+		if (x.first->right) x.second->right = cells_old_new[x.first->right];
+	}
+
+	//cells
+	for (int i=0; i<b.n_cells(); ++i){
+		auto oldcell = b.cells[i];
+		auto newcell = cells_old_new[oldcell];
+		for (auto& f: oldcell->faces) newcell->faces.push_back(faces_old_new[f]);
+		ret.cells.push_back(newcell);
+	}
+
+	return ret;
+}

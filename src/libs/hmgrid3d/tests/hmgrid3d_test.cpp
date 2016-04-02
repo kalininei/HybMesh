@@ -138,10 +138,24 @@ void test03(){
 	}
 }
 
+void test04(){
+	std::cout<<"4. Fluent export with periodic surfaces"<<std::endl;
+	{
+		auto g2d = GGeom::Constructor::RectGrid({0.0, 0.1, 1.0}, {0.0, 0.3, 1.0});
+		auto g3d = HMGrid3D::Constructor::SweepGrid2D(g2d, {0.0, 0.2, 1.0});
+		save_vtk(g2d, "g1.vtk");
+		HMGrid3D::Export::PeriodicData pd;
+		pd.add_condition(1, 2, HMGrid3D::Vertex(0, 0, 0), HMGrid3D::Vertex(0, 0, 1), true);
+		HMGrid3D::Export::GridMSH(g3d, "g3.msh", pd); 
+		add_file_check(4018826797217108675, "g3.msh", "simple 2x2x2");
+	}
+};
+
 int main(){
 	test01();
 	test02();
 	test03();
+	test04();
 	
 	if (FAILED_CHECKS ==1){
 		std::cout<<FAILED_CHECKS<<" test failed <<<<<<<<<<<<<<<<<<<"<<std::endl;

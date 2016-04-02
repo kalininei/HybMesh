@@ -5,6 +5,6 @@ source ../../src/libs/dbgscripts/hmout.gdb
 
 file ./hmgrid3d_test
 set breakpoint pending on
-b export_grid3d.cpp:165
-#b construct_grid3d.cpp:122
+#b surface_grid3d.cpp:201
+b export_grid3d.cpp:551
 run 
