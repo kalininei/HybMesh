@@ -123,7 +123,6 @@ set(CLIPPER_INCLUDE "${CMAKE_SOURCE_DIR}/src/libs/external/clipper")
 set(GPC_TARGET gpc)
 set(GPC_INCLUDE "${CMAKE_SOURCE_DIR}/src/libs/external/gpc")
 
-
 #suitesparse: defines
 # SUITESPARSE_FOUND: TRUE iff SuiteSparse and all dependencies have been found.
 # SUITESPARSE_INCLUDE_DIRS: Include directories for all SuiteSparse components.
@@ -144,7 +143,9 @@ if (WIN32)
 else(WIN32)
 	find_package(SuiteSparse REQUIRED)
 endif()
-
+#libhmproject: HMPROJECT_INCLUDE, HMPROJECT_TARGET
+set(HMPROJECT_INCLUDE "${CMAKE_SOURCE_DIR}/src/libs/hmproject")
+set(HMPROJECT_TARGET hmproject)
 #libbgeom2d: global definition of BGEOM2D_INCLUDE, BGEOM2D_TARGET
 set(BGEOM2D_INCLUDE "${CMAKE_SOURCE_DIR}/src/libs/bgeom2d")
 set(BGEOM2D_TARGET bgeom2d)

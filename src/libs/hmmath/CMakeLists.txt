@@ -33,12 +33,13 @@ source_group ("Source Files" FILES ${SOURCES} ${SOURCES})
 add_library(${HMMATH_TARGET} SHARED ${HEADERS} ${SOURCES})
 
 # =========== linkage
+target_link_libraries(${HMMATH_TARGET} ${HMPROJECT_TARGET})
 target_link_libraries(${HMMATH_TARGET} ${BGEOM2D_TARGET})
 target_link_libraries(${HMMATH_TARGET} ${CROSSGRID_TARGET})
 target_link_libraries(${HMMATH_TARGET} ${HYBMESH_CONTOURS2D_TARGET})
 target_link_libraries(${HMMATH_TARGET} ${SUITESPARSE_LIBRARIES})
 
-include_directories(${CommonInclude})
+include_directories(${HMPROJECT_INCLUDE})
 include_directories(${BGEOM2D_INCLUDE})
 include_directories(${CROSSGRID_INCLUDE})
 include_directories(${HYBMESH_CONTOURS2D_INCLUDE})

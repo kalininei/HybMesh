@@ -1,9 +1,7 @@
 set(CMAKE_INSTALL_RPATH ${CMAKE_INSTALL_RPATH}${LIB_INSTALL_DIR})
 
-#headers from include folder
-set (CommonInclude ${CMAKE_CURRENT_LIST_DIR}/include)
-
 add_subdirectory(external)
+add_subdirectory(hmproject)
 add_subdirectory(bgeom2d)
 add_subdirectory(hybmesh_contours2d)
 add_subdirectory(crossgrid)

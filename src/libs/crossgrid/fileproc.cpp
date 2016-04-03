@@ -153,24 +153,3 @@ void save_vtk(const GridGeom& g, const char* fn){ save_vtk(&g, fn);}
 void save_vtk(const GridGeom& g, const vector<double>& data, const char* fn){ save_vtk(&g, data, fn);}
 void save_vtk(const PtsGraph& g, const char* fn){ save_vtk(&g, fn);}
 
-TicToc::TicToc(bool start, const char* _name):name(_name), is_working(false), dur(TDuration::zero()){
-	if (start) tic();
-}
-void TicToc::tic(){
-	if (!is_working){
-		is_working = true;
-		tp = TClock::now();
-	}
-}
-void TicToc::toc(){
-	if (is_working){
-		is_working = false;
-		dur += std::chrono::duration_cast<TDuration>(TClock::now() - tp);
-	}
-}
-void TicToc::report() const{
-	std::cout<<name<<":  "<<dur.count()<<" seconds"<<std::endl;
-}
-
-
-

@@ -242,36 +242,61 @@ HMGrid3D::Grid cns::SweepGrid2D(const GridGeom& g, const vector<double>& zcoords
 }
 
 HMGrid3D::Grid Constructor::Copy::ShallowVertices(const HMGrid3D::Grid& b){
-	HMGrid3D::Grid ret = b;
-	std::map<shared_ptr<Cell>, shared_ptr<Cell>> cells_old_new;
-	std::map<shared_ptr<Face>, shared_ptr<Face>> faces_old_new;
-	std::map<shared_ptr<Edge>, shared_ptr<Edge>> edges_old_new;
+	auto bcells = b.allcells();
+	auto bfaces = b.allfaces();
+	auto bedges = b.alledges();
 
-	for (auto c: b.allcells()) cells_old_new[c] = shared_ptr<Cell>(new Cell());
-	for (auto f: b.allfaces()) faces_old_new[f] = shared_ptr<Face>(new Face());
-	for (auto e: b.alledges()) edges_old_new[e] = shared_ptr<Edge>(new Edge());
+	std::vector<shared_ptr<Cell>> cells_new; cells_new.reserve(bcells.size());
+	std::vector<shared_ptr<Face>> faces_new; faces_new.reserve(bfaces.size());
+	std::vector<shared_ptr<Edge>> edges_new; edges_new.reserve(bedges.size());
+
+	for (int i=0; i<bcells.size(); ++i) cells_new.emplace_back(new Cell());
+	for (int i=0; i<bfaces.size(); ++i) faces_new.emplace_back(new Face());
+	for (int i=0; i<bedges.size(); ++i) edges_new.emplace_back(new Edge());
 
 	//edges
-	for (auto& x: edges_old_new) x.second->vertices = x.first->vertices;
+	for (int i=0; i<bedges.size(); ++i) edges_new[i]->vertices = bedges[i]->vertices;
 
 	//faces
-	for (auto& x: faces_old_new){
-		x.second->edges.reserve(x.first->edges.size());
-		auto ite = x.first->edges.begin();
-		while (ite!=x.first->edges.end()){
-			x.second->edges.push_back(edges_old_new[*ite++]);
+	auto _eindexer = aa::shp_container_indexer(bedges);
+	_eindexer.convert();
+	for (int i=0; i<bfaces.size(); ++i){
+		faces_new[i]->edges.reserve(bfaces[i]->n_edges());
+		for (auto e: bfaces[i]->edges){
+			int ind = _eindexer.index(e);
+			faces_new[i]->edges.push_back(edges_new[ind]);
 		}
-		if (x.first->left)  x.second->left = cells_old_new[x.first->left];
-		if (x.first->right) x.second->right = cells_old_new[x.first->right];
+		faces_new[i]->boundary_type = bfaces[i]->boundary_type;
 	}
+	_eindexer.restore();
 
 	//cells
-	for (int i=0; i<b.n_cells(); ++i){
-		auto oldcell = b.cells[i];
-		auto newcell = cells_old_new[oldcell];
-		for (auto& f: oldcell->faces) newcell->faces.push_back(faces_old_new[f]);
-		ret.cells.push_back(newcell);
+	auto _findexer = aa::shp_container_indexer(bfaces);
+	_findexer.convert();
+	for (int i=0; i<bcells.size(); ++i){
+		cells_new[i]->faces.reserve(bcells[i]->n_faces());
+		for (auto f: bcells[i]->faces){
+			int ind = _findexer.index(f);
+			cells_new[i]->faces.push_back(faces_new[ind]);
+		}
 	}
+	_findexer.restore();
+
+	//faces->cells connectivity
+	for (int i=0; i<bcells.size(); ++i){
+		auto oldcell = bcells[i];
+		for (int j=0; j<bcells[i]->n_faces(); ++j){
+			auto oldface = oldcell->faces[j];
+			bool is_left = oldface->left == oldcell;
+			if (is_left) cells_new[i]->faces[j]->left = cells_new[i];
+			else cells_new[i]->faces[j]->right = cells_new[i];
+		}
+	}
+
+	//simple 2x2x2 -> -3462728560320144757
+	//reversed -> -8068438769131553988
+	HMGrid3D::Grid ret;
+	ret.cells = cells_new;
 
 	return ret;
 }

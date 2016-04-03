@@ -2,6 +2,7 @@
 #define HYBMESH_HMCPORT_H
 
 #include "crossgrid.h"
+#include "hmcallback.hpp"
 
 extern "C"{
 
@@ -106,16 +107,6 @@ int set_ecollection_bc(void* src, void* tar, int def, int* vsrc, int* vtar);
 int set_ecollection_bc_force(void* src, void* tar, int* vsrc, int* vtar, int algo);
 
 
-// === set default callbacks
-//crossgrid callback pointer is the function of the following arguments:
-//	(global procedure name, local procedure name, global percentage, local percentage)
-//percentages are doubles in [0, 1] range. If it is less then, then percentages of procedures is not tracking.
-//normally returns CrossGridCallback::OK. Should return CrossGridCallback::CANCEL for cancellation requiry.
-typedef int (*crossgrid_callback)(const char*, const char*, double, double);
-void crossgrid_cout_callback();  //callback to std::cout
-void crossgrid_silent_callback(); //no callback at all
-void crossgrid_set_callback(crossgrid_callback fun); //user defined callback
-
 // === crossgrid procedure
 // buffer_size -- distance from gsecondary contour which defines buffer zone.
 //                Could be zero
@@ -130,14 +121,14 @@ Grid* cross_grids(Grid* gbase, Grid* gsecondary, double buffer_size,
 		int preserve_bp, int empty_holes, double angle0);
 //with specified callback function
 Grid* cross_grids_wcb(Grid* gbase, Grid* gsecondary, double buffer_size, 
-		int preserve_bp, int empty_holes, double angle0, crossgrid_callback cb_fun);
+		int preserve_bp, int empty_holes, double angle0, HMCallback::Fun2 cb_fun);
 
 // === NewGrid = Grid exclude Contour Area
 //with callback defined globally
 Grid* grid_exclude_cont(Grid* grd, Cont* cont, int is_inner);
 //with specified callback function
 Grid* grid_exclude_cont_wcb(Grid* grd, Cont* cont, int is_inner,
-		crossgrid_callback cb_fun);
+		HMCallback::Fun2 cb_fun);
 
 //merges boundary edges of the same cell with angle less than 'angle' in [0, 180]
 //return 0 if ok
@@ -162,7 +153,7 @@ struct BoundaryLayerGridOption{
 };
 
 Grid* boundary_layer_grid_wcb(int N, BoundaryLayerGridOption* opt, 
-		crossgrid_callback cb_fun);
+		HMCallback::Fun2 cb_fun);
 
 
 // === Mapping

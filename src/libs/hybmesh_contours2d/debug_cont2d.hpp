@@ -6,10 +6,11 @@
 #include "collections.hpp"
 #include "contour.hpp"
 #include "tree.hpp"
+#include "hmdebug.hpp"
 
 namespace HMCont2D{
 
-struct Debug{
+struct Debug: public HMDebug{
 	static void info_contour(const Contour& c);
 	static void info_ecollection(const ECollection& c);
 	static void info_tree(const ContourTree& c);
@@ -36,19 +37,7 @@ struct Debug{
 		vtk_contour(col, edata1, defval, fn);
 	}
 
-	//printing with tabulation
-	static int tabs;
-	static void Print(const char* fmt, ...);
-	static std::ostream& Cout();
-
-	//aux data
-	Debug(): ptr(0), i(0) { pre(); }
-	void* ptr;
-	int i;
-
-	void pre();
 };
-extern Debug _dbg;
 
 }
 

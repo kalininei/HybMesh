@@ -1,16 +1,31 @@
 #ifndef EXPORT_GRID_3D_HPP
 #define EXPORT_GRID_3D_HPP
 #include "hmgrid3d.hpp"
+#include "hmcallback.hpp"
 
 namespace HMGrid3D{namespace Export{
 
+class Callback: public HMCallback::Caller2{
+	Callback();
+public:
+	static Callback& instance(std::string s, double duration);
+	static Callback& get();
 
-std::tuple<
-	std::vector<double>,   //points
-	std::vector<int>       //
->
-Serialize(const HMGrid3D::Grid& g);
+	static void enable(HMCallback::Fun2 f);
+	static void disable();
+};
 
+template<class Fun, class... Args>
+void WithCallback(HMCallback::Fun2 cb, Fun&& f, Args &&... args){
+	try{
+		Callback::enable(cb);
+		f(std::forward<Args>(args)...);
+		Callback::disable();
+	} catch (...){
+		Callback::disable();
+		throw;
+	}
+}
 
 // ===== VTK format
 void GridVTK(const HMGrid3D::Grid& g, const char* fn);
@@ -22,7 +37,7 @@ struct PeriodicDataEntry{
 	Vertex v, v_shadow;
 	bool reversed;
 
-	void assemble(HMGrid3D::Grid& g, std::map<Face*, Face*>& outmap, int trynum=0);
+	void assemble(HMGrid3D::Grid& g, std::map<Face*, Face*>& outmap);
 };
 struct PeriodicData{
 	//data
@@ -30,10 +45,9 @@ struct PeriodicData{
 
 	//constructing
 	PeriodicData(){};
+
 	//* b1 - boundary type for periodic surface
-	//
 	//* b2 - boundary type for shadow surface
-	//
 	//* v1/v2 - start points in periodic/shadow surfaces
 	//
 	//* is_reversed defines connected direction from start point along surface boundary
@@ -60,23 +74,26 @@ struct PeriodicData{
 			std::map<Face*, Face*>& outmap);
 };
 
-//Main function
-void GridMSH(const HMGrid3D::Grid& g, const char* fn,
+struct GridMSH{
+	GridMSH(){};
+
+	//Main functions
+	void operator()(const HMGrid3D::Grid& g, const char* fn,
 		std::function<std::string(int)> btype_name,
 		PeriodicData periodic);
 
-//Simplified forms:
-//no periodic, all boundaries are called "boundary1", 2, 3 etc.
-void GridMSH(const HMGrid3D::Grid& g, const char* fn);
+	//Simplified forms:
+	//no periodic, all boundaries are called "boundary1", 2, 3 etc.
+	void operator()(const HMGrid3D::Grid& g, const char* fn);
 
-//no periodic
-void GridMSH(const HMGrid3D::Grid& g, const char* fn,
+	//no periodic
+	void operator()(const HMGrid3D::Grid& g, const char* fn,
 		std::function<std::string(int)> btype_name);
 
-//all boundaries are called "boundary1", 2, 3 etc
-void GridMSH(const HMGrid3D::Grid& g, const char* fn,
+	//all boundaries are called "boundary1", 2, 3 etc
+	void operator()(const HMGrid3D::Grid& g, const char* fn,
 		PeriodicData periodic);
-
+};
 
 
 

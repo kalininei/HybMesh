@@ -5,33 +5,6 @@
 #include <algorithm>
 #include "addalgo.hpp"
 
-const double geps = 1e-8;
-const double geps2 = 1e-14;
-const double gbig = 1.0/geps;
-inline bool ISZERO(double v){ return fabs(v)<geps; }
-inline bool ISEQ(double a, double b){ return ISZERO(a-b); }
-inline bool ISEQLOWER(double x, double y){ return x<y+geps; }
-inline bool ISEQGREATER(double x, double y){ return x>y-geps; }
-inline bool ISLOWER(double x, double y){ return x<y-geps; }
-inline bool ISGREATER(double x, double y){ return x>y+geps; }
-inline int SIGN(double x){ if (ISZERO(x)) return 0; else return (x<0) ? -1 : 1; }
-inline double sqr(double x){ return x*x; }
-
-//map for gathering coordinates
-template<class C>
-struct TCoordMap: public std::map<double, C, bool(*)(double, double)>{
-	TCoordMap(): std::map<double, C, bool(*)(double, double)>(ISLOWER){}
-};
-template<class C>
-struct TCoordSet: public std::set<C, bool(*)(double, double)>{
-	TCoordSet(): std::set<C, bool(*)(double, double)>(ISLOWER){}
-};
-
-//positioning constants
-const int BOUND = 0;
-const int INSIDE = 1;
-const int OUTSIDE = -1;
-
 //Point
 struct Point{
 	double x,y;

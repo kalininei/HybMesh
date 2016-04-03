@@ -208,6 +208,15 @@ std::vector<ShpVector<Face>> Face::SubDivide(const ShpVector<Face>& fvec){
 	}
 	return ret;
 }
+void Face::SetBoundaryTypes(const ShpVector<Face>& fvec, std::function<int(Vertex, int)> bfun){
+	for (auto f: fvec) if (f->is_boundary()){
+		Vertex cv;
+		auto av = f->allvertices();
+		for (auto v: av){ cv.x += v->x; cv.y += v->y; cv.z += v->z; }
+		cv.x /= av.size(); cv.y /= av.size(); cv.z /= av.size();
+		f->boundary_type = bfun(cv, f->boundary_type);
+	}
+}
 
 // ================== Cell
 int Cell::n_faces() const{
@@ -219,6 +228,17 @@ int Cell::n_edges() const{
 }
 int Cell::n_vertices() const{
 	return allvertices().size();
+}
+
+std::tuple<int, int, int> Cell::n_fev() const{
+	std::unordered_set<shared_ptr<Vertex>> ord;
+	int e2 = 0;
+	for (auto f: faces){
+		e2 += f->n_edges();
+		for (auto e: f->edges) ord.insert(e->vertices.begin(), e->vertices.end());
+	}
+
+	return std::make_tuple(n_faces(), (int)e2/2, (int)ord.size());
 }
 
 ShpVector<Vertex> Cell::allvertices() const{
@@ -256,11 +276,15 @@ int Grid::n_vertices() const{
 }
 ShpVector<Vertex> Grid::allvertices() const{
 	ShpVector<Vertex> ret;
+	auto ins = aa::unique_container_inserter(ret);
 	for (auto c: cells){
-		auto dt = c->allvertices();
-		ret.insert(ret.end(), dt.begin(), dt.end());
+		for (auto f: c->faces){
+			for (auto e: f->edges){
+				ins.insert_range(e->vertices.begin(), e->vertices.end());
+			}
+		}
 	}
-	return aa::no_dublicates(ret);
+	return ret;
 }
 
 ShpVector<Edge> Grid::alledges() const{

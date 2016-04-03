@@ -77,8 +77,8 @@ void test03(){
 	std::cout<<"3. Fluent export"<<std::endl;
 	{
 		auto g1 = HMGrid3D::Constructor::Cuboid(HMGrid3D::Vertex(0, 0, 0), 1, 1, 1, 2, 2, 1);
-		HMGrid3D::Export::GridMSH(g1, "g1.msh");
-		add_file_check(-8255129009601487661, "g1.msh", "simple cuboid");
+		HMGrid3D::Export::GridMSH()(g1, "g1.msh");
+		add_file_check(-7230105922956463033, "g1.msh", "simple cuboid");
 		 
 	}
 	{
@@ -87,7 +87,7 @@ void test03(){
 				[](int i){ return 1; },
 				[](int i){ return 2; },
 				[](int i){ return i+3; });
-		HMGrid3D::Export::GridMSH(g3d, "g1.msh",
+		HMGrid3D::Export::GridMSH()(g3d, "g1.msh",
 				[](int i)->std::string{
 					switch (i){
 						case 1: return std::string("bottom");
@@ -95,26 +95,26 @@ void test03(){
 						default: return std::string("side") + std::to_string(i);
 					};
 				});
-		add_file_check(-7221922955056885602, "g1.msh", "cuboid from sweep with custom boundaries");
+		add_file_check(-2441793892695355740, "g1.msh", "cuboid from sweep with custom boundaries");
 	}
 	{
 		auto g1 = GGeom::Constructor::Circle(Point(0, 0), 1, 4, 2, true);
 		auto g2 = GGeom::Constructor::ExtractCells(g1, {0, 4});
 		auto g3d = HMGrid3D::Constructor::SweepGrid2D(g2, {0, 0.1});
-		HMGrid3D::Export::GridMSH(g3d, "g1.msh");
-		add_file_check(-1907392421441205334, "g1.msh", "mixed hex/wedge cells");
+		HMGrid3D::Export::GridMSH()(g3d, "g1.msh");
+		add_file_check(-4503093299932513966, "g1.msh", "mixed hex/wedge cells");
 	}
 	{
 		auto g1 = GGeom::Constructor::Circle(Point(0, 0), 1, 5, 2, false);
 		auto g2 = GGeom::Constructor::ExtractCells(g1, {5});
 		auto g3d = HMGrid3D::Constructor::SweepGrid2D(g2, {0, 0.1});
-		HMGrid3D::Export::GridMSH(g3d, "g1.msh");
-		add_file_check(-3354809844770748450, "g1.msh", "single pentagon prism cell");
+		HMGrid3D::Export::GridMSH()(g3d, "g1.msh");
+		add_file_check(-3151636821228197127, "g1.msh", "single pentagon prism cell");
 	}
 	{
 		auto g1 = GGeom::Constructor::RectGrid01(20, 30);
 		auto g2 = GGeom::Constructor::Circle(Point(0.721, 0.682), 0.465, 24, 10, false);
-		auto g3 = GridGeom::cross_grids(&g1, &g2, 0.0, 0, false, false, 0, CrossGridCallback::silent());
+		auto g3 = GridGeom::cross_grids(&g1, &g2, 0.0, 0, false, false, 0);
 		auto _g3ed = g3->get_edges();
 		vector<::Edge> g3ed(_g3ed.begin(), _g3ed.end());
 		auto g3d = HMGrid3D::Constructor::SweepGrid2D(*g3, {0, 0.1, 0.2, 0.3, 0.5},
@@ -123,7 +123,7 @@ void test03(){
 					Point pc = (*g3->get_point(g3ed[e].p1) + *g3->get_point(g3ed[e].p2))/2.0;
 					return (pc.x<=1+1e-12 && pc.y<=1+1e-12) ? 3 : 4;
 				});
-		HMGrid3D::Export::GridMSH(g3d, "g1.msh",
+		HMGrid3D::Export::GridMSH()(g3d, "g1.msh",
 				[](int i)->std::string{
 					switch (i){
 						case 1: return "bottom";
@@ -133,7 +133,7 @@ void test03(){
 						default: return "unknown";
 					}
 				});
-		add_file_check(3784851216684557860, "g1.msh", "mesh with polyhedra cells");
+		add_file_check(-3652204123278793319, "g1.msh", "mesh with polyhedra cells");
 		delete g3;
 	}
 }
@@ -146,8 +146,50 @@ void test04(){
 		save_vtk(g2d, "g1.vtk");
 		HMGrid3D::Export::PeriodicData pd;
 		pd.add_condition(1, 2, HMGrid3D::Vertex(0, 0, 0), HMGrid3D::Vertex(0, 0, 1), true);
-		HMGrid3D::Export::GridMSH(g3d, "g3.msh", pd); 
-		add_file_check(4018826797217108675, "g3.msh", "simple 2x2x2");
+		HMGrid3D::Export::GridMSH()(g3d, "_o1.msh", pd); 
+		add_file_check(-3243497580596260603, "_o1.msh", "simple 2x2x2");
+
+		pd.data[0].reversed = false;
+		HMGrid3D::Export::GridMSH()(g3d, "_o2.msh", pd); 
+		add_file_check(-5683218599898333405, "_o2.msh", "2x2x2 without reverse");
+
+		pd.data[0].reversed = true;
+		pd.data[0].v = HMGrid3D::Vertex(0.1, 0, 0);
+		bool res3 = false;
+		try{
+			HMGrid3D::Export::GridMSH()(g3d, "g3.msh", pd); 
+		} catch(std::runtime_error& e){
+			res3 = true;
+		}
+		add_check(res3, "fail at invalid point match");
+	}
+	{
+		auto g2d1 = GGeom::Constructor::RectGrid(Point(0, 0), Point(10, 1), 100, 10);
+		auto g2d2 = GGeom::Constructor::Ring(Point(3, 0.5), 0.3, 0.1, 20, 4);
+		auto g2d = GridGeom::cross_grids(&g2d1, &g2d2, 0.1, 0, false, true, 0);
+		vector<double> zvec;
+		for (int i=0; i<100; i+=10)  zvec.push_back(3 + (double)i/99);
+		auto g3d = HMGrid3D::Constructor::SweepGrid2D(*g2d, zvec);
+		HMGrid3D::Face::SetBoundaryTypes(g3d.allfaces(), [](HMGrid3D::Vertex v, int bt){
+					if (bt == 3){
+						if (v.x<=geps) return 3;
+						if (v.x>=10-geps) return 4;
+						return 5;
+					}
+					return bt;
+				});
+
+		HMGrid3D::Export::PeriodicData pd;
+
+		pd.add_condition(1, 2, HMGrid3D::Vertex(0, 0, 3), HMGrid3D::Vertex(0, 0, 4), true);
+		pd.add_condition(3, 4, HMGrid3D::Vertex(0, 0, 3), HMGrid3D::Vertex(10, 0, 3), true);
+		HMGrid3D::Export::WithCallback(
+			HMCallback::to_cout2,
+			HMGrid3D::Export::GridMSH(), g3d, "g2.msh", pd
+		);
+		add_file_check(7147520361138737243, "g2.msh", "multiple periodic");
+
+		delete g2d;
 	}
 };
 

@@ -29,11 +29,12 @@ source_group ("Source Files" FILES ${SOURCES} ${SOURCES})
 add_library(${CROSSGRID_TARGET} SHARED ${HEADERS} ${SOURCES})
 
 # =========== linkage
+target_link_libraries(${CROSSGRID_TARGET} ${HMPROJECT_TARGET})
 target_link_libraries(${CROSSGRID_TARGET} ${GMSH_TARGET})
 target_link_libraries(${CROSSGRID_TARGET} ${BGEOM2D_TARGET})
 target_link_libraries(${CROSSGRID_TARGET} ${HYBMESH_CONTOURS2D_TARGET})
 
-include_directories(${CommonInclude})
+include_directories(${HMPROJECT_INCLUDE})
 include_directories(${GMSH_INCLUDE})
 include_directories(${BGEOM2D_INCLUDE})
 include_directories(${HYBMESH_CONTOURS2D_INCLUDE})

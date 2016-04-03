@@ -1,35 +1,10 @@
 #ifndef NDEBUG
 
 #include "debug_cont2d.hpp"
-#include "stdarg.h"
 #include "constructor.hpp"
-#include "nan_handler.h"
 #include <fstream>
 
 using namespace HMCont2D;
-
-Debug HMCont2D::_dbg;
-int Debug::tabs = 0;
-
-void Debug::pre(){
-	NanSignalHandler::StartCheck();
-}
-
-void Debug::Print(const char* fmt, ...){
-	std::string s;
-	for (int i=0; i<tabs; ++i) s+="        ";
-	s+=fmt;
-	va_list va;
-	const char* format = s.c_str();
-	va_start(va, fmt);
-	vprintf(format, va);
-	va_end(va);
-}
-
-std::ostream& Debug::Cout(){
-	for (int i=0; i<tabs; ++i) std::cout<<"        ";
-	return std::cout;
-}
 
 void Debug::info_contour(const Contour& c){
 	Cout()<<"+++ Contour at "<<&c<<". "<<c.size()<<" edges. ";

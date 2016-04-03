@@ -5,24 +5,6 @@
 
 using namespace HMGrid3D;
 
-int Debug::tabs = 0;
-
-void Debug::Print(const char* fmt, ...){
-	std::string s;
-	for (int i=0; i<tabs; ++i) s+="        ";
-	s+=fmt;
-	va_list va;
-	const char* format = s.c_str();
-	va_start(va, fmt);
-	vprintf(format, va);
-	va_end(va);
-}
-
-std::ostream& Debug::Cout(){
-	for (int i=0; i<tabs; ++i) std::cout<<"        ";
-	return std::cout;
-}
-
 void Debug::info_gridedge(const Edge& e){
 	Print("+++ Edge at %p. Length = %10.6f. %i vertices.\n", &e, e.length(), e.vertices.size());
 	tabs+=1;

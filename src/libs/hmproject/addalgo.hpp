@@ -196,6 +196,33 @@ std::vector<C> no_dublicates(const std::vector<C>& input){
 	return ret;
 }
 
+template<class C>
+class UniqueInserter{
+	typedef typename C::value_type VType;
+	std::unordered_set<VType> usedv;
+	C* data;
+public:
+	UniqueInserter(C& vec): data(&vec){
+		for (auto it=vec.begin(); it!=vec.end(); ++it) usedv.insert(*it);
+	}
+
+	bool insert(VType& v){
+		auto emp = usedv.emplace(v);
+		if (emp.second) std::inserter(*data, data->end()) = v;
+		return emp.second;
+	}
+
+	template<class IterClass>
+	void insert_range(IterClass itstart, IterClass itend){
+		for (auto it=itstart; it!=itend; ++it){ insert(*it); }
+	}
+};
+template<class C>
+UniqueInserter<C> unique_container_inserter(C& vec){
+	return UniqueInserter<C>(vec);
+}
+
+
 // ======================= find pointer in shared pointer container
 template<class C, class V>
 C shp_find(C first, C last, V* data){
@@ -221,8 +248,9 @@ C shp_find(C first, C last, V* data){
 //	convert() and restore() calls since their data is illegal.
 template<class C>
 class ShpContainerIndexer{
+	typedef typename std::remove_const<C>::type CType;
 	typedef typename C::value_type::element_type EType;
-	C* p_data;
+	CType* p_data;
 	EType* backup;
 	bool converted;
 	EType* next(typename C::iterator& it){ return (*it++).get(); }
@@ -246,17 +274,24 @@ class ShpContainerIndexer{
 		converted = false;
 	}
 public:
-	ShpContainerIndexer(C& vec): p_data(&vec), converted(false){}
+	ShpContainerIndexer(C& vec):converted(false){
+		C* pvec = &vec;
+		p_data = const_cast<CType*>(pvec);
+	}
 	~ShpContainerIndexer(){ if (converted) restore(); }
 
 	void convert(){
-		fill_backup();
-		convert_pdata();
+		if (!converted){
+			fill_backup();
+			convert_pdata();
+		}
 	};
 
 	void restore(){
-		restore_pdata();
-		free(backup);
+		if (converted){
+			restore_pdata();
+			free(backup);
+		}
 	};
 
 	int index(EType* e){ return *(int*)e; }

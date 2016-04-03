@@ -13,7 +13,9 @@ source_group ("Source Files" FILES ${SOURCES} ${SOURCES})
 add_library(${BGEOM2D_TARGET} SHARED ${HEADERS} ${SOURCES})
 
 # =========== linkage
-include_directories(${CommonInclude})
+target_link_libraries(${BGEOM2D_TARGET} ${HMPROJECT_TARGET})
+
+include_directories(${HMPROJECT_INCLUDE})
 
 install(TARGETS ${BGEOM2D_TARGET}
 	LIBRARY DESTINATION ${LIB_INSTALL_DIR}

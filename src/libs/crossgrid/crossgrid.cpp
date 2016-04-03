@@ -13,36 +13,7 @@ struct _gmsh_initializer{
 };
 _gmsh_initializer gi;
 
-//callbacks
-//default callback function
-int default_callback(const char* proc, const char* subproc, double percent, double subpercent){
-	std::cout<<proc;
-	if (percent>=0) std::cout<<" - "<<int(100*percent)<<"%";
-	std::cout<<";";
-	if (subproc!=0){
-		std::cout<<" ("<<subproc;
-		if (subpercent>=0) std::cout<<" - "<<int(100*subpercent)<<"%";
-		std::cout<<")";
-	}
-	std::cout<<std::endl;
-	return CrossGridCallback::OK;
-}
-
-int silent_callback(const char* proc, const char* subproc, double percent, double subpercent){
-	return CrossGridCallback::OK;
-}
-
 } //namespace
-
-CrossGridCallback::func CrossGridCallback::to_cout(){
-	return default_callback;
-}
-
-CrossGridCallback::func CrossGridCallback::silent(){
-	return silent_callback;
-}
-
-
 
 // ========================== testing
 namespace{
@@ -172,8 +143,8 @@ void test4(){
 	auto grid1 = rectangular_grid(0, 0, 1, 1, 10, 10);
 	auto grid2 = rectangular_grid(1, 1, 2, 2, 10, 10);
 	auto grid3 = rectangular_grid(2,1.85, 3, 2.85, 10, 10);
-	auto cross1 = GridGeom::cross_grids(&grid1, &grid2, 0.0, 0.5, true, false, 0, silent_callback);
-	auto cross2 = GridGeom::cross_grids(cross1, &grid3, 0.0, 0.5, true, false, 0, silent_callback);
+	auto cross1 = GridGeom::cross_grids(&grid1, &grid2, 0.0, 0.5, true, false, 0);
+	auto cross2 = GridGeom::cross_grids(cross1, &grid3, 0.0, 0.5, true, false, 0);
 	save_vtk(cross2, "test4_grid.vtk");
 	add_check(cross2->n_points()==362 && cross2->n_cells()==300, "combined grid topology");
 	auto div = cross2->subdivide();

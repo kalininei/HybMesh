@@ -8,13 +8,25 @@
 using namespace HMGrid3D;
 namespace hme = HMGrid3D::Export;
 
-std::tuple<
-	std::vector<double>,   //points coordinates in plain array
-	std::vector<int>       //????
->
-hme::Serialize(const HMGrid3D::Grid& g){
-	_THROW_NOT_IMP_;
+hme::Callback::Callback(): Caller2("", -1, HMCallback::silent2){}
+
+hme::Callback& hme::Callback::instance(std::string s, double duration){
+	get().reset(s, duration);
+	return get();
 }
+
+hme::Callback& hme::Callback::get(){
+	static Callback _callback;
+	return _callback;
+};
+
+void hme::Callback::enable(HMCallback::Fun2 f2){
+	get().call = f2;
+}
+void hme::Callback::disable(){
+	get().call = HMCallback::silent2;
+}
+
 
 namespace{
 

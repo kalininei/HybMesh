@@ -87,6 +87,8 @@ struct Face{
 
 	// ===== Algos
 	static std::vector<ShpVector<Face>> SubDivide(const ShpVector<Face>& fvec);
+	//assign boundary by centeral vertex and old boundary type.
+	static void SetBoundaryTypes(const ShpVector<Face>& fvec, std::function<int(Vertex, int)> bfun);
 
 	// ===== Connectivity tables
 	struct Connectivity{
@@ -107,6 +109,7 @@ struct Cell{
 	int n_faces() const;
 	int n_edges() const;
 	int n_vertices() const;
+	std::tuple<int, int, int> n_fev() const; //number of faces, edges, vertices
 
 	// ===== Data access
 	ShpVector<Vertex> allvertices() const;

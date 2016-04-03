@@ -604,7 +604,6 @@ void test22(){
 }
 
 int main(){
-	crossgrid_silent_callback();
 	crossgrid_internal_tests();
 	test1();
 	test2();

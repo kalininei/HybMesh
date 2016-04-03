@@ -4,6 +4,7 @@
 #include "crossgrid.h"
 #include "bgeom2d.h"
 #include "contours.h"
+#include "hmcallback.hpp"
 
 namespace GGeom{
 struct Modify;
@@ -166,12 +167,12 @@ public:
 	//static builders
 	static GridGeom* cross_grids(GridGeom* gmain, GridGeom* gsec, double buffer_size, 
 			double density, bool preserve_bp, bool empty_holes, double angle0,
-			CrossGridCallback::func cb);
+			HMCallback::Fun2 cb=HMCallback::silent2);
 	
 	//result = g - area(c). Area could be inner or outer. 
 	static GridGeom* grid_minus_cont(GridGeom* g, PointsContoursCollection* c,
 			bool is_inner,
-			CrossGridCallback::func cb);
+			HMCallback::Fun2 cb);
 	
 	//builds a grid wich is constructed by imposition of gsec onto gmain
 	//no bufferzones. 
@@ -189,5 +190,6 @@ public:
 	friend struct GGeom::Modify;
 	friend struct GGeom::Info;
 	friend struct GGeom::Repair;
+
 };
 #endif
