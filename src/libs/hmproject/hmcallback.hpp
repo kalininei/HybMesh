@@ -3,7 +3,6 @@
 #include <functional>
 
 namespace HMCallback{
-struct Caller1;
 struct Caller2;
 struct LoopCaller2;
 
@@ -24,23 +23,14 @@ public:
 //normally returns OK. Should return CANCEL for cancellation require
 typedef std::function<int(const char*, const char*, double, double)> Fun2;
 
-//same with single progress bar
-typedef std::function<int(const char*, double)> Fun1;
-
-extern Fun1 to_cout1;  //callback to std::cout
-extern Fun2 to_cout2;
-extern Fun1 silent1;   //no callback at all
-extern Fun2 silent2;
-
-struct Caller1{
-	void move(double progress);
-	void step(double progress);
-	void fin();
-};
+extern Fun2 to_cout2;         //callback to std::cout
+extern Fun2 to_cout2_timer;  //callback to std::cout with timer
+extern Fun2 silent2;          //no callback at all
 
 struct Caller2{
-	Caller2(std::string proc_name, double proc_duration, Fun2 func);
+	Caller2(std::string proc_name="", double proc_duration=0, Fun2 func=HMCallback::silent2);
 	void reset(std::string proc_name, double proc_duration);
+	void setfun(Fun2 func);
 
 	//Moving/steppin progress
 	void silent_move_now(double progress, std::string subproc_name, double subproc_duration=-1);
@@ -93,8 +83,157 @@ private:
 	int iter;
 };
 
+
+class Singleton2: public HMCallback::Caller2{
+	Singleton2();
+public:
+	static Singleton2& init(std::string s, double duration);
+	static Singleton2& get();
+
+	struct Beholder{
+		Beholder(HMCallback::Fun2& cb){ Singleton2::get().call = cb; }
+		~Beholder(){ Singleton2::get().call = HMCallback::silent2; }
+	};
+	static Beholder enable(HMCallback::Fun2& cb){ return Beholder(cb); }
+};
+
+template<class Fun, class... Args>
+void WithCallback(HMCallback::Fun2 cb, Fun&& f, Args &&... args){
+	auto _tmp = Singleton2::enable(cb);
+	f(std::forward<Args>(args)...);
+	Singleton2::get().fin();
 }
 
+template<class TExecutor> class FunctionWithCallback;
 
+template<int N>
+struct TDuration{ static constexpr int value = N; };
+
+template<typename T, class... Args>
+struct GetDuration{
+	static const int value = decltype( T::duration(0, std::declval<Args>()...) )::value;
+};
+
+//base class for functors with callback
+class ExecutorBase{
+	//used/assigned by FunctionWithCallback<>
+	void init(const char* nm, double dur){ callback.reset(nm, dur); }
+	void fin(){ callback.fin(); }
+protected:
+	//used by _run(...) procedures
+	HMCallback::Caller2 callback;
+
+	ExecutorBase(): callback("", 0, silent2){}
+
+	void set_callback(Fun2 func){ callback.setfun(func); }
+	void set_callback(HMCallback::Caller2 func){ callback = func; }
+	void swap_callback(Caller2& f){ std::swap(callback, f); }
+
+	template<class X>
+	friend class FunctionWithCallback;
+};
+
+// ===== Macros which should present in a functor definition
+#define HMCB_SET_DEFAULT_DURATION(X) \
+	static constexpr HMCallback::TDuration<X> duration(...);
+#define HMCB_SET_PROCNAME(X) \
+	static constexpr const char* procname() { return X; }
+//set custom duration for arguments lists.
+//Should be called multiple times for functions with default arguments
+//
+//HMCB_DURATION(10, int, double);
+//HMCB_DURATION(10, int);
+//HMCB_DURATION(10);
+//_run(int x=0, double y=0);
+#define HMCB_SET_DURATION(X, ...) \
+	static constexpr HMCallback::TDuration<X> duration(bool, ##__VA_ARGS__);
+
+// ===== Get duration by functor type and arguments list
+#define HMCB_DURATION(FUNCTOR, ...) \
+	HMCallback::GetDuration<FUNCTOR,  ##__VA_ARGS__>::value
+
+template<class TExecutor>
+class FunctionWithCallback{
+	template<class... Args>
+	using TRet = decltype( std::declval<TExecutor>()._run(std::declval<Args>()...) );
+	TExecutor exe;
+
+	//execution with callback function reset
+	template<class... Args>
+	struct Beholder{
+		TExecutor* e;
+		static constexpr const char* nm = TExecutor::procname();
+		static constexpr double dr = HMCB_DURATION(TExecutor, Args...);
+		Beholder(TExecutor* _e):e(_e){ e->init(nm, dr); }
+		~Beholder() { e->fin(); }
+	};
+
+	template<class... Args>
+	TRet<Args...> invoke(Args&&... arg){
+		Beholder<Args...> b(&exe);  //to call exe->fin() before return;
+		return exe._run(std::forward<Args>(arg)...);
+	}
+
+	//execution with exeisted callback function without reset
+	template<class... Args>
+	struct Beholder1{
+		TExecutor* e;
+		Caller2* cb;
+		Beholder1(Caller2& _cb, TExecutor* _e):e(_e), cb(&_cb){ e->swap_callback(_cb); }
+		~Beholder1() { e->swap_callback(*cb); }
+	};
+	template<class... Args>
+	TRet<Args...> invoke1(Caller2& cb, Args&&... arg){
+		Beholder1<Args...> b(cb, &exe);  //to call exe->fin() before return;
+		return exe._run(std::forward<Args>(arg)...);
+	}
+public:
+	FunctionWithCallback(): exe(){}
+
+	//call with last set callback
+	template<class... Args>
+	TRet<Args...> operator()(Args&&... arg){
+		return invoke(std::forward<Args>(arg)...);
+	}
+
+	//call with inactive callback
+	template<class... Args>
+	TRet<Args...> Silent(Args&&... arg){
+		exe.set_callback(silent2);
+		return invoke(std::forward<Args>(arg)...);
+	}
+
+	//call with cout callback
+	template<class... Args>
+	TRet<Args...> ToCout(Args&&... arg){
+		exe.set_callback(to_cout2);
+		return invoke(std::forward<Args>(arg)...);
+	}
+
+	//call with callback with timer
+	template<class... Args>
+	TRet<Args...> WTimer(Args&&... arg){
+		exe.set_callback(to_cout2_timer);
+		return invoke(std::forward<Args>(arg)...);
+	}
+
+	//call with defined callback with its initializing
+	template<class TCallback, class... Args>
+	TRet<Args...> WithCallback(TCallback&& cb, Args&&... arg){
+		exe.set_callback(std::forward<TCallback>(cb));
+		return invoke(std::forward<Args>(arg)...);
+	}
+
+	//run with existing callback without it reinitializing
+	template<class... Args>
+	TRet<Args...> MoveCallback(Caller2& cb, Args&&... arg){
+		return invoke1(cb, std::forward<Args>(arg)...);
+	}
+
+};
+
+
+
+}
 
 #endif

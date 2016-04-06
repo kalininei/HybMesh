@@ -126,11 +126,19 @@ struct Grid{
 	int n_faces() const;
 	int n_edges() const;
 	int n_vertices() const;
+
 	// ===== Data access
 	ShpVector<Vertex> allvertices() const;
 	ShpVector<Edge> alledges() const;
 	ShpVector<Face> allfaces() const;
 	ShpVector<Cell> allcells() const;
+	typedef std::tuple<
+			ShpVector<Vertex>,
+			ShpVector<Edge>,
+			ShpVector<Face>,
+			ShpVector<Cell>
+		> Talldata;
+	Talldata alldata() const;
 };
 
 

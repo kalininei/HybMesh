@@ -47,12 +47,13 @@ PCollection::FindClosestNode(const PCollection& dt, const Point& p){
 }
 
 vector<Point*> ECollection::all_points() const{
-	std::set<Point*> tmp;
-	std::for_each(data.begin(), data.end(), [&tmp](const Tentry& e){
-			tmp.insert(e->pstart);
-			tmp.insert(e->pend);
+	vector<Point*> ret;
+	auto ins = aa::unique_container_inserter(ret);
+	std::for_each(data.begin(), data.end(), [&ins](const Tentry& e){
+			ins.insert(e->pstart);
+			ins.insert(e->pend);
 	});
-	return vector<Point*>(tmp.begin(), tmp.end());
+	return ret;
 }
 
 Point* ECollection::FindClosestNode(const ECollection& dt, const Point& p){

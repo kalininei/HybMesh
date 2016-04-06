@@ -2,11 +2,11 @@
 #include <map>
 #include "grid.h"
 #include "addalgo.hpp"
-#include "fileproc.h"
 #include "trigrid.h"
 #include "buffergrid.h"
 #include "wireframegrid.h"
 #include "procgrid.h"
+#include "debug_grid2d.h"
 
 void Edge::add_adj_cell(int cell_ind, int i1, int i2) const{
 	if ((i1 == p1) && (i2 == p2)){

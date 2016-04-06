@@ -3,7 +3,8 @@
 
 #include "primitives_grid3d.hpp"
 #include "construct_grid3d.hpp"
-#include "export_grid3d.hpp"
+#include "fluent_export_grid3d.hpp"
+#include "vtk_export_grid3d.hpp"
 
 
 #endif

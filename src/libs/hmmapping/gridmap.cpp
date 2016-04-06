@@ -1,6 +1,5 @@
 #include "gridmap.hpp"
 #include "femassembly.hpp"
-#include "fileproc.h"
 using namespace HMGMap::Impl;
 
 void DoMapping::set_grid(const GridGeom& ig){
@@ -149,9 +148,6 @@ GridGeom DoMapping::run(){
 	} else if (opt.snap != "NO"){
 		throw HMGMap::MapException(std::string("Unknown snapping option - ") + opt.snap);
 	}
-#ifndef NDEBUG
-	if (!GGeom::Info::Check(ret)) save_vtk(ret, "_badmapped.vtk");
-#endif
 	if (!GGeom::Info::Check(ret)) throw HMGMap::MapException("Resulting grid is not valid");
 	return ret;
 }

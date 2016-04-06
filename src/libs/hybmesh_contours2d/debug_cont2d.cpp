@@ -148,5 +148,20 @@ void Debug::vtk_contour(const ECollection& col, std::map<Edge*, double>& edata, 
 	}
 }
 
+double Debug::hash(const ECollection& ecol){
+	double sum;
+	int i=0;
+	for (auto e: ecol){
+		auto vert1 = e->pstart;
+		auto vert2 = e->pend;
+		sum += 0.333*sin(i*vert1->x+3);
+		sum -= 0.333*cos(i*vert1->y+4);
+		sum += 0.333*sin(i*vert2->x+5);
+		sum -= 0.333*cos(i*vert2->y+6);
+		++i;
+	}
+	return sum;
+}
+
 
 #endif

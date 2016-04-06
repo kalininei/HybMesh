@@ -138,7 +138,7 @@ cross_core(const Contour& c1, const Contour& c2, bool is1){
 	if (retv.size() < 2) return retv;
 
 	//clear doublicates
-	TCoordSet<double> w1;
+	TCoordSet w1;
 	vector<std::tuple<bool, Point, double, double>> ret;
 	for (auto& v: retv){
 		if (w1.find(std::get<2>(v)) == w1.end()){

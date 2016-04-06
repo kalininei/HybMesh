@@ -1,47 +1,24 @@
 #include "hmgrid3d.hpp"
 #include "procgrid.h"
-#include "fileproc.h"
 #include <fstream>
 #include "debug_grid3d.hpp"
-
-int FAILED_CHECKS = 0;
-
-void add_check(bool ex, std::string info){
-	if (info.size()==0){
-		std::cout<<"\tunknown check: ";
-	} else{
-		std::cout<<"\t"<<info;
-	}
-	if (ex){
-		std::cout<<": True"<<std::endl;
-	} else {
-		++FAILED_CHECKS;
-		std::cout<<": False <<<<<<<<<<<<<<<<<<<"<<std::endl;
-	}
-};
-
-void add_file_check(long hash, std::string fn, std::string info){
-	std::ifstream t(fn);
-	std::stringstream buffer;
-	buffer << t.rdbuf();
-	std::hash<std::string> str_hash;
-	long h1 = str_hash(buffer.str());
-	int fc = FAILED_CHECKS;
-	add_check(h1 == hash, info);
-	if (fc != FAILED_CHECKS){
-		std::cout<<"\t\tcurrent file hash = "<<h1<<std::endl;
-		std::cout<<"\t\tinput file hash   = "<<hash<<std::endl;
-	}
-}
+#include "debug_grid2d.h"
+#include "hmtesting.hpp"
+#include "hmtimer.hpp"
+#include "serialize_grid3d.hpp"
+using namespace HMTesting;
 
 void test01(){
-	std::cout<<"1. export import cuboid"<<std::endl;
+	std::cout<<"1. export cuboid to vtk"<<std::endl;
 	auto g1 = HMGrid3D::Constructor::Cuboid({0, 0, 0}, 1, 2, 5, 3, 3, 3);
-	HMGrid3D::Export::BoundaryVTK(g1, "c1.vtk");
-	HMGrid3D::Export::GridVTK(g1, "g1.vtk");
+
+	HMGrid3D::Export::AllVTK.Silent(g1, "g1.vtk", "c1.vtk");
+
 	add_check(g1.n_vertices() == 64 && g1.n_cells() == 27 &&
 			g1.n_edges() == 144 && g1.n_faces() == 108,
 			"cuboid primitives number"); 
+	add_file_check(8514389607504677061U, "g1.vtk", "grid");
+	add_file_check(12288405335072816377U, "c1.vtk", "boundary");
 }
 
 void test02(){
@@ -77,9 +54,8 @@ void test03(){
 	std::cout<<"3. Fluent export"<<std::endl;
 	{
 		auto g1 = HMGrid3D::Constructor::Cuboid(HMGrid3D::Vertex(0, 0, 0), 1, 1, 1, 2, 2, 1);
-		HMGrid3D::Export::GridMSH()(g1, "g1.msh");
-		add_file_check(-7230105922956463033, "g1.msh", "simple cuboid");
-		 
+		HMGrid3D::Export::GridMSH.Silent(g1, "g1.msh");
+		add_file_check(11216638150753088583U, "g1.msh", "simple cuboid");
 	}
 	{
 		auto g2d = GGeom::Constructor::RectGrid01(6, 3);
@@ -87,7 +63,7 @@ void test03(){
 				[](int i){ return 1; },
 				[](int i){ return 2; },
 				[](int i){ return i+3; });
-		HMGrid3D::Export::GridMSH()(g3d, "g1.msh",
+		HMGrid3D::Export::GridMSH(g3d, "g1.msh",
 				[](int i)->std::string{
 					switch (i){
 						case 1: return std::string("bottom");
@@ -95,21 +71,21 @@ void test03(){
 						default: return std::string("side") + std::to_string(i);
 					};
 				});
-		add_file_check(-2441793892695355740, "g1.msh", "cuboid from sweep with custom boundaries");
+		add_file_check(1976956498869484852U, "g1.msh", "cuboid from sweep with custom boundaries");
 	}
 	{
 		auto g1 = GGeom::Constructor::Circle(Point(0, 0), 1, 4, 2, true);
 		auto g2 = GGeom::Constructor::ExtractCells(g1, {0, 4});
 		auto g3d = HMGrid3D::Constructor::SweepGrid2D(g2, {0, 0.1});
-		HMGrid3D::Export::GridMSH()(g3d, "g1.msh");
-		add_file_check(-4503093299932513966, "g1.msh", "mixed hex/wedge cells");
+		HMGrid3D::Export::GridMSH(g3d, "g1.msh");
+		add_file_check(17687514312539715596U, "g1.msh", "mixed hex/wedge cells");
 	}
 	{
 		auto g1 = GGeom::Constructor::Circle(Point(0, 0), 1, 5, 2, false);
 		auto g2 = GGeom::Constructor::ExtractCells(g1, {5});
 		auto g3d = HMGrid3D::Constructor::SweepGrid2D(g2, {0, 0.1});
-		HMGrid3D::Export::GridMSH()(g3d, "g1.msh");
-		add_file_check(-3151636821228197127, "g1.msh", "single pentagon prism cell");
+		HMGrid3D::Export::GridMSH(g3d, "g1.msh");
+		add_file_check(3921094917079304U, "g1.msh", "single pentagon prism cell");
 	}
 	{
 		auto g1 = GGeom::Constructor::RectGrid01(20, 30);
@@ -123,7 +99,7 @@ void test03(){
 					Point pc = (*g3->get_point(g3ed[e].p1) + *g3->get_point(g3ed[e].p2))/2.0;
 					return (pc.x<=1+1e-12 && pc.y<=1+1e-12) ? 3 : 4;
 				});
-		HMGrid3D::Export::GridMSH()(g3d, "g1.msh",
+		HMGrid3D::Export::GridMSH(g3d, "g1.msh",
 				[](int i)->std::string{
 					switch (i){
 						case 1: return "bottom";
@@ -133,7 +109,7 @@ void test03(){
 						default: return "unknown";
 					}
 				});
-		add_file_check(-3652204123278793319, "g1.msh", "mesh with polyhedra cells");
+		add_file_check(1949417467069346897U, "g1.msh", "mesh with polyhedra cells");
 		delete g3;
 	}
 }
@@ -143,21 +119,20 @@ void test04(){
 	{
 		auto g2d = GGeom::Constructor::RectGrid({0.0, 0.1, 1.0}, {0.0, 0.3, 1.0});
 		auto g3d = HMGrid3D::Constructor::SweepGrid2D(g2d, {0.0, 0.2, 1.0});
-		save_vtk(g2d, "g1.vtk");
 		HMGrid3D::Export::PeriodicData pd;
 		pd.add_condition(1, 2, HMGrid3D::Vertex(0, 0, 0), HMGrid3D::Vertex(0, 0, 1), true);
-		HMGrid3D::Export::GridMSH()(g3d, "_o1.msh", pd); 
-		add_file_check(-3243497580596260603, "_o1.msh", "simple 2x2x2");
+		HMGrid3D::Export::GridMSH(g3d, "_o1.msh", pd); 
+		add_file_check(17371627965264670427U, "_o1.msh", "simple 2x2x2");
 
 		pd.data[0].reversed = false;
-		HMGrid3D::Export::GridMSH()(g3d, "_o2.msh", pd); 
-		add_file_check(-5683218599898333405, "_o2.msh", "2x2x2 without reverse");
+		HMGrid3D::Export::GridMSH(g3d, "_o2.msh", pd); 
+		add_file_check(9374713153386878447U, "_o2.msh", "2x2x2 without reverse");
 
 		pd.data[0].reversed = true;
 		pd.data[0].v = HMGrid3D::Vertex(0.1, 0, 0);
 		bool res3 = false;
 		try{
-			HMGrid3D::Export::GridMSH()(g3d, "g3.msh", pd); 
+			HMGrid3D::Export::GridMSH(g3d, "g3.msh", pd); 
 		} catch(std::runtime_error& e){
 			res3 = true;
 		}
@@ -183,11 +158,8 @@ void test04(){
 
 		pd.add_condition(1, 2, HMGrid3D::Vertex(0, 0, 3), HMGrid3D::Vertex(0, 0, 4), true);
 		pd.add_condition(3, 4, HMGrid3D::Vertex(0, 0, 3), HMGrid3D::Vertex(10, 0, 3), true);
-		HMGrid3D::Export::WithCallback(
-			HMCallback::to_cout2,
-			HMGrid3D::Export::GridMSH(), g3d, "g2.msh", pd
-		);
-		add_file_check(7147520361138737243, "g2.msh", "multiple periodic");
+		HMGrid3D::Export::GridMSH.Silent(g3d, "g2.msh", pd);
+		add_file_check(6712434711251990504, "g2.msh", "multiple periodic");
 
 		delete g2d;
 	}
@@ -199,12 +171,6 @@ int main(){
 	test03();
 	test04();
 	
-	if (FAILED_CHECKS ==1){
-		std::cout<<FAILED_CHECKS<<" test failed <<<<<<<<<<<<<<<<<<<"<<std::endl;
-	} else if (FAILED_CHECKS > 1) {
-		std::cout<<FAILED_CHECKS<<" tests failed <<<<<<<<<<<<<<<<<<<"<<std::endl;
-	} else {
-		std::cout<<"All tests passed"<<std::endl;
-	}
+	check_final_report();
 	std::cout<<"DONE"<<std::endl;
 }

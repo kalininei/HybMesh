@@ -1,5 +1,8 @@
-#include "hmcallback.hpp"
+#include <sstream>
 #include <iostream>
+#include <iomanip>
+#include "hmcallback.hpp"
+#include "hmtimer.hpp"
 
 using namespace HMCallback;
 
@@ -7,15 +10,19 @@ namespace{
 
 //callbacks
 //default callback function
-int default_callback2(const char* proc, const char* subproc, double percent, double subpercent){
-	std::cout<<proc;
-	if (percent>=0) std::cout<<" - "<<int(100*percent)<<"%";
-	std::cout<<";";
+std::string default_string(const char* proc, const char* subproc, double percent, double subpercent){
+	std::ostringstream os;
+	os<<proc;
+	if (percent>=0) os<<" - "<<int(100*percent)<<"%;";
 	if (subproc!=0){
-		std::cout<<" ("<<subproc;
-		if (subpercent>=0) std::cout<<" - "<<int(100*subpercent)<<"%";
-		std::cout<<")";
+		os<<" ("<<subproc;
+		if (subpercent>=0) os<<" - "<<int(100*subpercent)<<"%";
+		os<<")";
 	}
+	return os.str();
+}
+int default_callback2(const char* proc, const char* subproc, double percent, double subpercent){
+	std::cout<<default_string(proc, subproc, percent, subpercent);
 	std::cout<<std::endl;
 	return OK;
 }
@@ -24,22 +31,40 @@ int silent_callback2(const char* proc, const char* subproc, double percent, doub
 	return OK;
 }
 
+struct default_wtimer{
+	HMTimer::TicToc tm;
+	default_wtimer(): tm("Callback timer", false){}
+	int operator()(const char* proc, const char* subproc, double percent, double subpercent){
+		if (percent <= 0.0 && subpercent <= 0.0) { tm.init(); tm.tic();}
+		std::ostringstream s;
+		s<<std::fixed<<std::setprecision(3)<<tm.elapsed();
+		std::cout<<"["<<s.str()<<" sec.] ";
+		std::cout<<default_string(proc, subproc, percent, subpercent);
+		std::cout<<std::endl;
+		return OK;
+	}
+};
+
 }
 
 Fun2 HMCallback::to_cout2 = default_callback2;
+Fun2 HMCallback::to_cout2_timer = default_wtimer();
 Fun2 HMCallback::silent2 = silent_callback2;
 
 Caller2::Caller2(std::string proc_name, double proc_duration, Fun2 func){
-	call = func;
+	setfun(func);
 	reset(proc_name, proc_duration);
 }
 
 void Caller2::reset(std::string proc_name, double proc_duration){
-	before1(false); before2(false);
 	name1 = proc_name;
 	dur1 = proc_duration;
+	before1(false); before2(false);
 	prog1 = 0;
 	new_sub_process("", -1);
+}
+void Caller2::setfun(Fun2 func){
+	call = func;
 }
 
 void Caller2::new_sub_process(std::string subproc_name, double subproc_duration){
@@ -186,3 +211,17 @@ void LoopCaller2::new_iteration(double subproc_duration){
 	move_now(iter, nm, subproc_duration);
 	++iter;
 }
+
+
+Singleton2::Singleton2(): Caller2("", -1, HMCallback::silent2){}
+
+Singleton2& Singleton2::init(std::string s, double duration){
+	get().reset(s, duration);
+	return get();
+}
+
+Singleton2& Singleton2::get(){
+	static Singleton2 _callback;
+	return _callback;
+};
+

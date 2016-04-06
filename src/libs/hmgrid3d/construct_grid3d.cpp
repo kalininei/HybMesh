@@ -1,5 +1,7 @@
 #include "construct_grid3d.hpp"
+#include "debug_grid2d.h"
 #include "debug_grid3d.hpp"
+
 
 using namespace HMGrid3D;
 
@@ -116,6 +118,7 @@ HMGrid3D::Grid cns::SweepGrid2D(const GridGeom& g, const vector<double>& zcoords
 		std::function<int(int)> bottom_bt,
 		std::function<int(int)> top_bt,
 		std::function<int(int)> side_bt){
+
 	HMGrid3D::Grid ret;
 
 	//Needed Data
@@ -293,8 +296,6 @@ HMGrid3D::Grid Constructor::Copy::ShallowVertices(const HMGrid3D::Grid& b){
 		}
 	}
 
-	//simple 2x2x2 -> -3462728560320144757
-	//reversed -> -8068438769131553988
 	HMGrid3D::Grid ret;
 	ret.cells = cells_new;
 

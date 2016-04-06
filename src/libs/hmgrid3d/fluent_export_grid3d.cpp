@@ -1,13 +1,15 @@
-#include "export_grid3d.hpp"
+#include "fluent_export_grid3d.hpp"
 #include <unordered_map>
 #include <fstream>
 #include <sstream>
 #include "surface_grid3d.hpp"
 #include "debug_grid3d.hpp"
-#include "hmtimer.hpp"
+#include "serialize_grid3d.hpp"
 
 using namespace HMGrid3D;
 namespace hme = HMGrid3D::Export;
+
+HMCallback::FunctionWithCallback<hme::TGridMSH> hme::GridMSH;
 
 namespace{
 
@@ -118,6 +120,8 @@ PeriodicMap assemble_periodic(const std::map<int, ShpVector<Face>>& fzones, cons
 				std::vector<std::pair<int, int>>());
 		emp.first->second.emplace_back(perindex, shaindex);
 	}
+	//sort to always get same result
+	for (auto& v: ret) std::sort(v.second.begin(), v.second.end());
 	return ret;
 }
 
@@ -151,9 +155,172 @@ void zones_names(const PeriodicMap& periodic,
 	}
 }
 
-//save to fluent main function
-void gridmsh(const HMGrid3D::Grid& g, const char* fn,
+/*
+struct FaceData{
+	int n;                       //total amount of faces
+	int istart, iend;            //indicies in total faces array
+	int zone_index;              //3,4,5,...
+	int zone_type;               //2: interior, ...
+	std::string zone_name;       //interior, shadow
+	int boundary_index;          //user boundary type
+	std::string boundary_name;   //user boundary name
+	char face_common_type;       //common type or 0
+
+	static vector<FaceData> to(const SimpleSerialize& ser){
+		vector<FaceData> ret;
+		_THROW_NOT_IMP_;
+		return ret;
+	}
+	static int zone_by_bnd(const vector<FaceData>& fd, int bnd){
+		_THROW_NOT_IMP_;
+	}
+};
+
+struct PeriodicIntData{
+	int zone_index1, zone_index2;
+	vector<std::pair<int, int>> periodic;
+	struct _dt{
+		int b1, b2;
+		const Face* f1;
+		const Face* f2;
+		PeriodicIntData* vptr;
+	};
+
+	static vector<PeriodicIntData> to(const SimpleSerialize& ser, const HMGrid3D::Grid& g,
+			const vector<FaceData>& face_data,
+			const std::map<Face*, Face*>& pface){
+		vector<PeriodicIntData> ret; ret.reserve(face_data.size());
+		std::vector<_dt> inpvec; inpvec.reserve(pface.size());
+		std::map<int, PeriodicIntData*> periodic_bc;
+		for (auto& it: pface){
+			int b1 = it.first->boundary_type, b2 = it.second->boundary_type;
+			auto emp = periodic_bc.emplace(b1, nullptr);
+			if (emp.second){
+				ret.push_back(PeriodicIntData());
+				ret.back().zone_index1 = FaceData::zone_by_bnd(face_data, b1);
+				ret.back().zone_index2 = FaceData::zone_by_bnd(face_data, b2);
+				emp.first->second = &ret.back();
+			}
+			inpvec.push_back(PeriodicIntData::_dt {
+					b1, b2,
+					it.first, it.second,
+					emp.first->second});
+		}
+
+		//convert Face* to face index
+		auto _findexer = aa::shp_container_indexer(std::get<2>(ser._alldata), 
+				[](const Face& fc){ return fc.is_boundary(); });
+		_findexer.convert();
+		for (auto& it: inpvec){
+			int find1 = _findexer.index(it.f1);
+			int find2 = _findexer.index(it.f2);
+			it.vptr->periodic.emplace_back(find1, find2);
+		}
+		//sort and return
+		for (auto& it: ret) std::sort(it.periodic.begin(), it.periodic.end());
+		return ret;
+	}
+};
+
+void gridmsh2(const HMGrid3D::Grid& g, const char* fn,
 		std::function<std::string(int)> btype_name,
+		std::map<Face*, Face*> pfaces=std::map<Face*, Face*>()){
+	if (g.n_cells() == 0) throw std::runtime_error("Exporting blank grid");
+	auto& callback = HMCallback::Singleton2::get();
+
+	//Zones:
+	//1    - verticies default
+	//2    - fluid for cells
+	//3    - default interior
+	//4..N - bc's faces
+
+	//serialization
+	auto ser = SimpleSerialize::Convert(g);
+	//... regroup faces ...
+	//needed data
+	vector<int> face_vert_cells;
+	vector<char> cell_types;
+	vector<char> face_types;
+	char cells_common_type;
+	vector<FaceData> face_data = FaceData::to(ser);
+	vector<PeriodicIntData> per_data = PeriodicIntData::to(ser, g, face_data, pfaces);
+
+	//=========== Write to file
+	callback.silent_step_after(40, "Writing File", 30);
+	std::ofstream fs(fn);
+	fs.precision(17);
+	//header
+	fs<<"(0 \"HybMesh to Fluent File\")\n(2 3)\n";
+
+	//Vertices: Zone 1
+	callback.subprocess_step_after(10);
+	fs<<"(10 (0 1 "<<to_hex(ser.n_vert)<<" 0 3))\n";
+	fs<<"(10 (1 1 "<<to_hex(ser.n_vert)<<" 1 3)(\n";
+	for (int i=0; i<ser.vert.size(); i+=3){
+		fs<<ser.vert[i]<<" "<<ser.vert[i+1]<<" "<<ser.vert[i+2]<<"\n";
+	}
+	fs<<"))\n";
+
+	//Cells: Zone 2
+	callback.subprocess_step_after(10);
+	fs<<"(12 (0 1 "<<to_hex(ser.n_cells)<<" 0))\n";
+	fs<<"(12 (2 1 "<<to_hex(ser.n_cells)<<" 1 "<<cells_common_type<<")";
+	if (cells_common_type != '0') fs<<")\n";
+	else {
+		fs<<"(\n";
+		for (auto s: cell_types) fs<<s<<" ";
+		fs<<"\n))\n";
+	}
+
+	//Faces: Zones 3+it
+	callback.subprocess_step_after(10);
+	fs<<"(13 (0 1 "<<to_hex(ser.n_faces)<<" 0))\n";
+
+	int t=0;
+	for (int k=0; k<face_data.size(); ++k){
+		auto& fd = face_data[k];
+		if (fd.n == 0) continue;
+		fs<<"(13 ("<<to_hex(fd.zone_index)<<" "<<to_hex(fd.istart+1)<<" "<<to_hex(fd.iend)<<" ";
+		fs<<to_hex(fd.zone_type)<<" "<<fd.face_common_type<<")(\n";
+		bool write_sz = (fd.face_common_type == '0' || fd.face_common_type == '5');
+
+		for (int i=fd.istart; i<fd.iend; ++i){
+			int sz = face_vert_cells[t++];
+			if (write_sz) fs<<to_hex(sz)<<" ";
+			for (int j=0; j<sz; ++j) fs<<to_hex(face_vert_cells[t++] + 1)<<" ";
+			fs<<to_hex(face_vert_cells[t++] + 1)<<" ";
+			fs<<to_hex(face_vert_cells[t++] + 1)<<"\n";
+		}
+	}
+
+	//Periodic
+	t = 0;
+	for (auto& pd: per_data){
+		int sz = pd.periodic.size();
+		fs<<"(18 ("<<to_hex(t+1)<<" "<<to_hex(t+sz)<<" ";
+		fs<<to_hex(pd.zone_index1)<<" "<<to_hex(pd.zone_index2)<<")(\n";
+		for (int i=0; i<sz; ++i){
+			fs<<to_hex(pd.periodic[i].first+1)<<" ";
+			fs<<to_hex(pd.periodic[i].second+1)<<"\n";
+		}
+		fs<<"))\n";
+		t += sz;
+	}
+
+	//Boundary features
+	fs<<"(45 (2 fluid fluid)())\n";
+	for (auto& fd: face_data){
+		fs<<"(45 ("<<fd.zone_index<<" "<<fd.zone_name<<" "<<fd.boundary_name<<")())\n";
+	}
+
+	callback.fin();
+	
+}
+*/
+
+//save to fluent main function
+void gridmsh(HMCallback::Caller2& callback, const HMGrid3D::Grid& g, std::string fn,
+		hme::TGridMSH::BFun btype_name,
 		std::map<Face*, Face*> pfaces=std::map<Face*, Face*>()){
 	if (g.n_cells() == 0) throw std::runtime_error("Exporting blank grid");
 	//Zones:
@@ -161,7 +328,6 @@ void gridmsh(const HMGrid3D::Grid& g, const char* fn,
 	//2    - fluid for cells
 	//3    - default interior
 	//4..N - bc's faces
-	auto& callback = hme::Callback::get();
 
 	// ===== Needed data
 	callback.silent_step_after(60, "Assembling connectivity", 70);
@@ -278,8 +444,6 @@ void gridmsh(const HMGrid3D::Grid& g, const char* fn,
 		fs<<"(45 ("<<zonetype<<" "<<facezones_bname[zonetype]<<" "<<btype_name(it->first)<<")())\n";
 		++zonetype;
 	}
-
-	callback.fin();
 }
 
 }
@@ -328,36 +492,25 @@ HMGrid3D::Grid hme::PeriodicData::assemble(const HMGrid3D::Grid& g,
 	return ret;
 }
 
-void hme::GridMSH::operator()(const HMGrid3D::Grid& g, const char* fn,
-		std::function<std::string(int)> btype_name,
+void hme::TGridMSH::_run(const Grid& g, std::string fn,
+		BFun btype_name, PeriodicData periodic){
+	callback.step_after(30, "Periodic merging");
+	std::map<Face*, Face*> periodic_cells;
+	HMGrid3D::Grid gp = periodic.assemble(g, periodic_cells);
+	return gridmsh(callback, gp, fn, btype_name, periodic_cells);
+}
+
+void hme::TGridMSH::_run(const HMGrid3D::Grid& g, std::string fn,
 		PeriodicData periodic){
-	double cblen = (periodic.size() > 0) ? 130 : 100;
-	auto& callback = hme::Callback::instance("Exporting 3d grid to fluent *.msh", cblen);
-
-	if (periodic.size() > 0){
-		callback.step_after(30, "Periodic merging");
-		std::map<Face*, Face*> periodic_cells;
-		HMGrid3D::Grid gp = periodic.assemble(g, periodic_cells);
-		return gridmsh(gp, fn, btype_name, periodic_cells);
-	} else gridmsh(g, fn, btype_name);
+	return _run(g, fn, def_bfun, periodic);
 }
 
-void hme::GridMSH::operator()(const HMGrid3D::Grid& g, const char* fn){
-	return operator()(g, fn, [](int i)->std::string{
-			return std::string("boundary") + std::to_string(i);
-		}, {});
+void hme::TGridMSH::_run(const HMGrid3D::Grid& g, std::string fn, BFun btype_name){
+	return gridmsh(callback, g, fn, btype_name);
 }
 
-void hme::GridMSH::operator()(const HMGrid3D::Grid& g, const char* fn,
-		std::function<std::string(int)> btype_name){
-	return operator()(g, fn, btype_name, {});
+void hme::TGridMSH::_run(const HMGrid3D::Grid& g, std::string fn){
+	return _run(g, fn, def_bfun);
 }
 
-void hme::GridMSH::operator()(const HMGrid3D::Grid& g, const char* fn,
-		PeriodicData periodic){
-	return operator()(g, fn, 
-			[](int i)->std::string{
-				return std::string("boundary") + std::to_string(i);
-			},
-			periodic);
-}
+

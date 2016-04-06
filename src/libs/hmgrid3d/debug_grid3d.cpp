@@ -45,4 +45,5 @@ void Debug::info_gridcell(const Grid& grid, int cell_index){
 	info_gridcell(*grid.cells[cell_index]);
 }
 
+
 #endif

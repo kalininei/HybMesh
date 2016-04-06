@@ -1,5 +1,23 @@
-#include "fileproc.h"
+#ifndef NDEBUG
+
+#include "debug_grid2d.h"
 #include <fstream>
+#include "vtk_export_grid2d.hpp"
+
+using namespace GGeom;
+
+double Debug::hash(const GridGeom& grid){
+	double sum;
+	for (int i=0; i<grid.n_cells(); ++i){
+		auto c = grid.get_cell(i);
+		for (int j=0; j<c->dim(); ++j){
+			auto vert = c->get_point(j);
+			sum += 0.333*sin(i*vert->x+3);
+			sum -= 0.333*cos(i*vert->y+4);
+		}
+	}
+	return sum;
+}
 
 namespace{
 
@@ -22,31 +40,8 @@ void add_vtk_cell_data(const vector<double>& data, const char* name, const char*
 
 }
 
-
 void save_vtk(const GridGeom* g, const char* fn){
-	std::ofstream fs(fn);
-	fs<<"# vtk DataFile Version 3.0"<<std::endl;
-	fs<<"Grid 2D"<<std::endl;
-	fs<<"ASCII"<<std::endl;
-	//Points
-	fs<<"DATASET UNSTRUCTURED_GRID"<<std::endl;
-	fs<<"POINTS "<<g->n_points()<< " float"<<std::endl;
-	for (int i=0;i<g->n_points();++i){
-		auto p = g->get_point(i);
-		fs<<p->x<<" "<<p->y<<" 0"<<std::endl;
-	}
-	//Cells
-	fs<<"CELLS  "<<g->n_cells()<<"   "<<g->n_cells()+g->n_cellsdim()<<std::endl;
-	for (int i=0;i<g->n_cells();++i){
-		auto c = g->get_cell(i);
-		fs<<c->dim()<<"  ";
-		for (int j=0;j<c->dim();++j)
-			fs<<c->get_point(j)->get_ind()<<" ";
-		fs<<std::endl;
-	}
-	fs<<"CELL_TYPES  "<<g->n_cells()<<std::endl;
-	for (int i=0;i<g->n_cells();++i) fs<<7<<std::endl;
-	fs.close();
+	GGeom::Export::GridVTK(*g, fn);
 }
 
 void save_vtk(const GridGeom* g, const vector<double>& data, const char* fn){
@@ -153,3 +148,5 @@ void save_vtk(const GridGeom& g, const char* fn){ save_vtk(&g, fn);}
 void save_vtk(const GridGeom& g, const vector<double>& data, const char* fn){ save_vtk(&g, data, fn);}
 void save_vtk(const PtsGraph& g, const char* fn){ save_vtk(&g, fn);}
 
+
+#endif

@@ -303,3 +303,22 @@ ShpVector<Face> Grid::allfaces() const{
 }
 
 ShpVector<Cell> Grid::allcells() const{ return cells; }
+
+Grid::Talldata Grid::alldata() const{
+	Talldata ret;
+	std::get<3>(ret) = cells;
+	auto ins_vert = aa::unique_container_inserter(std::get<0>(ret));
+	auto ins_edges = aa::unique_container_inserter(std::get<1>(ret));
+	auto ins_faces = aa::unique_container_inserter(std::get<2>(ret));
+
+	for (auto& c: cells){
+		for(auto& f: c->faces) if (ins_faces.insert(f)){
+			for(auto& e: f->edges) if (ins_edges.insert(e)){
+				ins_vert.insert_range(
+					e->vertices.begin(), e->vertices.end()
+				);
+			}
+		}
+	}
+	return ret;
+}

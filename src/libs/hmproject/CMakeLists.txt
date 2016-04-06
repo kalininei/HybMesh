@@ -4,6 +4,7 @@ set (HEADERS
 	hmdebug.hpp
 	hmtimer.hpp
 	hmcallback.hpp
+	hmtesting.hpp
 )
 
 set (SOURCES
@@ -11,6 +12,7 @@ set (SOURCES
 	hmdebug.cpp
 	hmtimer.cpp
 	hmcallback.cpp
+	hmtesting.cpp
 )
 
 source_group ("Header Files" FILES ${HEADERS} ${HEADERS})

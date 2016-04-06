@@ -6,6 +6,7 @@
 #include "contours.h"
 #include "hmcallback.hpp"
 
+
 namespace GGeom{
 struct Modify;
 struct Constructor;

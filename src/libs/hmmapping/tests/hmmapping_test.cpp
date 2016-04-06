@@ -1,7 +1,6 @@
 #include "hmmapping.hpp"
 #include <iostream>
 #include "procgrid.h"
-#include "fileproc.h"
 
 int FAILED_CHECKS = 0;
 
@@ -36,7 +35,6 @@ void test01(){
 		if (a1<0.9*a2) return false;
 		return true;
 	}(), "grids area");
-	save_vtk(mapped, "t01.vtk");
 }
 
 void test02(){
@@ -88,7 +86,6 @@ void test02(){
 			{Point(3, 1), Point(1, 3), Point(3, 3), Point(2, 1), Point(0, 1)},
 			{Point(5, 0), Point(0, 5), Point(5, 5), Point(2, 0), Point(-2, 0)}
 		);
-		save_vtk(ans4, "t02.vtk");
 	} catch (HMGMap::MapException &e) { was_err4 = true; }
 	add_check(!was_err4, "valid data");
 }
@@ -127,7 +124,6 @@ void test03(){
 	);
 	add_check(ans4.n_points() == rectgrid.n_points() &&
 	          ans4.n_cells() == rectgrid.n_cells(), "rectangle to circle, one base point");
-	save_vtk(ans4, "t03.vtk");
 }
 
 void test04(){
@@ -149,7 +145,6 @@ void test04(){
 	add_check(fabs(HMCont2D::Area(mcont) - GGeom::Info::Area(ans2))<1e-12 &&
 	          rectgrid.n_points() == ans2.n_points(),
 		"snapping by shifting points");
-	save_vtk(ans2, "t04.vtk");
 }
 
 int main(){

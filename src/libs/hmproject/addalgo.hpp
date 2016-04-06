@@ -152,7 +152,7 @@ struct function_traits<R(Args...)>{
 
 	template <std::size_t N>
 	struct argument{
-		using type = typename std::tuple_element<N,std::tuple<Args...>>::type;
+		using type = typename std::tuple_element<N, std::tuple<Args...>>::type;
 	};
 };
 
@@ -248,6 +248,7 @@ C shp_find(C first, C last, V* data){
 //	convert() and restore() calls since their data is illegal.
 template<class C>
 class ShpContainerIndexer{
+protected:
 	typedef typename std::remove_const<C>::type CType;
 	typedef typename C::value_type::element_type EType;
 	CType* p_data;
@@ -255,19 +256,19 @@ class ShpContainerIndexer{
 	bool converted;
 	EType* next(typename C::iterator& it){ return (*it++).get(); }
 
-	void fill_backup(){
+	virtual void fill_backup(){
 		backup = (EType*)malloc(p_data->size() * sizeof(EType));
 		EType* bit = backup;
 		auto it = p_data->begin();
 		while (it!=p_data->end()) memcpy(bit++, next(it), sizeof(EType));
 	}
-	void convert_pdata(){
+	virtual void convert_pdata(){
 		auto it = p_data->begin();
 		int i=0;
 		while (it!=p_data->end()) *(int*)next(it) = i++;
 		converted = true;
 	}
-	void restore_pdata(){
+	virtual void restore_pdata(){
 		EType* bit = backup;
 		auto it = p_data->begin();
 		while (it!=p_data->end()) memcpy(next(it), bit++, sizeof(EType));
@@ -278,7 +279,7 @@ public:
 		C* pvec = &vec;
 		p_data = const_cast<CType*>(pvec);
 	}
-	~ShpContainerIndexer(){ if (converted) restore(); }
+	virtual ~ShpContainerIndexer(){ if (converted) restore(); }
 
 	void convert(){
 		if (!converted){
@@ -294,13 +295,63 @@ public:
 		}
 	};
 
-	int index(EType* e){ return *(int*)e; }
+	int index(const EType* e){ return *(int*)e; }
 	int index(std::shared_ptr<EType> e){ return *(int*)(e.get()); }
 };
 template<class C>
 ShpContainerIndexer<C> shp_container_indexer(C& data){
 	return ShpContainerIndexer<C>(data);
 }
+
+/*
+//the same but with condition
+template<class C, class Condition>
+class ShpContainerIndexerCond: public ShpContainerIndexer<C>{
+	typedef ShpContainerIndexer<C> parT;
+	typedef typename parT::EType EType;
+	void fill_backup() override{
+		parT::backup = (EType*)malloc(n_under * sizeof(EType));
+		EType* bit = parT::backup;
+		auto it = parT::p_data->begin();
+		auto under = isunder.begin();
+		while (it != parT::p_data->end()){
+			if (*under++){ memcpy(bit++, it->get(), sizeof(EType)); }
+			++it;
+		}
+	}
+	void convert_pdata() override{
+		for (int i=0; i<parT::p_data->size(); ++i){
+			if (isunder[i]) *(int*)((*parT::p_data)[i].get()) = i;
+		}
+		parT::converted = true;
+	}
+	void restore_pdata() override{
+		EType* bit = parT::backup;
+		for (int i=0; i<parT::p_data->size(); ++i){
+			if (isunder[i]) memcpy((*parT::p_data)[i].get(), bit++, sizeof(EType));
+		}
+		parT::converted = false;
+	}
+
+	std::vector<bool> isunder;
+	int n_under;
+public:
+	ShpContainerIndexerCond(C& vec, Condition&& fun):ShpContainerIndexer<C>(vec){
+		isunder.resize(vec.size(), false);
+		n_under = 0;
+		auto ptr = isunder.begin();
+		for (auto& it: vec){
+			if (fun(*it)){ *ptr = true; n_under += 1; }
+			++ptr;
+		}
+	}
+};
+template<class C, class Condition>
+ShpContainerIndexerCond<C, Condition> shp_container_indexer(C& data, Condition&& cond){
+	return ShpContainerIndexerCond<C, Condition>(data, std::move(cond));
+}
+*/
+
 
 }//namespace
 

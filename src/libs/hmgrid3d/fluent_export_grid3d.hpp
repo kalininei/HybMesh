@@ -1,35 +1,9 @@
-#ifndef EXPORT_GRID_3D_HPP
-#define EXPORT_GRID_3D_HPP
+#ifndef FLUENT_EXPORT_GRID3D_HPP
+#define FLUENT_EXPORT_GRID3D_HPP
 #include "hmgrid3d.hpp"
 #include "hmcallback.hpp"
 
 namespace HMGrid3D{namespace Export{
-
-class Callback: public HMCallback::Caller2{
-	Callback();
-public:
-	static Callback& instance(std::string s, double duration);
-	static Callback& get();
-
-	static void enable(HMCallback::Fun2 f);
-	static void disable();
-};
-
-template<class Fun, class... Args>
-void WithCallback(HMCallback::Fun2 cb, Fun&& f, Args &&... args){
-	try{
-		Callback::enable(cb);
-		f(std::forward<Args>(args)...);
-		Callback::disable();
-	} catch (...){
-		Callback::disable();
-		throw;
-	}
-}
-
-// ===== VTK format
-void GridVTK(const HMGrid3D::Grid& g, const char* fn);
-void BoundaryVTK(const HMGrid3D::Grid& g, const char* fn);
 
 // ====== Fluent msh format
 struct PeriodicDataEntry{
@@ -74,8 +48,9 @@ struct PeriodicData{
 			std::map<Face*, Face*>& outmap);
 };
 
-struct GridMSH{
-	GridMSH(){};
+/*
+struct TGridMSH{
+	TGridMSH(){};
 
 	//Main functions
 	void operator()(const HMGrid3D::Grid& g, const char* fn,
@@ -94,8 +69,38 @@ struct GridMSH{
 	void operator()(const HMGrid3D::Grid& g, const char* fn,
 		PeriodicData periodic);
 };
+*/
+
+struct TGridMSH: public HMCallback::ExecutorBase{
+	typedef std::function<std::string(int)> BFun;
+
+	HMCB_SET_PROCNAME("Exporting 3d grid to fluent *.msh");
+	HMCB_SET_DEFAULT_DURATION(100);
+
+	void _run(const Grid&, std::string);
+
+	void _run(const Grid&, std::string, BFun);
+
+	HMCB_SET_DURATION(HMCB_DURATION(TGridMSH, Grid, std::string) + 30, 
+			Grid, std::string, PeriodicData);
+	void _run(const Grid&, std::string, PeriodicData);
+
+
+	HMCB_SET_DURATION(HMCB_DURATION(TGridMSH, Grid, std::string) + 30, 
+			Grid, std::string, BFun, PeriodicData);
+	void _run(const Grid&, std::string, BFun, PeriodicData);
+private:
+	static const std::string def_bfun(int i){
+		return std::string("boundary") + std::to_string(i);
+	}
+};
+
+//instance of TGridMSH for function-like operator() calls
+// to use callback call as HMCallback::WithCallback( HMCallback::Fun2, GridMsh, args... );
+extern HMCallback::FunctionWithCallback<TGridMSH> GridMSH;
 
 
 
 }}
 #endif
+

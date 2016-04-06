@@ -40,10 +40,6 @@ void grid_get_points_cells2(Grid* g, double** pts, int** cells);
 //returns 1 if ok or 0 if error input (edge->points table is invalid).
 int grid_get_edge_cells(Grid* g, int* Neds, int** ed_cell, int* ed_pt);
 void grid_free_edge_cells(int** ed_cell);
-
-//save grid to vtk
-void grid_save_vtk(Grid* g, const char* fn);
-//free grid
 void grid_free(Grid* g);
 
 // === contours management

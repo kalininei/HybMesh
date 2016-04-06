@@ -49,9 +49,8 @@ template<class C>
 struct TCoordMap: public std::map<double, C, bool(*)(double, double)>{
 	TCoordMap(): std::map<double, C, bool(*)(double, double)>(ISLOWER){}
 };
-template<class C>
-struct TCoordSet: public std::set<C, bool(*)(double, double)>{
-	TCoordSet(): std::set<C, bool(*)(double, double)>(ISLOWER){}
+struct TCoordSet: public std::set<double, bool(*)(double, double)>{
+	TCoordSet(): std::set<double, bool(*)(double, double)>(ISLOWER){}
 };
 
 //positioning constants

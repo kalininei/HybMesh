@@ -37,6 +37,13 @@ struct Debug: public HMDebug{
 		vtk_contour(col, edata1, defval, fn);
 	}
 
+	static double hash(const ECollection& ecol);
+
+	template<class G>
+	static void outhash(const G& grid, std::string prefix=""){
+		if (prefix.size() > 0) prefix = " ("+prefix+")";
+		std::cout<<"Hash for contour 2d"<<prefix<<": "<<hash(grid)<<std::endl;
+	}
 };
 
 }

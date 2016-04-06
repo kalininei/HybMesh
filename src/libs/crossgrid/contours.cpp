@@ -1,6 +1,5 @@
 #include "contours.h"
 #include <tuple>
-#include "fileproc.h"
 #include "assert.h"
 
 PContour PContour::reverse() const {

@@ -4,7 +4,6 @@
 #include "MElement.h"
 #include "addalgo.hpp"
 #include "trigrid.h"
-#include "fileproc.h"
 
 void TriGrid::FillFromGModel(void* gmod){
 	GModel* m = static_cast<GModel*>(gmod);

@@ -43,6 +43,10 @@ void HMTimer::Tic(std::string s){
 		tm.tic();
 	}
 }
+void HMTimer::Tic1(std::string s){
+	HMTimer::Toc();
+	HMTimer::Tic(s);
+}
 
 void HMTimer::Toc(std::string s){
 	if (s.size() == 0){
@@ -74,8 +78,12 @@ void HMTimer::FinReport(std::string s){
 	}
 }
 
-TicToc::TicToc(const char* _name, bool start):name(_name), is_working(false), dur(TDuration::zero()){
+TicToc::TicToc(const char* _name, bool start):name(_name), is_working(start), dur(TDuration::zero()){
 	if (start) tic();
+}
+void TicToc::init(){
+	dur = TDuration::zero();
+	tp = TClock::now();
 }
 void TicToc::tic(){
 	if (!is_working){
@@ -90,7 +98,11 @@ void TicToc::toc(){
 	}
 }
 void TicToc::report() const{
-	std::cout<<name<<":  "<<dur.count()<<" seconds"<<std::endl;
+	std::cout<<name<<":  "<<elapsed()<<" seconds"<<std::endl;
+}
+double TicToc::elapsed() const{
+	if (!is_working) return dur.count();
+	else return  (dur + std::chrono::duration_cast<TDuration>(TClock::now() - tp)).count();
 }
 
 

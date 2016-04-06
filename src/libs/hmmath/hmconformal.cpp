@@ -238,7 +238,7 @@ vector<Point> Impl::RectApprox::MapToPolygon_yeta(const vector<Point>& input) co
 	//gather all x and y components of input array to avoid
 	//superficial computations
 	// -- calculate weights
-	TCoordSet<double> xline_w;
+	TCoordSet xline_w;
 	for (auto& p: input) xline_w.insert(p.x/_module);
 
 	// -- calculate points from weights
@@ -279,7 +279,7 @@ vector<Point> Impl::RectApprox::MapToPolygon_xksi(const vector<Point>& input) co
 	//gather all x and y components of input array to avoid
 	//superficial computations
 	// -- calculate weights
-	TCoordSet<double> yline_w;
+	TCoordSet yline_w;
 	for (auto& p: input) yline_w.insert(p.y);
 
 	// -- calculate points from weights

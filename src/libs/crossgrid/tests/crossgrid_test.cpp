@@ -4,27 +4,15 @@
 #include <algorithm>
 #include <stdexcept>
 #include "crossgrid.h"
-#include "fileproc.h"
+#include "hmtesting.hpp"
 #include "hmcport.h"
 #include "trigrid.h"
 #include "procgrid.h"
+#include "vtk_export_grid2d.hpp"
+#include "fluent_export_grid2d.hpp"
 
-int FAILED_CHECKS = 0;
-
-void add_check(bool ex, std::string info){
-	if (info.size()==0){
-		std::cout<<"\tunknown check: ";
-	} else{
-		std::cout<<"\t"<<info;
-	}
-	if (ex){
-		std::cout<<": True"<<std::endl;
-	} else {
-		++FAILED_CHECKS;
-		std::cout<<": False <<<<<<<<<<<<<<<<<<<"<<std::endl;
-	}
-};
-
+using HMTesting::add_check;
+using HMTesting::add_file_check;
 
 //build a rectangular structured grid 
 Grid* rectangular_grid(double x0, double y0,
@@ -144,16 +132,12 @@ bool check_convexity(Grid* g, int nconv_cells, int hang_cells){
 }
 
 void test1(){
-	//#############################################################
-	//auto g1 = TriGrid::TriangulateArea({Point(0,0), Point(1,0), Point(1,1), Point(0,1)}, 0.1);
-	//#############################################################
 	std::cout<<"1. grid creation and communication"<<std::endl;
 	double points[] = {0,0, 1,0, 1,1, 0,1, 1,0.5};
 	int cells[] = {3,0,1,4, 4,0,4,2,3};
 	Grid* g = grid_construct(5,2,points,cells);
 	add_check(grid_npoints(g)==5, "number of points");
 	add_check(grid_ncells(g)==2, "number of cells");
-	grid_save_vtk(g, "out1.vtk");
 	grid_free(g);
 }
 
@@ -162,9 +146,6 @@ void test2(){
 	Grid* gmain = rectangular_grid(0,0, 1,1, 10, 10);
 	Grid* gsec  = rectangular_grid(0.3,0.3, 0.6, 0.6, 30, 30);
 	Grid* res = cross_grids(gmain, gsec, 0.05, 1, 0, 0);
-	grid_save_vtk(gmain,"out_main2.vtk");
-	grid_save_vtk(gsec,"out_sec2.vtk");
-	grid_save_vtk(res,"out_res2.vtk");
 	grid_free(gmain);
 	grid_free(gsec);
 	grid_free(res);
@@ -175,9 +156,6 @@ void test3(){
 	Grid* gmain = rectangular_grid(0,0, 1,1, 10, 10);
 	Grid* gsec  = rectangular_grid(0.3,-0.1, 0.6, 0.2, 30, 30);
 	Grid* res = cross_grids(gmain, gsec, 0.15, 1, 0, 0);
-	grid_save_vtk(gmain,"out_main3.vtk");
-	grid_save_vtk(gsec,"out_sec3.vtk");
-	grid_save_vtk(res,"out_res3.vtk");
 	grid_free(gmain);
 	grid_free(gsec);
 	grid_free(res);
@@ -188,9 +166,6 @@ void test4(){
 	Grid* gmain = rectangular_grid(0,0, 1,1, 10, 10);
 	Grid* gsec  = rectangular_grid(-0.3,-0.3, 0.5, 0.5, 30, 30);
 	Grid* res = cross_grids(gmain, gsec, 0.2, 1, 0, 0);
-	grid_save_vtk(gmain,"out_main4.vtk");
-	grid_save_vtk(gsec,"out_sec4.vtk");
-	grid_save_vtk(res,"out_res4.vtk");
 
 	grid_free(gmain);
 	grid_free(gsec);
@@ -210,9 +185,6 @@ void test5(){
 	Grid* gsec  = grid_construct(9, 8, pnt2, cls2);
 
 	Grid* res = cross_grids(gmain, gsec, 2.0, 1, 0, 0);
-	grid_save_vtk(gmain,"out_main5.vtk");
-	grid_save_vtk(gsec,"out_sec5.vtk");
-	grid_save_vtk(res,"out_res5.vtk");
 
 	grid_free(gmain);
 	grid_free(gsec);
@@ -223,19 +195,14 @@ void test6(){
 	std::cout<<"6. Different density"<<std::endl;
 	Grid* gmain = rectangular_grid(0,0, 1,1, 10, 10);
 	Grid* gsec  = rectangular_grid(0.5,0.5, 0.6, 0.6, 30, 30);
-	grid_save_vtk(gmain,"out_main6.vtk");
-	grid_save_vtk(gsec,"out_sec6.vtk");
 
 	Grid* res = cross_grids(gmain, gsec, 0.3, 1, 0, 0);
-	grid_save_vtk(res,"out_res6_1.vtk");
 	grid_free(res);
 
 	res = cross_grids(gmain, gsec, 0.3, 1, 0, 0);
-	grid_save_vtk(res,"out_res6_5.vtk");
 	grid_free(res);
 
 	res = cross_grids(gmain, gsec, 0.3, 1, 0, 0);
-	grid_save_vtk(res,"out_res6_9.vtk");
 	grid_free(res);
 
 	grid_free(gmain);
@@ -251,7 +218,6 @@ void test7(){
 	Grid* res = cross_grids(gmain, gsec, 0.2, 1, 0, 0);
 	Grid* res2 = cross_grids(res, gsec2, 0.2, 1, 0, 0);
 	Grid* res3 = cross_grids(res2, gsec3, 0.2, 1, 0, 0);
-	grid_save_vtk(res2,"out_res7.vtk");
 	add_check(grid_npoints(res)==242 && grid_ncells(res)==200, "merge non crossing");
 	add_check(grid_npoints(res2)==361 && grid_ncells(res2)==300, "merge grids with congruent point");
 	add_check(grid_npoints(res3)>482 && grid_ncells(res3)>400, "merge grids with tangent edges");
@@ -272,7 +238,6 @@ void test8(){
 	Grid* res = cross_grids(gmain, gsec, 0.2, 1, 0, 0);
 	Grid* res2 = cross_grids(res, gsec2, 0.2, 1, 0, 0);
 	add_check(check_convexity(res2, 0, 4), "hanging nodes number");
-	grid_save_vtk(res2,"out_res8.vtk");
 	grid_free(gmain);
 	grid_free(gsec);
 	grid_free(gsec2);
@@ -300,8 +265,6 @@ void test9(){
 	};
 	add_check(find_pt(5, 0, pts), "boundary point was set");
 	add_check(!find_pt(5, 0, pts2), "boundary point was ignored");
-	grid_save_vtk(res,"out_res9_1.vtk");
-	grid_save_vtk(res2,"out_res9_2.vtk");
 	grid_free(gmain);
 	grid_free(gsec);
 	grid_free(res);
@@ -316,8 +279,6 @@ void test10(){
 	Grid* res = cross_grids(gmain, gsec, 1.0, 1, 0, 0);
 	Grid* res2 = cross_grids(gmain, gsec, 1.0, 0, 0, 0);
 
-	grid_save_vtk(res,"out_res10_1.vtk");
-	grid_save_vtk(res2,"out_res10_2.vtk");
 	grid_free(gmain);
 	grid_free(gsec);
 	grid_free(res);
@@ -333,7 +294,6 @@ void test11(){
 	std::vector<int> cls_sec = {4,0,1,5,4, 4,1,2,6,5, 4,6,2,3,7, 4,3,0,4,7};
 	Grid* gsec = grid_construct(8, 4, &pts_sec[0], &cls_sec[0]);
 	Grid* res = cross_grids(gmain, gsec, 0, 0, 0, 0);
-	grid_save_vtk(res, "out_res11.vtk");
 	add_check(grid_npoints(res) == 125 && grid_ncells(res) == 96, "resulting topology");
 	grid_free(gmain);
 	grid_free(gsec);
@@ -350,7 +310,6 @@ void test12(){
 	std::vector<int> cls_sec = {4,0,1,5,4, 4,1,2,6,5, 4,6,2,3,7, 4,3,0,4,7};
 	Grid* gsec = grid_construct(8, 4, &pts_sec[0], &cls_sec[0]);
 	Grid* res = cross_grids(gmain, gsec, 0.2, 1, 0, 0);
-	grid_save_vtk(res, "out_res12.vtk");
 	//frontal
 	//add_check(grid_ncells(res) == 132 && grid_npoints(res) == 99, "resulting topology");
 	//Delaunay
@@ -366,7 +325,6 @@ void test13(){
 	Grid* gmain = rectangular_grid(0,0, 1,1, 100, 100);
 	Grid* gsec = rectangular_grid(-2,0, -1,1, 10, 10);
 	Grid* res = cross_grids(gmain, gsec, 0.2, 1, 0, 0);
-	grid_save_vtk(res, "out_res13.vtk");
 
 	grid_free(gmain);
 	grid_free(gsec);
@@ -388,7 +346,6 @@ void test14(){
 	add_check(grid_ncells(res1) == 138 && grid_npoints(res1) == 184, "outer resulting topology");
 	add_check(grid_ncells(res2) == 35 && grid_npoints(res2) == 55, "inner resulting topology");
 	
-	grid_save_vtk(res2, "out_res14.vtk");
 	grid_free(res1);
 	grid_free(res2);
 	grid_free(g);
@@ -424,7 +381,6 @@ void test15(){
 
 	res = grid_exclude_cont(g, c, true);
 	add_check(grid_ncells(res) == 101 && grid_npoints(res) == 125, "outer contour within cell (intrusion)");
-	grid_save_vtk(res, "out_res15.vtk");
 	delete res;
 
 	delete c;
@@ -469,7 +425,6 @@ void test17(){
 	auto smallg=rectangular_grid(0, 0, 0.1, 0.1, 10, 10);
 	Grid* unig = cross_grids(bigg, smallg, 0.2, 1, 0, 0);
 
-	grid_save_vtk(unig, "out_res17.vtk");
 	grid_free(bigg);
 	grid_free(smallg);
 	grid_free(unig);
@@ -491,7 +446,6 @@ void test18(){
 	auto c3=unite_contours(c1, c2);
 	auto g4 = grid_exclude_cont(g, c3, 1);
 	add_check(grid_ncells(g4) == 869 && grid_npoints(g4)==962, "simulataneous exclusion");
-	grid_save_vtk(g4, "out_res18.vtk");
 
 	grid_free(g);
 	grid_free(g2);
@@ -508,7 +462,6 @@ void test19(){
 	auto g2 = rectangular_grid(0.5,0.3,1.5,0.65,13,10);
 	auto g3 = cross_grids(g1, g2, 0.1, 0, 0, 0); 
 	add_check(check_convexity(g3, 0, 0), "no hanging nodes check");
-	grid_save_vtk(g3, "out_res19.vtk");
 	grid_free(g1);
 	grid_free(g2);
 	grid_free(g3);
@@ -527,7 +480,6 @@ void test20(){
 	double a = grid_area(g5)-contour_area(c1)+grid_area(g3);
 	add_check( fabs(grid_area(g6) - a)<1e-6, "resulting grid with a hole");
 
-	grid_save_vtk(g6, "out_res20.vtk");
 	grid_free(g1);
 	grid_free(g2);
 	grid_free(g4);
@@ -594,13 +546,39 @@ void test22(){
 		"snapping of single cell");
 
 	GridGeom ans2(6, 1, pts, cls);
-	save_vtk(ans2, "a22.vtk");
+	GGeom::Export::GridVTK(ans2, "a22.vtk");
 	GGeom::Modify::ShiftToContour(ans2, cont, {});
 	add_check(fabs(35.5 - GGeom::Info::Area(ans2))<1e-12,
 		"shifting vertices of single cell");
 
-	save_vtk(ans2, "t22.vtk");
+	GGeom::Export::GridVTK(ans2, "t22.vtk");
 	HMCont2D::SaveVtk(cont, "c22.vtk");
+}
+
+void test23(){
+	std::cout<<"23. Exporting"<<std::endl;
+	auto g1 = GGeom::Constructor::RectGrid01(20, 20);
+	auto g2 = GGeom::Constructor::Ring(Point{0.8,0.8}, 0.3, 0.1, 20, 10);
+	shared_ptr<GridGeom> g3(g1.cross_grids(&g1, &g2, 0, 0, false, true, 10));
+	vector<int> bcond; 
+	for (const auto& e: g3->get_edges()){
+		int val = 0;
+		if (e.is_boundary()){
+			auto p1 = g3->get_point(e.p1);
+			auto p2 = g3->get_point(e.p2);
+			Point pc = (*p1 + *p2)/2.0;
+			if (pc.x>1 || pc.y>1) val = 1;
+			else if (ISEQ(pc.x, 1) || ISEQ(pc.y, 1) ||
+					ISZERO(pc.x) || ISZERO(pc.y)) val = 2;
+			else val = 3;
+		}
+		bcond.push_back(val);
+	}
+
+	GGeom::Export::GridVTK(*g3, "g1.vtk");
+	GGeom::Export::BoundaryVTK(*g3, "c1.vtk", bcond);
+	add_file_check(3261877631683126384U, "g1.vtk", "grid to vtk");
+	add_file_check(6814288105731092026U, "c1.vtk", "contour to vtk");
 }
 
 int main(){
@@ -627,14 +605,8 @@ int main(){
 	test20();
 	test21();
 	test22();
+	test23();
 
-
-	if (FAILED_CHECKS ==1){
-		std::cout<<FAILED_CHECKS<<" test failed <<<<<<<<<<<<<<<<<<<"<<std::endl;
-	} else if (FAILED_CHECKS > 1) {
-		std::cout<<FAILED_CHECKS<<" tests failed <<<<<<<<<<<<<<<<<<<"<<std::endl;
-	} else {
-		std::cout<<"All tests passed"<<std::endl;
-	}
+	HMTesting::check_final_report();
 	std::cout<<"DONE"<<std::endl;
 }

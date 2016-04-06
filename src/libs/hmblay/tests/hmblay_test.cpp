@@ -1,5 +1,4 @@
 #include "hmblay.hpp"
-#include "fileproc.h"
 #include "procgrid.h"
 #include "hmconformal.hpp"
 
@@ -49,8 +48,6 @@ void test01(){
 	add_check(Ans2.n_points() == 32 &&
 		  Ans2.n_cells() == 24 &&
 		  fabs(Ans2.area() - 10.903)<0.1, cn);
-	save_vtk(Ans1, "t01_1.vtk");
-	save_vtk(Ans2, "t01_2.vtk");
 
 	cn = "long edges";
 	auto col2 = HMCont2D::Constructor::Circle(16, 3.0, Point(0, 0));
@@ -62,7 +59,6 @@ void test01(){
 	inp2.bnd_step = 0.01;
 	inp2.start=inp2.end=Point(0,0);
 	GridGeom Ans3 = HMBlay::BuildBLayerGrid({inp2});
-	save_vtk(Ans3, "t01_3.vtk");
 	add_check( [&]()->bool{
 		//points should lie strictly on the source contour
 		auto gcont = GGeom::Info::Contour(Ans3);
@@ -101,7 +97,6 @@ void test02(){
 	double mina1 = *(std::min_element(area1.begin(), area1.end()));
 	double maxa1 = *(std::max_element(area1.begin(), area1.end()));
 	add_check(mina1>0 && maxa1/mina1<2.1, cn);
-	save_vtk(Ans1, "t02.vtk");
 
 	cn = std::string("8-side polygon with inner layer");
 	inp.direction = HMBlay::DirectionFromString("INNER");
@@ -265,7 +260,6 @@ void test05(){
 		for (int i=0; i<Ans1.n_cells(); ++i) if (Ans1.get_cell(i)->area()<0) return false;
 		return true;
 	}(), cn);
-	save_vtk(Ans1, "t5.vtk");
 }
 
 
@@ -359,7 +353,6 @@ void test07(){
 	add_check(Ans1.n_points() == 545 && Ans1.n_cells() == 436,
 			"domain with a half-cirlce");
 
-	save_vtk(Ans1, "t7.vtk");
 }
 
 void test08(){
@@ -382,7 +375,6 @@ void test08(){
 	inp1.edges = &con1;
 
 	GridGeom Ans1 = HMBlay::BuildBLayerGrid({inp1});
-	save_vtk(Ans1, "t8_1.vtk");
 	auto sz1 = GGeom::Info::CellAreas(Ans1);
 	double minsz1 = *std::min_element(sz1.begin(), sz1.end());
 	double maxsz1 = *std::max_element(sz1.begin(), sz1.end());
@@ -391,7 +383,6 @@ void test08(){
 
 	inp1.direction = HMBlay::DirectionFromString("OUTER");
 	GridGeom Ans2 = HMBlay::BuildBLayerGrid({inp1});
-	save_vtk(Ans2, "t8_2.vtk");
 	auto sz2 = GGeom::Info::CellAreas(Ans2);
 	double minsz2 = *std::min_element(sz2.begin(), sz2.end());
 	double maxsz2 = *std::max_element(sz2.begin(), sz2.end());
@@ -426,7 +417,6 @@ void test10(){
 	inp1.force_conformal = false;
 	GridGeom Ans1 = HMBlay::BuildBLayerGrid({inp1});
 	add_check(Ans1.n_cells() == 232 && Ans1.n_points() == 295, "Mesh");
-	save_vtk(Ans1, "t10.vtk");
 };
 
 void test11(){
@@ -453,8 +443,6 @@ void test11(){
 	for (double s: GGeom::Info::Skewness(Ans2)) {if (s>0.7) ++badskew2;}
 	add_check(Ans2.n_cells() > 700 && Ans2.n_points() > 720 && badskew2==1, "Mesh2");
 
-	save_vtk(Ans1, "t11_1.vtk");
-	save_vtk(Ans2, "t11_2.vtk");
 };
 
 void test12(){
@@ -477,7 +465,6 @@ void test12(){
 
 	GridGeom Ans1 = HMBlay::BuildBLayerGrid({inp1});
 	add_check(Ans1.n_points() == 938 && Ans1.n_cells() == 785, "Mesh");
-	save_vtk(Ans1, "t12.vtk");
 }
 
 void test13(){
@@ -529,14 +516,6 @@ void test13(){
 	auto gr3 = GridGeom::cross_grids(gr2, &g2, 0.1, 7, false, false, 0, HMCallback::to_cout2);
 	auto gr4 = GridGeom::cross_grids(gr3, &g3, 0.2, 7, false, true, 0, HMCallback::to_cout2);
 
-	//save to file
-	save_vtk(g1, "t13_g1.vtk");
-	save_vtk(g2, "t13_g2.vtk");
-	save_vtk(g3, "t13_g3.vtk");
-	save_vtk(g4, "t13_g4.vtk");
-	save_vtk(g5, "t13_g5.vtk");
-	save_vtk(gr4, "t13_gres.vtk");
-
 	delete gr1; delete gr2; delete gr3; delete gr4;
 }
 
@@ -587,7 +566,6 @@ void test14(){
 	GridGeom* gr1 = GridGeom::cross_grids(b1, &g1, 0.03, 7, false, false, 0, HMCallback::to_cout2);
 	GGeom::Modify::SimplifyBoundary(*gr1, M_PI/4);
 	add_check(fabs(gr1->area() - 0.955398)<1e-5, "Square with curved boundary");
-	save_vtk(gr1, "t14_g1.vtk");
 
 	//reentrant
 	vector<Point> pc2;
@@ -610,7 +588,6 @@ void test14(){
 	GridGeom* gr2 = GridGeom::cross_grids(b2, &g2, 0.03, 7, false, false, 0, HMCallback::to_cout2);
 	GGeom::Modify::SimplifyBoundary(*gr2, M_PI/4);
 	add_check(fabs(gr2->area() - 6.26758)<1e-5, "Reentrant area with a hole");
-	save_vtk(gr2, "t14_g2.vtk");
 
 	//acute angle
 	auto c3 = HMCont2D::Constructor::ContourFromPoints(
@@ -628,7 +605,6 @@ void test14(){
 	GridGeom* r3 = GridGeom::cross_grids(&basgrid3, &g3, 0.03, 7, true, false, 0, HMCallback::to_cout2);
 	GridGeom* gr3 = grid_minus_cont(*r3, c3);
 	add_check(fabs(gr3->area() - 3.75)<1e-5, "Closed tringle with acute angle");
-	save_vtk(gr3, "t14_g3.vtk");
 	
 };
 
@@ -647,7 +623,6 @@ void test15(){
 	inp1.partition = {0, 0.01, 0.02, 0.04, 0.08, 0.12, 0.16, 0.2};
 	GridGeom g1 = HMBlay::BuildBLayerGrid({inp1});
 
-	save_vtk(g1, "t15.vtk");
 }
 
 void test16(){
@@ -707,8 +682,6 @@ void test16(){
 	std::copy_if(skew2.begin(), skew2.end(), std::back_inserter(badskew2), [](double a){return a>0.8;});
 	add_check(badskew1.size() == 0 && badskew2.size() < 6, "skewness check");
 
-	save_vtk(impgrid, "t16_1.vtk");
-	save_vtk(impgrid1, "t16_2.vtk");
 	delete impgrid;
 	delete impgrid1;
 }
@@ -746,7 +719,6 @@ void test17(){
 		bcont1.IsWithin(Point(1.88046632081399, 0.209839818196609)),
 		"one section with zig-zag bottom and left");
 	HMCont2D::SaveVtk(cont, "t17_1.vtk");
-	save_vtk(bgrid1, "t17_2.vtk");
 
 	inp1.start = Point(-0.02, 1.9);
 	GridGeom bgrid2 = HMBlay::BuildBLayerGrid({inp1});
@@ -755,7 +727,6 @@ void test17(){
 		bcont2.IsWithin(Point(-0.02+1e-3, 0.1)) &&
 		bcont2.IsWithout(Point(0.1, 0.0168026937561729)),
 		"zig-zag bottom and left sections with right angle");
-	save_vtk(bgrid2, "t17_3.vtk");
 
 	inp1.bnd_step_method = HMBlay::MethFromString("IGNORE_ALL");
 	inp1.bnd_step = 0.04;
@@ -766,7 +737,6 @@ void test17(){
 		bcont3.IsWithout(Point(0.1, 0.0168026937561729)) && 
 		bcont3.IsWithout(Point(0.0161764309193625, 1.80159049128253)),
 		"same with ignore_all option");
-	save_vtk(bgrid3, "t17_4.vtk");
 }
 
 int main(){

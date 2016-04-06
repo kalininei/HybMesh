@@ -1,5 +1,4 @@
 #include "hmcport.h"
-#include "fileproc.h"
 #include "grid.h"
 #include "hmblay.hpp"
 #include "procgrid.h"
@@ -150,16 +149,6 @@ void grid_free_edge_cells(int** ed_cell){
 	delete[] *ed_cell; *ed_cell=0;
 }
 
-
-void grid_save_vtk(Grid* g, const char* fn){
-	if (g==NULL) return;
-	save_vtk(static_cast<GridGeom*>(g), fn);
-}
-
-void contour_save_vtk(Cont* c, const char* fn){
-	if (c==NULL) return;
-	save_vtk(static_cast<PointsContoursCollection*>(c), fn);
-}
 
 void grid_free(Grid* g){
 	if (g!=NULL) delete g;
