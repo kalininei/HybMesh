@@ -560,25 +560,81 @@ void test23(){
 	auto g1 = GGeom::Constructor::RectGrid01(20, 20);
 	auto g2 = GGeom::Constructor::Ring(Point{0.8,0.8}, 0.3, 0.1, 20, 10);
 	shared_ptr<GridGeom> g3(g1.cross_grids(&g1, &g2, 0, 0, false, true, 10));
-	vector<int> bcond; 
-	for (const auto& e: g3->get_edges()){
-		int val = 0;
-		if (e.is_boundary()){
-			auto p1 = g3->get_point(e.p1);
-			auto p2 = g3->get_point(e.p2);
-			Point pc = (*p1 + *p2)/2.0;
-			if (pc.x>1 || pc.y>1) val = 1;
-			else if (ISEQ(pc.x, 1) || ISEQ(pc.y, 1) ||
-					ISZERO(pc.x) || ISZERO(pc.y)) val = 2;
-			else val = 3;
+	auto bfun1 = [](double x, double y)->int{
+		if (x>1 || y>1) return 1;
+		else if (ISEQ(x, 1) || ISEQ(y, 1) || ISZERO(x) || ISZERO(y)) return 2;
+		else return 3;
+	};
+	auto build_bcond = [&](shared_ptr<GridGeom> g, std::function<int(double, double)> fun)->std::vector<int>{
+		vector<int> bcond; 
+		for (const auto& e: g3->get_edges()){
+			int val = 0;
+			if (e.is_boundary()){
+				auto p1 = g3->get_point(e.p1);
+				auto p2 = g3->get_point(e.p2);
+				Point pc = (*p1 + *p2)/2.0;
+				val = fun(pc.x, pc.y);
+			}
+			bcond.push_back(val);
 		}
-		bcond.push_back(val);
-	}
+		return bcond;
+	};
+	auto bcond = build_bcond(g3, bfun1);
 
 	GGeom::Export::GridVTK(*g3, "g1.vtk");
 	GGeom::Export::BoundaryVTK(*g3, "c1.vtk", bcond);
 	add_file_check(3261877631683126384U, "g1.vtk", "grid to vtk");
-	add_file_check(6814288105731092026U, "c1.vtk", "contour to vtk");
+	add_file_check(6814288105731092026U, "c1.vtk", "grid contour to vtk");
+
+	bool hasfailed = false;
+	try{
+		GGeom::Export::GridMSH(*g3, "g1.msh", bcond);
+	} catch (...){
+		hasfailed = true;
+	}
+	add_check(hasfailed, "improper grid for fluent export");
+
+	g3.reset(g1.cross_grids(&g1, &g2, 0.1, 0, false, true, 30));
+	bcond = build_bcond(g3, bfun1);
+	GGeom::Export::GridMSH(*g3, "g1.msh", bcond);
+	add_file_check(15893027580021721711U, "g1.msh", "grid to fluent");
+
+	GGeom::Export::GridMSH(*g3, "g1.msh", bcond, [](int i){ return (i==2)?"sqr":"circ";});
+	add_file_check(13567052695965143606U, "g1.msh", "grid to fluent with bnd names");
+
+	g3.reset(new GridGeom(GGeom::Constructor::RectGrid01(4,4)));
+	auto bfun2 = [](double x, double y)->int{
+		if (ISZERO(x) && y<=0.5) return 1;
+		if (ISZERO(x-1) && y>=0.5) return 2;
+		if (ISZERO(y-1)) return 3;
+		if (ISZERO(y)) return 4;
+		return 0;
+	};
+	bcond = build_bcond(g3, bfun2);
+	GGeom::Export::PeriodicData dt;
+
+	dt.clear(); dt.add_data(1, 2, false);
+	GGeom::Export::GridMSH(*g3, "g1.msh", bcond, dt);
+	add_file_check(13188935353709075816U, "g1.msh", "fluent simple direct periodic");
+
+	dt.clear(); dt.add_data(1, 2, true);
+	GGeom::Export::GridMSH(*g3, "g1.msh", bcond, dt);
+	add_file_check(9795699895875725114U, "g1.msh", "fluent simple reversed periodic");
+
+	dt.add_data(3, 4, true);
+	GGeom::Export::GridMSH(*g3, "g1.msh", bcond, dt);
+	add_file_check(15517020726046557040U, "g1.msh", "fluent with 2 periodic boundaries");
+
+	GridGeom g4 = GGeom::Constructor::Circle(Point(0.5, 0.5), 0.1, 10, 3, true);
+	g3.reset(GridGeom::cross_grids(&g1, &g4, 0.1, 0, true, true, 30));
+	bcond = build_bcond(g3, bfun2);
+	GGeom::Export::GridMSH(*g3, "g1.msh", bcond, [](int i)->std::string{
+				if (i==1 || i==2) return "periodic-short";
+				if (i==3 || i==4) return "periodic-long";
+				return "no-periodic";
+			}, dt);
+	add_file_check(6293386343646303224U, "g1.msh", "periodic with complicated mesh");
+
 }
 
 int main(){

@@ -8,9 +8,9 @@ end
 
 define gridvtk
 	if $argc ==1
-		call save_vtk($arg0, "_dbgout.vtk")
+		call GGeom::Debug::save_vtk($arg0, "_dbgout.vtk")
 	else
-		call save_vtk($arg0, $arg1)
+		call GGeom::Debug::save_vtk($arg0, $arg1)
 	end
 end
 

@@ -40,17 +40,17 @@ void add_vtk_cell_data(const vector<double>& data, const char* name, const char*
 
 }
 
-void save_vtk(const GridGeom* g, const char* fn){
+void Debug::save_vtk(const GridGeom* g, const char* fn){
 	GGeom::Export::GridVTK(*g, fn);
 }
 
-void save_vtk(const GridGeom* g, const vector<double>& data, const char* fn){
-	save_vtk(g, fn);
+void Debug::save_vtk(const GridGeom* g, const vector<double>& data, const char* fn){
+	Debug::save_vtk(g, fn);
 	if (data.size() == g->n_cells()) add_vtk_cell_data(data, "data", fn, true);
 	else add_vtk_point_data(data, "data", fn, true);
 }
 
-void save_vtk(const PContour* c, const char* fn){
+void Debug::save_vtk(const PContour* c, const char* fn){
 	std::ofstream fs(fn);
 	fs<<"# vtk DataFile Version 3.0"<<std::endl;
 	fs<<"Contour 2D"<<std::endl;
@@ -73,7 +73,7 @@ void save_vtk(const PContour* c, const char* fn){
 	fs.close();
 }
 
-void save_vtk(const vector<PContour>& c, const char* fn){
+void Debug::save_vtk(const vector<PContour>& c, const char* fn){
 	std::ofstream fs(fn);
 	fs<<"# vtk DataFile Version 3.0"<<std::endl;
 	fs<<"Contour 2D"<<std::endl;
@@ -111,12 +111,12 @@ void save_vtk(const vector<PContour>& c, const char* fn){
 	add_vtk_point_data(cont_id, "Contours_ID", fn, true);
 }
 
-void save_vtk(const vector<PContour>& c, const vector<double>& data, const char* fn){
+void Debug::save_vtk(const vector<PContour>& c, const vector<double>& data, const char* fn){
 	save_vtk(c, fn);
 	add_vtk_point_data(data, "custom_data", fn);
 }
 
-void save_vtk(const PtsGraph* g, const char* fn){
+void Debug::save_vtk(const PtsGraph* g, const char* fn){
 	std::ofstream fs(fn);
 	fs<<"# vtk DataFile Version 3.0"<<std::endl;
 	fs<<"PtsGraph"<<std::endl;
@@ -139,14 +139,14 @@ void save_vtk(const PtsGraph* g, const char* fn){
 	fs.close();
 }
 
-void save_vtk(const ContoursCollection& c, const char* fn){ save_vtk(c.contours_list(), fn); }
-void save_vtk(const ContoursCollection* c, const char* fn){ save_vtk(c->contours_list(), fn); }
-void save_vtk(const ContoursCollection& c, const vector<double>& pdata, const char* fn){
+void Debug::save_vtk(const ContoursCollection& c, const char* fn){ save_vtk(c.contours_list(), fn); }
+void Debug::save_vtk(const ContoursCollection* c, const char* fn){ save_vtk(c->contours_list(), fn); }
+void Debug::save_vtk(const ContoursCollection& c, const vector<double>& pdata, const char* fn){
 	save_vtk(c.contours_list(), pdata, fn);
 }
-void save_vtk(const GridGeom& g, const char* fn){ save_vtk(&g, fn);}
-void save_vtk(const GridGeom& g, const vector<double>& data, const char* fn){ save_vtk(&g, data, fn);}
-void save_vtk(const PtsGraph& g, const char* fn){ save_vtk(&g, fn);}
+void Debug::save_vtk(const GridGeom& g, const char* fn){ Debug::save_vtk(&g, fn);}
+void Debug::save_vtk(const GridGeom& g, const vector<double>& data, const char* fn){ save_vtk(&g, data, fn);}
+void Debug::save_vtk(const PtsGraph& g, const char* fn){ save_vtk(&g, fn);}
 
 
 #endif

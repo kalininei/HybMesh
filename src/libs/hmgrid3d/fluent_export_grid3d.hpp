@@ -48,29 +48,6 @@ struct PeriodicData{
 			std::map<Face*, Face*>& outmap);
 };
 
-/*
-struct TGridMSH{
-	TGridMSH(){};
-
-	//Main functions
-	void operator()(const HMGrid3D::Grid& g, const char* fn,
-		std::function<std::string(int)> btype_name,
-		PeriodicData periodic);
-
-	//Simplified forms:
-	//no periodic, all boundaries are called "boundary1", 2, 3 etc.
-	void operator()(const HMGrid3D::Grid& g, const char* fn);
-
-	//no periodic
-	void operator()(const HMGrid3D::Grid& g, const char* fn,
-		std::function<std::string(int)> btype_name);
-
-	//all boundaries are called "boundary1", 2, 3 etc
-	void operator()(const HMGrid3D::Grid& g, const char* fn,
-		PeriodicData periodic);
-};
-*/
-
 struct TGridMSH: public HMCallback::ExecutorBase{
 	typedef std::function<std::string(int)> BFun;
 

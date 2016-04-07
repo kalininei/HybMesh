@@ -479,22 +479,8 @@ GridGeom* GridGeom::cross_grids(GridGeom* gmain_inp, GridGeom* gsec_inp,
 	auto cmain  = gmain->get_contours();
 	auto csec  = gsec->get_contours();
 
-	//1 ---- if secondary holes are empty -> remove secondary top level area from main grid
-	callback.step_after(0.2, "Boundary analyze", 1, 0.75);
-	if (empty_holes){
-		ContoursCollection c1(csec);
-		if (c1.n_cont() != c1.n_inner_cont()){
-			PointsContoursCollection c2(c1.cut_by_level(0, 0));
-			_gm.reset(grid_minus_cont(gmain, &c2, true, cb));
-			if (_gm.get() == 0) return 0;
-			gmain = _gm.get();
-			cmain = gmain->get_contours();
-		}
-	}
-	
-	//2 ---- find contours intersection points and place gsec nodes there
-	//if (!preserve_bp && buffer_size>geps){
-	callback.subprocess_step_after(0.25);
+	//1 ---- find contours intersection points and place gsec nodes there
+	callback.step_after(0.2, "Boundary analyze", 1, 0.25);
 	if (!preserve_bp){
 		//find all intersections
 		vector<Point> bnd_intersections = intersection_points(*gmain, *gsec);
@@ -506,6 +492,20 @@ GridGeom* GridGeom::cross_grids(GridGeom* gmain_inp, GridGeom* gsec_inp,
 			csec  = gsec->get_contours();
 		}
 	}
+
+	//2 ---- if secondary holes are empty -> remove secondary top level area from main grid
+	callback.subprocess_step_after(0.75);
+	if (empty_holes){
+		ContoursCollection c1(csec);
+		if (c1.n_cont() != c1.n_inner_cont()){
+			PointsContoursCollection c2(c1.cut_by_level(0, 0));
+			_gm.reset(grid_minus_cont(gmain, &c2, true, cb));
+			if (_gm.get() == 0) return 0;
+			gmain = _gm.get();
+			cmain = gmain->get_contours();
+		}
+	}
+	
 	
 	//3 ---- combine grids without using buffers
 	callback.step_after(0.2, "Combining", -1);
