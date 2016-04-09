@@ -1,5 +1,6 @@
 from hybmeshpack import imex, com
 from hybmeshpack.hmscript import flow, data
+from . import ExportError
 
 
 # Exporting grids
@@ -26,17 +27,23 @@ def export_grid_hmg(g1, fname):
     imex.export_grid("hmg", fname, g1, flow=flow)
 
 
-def export_grid_msh(g1, fname):
+def export_grid_msh(g1, fname, periodic_data=None):
     """Exports grid to fluent msh format
 
-    Args:
-       g1: grid identifier
+    :params g1: 3d grid file identifier
 
-       fname: output filename
+    :params str fname: output filename
+
+    :params periodic_pairs: TODO
+
+    :raises: hmscript.ExportError
 
     Only grids with triangle/rectangle cells could be exported
     """
-    imex.export_grid("msh", fname, g1, flow=flow)
+    try:
+        imex.export_grid("msh", fname, g1, flow=flow, adata=periodic_data)
+    except Exception as e:
+        raise ExportError(str(e))
 
 
 def export_grid_gmsh(g1, fname):
@@ -49,7 +56,49 @@ def export_grid_gmsh(g1, fname):
 
     Only grids with triangle/rectangle cells could be exported
     """
-    imex.export_grid("gmsh", fname, g1, flow=flow)
+    try:
+        imex.export_grid("gmsh", fname, g1, flow=flow)
+    except Exception as e:
+        raise ExportError(str(e))
+
+
+# 3d exports
+def export3d_grid_vtk(g1, fname_grid=None, fname_surface=None):
+    """Exports 3d grid to vtk ascii format.
+
+    :params g1: 3d grid file identifier
+
+    :params str-or-None fname_grid: filename for grid output
+
+    :params str-or-None fname_surface: filename for surface output
+
+    If a filename is *None* then respective export will be omitted
+    """
+    try:
+        if fname_grid is not None:
+            imex.export_grid("vtk3d", fname_grid, g1, flow=flow)
+        if fname_surface is not None:
+            imex.export_grid3_surface("vtk", fname_surface, g1, flow=flow)
+    except Exception as e:
+        raise ExportError(str(e))
+
+
+def export3d_grid_msh(g1, fname, periodic_pairs=None):
+    """Exports 3d grid to fluent msh ascii format.
+
+    :params g1: 3d grid file identifier
+
+    :params str grid: filename for output
+
+    :params periodic_pairs: TODO
+
+    :raises: hmscript.ExportError
+
+    """
+    try:
+        imex.export_grid("msh3d", fname, g1, flow=flow, adata=periodic_pairs)
+    except Exception as e:
+        raise ExportError(str(e))
 
 
 # Exporting contours

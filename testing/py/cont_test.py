@@ -1,13 +1,7 @@
 from hybmeshpack import hmscript as hm
+from hybmeshpack.hmscript._dbg import check
 global hm, check
-hm.check_compatibility("0.2.2")
-
-
-def check(cond):
-    import traceback
-    if not cond:
-        print "TEST FAILED <<<<<<<<<<<<<<<<<<<<<<<"
-        traceback.print_stack()
+hm.check_compatibility("0.4.0")
 
 
 def check_cont(cont, nn, ne, scont, btypes):

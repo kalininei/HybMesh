@@ -3,8 +3,8 @@
 # args:
 #   -doc : do doc tests
 #   -unit: do unit tests     
-#HMCOM="python ../../src/py/hybmesh.py -silent -sx"
-HMCOM="hybmesh -silent -sx"
+HMCOM="python ../../src/py/hybmesh.py -silent -sx"
+#HMCOM="hybmesh -silent -sx"
 DO_UNIT_TESTS=0
 DO_DOC_TESTS=0
 if [ $# -eq 0 ]
@@ -34,6 +34,7 @@ then
 	$HMCOM unite_test.py
 	$HMCOM imex_test.py
 	$HMCOM mapping_test.py
+	$HMCOM extrude_test.py
 else
 	echo "============ ignoring unit tests"
 fi
@@ -45,9 +46,14 @@ then
 	$HMCOM fromdoc/ex_exclude.py
 	$HMCOM fromdoc/ex_unite_grids.py
 	$HMCOM fromdoc/ex_bgrid.py
+	echo "--- intro_house"
 	$HMCOM fromdoc/intro_house.py
+	echo "--- intro_pentagon"
 	$HMCOM fromdoc/intro_pentagon.py
+	echo "--- intro_hcyl"
 	$HMCOM fromdoc/intro_hcyl.py
+	echo "--- intro_shark"
+	$HMCOM fromdoc/intro_shark.py
 else
 	echo "============ ignoring doc tests"
 fi

@@ -1,3 +1,4 @@
+import copy
 from hybmeshpack import com
 from hybmeshpack.hmscript import flow, data
 from hybmeshpack.basic.geom import Point2
@@ -35,6 +36,7 @@ def remove_all_but(objs):
 
     all_obj = data.get_grid_names()
     all_obj.extend(data.get_ucontour_names())
+    all_obj.extend(data.get_grid3_names())
     all_obj = [x for x in all_obj if x not in objs]
     remove_geom(all_obj)
 
@@ -128,6 +130,85 @@ def reflect_geom(objs, pnt1, pnt2):
     p1, p2 = Point2(*pnt1), Point2(*pnt2)
     c = com.objcom.ReflectGeom({"names": ob, "p1": p1, "p2": p2})
     flow.exec_command(c)
+
+
+def extrude_grid(obj, zcoords, bottombc=0, topbc=0, sidebc=None):
+    """ Creates 3D grid by extrusion of 2D grid along z-axis
+
+    :param obj: 2d grid identifier
+
+    :param list-of-floats zcoords: increasing vector of z values
+      which will be used to create 3d points
+
+    :param bottombc:
+
+    :param topbc: values which define boundary features of
+      3d grid at ``z=min(zcoords)`` and ``z=max(zcoords)``
+      surfaces respectively.
+      Could be set either as a sinle boundary identifier for a whole
+      surface or as a function: ``(float x, float y, int cell_index)->bindex``
+      which takes central cell point x, y
+      coordinates and cell index as arguments and returns boundary type
+      (see example below).
+
+    :param sidebc: defines boundary features for side surfaces.
+
+      * If None than boundary types will be taken from corresponding
+        edges of 2D grid
+      * If single boundary identifier then whole side surface will
+        have same boundary type
+
+    :returns: 3D grid identifier
+
+    :raises: ValueError, hmscript.ExecError
+
+    Boundary conditions for side sirfaces will be taken from input
+    2d grid contour or set as constant values.
+    Z-surfaces boundary types are defined by ``bottombc``,
+    ``topbc`` arguments.
+
+    Example:
+    """
+    # zcoords is strictly increasing vector
+    if len(zcoords) < 2:
+        raise ValueError("Invalid zcoords vector")
+    for i in range(1, len(zcoords)):
+            if zcoords[i - 1] >= zcoords[i]:
+                raise ValueError("Invalid zcoords vector")
+    # calculate boundary types
+    if not isinstance(bottombc, int) or not isinstance(topbc, int):
+        _, _, g = data.get_grid(name=obj)
+        cc_pnt = g.central_points()
+        central_coord = [[p.x, p.y, ind] for (ind, p) in enumerate(cc_pnt)]
+    if isinstance(bottombc, int):
+        bbot = [bottombc]
+    elif hasattr(bottombc, '__call__'):
+        bbot = [bottombc(x, y, i) for [x, y, i] in central_coord]
+    else:
+        raise ValueError("Invalid bottombc type")
+    if isinstance(topbc, int):
+        btop = [topbc]
+    elif hasattr(topbc, '__call__'):
+        btop = [topbc(x, y, i) for [x, y, i] in central_coord]
+    else:
+        raise ValueError("Invalid topbc type")
+    if sidebc is None:
+        bside = None
+    elif isinstance(sidebc, int):
+        bside = sidebc
+    else:
+        raise ValueError("Invalid sidebc type")
+
+    c = com.grid3dcom.ExtrudeZ({"base": obj,
+                                "zvals": copy.deepcopy(zcoords),
+                                "bside": bside,
+                                "btop": btop,
+                                "bbot": bbot})
+    try:
+        flow.exec_command(c)
+        return c._get_added_names()[2][0]
+    except:
+        raise ExecError("extrusion. ")
 
 
 def heal_grid(grid_id, simplify_boundary=30):

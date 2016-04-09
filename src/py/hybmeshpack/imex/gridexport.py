@@ -1,6 +1,8 @@
 import xml.etree.ElementTree as ET
 import itertools
 import writexml
+from hybmeshpack import hmcore as hmcore
+from hybmeshpack.hmcore import g2 as g2core
 
 
 def _write_list_to_file(lst, fname):
@@ -108,104 +110,145 @@ def ggen(grid, fname):
     _write_list_to_file(out, fname)
 
 
-def msh(grid, fname, btypes=None):
+def msh(grid, fname, btypes=None, per_data=None):
     """ btypes - gdata.btypes.BndTypesList for setting boundary names
+
+        per_data: [btype_per, btype_shadow, is_reversed,
+                   .....]
     """
-    def toh(i):
-        '->str. integer to hex format'
-        return hex(i)[2:]
-
-    c3, c4 = _check_for_34_grid(grid)
-    out = [
-        """(0 "HybMesh to Fluent File")""",
-        """(0 "Dimensions")""",
-        """(2 2)""",
-    ]
-    #Zones:
-    #0    - no zone
-    #1    - vericies default
-    #2    - fluid for cells
-    #3    - default interior
-    #4..N - bc's
-
-    #faces by zone
-    ns = {i: 0 if (c[0] == -1 or c[1] == -1) else -1
-          for i, c in enumerate(grid.edges_cells_connect())}
-    for k, v in grid.bt.iteritems():
-        ns[k] = v
-    tps, tpind = [], [-1]
-    for v in ns.values():
-        if v not in tpind:
-            tpind.append(v)
-    for v in tpind:
-        tps.append([x[0] for x in filter(lambda x: x[1] == v,
-                                         ns.iteritems())])
-
-    #verticies
-    out.extend([
-        """(0 "Verticies")""",
-        "(10 (0 1 %s 1 2))" % toh(grid.n_points()),
-        "(10 (1 1 %s 1 2)(" % toh(grid.n_points()),
-    ])
-    out.extend(['  %16.12e %16.12e' % (p.x, p.y)
-                for p in grid.points])
-    out.extend(["))"])
-    #faces
-    fconnect = grid.edges_cells_connect()
-    out.extend([
-        """(0 "Faces")""",
-        "(13 (0 1 %s 0))" % toh(grid.n_edges()),
-    ])
-    #interior faces
-    out.append("(13 (3 1 %s 2 0)(" % toh(len(tps[0])))
-    out.extend(["2 %s %s %s %s" % (
-        toh(grid.edges[i][0] + 1),
-        toh(grid.edges[i][1] + 1),
-        toh(fconnect[i][0] + 1),
-        toh(fconnect[i][1] + 1)
-    ) for i in tps[0]])
-    out.append('))')
-    #boundary nodes
-    c0 = len(tps[0])
-    for i, t in enumerate(tps[1:]):
-        c1 = c0 + len(t)
-        out.append("(13 (%s %s %s 3 0)(" % (toh(4 + i), toh(c0 + 1), toh(c1)))
-        out.extend(["2 %s %s %s %s" % (toh(grid.edges[i][0] + 1),
-                                       toh(grid.edges[i][1] + 1),
-                                       toh(fconnect[i][0] + 1),
-                                       toh(fconnect[i][1] + 1))
-                    for i in t])
-        out.append('))')
-        c0 = c1
-
-    #cells
-    out.extend([
-        """(0 "Cells")""",
-        """(12 (0 1 %s 0))""" % toh(grid.n_cells()),
-        """(12 (2 1 %s 1 0)(""" % toh(grid.n_cells()),
-    ])
-    out.extend([('1' if len(c) == 3 else '3') for c in grid.cells])
-    out.append('))')
-    #zones
-    out.extend([
-        """(0 "Zones")""",
-        "(45 (2 fluid fluid)())",
-        "(45 (3 interior default-interior)())"
-    ])
-
-    zonenames = []
+    # boundary names
     if btypes is not None:
-        for ti in tpind[1:]:
-            zonenames.append(btypes.get(index=ti).name)
+        c_bnames = hmcore.boundary_names_to_c(btypes)
     else:
-        for ti in tpind[1:]:
-            zonenames.append('wall%i' % ti)
+        c_bnames = None
 
-    out.extend([
-        "(45 (%s wall %s)())" % (toh(4 + i), zonenames[i])
-        for i in range(len(tpind) - 1)]
-    )
-    _write_list_to_file(out, fname)
+    # boundary data
+    c_btypes = g2core.boundary_types_to_c(grid)
+
+    # periodic data
+    if per_data is not None:
+        if len(per_data) % 3 != 0:
+            raise Exception("Invalid length of periodic data array")
+        periodic_list = []
+        for i in range(len(per_data) / 3):
+            [tp1, tp2, is_rev] = per_data[3 * i:3 * i + 3]
+            if not isinstance(tp1, int) or\
+                    not isinstance(tp2, int) or\
+                    not isinstance(is_rev, bool):
+                raise Exception("Invalid periodic data")
+            periodic_list.append(tp1)
+            periodic_list.append(tp2)
+            periodic_list.append(int(is_rev))
+        c_per = hmcore.list_to_c(periodic_list, int)
+    else:
+        c_per = None
+
+    c_g = g2core.grid_to_c(grid)
+
+    try:
+        g2core.to_msh(c_g, fname, c_btypes, c_bnames, c_per)
+    finally:
+        if c_bnames is not None:
+            hmcore.free_boundary_names(c_bnames)
+        g2core.free_boundary_types(c_btypes)
+        g2core.free_c_grid(c_g)
+
+    # def toh(i):
+    #     '->str. integer to hex format'
+    #     return hex(i)[2:]
+
+    # c3, c4 = _check_for_34_grid(grid)
+    # out = [
+    #     """(0 "HybMesh to Fluent File")""",
+    #     """(0 "Dimensions")""",
+    #     """(2 2)""",
+    # ]
+    # #Zones:
+    # #0    - no zone
+    # #1    - vericies default
+    # #2    - fluid for cells
+    # #3    - default interior
+    # #4..N - bc's
+
+    # #faces by zone
+    # ns = {i: 0 if (c[0] == -1 or c[1] == -1) else -1
+    #       for i, c in enumerate(grid.edges_cells_connect())}
+    # for k, v in grid.bt.iteritems():
+    #     ns[k] = v
+    # tps, tpind = [], [-1]
+    # for v in ns.values():
+    #     if v not in tpind:
+    #         tpind.append(v)
+    # for v in tpind:
+    #     tps.append([x[0] for x in filter(lambda x: x[1] == v,
+    #                                      ns.iteritems())])
+
+    # #verticies
+    # out.extend([
+    #     """(0 "Verticies")""",
+    #     "(10 (0 1 %s 1 2))" % toh(grid.n_points()),
+    #     "(10 (1 1 %s 1 2)(" % toh(grid.n_points()),
+    # ])
+    # out.extend(['  %16.12e %16.12e' % (p.x, p.y)
+    #             for p in grid.points])
+    # out.extend(["))"])
+    # #faces
+    # fconnect = grid.edges_cells_connect()
+    # out.extend([
+    #     """(0 "Faces")""",
+    #     "(13 (0 1 %s 0))" % toh(grid.n_edges()),
+    # ])
+    # #interior faces
+    # out.append("(13 (3 1 %s 2 0)(" % toh(len(tps[0])))
+    # out.extend(["2 %s %s %s %s" % (
+    #     toh(grid.edges[i][0] + 1),
+    #     toh(grid.edges[i][1] + 1),
+    #     toh(fconnect[i][0] + 1),
+    #     toh(fconnect[i][1] + 1)
+    # ) for i in tps[0]])
+    # out.append('))')
+    # #boundary nodes
+    # c0 = len(tps[0])
+    # for i, t in enumerate(tps[1:]):
+    #     c1 = c0 + len(t)
+    #     out.append("(13 (%s %s %s 3 0)(" % (toh(4 + i), toh(c0 + 1),
+    #                toh(c1)))
+    #     out.extend(["2 %s %s %s %s" % (toh(grid.edges[i][0] + 1),
+    #                                    toh(grid.edges[i][1] + 1),
+    #                                    toh(fconnect[i][0] + 1),
+    #                                    toh(fconnect[i][1] + 1))
+    #                 for i in t])
+    #     out.append('))')
+    #     c0 = c1
+
+    # #cells
+    # out.extend([
+    #     """(0 "Cells")""",
+    #     """(12 (0 1 %s 0))""" % toh(grid.n_cells()),
+    #     """(12 (2 1 %s 1 0)(""" % toh(grid.n_cells()),
+    # ])
+    # out.extend([('1' if len(c) == 3 else '3') for c in grid.cells])
+    # out.append('))')
+    # #zones
+    # out.extend([
+    #     """(0 "Zones")""",
+    #     "(45 (2 fluid fluid)())",
+    #     "(45 (3 interior default-interior)())"
+    # ])
+
+    # zonenames = []
+    # if btypes is not None:
+    #     for ti in tpind[1:]:
+    #         zonenames.append(btypes.get(index=ti).name)
+    # else:
+    #     for ti in tpind[1:]:
+    #         zonenames.append('wall%i' % ti)
+
+    # out.extend([
+    #     "(45 (%s wall %s)())" % (toh(4 + i), zonenames[i])
+    #     for i in range(len(tpind) - 1)]
+    # )
+    # _write_list_to_file(out, fname)
 
 
 def gmsh(grid, fname, btypes=None):
@@ -217,13 +260,14 @@ def gmsh(grid, fname, btypes=None):
     # bc
     out.append("$PhysicalNames")
     bset = set()
+    bset.add(0)
     if btypes is not None:
         for v in grid.bt.values():
             bset.add(v)
     out.append(str(len(bset) + 1))
     intphys = max(bset) + 1
     out.append(' '.join(["2", str(intphys), "\"interior\""]))
-    for b in bset:
+    for b in sorted(bset):
         out.append(' '.join(["1", str(b),
                    '"' + btypes.get(index=b).name + '"']))
     out.append("$EndPhysicalNames")
@@ -250,8 +294,8 @@ def gmsh(grid, fname, btypes=None):
     for i, b in enumerate(be):
         n = str(i + 1 + grid.n_cells())
         nind = ' '.join(map(lambda x: str(x + 1), grid.edges[b]))
-        out.append(' '.join([n, "1", "2", str(grid.bt[b]),
-                   str(grid.bt[b]), nind]))
+        out.append(' '.join([n, "1", "2", str(grid.get_edge_bnd(b)),
+                   str(grid.get_edge_bnd(b)), nind]))
 
     out.append("$EndElements")
 

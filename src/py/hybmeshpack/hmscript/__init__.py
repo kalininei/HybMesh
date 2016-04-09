@@ -16,6 +16,14 @@ class ExecError(Exception):
         super(ExecError, self).__init__(mes)
 
 
+class ExportError(Exception):
+    """ Exception that is raised if exporting function failed """
+    def __init__(self, _ainfo=None):
+        """ _ainfo (str) - additional information"""
+        mes = _ainfo
+        super(ExportError, self).__init__(mes)
+
+
 from proto import *   # NOQA
 from inout import *  # NOQA
 from gproc import *  # NOQA

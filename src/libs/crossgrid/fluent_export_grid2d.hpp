@@ -15,6 +15,8 @@ struct PeriodicData{
 	std::vector<int> b2;
 	std::vector<bool> isrev;
 };
+
+//bndindex.size() == total number of grid edges
 void GridMSH(const GridGeom& g, std::string fn, vector<int> bndindex);
 
 void GridMSH(const GridGeom& g, std::string fn, vector<int> bndindex, BFun bnames);

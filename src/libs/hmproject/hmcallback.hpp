@@ -190,6 +190,9 @@ class FunctionWithCallback{
 public:
 	FunctionWithCallback(): exe(){}
 
+	TExecutor& functor(){ return exe; }
+	const TExecutor& functor() const{ return exe; }
+
 	//call with last set callback
 	template<class... Args>
 	TRet<Args...> operator()(Args&&... arg){

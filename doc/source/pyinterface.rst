@@ -123,6 +123,8 @@ See :ref:`functionality` for procedures details.
 
 .. autofunction:: heal_grid
 
+.. autofunction:: extrude_grid
+
 Information
 -----------
 Some general characteristics of program state and geometrical objects could be obtained by

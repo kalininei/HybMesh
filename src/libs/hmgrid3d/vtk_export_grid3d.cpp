@@ -201,8 +201,9 @@ vector< vtkcell_expression > cell_assembler(const ExtendedSimpleSerialize& ser,
 }
 
 void hme::TGridVTK::_run(const HMGrid3D::Grid& g, std::string fn){
-	auto ser = HMGrid3D::ExtendedSimpleSerialize::Convert.MoveCallback(callback, g);
-	_run(ser, fn);
+	last_ser_result.reset(new TSer(
+		HMGrid3D::ExtendedSimpleSerialize::Convert.MoveCallback(callback, g)));
+	_run(*last_ser_result, fn);
 }
 
 void hme::TGridVTK::_run(const TSer& ser, std::string fn){
@@ -376,8 +377,9 @@ struct bnd_face_data{
 }
 
 void hme::TBoundaryVTK::_run(const Grid& g, std::string fn){
-	auto ser = HMGrid3D::ExtendedSimpleSerialize::Convert.MoveCallback(callback, g);
-	_run(ser, fn);
+	last_ser_result.reset(new TSer(
+		HMGrid3D::ExtendedSimpleSerialize::Convert.MoveCallback(callback, g)));
+	_run(*last_ser_result, fn);
 }
 
 void hme::TBoundaryVTK::_run(const TSer& ser, std::string fn){

@@ -211,6 +211,19 @@ class Grid2(bgeom.Point2SetStruct):
                 ret[e1][0 if e1_direct else 1] = icell
         return ret
 
+    def central_points(self):
+        """ -> [Point2] for each cell """
+        ret = []
+        for pts in self.cells_nodes_connect():
+            ret.append(bgeom.Point2(0, 0))
+            for pi in pts:
+                p = self.points[pi]
+                ret[-1].x += p.x
+                ret[-1].y += p.y
+            ret[-1].x /= len(pts)
+            ret[-1].y /= len(pts)
+        return ret
+
     def build_contour(self):
         'fills self.cont field with contour2.GridContour2 object'
         self.cont = contour2.GridContour2(self)

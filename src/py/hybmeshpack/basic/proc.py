@@ -113,7 +113,7 @@ def multifield_list(nd, dim):
 
     rebuild plain array into 2d array
     nd - plain array
-    dim - dimension of sublist.
+    dim - dimension of sublist or "auto"
     if "auto" then dimension is set before the start of sublist:
         [1,1, 3,2,2,1, 5,3,3,2,1,1] -> [[1], [2,2,5], [3,3,2,1,1]]
     """
@@ -247,41 +247,131 @@ class NamedList(OrderedDict):
             OrderedDict.__setitem__(self, k, v)
 
 
-def compress_int_list(a):
-    """ ([i0, i1, i2, ....] -> "i0-i5 i6 i7-i8"
+# def compress_int_list(a):
+#     """ ([i0, i1, i2, ....] -> "i0-i5 i6 i7-i8"
 
-        Converts integer array into string with
-        eliminated values which go in a row.
-        The procedure provides no internal sorting.
-    """
-    res = []
-    i, n = 0, len(a)
-    while i < n:
-        istart = i
-        while i < n - 1 and a[i + 1] - a[i] == 1:
-            i += 1
-        res.append([a[istart], a[i]])
-        i += 1
-    res2 = []
-    for r in res:
-        if r[0] == r[1]:
-            res2.append(str(r[0]))
+#         Converts integer array into string with
+#         eliminated values which go in a row.
+#         The procedure provides no internal sorting.
+#     """
+#     res = []
+#     i, n = 0, len(a)
+#     while i < n:
+#         istart = i
+#         while i < n - 1 and a[i + 1] - a[i] == 1:
+#             i += 1
+#         res.append([a[istart], a[i]])
+#         i += 1
+#     res2 = []
+#     for r in res:
+#         if r[0] == r[1]:
+#             res2.append(str(r[0]))
+#         else:
+#             res2.append("%i-%i" % (r[0], r[1]))
+#     return " ".join(res2)
+
+
+# def int_list_from_compress(s):
+#     'reciprocal to compress_int_list'
+#     st = s.split()
+#     ret = []
+#     for v in st:
+#         v = v.split('-', 2)
+#         if len(v) == 1:
+#             ret.append(int(v[0]))
+#         else:
+#             ist, ien = int(v[0]), int(v[1])
+#             ret.extend(range(ist, ien + 1))
+#     return ret
+def _compress_core(lst, cmpfun, outfun):
+    # finds increasing values
+    ret = []
+    stack = []
+
+    def stack_to_ret(ret, stack):
+        if len(stack) < 2:
+            ret.extend(stack)
+        elif len(stack) > 0:
+            ret.append(stack)
+        return []
+
+    for v in lst:
+        if isinstance(v, str):
+            stack = stack_to_ret(ret, stack)
+            ret.append(v)
         else:
-            res2.append("%i-%i" % (r[0], r[1]))
-    return " ".join(res2)
+            if len(stack) > 0 and not cmpfun(v, stack[-1]):
+                stack = stack_to_ret(ret, stack)
+            stack.append(v)
+    stack_to_ret(ret, stack)
+
+    for i in range(len(ret)):
+        if isinstance(ret[i], list):
+            ret[i] = outfun(ret[i])
+
+    return ret
+
+
+def _decompress_core(s, symbol, func):
+    [a, b] = s.split(symbol)
+    return func(int(a), int(b))
+
+
+def compress_int_list(lst):
+    """ changes repeating values with i*k
+        changes increasing/decreasing values with i:k
+        [18, 17, 16, 1, 2, 3, 4, 4, 4, 4, 4, 2, 1] ->
+        "18:16 1:4 4*4 2 1"
+    """
+    if len(lst) == 0:
+        return ""
+    ret = lst
+
+    # increasing values
+    ret = _compress_core(ret,
+                         lambda x, y: x == y + 1,
+                         lambda r: str(r[0]) + ":" + str(r[-1]))
+    # decreasing values
+    ret = _compress_core(ret,
+                         lambda x, y: x == y - 1,
+                         lambda r: str(r[0]) + ":" + str(r[-1]))
+    # repeating values
+    ret = _compress_core(ret,
+                         lambda x, y: x == y,
+                         lambda r: str(r[0]) + "*" + str(len(r)))
+    # other values
+    ret = map(str, ret)
+
+    # join and return
+    return " ".join(ret)
 
 
 def int_list_from_compress(s):
-    'reciprocal to compress_int_list'
-    st = s.split()
+    """ reciprocal to compress_int_list """
+    if len(s) == 0:
+        return []
     ret = []
-    for v in st:
-        v = v.split('-', 2)
-        if len(v) == 1:
-            ret.append(int(v[0]))
-        else:
-            ist, ien = int(v[0]), int(v[1])
-            ret.extend(range(ist, ien + 1))
+    for a in s.split():
+        # separate ints
+        try:
+            ret.append(int(a))
+            continue
+        except:
+            pass
+        # decompress repeating values
+        try:
+            ret.extend(_decompress_core(a, '*', lambda x, y: [x] * y))
+            continue
+        except:
+            pass
+        # decompress increasing/decreasing
+        try:
+            ret.extend(_decompress_core(a, ':', lambda x, y:
+                       range(x, y + 1) if x < y else range(x, y - 1, -1)))
+            continue
+        except:
+            pass
+        raise ValueError(a)
     return ret
 
 

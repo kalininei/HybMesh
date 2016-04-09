@@ -1,6 +1,7 @@
 import command
 import objcom
 import gridcom
+import grid3dcom
 import contcom
 import imcom
 
@@ -34,6 +35,7 @@ class _Factory(object):
         imcom.ImportContourASCII,
         imcom.ImportGridNative,
         imcom.ImportGridSimple34,
+        grid3dcom.ExtrudeZ,
     ]
 
     def __init__(self):

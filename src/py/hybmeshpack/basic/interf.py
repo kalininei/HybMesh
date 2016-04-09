@@ -137,7 +137,7 @@ class SilentCallbackCancel2(Callback):
     """
     def __init__(self):
         super(SilentCallbackCancel2, self).__init__(
-                int, (str, str, float, float))
+            int, (str, str, float, float))
 
     def _callback(self, n1, n2, p1, p2):
         return 0 if self._proceed else 1
@@ -162,7 +162,7 @@ class SilentCallbackNoCancel2(Callback):
     """
     def __init__(self):
         super(SilentCallbackNoCancel2, self).__init__(
-                int, (str, str, float, float))
+            int, (str, str, float, float))
 
     def _callback(self, n1, n2, p1, p2):
         pass
@@ -223,15 +223,29 @@ class ConsoleCallbackCancel2(SilentCallbackCancel2):
         n, s = 25, 4
         if n1 != self.__prev_n1 or n2 != self.__prev_n2:
             outs = ''
+            outsnext = []
             if n1 != self.__prev_n1:
                 outs = n1
-            if len(outs) < n + s + 2:
-                outs += ' ' * (n + s + 2 - len(outs))
+            critlen = n + s + 2
+            if len(outs) > critlen:
+                fk = outs.split()
+                outsnext = [fk[0]]
+                for substr in fk[1:]:
+                    if len(outsnext[-1] + substr) < critlen:
+                        outsnext[-1] += " " + substr
+                    else:
+                        outsnext.append(substr)
+                outs = outsnext[0]
+                outsnext = outsnext[1:]
+            if len(outs) < critlen:
+                outs += ' ' * (critlen - len(outs))
             if n2 != self.__prev_n2:
                 outs += n2
             self.__prev_n1 = n1
             self.__prev_n2 = n2
             print outs
+            for p in outsnext:
+                print p
 
         progress1, progress2 = ['-'] * n, ['-'] * n
         w1, w2 = int(n * p1), int(n * p2)

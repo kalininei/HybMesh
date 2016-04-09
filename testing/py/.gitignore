@@ -2,8 +2,6 @@
 !.gitignore
 !*.py
 !fulltest
-!input*.msh
-!output*.msh
 
 !fromdoc
 fromdoc/*

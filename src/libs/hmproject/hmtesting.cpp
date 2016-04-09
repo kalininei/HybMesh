@@ -103,11 +103,14 @@ void HMTesting::add_check(bool ex, std::string info){
 	}
 };
 
-void HMTesting::add_file_check(size_t hash, std::string fn, std::string info){
+size_t HMTesting::calculate_file_hash(std::string fn){
 	auto str = read_file_to_string(fn);
 	str = convert_floats(str, 2);
-	std::hash<std::string> str_hash;
-	size_t h1 = str_hash(str);
+	return std::hash<std::string>()(str);
+}
+
+void HMTesting::add_file_check(size_t hash, std::string fn, std::string info){
+	size_t h1 = calculate_file_hash(fn);
 	int fc = FAILED_CHECKS;
 	add_check(h1 == hash, info);
 	if (fc != FAILED_CHECKS){

@@ -3,8 +3,10 @@ import writexml
 import readxml
 import gridexport
 import contexport
+import grid3export
 from hybmeshpack import com
 from hybmeshpack import gdata
+from hybmeshpack.basic.interf import Callback
 
 
 def write_flow_and_framework_to_file(comflow, filename):
@@ -34,16 +36,31 @@ def read_flow_and_framework_from_file(filename):
     return f
 
 
-def export_grid(fmt, fn, name, fw=None, flow=None):
+def export_grid(fmt, fn, name, fw=None, flow=None, adata=None):
     """exports grid from framework fw or flow receiver to
     filename fn using format fmt. Possible formats:
-        vtk, hmg, msh, ggen, gmsh
+        vtk, hmg, msh, ggen, gmsh, vtk3d, msh3d
+
+    adata - additional data which dependes on format:
+      * msh, msh3d: define periodic conditions
+
+        msh   - [btype_per, btype_shadow, is_reversed,
+                 .....]
+        msh3d - [btype_per, btype_shadow, Point btype_per, Point btype_shadow,
+                 .....]
     """
     # 1. Find grid
     try:
         if fw is None:
             fw = flow.get_receiver()
-        _, _, grid = fw.get_grid(name=name)
+        if (fmt[-2:] == '3d'):
+            _, _, grid = fw.get_grid3(name=name)
+        else:
+            _, _, grid = fw.get_grid(name=name)
+        if flow is not None:
+            callb = flow.get_interface().ask_for_callback(Callback.CB_CANCEL2)
+        else:
+            callb = None
     except:
         raise Exception('Can not find grid for exporting')
     # 2. Export regarding to format
@@ -52,11 +69,15 @@ def export_grid(fmt, fn, name, fw=None, flow=None):
     elif fmt == 'hmg':
         gridexport.hmg(grid, fn)
     elif fmt == 'msh':
-        gridexport.msh(grid, fn, fw.boundary_types)
+        gridexport.msh(grid, fn, fw.boundary_types, adata)
     elif fmt == 'ggen':
         gridexport.ggen(grid, fn)
     elif fmt == "gmsh":
         gridexport.gmsh(grid, fn, fw.boundary_types)
+    elif fmt == "vtk3d":
+        grid3export.vtk(grid, fn, callb)
+    elif fmt == "msh3d":
+        grid3export.msh(grid, fn, fw.boundary_types, callb, adata)
     else:
         raise Exception('Unknown grid format %s' % fmt)
 
@@ -83,3 +104,22 @@ def export_contour(fmt, fn, name, fw=None, flow=None):
         contexport.hmg(cont, fn)
     else:
         raise Exception('Unknown contour format %s' % fmt)
+
+
+def export_grid3_surface(fmt, fn, name, fw=None, flow=None):
+    # Find grid
+    try:
+        if fw is None:
+            fw = flow.get_receiver()
+        _, _, grid = fw.get_grid3(name=name)
+        if flow is not None:
+            callb = flow.get_interface().ask_for_callback(Callback.CB_CANCEL2)
+        else:
+            callb = None
+    except:
+        raise Exception('Can not find contour for exporting')
+    # 2. Export regarding to format
+    if fmt == 'vtk':
+        grid3export.vtk_surface(grid, fn, callb)
+    else:
+        raise Exception('Unknown format %s' % fmt)

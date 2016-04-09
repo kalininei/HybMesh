@@ -152,6 +152,17 @@ class BoolOption(BasicOption):
             return True
 
 
+class ListCompressedOption(BasicOption):
+    def __init__(self):
+        super(ListCompressedOption, self).__init__()
+
+    def serial(self, v):
+        return bp.compress_int_list(v)
+
+    def unserial(self, v):
+        return bp.int_list_from_compress(v)
+
+
 class Command(object):
     ' abstract base class for flow command '
 
@@ -286,6 +297,7 @@ class Command(object):
         '->contour by its name or raise ObjNotFound'
         try:
             _, _, c = self.receiver.get_ucontour(name=name)
+            return c
         except:
             raise ObjectNotFound(name, self)
 
@@ -293,6 +305,7 @@ class Command(object):
         '->grid by its name or raise ObjNotFound'
         try:
             _, _, c = self.receiver.get_grid(name=name)
+            return c
         except:
             raise ObjectNotFound(name, self)
 

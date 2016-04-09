@@ -5,6 +5,8 @@ from hybmeshpack import gdata, basic
 import hybmeshpack.basic.geom as bgeom
 from unite_grids import (unite_grids, grid_excl_cont, setbc_from_conts,
                          boundary_layer_grid, map_grid)
+from hybmeshpack.hmcore import g2 as g2core
+from hybmeshpack.hmcore import libhmcport
 
 
 class NewGridCommand(objcom.AbstractAddRemove):
@@ -484,20 +486,18 @@ class HealGrid(objcom.AbstractAddRemove):
                 }
 
     def __simplify_bnd(self, og):
-        import cobj
         import ctypes as ct
         import unite_grids
-        libfa = cobj.cport_lib()
-        gc = cobj.grid_to_c(og)
-        ret = libfa.simplify_grid_boundary(
+        gc = g2core.grid_to_c(og)
+        ret = libhmcport.simplify_grid_boundary(
             gc, ct.c_double(self.options['simp_bnd']))
         if ret != 0:
-            cobj.free_c_grid(gc)
+            g2core.free_c_grid(gc)
             raise command.ExecutionError('Error in boundary simplification',
                                          self)
-        ret = cobj.grid_from_c(gc)
+        ret = g2core.grid_from_c(gc)
         ret.build_contour()
-        cobj.free_c_grid(gc)
+        g2core.free_c_grid(gc)
         # write boundary types from og
         unite_grids.add_bc_from_cont(ret.cont, og.cont, force=3)
         return ret

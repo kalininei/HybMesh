@@ -479,7 +479,7 @@ void MappedMesher::Fill(TBotPart bottom_partitioner, TVertPart vertical_partitio
 		[](vector<double>& x, vector<double>& y){ return x.size() < y.size(); })->size();
 
 	//4) build regular grid and get vector of bottom side points
-	GridGeom g4 = GGeom::Constructor::RectGrid01(isz, jsz);
+	GridGeom g4 = GGeom::Constructor::RectGrid01(isz-1, jsz-1);
 	ShpVector<GridPoint> botpts;
 	for (auto p: GGeom::Info::BoundaryPoints(g4)){
 		if (ISZERO(p->y)) botpts.push_back(p);

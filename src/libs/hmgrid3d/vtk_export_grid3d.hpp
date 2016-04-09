@@ -11,6 +11,7 @@ namespace HMGrid3D{namespace Export{
 //signature void GridVTK(const HMGrid3D::Grid& g, std::string fn);
 struct TGridVTK: public HMCallback::ExecutorBase{
 	typedef ExtendedSimpleSerialize TSer;
+	shared_ptr<TSer> last_ser_result;
 	HMCB_SET_PROCNAME("Exporting 3d grid to *.vtk");
 
 	HMCB_SET_DURATION(80, const TSer&, std::string);
@@ -28,6 +29,7 @@ extern HMCallback::FunctionWithCallback<TGridVTK> GridVTK;
 //signature void BoundaryVTK(const HMGrid3D::Grid& g, std::string* fn);
 struct TBoundaryVTK: public HMCallback::ExecutorBase{
 	typedef ExtendedSimpleSerialize TSer;
+	shared_ptr<TSer> last_ser_result;
 	HMCB_SET_PROCNAME("Exporting 3d grid surface to *.vtk");
 
 	HMCB_SET_DURATION(50, TSer, std::string);
@@ -40,7 +42,6 @@ struct TBoundaryVTK: public HMCallback::ExecutorBase{
 		const Grid& g, std::string fn
 	);
 	void _run(const Grid&, std::string);
-
 };
 extern HMCallback::FunctionWithCallback<TBoundaryVTK> BoundaryVTK;
 

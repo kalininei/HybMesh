@@ -2,9 +2,27 @@
 #define HYBMESH_HMCPORT_H
 
 #include "crossgrid.h"
-#include "hmcallback.hpp"
+#include <stddef.h>
 
 extern "C"{
+
+typedef int (*hmcport_callback)(const char*, const char*, double, double);
+
+//calculates ascii file hash
+//all floating points in file will be rounded before calculating hash
+//so file with content "0.700000001 23.00000001" would have same hash as "0.7 23"
+size_t get_ascii_file_hash(const char* fn);
+
+
+struct BoundaryNamesStruct{
+	int n;
+	int* values;
+	const char** names;
+};
+BoundaryNamesStruct* set_boundary_names(int n, const char**, int* vals);
+void free_boundary_names(BoundaryNamesStruct* s);
+
+
 
 
 // === grid management
@@ -117,14 +135,14 @@ Grid* cross_grids(Grid* gbase, Grid* gsecondary, double buffer_size,
 		int preserve_bp, int empty_holes, double angle0);
 //with specified callback function
 Grid* cross_grids_wcb(Grid* gbase, Grid* gsecondary, double buffer_size, 
-		int preserve_bp, int empty_holes, double angle0, HMCallback::Fun2 cb_fun);
+		int preserve_bp, int empty_holes, double angle0, hmcport_callback cb_fun);
 
 // === NewGrid = Grid exclude Contour Area
 //with callback defined globally
 Grid* grid_exclude_cont(Grid* grd, Cont* cont, int is_inner);
 //with specified callback function
 Grid* grid_exclude_cont_wcb(Grid* grd, Cont* cont, int is_inner,
-		HMCallback::Fun2 cb_fun);
+		hmcport_callback cb_fun);
 
 //merges boundary edges of the same cell with angle less than 'angle' in [0, 180]
 //return 0 if ok
@@ -149,7 +167,7 @@ struct BoundaryLayerGridOption{
 };
 
 Grid* boundary_layer_grid_wcb(int N, BoundaryLayerGridOption* opt, 
-		HMCallback::Fun2 cb_fun);
+		hmcport_callback cb_fun);
 
 
 // === Mapping

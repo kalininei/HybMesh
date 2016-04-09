@@ -1,6 +1,8 @@
 ' grid unification algorithm '
 import ctypes as ct
-import cobj
+from hybmeshpack.hmcore import libhmcport
+from hybmeshpack.hmcore import c2 as c2core
+from hybmeshpack.hmcore import g2 as g2core
 
 
 def add_bc_from_cont(tar_cont, src_cont, c_tar=None, c_src=None, force=1):
@@ -17,17 +19,15 @@ def add_bc_from_cont(tar_cont, src_cont, c_tar=None, c_src=None, force=1):
     force = 2: edges which end points lie on src will be assigned
     force = 3: all edges will be assigned
     """
-    lib_fa = cobj.cport_lib()
-
     #create c representations of contours
     need_src_clear, need_tar_clear = False, False
     if c_src is None:
         need_src_clear = True
-        c_src = cobj.cont2_to_c(src_cont)
+        c_src = c2core.cont2_to_c(src_cont)
 
     if c_tar is None:
         need_tar_clear = True
-        c_tar = cobj.cont2_to_c(tar_cont)
+        c_tar = c2core.cont2_to_c(tar_cont)
 
     #create contours boundary array
     c_src_bnd = (ct.c_int * src_cont.n_edges())()  # input
@@ -35,12 +35,12 @@ def add_bc_from_cont(tar_cont, src_cont, c_tar=None, c_src=None, force=1):
     for i in range(src_cont.n_edges()):
         c_src_bnd[i] = src_cont.edge_bnd(i)
 
-    #call lib_fa function
+    #call libhmcport function
     if force == 1:
-        out = lib_fa.set_ecollection_bc(
+        out = libhmcport.set_ecollection_bc(
             c_src, c_tar, ct.c_int(-1), c_src_bnd, c_tar_bnd)
     else:
-        out = lib_fa.set_ecollection_bc_force(
+        out = libhmcport.set_ecollection_bc_force(
             c_src, c_tar, c_src_bnd, c_tar_bnd, ct.c_int(force))
 
     #write data to target contour
@@ -53,9 +53,9 @@ def add_bc_from_cont(tar_cont, src_cont, c_tar=None, c_src=None, force=1):
 
     #clear c data
     if need_src_clear:
-        lib_fa.free_ecollection_container(c_src)
+        libhmcport.free_ecollection_container(c_src)
     if need_tar_clear:
-        lib_fa.free_ecollection_container(c_tar)
+        libhmcport.free_ecollection_container(c_tar)
 
     if int(out) != 0:
         raise Exception("Error at boundary assignment")
@@ -67,47 +67,44 @@ def setbc_from_conts(tar_cont, src, force=1):
 
         force is the same as in add_bc_from_cont
     """
-    lib_fa = cobj.cport_lib()
     #set default zero to all target boundaries
     tar_cont.set_edge_bnd({i: 0 for i in range(tar_cont.n_edges())})
 
     #loop over each source contours
-    c_tar = cobj.cont2_to_c(tar_cont)
+    c_tar = c2core.cont2_to_c(tar_cont)
     for cont in src:
-        c_src = cobj.cont2_to_c(cont)
+        c_src = c2core.cont2_to_c(cont)
         add_bc_from_cont(tar_cont, cont, c_tar, c_src, force)
-        lib_fa.free_ecollection_container(c_src)
-    lib_fa.free_ecollection_container(c_tar)
+        libhmcport.free_ecollection_container(c_src)
+    libhmcport.free_ecollection_container(c_tar)
 
 
 def unite_grids(g1, g2, buf, fix_bnd, empty_holes, an0, cb):
     """ adds g2 to g1. Returns new grid.
         cb -- Callback.CB_CANCEL2 callback object
     """
-    lib_fa = cobj.cport_lib()
-    c_g1 = cobj.grid_to_c(g1)
-    c_g2 = cobj.grid_to_c(g2)
+    c_g1 = g2core.grid_to_c(g1)
+    c_g2 = g2core.grid_to_c(g2)
     c_buf = ct.c_double(buf)
     c_an0 = ct.c_double(an0)
     c_fix = ct.c_int(1) if fix_bnd else ct.c_int(0)
     c_eh = ct.c_int(1) if empty_holes else ct.c_int(0)
-    #args = (c_g1, c_g2, c_buf, c_fix, c_an0, c_eh)
     args = (c_g1, c_g2, c_buf, c_fix, c_eh, c_an0)
 
-    lib_fa.cross_grids_wcb.restype = ct.c_void_p
-    cb.initialize(lib_fa.cross_grids_wcb, args)
+    libhmcport.cross_grids_wcb.restype = ct.c_void_p
+    cb.initialize(libhmcport.cross_grids_wcb, args)
     cb.execute_command()
     c_cross = ct.c_void_p(cb.get_result())
 
     #if result was obtained (no errors, no cancel)
     if (c_cross.value is not None):
-        ret = cobj.grid_from_c(c_cross)
-        lib_fa.grid_free(c_cross)
+        ret = g2core.grid_from_c(c_cross)
+        libhmcport.grid_free(c_cross)
     else:
         ret = None
 
-    lib_fa.grid_free(c_g1)
-    lib_fa.grid_free(c_g2)
+    libhmcport.grid_free(c_g1)
+    libhmcport.grid_free(c_g2)
 
     return ret
 
@@ -116,39 +113,38 @@ def grid_excl_cont(grd, cnt, is_inner, cb):
     """ ->grid2.Grid2
         Returns a grid with excluded contour area (inner or outer)
     """
-    lib_fa = cobj.cport_lib()
-    c_g = cobj.grid_to_c(grd)
-    c_c = cobj.cont_to_c(cnt)
+    c_g = g2core.grid_to_c(grd)
+    c_c = c2core.cont_to_c(cnt)
     c_isinner = ct.c_int(1 if is_inner else 0)
     args = (c_g, c_c, c_isinner)
-    lib_fa.grid_exclude_cont_wcb.restype = ct.c_void_p
+    libhmcport.grid_exclude_cont_wcb.restype = ct.c_void_p
 
-    cb.initialize(lib_fa.grid_exclude_cont_wcb, args)
+    cb.initialize(libhmcport.grid_exclude_cont_wcb, args)
     cb.execute_command()
     res = ct.c_void_p(cb.get_result())
 
     if res.value is not None:
-        newg = cobj.grid_from_c(res)
+        newg = g2core.grid_from_c(res)
         newg.build_contour()
 
         #assign boundary conditions
         bs = cnt.bnd_types().union(grd.cont.bnd_types()).difference(set([0]))
         if len(bs) > 0:
-            res_cont = cobj.cont2_to_c(newg.cont)
+            res_cont = c2core.cont2_to_c(newg.cont)
             #1. from source grid
             add_bc_from_cont(newg.cont, grd.cont, c_tar=res_cont)
             #2. from contour
             add_bc_from_cont(newg.cont, cnt, c_tar=res_cont)
             #3. free contour memory
-            lib_fa.free_ecollection_container(res_cont)
+            libhmcport.free_ecollection_container(res_cont)
 
         #free grid memory
-        lib_fa.grid_free(res)
+        libhmcport.grid_free(res)
     else:
         newg = None
 
-    lib_fa.cont_free(c_c)
-    lib_fa.grid_free(c_g)
+    libhmcport.cont_free(c_c)
+    libhmcport.grid_free(c_g)
 
     return newg
 
@@ -206,13 +202,11 @@ def boundary_layer_grid(opt, cb):
             ('step_end', ct.c_double),
         ]
 
-    lib_fa = cobj.cport_lib()
-
     # 1) get contour pointers
     for co in opt:
         pycont = co['source']
         if pycont not in COptStruct.usedconts:
-            COptStruct.usedconts[pycont] = cobj.cont2_to_c(pycont)
+            COptStruct.usedconts[pycont] = c2core.cont2_to_c(pycont)
 
     # 2) build array of c structures
     c_opt_type = COptStruct * len(opt)
@@ -222,14 +216,14 @@ def boundary_layer_grid(opt, cb):
 
     # 3) call through callback object
     args = (len(opt), c_opt)
-    lib_fa.boundary_layer_grid_wcb.restype = ct.c_void_p
-    cb.initialize(lib_fa.boundary_layer_grid_wcb, args)
+    libhmcport.boundary_layer_grid_wcb.restype = ct.c_void_p
+    cb.initialize(libhmcport.boundary_layer_grid_wcb, args)
     cb.execute_command()
     cres = ct.c_void_p(cb.get_result())
 
     # 4) take result
     if cres.value is not None:
-        ret = cobj.grid_from_c(cres)
+        ret = g2core.grid_from_c(cres)
     elif cb._proceed:
         # if no result and no cancel -> there was an error
         raise Exception("Boundary grid builder error")
@@ -238,9 +232,9 @@ def boundary_layer_grid(opt, cb):
         ret = None
 
     # 5) free data
-    lib_fa.grid_free(cres)
+    libhmcport.grid_free(cres)
     for c in COptStruct.usedconts.values():
-        lib_fa.free_ecollection_container(c)
+        libhmcport.free_ecollection_container(c)
     COptStruct.usedconts = {}
 
     return ret
@@ -252,8 +246,8 @@ def map_grid(grid, cont, gpoints, cpoints, snap, bt):
        bt = "from_grid", "from_contour"
     """
     # build c grid, contour
-    cgrid = cobj.grid_to_c(grid)
-    ccont = cobj.cont2_to_c(cont)
+    cgrid = g2core.grid_to_c(grid)
+    ccont = c2core.cont2_to_c(cont)
 
     # build points array
     n = ct.c_int(min(len(gpoints), len(cpoints)))
@@ -276,14 +270,14 @@ def map_grid(grid, cont, gpoints, cpoints, snap, bt):
         raise ValueError("Unknown snap = " + str(snap))
 
     # call c function
-    cret = cobj.cport_lib().build_grid_mapping(cgrid, ccont, n, p1, p2, s)
+    cret = libhmcport.build_grid_mapping(cgrid, ccont, n, p1, p2, s)
     if cret == 0:
-        cobj.free_c_grid(cgrid)
-        cobj.free_cont2(ccont)
+        g2core.free_c_grid(cgrid)
+        c2core.free_cont2(ccont)
         raise Exception("Failed to map a grid")
 
     # copy to hm grid
-    ret = cobj.grid_from_c(cret)
+    ret = g2core.grid_from_c(cret)
     ret.build_contour()
 
     # treat boundaries
@@ -356,9 +350,9 @@ def map_grid(grid, cont, gpoints, cpoints, snap, bt):
         raise ValueError("Unknown btypes = " + str(bt))
 
     # free c memory
-    cobj.free_c_grid(cgrid)
-    cobj.free_cont2(ccont)
-    cobj.free_c_grid(cret)
+    g2core.free_c_grid(cgrid)
+    c2core.free_cont2(ccont)
+    g2core.free_c_grid(cret)
 
     # return
     return ret

@@ -12,6 +12,8 @@ class Framework(object):
         self.grids2 = bp.NamedList()
         #user contours list
         self.contours2 = bp.NamedList()
+        #grids3d list
+        self.grids3 = bp.NamedList()
         #boundary types
         self.boundary_types = btypes.BndTypesList()
 
@@ -32,6 +34,24 @@ class Framework(object):
     def get_grid_names(self):
         '-> [list of grid names]'
         return self.grids2.keys()
+
+    #grids3d manager
+    def add_grid3(self, name, grid):
+        "-> (index, name, grid). add a grid to a grid list"
+        self.grids3[name] = grid
+        return self.grids3.get(val=grid)
+
+    def remove_grid3(self, name):
+        'removes a grid with the certain name from a grid list'
+        self.grids3.pop(name)
+
+    def get_grid3(self, ind=None, name=None, grid=None):
+        "-> (index, name, grid). Get a grid by name or reference"
+        return self.grids3.get(ind, name, grid)
+
+    def get_grid3_names(self):
+        '-> [list of grid names]'
+        return self.grids3.keys()
 
     #boundary types manager
     def get_bnd_types(self):

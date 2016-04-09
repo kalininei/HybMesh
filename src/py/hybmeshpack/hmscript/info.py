@@ -1,5 +1,8 @@
 from hybmeshpack.hmscript import data
-from hybmeshpack.com import cobj
+from hybmeshpack import hmcore as hmcore
+from hybmeshpack.hmcore import libhmcport
+from hybmeshpack.hmcore import c2 as c2core
+from hybmeshpack.hmcore import g2 as g2core
 from hybmeshpack import progdata
 
 
@@ -99,13 +102,12 @@ def domain_area(c):
         cont = data.get_grid(name=c)[2].cont
 
     # get c object
-    ccont = cobj.cont2_to_c(cont)
+    ccont = c2core.cont2_to_c(cont)
     # calculate area
-    lib_fa = cobj.cport_lib()
-    lib_fa.ecollection_area.restype = ct.c_double
-    ret = float(lib_fa.ecollection_area(ccont))
+    hmcore.libhmcport.ecollection_area.restype = ct.c_double
+    ret = float(libhmcport.ecollection_area(ccont))
     # free c object
-    lib_fa.free_ecollection_container(ccont)
+    libhmcport.free_ecollection_container(ccont)
 
     return ret
 
@@ -171,7 +173,7 @@ def skewness(g, threshold=0.7):
 
     """
     grid = data.get_grid(name=g)[2]
-    skew = cobj.get_skewness(grid, threshold)
+    skew = g2core.get_skewness(grid, threshold)
     if (len(skew) == 0):
         raise Exception("Can not calculate skewness")
     skew['ok'] = (len(skew['bad_cells']) == 0)

@@ -3,13 +3,42 @@
 #include "hmblay.hpp"
 #include "procgrid.h"
 #include "hmmapping.hpp"
+#include "hmtesting.hpp"
+#include "hmcallback.hpp"
+namespace{
+int silent2_function(const char*, const char*, double, double){
+	return HMCallback::OK;
+}
+}
+
+
+size_t get_ascii_file_hash(const char* fn){
+	return HMTesting::calculate_file_hash(fn);
+}
+
+BoundaryNamesStruct* set_boundary_names(int n, const char** nm, int* vals){
+	BoundaryNamesStruct* ret = new BoundaryNamesStruct();
+	ret->n = n;
+	ret->values = new int[n];
+	ret->names = new const char*[n];
+	for (int i=0; i<n; ++i){
+		ret->values[i] = vals[i];
+		ret->names[i] = nm[i];
+	}
+	return ret;
+}
+void free_boundary_names(BoundaryNamesStruct* s){
+	delete[] s->values;
+	delete[] s->names;
+	delete s;
+}
 
 Grid* grid_construct(int Npts, int Ncells, double* pts, int* cells){
 	try{
 		return new GridGeom(Npts, Ncells, pts, cells);
 	} catch (const std::exception &e){
 		std::cout<<"crossgrid error: "<<e.what()<<std::endl;
-		return 0;
+		return NULL;
 	}
 }
 
@@ -155,11 +184,11 @@ void grid_free(Grid* g){
 }
 
 Grid* cross_grids(Grid* gbase, Grid* gsecondary, double buffer_size, int preserve_bp, int eh, double angle0){
-	return cross_grids_wcb(gbase, gsecondary, buffer_size, preserve_bp, eh, angle0, HMCallback::silent2);
+	return cross_grids_wcb(gbase, gsecondary, buffer_size, preserve_bp, eh, angle0, silent2_function);
 }
 
 Grid* cross_grids_wcb(Grid* gbase, Grid* gsecondary, double buffer_size,
-		int preserve_bp, int empty_holes, double angle0, HMCallback::Fun2 cb_fun){
+		int preserve_bp, int empty_holes, double angle0, hmcport_callback cb_fun){
 	try{
 		if (gbase == NULL || gsecondary == NULL)
 			throw std::runtime_error("nullptr grid data");
@@ -194,11 +223,11 @@ void cont_free(Cont* c){
 }
 
 Grid* grid_exclude_cont(Grid* grd, Cont* cont, int is_inner){
-	return grid_exclude_cont_wcb(grd, cont, is_inner, HMCallback::silent2);
+	return grid_exclude_cont_wcb(grd, cont, is_inner, silent2_function);
 }
 
 Grid* grid_exclude_cont_wcb(Grid* grd, Cont* cont, int is_inner,
-		HMCallback::Fun2 cb_fun){
+		hmcport_callback cb_fun){
 	try{
 		auto ret = GridGeom::grid_minus_cont(
 				static_cast<GridGeom*>(grd),
@@ -548,7 +577,7 @@ C string_option(std::string opt,
 }
 
 Grid* boundary_layer_grid_wcb(int N, BoundaryLayerGridOption* popt, 
-		HMCallback::Fun2 cb_fun){
+		hmcport_callback cb_fun){
 	try{
 		vector<HMBlay::Input> vinp(N);
 		for (int i=0; i<N; ++i){

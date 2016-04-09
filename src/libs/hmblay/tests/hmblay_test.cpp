@@ -1,23 +1,9 @@
 #include "hmblay.hpp"
 #include "procgrid.h"
 #include "hmconformal.hpp"
+#include "hmtesting.hpp"
 
-int FAILED_CHECKS = 0;
-
-void add_check(bool ex, std::string info){
-	if (info.size()==0){
-		std::cout<<"\tunknown check: ";
-	} else{
-		std::cout<<"\t"<<info;
-	}
-	if (ex){
-		std::cout<<": True"<<std::endl;
-	} else {
-		++FAILED_CHECKS;
-		std::cout<<": False <<<<<<<<<<<<<<<<<<<"<<std::endl;
-	}
-};
-
+using HMTesting::add_check;
 
 void test01(){
 	std::cout<<"01. Boundary Layers grid from circle"<<std::endl;
@@ -760,12 +746,6 @@ int main(){
 	//UNDONE:
 	//test15();
 	
-	if (FAILED_CHECKS ==1){
-		std::cout<<FAILED_CHECKS<<" test failed <<<<<<<<<<<<<<<<<<<"<<std::endl;
-	} else if (FAILED_CHECKS > 1) {
-		std::cout<<FAILED_CHECKS<<" tests failed <<<<<<<<<<<<<<<<<<<"<<std::endl;
-	} else {
-		std::cout<<"All tests passed"<<std::endl;
-	}
+	HMTesting::check_final_report();
 	std::cout<<"DONE"<<std::endl;
 }
