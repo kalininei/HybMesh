@@ -1,6 +1,7 @@
 from hybmeshpack import com
 from hybmeshpack.basic.geom import Point2
 from hybmeshpack.hmscript import flow, data
+from hybmeshpack.hmscript import ExecError
 
 
 def grid_bnd_to_contour(g1, simplify=True):
@@ -194,3 +195,71 @@ def clip_domain(dom1, dom2, operation, simplify=True):
         return c._get_added_names()[1][0]
     else:
         return None
+
+
+def partition_contour(cont, algo, step, angle0=30, keep_bnd=False):
+    """ Makes singly connected contour partition
+
+    :param cont: Contour or grid identifier
+
+    :param algo: Partition algorithm:
+       *``'const'``
+       *``'ref_points'``
+
+    :param step: For ``algo="const"`` a float number defining
+       partition step;
+
+       For ``algo='ref_points'`` - list of step value and point coordinates:
+       ``[ step_0, [x_0, y_0], step_1, [x_1, y_1], ....]``
+
+    :param zero_angle_approx: existing contour vertices which provide
+       turns in ``[180 - angle0, 180 + angle0]`` degrees range are considered
+       insignificant and will not be preserved
+
+    :param keep_bnd: if that is True than vertices which have different
+       boundary features on their right and left sides will be preserved
+
+    :returns: new contour identifier
+
+    :raises: hmscript.ExecError, ValueError
+    """
+    import numbers
+    # checks
+    if algo == "const":
+        if not isinstance(step, numbers.Real):
+            raise ValueError("invalid step for const contour partition")
+    elif algo == "ref_points":
+        errs = "invalid step for ref_points partition"
+        if not isinstance(step, list) or len(step) % 2 != 0:
+            raise ValueError(errs)
+        for i in range(len(step) / 2):
+            if not isinstance(step[2 * i], numbers.Real):
+                raise ValueError(errs)
+            if not isinstance(step[2 * i + 1], list) or\
+                    len(step[2 * i + 1]) != 2 or\
+                    not isinstance(step[2 * i + 1][0], numbers.Real) or\
+                    not isinstance(step[2 * i + 1][1], numbers.Real):
+                raise ValueError(errs)
+    else:
+        raise ValueError("unknown partition angorithm")
+    # prepare arguments for command
+    if algo == "const":
+        plain_step = [step]
+    elif algo == "ref_points":
+        plain_step = []
+        for i in range(len(step) / 2):
+            plain_step.append(step[2 * i])
+            plain_step.extend(step[2 * i + 1])
+
+    args = {"algo": algo,
+            "step": plain_step,
+            "angle0": angle0,
+            "keepbnd": keep_bnd,
+            "base": cont}
+    # call
+    c = com.contcom.PartitionContour(args)
+    try:
+        flow.exec_command(c)
+        return c._get_added_names()[1][0]
+    except Exception:
+        raise ExecError('partition contour')

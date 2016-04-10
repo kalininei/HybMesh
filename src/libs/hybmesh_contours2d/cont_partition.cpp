@@ -470,4 +470,3 @@ Contour cns::WeightedPartition(const std::map<double, double>& basis,
 		const std::vector<Point*>& keepit){
 	return partition_with_keepit(basis, contour, pstore, keepit);
 }
-

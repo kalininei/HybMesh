@@ -122,4 +122,38 @@ c1 = hm.create_contour([[0, 0], [1, 0], [2, 1]])
 c2 = hm.add_rect_contour([1, 1], [3, 2])
 g3 = hm.add_unf_ring_grid([1, 0], 1, 3, 16, 3)
 hm.reflect_geom([c1, c2, g3], [0, 0], [1, 1])
-hm.remove_all_but([c1])
+hm.remove_all()
+
+print "contour partition"
+i1 = hm.create_contour([[0, 0], [1, 0], [2, 1]])
+i2 = hm.add_rect_contour([0, 0], [1, 1], [0, 1, 0, 0])
+i3 = hm.add_circ_contour([0, 0], 1, 200)
+i4 = hm.create_contour([[0, 0], [0.5, 0], [1, 0], [1, 1]])
+
+c1 = hm.partition_contour(i1, "const", 0.18)
+c2 = hm.partition_contour(i1, "const", 0.18, 180)
+check(hm.info_contour(c1)['Nedges'] == 14)
+check(hm.info_contour(c2)['Nedges'] == 13)
+
+c1 = hm.partition_contour(i2, "const", 0.18, 100)
+c2 = hm.partition_contour(i2, "const", 0.18, 100, True)
+check(hm.info_contour(c1)['Nedges'] == 22)
+check(hm.info_contour(c2)['Nedges'] == 23)
+
+c1 = hm.partition_contour(i1, "ref_points", [0.18, [0, 0]])
+c2 = hm.partition_contour(i1, "ref_points", [0.01, [0, 0], 0.3, [1, 0]])
+c3 = hm.partition_contour(i3, "ref_points", [0.01, [-1, -1],
+                                             0.3, [0, 1]])
+check(hm.info_contour(c1)['Nedges'] == 14)
+check(hm.info_contour(c2)['Nedges'] == 17)
+check(hm.info_contour(c3)['Nedges'] == 74)
+
+c1 = hm.partition_contour(i4, "ref_points", [1.0, [0, 0],
+                                             1.0, [1, 0],
+                                             0.01, [1, 1]])
+c2 = hm.partition_contour(i4, "ref_points", [1.0, [0, 0],
+                                             1.0, [1, 0],
+                                             0.01, [1, 1]], angle0=-1)
+check(hm.info_contour(c1)['Nedges'] == 5)
+check(hm.info_contour(c2)['Nedges'] == 6)
+hm.remove_all()

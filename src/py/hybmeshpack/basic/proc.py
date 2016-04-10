@@ -247,42 +247,6 @@ class NamedList(OrderedDict):
             OrderedDict.__setitem__(self, k, v)
 
 
-# def compress_int_list(a):
-#     """ ([i0, i1, i2, ....] -> "i0-i5 i6 i7-i8"
-
-#         Converts integer array into string with
-#         eliminated values which go in a row.
-#         The procedure provides no internal sorting.
-#     """
-#     res = []
-#     i, n = 0, len(a)
-#     while i < n:
-#         istart = i
-#         while i < n - 1 and a[i + 1] - a[i] == 1:
-#             i += 1
-#         res.append([a[istart], a[i]])
-#         i += 1
-#     res2 = []
-#     for r in res:
-#         if r[0] == r[1]:
-#             res2.append(str(r[0]))
-#         else:
-#             res2.append("%i-%i" % (r[0], r[1]))
-#     return " ".join(res2)
-
-
-# def int_list_from_compress(s):
-#     'reciprocal to compress_int_list'
-#     st = s.split()
-#     ret = []
-#     for v in st:
-#         v = v.split('-', 2)
-#         if len(v) == 1:
-#             ret.append(int(v[0]))
-#         else:
-#             ist, ien = int(v[0]), int(v[1])
-#             ret.extend(range(ist, ien + 1))
-#     return ret
 def _compress_core(lst, cmpfun, outfun):
     # finds increasing values
     ret = []

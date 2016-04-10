@@ -3,12 +3,14 @@ set (HEADERS
 	hmcport.h
 	cport_grid2d.h
 	cport_grid3d.h
+	cport_cont2d.h
 )
 
 set (SOURCES
 	hmcport.cpp
 	cport_grid2d.cpp
 	cport_grid3d.cpp
+	cport_cont2d.cpp
 )
 
 source_group ("Header Files" FILES ${HEADERS} ${HEADERS})

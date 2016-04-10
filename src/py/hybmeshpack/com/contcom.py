@@ -5,6 +5,7 @@ import hybmeshpack.basic.proc as bp
 from hybmeshpack.basic.geom import Point2
 import hybmeshpack.gdata.contour2 as contour2
 from hybmeshpack.hmcore import c2 as c2core
+from hybmeshpack import hmcore
 import command
 import objcom
 
@@ -508,3 +509,51 @@ class ClipDomain(objcom.AbstractAddRemove):
             return [], [], [(self.options["name"], res)], []
         else:
             return [], [], [], []
+
+
+class PartitionContour(objcom.AbstractAddRemove):
+    'Partition contour operation'
+
+    def __init__(self, argsdict):
+        if "name" not in argsdict:
+            argsdict["name"] = "Contour1"
+        super(PartitionContour, self).__init__(argsdict)
+
+    def doc(self):
+        return "Contour partition"
+
+    @classmethod
+    def _arguments_types(cls):
+        return {'name': command.BasicOption(str),
+                'algo': command.BasicOption(str),  # 'const'/'ref_points'
+                'step': command.ListOfOptions(command.BasicOption(float)),
+                'angle0': command.BasicOption(float),
+                'base': command.BasicOption(str),
+                'keepbnd': command.BoolOption()
+                }
+
+    def _addrem_objects(self):
+        so = self.options
+        # 1. find contour
+        cont = self.any_cont_by_name(so['base'])
+        # 2. get boundary types array
+        bt = []
+        for i in range(cont.n_edges()):
+            bt.append(cont.edge_bnd(i))
+        # 3. copy to c
+        c_cont = c2core.cont2_to_c(cont)
+        c_bt = hmcore.list_to_c(bt, int)
+        c_step = hmcore.list_to_c(so['step'], float)
+        # 4. call c procedure
+        try:
+            c_ret, c_bnd = c2core.contour_partition(c_cont, c_bt, c_step,
+                                                    so['algo'],
+                                                    so['angle0'],
+                                                    so['keepbnd'])
+            ret = c2core.cont2_from_c(c_ret, c_bnd)
+            c2core.free_cont2(c_ret)
+            return [], [], [(so["name"], ret)], []
+        except Exception as e:
+            raise command.ExecutionError("Contour partition error", self, e)
+        finally:
+            c2core.free_cont2(c_cont)

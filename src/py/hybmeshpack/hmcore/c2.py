@@ -46,7 +46,7 @@ def cont2_to_c(cont):
                                                    c_nedges, c_edges)
 
 
-def cont2_from_c(c_cont):
+def cont2_from_c(c_cont, c_bnd=None):
     """ returns contours2.Contour2 from c pointer to ecollection """
     if c_cont == 0:
         return None
@@ -64,6 +64,12 @@ def cont2_from_c(c_cont):
         edcon.append([c_eds[i], c_eds[i + 1]])
     libhmcport.free_ecollection_edges_info(c_pts, c_eds)
     ret = Contour2.create_from_point_set(pts, edcon)
+    if c_bnd is not None:
+        bmap = {}
+        for i, b in enumerate(c_bnd):
+            if b != 0:
+                bmap[i] = b
+        ret.set_edge_bnd(bmap)
     return ret
 
 
@@ -85,3 +91,39 @@ def clip_domain(cc1, cc2, op, simplify):
         return None
     else:
         return res
+
+
+def contour_partition(c_cont, c_bt, c_step, algo, a0, keepbnd):
+    """ c_step - ct.c_double() * n, where n dependes on algo:
+    algo = "const" => n = 1,
+    algo = "ref_points" => n = 3*k
+    """
+    # algo treatment
+    if algo == "const":
+        c_algo = ct.c_int(0)
+        c_n = ct.c_int(0)
+    elif algo == "ref_points":
+        c_algo = ct.c_int(1)
+        c_n = ct.c_int(len(c_step) / 3)
+    else:
+        raise ValueError("invalid partition algo")
+
+    # prepare arrays for boundary output
+    c_bnd = ct.POINTER(ct.c_int)()
+    n_bnd = ct.c_int(0)
+
+    ret = libhmcport.contour_partition(c_cont, c_bt, c_algo,
+                                       c_n, c_step,
+                                       ct.c_double(a0),
+                                       ct.c_int(1 if keepbnd else 0),
+                                       ct.byref(n_bnd), ct.byref(c_bnd))
+    # copy c-side allocated bnd array to python side allocated
+    c_bndret = (ct.c_int * (n_bnd.value))()
+    for i in range(len(c_bndret)):
+        c_bndret[i] = c_bnd[i]
+    # clear c-side allocated array
+    libhmcport.free_int_array(c_bnd)
+
+    if ret == 0:
+        raise Exception("contour partition failed")
+    return ret, c_bndret

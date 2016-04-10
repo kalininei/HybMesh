@@ -54,6 +54,8 @@ then
 	$HMCOM fromdoc/intro_hcyl.py
 	echo "--- intro_shark"
 	$HMCOM fromdoc/intro_shark.py
+	echo "--- intro_naca4415"
+	$HMCOM fromdoc/intro_naca4415.py
 else
 	echo "============ ignoring doc tests"
 fi

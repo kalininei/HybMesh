@@ -9,10 +9,13 @@ extern "C"{
 typedef int (*hmcport_callback)(const char*, const char*, double, double);
 
 //calculates ascii file hash
-//all floating points in file will be rounded before calculating hash
-//so file with content "0.700000001 23.00000001" would have same hash as "0.7 23"
+//all floating points in file will be rounded to 0.00 before calculating hash
+//so file with content "0.711 23.00000001" would have same hash as "0.71 23"
 size_t get_ascii_file_hash(const char* fn);
 
+//frees array allocated on c-side
+void free_int_array(int* a);
+void free_double_array(double* a);
 
 struct BoundaryNamesStruct{
 	int n;
