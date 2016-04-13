@@ -30,3 +30,5 @@ from gproc import *  # NOQA
 from cproc import *  # NOQA
 from oper import *  # NOQA
 from info import *  # NOQA
+
+import _dbg  # NOQA

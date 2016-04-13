@@ -6,6 +6,7 @@ import hybmeshpack.basic.geom as bgeom
 from unite_grids import (unite_grids, grid_excl_cont, setbc_from_conts,
                          boundary_layer_grid, map_grid)
 from hybmeshpack.hmcore import g2 as g2core
+from hybmeshpack.hmcore import c2 as c2core
 from hybmeshpack.hmcore import libhmcport
 
 
@@ -49,6 +50,75 @@ class AddUnfRectGrid(NewGridCommand):
         so = self.options
         return gdata.grid2.UnfRectGrid(so['p0'], so['p1'],
                                        so['nx'], so['ny'])
+
+
+class AddCustomRectGrid(NewGridCommand):
+    "Add custom rectangular grid "
+    def __init__(self, argsdict):
+        super(AddCustomRectGrid, self).__init__(argsdict)
+
+    @classmethod
+    def _arguments_types(cls):
+        return {'name': command.BasicOption(str),
+                'algo': command.BasicOption(str),
+                'left': command.BasicOption(str),
+                'bot': command.BasicOption(str),
+                'right': command.NoneOr(command.BasicOption(str)),
+                'top': command.NoneOr(command.BasicOption(str)),
+                }
+
+    def _build_grid(self):
+        from unite_grids import add_bc_from_cont
+        so = self.options
+        # declare all c variables as 0 to invoke memory free at exit
+        c_left, c_bot, c_right, c_top, c_ret, c_retcont =\
+            0, 0, 0, 0, 0, 0
+        try:
+            # get contours
+            left = self.any_cont_by_name(so['left'])
+            bot = self.any_cont_by_name(so['bot'])
+            # If no right/top use copy of left/bottom.
+            # In custom_rectangular_grid procedure their points coordinates
+            # will be properly changed at c-side.
+            right = left if so['right'] is None\
+                else self.any_cont_by_name(so['right'])
+            top = bot if so['top'] is None\
+                else self.any_cont_by_name(so['top'])
+            # copy'em to c side
+            c_left = c2core.cont2_to_c(left)
+            c_bot = c2core.cont2_to_c(bot)
+            c_right = c2core.cont2_to_c(right)
+            c_top = c2core.cont2_to_c(top)
+
+            # call c procedure
+            c_ret = g2core.custom_rectangular_grid(
+                so['algo'], c_left, c_bot, c_right, c_top)
+
+            # build grid
+            ret = g2core.grid_from_c(c_ret)
+            ret.build_contour()
+            retcont = ret.cont
+            c_retcont = c2core.cont2_to_c(retcont)
+
+            # boundary types
+            # use c_* contours as sources sinces they were changed
+            # in custom_rectangular_grid procedure to fit resulting grid
+            # boundary
+            add_bc_from_cont(retcont, left, c_retcont, c_left, force=2)
+            add_bc_from_cont(retcont, bot, c_retcont, c_bot, force=2)
+            add_bc_from_cont(retcont, right, c_retcont, c_right, force=2)
+            add_bc_from_cont(retcont, top, c_retcont, c_top, force=2)
+
+            # return
+            return ret
+        except Exception as e:
+            raise command.ExecutionError(str(e), self, e)
+        finally:
+            for c in [c_left, c_bot, c_right, c_top, c_retcont]:
+                if c != 0:
+                    c2core.free_cont2(c)
+            if c_ret != 0:
+                g2core.free_c_grid(c_ret)
 
 
 class AddUnfCircGrid(NewGridCommand):
@@ -237,7 +307,6 @@ class UniteGrids(objcom.AbstractAddRemove):
                 name=command.BasicOption(str),
                 buf=command.BasicOption(float),
                 den=command.BasicOption(int),
-                angle0=command.BasicOption(float)
             )
 
     @classmethod
@@ -255,6 +324,7 @@ class UniteGrids(objcom.AbstractAddRemove):
                 'keep_src': command.BoolOption(),
                 'base': command.BasicOption(str),
                 'plus': command.ListOfOptions(UniteGrids.Option()),
+                'angle0': command.BasicOption(float)
                 }
 
     def _get_grid(self, ind):

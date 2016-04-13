@@ -96,6 +96,8 @@ instead of contour identifier should be used.
 
 .. autofunction:: clip_domain
 
+.. autofunction:: partition_contour
+
 Grid Procedures
 ---------------
 
@@ -108,6 +110,7 @@ Building uniform grids in a primitive areas.
 .. autofunction:: add_unf_circ_grid
 .. autofunction:: add_unf_ring_grid
 .. autofunction:: add_triangle_grid
+.. autofunction:: add_custom_rect_grid
 
 Transformations
 +++++++++++++++
@@ -160,6 +163,8 @@ can be opened in a gui application.
 .. autofunction:: export_grid_gmsh
 .. autofunction:: export_contour_vtk
 .. autofunction:: export_contour_hmc
+.. autofunction:: export3d_grid_vtk
+.. autofunction:: export3d_grid_msh
 .. autofunction:: save_project
 
 Imports
@@ -177,3 +182,9 @@ Introductory Examples
   intro_example2
   intro_example3
   intro_example4
+  intro_example5
+
+.. toctree::
+  :hidden:
+
+  examples_include_files

@@ -21,5 +21,14 @@ int export_msh_grid(const Grid* grid, const char* fname,
 		int n_periodic,
 		int* data_periodic);
 
+//builds rectangular grid on basis of four open HMCont2D::Contour objects
+//algo is:
+//  0) linear connection
+//  1) laplas connection
+//  2) conformal connection
+//if input are not positioned correctly their vertices coordinates will be changed
+//returns pointer to GridGeom or NULL if failed
+void* custom_rectangular_grid(int algo, void* left, void* bot, void* right, void* top);
+
 }
 #endif

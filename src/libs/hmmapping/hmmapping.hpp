@@ -3,6 +3,8 @@
 
 #include "grid.h"
 #include "hybmesh_contours2d.hpp"
+#include "rectangle_grid_builder.hpp"
+
 namespace HMGMap{
 
 class MapException: public std::runtime_error{

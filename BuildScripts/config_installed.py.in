@@ -3,12 +3,13 @@ import os.path
 import os
 
 exepath = os.path.abspath(sys.executable)
-if sys.platform.startswith('win') and os.path.split(exepath)[1] == 'hybmesh.exe':
-	# if that is windows *.exe program
-	libdir = os.path.join(os.path.dirname(exepath), '../lib')
+if sys.platform.startswith('win') and\
+        os.path.split(exepath)[1] == 'hybmesh.exe':
+    # if that is windows *.exe program
+    libdir = os.path.join(os.path.dirname(exepath), '../lib')
 else:
-	# linux or python windows version
-	libdir = '@LIB_INSTALL_DIR@'
+    # linux or python windows version
+    libdir = '@LIB_INSTALL_DIR@'
 homedir = os.path.expanduser('@HYBMESH_HOMEDIR@')
 version = '@APPVERSION@'
 last_ver_url = 'https://api.github.com/repos/kalininei/HybMesh/releases/latest'
@@ -17,33 +18,40 @@ proj_url = 'https://api.github.com/repos/kalininei/HybMesh/'
 # preload all libraries in certain order for windows runs
 # this is needed to avoid errors due to implicit library loads
 if sys.platform.startswith('win'):
+    _liblist = [
+        'libgpc.dll',
+        'libwinpthread-1.dll',
+        'libgcc_s_seh-1.dll',
+        'libquadmath-0.dll',
+        'libgfortran-3.dll',
+        'libgomp-1.dll',
+        'libstdc++-6.dll',
+        'libblas.dll',
+        'liblapack.dll',
+        'libmetis.dll',
+        'libsuitesparseconfig.4.5.1.dll',
+        'libcamd.2.4.4.dll',
+        'libccolamd.2.9.4.dll',
+        'libcolamd.2.9.4.dll',
+        'libamd.2.4.4.dll',
+        'libcholmod.3.0.9.dll',
+        'libspqr.2.0.5.dll',
+        'libGmshLocal.dll',
+        'libhmproject.dll',
+        'libbgeom2d.dll',
+        'libpolyclipping.dll',
+        'libhybmesh_contours2d.dll',
+        'libcrossgrid.dll',
+        'libhmmath.dll',
+        'libhmblay.dll',
+        'libhmmapping.dll',
+        'libhmgrid3d.dll',
+        'libhmcport.dll',
+    ]
     import ctypes as ct
-    try:
-        ct.cdll.LoadLibrary(os.path.join(libdir, 'libgpc.dll'))
-        ct.cdll.LoadLibrary(os.path.join(libdir, 'libwinpthread-1.dll'))
-        ct.cdll.LoadLibrary(os.path.join(libdir, 'libgcc_s_seh-1.dll'))
-        ct.cdll.LoadLibrary(os.path.join(libdir, 'libquadmath-0.dll'))
-        ct.cdll.LoadLibrary(os.path.join(libdir, 'libgfortran-3.dll'))
-        ct.cdll.LoadLibrary(os.path.join(libdir, 'libgomp-1.dll'))
-        ct.cdll.LoadLibrary(os.path.join(libdir, 'libstdc++-6.dll'))
-        ct.cdll.LoadLibrary(os.path.join(libdir, 'libblas.dll'))
-        ct.cdll.LoadLibrary(os.path.join(libdir, 'liblapack.dll'))
-        ct.cdll.LoadLibrary(os.path.join(libdir, 'libmetis.dll'))
-        ct.cdll.LoadLibrary(os.path.join(libdir, 'libsuitesparseconfig.4.5.1.dll'))
-        ct.cdll.LoadLibrary(os.path.join(libdir, 'libcamd.2.4.4.dll'))
-        ct.cdll.LoadLibrary(os.path.join(libdir, 'libccolamd.2.9.4.dll'))
-        ct.cdll.LoadLibrary(os.path.join(libdir, 'libcolamd.2.9.4.dll'))
-        ct.cdll.LoadLibrary(os.path.join(libdir, 'libamd.2.4.4.dll'))
-        ct.cdll.LoadLibrary(os.path.join(libdir, 'libcholmod.3.0.9.dll'))
-        ct.cdll.LoadLibrary(os.path.join(libdir, 'libspqr.2.0.5.dll'))
-        ct.cdll.LoadLibrary(os.path.join(libdir, 'libGmshLocal.dll'))
-        ct.cdll.LoadLibrary(os.path.join(libdir, 'libbgeom2d.dll'))
-        ct.cdll.LoadLibrary(os.path.join(libdir, 'libpolyclipping.dll'))
-        ct.cdll.LoadLibrary(os.path.join(libdir, 'libhybmesh_contours2d.dll'))
-        ct.cdll.LoadLibrary(os.path.join(libdir, 'libcrossgrid.dll'))
-        ct.cdll.LoadLibrary(os.path.join(libdir, 'libhmmath.dll'))
-        ct.cdll.LoadLibrary(os.path.join(libdir, 'libhmblay.dll'))
-        ct.cdll.LoadLibrary(os.path.join(libdir, 'libhmmapping.dll'))
-        ct.cdll.LoadLibrary(os.path.join(libdir, 'libhmcport.dll'))
-    except:
-        sys.exit("error in library linking")
+    for name in _liblist:
+        try:
+            ct.cdll.LoadLibrary(os.path.join(libdir, name))
+        except Exception as e:
+            sys.exit("error in library linking: %s, with message %s" %
+                     (name, str(e)))

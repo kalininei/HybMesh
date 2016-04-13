@@ -1,7 +1,10 @@
 #include "hmproject.h"
 #include "cport_grid2d.h"
 #include "grid.h"
+#include "hybmesh_contours2d.hpp"
 #include "fluent_export_grid2d.hpp"
+#include "procgrid.h"
+#include "hmmapping.hpp"
 
 
 namespace{
@@ -79,4 +82,38 @@ int export_msh_grid(const Grid* grid, const char* fname,
 		std::cout<<e.what()<<std::endl;
 		return 1;
 	}
+}
+
+void* custom_rectangular_grid(int algo, void* left, void* bot, void* right, void* top){
+	//gather data
+	HMCont2D::Contour* left1 = static_cast<HMCont2D::Contour*>(left);
+	HMCont2D::Contour* bot1 = static_cast<HMCont2D::Contour*>(bot);
+	HMCont2D::Contour* right1 = static_cast<HMCont2D::Contour*>(right);
+	HMCont2D::Contour* top1 = static_cast<HMCont2D::Contour*>(top);
+	GridGeom* ret = 0;
+	//scale
+	ScaleBase sc = HMCont2D::ECollection::Scale01(*left1);
+	HMCont2D::ECollection::Scale(*bot1, sc);
+	HMCont2D::ECollection::Scale(*right1, sc);
+	HMCont2D::ECollection::Scale(*top1, sc);
+	try{
+		//assemble grid
+		if (algo == 0){
+			ret = new GridGeom(HMGMap::LinearRectGrid(*left1, *bot1, *right1, *top1));
+		} else if (algo == 1){
+			ret = new GridGeom(HMGMap::LaplasRectGrid(*left1, *bot1, *right1, *top1));
+		} else if (algo == 2){
+			ret = new GridGeom(HMGMap::ConformalRectGrid(*left1, *bot1, *right1, *top1));
+		} else throw std::runtime_error("unknown algorithm");
+		ret->undo_scale(sc);
+	} catch (std::runtime_error &e){
+		std::cout<<e.what()<<std::endl;
+		ret = 0;
+	}
+	//unscale
+	HMCont2D::ECollection::Unscale(*left1, sc);
+	HMCont2D::ECollection::Unscale(*bot1, sc);
+	HMCont2D::ECollection::Unscale(*right1, sc);
+	HMCont2D::ECollection::Unscale(*top1, sc);
+	return ret;
 }

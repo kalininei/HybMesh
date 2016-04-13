@@ -133,6 +133,33 @@ def free_boundary_types(bt):
     libhmcport.free_grid2_boundary_types(bt)
 
 
+def custom_rectangular_grid(algo, c_left, c_bot, c_right, c_top):
+    """ algo: one of ['linear', 'conformal', 'laplas']
+        c_*: c allocated contours.
+        returns c allocated 2d grid or raises
+        if contours are not properly connected they will be moved in order:
+            1) put c_left
+            2) move c_bot to bottom left point
+            3) move c_top to top left point
+            4) move c_right to bottom right point
+            5) stretch c_right to fit top right point
+        so after procedure points coordinates of c_* data may be changed
+    """
+    if algo == 'linear':
+        c_algo = ct.c_int(0)
+    elif algo == 'laplas':
+        c_algo = ct.c_int(1)
+    elif algo == 'conformal':
+        c_algo = ct.c_int(2)
+    else:
+        raise ValueError("Invalid custom rectangular grid algo")
+    res = libhmcport.custom_rectangular_grid(
+        c_algo, c_left, c_bot, c_right, c_top)
+    if res == 0:
+        raise Exception('Custom rectangular grid builder failed')
+    return res
+
+
 def to_msh(c_g, fname, c_btypes, c_bnames, c_periodic):
     c_fname = fname.encode('utf-8')
     if c_periodic is not None:

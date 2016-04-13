@@ -3,12 +3,14 @@ set (HEADERS
 	hmmapping.hpp
 	gridmap.hpp
 	mapped_contour.hpp
+	rectangle_grid_builder.hpp
 )
 
 set (SOURCES
 	hmmapping.cpp
 	gridmap.cpp
 	mapped_contour.cpp
+	rectangle_grid_builder.cpp
 )
 
 source_group ("Header Files" FILES ${HEADERS} ${HEADERS})

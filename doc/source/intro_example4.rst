@@ -8,7 +8,7 @@ Using mappings for grid construction
 .. figure:: picintro7.png
    :width: 700 px
 
-
+----------------------
 
 .. figure:: picintro8.png
    :width: 700 px

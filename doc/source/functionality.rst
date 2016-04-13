@@ -43,6 +43,9 @@ segments) and unique boundary name.
 Grid exporting procedures try to use boundary names and indices
 if export format supports it.
 
+3D grid is defined by arbitrary collection of faces.
+By now it is not operable object. It is only can be constructed,
+exported and deleted.
 
 .. _gridimp:
 

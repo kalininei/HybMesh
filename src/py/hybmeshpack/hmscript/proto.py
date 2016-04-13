@@ -1,6 +1,7 @@
 from hybmeshpack import com
 from hybmeshpack.basic.geom import Point2, angle_3pnt
 from hybmeshpack.hmscript import flow
+from hybmeshpack.hmscript import ExecError
 import math
 
 
@@ -108,6 +109,50 @@ def add_triangle_grid(p0, p1, p2, nedge):
         "vertices": v, "nedge": nedge})
     flow.exec_command(c)
     return c._get_added_names()[0][0]
+
+
+def add_custom_rect_grid(algo, left, bottom, right=None, top=None):
+    """ Creates rectangular grid on the basis of four lines using
+    contour vertices for partitioning.
+
+    :param str algo: Algorithms of building:
+
+       * ``'linear'`` - connects respective points of opposite
+         contours by straight lines. If right/top contours are defined
+         they should have same number of vertices as left/bottom.
+
+    :param left:
+    :param bottom:
+    :param right:
+    :param top: identifiers of base line segments.
+       **right** and **top** could be ``None``. If so right and top
+       boundaries will be created by translation of **left** and **bottom**.
+
+    :return: new grid identifier
+    :raise: hmscript.ExecError, ValueError
+
+    If given contours are not properly connected then program will try
+    to connect it with priority order:
+
+    1) set left contour
+    2) add bottom contour to left contour bottom point
+    3) add top contour to left contour top point
+    4) add right contour to bottom contour right point
+    5) stretch right contour so its upper point fits top contour right point.
+
+    """
+    # call
+    args = {'algo': algo,
+            'left': left,
+            'right': right,
+            'bot': bottom,
+            'top': top}
+    c = com.gridcom.AddCustomRectGrid(args)
+    try:
+        flow.exec_command(c)
+        return c._get_added_names()[0][0]
+    except Exception:
+        raise ExecError('custom rectangular grid')
 
 
 # Contour prototypes

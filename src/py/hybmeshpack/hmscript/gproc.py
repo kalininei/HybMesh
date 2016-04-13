@@ -45,7 +45,7 @@ def move_geom(objs, dx, dy):
     """ Moves a list of objects
 
     Args:
-       objs: identifier or list of identifiers of moving objects
+       objs: identifier or list of identifiers of moving 2d objects
 
        dx, dy (float): shifts in x and y direction
 
@@ -59,7 +59,7 @@ def rotate_geom(objs, angle, pc=[0.0, 0.0]):
     """ Rotates group of objects
 
     Args:
-       objs: identifier or list of identifiers of rotating objects
+       objs: identifier or list of identifiers of rotating 2d objects
 
        angle (float): degree of rotation. Positive angle corresponds to
        counterclockwise rotation
@@ -77,7 +77,7 @@ def scale_geom(objs, xpc, ypc, refp=[0.0, 0.0]):
     """ Scales objects
 
     Args:
-       objs: identifier or list of identifiers of scaling objects
+       objs: identifier or list of identifiers of scaling 2d objects
 
        xpc, ypc (float): percentages of scaling in x and y directions
 
@@ -118,7 +118,7 @@ def reflect_geom(objs, pnt1, pnt2):
     over a  given line.
 
     Args:
-       objs: identifier or list of identifiers of objects to reflect
+       objs: identifier or list of identifiers of 2d objects to reflect
 
        pnt1, pnt2: points in [x, y] format which define a line to reflect over
 
@@ -145,29 +145,28 @@ def extrude_grid(obj, zcoords, bottombc=0, topbc=0, sidebc=None):
     :param topbc: values which define boundary features of
       3d grid at ``z=min(zcoords)`` and ``z=max(zcoords)``
       surfaces respectively.
-      Could be set either as a sinle boundary identifier for a whole
-      surface or as a function: ``(float x, float y, int cell_index)->bindex``
+      Could be either a single boundary identifier for a whole
+      surface or a function: ``(float x, float y, int cell_index)->bindex``
       which takes central cell point x, y
       coordinates and cell index as arguments and returns boundary type
       (see example below).
 
     :param sidebc: defines boundary features for side surfaces.
 
-      * If None than boundary types will be taken from corresponding
+      + If None than boundary types will be taken from corresponding
         edges of 2D grid
-      * If single boundary identifier then whole side surface will
+      + If single boundary identifier then whole side surface will
         have same boundary type
 
     :returns: 3D grid identifier
 
     :raises: ValueError, hmscript.ExecError
 
-    Boundary conditions for side sirfaces will be taken from input
-    2d grid contour or set as constant values.
-    Z-surfaces boundary types are defined by ``bottombc``,
-    ``topbc`` arguments.
-
     Example:
+
+      .. literalinclude:: ../../testing/py/fromdoc/ex_extrude.py
+          :start-after: vvvvvvvvvvvvvvvvvvvvvvvv
+          :end-before: ^^^^^^^^^^^^^^^^^^^^^^^^
     """
     # zcoords is strictly increasing vector
     if len(zcoords) < 2:

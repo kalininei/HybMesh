@@ -198,30 +198,49 @@ def clip_domain(dom1, dom2, operation, simplify=True):
 
 
 def partition_contour(cont, algo, step, angle0=30, keep_bnd=False):
-    """ Makes singly connected contour partition
+    """ Makes connected contour partition
 
     :param cont: Contour or grid identifier
 
-    :param algo: Partition algorithm:
-       *``'const'``
-       *``'ref_points'``
+    :param str algo: Partition algorithm:
 
-    :param step: For ``algo="const"`` a float number defining
+       * ``'const'``: partition with defined constant step
+       * ``'ref_points'``: partition with step function given by a
+         set of values refered to basic points
+
+    :param step: For ``algo='const'`` a float number defining
        partition step;
 
-       For ``algo='ref_points'`` - list of step value and point coordinates:
-       ``[ step_0, [x_0, y_0], step_1, [x_1, y_1], ....]``
+       For ``algo='ref_points'`` - list of step values and point coordinates
+       given as
+       ``[ step_0, [x_0, y_0], step_1, [x_1, y_1], ....]``.
 
-    :param zero_angle_approx: existing contour vertices which provide
-       turns in ``[180 - angle0, 180 + angle0]`` degrees range are considered
-       insignificant and will not be preserved
+    :param float angle0: existing contour vertices which provide
+       turns outside of ``[180 - angle0, 180 + angle0]`` degrees range
+       will be preserved regardless of other options
 
-    :param keep_bnd: if that is True than vertices which have different
+    :param bool keep_bnd: if that is True than vertices which have different
        boundary features on their right and left sides will be preserved
 
     :returns: new contour identifier
 
     :raises: hmscript.ExecError, ValueError
+
+    Points set defined by user for ``algo='ref_points'`` algorithm 
+    will not present in resulting contour. It just shows locations
+    where step size of given length should be applied. If any point
+    of this set is not located on the input contour then it will be
+    projected to it.
+
+    For constant stepping any contour including multiply connected ones
+    could be passed. For ``ref_points`` stepping only singly connected
+    contours (open or closed) are allowed.
+
+    Example:
+
+      .. literalinclude:: ../../testing/py/fromdoc/ex_partcontour.py
+          :start-after: vvvvvvvvvvvvvvvvvvvvvvvv
+          :end-before: ^^^^^^^^^^^^^^^^^^^^^^^^
     """
     import numbers
     # checks

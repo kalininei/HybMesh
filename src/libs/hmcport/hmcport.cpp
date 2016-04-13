@@ -5,6 +5,7 @@
 #include "hmmapping.hpp"
 #include "hmtesting.hpp"
 #include "hmcallback.hpp"
+#include "debug_grid2d.h"
 namespace{
 int silent2_function(const char*, const char*, double, double){
 	return HMCallback::OK;

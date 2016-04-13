@@ -360,6 +360,24 @@ class Grid2(bgeom.Point2SetStruct):
             if not eddir[i][0]:
                 self.cells[i].reverse()
 
+    def _hash(self):
+        # returns float number which is calculated by grid entry
+        ret = 0.0
+        # edges
+        for e in self.edges:
+            ret += math.sin(e[0] + 2)
+            ret += math.cos(e[1] + 1)
+        # cells
+        for c in self.cells:
+            ret += 14.3 * math.sin(len(c))
+            for e in c:
+                ret += math.cos(e + 3)
+        # points
+        for p in self.points:
+            ret += 2.0 * math.cos(p.x - 2) - 0.33 * math.sin(p.y + 1)
+
+        return ret
+
 
 # ============================= Rectanualar structured grids
 class TetragonGrid(Grid2):

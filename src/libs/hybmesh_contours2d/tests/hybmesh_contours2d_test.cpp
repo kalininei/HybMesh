@@ -1,25 +1,11 @@
 #include "c_hybmesh_contours2d.h"
 #include "hybmesh_contours2d.hpp"
 #include <type_traits>
+#include "hmtesting.hpp"
 
+using HMTesting::add_check;
 
 using namespace HMCont2D;
-
-int FAILED_CHECKS = 0;
-
-void add_check(bool ex, std::string info){
-	if (info.size()==0){
-		std::cout<<"\tunknown check: ";
-	} else{
-		std::cout<<"\t"<<info;
-	}
-	if (ex){
-		std::cout<<": True"<<std::endl;
-	} else {
-		++FAILED_CHECKS;
-		std::cout<<": False <<<<<<<<<<<<<<<<<<<"<<std::endl;
-	}
-};
 
 void test1(){
 	std::cout<<"Offset closed polygon"<<std::endl;
@@ -614,12 +600,6 @@ int main(){
 	test14();
 
 
-	if (FAILED_CHECKS == 1){
-		std::cout<<FAILED_CHECKS<<" test failed <<<<<<<<<<<<<<<<<<<"<<std::endl;
-	} else if (FAILED_CHECKS > 1) {
-		std::cout<<FAILED_CHECKS<<" tests failed <<<<<<<<<<<<<<<<<<<"<<std::endl;
-	} else {
-		std::cout<<"All tests passed"<<std::endl;
-	}
+	HMTesting::check_final_report();
 	std::cout<<"DONE"<<std::endl;
 }

@@ -27,21 +27,34 @@ def export_grid_hmg(g1, fname):
     imex.export_grid("hmg", fname, g1, flow=flow)
 
 
-def export_grid_msh(g1, fname, periodic_data=None):
+def export_grid_msh(g1, fname, periodic_pairs=None):
     """Exports grid to fluent msh format
 
-    :params g1: 3d grid file identifier
+    :param g1: 3d grid file identifier
 
-    :params str fname: output filename
+    :param str fname: output filename
 
-    :params periodic_pairs: TODO
+    :param list periodic_pairs:
+      ``[b-periodic0, b-shadow0, is_reversed0, b-periodic1,
+      b-shadow1, is_reversed1, ...]`` list defining periodic boundaries.
+
+      Each periodic condition is defined by three values:
+
+      * ``b-periodic`` - boundary identifier for periodic countour segment
+      * ``b-shadow`` - boundary identifier for shadow contour segment
+      * ``is_reversed`` - boolean which defines whether shadow contour segment
+        should be reversed so that first point of periodic segment be
+        equivalent to last point of shadow segment
+
+      Periodic and shadow boundary segments should be singly connected and
+      topologically equalvalent.
 
     :raises: hmscript.ExportError
 
     Only grids with triangle/rectangle cells could be exported
     """
     try:
-        imex.export_grid("msh", fname, g1, flow=flow, adata=periodic_data)
+        imex.export_grid("msh", fname, g1, flow=flow, adata=periodic_pairs)
     except Exception as e:
         raise ExportError(str(e))
 
@@ -64,15 +77,23 @@ def export_grid_gmsh(g1, fname):
 
 # 3d exports
 def export3d_grid_vtk(g1, fname_grid=None, fname_surface=None):
-    """Exports 3d grid to vtk ascii format.
+    """Exports 3D grid and its surface to vtk ascii format.
 
-    :params g1: 3d grid file identifier
+    :param g1: 3D grid file identifier
 
-    :params str-or-None fname_grid: filename for grid output
+    :param str-or-None fname_grid: filename for grid output
 
-    :params str-or-None fname_surface: filename for surface output
+    :param str-or-None fname_surface: filename for surface output
 
-    If a filename is *None* then respective export will be omitted
+    :raises: hmscript.ExportError
+
+    Only quadrilateral, wedge and tetrahedron cells could be exported
+    as grid. Surface export takes arbitrary grid.
+
+    If a filename is *None* then respective export will be omitted.
+
+    Boundary types are exported as a field called ``boundary_types`` to
+    surface output file.
     """
     try:
         if fname_grid is not None:
@@ -84,13 +105,30 @@ def export3d_grid_vtk(g1, fname_grid=None, fname_surface=None):
 
 
 def export3d_grid_msh(g1, fname, periodic_pairs=None):
-    """Exports 3d grid to fluent msh ascii format.
+    """Exports 3D grid to fluent msh ascii format.
 
-    :params g1: 3d grid file identifier
+    :param g1: 3D grid file identifier
 
-    :params str grid: filename for output
+    :param str grid: filename for output
 
-    :params periodic_pairs: TODO
+    :param list periodic_pairs:
+       ``[periodic-0, shadow-0, periodic-point-0, shadow-point-0,
+       periodic-1, shadow-1, periodic-point-1, ...]``
+
+       Each periodic pair is defined by four values:
+
+       * ``periodic`` - boundary identifier for periodic surface
+       * ``shadow`` - boundary identifier for shadow surface
+       * ``periodic-point`` - point in [x, y, z] format on periodic contour
+       * ``shadow-point`` - point in [x, y, z] format on shadow contour
+
+       Given points will be projected to closest vertex on the boundaries
+       of respective subsurfaces.
+
+       Periodic and shadow subsurfaces should be singly connected and
+       topologically equivalent with respect to given points.
+       For surface 2D topology definition periodic/shadow surfaces are taken
+       with outside/inside normals respectively.
 
     :raises: hmscript.ExportError
 

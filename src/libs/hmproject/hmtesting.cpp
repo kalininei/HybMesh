@@ -20,6 +20,15 @@ std::vector<std::string> split(const std::string& s, const std::string& delim){
 	return ret;
 }
 
+std::string remove_all_chars(const std::string& s, char c){
+	std::vector<std::string> s2 = split(s, std::string(1, c));
+	std::string ret;
+	for (auto& s: s2){
+		ret += s;
+	}
+	return ret;
+}
+
 std::string read_file_to_string(std::string fn){
 	std::ifstream t(fn);
 	std::stringstream buffer;
@@ -106,6 +115,7 @@ void HMTesting::add_check(bool ex, std::string info){
 size_t HMTesting::calculate_file_hash(std::string fn){
 	auto str = read_file_to_string(fn);
 	str = convert_floats(str, 2);
+	str = remove_all_chars(str, '\r');
 	return std::hash<std::string>()(str);
 }
 

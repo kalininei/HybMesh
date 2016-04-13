@@ -7,7 +7,7 @@
 using namespace GGeom;
 
 double Debug::hash(const GridGeom& grid){
-	double sum;
+	double sum=0;
 	for (int i=0; i<grid.n_cells(); ++i){
 		auto c = grid.get_cell(i);
 		for (int j=0; j<c->dim(); ++j){

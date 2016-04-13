@@ -34,6 +34,8 @@ def add_bc_from_cont(tar_cont, src_cont, c_tar=None, c_src=None, force=1):
     c_tar_bnd = (ct.c_int * tar_cont.n_edges())()  # output
     for i in range(src_cont.n_edges()):
         c_src_bnd[i] = src_cont.edge_bnd(i)
+    for i in range(tar_cont.n_edges()):
+        c_tar_bnd[i] = tar_cont.edge_bnd(i)
 
     #call libhmcport function
     if force == 1:

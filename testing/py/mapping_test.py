@@ -1,36 +1,8 @@
 from hybmeshpack import hmscript as hm
+from hybmeshpack.hmscript._dbg import check, check_ascii_file
 import math
 global hm, check
-hm.check_compatibility("0.3.0")
-
-
-def check(cond):
-    import traceback
-    if not cond:
-        print "TEST FAILED <<<<<<<<<<<<<<<<<<<<<<<"
-        traceback.print_stack()
-
-
-def check_cont(cont, nn, ne, scont, btypes):
-    info = hm.info_contour(cont)
-    check(info['Nnodes'] == nn)
-    check(info['Nedges'] == ne)
-    check(cmp(sorted(info['subcont']), sorted(scont)) == 0)
-    for k in btypes.keys():
-        check(info['btypes'][k] == btypes[k])
-
-
-def check_grid(grid, nn, ne, nc, ct):
-    info = hm.info_grid(grid)
-    check(info['Nnodes'] == nn)
-    check(info['Nedges'] == ne)
-    check(info['Ncells'] == nc)
-    for k in ct.keys():
-        check(info['cell_types'][k] == ct[k])
-
-
-def check_zero(a):
-    check(abs(a) < 1e-8)
+hm.check_compatibility("0.4.0")
 
 
 g1 = hm.add_unf_rect_grid([0, 0], [5, 1], 10, 10)
@@ -113,3 +85,71 @@ check(hm.info_grid(a6) ==
       {'cell_types': {4: 100}, 'Nnodes': 121, 'Nedges': 220, 'Ncells': 100})
 check(hm.info_contour(a6) ==
       {'btypes': {1: 40}, 'Nnodes': 40, 'subcont': [40], 'Nedges': 40})
+
+print "rectangle grid from 2 straight contours: linear algo"
+left_line = hm.create_contour([[0, 0], [0, 1]], 1)
+bottom_line = hm.create_contour([[0, 0], [2, 0]], 2)
+
+left_line_part = hm.partition_contour(left_line, "const", 0.2)
+bottom_line_part = hm.partition_contour(
+    bottom_line, "ref_points",
+    [0.2, [0, 0], 0.01, [1, 0], 0.08, [2, 0]])
+g1 = hm.add_custom_rect_grid("linear", left_line_part, bottom_line_part)
+check(hm.info_contour(g1)['btypes'] == {1: 10, 2: 90})
+
+print "rectangle grid from 4 straight contours: linear algo"
+[top_line_part] = hm.copy_geom(bottom_line_part)
+hm.move_geom(top_line_part, 0, 1.0)
+hm.set_boundary_type(top_line_part, 3)
+right_line = hm.create_contour([[2, 0], [2, 1]], 4)
+right_line_part = hm.partition_contour(right_line, "ref_points",
+                                       [0.1, [2, 0], 0.3, [2, 1]])
+g1 = hm.add_custom_rect_grid(
+    "linear",
+    left_line_part, bottom_line_part,
+    right_line_part, top_line_part)
+check(hm.info_contour(g1)['btypes'] == {1: 5, 2: 45, 3: 45, 4: 5})
+
+print "linear with disconnected right side"
+pts = []
+for i in range(100):
+    x = 2 + 0.05 * math.sin(4.0 * math.pi * i / 99)
+    y = -0.02 + float(i) / 90.0
+    pts.append([x, y])
+right_line2 = hm.create_contour(pts, 7)
+right_line_part2 = hm.partition_contour(right_line2, "const", 0.25)
+g1 = hm.add_custom_rect_grid(
+    "linear",
+    left_line_part, bottom_line_part,
+    right_line_part2, top_line_part)
+hm.export_grid_vtk(g1, "g1.vtk")
+check_ascii_file(17821553111849423570, "g1.vtk")
+check(hm.info_contour(g1)['btypes'] == {1: 5, 2: 45, 3: 45, 7: 5})
+
+print "laplas rectangular grid with linear input"
+g1 = hm.add_custom_rect_grid(
+    "laplas",
+    left_line_part, bottom_line_part,
+    right_line_part, top_line_part)
+check(hm.info_contour(g1)['btypes'] == {1: 5, 2: 45, 3: 45, 4: 5})
+
+# print "laplas with sined upper"
+# pts = []
+# for i in range(100):
+#     x = 2 * float(i) / 99
+#     y = 1 + 0.1 * math.sin(8.0 * math.pi * i / 99) - 0.1 * x
+#     pts.append([x, y])
+# top_line2 = hm.create_contour(pts, 8)
+# top_line_part2 = hm.partition_contour(
+#     top_line2, "ref_points",
+#     [0.005, [0, 1], 0.23, [2, 1]]
+# )
+# left_line_part = hm.partition_contour(left_line, "const", 0.05)
+# g1 = hm.add_custom_rect_grid(
+#     "laplas",
+#     left_line_part, bottom_line_part,
+#     None, top_line_part2)
+
+
+# hm.export_grid_vtk(g1, "g1.vtk")
+# hm.export_contour_vtk(g1, "c1.vtk")

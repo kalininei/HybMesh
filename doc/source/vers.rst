@@ -33,3 +33,23 @@ Versions History
 
    * *zero_angle_approx* for :func:`unite_grids`
    * *project_to* for :class:`BoundaryGridOptions`
+* **0.4.0**:
+   New algorithms:
+
+   * extrude 2D grid in z direction
+   * 3D grid export to vtk and fluent msh formats
+   * partition contour with constant and reference point defined step
+   * fluent export with given periodic conditions
+   * build rectangular grid on the basis of two or four open contours
+
+   New python interface function:
+
+   * :func:`extrude_grid`
+   * :func:`partition_contour` 
+   * :func:`export3d_grid_vtk`
+   * :func:`export3d_grid_msh`
+   * :func:`add_custom_rect_grid`
+
+   Python interface functions with new options:
+
+   * *periodic_pairs* for :func:`export_grid_msh`
