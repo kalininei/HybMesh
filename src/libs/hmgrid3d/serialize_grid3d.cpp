@@ -58,7 +58,7 @@ auto SimpleSerialize::ConvertExe::_run(const Grid& g, Grid::Talldata& _alldata)-
 
 	callback.silent_step_after(10, "Serialize edges", 1);
 	ret.edges.reserve(2*ret.n_edges);
-	auto v_indexer = aa::shp_container_indexer(pvert);
+	auto v_indexer = aa::ptr_container_indexer(pvert);
 	callback.subprocess_step_after(0.5);
 	v_indexer.convert();
 	callback.subprocess_step_after(0.1);
@@ -74,7 +74,7 @@ auto SimpleSerialize::ConvertExe::_run(const Grid& g, Grid::Talldata& _alldata)-
 	int szc = pcells.size();
 	for (auto& c: pcells) szc += c->n_faces();
 	ret.cells.reserve(szc);
-	auto f_indexer = aa::shp_container_indexer(pfaces);
+	auto f_indexer = aa::ptr_container_indexer(pfaces);
 	callback.subprocess_step_after(0.5);
 	f_indexer.convert();
 	callback.subprocess_step_after(0.1);
@@ -92,8 +92,8 @@ auto SimpleSerialize::ConvertExe::_run(const Grid& g, Grid::Talldata& _alldata)-
 	int szf = pfaces.size()*3;
 	for (auto& f: pfaces) szf+=f->n_edges();
 	ret.faces.reserve(szf);
-	auto e_indexer = aa::shp_container_indexer(pedges);
-	auto c_indexer = aa::shp_container_indexer(pcells);
+	auto e_indexer = aa::ptr_container_indexer(pedges);
+	auto c_indexer = aa::ptr_container_indexer(pcells);
 	callback.subprocess_step_after(0.25);
 	e_indexer.convert();
 	callback.subprocess_step_after(0.25);
@@ -164,5 +164,36 @@ auto ExtendedSimpleSerialize::ConvertExe::_run(const Grid& g)->TRet1{
 	}
 	ret.iface.push_back(k);
 
+	return ret;
+}
+
+vector<int> ExtendedSimpleSerialize::face_assembler(int nface) const{
+	vector<int> ret;
+	int kf = iface[nface];
+	int lenf = faces[kf];
+	ret.reserve(lenf);
+
+	//first vertex
+	int e1 = faces[kf+1], e2 = faces[kf+2];
+	int p1 = edges[2*e1], p2 = edges[2*e1+1];
+	int p3 = edges[2*e2], p4 = edges[2*e2+1];
+	if (p1 == p3 || p1 == p4) std::swap(p1, p2);
+	ret.push_back(p1); ret.push_back(p2);
+	//other vertices
+	for (int k=1; k<lenf-1; ++k){
+		e1 = faces[kf + k];
+		e2 = faces[kf + 1 + k];
+		int p1 = edges[2*e1], p2 = edges[2*e1+1];
+		int p3 = edges[2*e2], p4 = edges[2*e2+1];
+		ret.push_back( (p3 == ret.back()) ? p4 : p3 );
+	}
+	return ret;
+}
+
+vector<vector<int>> ExtendedSimpleSerialize::face_assembler() const{
+	vector<vector<int>> ret; ret.reserve(n_faces);
+	for (int iface=0; iface<n_faces; ++iface){
+		ret.push_back(face_assembler(iface));
+	}
 	return ret;
 }

@@ -75,3 +75,34 @@ hmdbg.check_ascii_file(9399670080016809242, "g1.msh")
 print "export 3d to fluent with periodic condition"
 hm.export3d_grid_msh(g4, "g1.msh", [botbnd, topbnd, [0, 0, 0.0], [0, 0, 0.7]])
 hmdbg.check_ascii_file(668388756210580593, "g1.msh")
+hm.remove_all()
+
+print "export contour to tecplot"
+hm.add_boundary_type(1, "bbot")
+hm.add_boundary_type(7, "bright")
+c1 = hm.add_rect_contour([0, 0], [1, 1], [1, 0, 3, 7])
+hm.export_contour_tecplot(c1, "c1.dat")
+hmdbg.check_ascii_file(10478281133073733973, "c1.dat")
+
+print "export 2d grid to tecplot"
+g1 = hm.add_unf_circ_grid([1, 2], 10, 20, 8, 0.5, False)
+g2 = hm.add_unf_ring_grid([-8, -7], 2, 5, 10, 3, 1.3)
+hm.set_boundary_type(g1, 2)
+hm.set_boundary_type(g2, 3)
+g3 = hm.unite_grids(g1, [(g2, 0.5)], True, zero_angle_approx=180)
+hm.export_contour_tecplot(g3, "c1.dat")
+hmdbg.check_ascii_file(13195362596084466346, "c1.dat")
+hm.export_grid_tecplot(g3, "c1.dat")
+hmdbg.check_ascii_file(7412218476507145895, "c1.dat")
+
+print "export 3d grid to tecplot"
+g4 = hm.extrude_grid(g3, [0, 1, 2, 3, 5, 8, 9], 0, 10)
+hm.export3d_grid_tecplot(g4, "c1.dat")
+hmdbg.check_ascii_file(10268904173790170899, "c1.dat")
+
+g1 = hm.add_unf_rect_grid([0, 0], [10, 10], 10, 10)
+c1 = hm.create_contour([[-2, 4], [8, -2], [4, 12], [-2, 4]])
+g1 = hm.exclude_contours(g1, c1, "inner")
+g2 = hm.extrude_grid(g1, [0, 0.2, 0.5, 0.9, 1.0], 1, 2, 3)
+hm.export3d_grid_tecplot(g2, "c1.dat")
+hmdbg.check_ascii_file(17906699057342067656, "c1.dat")

@@ -4,28 +4,6 @@ from hybmeshpack.basic.geom import Point2
 from hybmeshpack.gdata.contour2 import Contour2
 
 
-def cont_to_c(c):
-    """ return c pointer to a contours2.Contour2 object
-        works for contours of crossgrid library.
-        Will be removed
-    """
-    #fill points
-    c_pnt = (ct.c_double * (2 * c.n_points()))()
-    for i, p in enumerate(c.points):
-        c_pnt[2 * i] = p.x
-        c_pnt[2 * i + 1] = p.y
-    #fill edges
-    edg = c.edges_points()
-    c_edg = (ct.c_int * (2 * c.n_edges()))()
-    for i, ce in enumerate(edg):
-        c_edg[2 * i] = ce[0]
-        c_edg[2 * i + 1] = ce[1]
-
-    return libhmcport.contour_construct(
-        ct.c_int(c.n_points()),
-        ct.c_int(c.n_edges()), c_pnt, c_edg)
-
-
 def cont2_to_c(cont):
     """ return c pointer to a contours2.AbstractContour2 objects
     """

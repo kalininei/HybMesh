@@ -1,8 +1,9 @@
 #ifndef VTK_EXPORT_GRID_3D_HPP
 #define VTK_EXPORT_GRID_3D_HPP
 
-#include "hmgrid3d.hpp"
+#include "hmproject.h"
 #include "hmcallback.hpp"
+#include "primitives_grid3d.hpp"
 #include "serialize_grid3d.hpp"
 
 namespace HMGrid3D{namespace Export{

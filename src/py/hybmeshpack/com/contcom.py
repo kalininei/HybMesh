@@ -305,19 +305,25 @@ class EditBoundaryType(command.Command):
         return "Edit boundary type"
 
     def _exec(self):
-        ri, i, n, c = [self.options[x] for x in ['remindex', 'index', 'name',
-                                                 'color']]
-        #1 remove
-        if ri is not None:
-            self._backup1 = copy.deepcopy(
-                self.receiver.boundary_types.get(index=ri))
-            self.receiver.boundary_types.rem_bnd(ri)
-        #2 set
-        if i is not None:
-            self._backup2 = copy.deepcopy(
-                self.receiver.boundary_types.get(index=i))
-            self.receiver.boundary_types.set_bnd(i, n, c)
-        return True
+        try:
+            ri, i, n, c = [self.options[x] for x in ['remindex', 'index',
+                                                     'name', 'color']]
+            #1 remove
+            if ri is not None:
+                self._backup1 = copy.deepcopy(
+                    self.receiver.boundary_types.get(index=ri))
+                self.receiver.boundary_types.rem_bnd(ri)
+            #2 set
+            if i is not None:
+                try:
+                    self._backup2 = copy.deepcopy(
+                        self.receiver.boundary_types.get(index=i))
+                except KeyError:
+                    self._backup2 = None
+                self.receiver.boundary_types.set_bnd(i, n, c)
+            return True
+        except Exception as e:
+            raise command.ExecutionError(str(e), self, e)
 
     def _clear(self):
         self._backup1 = None

@@ -3,7 +3,7 @@ import command
 import objcom
 from hybmeshpack import gdata, basic
 import hybmeshpack.basic.geom as bgeom
-from unite_grids import (unite_grids, grid_excl_cont, setbc_from_conts,
+from unite_grids import (setbc_from_conts, add_bc_from_cont,
                          boundary_layer_grid, map_grid)
 from hybmeshpack.hmcore import g2 as g2core
 from hybmeshpack.hmcore import c2 as c2core
@@ -259,18 +259,47 @@ class ExcludeContours(objcom.AbstractAddRemove):
 
     #overriden from NewGridCommand keeping self.remove_com
     def __build_grid(self):
-        try:
-            _, _, base = self.receiver.get_grid(name=self.options['grid_name'])
-        except:
-            raise command.ObjectNotFound(self.options['grid_name'])
-        for c in self.options['cont_names']:
-            c = self.receiver.get_any_contour(c)
-            #ask parent_flow for callback
+        base = self.grid_by_name(self.options['grid_name'])
+        for cname in self.options['cont_names']:
             cb = self.ask_for_callback(basic.interf.Callback.CB_CANCEL2)
-            #invoke exclusion
-            base = grid_excl_cont(base, c, self.options['is_inner'], cb)
-            if base is None:
-                return None
+            cont = self.any_cont_by_name(cname)
+            c_cont, c_grid, c_res = 0, 0, 0
+            try:
+                # copy to c-side
+                c_grid = g2core.grid_to_c(base)
+                c_cont = c2core.cont2_to_c(cont)
+
+                # exclude
+                c_res = g2core.grid_excl_cont(c_grid, c_cont,
+                                              self.options['is_inner'], cb)
+
+                # copy to py-side
+                res = g2core.grid_from_c(c_res)
+                res.build_contour()
+
+                # boundary types
+                bs = cont.bnd_types().union(base.cont.bnd_types())
+                bs = bs.difference(set([0]))
+                if len(bs) > 0:
+                    res_cont = c2core.cont2_to_c(res.cont)
+                    #1. from source grid
+                    add_bc_from_cont(res.cont, base.cont, c_tar=res_cont)
+                    #2. from contour
+                    add_bc_from_cont(res.cont, cont, c_tar=res_cont,
+                                     c_src=c_cont)
+                    #3. free contour memory
+                    c2core.free_cont2(res_cont)
+
+                # assign to base
+                base = res
+            except Exception as e:
+                raise command.ExecutionError('Contour exclusion error: %s' %
+                                             str(e), self, e)
+            finally:
+                c2core.free_cont2(c_cont) if c_cont != 0 else None
+                g2core.free_c_grid(c_grid) if c_grid != 0 else None
+                g2core.free_c_grid(c_res) if c_res != 0 else None
+
         return base
 
     def _addrem_objects(self):
@@ -351,16 +380,25 @@ class UniteGrids(objcom.AbstractAddRemove):
         #unification
         for i in range(len(opt['plus'])):
             g, b, _ = self._get_grid(i + 1)
+            #ask parent_flow for callback
+            cb = self.ask_for_callback(basic.interf.Callback.CB_CANCEL2)
+            c_g1, c_g2, c_ret = 0, 0, 0
             try:
-                #ask parent_flow for callback
-                cb = self.ask_for_callback(basic.interf.Callback.CB_CANCEL2)
+                # copy grids on c-side
+                c_g1 = g2core.grid_to_c(ret)
+                c_g2 = g2core.grid_to_c(g)
                 #execute
-                ret = unite_grids(
-                    ret, g, b, opt['fix_bnd'], opt['empty_holes'],
+                c_ret = g2core.unite_grids(
+                    c_g1, c_g2, b, opt['fix_bnd'], opt['empty_holes'],
                     opt['angle0'], cb)
+                ret = g2core.grid_from_c(c_ret)
             except Exception as e:
                 raise command.ExecutionError('Unition Error: %s' % str(e),
                                              self, e)
+            finally:
+                g2core.free_c_grid(c_g1) if c_g1 != 0 else None
+                g2core.free_c_grid(c_g2) if c_g2 != 0 else None
+                g2core.free_c_grid(c_ret) if c_ret != 0 else None
             if (ret is None):
                 return [], [], [], []
 

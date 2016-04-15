@@ -5,7 +5,6 @@
 #include "debug_grid2d.h"
 #include "hmtesting.hpp"
 #include "hmtimer.hpp"
-#include "serialize_grid3d.hpp"
 using namespace HMTesting;
 
 void test01(){
@@ -159,17 +158,35 @@ void test04(){
 		pd.add_condition(1, 2, HMGrid3D::Vertex(0, 0, 3), HMGrid3D::Vertex(0, 0, 4), true);
 		pd.add_condition(3, 4, HMGrid3D::Vertex(0, 0, 3), HMGrid3D::Vertex(10, 0, 3), true);
 		HMGrid3D::Export::GridMSH.Silent(g3d, "g2.msh", pd);
-		add_file_check(6712434711251990504, "g2.msh", "multiple periodic");
+		add_file_check(6712434711251990504U, "g2.msh", "multiple periodic");
 
 		delete g2d;
 	}
 };
 
+void test05(){
+	std::cout<<"5. Tecplot export"<<std::endl;
+	{
+		auto g2d = GGeom::Constructor::RectGrid01(1, 1);
+		auto g3d = HMGrid3D::Constructor::SweepGrid2D(g2d, {0.0, 0.5});
+		HMGrid3D::Export::GridTecplot.Silent(g3d, "g1.dat");
+		add_file_check(1996510299573747148U, "g1.dat", "single cell grid");
+	}
+	{
+		auto g2d = GGeom::Constructor::Circle(Point(0, 0), 10, 30, 10, false);
+		auto g3d = HMGrid3D::Constructor::SweepGrid2D(g2d, {1.0, 1.2, 1.4, 1.6, 1.7, 1.8, 1.9, 2.0});
+		HMGrid3D::Export::GridTecplot.Silent(g3d, "g1.dat");
+		add_file_check(15174883252499084243U, "g1.dat", "polyhedral grid");
+		HMGrid3D::Export::BoundaryTecplot.Silent(g3d, "g1.dat");
+		add_file_check(4351852141727252628U, "g1.dat", "polyhedral boundary");
+	}
+}
 int main(){
 	test01();
 	test02();
 	test03();
 	test04();
+	test05();
 	
 	check_final_report();
 	std::cout<<"DONE"<<std::endl;

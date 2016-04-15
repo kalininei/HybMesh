@@ -11,6 +11,7 @@ set (HEADERS
 	debug_grid2d.h
 	vtk_export_grid2d.hpp
 	fluent_export_grid2d.hpp
+	tecplot_export_grid2d.hpp
 )
 
 set (SOURCES
@@ -25,6 +26,7 @@ set (SOURCES
 	debug_grid2d.cpp
 	vtk_export_grid2d.cpp
 	fluent_export_grid2d.cpp
+	tecplot_export_grid2d.cpp
 )
 
 source_group ("Header Files" FILES ${HEADERS} ${HEADERS})

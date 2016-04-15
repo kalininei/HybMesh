@@ -115,17 +115,21 @@ class BndTypesList(object):
             for v in self._data:
                 if v.name == name:
                     return v
+            else:
+                raise KeyError('Unknown boundary name')
         if index is not None:
             for v in self._data:
                 if v.index == index:
                     return v
+            else:
+                raise KeyError('Unknown boundary name')
         if orderindex is not None:
             return self._data[orderindex]
 
         if len(self._data) > 0:
             return self._data[0]
         else:
-            #this could be emitted in transitional programm states
+            #this could be emitted in transitional program states
             #normally it couldn't
             return BndType(0, "None", (0, 0, 0))
 

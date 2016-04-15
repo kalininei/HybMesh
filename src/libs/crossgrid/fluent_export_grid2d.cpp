@@ -86,7 +86,7 @@ struct FaceData{
 				fdcur->zone_type = 3;
 			}
 			fdcur->zone_index = (++ret.rbegin())->zone_index + 1;
-			while(bndindex[icur] == fdcur->boundary_index && icur<edges.size() ) ++icur;
+			while(icur<edges.size() && bndindex[icur] == fdcur->boundary_index) ++icur;
 			fdcur->iend = icur;
 			fdcur->n = fdcur->iend - fdcur->istart;
 		}

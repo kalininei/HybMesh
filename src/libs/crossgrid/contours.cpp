@@ -467,6 +467,25 @@ PointsContoursCollection::PointsContoursCollection(const vector<Point>& pts, con
 	build(pts, eds);
 }
 
+PointsContoursCollection::PointsContoursCollection(const HMCont2D::ECollection& col){
+	//points
+	vector<Point*> ap = col.all_points();
+	vector<Point> p; p.reserve(ap.size());
+	for (auto x: ap) p.push_back(*x);
+	//edges
+	vector<int> eds; eds.reserve(ap.size() * 2);
+	auto _indexer = aa::ptr_container_indexer(ap);
+	_indexer.convert();
+	for (auto e: col.data){
+		Point* p1 = e->pstart;
+		Point* p2 = e->pend;
+		eds.push_back(_indexer.index(p1));
+		eds.push_back(_indexer.index(p2));
+	}
+	_indexer.restore();
+	build(p, eds);
+}
+
 void PointsContoursCollection::build(const vector<Point>& pts, const vector<int>& eds){
 	for (auto p: pts) aa::add_shared(pdata, p);
 	//filling edges

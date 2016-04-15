@@ -3,6 +3,7 @@
 #include "crossgrid.h"
 #include "bgeom2d.h"
 #include <list>
+#include "hybmesh_contours2d.hpp"
 
 //Contour basic class
 class PContour{
@@ -100,7 +101,7 @@ public:
 //Builds a contour tree.
 //Automatically reverses contours in the way
 //that all first level contours be inner
-struct ContoursCollection: public Cont{
+struct ContoursCollection{
 	ContoursCollection(){};
 	explicit ContoursCollection(const vector<PContour>& cnts);
 	virtual void add_contour(const PContour& cnt);
@@ -213,6 +214,7 @@ public:
 	PointsContoursCollection(const vector<double>& pts, const vector<int>& eds);
 	PointsContoursCollection(const vector<Point>& pts, const vector<int>& eds);
 	PointsContoursCollection(const ContoursCollection& col);
+	PointsContoursCollection(const HMCont2D::ECollection& col);
 
 	int n_edges() const { return edges.size();}
 	int n_total_points() const { return pdata.size(); }

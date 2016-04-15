@@ -94,7 +94,7 @@ def unite_grids(base_grid, over_grids, empty_holes=False, fix_bnd=False,
 
     See also:
        :ref:`gridimp`
-       
+
     """
     args = {"base": base_grid, "empty_holes": empty_holes,
             "angle0": zero_angle_approx,

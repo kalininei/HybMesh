@@ -3,6 +3,8 @@
 #include "grid.h"
 #include "hmgrid3d.hpp"
 #include "vtk_export_grid3d.hpp"
+#include "tecplot_export_grid3d.hpp"
+
 namespace{
 HMGrid3D::Grid& hmgrid(CPortGrid3D* g){
 	return *static_cast<HMGrid3D::Grid*>(g->grid);
@@ -127,19 +129,37 @@ int export_surface_vtk_grid3(const CPortGrid3D* grid, const char* fname, hmcport
 
 }
 
+namespace{
+
+HMGrid3D::Export::BFun construct_bnames(const BoundaryNamesStruct* bnames){
+	std::map<int, std::string> bnames_map;
+	if (bnames != NULL) for (int i=0; i<bnames->n; ++i){
+		bnames_map[bnames->values[i]] = std::string(bnames->names[i]);
+	}
+	auto fnames = [bnames_map](int i)->std::string{
+			auto fnd = bnames_map.find(i);
+			if (fnd == bnames_map.end()) return "boundary" + std::to_string(i);
+			else return fnd->second;
+		};
+	return fnames;
+}
+
+};
+
 int export_msh_grid3(const CPortGrid3D* grid, const char* fname, const BoundaryNamesStruct* bnames,
 		int n_periodic, double* data_periodic, hmcport_callback f2){
 	try{
 		// name function
-		std::map<int, std::string> bnames_map;
-		if (bnames != NULL) for (int i=0; i<bnames->n; ++i){
-			bnames_map[bnames->values[i]] = std::string(bnames->names[i]);
-		}
-		auto nmfunc = [&bnames_map](int i)->std::string{
-			auto fnd = bnames_map.find(i);
-			if (fnd != bnames_map.end()) return fnd->second;
-			else return "boundary" + std::to_string(i);
-		};
+		//std::map<int, std::string> bnames_map;
+		//if (bnames != NULL) for (int i=0; i<bnames->n; ++i){
+		//        bnames_map[bnames->values[i]] = std::string(bnames->names[i]);
+		//}
+		//auto nmfunc = [&bnames_map](int i)->std::string{
+		//        auto fnd = bnames_map.find(i);
+		//        if (fnd != bnames_map.end()) return fnd->second;
+		//        else return "boundary" + std::to_string(i);
+		//};
+		auto nmfunc = construct_bnames(bnames);
 		// building periodic
 		HMGrid3D::Export::PeriodicData pd;
 		for (int i=0; i<n_periodic; ++i){
@@ -159,6 +179,18 @@ int export_msh_grid3(const CPortGrid3D* grid, const char* fname, const BoundaryN
 		} else {
 			HMGrid3D::Export::GridMSH.WithCallback(f2, hmgrid(grid), fname, nmfunc, pd);
 		}
+		return 0;
+	} catch (const std::runtime_error &e){
+		std::cout<<e.what()<<std::endl;
+		return 1;
+	}
+}
+
+int export_tecplot_grid3(const CPortGrid3D* grid, const char* fname, const BoundaryNamesStruct* bnames,
+		hmcport_callback f2){
+	try{
+		auto nmfunc = construct_bnames(bnames);
+		HMGrid3D::Export::GridTecplot.WithCallback(f2, hmgrid(grid), fname, nmfunc);
 		return 0;
 	} catch (const std::runtime_error &e){
 		std::cout<<e.what()<<std::endl;

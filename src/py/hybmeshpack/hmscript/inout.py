@@ -139,19 +139,55 @@ def export3d_grid_msh(g1, fname, periodic_pairs=None):
         raise ExportError(str(e))
 
 
+def export3d_grid_tecplot(g1, fname):
+    """Exports 3D grid to tecplot ascii format.
+
+    :param g1: 3D grid file identifier
+
+    :param str grid: filename for output
+
+    :raises: hmscript.ExportError
+
+    A grid zone and zones for each boundary surface (by boundary type)
+    will be created in output file.
+    """
+    try:
+        imex.export_grid("tecplot3d", fname, g1, flow=flow)
+    except Exception as e:
+        raise ExportError(str(e))
+
+
+def export_grid_tecplot(g1, fname):
+    """exports grid to tecplot ascii format
+
+    :param g1: grid identifier
+
+    :param fname: output filename
+
+    :raises: hmscript.ExportError
+    """
+    try:
+        imex.export_grid("tecplot", fname, g1, flow=flow)
+    except Exception as e:
+        raise ExportError(str(e))
+
+
 # Exporting contours
 def export_contour_vtk(c1, fname):
     """exports contour to vtk format
 
-    Args:
-       c1: contour identifier
+    :param c1: contour identifier
 
-       fname: output filename
+    :param fname: output filename
+
+    :raises: hmscript.ExportError
     """
-    imex.export_contour("vtk", fname, c1, flow=flow)
+    try:
+        imex.export_contour("vtk", fname, c1, flow=flow)
+    except Exception as e:
+        raise ExportError(str(e))
 
 
-# Exporting contours
 def export_contour_hmc(c1, fname):
     """exports contour to native format
 
@@ -161,6 +197,21 @@ def export_contour_hmc(c1, fname):
        fname: output filename
     """
     imex.export_contour("hmc", fname, c1, flow=flow)
+
+
+def export_contour_tecplot(c1, fname):
+    """exports contour to tecplot ascii format
+
+    :param c1: contour identifier
+
+    :param fname: output filename
+
+    :raises: hmscript.ExportError
+    """
+    try:
+        imex.export_contour("tecplot", fname, c1, flow=flow)
+    except Exception as e:
+        raise ExportError(str(e))
 
 
 # Importing grids

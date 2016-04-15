@@ -57,7 +57,7 @@ namespace{
 vector<vector<int>> face_edge_to_int(const Surface& s, const HMGrid3D::Edge* ed0, int& edcount, int& ied0){
 	vector<vector<int>> ret(s.n_faces());
 	auto edges = s.alledges();
-	auto _indexer = aa::shp_container_indexer(edges);
+	auto _indexer = aa::ptr_container_indexer(edges);
 	_indexer.convert();
 	int iface = 0;
 	for (auto f: s.allfaces()){
@@ -248,8 +248,8 @@ bool Surface::MatchTopology(const Surface& a, const Surface& b){
 	for (auto f: bf) face_vert2.push_back(f->sorted_vertices());
 
 	//compare face_vert1/2
-	auto _vert1 = aa::shp_container_indexer(av); _vert1.convert();
-	auto _vert2 = aa::shp_container_indexer(bv); _vert2.convert();
+	auto _vert1 = aa::ptr_container_indexer(av); _vert1.convert();
+	auto _vert2 = aa::ptr_container_indexer(bv); _vert2.convert();
 	for (int i=0; i<face_vert1.size(); ++i){
 		if (face_vert1[i].size() != face_vert2[i].size()) return false;
 		for (int j=0; j<face_vert1[i].size(); ++j){

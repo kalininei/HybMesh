@@ -34,6 +34,10 @@ HMCont2D::Container<Contour> CutContour(const HMCont2D::Contour& cont,
 HMCont2D::Container<Contour> CutContourByWeight(const Contour& source, double w1, double w2);
 HMCont2D::Container<Contour> CutContourByLen(const Contour& source, double len1, double len2);
 
+//Common ECollection constructor
+HMCont2D::Container<HMCont2D::ECollection> ECol(const vector<Point>& pnt, const vector<int>& eds);
+HMCont2D::Container<HMCont2D::ECollection> ECol(int npnt, int neds, double* pnt, int* eds);
+
 }};
 
 #endif

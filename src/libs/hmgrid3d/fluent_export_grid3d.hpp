@@ -1,9 +1,16 @@
 #ifndef FLUENT_EXPORT_GRID3D_HPP
 #define FLUENT_EXPORT_GRID3D_HPP
-#include "hmgrid3d.hpp"
+#include "hmproject.h"
+#include "primitives_grid3d.hpp"
 #include "hmcallback.hpp"
 
 namespace HMGrid3D{namespace Export{
+typedef std::function<std::string(int)> BFun;
+
+inline std::string def_bfun(int i){
+	return std::string("boundary") + std::to_string(i);
+}
+
 
 // ====== Fluent msh format
 struct PeriodicDataEntry{
@@ -49,8 +56,6 @@ struct PeriodicData{
 };
 
 struct TGridMSH: public HMCallback::ExecutorBase{
-	typedef std::function<std::string(int)> BFun;
-
 	HMCB_SET_PROCNAME("Exporting 3d grid to fluent *.msh");
 	HMCB_SET_DEFAULT_DURATION(100);
 
@@ -66,10 +71,6 @@ struct TGridMSH: public HMCallback::ExecutorBase{
 	HMCB_SET_DURATION(HMCB_DURATION(TGridMSH, Grid, std::string) + 30, 
 			Grid, std::string, BFun, PeriodicData);
 	void _run(const Grid&, std::string, BFun, PeriodicData);
-private:
-	static const std::string def_bfun(int i){
-		return std::string("boundary") + std::to_string(i);
-	}
 };
 
 //instance of TGridMSH for function-like operator() calls

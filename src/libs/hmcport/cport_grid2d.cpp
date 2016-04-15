@@ -3,6 +3,7 @@
 #include "grid.h"
 #include "hybmesh_contours2d.hpp"
 #include "fluent_export_grid2d.hpp"
+#include "tecplot_export_grid2d.hpp"
 #include "procgrid.h"
 #include "hmmapping.hpp"
 
@@ -37,6 +38,37 @@ void free_grid2_boundary_types(Grid2DBoundaryStruct* p){
 	delete p;
 }
 
+namespace{
+vector<int> construct_bindex(const Grid2DBoundaryStruct* bstr, const GridGeom& g){
+	std::set<Edge> eds_set = g.get_edges();
+	std::vector<Edge> eds(eds_set.begin(), eds_set.end());
+	std::vector<int> bindex(eds.size(), -1);
+	for (int i=0; i<bstr->n; ++i){
+		int p1 = bstr->edge_start_nodes[i];
+		int p2 = bstr->edge_end_nodes[i];
+		Edge e(p1, p2);
+		auto fnd = std::find(eds.begin(), eds.end(), e);
+		assert(fnd != eds.end());
+		int index = fnd - eds.begin();
+		bindex[index] = bstr->btypes[i];
+	}
+	return bindex;
+}
+
+GGeom::Export::BFun construct_bnames(const BoundaryNamesStruct* bnames){
+	std::map<int, std::string> bnames_map;
+	if (bnames != NULL) for (int i=0; i<bnames->n; ++i){
+		bnames_map[bnames->values[i]] = std::string(bnames->names[i]);
+	}
+	auto fnames = [bnames_map](int i)->std::string{
+			auto fnd = bnames_map.find(i);
+			if (fnd == bnames_map.end()) return "boundary" + std::to_string(i);
+			else return fnd->second;
+		};
+	return fnames;
+}
+}
+
 int export_msh_grid(const Grid* grid, const char* fname,
 		const Grid2DBoundaryStruct* bstr,
 		const BoundaryNamesStruct* bnames,
@@ -44,29 +76,8 @@ int export_msh_grid(const Grid* grid, const char* fname,
 		int* data_periodic){
 	const GridGeom* g = togrid(grid);
 	try {
-		//1) construct boundary index vector
-		std::set<Edge> eds_set = g->get_edges();
-		std::vector<Edge> eds(eds_set.begin(), eds_set.end());
-		std::vector<int> bindex(eds.size(), -1);
-		for (int i=0; i<bstr->n; ++i){
-			int p1 = bstr->edge_start_nodes[i];
-			int p2 = bstr->edge_end_nodes[i];
-			Edge e(p1, p2);
-			auto fnd = std::find(eds.begin(), eds.end(), e);
-			assert(fnd != eds.end());
-			int index = fnd - eds.begin();
-			bindex[index] = bstr->btypes[i];
-		}
-		//2) construct boundary names function
-		std::map<int, std::string> bnames_map;
-		for (int i=0; i<bnames->n; ++i){
-			bnames_map[bnames->values[i]] = std::string(bnames->names[i]);
-		}
-		auto fnames = [&bnames_map](int i)->std::string{
-				auto fnd = bnames_map.find(i);
-				if (fnd == bnames_map.end()) return "boundary" + std::to_string(i);
-				else return fnd->second;
-			};
+		vector<int> bindex = construct_bindex(bstr, *g);
+		auto fnames = construct_bnames(bnames);
 		//3 construct periodic data
 		GGeom::Export::PeriodicData pd;
 		for (int i=0; i<n_periodic; ++i){
@@ -77,6 +88,22 @@ int export_msh_grid(const Grid* grid, const char* fname,
 		}
 		//4 call function
 		GGeom::Export::GridMSH(*g, fname, bindex, fnames, pd);
+		return 0;
+	} catch (std::runtime_error &e){
+		std::cout<<e.what()<<std::endl;
+		return 1;
+	}
+}
+
+int export_tecplot_grid(const Grid* grid, const char* fname,
+		const Grid2DBoundaryStruct* bstr,
+		const BoundaryNamesStruct* bnames){
+	const GridGeom* g = togrid(grid);
+	try{
+		vector<int> bindex = construct_bindex(bstr, *g);
+		auto fnames = construct_bnames(bnames);
+		//call function
+		GGeom::Export::GridTecplot(*g, fname, bindex, fnames);
 		return 0;
 	} catch (std::runtime_error &e){
 		std::cout<<e.what()<<std::endl;

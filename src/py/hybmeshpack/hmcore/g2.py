@@ -172,3 +172,52 @@ def to_msh(c_g, fname, c_btypes, c_bnames, c_periodic):
 
     if res != 0:
         raise Exception("msh 2d grid export failed")
+
+
+def to_tecplot(c_g, fname, c_btypes, c_bnames):
+    c_fname = fname.encode('utf-8')
+    args = (c_g, c_fname, c_btypes, c_bnames)
+    res = libhmcport.export_tecplot_grid(*args)
+    if res != 0:
+        raise Exception("tecplot 2d grid export failed")
+
+
+def unite_grids(c_g1, c_g2, buf, fix_bnd, empty_holes, an0, cb):
+    """ adds g2 to g1. Returns new c-grid.
+        cb -- Callback.CB_CANCEL2 callback object
+
+        raises Exception if failed
+    """
+    c_buf = ct.c_double(buf)
+    c_an0 = ct.c_double(an0)
+    c_fix = ct.c_int(1) if fix_bnd else ct.c_int(0)
+    c_eh = ct.c_int(1) if empty_holes else ct.c_int(0)
+    args = (c_g1, c_g2, c_buf, c_fix, c_eh, c_an0)
+
+    libhmcport.cross_grids_wcb.restype = ct.c_void_p
+    cb.initialize(libhmcport.cross_grids_wcb, args)
+    cb.execute_command()
+    ret = cb.get_result()
+
+    #if result was obtained (no errors, no cancel)
+    if ret != 0:
+        return ret
+    else:
+        raise Exception("unite_grids failed")
+
+
+def grid_excl_cont(c_grd, c_cnt, is_inner, cb):
+    """ ->c_grid
+        Returns a c-grid with excluded contour area (inner or outer)
+        raises if fails
+    """
+    c_isinner = ct.c_int(1 if is_inner else 0)
+    args = (c_grd, c_cnt, c_isinner)
+
+    cb.initialize(libhmcport.grid_exclude_cont_wcb, args)
+    cb.execute_command()
+    res = cb.get_result()
+    if res != 0:
+        return res
+    else:
+        raise Exception("Grid Exclusion failed")

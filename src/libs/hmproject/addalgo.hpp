@@ -230,9 +230,9 @@ C shp_find(C first, C last, V* data){
 		[&data](std::shared_ptr<V> a){ return a.get() == data; });
 }
 
-// ===== ShpContainerIndexing
-//Quick access indicies of elements in shared_ptr containers by their pointers.
-//Class C is any of vector<shared_ptr<>>, list<shared_ptr<>>, set<shared_ptr<>> etc.
+// ===== PtrContainerIndexing
+//Quick access indicies of elements in shared_ptr or pointers containers by their pointers.
+//Class C is any of vector<C*>, list<C*>, vector<shared_ptr<>>, list<shared_ptr<>>, set<shared_ptr<>> etc.
 //
 //Example:
 //
@@ -246,40 +246,82 @@ C shp_find(C first, C last, V* data){
 //	
 //	!!! Pointers of initial container should not be dereferenced between
 //	convert() and restore() calls since their data is illegal.
-template<class C>
-class ShpContainerIndexer{
-protected:
-	typedef typename std::remove_const<C>::type CType;
-	typedef typename C::value_type::element_type EType;
-	CType* p_data;
-	EType* backup;
-	bool converted;
-	EType* next(typename C::iterator& it){ return (*it++).get(); }
+//Pointer Container Traits
+template<typename T>
+struct is_smart_ptr: std::false_type{};
+template<class A>
+struct is_smart_ptr<std::shared_ptr<A>>: std::true_type{};
+template<class A>
+struct is_smart_ptr<std::weak_ptr<A>>: std::true_type{};
+template<class A, class B>
+struct is_smart_ptr<std::unique_ptr<A, B>>: std::true_type{};
 
-	virtual void fill_backup(){
-		backup = (EType*)malloc(p_data->size() * sizeof(EType));
-		EType* bit = backup;
+template<class C, bool is_smart_ptr>
+struct _PtrContainerTraits{};
+
+template<class C>
+struct _PtrContainerTraits<C, false>{
+	//common pointers
+	typedef typename std::remove_const<C>::type TCont;
+	typedef typename std::remove_const<typename TCont::value_type>::type TPtr1;
+	typedef typename std::remove_pointer<TPtr1>::type TElem1;
+	typedef typename std::remove_const<TElem1>::type TElem;
+	typedef TElem* TPtr;
+	typedef typename TCont::iterator TIter;
+	static TPtr incr(TIter& it) { return const_cast<TPtr>(*it++); }
+};
+
+template<class C>
+struct _PtrContainerTraits<C, true>{
+	//smart pointers specialization
+	typedef typename std::remove_const<C>::type TCont;
+	typedef typename std::remove_const<typename TCont::value_type::element_type>::type TPtr1;
+	typedef typename std::remove_pointer<TPtr1>::type TElem1;
+	typedef typename std::remove_const<TElem1>::type TElem;
+	typedef TElem* TPtr;
+	typedef typename TCont::iterator TIter;
+	static TPtr incr(TIter& it) { return const_cast<TPtr>((*it++).get()); }
+};
+template<class C>
+using PtrContainerTraits = _PtrContainerTraits<C, is_smart_ptr<typename C::value_type>::value>;
+
+template<class C>
+class PtrContainerIndexer{
+protected:
+	typedef typename PtrContainerTraits<C>::TCont TCont;
+	typedef typename PtrContainerTraits<C>::TPtr TPtr;
+	typedef typename PtrContainerTraits<C>::TElem TElem;
+	typedef typename PtrContainerTraits<C>::TIter TIter;
+	static constexpr auto incr = &PtrContainerTraits<C>::incr;
+
+	TCont* p_data;
+	TElem* backup;
+	bool converted;
+
+	void fill_backup(){
+		backup = (TElem*)malloc(p_data->size() * sizeof(TElem));
+		TElem* bit = backup;
 		auto it = p_data->begin();
-		while (it!=p_data->end()) memcpy(bit++, next(it), sizeof(EType));
+		while (it!=p_data->end()) memcpy(bit++, incr(it), sizeof(TElem));
 	}
-	virtual void convert_pdata(){
+	void convert_pdata(){
 		auto it = p_data->begin();
 		int i=0;
-		while (it!=p_data->end()) *(int*)next(it) = i++;
+		while (it!=p_data->end()) *(int*)incr(it) = i++;
 		converted = true;
 	}
-	virtual void restore_pdata(){
-		EType* bit = backup;
+	void restore_pdata(){
+		TElem* bit = backup;
 		auto it = p_data->begin();
-		while (it!=p_data->end()) memcpy(next(it), bit++, sizeof(EType));
+		while (it!=p_data->end()) memcpy(incr(it), bit++, sizeof(TElem));
 		converted = false;
 	}
 public:
-	ShpContainerIndexer(C& vec):converted(false){
+	PtrContainerIndexer(C& vec):converted(false){
 		C* pvec = &vec;
-		p_data = const_cast<CType*>(pvec);
+		p_data = const_cast<TCont*>(pvec);
 	}
-	virtual ~ShpContainerIndexer(){ if (converted) restore(); }
+	virtual ~PtrContainerIndexer(){ if (converted) restore(); }
 
 	void convert(){
 		if (!converted){
@@ -295,13 +337,75 @@ public:
 		}
 	};
 
-	int index(const EType* e){ return *(int*)e; }
-	int index(std::shared_ptr<EType> e){ return *(int*)(e.get()); }
+	//index from simple pointer
+	int index(const TElem* e){ return *(int*)e; }
+
+	//index from smart pointer if possible
+	template <class A>
+	auto index(const A& vt) -> decltype(*(int*)vt.get()) { return *(int*)vt.get(); }
 };
 template<class C>
-ShpContainerIndexer<C> shp_container_indexer(C& data){
-	return ShpContainerIndexer<C>(data);
+PtrContainerIndexer<C> ptr_container_indexer(C& data){
+	return PtrContainerIndexer<C>(data);
 }
+
+
+//template<class C>
+//class ShpContainerIndexer{
+//protected:
+//        typedef typename std::remove_const<C>::type CType;
+//        typedef typename C::value_type::element_type EType;
+//        CType* p_data;
+//        EType* backup;
+//        bool converted;
+//        EType* next(typename C::iterator& it){ return (*it++).get(); }
+
+//        virtual void fill_backup(){
+//                backup = (EType*)malloc(p_data->size() * sizeof(EType));
+//                EType* bit = backup;
+//                auto it = p_data->begin();
+//                while (it!=p_data->end()) memcpy(bit++, next(it), sizeof(EType));
+//        }
+//        virtual void convert_pdata(){
+//                auto it = p_data->begin();
+//                int i=0;
+//                while (it!=p_data->end()) *(int*)next(it) = i++;
+//                converted = true;
+//        }
+//        virtual void restore_pdata(){
+//                EType* bit = backup;
+//                auto it = p_data->begin();
+//                while (it!=p_data->end()) memcpy(next(it), bit++, sizeof(EType));
+//                converted = false;
+//        }
+//public:
+//        ShpContainerIndexer(C& vec):converted(false){
+//                C* pvec = &vec;
+//                p_data = const_cast<CType*>(pvec);
+//        }
+//        virtual ~ShpContainerIndexer(){ if (converted) restore(); }
+
+//        void convert(){
+//                if (!converted){
+//                        fill_backup();
+//                        convert_pdata();
+//                }
+//        };
+
+//        void restore(){
+//                if (converted){
+//                        restore_pdata();
+//                        free(backup);
+//                }
+//        };
+
+//        int index(const EType* e){ return *(int*)e; }
+//        int index(std::shared_ptr<EType> e){ return *(int*)(e.get()); }
+//};
+//template<class C>
+//ShpContainerIndexer<C> shp_container_indexer(C& data){
+//        return ShpContainerIndexer<C>(data);
+//}
 
 /*
 //the same but with condition

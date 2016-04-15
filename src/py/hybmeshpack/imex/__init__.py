@@ -39,7 +39,8 @@ def read_flow_and_framework_from_file(filename):
 def export_grid(fmt, fn, name, fw=None, flow=None, adata=None):
     """exports grid from framework fw or flow receiver to
     filename fn using format fmt. Possible formats:
-        vtk, hmg, msh, ggen, gmsh, vtk3d, msh3d
+        vtk, hmg, msh, ggen, gmsh, tecplot,
+        vtk3d, msh3d
 
     adata - additional data which dependes on format:
       * msh, msh3d: define periodic conditions
@@ -74,10 +75,14 @@ def export_grid(fmt, fn, name, fw=None, flow=None, adata=None):
         gridexport.ggen(grid, fn)
     elif fmt == "gmsh":
         gridexport.gmsh(grid, fn, fw.boundary_types)
+    elif fmt == "tecplot":
+        gridexport.tecplot(grid, fn, fw.boundary_types)
     elif fmt == "vtk3d":
         grid3export.vtk(grid, fn, callb)
     elif fmt == "msh3d":
         grid3export.msh(grid, fn, fw.boundary_types, callb, adata)
+    elif fmt == "tecplot3d":
+        grid3export.tecplot(grid, fn, fw.boundary_types, callb)
     else:
         raise Exception('Unknown grid format %s' % fmt)
 
@@ -85,7 +90,7 @@ def export_grid(fmt, fn, name, fw=None, flow=None, adata=None):
 def export_contour(fmt, fn, name, fw=None, flow=None):
     """exports contour from framework 'fw' or 'flow' receiver to
     filename fn using format fmt. Possible formats:
-        vtk, hmc
+        vtk, tecplot, hmc
     """
     # Find contour
     try:
@@ -102,6 +107,8 @@ def export_contour(fmt, fn, name, fw=None, flow=None):
         contexport.vtk(cont, fn)
     elif fmt == 'hmc':
         contexport.hmg(cont, fn)
+    elif fmt == 'tecplot':
+        contexport.tecplot(cont, fn, fw.boundary_types)
     else:
         raise Exception('Unknown contour format %s' % fmt)
 

@@ -1,5 +1,6 @@
 #include <sstream>
 #include <fstream>
+#include "addalgo.hpp"
 #include "vtk_export_grid3d.hpp"
 #include "serialize_grid3d.hpp"
 
@@ -141,35 +142,6 @@ struct vtkcell_expression{
 	}
 };
 
-vector<int> face_assembler(const ExtendedSimpleSerialize& ser, int iface){
-	vector<int> ret;
-	int kf = ser.iface[iface];
-	int lenf = ser.faces[kf];
-	ret.reserve(lenf);
-
-	//first vertex
-	int e1 = ser.faces[kf+1], e2 = ser.faces[kf+2];
-	int p1 = ser.edges[2*e1], p2 = ser.edges[2*e1+1];
-	int p3 = ser.edges[2*e2], p4 = ser.edges[2*e2+1];
-	if (p1 == p3 || p1 == p4) std::swap(p1, p2);
-	ret.push_back(p1); ret.push_back(p2);
-	//other vertices
-	for (int k=1; k<lenf-1; ++k){
-		e1 = ser.faces[kf + k];
-		e2 = ser.faces[kf + 1 + k];
-		int p1 = ser.edges[2*e1], p2 = ser.edges[2*e1+1];
-		int p3 = ser.edges[2*e2], p4 = ser.edges[2*e2+1];
-		ret.push_back( (p3 == ret.back()) ? p4 : p3 );
-	}
-	return ret;
-}
-vector<vector<int>> face_assembler(const ExtendedSimpleSerialize& ser){
-	vector<vector<int>> ret; ret.reserve(ser.n_faces);
-	for (int iface=0; iface<ser.n_faces; ++iface){
-		ret.push_back(face_assembler(ser, iface));
-	}
-	return ret;
-}
 vector< vtkcell_expression > cell_assembler(const ExtendedSimpleSerialize& ser,
 		const vector<vector<int>>& aface){
 	vector<vtkcell_expression> ret; ret.reserve(ser.n_cells);
@@ -208,7 +180,7 @@ void hme::TGridVTK::_run(const HMGrid3D::Grid& g, std::string fn){
 
 void hme::TGridVTK::_run(const TSer& ser, std::string fn){
 	callback.step_after(20, "Assembling faces");
-	vector<vector<int>> aface = face_assembler(ser);
+	vector<vector<int>> aface = ser.face_assembler();
 
 	callback.step_after(20, "Assembling cells");
 	vector< vtkcell_expression > vtkcell = cell_assembler(ser, aface);
@@ -271,7 +243,7 @@ struct bnd_face_data{
 		global_face_vertices.reserve(n_faces());
 		for (int i=0; i<n_faces(); ++i){
 			int find = findices[i];
-			global_face_vertices.push_back(face_assembler(*ser, find));
+			global_face_vertices.push_back(ser->face_assembler(find));
 		}
 	}
 	void n2_extract_bvert(){      //fills vindices

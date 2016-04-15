@@ -14,12 +14,18 @@ struct Grid2DBoundaryStruct{
 Grid2DBoundaryStruct* set_grid2_boundary_types(int n, int* n1, int* n2, int* bt);
 void free_grid2_boundary_types(Grid2DBoundaryStruct*);
 
-//data_periodic is a 
+//data_periodic is a an array of 3*n_periodic ints like
+//	[boundary-per, boundary-shadow, is-reversed, ...]
+//returns 0 on success
 int export_msh_grid(const Grid* grid, const char* fname,
 		const Grid2DBoundaryStruct* bstr,
 		const BoundaryNamesStruct* bnames,
 		int n_periodic,
 		int* data_periodic);
+
+int export_tecplot_grid(const Grid* grid, const char* fname,
+		const Grid2DBoundaryStruct* bstr,
+		const BoundaryNamesStruct* bnames);
 
 //builds rectangular grid on basis of four open HMCont2D::Contour objects
 //algo is:

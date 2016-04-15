@@ -29,3 +29,45 @@ def vtk(cont, fname):
     out.extend(map(str, [x[2] for x in cp]))
 
     _write_list_to_file(out, fname)
+
+
+def tecplot(cont, fname, bt=None):
+    out = ['TITLE="2D Contour from HybMesh"',
+           'VARIABLES="X" "Y"']
+    # --- main contour
+    out.extend(['ZONE T="Contour"',
+                'ZONETYPE=FELINESEG',
+                'N=%i E=%i' % (cont.n_edges(), cont.n_points()),
+                'DATAPACKING=BLOCK'
+                ])
+    for p in cont.points:
+        out.append(str(p.x))
+    for p in cont.points:
+        out.append(str(p.y))
+    for e in cont.edges_points():
+        out.append('%i %i' % (e[0] + 1, e[1] + 1))
+    # --- subcontours
+    # assemble
+    edges_by_btypes = {}
+    for e in cont.edges_points():
+        b = e[2]
+        if b not in edges_by_btypes:
+            edges_by_btypes[b] = [e]
+        else:
+            edges_by_btypes[b].append(e)
+    for b, elist in edges_by_btypes.iteritems():
+        if b == 0:
+            name = "boundary0"
+        else:
+            try:
+                name = bt.get(index=b).name
+            except:
+                name = "boundary%i" % b
+        out.extend(['ZONE T="%s"' % name,
+                    'ZONETYPE=FELINESEG',
+                    'E=%i' % len(elist),
+                    'D=(1 2)'])
+        for e in elist:
+            out.append('%i %i' % (e[0] + 1, e[1] + 1))
+
+    _write_list_to_file(out, fname)

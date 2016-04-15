@@ -70,7 +70,7 @@ inline bool operator==(const Edge& e1, const Edge& e2){
 	return (e1.p1 == e2.p1 && e1.p2 == e2.p2);
 }
 
-class GridGeom: public Grid{
+class GridGeom{
 protected:
 	//Data
 	ShpVector<GridPoint> points;

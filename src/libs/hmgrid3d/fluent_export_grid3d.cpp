@@ -60,7 +60,7 @@ std::map<int, ShpVector<Face>> faces_by_btype(const HMGrid3D::Grid& g){
 }
 std::vector<std::pair<int, int>> left_right_cells(const ShpVector<Face>& data, const ShpVector<HMGrid3D::Cell>& cells){
 	std::vector<std::pair<int, int>> ret; ret.reserve(data.size());
-	auto _indexer = aa::shp_container_indexer(cells);
+	auto _indexer = aa::ptr_container_indexer(cells);
 	_indexer.convert();
 	for (auto& f: data){
 		int p1 = (f->right) ?  _indexer.index(f->right) : -1;
@@ -73,7 +73,7 @@ std::vector<std::pair<int, int>> left_right_cells(const ShpVector<Face>& data, c
 
 std::vector<std::vector<int>> int_face_vertices(const ShpVector<Face>& data, const ShpVector<Vertex>& vert){
 	std::vector<std::vector<int>> ret; ret.reserve(data.size());
-	auto _indexer = aa::shp_container_indexer(vert);
+	auto _indexer = aa::ptr_container_indexer(vert);
 	_indexer.convert();
 	for (auto& f: data){
 		auto sv = f->sorted_vertices();
@@ -320,7 +320,7 @@ void gridmsh2(const HMGrid3D::Grid& g, const char* fn,
 
 //save to fluent main function
 void gridmsh(HMCallback::Caller2& callback, const HMGrid3D::Grid& g, std::string fn,
-		hme::TGridMSH::BFun btype_name,
+		hme::BFun btype_name,
 		std::map<Face*, Face*> pfaces=std::map<Face*, Face*>()){
 	if (g.n_cells() == 0) throw std::runtime_error("Exporting blank grid");
 	//Zones:

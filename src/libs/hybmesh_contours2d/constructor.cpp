@@ -109,3 +109,25 @@ Container<Contour> cns::CutContourByLen(const Contour& source, double len1, doub
 	double len = source.length();
 	return CutContourByWeight(source, len1/len, len2/len);
 }
+
+HMCont2D::Container<HMCont2D::ECollection> cns::ECol(const vector<Point>& pnt, const vector<int>& eds){
+	HMCont2D::Container<HMCont2D::ECollection> ret;
+	ret.pdata.data.reserve(pnt.size());
+	ret.data.reserve(eds.size()/2);
+	for (auto& p: pnt) ret.pdata.add_value(p);
+
+	for (int i=0; i<eds.size()/2; ++i){
+		int i1 = eds[2*i];
+		int i2 = eds[2*i+1];
+		ret.add_value(HMCont2D::Edge(ret.point(i1), ret.point(i2)));
+	}
+	return ret;
+}
+HMCont2D::Container<HMCont2D::ECollection> cns::ECol(int npnt, int neds, double* pnt, int* eds){
+	vector<int> evec(eds, eds + 2*neds);
+	vector<Point> pvec; pvec.reserve(npnt);
+	for (int i=0; i<npnt; ++i){
+		pvec.push_back(Point(pnt[2*i], pnt[2*i+1]));
+	}
+	return ECol(pvec, evec);
+}

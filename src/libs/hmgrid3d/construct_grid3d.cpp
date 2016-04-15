@@ -261,7 +261,7 @@ HMGrid3D::Grid Constructor::Copy::ShallowVertices(const HMGrid3D::Grid& b){
 	for (int i=0; i<bedges.size(); ++i) edges_new[i]->vertices = bedges[i]->vertices;
 
 	//faces
-	auto _eindexer = aa::shp_container_indexer(bedges);
+	auto _eindexer = aa::ptr_container_indexer(bedges);
 	_eindexer.convert();
 	for (int i=0; i<bfaces.size(); ++i){
 		faces_new[i]->edges.reserve(bfaces[i]->n_edges());
@@ -274,7 +274,7 @@ HMGrid3D::Grid Constructor::Copy::ShallowVertices(const HMGrid3D::Grid& b){
 	_eindexer.restore();
 
 	//cells
-	auto _findexer = aa::shp_container_indexer(bfaces);
+	auto _findexer = aa::ptr_container_indexer(bfaces);
 	_findexer.convert();
 	for (int i=0; i<bcells.size(); ++i){
 		cells_new[i]->faces.reserve(bcells[i]->n_faces());

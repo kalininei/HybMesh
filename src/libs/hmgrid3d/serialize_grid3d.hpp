@@ -16,7 +16,7 @@ struct SimpleSerialize{
 	std::vector<int> edges;    //edge0_start, edge0_end, edge1_start, edge1_end, ...
 	std::vector<int> faces;    //face0_num_edges, face0_edge0, ..., face0_leftcell, face0_rightcell, ...
 	std::vector<int> cells;    //cell0_num_faces, cell0_face0, cell0_face1, ....
-	std::vector<int> bnd;      //btype0 num_faces_in_btype0 btype0_face0, ....  #only non-zero boundaries
+	std::vector<int> bnd;      //btype0 num_faces_in_btype0 btype0_face0, ....  #only non-zero boundaries: WHY???
 
 	//convert functions
 
@@ -38,8 +38,18 @@ protected:
 
 
 struct ExtendedSimpleSerialize: public SimpleSerialize{
+	//==== additional data
+	//get<0> - ShpVector<Vertex>,
+	//get<1> - ShpVector<Edge>,
+	//get<2> - ShpVector<Face>,
+	//get<3> - ShpVector<Cell>
 	Grid::Talldata _alldata;
 	vector<int> icell, iface;
+
+	//==== additional methods
+	//face as a sequence on vertices
+	vector<int> face_assembler(int nface) const;
+	vector<vector<int>> face_assembler() const;
 	
 	//convert functions
 	//possible arguments -- (const Grid& g)

@@ -1,11 +1,11 @@
 #ifndef HYBMESH_HMCPORT_H
 #define HYBMESH_HMCPORT_H
 
-#include "crossgrid.h"
 #include <stddef.h>
 
 extern "C"{
 
+typedef void Grid;
 typedef int (*hmcport_callback)(const char*, const char*, double, double);
 
 //calculates ascii file hash
@@ -69,24 +69,24 @@ void grid_free(Grid* g);
 //with inner first level contour, outer second level etc
 //inner ones have an anti-clockwise direction, outer - clockwise.
 //Returns NULL if input data are not assembled correctly
-Cont* contour_construct(int Npts, int Ned, double* pts, int* edges);
+//Cont* contour_construct(int Npts, int Ned, double* pts, int* edges);
 //Frees the contour
-void cont_free(Cont* c);
+//void cont_free(Cont* c);
 //save contour to vtk
-void contour_save_vtk(Cont* c, const char* fn);
+//void contour_save_vtk(Cont* c, const char* fn);
 
 //get contours points and edges->points connectivity
-void contour_get_info(Cont* c, int* Npnt, int* Neds, 
-		double** pts,
-		int** eds);
+//void contour_get_info(Cont* c, int* Npnt, int* Neds, 
+//		double** pts,
+//		int** eds);
 //free edges data
-void contour_free_info(double** pts, int** eds);
+//void contour_free_info(double** pts, int** eds);
 //area
-double contour_area(Cont* c);
+//double contour_area(Cont* c);
 
 //Fill target boundary values from source contour values if
 //target edge lies on source edge. Else assigns def value.
-void add_contour_bc(Cont* src, Cont* tar, int* vsrc, int* vtar, int def);
+//void add_contour_bc(Cont* src, Cont* tar, int* vsrc, int* vtar, int def);
 
 // === hybmesh_contours2d management
 
@@ -141,10 +141,12 @@ Grid* cross_grids_wcb(Grid* gbase, Grid* gsecondary, double buffer_size,
 		int preserve_bp, int empty_holes, double angle0, hmcport_callback cb_fun);
 
 // === NewGrid = Grid exclude Contour Area
+// grd - GridGeom pointer,
+// cont - HMCont2D::ECollection pointer
 //with callback defined globally
-Grid* grid_exclude_cont(Grid* grd, Cont* cont, int is_inner);
+Grid* grid_exclude_cont(Grid* grd, void* cont, int is_inner);
 //with specified callback function
-Grid* grid_exclude_cont_wcb(Grid* grd, Cont* cont, int is_inner,
+Grid* grid_exclude_cont_wcb(Grid* grd, void* cont, int is_inner,
 		hmcport_callback cb_fun);
 
 //merges boundary edges of the same cell with angle less than 'angle' in [0, 180]
