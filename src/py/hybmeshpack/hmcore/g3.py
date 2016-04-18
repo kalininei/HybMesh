@@ -70,6 +70,25 @@ def surface_to_vtk(c_g, fname, cb):
         raise Exception("VTK surface export failed")
 
 
+def revolve_call(c_g, c_vec, c_phi, c_btypes, b1, b2, tri_center):
+    """ Makes 2d grid revolution:
+    c_g - 2d grid on c side
+    c_vec - [x0, y0, x1, y1] c-side array which defines vector of rotation
+    c_phi - c-side array of angular partition [0]==[-1] for full revolution
+    c_btypes - boundary types of 2d grid on c-side
+    b1, b2 - integers defining boundary types of c_phi[0], c_phi[-1] surfaces
+    tri_ceneter  - boolean, defining wheher to triangulate center
+    returns 3d grid as a c-side pointer
+    """
+    args = (c_g, c_vec, ct.c_int(len(c_phi)), c_phi, c_btypes,
+            ct.c_int(b1), ct.c_int(b2),
+            ct.c_int(1 if tri_center else 0))
+    res = libhmcport.grid2_revolve(*args)
+    if res == 0:
+        raise Exception("Grid revolution failed")
+    return res
+
+
 def to_msh(c_g, fname, c_bnames, c_periodic, cb):
     c_fname = fname.encode('utf-8')
     if c_periodic is not None:

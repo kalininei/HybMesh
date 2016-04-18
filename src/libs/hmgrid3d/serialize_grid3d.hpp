@@ -46,10 +46,14 @@ struct ExtendedSimpleSerialize: public SimpleSerialize{
 	Grid::Talldata _alldata;
 	vector<int> icell, iface;
 
+	//==== data access
+	ShpVector<Vertex>& data_vertex(){ return std::get<0>(_alldata); }
+
 	//==== additional methods
 	//face as a sequence on vertices
 	vector<int> face_assembler(int nface) const;
 	vector<vector<int>> face_assembler() const;
+	Grid to_grid() const;
 	
 	//convert functions
 	//possible arguments -- (const Grid& g)
@@ -66,6 +70,9 @@ struct ExtendedSimpleSerialize: public SimpleSerialize{
 	};
 	static HMCallback::FunctionWithCallback<ConvertExe> Convert;
 };
+
+typedef SimpleSerialize SS;
+typedef ExtendedSimpleSerialize ESS;
 
 }
 

@@ -181,12 +181,111 @@ void test05(){
 		add_file_check(4351852141727252628U, "g1.dat", "polyhedral boundary");
 	}
 }
+
+void test06(){
+	using HMGrid3D::Constructor::RevolveGrid2D;
+	std::cout<<"6. Solid of revolution"<<std::endl;
+	auto g2d = GGeom::Constructor::RectGrid(Point(1,0), Point(2,1), 1, 1);
+	auto bc0 = [](int){return 0;};
+	{
+		auto g3d = RevolveGrid2D(g2d, {0, 90}, Point(0, 0), Point(0, 1), true, bc0, bc0, bc0);
+		HMGrid3D::Export::GridTecplot.Silent(g3d, "g1.dat");
+		add_file_check(14477811247662873314U, "g1.dat", "single cell, distant, incomplete");
+	}
+	{
+		auto g3d = RevolveGrid2D(g2d, {0, 90, 180, 270, 360}, Point(0, 0), Point(0, 1), true,
+				bc0, bc0, bc0);
+		HMGrid3D::Export::GridTecplot.Silent(g3d, "g1.dat");
+		add_file_check(8806735487875113935U, "g1.dat", "single cell, distant, complete");
+	}
+	{
+		auto g3d = RevolveGrid2D(g2d, {0, 90, 100}, Point(0, 0), Point(0, 1), true,
+				[](int i){ return i; }, [](int){return 10;}, [](int){return 20;});
+		HMGrid3D::Export::GridTecplot.Silent(g3d, "g1.dat");
+		add_file_check(10847746390852255496U, "g1.dat", "single cell, distant, incomplete, with bc");
+	}
+	{
+		auto h2d = GGeom::Constructor::RectGrid(Point(0, 0), Point(2, 1), 2, 1);
+		auto g3d = RevolveGrid2D(h2d, {0, 90}, Point(0, 0), Point(0, 1), true);
+		HMGrid3D::Export::GridTecplot.Silent(g3d, "g1.dat");
+		add_file_check(12291685918278792355U, "g1.dat", "with contact, incomplete");
+	}
+	{
+		auto h2d = GGeom::Constructor::RectGrid(Point(0, 0), Point(2, 1), 4, 3);
+		auto g3d = RevolveGrid2D(h2d, {0, 90, 110, 180, 250, 330, 360}, Point(0, 0), Point(0, 1), true);
+		HMGrid3D::Export::GridTecplot.Silent(g3d, "g1.dat");
+		add_file_check(13721034154834175572U, "g1.dat", "with contact, complete");
+	}
+	{
+		auto g1 = GGeom::Constructor::RectGrid(Point(0, 0), Point(10, 10), 10, 10);
+		auto g2 = GGeom::Constructor::RectGrid(Point(0, 5), Point(10, 6), 5, 1);
+		auto g3 = GridGeom::cross_grids(&g1, &g2, 0.0, 0, 0, 0, 0);
+		auto g3d = RevolveGrid2D(*g3, {0, 10, 20, 30}, Point(0, 0), Point(0, 1), true);
+		HMGrid3D::Export::GridTecplot.Silent(g3d, "g1.dat");
+		add_file_check(4088026303719620111U, "g1.dat", "hanging nodes near axis to tecplot");
+		HMGrid3D::Export::GridMSH.Silent(g3d, "g1.msh");
+		add_file_check(13046024190899073402U, "g1.msh", "hanging nodes near axis to fluent");
+		delete g3;
+	}
+}
+
+void test07(){
+	using HMGrid3D::Constructor::RevolveGrid2D;
+	std::cout<<"7. Solid of revolution, merging centeral cells"<<std::endl;
+	{
+		auto g2d = GGeom::Constructor::RectGrid(Point(1,0), Point(2,1), 1, 1);
+		auto g3d = RevolveGrid2D(g2d, {0, 45, 90}, Point(1, 0), Point(1, 1), false);
+		HMGrid3D::Export::GridTecplot.Silent(g3d, "g1.dat");
+		add_file_check(16930278641819874842U, "g1.dat", "single cell, without center trian, incomplete");
+	}
+	{
+		auto g2d = GGeom::Constructor::RectGrid(Point(1,0), Point(2,1), 1, 1);
+		auto g3d = RevolveGrid2D(g2d, {20, 45, 90, 160, 270, 300, 380}, Point(1, 0), Point(1, 1), false);
+		HMGrid3D::Export::GridTecplot.Silent(g3d, "g1.dat");
+		add_file_check(2233152245736731725U, "g1.dat", "single cell, without center trian, complete");
+	}
+	{
+		auto h2d = GGeom::Constructor::RectGrid(Point(0, 0), Point(2, 1), 2, 1);
+		auto g3d = RevolveGrid2D(h2d, {0, 10, 20, 30, 40, 50}, Point(0, 0), Point(0, 1), false);
+		HMGrid3D::Export::GridTecplot.Silent(g3d, "g1.dat");
+		add_file_check(9647564763969341052U, "g1.dat", "multiple cells, with trian, complete");
+	}
+	{
+		auto g1 = GGeom::Constructor::EmptyGrid();
+		GGeom::Modify::AddCell(g1, {Point(0,0), Point(1,0), Point(0, 1)});
+		auto g2 = RevolveGrid2D(g1, {0, 45, 90}, Point(0,0), Point(0,1), false);
+		HMGrid3D::Export::GridTecplot.Silent(g2, "g1.dat");
+		add_file_check(10327035335120541287U, "g1.dat", "no tri with single axis triangle");
+	}
+	{
+		auto g1 = GGeom::Constructor::EmptyGrid();
+		GGeom::Modify::AddCell(g1, {Point(1,0), Point(1,1), Point(0, 1)});
+		auto g2 = RevolveGrid2D(g1, {0, 45, 90}, Point(0,0), Point(0,1), false);
+		HMGrid3D::Export::GridTecplot.Silent(g2, "g1.dat");
+		add_file_check(14151333426842973017U, "g1.dat", "no tri, single off axis triangle");
+	}
+	{
+		auto g1 = GGeom::Constructor::EmptyGrid();
+		GGeom::Modify::AddCell(g1, {Point(0,0), Point(1,0), Point(0, 1)});
+		GGeom::Modify::AddCell(g1, {Point(1,0), Point(1,1), Point(0, 1)});
+		GGeom::Modify::AddCell(g1, {Point(0,0), Point(0,-2), Point(1, -2), Point(1, 0)});
+		GGeom::Repair::Heal(g1);
+		auto g2 = RevolveGrid2D(g1, {0, 45, 90}, Point(0,0), Point(0,1), false);
+		HMGrid3D::Export::GridTecplot.Silent(g2, "g1.dat");
+		add_file_check(1066331983577157379U, "g1.dat", "no tri, complex connections, incomplete");
+		auto g3 = RevolveGrid2D(g1, {0, 90, 180, 270, 360}, Point(0,0), Point(0,1), false);
+		HMGrid3D::Export::GridTecplot.Silent(g3, "g1.dat");
+		add_file_check(7013636101770389960U, "g1.dat", "no tri, complex connections, complete");
+	}
+}
 int main(){
 	test01();
 	test02();
 	test03();
 	test04();
 	test05();
+	test06();
+	test07();
 	
 	check_final_report();
 	std::cout<<"DONE"<<std::endl;

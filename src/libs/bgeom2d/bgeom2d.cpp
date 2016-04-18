@@ -2,6 +2,14 @@
 #include "addalgo.hpp"
 #include "assert.h"
 
+std::array<double, 3> Point::line_eq(const Point& L1, const Point& L2) noexcept{
+	if (L1 == L2) return {0, 0, 0};
+	std::array<double, 3> A { L1.y-L2.y, L2.x-L1.x, vecCrossZ(L1,L2) };
+	double den = sqrt(A[0]*A[0]+A[1]*A[1]);
+	A[0]/=den; A[1]/=den; A[2]/=den;
+	return A;
+}
+
 double Point::meas_section(const Point& p, const Point& L1, const Point& L2, double& ksi) noexcept{
 	Vect a = L2-L1, b = p - L1;
 	if (L1==L2) return Point::meas(p, L1);

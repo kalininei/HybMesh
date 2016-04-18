@@ -207,7 +207,86 @@ def extrude_grid(obj, zcoords, bottombc=0, topbc=0, sidebc=None):
         flow.exec_command(c)
         return c._get_added_names()[2][0]
     except:
-        raise ExecError("extrusion. ")
+        raise ExecError("extrusion")
+
+
+def revolve_grid(obj, p1, p2, n_phi=None,
+                 phi=None, btype1=0, btype2=0, center_tri=True):
+    """ Creates 3D grid by revolving of 2D grid around defined vector
+
+    :param obj: 2d grid identifier
+
+    :param p1:
+
+    :param p2: points in [x, y] format which defines vector of rotation
+
+    :param int n_phi: partition along circular coordinate.
+       If this parameter is defined then [0, 360] range will be divided
+       into equal parts and full revolution solid will be build.
+
+    :param list-of-floats phi: increasing vector defining
+       custom partition of angular range.
+       This parameter will be processed if **n_phi** is None.
+       If the last value of **phi** is not equal to first one
+       plus 360 degree than
+       incomplete revolution solid will be built.
+
+    :param btype1:
+
+    :param btype2: boundary identifiers for surfaces which will be build
+       as a result of incomplete rotation at end values of **phi** vector.
+
+    :param bool center_tri: if rotation vector coincides
+       with boundary edges of input grid then this parameter
+       defines whether central cells derived from the revolution
+       of boundary cells should be united into one
+       complex finite volume (False) or left as they are (True).
+
+    :returns: 3D grid identifier
+
+    :raises: ValueError, hmscript.ExecError
+
+    All points of input grid should lie to the one side of rotation
+    vector.
+
+    """
+    #check input
+    if not isinstance(p1, list) or len(p1) != 2 or\
+            not isinstance(p2, list) or len(p2) != 2:
+        raise ValueError("Invalid vector points")
+    if n_phi is not None:
+        if not isinstance(n_phi, int) or n_phi < 3:
+            raise ValueError("Invalid uniform angular partition")
+    else:
+        if not isinstance(phi, list) or len(phi) < 2:
+            raise ValueError("Invalid custom angular partition")
+        for i in range(1, len(phi)):
+            if phi[i] <= phi[i - 1]:
+                raise ValueError("Phi values should be increasing")
+            if (phi[i] - phi[i - 1]) >= 180:
+                raise ValueError("Phi step should be less then 180 degree")
+        if phi[-1] - phi[0] > 360:
+            raise ValueError("Phi values range should be <= 360 degree")
+    # calculate phi's
+    if n_phi is None:
+        inp_phi = copy.deepcopy(phi)
+    else:
+        inp_phi = []
+        for i in range(n_phi + 1):
+            inp_phi.append(i * 360 / n_phi)
+
+    c = com.grid3dcom.Revolve({"base": obj,
+                               "p1": Point2(*p1),
+                               "p2": Point2(*p2),
+                               "phi": inp_phi,
+                               "bt1": btype1,
+                               "bt2": btype2,
+                               "center_tri": center_tri})
+    try:
+        flow.exec_command(c)
+        return c._get_added_names()[2][0]
+    except:
+        raise ExecError("planar grid revolution")
 
 
 def heal_grid(grid_id, simplify_boundary=30):

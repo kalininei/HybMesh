@@ -43,6 +43,8 @@ struct Point{
 	static double meas_section(const Point& p, const Point& L1, const Point& L2, double& ksi) noexcept;
 	//measure from p to [L1, L2] line
 	static double meas_line(const Point& p, const Point& L1, const Point& L2) noexcept;
+	//normalized line equation
+	static std::array<double, 3> line_eq(const Point& p1, const Point& p2) noexcept;
 
 	//finds a point between two given ones with a certain weight w
 	static Point Weigh(const Point& p1, const Point& p2, double w) noexcept{

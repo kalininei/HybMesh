@@ -1,6 +1,7 @@
 #ifndef PRIMITIVES_GRID3D_HPP
 #define PRIMITIVES_GRID3D_HPP
 #include "hmproject.h"
+#include "bgeom2d.h"
 
 namespace HMGrid3D{
 
@@ -26,6 +27,8 @@ struct Vertex{
 		int,         //index of closest vertex within vec
 		double       //measure to closest vertex
 	> FindClosestVertex(const ShpVector<Vertex>& vec, Vertex v);
+
+	static void Unscale2D(ShpVector<Vertex>& vec, ScaleBase sc);
 };
 
 struct Edge{
@@ -58,6 +61,12 @@ struct Edge{
 		static std::map<shared_ptr<Vertex>, vector<int>>
 		EndVertexEdge(const ShpVector<Edge>& data);
 	};
+};
+
+struct CurvEdge: public Edge{
+	double curv;
+	CurvEdge(shared_ptr<Vertex> p1, shared_ptr<Vertex> p2, double c): Edge(p1, p2), curv(c){}
+	CurvEdge(){}
 };
 
 struct Face{

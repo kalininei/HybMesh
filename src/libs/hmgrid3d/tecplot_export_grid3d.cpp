@@ -1,6 +1,7 @@
 #include <fstream>
 #include "tecplot_export_grid3d.hpp"
 #include "surface_grid3d.hpp"
+#include "debug_grid3d.hpp"
 
 namespace hme = HMGrid3D::Export;
 HMCallback::FunctionWithCallback<hme::TGridTecplot> hme::GridTecplot;
@@ -95,7 +96,7 @@ void write_row_n(std::ostream& str, Func&& fun, const vector<V>& vals){
 	for (int j=0; j<resj-1; ++j){
 		str<<fun(*it)<<" "; it += Step;
 	}
-	if (resj>1) str<<fun(*it)<<std::endl; it+=Step;
+	if (resj>0) str<<fun(*it)<<std::endl; it+=Step;
 }
 
 };

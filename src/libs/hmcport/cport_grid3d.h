@@ -27,6 +27,16 @@ CPortGrid3D* grid2_sweep_z(const Grid* g, const Grid2DBoundaryStruct* bc,
 		int algo_bot, int* bbot,
 		int algo_side, int bside);
 
+//vec - [x0, y0, x1, y1] array defining vector of rotation
+//phi[n_phi] - increasing vector of angular partition (degree)
+//b1, b2 - boundary types for surfaces at minimum and maximum phi's
+//is_trian (bool) - whether to triangulate center cell
+//return NULL if failed
+CPortGrid3D* grid2_revolve(Grid* g, double* vec, int n_phi, double* phi,
+		Grid2DBoundaryStruct* bc,
+		int b1, int b2, int is_trian);
+
+
 //====== exporters
 //returns 0 on success
 int export_vtk_grid3(const CPortGrid3D* grid, const char* fname, hmcport_callback f2);

@@ -30,6 +30,15 @@ Vertex::FindClosestVertex(const ShpVector<Vertex>& vec, Vertex v){
 	return ret;
 }
 
+void Vertex::Unscale2D(ShpVector<Vertex>& vec, ScaleBase sc){
+	for(auto v: vec){
+		v->x *= sc.L; v->x += sc.p0.x;
+		v->y *= sc.L; v->y += sc.p0.y;
+		v->z *= sc.L;
+
+	}
+}
+
 // ================= Edge
 ShpVector<Edge> Edge::Connect(const ShpVector<Edge>& data, Vertex app_v){
 	//1. find closest vertex to v

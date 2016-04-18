@@ -75,3 +75,47 @@ class ExtrudeZ(NewGrid3DCommand):
         finally:
             g2core.free_c_grid(c_grid)
             g2core.free_boundary_types(c_btypes)
+
+
+class Revolve(NewGrid3DCommand):
+    "revolution around a defined axis"
+
+    def __init__(self, argsdict):
+        super(Revolve, self).__init__(argsdict)
+
+    @classmethod
+    def _arguments_types(cls):
+        return {'name': command.BasicOption(str),
+                'base': command.BasicOption(str),
+                'p1': command.Point2Option(),
+                'p2': command.Point2Option(),
+                'phi': command.ListOfOptions(command.BasicOption(float)),
+                'bt1': command.BasicOption(int),
+                'bt2': command.BasicOption(int),
+                'center_tri': command.BoolOption()
+                }
+
+    def _build_grid(self):
+        so = self.options
+        c_grid, c_btypes = 0, 0
+        try:
+            # 0) get grid
+            grid = self.grid_by_name(so['base'])
+            # 1) grid to c
+            c_grid = g2core.grid_to_c(grid)
+            # 2) vectors
+            c_phivals = hmcore.list_to_c(so['phi'], float)
+            v = [so['p1'].x, so['p1'].y, so['p2'].x, so['p2'].y]
+            c_vector = hmcore.list_to_c(v, float)
+            # 3) side boundary conditions
+            c_btypes = g2core.boundary_types_to_c(grid)
+            # 4) call main function
+            c_return = g3core.revolve_call(
+                c_grid, c_vector, c_phivals, c_btypes,
+                so['bt1'], so['bt2'], so['center_tri'])
+            return g3core.grid3_from_c(c_return)
+        except Exception as e:
+            raise command.ExecutionError("Revolution failed", self, e)
+        finally:
+            g2core.free_c_grid(c_grid) if c_grid != 0 else None
+            g2core.free_boundary_types(c_btypes) if c_btypes != 0 else None

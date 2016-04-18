@@ -94,6 +94,36 @@ CPortGrid3D* grid2_sweep_z(const Grid* g, const Grid2DBoundaryStruct* bc,
 	}
 }
 
+CPortGrid3D* grid2_revolve(Grid* g, double* vec, int n_phi, double* phi,
+		Grid2DBoundaryStruct* bc,
+		int b1, int b2, int is_trian){
+	CPortGrid3D* ret = NULL;
+	//Scale
+	GridGeom* grid = static_cast<GridGeom*>(g);
+	ScaleBase sc = grid->do_scale();
+	Point pstart(vec[0], vec[1]), pend(vec[2], vec[3]);
+	sc.scale(pstart); sc.scale(pend);
+	try{
+		std::vector<double> vphi(phi, phi + n_phi);
+		auto sidefun = SideBndFunctor(*grid, *bc, 1, 0);
+		HMGrid3D::ESS ser = HMGrid3D::Constructor::RevolveGrid2D_S(
+			*grid, vphi, pstart, pend, is_trian!=0, sidefun,
+			[b1](int){ return b1; }, [b2](int){ return b2; });
+		HMGrid3D::Vertex::Unscale2D(ser.data_vertex(), sc);
+		HMGrid3D::Grid ans = ser.to_grid();
+		ret = new CPortGrid3D;
+		ret->serialized = new HMGrid3D::ESS(std::move(ser));
+		ret->grid = new HMGrid3D::Grid(std::move(ans));
+	} catch (const std::runtime_error &e){
+		std::cout<<e.what()<<std::endl;
+		if (ret != NULL) {free_grid3d(ret); ret = NULL; }
+	}
+	//Unscale
+	grid->undo_scale(sc);
+	//return
+	return ret;
+}
+
 int export_vtk_grid3(const CPortGrid3D* grid, const char* fname, hmcport_callback f2){
 	try{
 		if (!grid->serialized){

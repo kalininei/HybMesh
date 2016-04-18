@@ -197,3 +197,8 @@ vector<vector<int>> ExtendedSimpleSerialize::face_assembler() const{
 	}
 	return ret;
 }
+HMGrid3D::Grid ExtendedSimpleSerialize::to_grid() const{
+	HMGrid3D::Grid g;
+	g.cells = std::get<3>(_alldata);
+	return g;
+}
