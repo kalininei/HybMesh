@@ -41,11 +41,17 @@ def boundary_names_to_c(bnames):
     nameslist = []
     valslist = []
     for b in bnames._data:
-        nameslist.append(b.name)
         valslist.append(b.index)
+        if b.index != 0:
+            nameslist.append(b.name)
+        else:
+            nameslist.append("default_boundary")
     c_names = list_to_c(nameslist, str)
     c_vals = list_to_c(valslist, int)
-    c_n = ct.c_int(len(c_names))
+    if c_names is not None:
+        c_n = ct.c_int(len(c_names))
+    else:
+        c_n = ct.c_int(0)
 
     libhmcport.set_boundary_names.restype = ct.c_void_p
     return libhmcport.set_boundary_names(c_n, c_names, c_vals)

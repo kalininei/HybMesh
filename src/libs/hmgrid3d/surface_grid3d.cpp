@@ -23,17 +23,17 @@ ShpVector<Vertex> Surface::allvertices() const{
 	return aa::no_dublicates(ret);
 }
 
-Surface Surface::FromBoundaryType(HMGrid3D::Grid& g, int btype, int reversetp){
+Surface Surface::FromBoundaryType(HMGrid3D::SGrid& g, int btype, int reversetp){
 	Surface ret;
-	for (auto f: g.allfaces()){
+	for (auto f: g.vfaces){
 		if (f->is_boundary() && f->boundary_type == btype)
 			ret.faces.push_back(f);
 	}
 	if (reversetp != 0){
 		if (reversetp == 1){
-			for (auto f: ret.allfaces()) if (f->right == 0) f->reverse();
+			for (auto f: ret.allfaces()) if (!f->has_right_cell()) f->reverse();
 		} else if (reversetp == -1){
-			for (auto f: ret.allfaces()) if (f->left == 0) f->reverse();
+			for (auto f: ret.allfaces()) if (!f->has_left_cell()) f->reverse();
 		}
 	}
 	return ret;

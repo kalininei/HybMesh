@@ -7,12 +7,6 @@ namespace hme = HMGrid3D::Export;
 HMCallback::FunctionWithCallback<hme::TGridTecplot> hme::GridTecplot;
 HMCallback::FunctionWithCallback<hme::TBoundaryTecplot> hme::BoundaryTecplot;
 
-void hme::TGridTecplot::_run(const HMGrid3D::Grid& g, std::string fn, BFun bnames){
-	last_ser_result.reset(new TSer(
-		HMGrid3D::ExtendedSimpleSerialize::Convert.MoveCallback(callback, g)));
-	_run(*last_ser_result, fn);
-}
-
 namespace {
 typedef aa::PtrContainerIndexer<const ShpVector<HMGrid3D::Vertex>> TVertIndexer; 
 
@@ -34,7 +28,7 @@ struct SurfSerial{
 			for (int i=0; i<f->n_edges(); ++i){
 				auto e = f->edges[i];
 				bool isleft = (e->first() == eprev->first() || e->first() == eprev->last());
-				if (f->right == 0) isleft = !isleft;
+				if (!f->has_right_cell()) isleft = !isleft;
 				isleft_face_edge.push_back(isleft);
 				eprev = e;
 			}
@@ -101,10 +95,10 @@ void write_row_n(std::ostream& str, Func&& fun, const vector<V>& vals){
 
 };
 
-void hme::TGridTecplot::_run(const TSer& ser, std::string fn, BFun bnames){
+void hme::TGridTecplot::_run(const SGrid& ser, std::string fn, BFun bnames){
 	callback.step_after(30, "Assembling connectivity");
 	//face->nodes connectivity
-	vector<vector<int>> face_nodes = ser.face_assembler();
+	vector<vector<int>> face_nodes = ser.face_vertex();
 	//total face connectivity
 	int totalfn = 0;
 	for (int i=0; i<face_nodes.size(); ++i) totalfn+=face_nodes[i].size();
@@ -122,7 +116,7 @@ void hme::TGridTecplot::_run(const TSer& ser, std::string fn, BFun bnames){
 	//assembling surfaces
 	std::map<int, HMGrid3D::Surface> surfaces_geom; 
 	{
-		for (auto& f: std::get<2>(ser._alldata)) if (f->is_boundary()){
+		for (auto& f: ser.vfaces) if (f->is_boundary()){
 			int bt = f->boundary_type;
 			auto fnd = surfaces_geom.find(bt);
 			if (fnd == surfaces_geom.end()){
@@ -135,7 +129,7 @@ void hme::TGridTecplot::_run(const TSer& ser, std::string fn, BFun bnames){
 	callback.silent_step_after(20, "Serialize surfaces", surfaces_geom.size());
 	std::map<int, SurfSerial> surfaces; 
 	{
-		auto _indexer = aa::ptr_container_indexer(std::get<0>(ser._alldata));
+		auto _indexer = aa::ptr_container_indexer(ser.vvert);
 		_indexer.convert();
 		for (auto& m: surfaces_geom){
 			callback.subprocess_step_after(1);
@@ -202,9 +196,9 @@ void hme::TGridTecplot::_run(const TSer& ser, std::string fn, BFun bnames){
 }
 
 
-void hme::TBoundaryTecplot::_run(const Grid& g, std::string fn, BFun bnames){
+void hme::TBoundaryTecplot::_run(const SGrid& g, std::string fn, BFun bnames){
 	callback.step_after(30, "Assembling Surfaces");
-	ShpVector<Face> af = g.allfaces();
+	ShpVector<Face> af = g.vfaces;
 	//assembling surfaces
 	std::map<int, HMGrid3D::Surface> surfaces_geom; 
 	{

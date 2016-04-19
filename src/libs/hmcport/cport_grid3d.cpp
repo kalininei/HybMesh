@@ -2,32 +2,20 @@
 #include "cport_grid3d.h"
 #include "grid.h"
 #include "hmgrid3d.hpp"
-#include "vtk_export_grid3d.hpp"
-#include "tecplot_export_grid3d.hpp"
 
 namespace{
-HMGrid3D::Grid& hmgrid(CPortGrid3D* g){
-	return *static_cast<HMGrid3D::Grid*>(g->grid);
+HMGrid3D::SGrid& hmgrid(CPortGrid3D* g){
+	return *static_cast<HMGrid3D::SGrid*>(g);
 }
-const HMGrid3D::Grid& hmgrid(const CPortGrid3D* g){
-	return *static_cast<const HMGrid3D::Grid*>(g->grid);
-}
-HMGrid3D::ExtendedSimpleSerialize& hmser(CPortGrid3D* g){
-	return *static_cast<HMGrid3D::ExtendedSimpleSerialize*>(g->serialized);
-}
-const HMGrid3D::ExtendedSimpleSerialize& hmser(const CPortGrid3D* g){
-	return *static_cast<const HMGrid3D::ExtendedSimpleSerialize*>(g->serialized);
+const HMGrid3D::SGrid& hmgrid(const CPortGrid3D* g){
+	return *static_cast<const HMGrid3D::SGrid*>(g);
 }
 }
 
 void free_grid3d(CPortGrid3D* g){
-	if (g->grid != NULL){
-		delete static_cast<HMGrid3D::Grid*>(g->grid);
+	if (g != NULL){
+		delete static_cast<HMGrid3D::SGrid*>(g);
 	}
-	if (g->serialized != NULL){
-		delete static_cast<HMGrid3D::ExtendedSimpleSerialize*>(g->serialized);
-	}
-	delete g;
 }
 
 namespace{
@@ -67,7 +55,7 @@ CPortGrid3D* grid2_sweep_z(const Grid* g, const Grid2DBoundaryStruct* bc,
 		int algo_bot, int* bbot,
 		int algo_side, int bside){
 	const GridGeom* gg = static_cast<const GridGeom*>(g);
-	auto ret = new CPortGrid3D({0, 0});
+	HMGrid3D::SGrid* ret = NULL;
 	try{
 		vector<double> z(zvals, zvals+nz);
 		std::function<int(int)> botfun, topfun;
@@ -82,13 +70,13 @@ CPortGrid3D* grid2_sweep_z(const Grid* g, const Grid2DBoundaryStruct* bc,
 			default: throw std::runtime_error("Invalid algo_bot");
 		}
 		auto sidefun = SideBndFunctor(*gg, *bc, algo_side, bside);
-		ret->grid = new HMGrid3D::Grid(
+		ret = new HMGrid3D::SGrid(
 			HMGrid3D::Constructor::SweepGrid2D(
 				*gg, z, botfun, topfun, sidefun)
 			);
 		return ret;
 	} catch (const std::runtime_error &e) {
-		delete ret;
+		if (ret != NULL) delete ret;
 		std::cout<<e.what()<<std::endl;
 		return NULL;
 	}
@@ -106,14 +94,11 @@ CPortGrid3D* grid2_revolve(Grid* g, double* vec, int n_phi, double* phi,
 	try{
 		std::vector<double> vphi(phi, phi + n_phi);
 		auto sidefun = SideBndFunctor(*grid, *bc, 1, 0);
-		HMGrid3D::ESS ser = HMGrid3D::Constructor::RevolveGrid2D_S(
+		HMGrid3D::SGrid ser = HMGrid3D::Constructor::RevolveGrid2D(
 			*grid, vphi, pstart, pend, is_trian!=0, sidefun,
 			[b1](int){ return b1; }, [b2](int){ return b2; });
-		HMGrid3D::Vertex::Unscale2D(ser.data_vertex(), sc);
-		HMGrid3D::Grid ans = ser.to_grid();
-		ret = new CPortGrid3D;
-		ret->serialized = new HMGrid3D::ESS(std::move(ser));
-		ret->grid = new HMGrid3D::Grid(std::move(ans));
+		HMGrid3D::Vertex::Unscale2D(ser.vvert, sc);
+		ret = new HMGrid3D::SGrid(std::move(ser));
 	} catch (const std::runtime_error &e){
 		std::cout<<e.what()<<std::endl;
 		if (ret != NULL) {free_grid3d(ret); ret = NULL; }
@@ -126,14 +111,7 @@ CPortGrid3D* grid2_revolve(Grid* g, double* vec, int n_phi, double* phi,
 
 int export_vtk_grid3(const CPortGrid3D* grid, const char* fname, hmcport_callback f2){
 	try{
-		if (!grid->serialized){
-			HMGrid3D::Export::GridVTK.WithCallback(f2, hmgrid(grid), fname);
-			grid->serialized = new HMGrid3D::ExtendedSimpleSerialize(std::move(
-						*HMGrid3D::Export::GridVTK.functor().last_ser_result
-						));
-		} else {
-			HMGrid3D::Export::GridVTK.WithCallback(f2, hmser(grid), fname);
-		}
+		HMGrid3D::Export::GridVTK.WithCallback(f2, hmgrid(grid), fname);
 		return 0;
 	} catch (const std::runtime_error &e) {
 		std::cout<<e.what()<<std::endl;
@@ -143,14 +121,7 @@ int export_vtk_grid3(const CPortGrid3D* grid, const char* fname, hmcport_callbac
 
 int export_surface_vtk_grid3(const CPortGrid3D* grid, const char* fname, hmcport_callback f2){
 	try{
-		if (!grid->serialized){
-			HMGrid3D::Export::BoundaryVTK.WithCallback(f2, hmgrid(grid), fname);
-			grid->serialized = new HMGrid3D::ExtendedSimpleSerialize(std::move(
-						*HMGrid3D::Export::BoundaryVTK.functor().last_ser_result
-						));
-		} else {
-			HMGrid3D::Export::BoundaryVTK.WithCallback(f2, hmser(grid), fname);
-		}
+		HMGrid3D::Export::BoundaryVTK.WithCallback(f2, hmgrid(grid), fname);
 		return 0;
 	} catch (const std::runtime_error &e) {
 		std::cout<<e.what()<<std::endl;
@@ -180,15 +151,6 @@ int export_msh_grid3(const CPortGrid3D* grid, const char* fname, const BoundaryN
 		int n_periodic, double* data_periodic, hmcport_callback f2){
 	try{
 		// name function
-		//std::map<int, std::string> bnames_map;
-		//if (bnames != NULL) for (int i=0; i<bnames->n; ++i){
-		//        bnames_map[bnames->values[i]] = std::string(bnames->names[i]);
-		//}
-		//auto nmfunc = [&bnames_map](int i)->std::string{
-		//        auto fnd = bnames_map.find(i);
-		//        if (fnd != bnames_map.end()) return fnd->second;
-		//        else return "boundary" + std::to_string(i);
-		//};
 		auto nmfunc = construct_bnames(bnames);
 		// building periodic
 		HMGrid3D::Export::PeriodicData pd;

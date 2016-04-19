@@ -1,8 +1,8 @@
 #ifndef FLUENT_EXPORT_GRID3D_HPP
 #define FLUENT_EXPORT_GRID3D_HPP
 #include "hmproject.h"
-#include "primitives_grid3d.hpp"
 #include "hmcallback.hpp"
+#include "serialize_grid3d.hpp"
 
 namespace HMGrid3D{namespace Export{
 typedef std::function<std::string(int)> BFun;
@@ -18,7 +18,7 @@ struct PeriodicDataEntry{
 	Vertex v, v_shadow;
 	bool reversed;
 
-	void assemble(HMGrid3D::Grid& g, std::map<Face*, Face*>& outmap);
+	void assemble(HMGrid3D::SGrid& g, std::map<Face*, Face*>& outmap);
 };
 struct PeriodicData{
 	//data
@@ -51,7 +51,7 @@ struct PeriodicData{
 	int size() const { return data.size(); }
 
 	//assemble procedure
-	HMGrid3D::Grid assemble(const HMGrid3D::Grid& g,
+	HMGrid3D::SGrid assemble(const HMGrid3D::SGrid& g,
 			std::map<Face*, Face*>& outmap);
 };
 
@@ -59,18 +59,17 @@ struct TGridMSH: public HMCallback::ExecutorBase{
 	HMCB_SET_PROCNAME("Exporting 3d grid to fluent *.msh");
 	HMCB_SET_DEFAULT_DURATION(100);
 
-	void _run(const Grid&, std::string);
+	void _run(const SGrid&, std::string);
+	void _run(const SGrid&, std::string, BFun);
 
-	void _run(const Grid&, std::string, BFun);
-
-	HMCB_SET_DURATION(HMCB_DURATION(TGridMSH, Grid, std::string) + 30, 
-			Grid, std::string, PeriodicData);
-	void _run(const Grid&, std::string, PeriodicData);
+	HMCB_SET_DURATION(HMCB_DURATION(TGridMSH, SGrid, std::string) + 30, 
+			SGrid, std::string, PeriodicData);
+	void _run(const SGrid&, std::string, PeriodicData);
 
 
-	HMCB_SET_DURATION(HMCB_DURATION(TGridMSH, Grid, std::string) + 30, 
-			Grid, std::string, BFun, PeriodicData);
-	void _run(const Grid&, std::string, BFun, PeriodicData);
+	HMCB_SET_DURATION(HMCB_DURATION(TGridMSH, SGrid, std::string) + 30, 
+			SGrid, std::string, BFun, PeriodicData);
+	void _run(const SGrid&, std::string, BFun, PeriodicData);
 };
 
 //instance of TGridMSH for function-like operator() calls

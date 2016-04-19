@@ -270,64 +270,9 @@ ShpVector<Edge> Cell::alledges() const{
 	return aa::no_dublicates(ret);
 }
 
-// ================== Grid
-int Grid::n_cells() const{
-	return cells.size();
-}
-int Grid::n_faces() const{
-	return allfaces().size();
-}
-int Grid::n_edges() const{
-	return alledges().size();
-}
-int Grid::n_vertices() const{
-	return allvertices().size();
-}
-ShpVector<Vertex> Grid::allvertices() const{
-	ShpVector<Vertex> ret;
-	auto ins = aa::unique_container_inserter(ret);
-	for (auto c: cells){
-		for (auto f: c->faces){
-			for (auto e: f->edges){
-				ins.insert_range(e->vertices.begin(), e->vertices.end());
-			}
-		}
-	}
-	return ret;
-}
-
-ShpVector<Edge> Grid::alledges() const{
-	ShpVector<Edge> ret;
-	for (auto c: cells){
-		auto dt = c->alledges();
-		ret.insert(ret.end(), dt.begin(), dt.end());
-	}
-	return aa::no_dublicates(ret);
-}
-
-ShpVector<Face> Grid::allfaces() const{
-	ShpVector<Face> ret;
-	for (auto c: cells) ret.insert(ret.end(), c->faces.begin(), c->faces.end());
-	return aa::no_dublicates(ret);
-}
-
-ShpVector<Cell> Grid::allcells() const{ return cells; }
-
-Grid::Talldata Grid::alldata() const{
-	Talldata ret;
-	std::get<3>(ret) = cells;
-	auto ins_vert = aa::unique_container_inserter(std::get<0>(ret));
-	auto ins_edges = aa::unique_container_inserter(std::get<1>(ret));
-	auto ins_faces = aa::unique_container_inserter(std::get<2>(ret));
-
-	for (auto& c: cells){
-		for(auto& f: c->faces) if (ins_faces.insert(f)){
-			for(auto& e: f->edges) if (ins_edges.insert(e)){
-				ins_vert.insert_range(
-					e->vertices.begin(), e->vertices.end()
-				);
-			}
-		}
-	}
-	return ret;
+void GridData::enumerate_all() const{
+	enumerate_ids_pvec(vvert);
+	enumerate_ids_pvec(vedges);
+	enumerate_ids_pvec(vfaces);
+	enumerate_ids_pvec(vcells);
 }

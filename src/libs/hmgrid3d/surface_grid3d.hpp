@@ -15,14 +15,13 @@ struct Surface{
 	ShpVector<Vertex> allvertices() const;
 	int n_faces() const { return faces.size(); }
 
-
 	// ================= Builders
 	//reversetp = 
 	//  1: reverse faces so that all grid cells be on their right sides.
 	//  0: do not reverse
 	// -1: reverse faces so that all grid cells be on their left sides.
 	// makes a shallow copy of grid data, so reversing will alter grid structure
-	static Surface FromBoundaryType(HMGrid3D::Grid& g, int btype, int reversetp);
+	static Surface FromBoundaryType(HMGrid3D::SGrid& g, int btype, int reversetp);
 
 	//extracts subsurface which contains v
 	static Surface SubSurface(const Surface& s, Vertex* v);

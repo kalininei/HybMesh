@@ -142,12 +142,12 @@ struct vtkcell_expression{
 	}
 };
 
-vector< vtkcell_expression > cell_assembler(const ExtendedSimpleSerialize& ser,
+vector< vtkcell_expression > cell_assembler(const SGrid& ser,
 		const vector<vector<int>>& aface){
 	vector<vtkcell_expression> ret; ret.reserve(ser.n_cells);
 
 	for (int icell=0; icell<ser.n_cells; ++icell){
-		int kc = ser.icell[icell];
+		int kc = ser.icells[icell];
 		int len = ser.cells[kc];
 		//assemble cell->points
 		vector<vector<int>> cell_points; cell_points.reserve(len);
@@ -156,7 +156,7 @@ vector< vtkcell_expression > cell_assembler(const ExtendedSimpleSerialize& ser,
 			int iface = ser.cells[kc+1+j];
 			cell_points.push_back(aface[iface]);
 			//reverse to guarantee left cell
-			int kfp = ser.iface[iface + 1];
+			int kfp = ser.ifaces[iface + 1];
 			int leftcell = ser.faces[ kfp - 2 ];
 			if (leftcell != icell) {
 				auto& vertv = cell_points.back();
@@ -172,15 +172,9 @@ vector< vtkcell_expression > cell_assembler(const ExtendedSimpleSerialize& ser,
 
 }
 
-void hme::TGridVTK::_run(const HMGrid3D::Grid& g, std::string fn){
-	last_ser_result.reset(new TSer(
-		HMGrid3D::ExtendedSimpleSerialize::Convert.MoveCallback(callback, g)));
-	_run(*last_ser_result, fn);
-}
-
-void hme::TGridVTK::_run(const TSer& ser, std::string fn){
+void hme::TGridVTK::_run(const SGrid& ser, std::string fn){
 	callback.step_after(20, "Assembling faces");
-	vector<vector<int>> aface = ser.face_assembler();
+	vector<vector<int>> aface = ser.face_vertex();
 
 	callback.step_after(20, "Assembling cells");
 	vector< vtkcell_expression > vtkcell = cell_assembler(ser, aface);
@@ -214,12 +208,12 @@ void hme::TGridVTK::_run(const TSer& ser, std::string fn){
 
 namespace {
 struct bnd_face_data{
-	bnd_face_data(const ExtendedSimpleSerialize& _ser): ser(&_ser){}
+	bnd_face_data(const SGrid& _ser): ser(&_ser){}
 
 	//--- assembling steps
 	void n1_extract_bfaces(){     //fills findices
 		for (int i=0; i<ser->n_faces; ++i){
-			int kfp = ser->iface[i+1];
+			int kfp = ser->ifaces[i+1];
 			if (ser->faces[kfp-1]<0 || ser->faces[kfp-2]<0){
 				findices.push_back(i);
 			}
@@ -243,7 +237,7 @@ struct bnd_face_data{
 		global_face_vertices.reserve(n_faces());
 		for (int i=0; i<n_faces(); ++i){
 			int find = findices[i];
-			global_face_vertices.push_back(ser->face_assembler(find));
+			global_face_vertices.push_back(ser->face_vertex(find));
 		}
 	}
 	void n2_extract_bvert(){      //fills vindices
@@ -262,7 +256,7 @@ struct bnd_face_data{
 	void n3_extract_bcells(){     //fills cindices
 		cindices.reserve(n_faces());
 		for (int i=0; i<n_faces(); ++i){
-			int kf = ser->iface[findices[i]+1];
+			int kf = ser->ifaces[findices[i]+1];
 			int c1 = ser->faces[kf-1];
 			if (c1 < 0) c1 = ser->faces[kf-2];
 			cindices.push_back(c1);
@@ -286,14 +280,14 @@ struct bnd_face_data{
 		int sz = n_faces();
 		for (int i=0; i<n_faces(); ++i){
 			int gi = findices[i];
-			sz += (ser->faces[ser->iface[gi]]);
+			sz += (ser->faces[ser->ifaces[gi]]);
 		}
 
 		//raw outpout
 		faces_raw.reserve(sz);
 		for (int i=0; i<n_faces(); ++i){
 			int gi = findices[i];
-			int kf = ser->iface[gi];
+			int kf = ser->ifaces[gi];
 			int len = ser->faces[kf];
 			faces_raw.push_back(len);
 			auto start = global_face_vertices[i].begin();
@@ -332,7 +326,7 @@ struct bnd_face_data{
 	}
 
 	//--- aux data
-	const ExtendedSimpleSerialize* ser;
+	const SGrid* ser;
 	vector<vector<int>> global_face_vertices;
 	
 	//--- main data for output
@@ -348,13 +342,7 @@ struct bnd_face_data{
 };
 }
 
-void hme::TBoundaryVTK::_run(const Grid& g, std::string fn){
-	last_ser_result.reset(new TSer(
-		HMGrid3D::ExtendedSimpleSerialize::Convert.MoveCallback(callback, g)));
-	_run(*last_ser_result, fn);
-}
-
-void hme::TBoundaryVTK::_run(const TSer& ser, std::string fn){
+void hme::TBoundaryVTK::_run(const SGrid& ser, std::string fn){
 	bnd_face_data fdata(ser);
 	callback.step_after(20, "Extract boundary", 4, 1);
 	fdata.n1_extract_bfaces();
@@ -402,8 +390,7 @@ void hme::TBoundaryVTK::_run(const TSer& ser, std::string fn){
 	fs.close();
 }
 
-void hme::TAllVTK::_run(const Grid& g, std::string fngrid, std::string fnbnd){
-	auto ser = HMGrid3D::ExtendedSimpleSerialize::Convert.MoveCallback(callback, g);
-	GridVTK.MoveCallback(callback, ser, fngrid);
-	BoundaryVTK.MoveCallback(callback, ser, fnbnd);
+void hme::TAllVTK::_run(const SGrid& g, std::string fngrid, std::string fnbnd){
+	GridVTK.MoveCallback(callback, g, fngrid);
+	BoundaryVTK.MoveCallback(callback, g, fnbnd);
 }

@@ -24,15 +24,15 @@ hm.export_contour_vtk(g4, "c1.vtk")
 hmdbg.check_ascii_file(15697319238564148717, "g1.vtk")
 hmdbg.check_ascii_file(16408920837426241157, "c1.vtk")
 hm.export_grid_msh(g4, "g1.msh")
-hmdbg.check_ascii_file(1320833530364771542, "g1.msh")
+hmdbg.check_ascii_file(17685805227099775273, "g1.msh")
 
 print "export 2d to fluent with periodic conditions"
 hm.export_grid_msh(g4, "g1.msh", [bbot, btop, True])
-hmdbg.check_ascii_file(13856599912963023394, "g1.msh")
+hmdbg.check_ascii_file(3165188744058895474, "g1.msh")
 
 print "export 2d to fluent with double periodic conditions"
 hm.export_grid_msh(g4, "g1.msh", [bbot, btop, True, bleft, bright, True])
-hmdbg.check_ascii_file(12259324333029163870, "g1.msh")
+hmdbg.check_ascii_file(2759680993089544531, "g1.msh")
 
 print "controlled fail on illegal periodic data"
 try:
@@ -68,13 +68,13 @@ hm.set_boundary_type(g2, circbnd)
 g3 = hm.unite_grids(g2, [(g1, 0.05)])
 g4 = hm.extrude_grid(g3, [0, 0.05, 0.2, 0.5, 0.65, 0.7], botbnd, topbnd)
 hm.export3d_grid_vtk(g4, None, "c1.vtk")
-hmdbg.check_ascii_file(2748267930820717537, "c1.vtk")
+hmdbg.check_ascii_file(7889578680359330313, "c1.vtk")
 hm.export3d_grid_msh(g4, "g1.msh")
-hmdbg.check_ascii_file(9399670080016809242, "g1.msh")
+hmdbg.check_ascii_file(450400077272399620, "g1.msh")
 
 print "export 3d to fluent with periodic condition"
 hm.export3d_grid_msh(g4, "g1.msh", [botbnd, topbnd, [0, 0, 0.0], [0, 0, 0.7]])
-hmdbg.check_ascii_file(668388756210580593, "g1.msh")
+hmdbg.check_ascii_file(12326414976139824718, "g1.msh")
 hm.remove_all()
 
 print "export contour to tecplot"
@@ -98,11 +98,11 @@ hmdbg.check_ascii_file(7412218476507145895, "c1.dat")
 print "export 3d grid to tecplot"
 g4 = hm.extrude_grid(g3, [0, 1, 2, 3, 5, 8, 9], 0, 10)
 hm.export3d_grid_tecplot(g4, "c1.dat")
-hmdbg.check_ascii_file(10268904173790170899, "c1.dat")
+hmdbg.check_ascii_file(16956269303881327848, "c1.dat")
 
 g1 = hm.add_unf_rect_grid([0, 0], [10, 10], 10, 10)
 c1 = hm.create_contour([[-2, 4], [8, -2], [4, 12], [-2, 4]])
 g1 = hm.exclude_contours(g1, c1, "inner")
 g2 = hm.extrude_grid(g1, [0, 0.2, 0.5, 0.9, 1.0], 1, 2, 3)
-hm.export3d_grid_tecplot(g2, "c1.dat")
-hmdbg.check_ascii_file(17906699057342067656, "c1.dat")
+hm.export3d_grid_tecplot(g2, "c2.dat")
+hmdbg.check_ascii_file(9823534259060690640, "c2.dat")

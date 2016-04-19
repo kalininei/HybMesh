@@ -7,10 +7,7 @@
 
 extern "C"{
 
-struct CPortGrid3D{
-	void* grid;
-	mutable void* serialized;
-};
+typedef void CPortGrid3D;
 
 //====== destructor
 void free_grid3d(CPortGrid3D*);
@@ -21,7 +18,7 @@ void free_grid3d(CPortGrid3D*);
 //                  = 1 - variable for each face from i-th cell as btop[i]
 //algo_side = 0 - constant taken from bside
 //            1 - take value from boundary struct
-CPortGrid3D* grid2_sweep_z(const Grid* g, const Grid2DBoundaryStruct* bc,
+CPortGrid3D* grid2_sweep_z(const CPortGrid3D* g, const Grid2DBoundaryStruct* bc,
 		int nz, double* zvals,
 		int algo_top, int* btop,
 		int algo_bot, int* bbot,

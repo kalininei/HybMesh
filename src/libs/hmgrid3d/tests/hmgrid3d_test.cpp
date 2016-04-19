@@ -10,14 +10,12 @@ using namespace HMTesting;
 void test01(){
 	std::cout<<"1. export cuboid to vtk"<<std::endl;
 	auto g1 = HMGrid3D::Constructor::Cuboid({0, 0, 0}, 1, 2, 5, 3, 3, 3);
-
 	HMGrid3D::Export::AllVTK.Silent(g1, "g1.vtk", "c1.vtk");
-
-	add_check(g1.n_vertices() == 64 && g1.n_cells() == 27 &&
-			g1.n_edges() == 144 && g1.n_faces() == 108,
+	add_check(g1.n_vert == 64 && g1.n_cells == 27 &&
+			g1.n_edges == 144 && g1.n_faces == 108,
 			"cuboid primitives number"); 
-	add_file_check(8514389607504677061U, "g1.vtk", "grid");
-	add_file_check(12288405335072816377U, "c1.vtk", "boundary");
+	add_file_check(15732503264642486832U, "g1.vtk", "grid");
+	add_file_check(12574868808136614456U, "c1.vtk", "boundary");
 }
 
 void test02(){
@@ -27,8 +25,8 @@ void test02(){
 		auto g3d = HMGrid3D::Constructor::SweepGrid2D(g2d, {0.3, 0.4, 0.8});
 		HMGrid3D::Export::BoundaryVTK(g3d, "c1.vtk");
 		HMGrid3D::Export::GridVTK(g3d, "g1.vtk");
-		add_check(g3d.n_vertices() == 288 && g3d.n_edges() == 708 &&
-				g3d.n_faces() == 575 && g3d.n_cells() == 154,
+		add_check(g3d.n_vert == 288 && g3d.n_edges == 708 &&
+				g3d.n_faces == 575 && g3d.n_cells == 154,
 				"rectangular grid sweep");
 	}
 	{
@@ -36,7 +34,7 @@ void test02(){
 		auto g3d = HMGrid3D::Constructor::SweepGrid2D(g2d, {0, 0.1, 0.4, 0.7});
 		HMGrid3D::Export::BoundaryVTK(g3d, "c1.vtk");
 		HMGrid3D::Export::GridVTK(g3d, "g1.vtk");
-		add_check(g3d.n_vertices() == 240 && g3d.n_cells() == 144,
+		add_check(g3d.n_vert == 240 && g3d.n_cells == 144,
 				"ring grid sweep");
 	}
 	{
@@ -44,7 +42,7 @@ void test02(){
 		auto g3d = HMGrid3D::Constructor::SweepGrid2D(g2d, {0, 1, 2, 3});
 		HMGrid3D::Export::BoundaryVTK(g3d, "c1.vtk");
 		HMGrid3D::Export::GridVTK(g3d, "g1.vtk");
-		add_check(g3d.n_vertices() == 964 && g3d.n_cells() == 720,
+		add_check(g3d.n_vert == 964 && g3d.n_cells == 720,
 				"circle grid sweep");
 	}
 }
@@ -54,7 +52,7 @@ void test03(){
 	{
 		auto g1 = HMGrid3D::Constructor::Cuboid(HMGrid3D::Vertex(0, 0, 0), 1, 1, 1, 2, 2, 1);
 		HMGrid3D::Export::GridMSH.Silent(g1, "g1.msh");
-		add_file_check(11216638150753088583U, "g1.msh", "simple cuboid");
+		add_file_check(4712463904373753464U, "g1.msh", "simple cuboid");
 	}
 	{
 		auto g2d = GGeom::Constructor::RectGrid01(6, 3);
@@ -70,21 +68,21 @@ void test03(){
 						default: return std::string("side") + std::to_string(i);
 					};
 				});
-		add_file_check(1976956498869484852U, "g1.msh", "cuboid from sweep with custom boundaries");
+		add_file_check(15070544857795696967U, "g1.msh", "cuboid from sweep with custom boundaries");
 	}
 	{
 		auto g1 = GGeom::Constructor::Circle(Point(0, 0), 1, 4, 2, true);
 		auto g2 = GGeom::Constructor::ExtractCells(g1, {0, 4});
 		auto g3d = HMGrid3D::Constructor::SweepGrid2D(g2, {0, 0.1});
 		HMGrid3D::Export::GridMSH(g3d, "g1.msh");
-		add_file_check(17687514312539715596U, "g1.msh", "mixed hex/wedge cells");
+		add_file_check(14999299632248408018U, "g1.msh", "mixed hex/wedge cells");
 	}
 	{
 		auto g1 = GGeom::Constructor::Circle(Point(0, 0), 1, 5, 2, false);
 		auto g2 = GGeom::Constructor::ExtractCells(g1, {5});
 		auto g3d = HMGrid3D::Constructor::SweepGrid2D(g2, {0, 0.1});
 		HMGrid3D::Export::GridMSH(g3d, "g1.msh");
-		add_file_check(3921094917079304U, "g1.msh", "single pentagon prism cell");
+		add_file_check(17235633717941475062U, "g1.msh", "single pentagon prism cell");
 	}
 	{
 		auto g1 = GGeom::Constructor::RectGrid01(20, 30);
@@ -108,7 +106,7 @@ void test03(){
 						default: return "unknown";
 					}
 				});
-		add_file_check(1949417467069346897U, "g1.msh", "mesh with polyhedra cells");
+		add_file_check(9690145692750233246U, "g1.msh", "mesh with polyhedra cells");
 		delete g3;
 	}
 }
@@ -121,11 +119,11 @@ void test04(){
 		HMGrid3D::Export::PeriodicData pd;
 		pd.add_condition(1, 2, HMGrid3D::Vertex(0, 0, 0), HMGrid3D::Vertex(0, 0, 1), true);
 		HMGrid3D::Export::GridMSH(g3d, "_o1.msh", pd); 
-		add_file_check(17371627965264670427U, "_o1.msh", "simple 2x2x2");
+		add_file_check(9831086485199871919U, "_o1.msh", "simple 2x2x2");
 
 		pd.data[0].reversed = false;
 		HMGrid3D::Export::GridMSH(g3d, "_o2.msh", pd); 
-		add_file_check(9374713153386878447U, "_o2.msh", "2x2x2 without reverse");
+		add_file_check(7770892506734403513U, "_o2.msh", "2x2x2 without reverse");
 
 		pd.data[0].reversed = true;
 		pd.data[0].v = HMGrid3D::Vertex(0.1, 0, 0);
@@ -144,7 +142,7 @@ void test04(){
 		vector<double> zvec;
 		for (int i=0; i<100; i+=10)  zvec.push_back(3 + (double)i/99);
 		auto g3d = HMGrid3D::Constructor::SweepGrid2D(*g2d, zvec);
-		HMGrid3D::Face::SetBoundaryTypes(g3d.allfaces(), [](HMGrid3D::Vertex v, int bt){
+		g3d.set_btype([](HMGrid3D::Vertex v, int bt){
 					if (bt == 3){
 						if (v.x<=geps) return 3;
 						if (v.x>=10-geps) return 4;
@@ -158,7 +156,7 @@ void test04(){
 		pd.add_condition(1, 2, HMGrid3D::Vertex(0, 0, 3), HMGrid3D::Vertex(0, 0, 4), true);
 		pd.add_condition(3, 4, HMGrid3D::Vertex(0, 0, 3), HMGrid3D::Vertex(10, 0, 3), true);
 		HMGrid3D::Export::GridMSH.Silent(g3d, "g2.msh", pd);
-		add_file_check(6712434711251990504U, "g2.msh", "multiple periodic");
+		add_file_check(16533597872948878492U, "g2.msh", "multiple periodic");
 
 		delete g2d;
 	}
@@ -170,15 +168,15 @@ void test05(){
 		auto g2d = GGeom::Constructor::RectGrid01(1, 1);
 		auto g3d = HMGrid3D::Constructor::SweepGrid2D(g2d, {0.0, 0.5});
 		HMGrid3D::Export::GridTecplot.Silent(g3d, "g1.dat");
-		add_file_check(1996510299573747148U, "g1.dat", "single cell grid");
+		add_file_check(1831833575709478659U, "g1.dat", "single cell grid");
 	}
 	{
 		auto g2d = GGeom::Constructor::Circle(Point(0, 0), 10, 30, 10, false);
 		auto g3d = HMGrid3D::Constructor::SweepGrid2D(g2d, {1.0, 1.2, 1.4, 1.6, 1.7, 1.8, 1.9, 2.0});
 		HMGrid3D::Export::GridTecplot.Silent(g3d, "g1.dat");
-		add_file_check(15174883252499084243U, "g1.dat", "polyhedral grid");
+		add_file_check(17626851046985520587U, "g1.dat", "polyhedral grid");
 		HMGrid3D::Export::BoundaryTecplot.Silent(g3d, "g1.dat");
-		add_file_check(4351852141727252628U, "g1.dat", "polyhedral boundary");
+		add_file_check(8291026423155100327U, "g1.dat", "polyhedral boundary");
 	}
 }
 
@@ -190,31 +188,31 @@ void test06(){
 	{
 		auto g3d = RevolveGrid2D(g2d, {0, 90}, Point(0, 0), Point(0, 1), true, bc0, bc0, bc0);
 		HMGrid3D::Export::GridTecplot.Silent(g3d, "g1.dat");
-		add_file_check(14477811247662873314U, "g1.dat", "single cell, distant, incomplete");
+		add_file_check(16088294825526263046U, "g1.dat", "single cell, distant, incomplete");
 	}
 	{
 		auto g3d = RevolveGrid2D(g2d, {0, 90, 180, 270, 360}, Point(0, 0), Point(0, 1), true,
 				bc0, bc0, bc0);
 		HMGrid3D::Export::GridTecplot.Silent(g3d, "g1.dat");
-		add_file_check(8806735487875113935U, "g1.dat", "single cell, distant, complete");
+		add_file_check(16481374492149274315U, "g1.dat", "single cell, distant, complete");
 	}
 	{
 		auto g3d = RevolveGrid2D(g2d, {0, 90, 100}, Point(0, 0), Point(0, 1), true,
 				[](int i){ return i; }, [](int){return 10;}, [](int){return 20;});
 		HMGrid3D::Export::GridTecplot.Silent(g3d, "g1.dat");
-		add_file_check(10847746390852255496U, "g1.dat", "single cell, distant, incomplete, with bc");
+		add_file_check(3859847262675033285U, "g1.dat", "single cell, distant, incomplete, with bc");
 	}
 	{
 		auto h2d = GGeom::Constructor::RectGrid(Point(0, 0), Point(2, 1), 2, 1);
 		auto g3d = RevolveGrid2D(h2d, {0, 90}, Point(0, 0), Point(0, 1), true);
 		HMGrid3D::Export::GridTecplot.Silent(g3d, "g1.dat");
-		add_file_check(12291685918278792355U, "g1.dat", "with contact, incomplete");
+		add_file_check(8233442907809870919U, "g1.dat", "with contact, incomplete");
 	}
 	{
 		auto h2d = GGeom::Constructor::RectGrid(Point(0, 0), Point(2, 1), 4, 3);
 		auto g3d = RevolveGrid2D(h2d, {0, 90, 110, 180, 250, 330, 360}, Point(0, 0), Point(0, 1), true);
 		HMGrid3D::Export::GridTecplot.Silent(g3d, "g1.dat");
-		add_file_check(13721034154834175572U, "g1.dat", "with contact, complete");
+		add_file_check(15759408446281820711U, "g1.dat", "with contact, complete");
 	}
 	{
 		auto g1 = GGeom::Constructor::RectGrid(Point(0, 0), Point(10, 10), 10, 10);
@@ -222,9 +220,9 @@ void test06(){
 		auto g3 = GridGeom::cross_grids(&g1, &g2, 0.0, 0, 0, 0, 0);
 		auto g3d = RevolveGrid2D(*g3, {0, 10, 20, 30}, Point(0, 0), Point(0, 1), true);
 		HMGrid3D::Export::GridTecplot.Silent(g3d, "g1.dat");
-		add_file_check(4088026303719620111U, "g1.dat", "hanging nodes near axis to tecplot");
+		add_file_check(12980710001405184230U, "g1.dat", "hanging nodes near axis to tecplot");
 		HMGrid3D::Export::GridMSH.Silent(g3d, "g1.msh");
-		add_file_check(13046024190899073402U, "g1.msh", "hanging nodes near axis to fluent");
+		add_file_check(7731290871669899787U, "g1.msh", "hanging nodes near axis to fluent");
 		delete g3;
 	}
 }
@@ -236,33 +234,33 @@ void test07(){
 		auto g2d = GGeom::Constructor::RectGrid(Point(1,0), Point(2,1), 1, 1);
 		auto g3d = RevolveGrid2D(g2d, {0, 45, 90}, Point(1, 0), Point(1, 1), false);
 		HMGrid3D::Export::GridTecplot.Silent(g3d, "g1.dat");
-		add_file_check(16930278641819874842U, "g1.dat", "single cell, without center trian, incomplete");
+		add_file_check(13398422286724743124U, "g1.dat", "single cell, without center trian, incomplete");
 	}
 	{
 		auto g2d = GGeom::Constructor::RectGrid(Point(1,0), Point(2,1), 1, 1);
 		auto g3d = RevolveGrid2D(g2d, {20, 45, 90, 160, 270, 300, 380}, Point(1, 0), Point(1, 1), false);
 		HMGrid3D::Export::GridTecplot.Silent(g3d, "g1.dat");
-		add_file_check(2233152245736731725U, "g1.dat", "single cell, without center trian, complete");
+		add_file_check(6994418583934313116U, "g1.dat", "single cell, without center trian, complete");
 	}
 	{
 		auto h2d = GGeom::Constructor::RectGrid(Point(0, 0), Point(2, 1), 2, 1);
 		auto g3d = RevolveGrid2D(h2d, {0, 10, 20, 30, 40, 50}, Point(0, 0), Point(0, 1), false);
 		HMGrid3D::Export::GridTecplot.Silent(g3d, "g1.dat");
-		add_file_check(9647564763969341052U, "g1.dat", "multiple cells, with trian, complete");
+		add_file_check(11881236001573517783U, "g1.dat", "multiple cells, with trian, complete");
 	}
 	{
 		auto g1 = GGeom::Constructor::EmptyGrid();
 		GGeom::Modify::AddCell(g1, {Point(0,0), Point(1,0), Point(0, 1)});
 		auto g2 = RevolveGrid2D(g1, {0, 45, 90}, Point(0,0), Point(0,1), false);
 		HMGrid3D::Export::GridTecplot.Silent(g2, "g1.dat");
-		add_file_check(10327035335120541287U, "g1.dat", "no tri with single axis triangle");
+		add_file_check(10167032458429566145U, "g1.dat", "no tri with single axis triangle");
 	}
 	{
 		auto g1 = GGeom::Constructor::EmptyGrid();
 		GGeom::Modify::AddCell(g1, {Point(1,0), Point(1,1), Point(0, 1)});
 		auto g2 = RevolveGrid2D(g1, {0, 45, 90}, Point(0,0), Point(0,1), false);
 		HMGrid3D::Export::GridTecplot.Silent(g2, "g1.dat");
-		add_file_check(14151333426842973017U, "g1.dat", "no tri, single off axis triangle");
+		add_file_check(11550191908304285294U, "g1.dat", "no tri, single off axis triangle");
 	}
 	{
 		auto g1 = GGeom::Constructor::EmptyGrid();
@@ -272,10 +270,10 @@ void test07(){
 		GGeom::Repair::Heal(g1);
 		auto g2 = RevolveGrid2D(g1, {0, 45, 90}, Point(0,0), Point(0,1), false);
 		HMGrid3D::Export::GridTecplot.Silent(g2, "g1.dat");
-		add_file_check(1066331983577157379U, "g1.dat", "no tri, complex connections, incomplete");
+		add_file_check(12664340621499564857U, "g1.dat", "no tri, complex connections, incomplete");
 		auto g3 = RevolveGrid2D(g1, {0, 90, 180, 270, 360}, Point(0,0), Point(0,1), false);
 		HMGrid3D::Export::GridTecplot.Silent(g3, "g1.dat");
-		add_file_check(7013636101770389960U, "g1.dat", "no tri, complex connections, complete");
+		add_file_check(2467448280797112561U, "g1.dat", "no tri, complex connections, complete");
 	}
 }
 int main(){

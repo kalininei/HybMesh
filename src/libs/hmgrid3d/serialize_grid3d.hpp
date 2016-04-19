@@ -16,63 +16,31 @@ struct SimpleSerialize{
 	std::vector<int> edges;    //edge0_start, edge0_end, edge1_start, edge1_end, ...
 	std::vector<int> faces;    //face0_num_edges, face0_edge0, ..., face0_leftcell, face0_rightcell, ...
 	std::vector<int> cells;    //cell0_num_faces, cell0_face0, cell0_face1, ....
-	std::vector<int> bnd;      //btype0 num_faces_in_btype0 btype0_face0, ....  #only non-zero boundaries: WHY???
+	std::vector<int> bnd;      //btype0 num_faces_in_btype0 btype0_face0, ....
 
-	//convert functions
+	//access to cells, faces in 'cells', 'faces' vectors
+	vector<int> icells, ifaces;
 
-	//possible arguments: (const Grid&),  (const Grid&, Grid::Talldata&)
-	//returns: SimpleSerialize
-	struct ConvertExe: public HMCallback::ExecutorBase{
-		typedef SimpleSerialize TRet1;
-		HMCB_SET_PROCNAME("Serialization");
-		HMCB_SET_DEFAULT_DURATION(100);
-
-		TRet1 _run(const Grid& g);
-		TRet1 _run(const Grid& g, Grid::Talldata& dt);
-	};
-	static HMCallback::FunctionWithCallback<ConvertExe> Convert;
-protected:
-	//uses 100 units of HMCallback::Caller2
-	void fill_from_grid(const Grid& g, Grid::Talldata& dt, HMCallback::Caller2&);
+	//====== additional connectivity tables
+	vector<int> face_vertex(int num_face) const;
+	vector<vector<int>> face_vertex() const;
 };
 
 
-struct ExtendedSimpleSerialize: public SimpleSerialize{
-	//==== additional data
-	//get<0> - ShpVector<Vertex>,
-	//get<1> - ShpVector<Edge>,
-	//get<2> - ShpVector<Face>,
-	//get<3> - ShpVector<Cell>
-	Grid::Talldata _alldata;
-	vector<int> icell, iface;
+//grid with serialized data
+struct SGrid: public SimpleSerialize, public GridData{
 
-	//==== data access
-	ShpVector<Vertex>& data_vertex(){ return std::get<0>(_alldata); }
+	//====== constructing procedures
+	//fills SimpleSerialize on the basis of GridData
+	void actualize_serial_data();
+	//fills GridData vectors from SimpleSerialize Data
+	void actualize_data();
 
-	//==== additional methods
-	//face as a sequence on vertices
-	vector<int> face_assembler(int nface) const;
-	vector<vector<int>> face_assembler() const;
-	Grid to_grid() const;
-	
-	//convert functions
-	//possible arguments -- (const Grid& g)
-	//returns ExtendedSimpleSerialize
-	struct ConvertExe: public HMCallback::ExecutorBase{
-		typedef ExtendedSimpleSerialize TRet1;
-		HMCB_SET_PROCNAME("Extended serialization");
-		HMCB_SET_DEFAULT_DURATION(
-			10+
-			HMCB_DURATION(SimpleSerialize::ConvertExe, Grid, Grid::Talldata)
-		);
-
-		TRet1 _run(const Grid& g);
-	};
-	static HMCallback::FunctionWithCallback<ConvertExe> Convert;
+	//====== methods
+	void set_btype(std::function<int(Vertex, int)> func);
+	void renumber_by_cells();
 };
 
-typedef SimpleSerialize SS;
-typedef ExtendedSimpleSerialize ESS;
 
 }
 

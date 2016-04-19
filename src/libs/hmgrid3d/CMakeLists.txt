@@ -2,6 +2,7 @@ set (HEADERS
 	hmgrid3d.hpp
 	primitives_grid3d.hpp
 	construct_grid3d.hpp
+	revolve_grid3d.hpp
 	debug_grid3d.hpp
 	surface_grid3d.hpp
 	serialize_grid3d.hpp
@@ -14,6 +15,7 @@ set (SOURCES
 	hmgrid3d.cpp
 	primitives_grid3d.cpp
 	construct_grid3d.cpp
+	revolve_grid3d.cpp
 	debug_grid3d.cpp
 	surface_grid3d.cpp
 	serialize_grid3d.cpp

@@ -9,11 +9,24 @@ struct Vertex;
 struct Edge;
 struct Face;
 struct Cell;
-struct Grid;
+typedef ShpVector<Vertex> VertexData;
+typedef ShpVector<Edge> EdgeData;
+typedef ShpVector<Face> FaceData;
+typedef ShpVector<Cell> CellData;
+
+template<class C>
+void enumerate_ids_pvec(const C& inp){
+	for (int i=0; i<inp.size(); ++i) inp[i]->id = i;
+}
+template<class C>
+void constant_ids_pvec(const C& inp, int val){
+	for (int i=0; i<inp.size(); ++i) inp[i]->id = val;
+}
 
 struct Vertex{
 	//==== data
 	double x, y, z;
+	mutable int id;
 
 	//==== constructor
 	Vertex(double _x=0, double _y=0, double _z=0): x(_x), y(_y), z(_z){}
@@ -34,6 +47,7 @@ struct Vertex{
 struct Edge{
 	// ==== Data
 	ShpVector<Vertex> vertices;
+	mutable int id;
 	
 	//==== Constructor
 	Edge(shared_ptr<Vertex> p1, shared_ptr<Vertex> p2): vertices {p1, p2}{}
@@ -76,10 +90,13 @@ struct Face{
 	int boundary_type;
 	//if one looks at the face and sees it in a couterclockwise order 
 	//then he looks from a right direction.
-	shared_ptr<Cell> left, right;
+	std::weak_ptr<Cell> left, right;
+	mutable int id;
 
 	// ===== Features
-	bool is_boundary() const { return left==0 || right==0; }
+	bool is_boundary() const { return left.expired() || right.expired(); }
+	bool has_right_cell() const { return !right.expired(); }
+	bool has_left_cell() const { return !left.expired(); }
 	int n_edges() const { return edges.size(); }
 
 	// ===== Data access
@@ -113,6 +130,7 @@ struct Face{
 struct Cell{
 	// ===== Data
 	ShpVector<Face> faces;
+	mutable int id;
 
 	// ==== Features
 	int n_faces() const;
@@ -126,29 +144,18 @@ struct Cell{
 	ShpVector<Edge> alledges() const;
 };
 
-struct Grid{
-	// ====== Data
-	ShpVector<Cell> cells;
+//Grid primitives collection
+struct GridData{
+	VertexData vvert;
+	EdgeData vedges;
+	FaceData vfaces;
+	CellData vcells;
 
-	// ===== Features
-	int n_cells() const;
-	int n_faces() const;
-	int n_edges() const;
-	int n_vertices() const;
-
-	// ===== Data access
-	ShpVector<Vertex> allvertices() const;
-	ShpVector<Edge> alledges() const;
-	ShpVector<Face> allfaces() const;
-	ShpVector<Cell> allcells() const;
-	typedef std::tuple<
-			ShpVector<Vertex>,
-			ShpVector<Edge>,
-			ShpVector<Face>,
-			ShpVector<Cell>
-		> Talldata;
-	Talldata alldata() const;
+	// ====== methods
+	//set id's of primitives to its actual indicies
+	void enumerate_all() const;
 };
+
 
 
 }
