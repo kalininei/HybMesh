@@ -1,58 +1,37 @@
 #ifndef HYBMESH_GRIDMAP_HPP
 #define HYBMESH_GRIDMAP_HPP
 
-#include "procgrid.h"
-#include "hmmapping.hpp"
-#include "femgrid43.hpp"
-#include "hmfem.hpp"
-#include "mapped_contour.hpp"
+#include "hmproject.h"
+#include "hybmesh_contours2d.hpp"
+#include "grid.h"
 
 namespace HMGMap{
-namespace Impl{
 
-
-struct DoMapping{
-	DoMapping(const Options& _opt): opt(_opt), inpgrid(GGeom::Constructor::EmptyGrid()){}
-	
-	// ====== set input
-	void set_grid(const GridGeom& ig);
-	void set_contour(const HMCont2D::ECollection& ecol);
-	void set_points(const vector<Point>& gridpnt, const vector<Point>& contpnt);
-
-	// ====== main procedure
-	GridGeom run();
-private:
-
-	// ====== main data
-	Options opt;
-	GridGeom inpgrid;
-	HMCont2D::ECollection contdata;
-	vector<Point> gridpoints;
-	vector<Point> contpoints;
-
-	// ====== aux data
-	//filled by prepare_mapped_contour
-	HMCont2D::ContourTree mapped_outer;
-	//those are filled by prepare_grid and its subroutines
-	shared_ptr<HMFem::Grid43> g3;   //triangle grid
-	HMCont2D::ContourTree g3outer;  //triangle grid borders
-	shared_ptr<HMFem::Mat> laplas_mat;  //preassembled laplas operator
-	MappedContourCollection mcol;   //contour mapper: from g3 contour to contdata contour
-
-	//aux procedures
-	void prepare_mapped_contour();
-	void prepare_grid();
-	vector<double> solve_u_problem();
-	vector<double> solve_v_problem();
-	//prepare_grid subroutines
-	void build_grid3();
-	void build_mcc();
-
+class MapException: public std::runtime_error{
+public:
+	MapException(std::string m) noexcept: std::runtime_error(
+			std::string("Grid mapping exception: ") + m){};
 };
 
+struct Options{
+	int fem_nmax;
+	int fem_nmin;
+	int fem_nrec;
+	int fem_nedge;
+	std::string snap;   //NO, ADD_VERTICES, SHIFT_VERTICES
+	Options(): fem_nmax(100000), fem_nmin(1000), fem_nrec(10000), fem_nedge(3),
+	           snap("NO"){}
+};
+
+GridGeom MapGrid(const GridGeom& base, const HMCont2D::ECollection& area,
+		vector<Point> base_points,
+		vector<Point> mapped_points,
+		Options opt=Options());
 
 
-}}
+
+
+}
 
 
 #endif

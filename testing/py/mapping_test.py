@@ -153,3 +153,9 @@ check(hm.info_contour(g1)['btypes'] == {1: 5, 2: 45, 3: 45, 4: 5})
 
 # hm.export_grid_vtk(g1, "g1.vtk")
 # hm.export_contour_vtk(g1, "c1.vtk")
+
+
+print "circ4grid"
+g1 = hm.add_circ_rect_grid([10, 10], 10, 1)
+hm.export_grid_vtk(g1, "g1.vtk")
+check_ascii_file(11741953394189746279, "g1.vtk")

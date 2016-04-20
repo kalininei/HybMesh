@@ -144,3 +144,27 @@ void* custom_rectangular_grid(int algo, void* left, void* bot, void* right, void
 	HMCont2D::ECollection::Unscale(*top1, sc);
 	return ret;
 }
+
+Grid* circ4grid(int algo, double* center, double rad, double step, double sqrside, double outer_refinement){
+	GridGeom* ret = NULL;
+	try{
+		double n = 2*M_PI*rad/step;
+		int n1 = round(n/8.0);
+		switch (algo){
+			case 0:
+				ret = new GridGeom(HMGMap::Circ4Prototype(Point(0, 0), 1.0, 8*n1, sqrside,
+					outer_refinement));
+				break;
+			default:
+				throw std::runtime_error("unknown algorithm");
+		};
+		//unscale
+		ScaleBase sc(center[0], center[1], rad);
+		ret->undo_scale(sc);
+		return ret;
+	} catch (std::runtime_error &e){
+		std::cout<<e.what()<<std::endl;
+		if (ret!=0) delete ret;
+		return NULL;
+	}
+}

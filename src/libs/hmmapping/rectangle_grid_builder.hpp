@@ -15,6 +15,9 @@ GridGeom ConformalRectGrid(HMCont2D::Contour& left, HMCont2D::Contour& bot,
 GridGeom LaplasRectGrid(HMCont2D::Contour& left, HMCont2D::Contour& bot,
 	HMCont2D::Contour& right, HMCont2D::Contour& top);
 
+GridGeom FDMLaplasRectGrid(HMCont2D::Contour& left, HMCont2D::Contour& bot,
+	HMCont2D::Contour& right, HMCont2D::Contour& top);
+
 }
 #endif
 

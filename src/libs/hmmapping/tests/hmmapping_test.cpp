@@ -1,23 +1,11 @@
-#include "hmmapping.hpp"
 #include <iostream>
 #include "procgrid.h"
-
-int FAILED_CHECKS = 0;
-
-void add_check(bool ex, std::string info){
-	if (info.size()==0){
-		std::cout<<"\tunknown check: ";
-	} else{
-		std::cout<<"\t"<<info;
-	}
-	if (ex){
-		std::cout<<": True"<<std::endl;
-	} else {
-		++FAILED_CHECKS;
-		std::cout<<": False <<<<<<<<<<<<<<<<<<<"<<std::endl;
-	}
-};
-
+#include "hmmapping.hpp"
+#include "hmtesting.hpp"
+#include "circrect.hpp"
+#include "vtk_export_grid2d.hpp"
+using HMTesting::add_check;
+using HMTesting::add_file_check;
 
 void test01(){
 	std::cout<<"01. Map grid from square"<<std::endl;
@@ -147,19 +135,32 @@ void test04(){
 		"snapping by shifting points");
 }
 
+void test05(){
+	std::cout<<"05. Circle with rectangle cells"<<std::endl;
+	GridGeom g1 = HMGMap::Circ4Prototype(Point(0, 0), 1.0, 24, 1.0, 1.0);
+	GGeom::Export::GridVTK(g1, "g1.vtk");
+	auto sk = GGeom::Info::Skewness(g1);
+	auto maxel = std::max_element(sk.begin(), sk.end());
+	add_check(ISZERO(*maxel - 0.5), "skewness");
+	add_file_check(8849316823715813599U, "g1.vtk", "no refinement, side = 1.0*rad");
+
+	GridGeom g2 = HMGMap::Circ4Prototype(Point(3, 1), 2.0, 24, 1.0, 0.3);
+	GGeom::Export::GridVTK(g2, "g1.vtk");
+	add_file_check(7197682274436151092U, "g1.vtk", "with refinement, side = 1.0*rad");
+
+	GridGeom g3 = HMGMap::Circ4Prototype(Point(-3, 1), 0.2, 80, 0.5, 1.0);
+	GGeom::Export::GridVTK(g3, "g1.vtk");
+	add_file_check(14945723505508438707U, "g1.vtk", "side = 0.5*rad");
+}
+
 int main(){
 	test01();
 	test02();
 	test03();
 	test04();
+	test05();
 
-	if (FAILED_CHECKS == 1){
-		std::cout<<FAILED_CHECKS<<" test failed <<<<<<<<<<<<<<<<<<<"<<std::endl;
-	} else if (FAILED_CHECKS > 1) {
-		std::cout<<FAILED_CHECKS<<" tests failed <<<<<<<<<<<<<<<<<<<"<<std::endl;
-	} else {
-		std::cout<<"All tests passed"<<std::endl;
-	}
+	HMTesting::check_final_report();
 	std::cout<<"DONE"<<std::endl;
 	return 0;
 }

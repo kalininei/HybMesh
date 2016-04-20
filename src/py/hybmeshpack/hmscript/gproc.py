@@ -211,7 +211,7 @@ def extrude_grid(obj, zcoords, bottombc=0, topbc=0, sidebc=None):
 
 
 def revolve_grid(obj, p1, p2, n_phi=None,
-                 phi=None, btype1=0, btype2=0, center_tri=True):
+                 phi=None, btype1=0, btype2=0, merge_central=False):
     """ Creates 3D grid by revolving of 2D grid around defined vector
 
     :param obj: 2d grid identifier
@@ -236,11 +236,11 @@ def revolve_grid(obj, p1, p2, n_phi=None,
     :param btype2: boundary identifiers for surfaces which will be build
        as a result of incomplete rotation at end values of **phi** vector.
 
-    :param bool center_tri: if rotation vector coincides
+    :param bool merge_central: if rotation vector coincides
        with boundary edges of input grid then this parameter
        defines whether central cells derived from the revolution
-       of boundary cells should be united into one
-       complex finite volume (False) or left as they are (True).
+       of boundary cells should be merged into one
+       complex finite volume (True) or left as they are (False).
 
     :returns: 3D grid identifier
 
@@ -281,7 +281,7 @@ def revolve_grid(obj, p1, p2, n_phi=None,
                                "phi": inp_phi,
                                "bt1": btype1,
                                "bt2": btype2,
-                               "center_tri": center_tri})
+                               "center_tri": not merge_central})
     try:
         flow.exec_command(c)
         return c._get_added_names()[2][0]

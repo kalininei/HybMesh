@@ -4,6 +4,7 @@ set (HEADERS
 	gridmap.hpp
 	mapped_contour.hpp
 	rectangle_grid_builder.hpp
+	circrect.hpp
 )
 
 set (SOURCES
@@ -11,6 +12,7 @@ set (SOURCES
 	gridmap.cpp
 	mapped_contour.cpp
 	rectangle_grid_builder.cpp
+	circrect.cpp
 )
 
 source_group ("Header Files" FILES ${HEADERS} ${HEADERS})

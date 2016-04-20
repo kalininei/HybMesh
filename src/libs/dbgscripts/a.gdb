@@ -3,8 +3,7 @@
 
 source ../../src/libs/dbgscripts/hmout.gdb
 
-file ./hmgrid3d_test
+file ./hmmaping_test
 set breakpoint pending on
-b construct_grid3d.cpp:325
-#b hmgrid3d_test.cpp:26
+b circrect.cpp:76
 run 

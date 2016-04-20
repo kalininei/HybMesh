@@ -121,6 +121,38 @@ class AddCustomRectGrid(NewGridCommand):
                 g2core.free_c_grid(c_ret)
 
 
+class AddCirc4Grid(NewGridCommand):
+    "Add circular quadrangular grid "
+    def __init__(self, argsdict):
+        super(AddCirc4Grid, self).__init__(argsdict)
+
+    @classmethod
+    def _arguments_types(cls):
+        return {'name': command.BasicOption(str),
+                'algo': command.BasicOption(str),
+                'p0': command.Point2Option(),
+                'rad': command.BasicOption(float),
+                'step': command.BasicOption(float),
+                'sqrside': command.BasicOption(float),
+                'rcoef': command.BasicOption(float)
+                }
+
+    def _build_grid(self):
+        so = self.options
+        c_ret = 0
+        try:
+            c_p0 = g2core.list_to_c([so['p0'].x, so['p0'].y], float)
+            c_ret = g2core.circ4grid(
+                so['algo'], c_p0, so['rad'], so['step'],
+                so['sqrside'], so['rcoef'])
+            return g2core.grid_from_c(c_ret)
+        except Exception as e:
+            raise command.ExecutionError(str(e), self, e)
+        finally:
+            if c_ret != 0:
+                g2core.free_c_grid(c_ret)
+
+
 class AddUnfCircGrid(NewGridCommand):
     "Add uniform circular grid "
 

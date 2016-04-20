@@ -1,5 +1,53 @@
 #include "gridmap.hpp"
 #include "femassembly.hpp"
+#include "hmfem.hpp"
+#include "mapped_contour.hpp"
+#include "procgrid.h"
+#include "femgrid43.hpp"
+
+namespace HMGMap{namespace Impl{
+
+struct DoMapping{
+	DoMapping(const HMGMap::Options& _opt): opt(_opt), inpgrid(GGeom::Constructor::EmptyGrid()){}
+	
+	// ====== set input
+	void set_grid(const GridGeom& ig);
+	void set_contour(const HMCont2D::ECollection& ecol);
+	void set_points(const vector<Point>& gridpnt, const vector<Point>& contpnt);
+
+	// ====== main procedure
+	GridGeom run();
+private:
+
+	// ====== main data
+	HMGMap::Options opt;
+	GridGeom inpgrid;
+	HMCont2D::ECollection contdata;
+	vector<Point> gridpoints;
+	vector<Point> contpoints;
+
+	// ====== aux data
+	//filled by prepare_mapped_contour
+	HMCont2D::ContourTree mapped_outer;
+	//those are filled by prepare_grid and its subroutines
+	shared_ptr<HMFem::Grid43> g3;   //triangle grid
+	HMCont2D::ContourTree g3outer;  //triangle grid borders
+	shared_ptr<HMFem::Mat> laplas_mat;  //preassembled laplas operator
+	MappedContourCollection mcol;   //contour mapper: from g3 contour to contdata contour
+
+	//aux procedures
+	void prepare_mapped_contour();
+	void prepare_grid();
+	vector<double> solve_u_problem();
+	vector<double> solve_v_problem();
+	//prepare_grid subroutines
+	void build_grid3();
+	void build_mcc();
+
+};
+}}
+
+
 using namespace HMGMap::Impl;
 
 void DoMapping::set_grid(const GridGeom& ig){
@@ -151,3 +199,43 @@ GridGeom DoMapping::run(){
 	if (!GGeom::Info::Check(ret)) throw HMGMap::MapException("Resulting grid is not valid");
 	return ret;
 }
+
+namespace{
+GridGeom scale_base_grid(const GridGeom& b, ScaleBase& sc){
+	GridGeom ret = GGeom::Constructor::DeepCopy(b);
+	sc = ret.do_scale();
+	return ret;
+}
+
+HMCont2D::Container<HMCont2D::ECollection>
+scale_mapped_domain(const HMCont2D::ECollection& a, ScaleBase& sc){
+	HMCont2D::Container<HMCont2D::ECollection> ret =
+		HMCont2D::Container<HMCont2D::ECollection>::DeepCopy(a);
+	sc = HMCont2D::ECollection::Scale01(ret);
+	return ret;
+}
+}
+
+GridGeom HMGMap::MapGrid(const GridGeom& base, const HMCont2D::ECollection& area,
+		vector<Point> base_points,
+		vector<Point> mapped_points,
+		Options opt){
+	//1) scale
+	ScaleBase bscale, cscale;
+	GridGeom g = scale_base_grid(base, bscale);
+	HMCont2D::Container<HMCont2D::ECollection> c = scale_mapped_domain(area, cscale);
+	bscale.scale(base_points.begin(), base_points.end());
+	cscale.scale(mapped_points.begin(), mapped_points.end());
+	//2) set input data
+	HMGMap::Impl::DoMapping dm(opt);
+	dm.set_grid(g);
+	dm.set_contour(c);
+	dm.set_points(base_points, mapped_points);
+	//3) build
+	GridGeom ret = dm.run();
+	//4) unscale and return
+	ret.undo_scale(cscale);
+	return ret;
+}
+
+

@@ -70,6 +70,6 @@ s = 3.5
 c1 = hm.add_rect_contour([s, -20], [40, 20], 2)
 g1 = hm.exclude_contours(g1, c1, "outer")
 g3 = hm.revolve_grid(g1, [s, 0], [s, 1], phi=[0, 10, 20, 30, 40, 50, 60], 
-                     center_tri=False)
+                     merge_central=True)
 hm.export3d_grid_tecplot(g3, "g1.dat")
 hmdbg.check_ascii_file(13212305520850114882, "g1.dat")

@@ -221,3 +221,22 @@ def grid_excl_cont(c_grd, c_cnt, is_inner, cb):
         return res
     else:
         raise Exception("Grid Exclusion failed")
+
+
+def circ4grid(algo, c_p0, rad, step, sqrside, rcoef):
+    """ -> c_grid or raise """
+    if algo == "laplas8":
+        c_algo = ct.c_int(0)
+    else:
+        raise ValueError("Unknown algorithm")
+
+    res = libhmcport.circ4grid(
+        c_algo, c_p0, ct.c_double(rad),
+        ct.c_double(step), ct.c_double(sqrside),
+        ct.c_double(rcoef))
+
+    if res != 0:
+        return res
+    else:
+        raise Exception("Quadrangular grid in circular area "
+                        "grid builder failed")

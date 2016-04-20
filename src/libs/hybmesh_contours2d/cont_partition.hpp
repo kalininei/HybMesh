@@ -46,6 +46,5 @@ Contour WeightedPartition(const std::map<double, double>& basis,
 		const Contour& contour, PCollection& pstore,
 		const std::vector<Point*>& keepit = {});
 
-
 }}
 #endif

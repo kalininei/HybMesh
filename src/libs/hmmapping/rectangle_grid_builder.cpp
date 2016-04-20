@@ -1,6 +1,7 @@
 #include "rectangle_grid_builder.hpp"
 #include "procgrid.h"
 #include "hmmapping.hpp"
+#include "hmfdm.hpp"
 
 namespace{
 struct Cont4Connection{
@@ -86,6 +87,15 @@ Cont4Connection connect_rect_segments(HMCont2D::Contour& left, HMCont2D::Contour
 	return cn;
 }
 
+//check direction of first cell and reverse all cells if needed
+void check_direction(GridGeom& ret){
+	if (ret.n_cells() == 0) return;
+	if (ret.get_cell(0)->area() < 0){
+		GGeom::Modify::CellModify(ret, [](Cell* c){
+			std::reverse(c->points.begin(), c->points.end());} );
+	}
+}
+
 }
 
 GridGeom HMGMap::LinearRectGrid(HMCont2D::Contour& left, HMCont2D::Contour& bot,
@@ -132,12 +142,8 @@ GridGeom HMGMap::LinearRectGrid(HMCont2D::Contour& left, HMCont2D::Contour& bot,
 
 		}
 	}
-	//check direction and reverse all cells if needed
-	if (ret.get_cell(0)->area() < 0){
-		GGeom::Modify::CellModify(ret, [](Cell* c){
-			std::reverse(c->points.begin(), c->points.end());} );
-	}
 
+	check_direction(ret);
 	return ret;
 }
 
@@ -234,4 +240,67 @@ GridGeom HMGMap::LaplasRectGrid(HMCont2D::Contour& left, HMCont2D::Contour& bot,
 
 	//calculate
 	return HMGMap::MapGrid(rg, ecol, base_points, mapped_points);
+}
+
+GridGeom HMGMap::FDMLaplasRectGrid(HMCont2D::Contour& left, HMCont2D::Contour& bot,
+	HMCont2D::Contour& right, HMCont2D::Contour& top){
+	if (left.size() != right.size() || bot.size() != top.size())
+		throw std::runtime_error("right/top contours should have same number "
+				"of nodes as left/bottom for laplas rectangle grid algo");
+
+	Cont4Connection cn = connect_rect_segments(left, bot, right, top);
+
+	//assembling fdm grid
+	vector<double> x(top.size()+1, 0);
+	vector<double> y(left.size()+1, 0);
+	auto leftop = left.ordered_points();
+	auto rightop = right.ordered_points();
+	auto topop = top.ordered_points();
+	auto botop = bot.ordered_points();
+	for (int i=1; i<topop.size(); ++i){
+		double s1 = Point::dist(*topop[i], *topop[i-1]);
+		double s2 = Point::dist(*botop[i], *botop[i-1]);
+		x[i] = x[i-1] + (s1 + s2)/2.0;
+	}
+	for (int i=1; i<leftop.size(); ++i){
+		double s1 = Point::dist(*leftop[i], *leftop[i-1]);
+		double s2 = Point::dist(*rightop[i], *rightop[i-1]);
+		y[i] = y[i-1] + (s1 + s2)/2.0;
+	}
+
+	//fdm solver
+	auto slv = HMFdm::LaplasSolver(x, y);
+	//x problem
+	vector<double> xcoords(x.size() * y.size(), 0);
+	slv.SetBndValues(HMFdm::LaplasSolver::Bnd::Top,
+			[&topop](int i, int j){ return topop[i]->x; });
+	slv.SetBndValues(HMFdm::LaplasSolver::Bnd::Bottom,
+			[&botop](int i, int j){ return botop[i]->x; });
+	slv.SetBndValues(HMFdm::LaplasSolver::Bnd::Left,
+			[&leftop](int i, int j){ return leftop[j]->x; });
+	slv.SetBndValues(HMFdm::LaplasSolver::Bnd::Right,
+			[&rightop](int i, int j){ return rightop[j]->x; });
+	slv.Solve(xcoords);
+
+	//y problem
+	vector<double> ycoords(x.size() * y.size(), 0);
+	slv.SetBndValues(HMFdm::LaplasSolver::Bnd::Top,
+			[&topop](int i, int j){ return topop[i]->y; });
+	slv.SetBndValues(HMFdm::LaplasSolver::Bnd::Bottom,
+			[&botop](int i, int j){ return botop[i]->y; });
+	slv.SetBndValues(HMFdm::LaplasSolver::Bnd::Left,
+			[&leftop](int i, int j){ return leftop[j]->y; });
+	slv.SetBndValues(HMFdm::LaplasSolver::Bnd::Right,
+			[&rightop](int i, int j){ return rightop[j]->y; });
+	slv.Solve(ycoords);
+
+	//building resulting grid
+	GridGeom ret = GGeom::Constructor::RectGrid01(x.size()-1, y.size()-1);
+	GGeom::Modify::PointModify(ret, [&xcoords, &ycoords](GridPoint* p){
+				p->x = xcoords[p->get_ind()];
+				p->y = ycoords[p->get_ind()];
+			});
+	
+	check_direction(ret);
+	return ret;
 }

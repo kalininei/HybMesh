@@ -9,6 +9,7 @@ set (HEADERS
 	femmat.hpp
 	femassembly.hpp
 	confrect_fem.hpp
+	hmfdm.hpp
 )
 
 set (SOURCES
@@ -23,6 +24,7 @@ set (SOURCES
 	femgrid43.cpp
 	femmat.cpp
 	femassembly.cpp
+	hmfdm.cpp
 	$<TARGET_OBJECTS:${SCPACK_TARGET}>
 	$<TARGET_OBJECTS:${DSCPACK_TARGET}>
 )

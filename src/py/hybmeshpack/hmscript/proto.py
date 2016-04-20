@@ -1,8 +1,9 @@
+import numbers
+import math
 from hybmeshpack import com
 from hybmeshpack.basic.geom import Point2, angle_3pnt
 from hybmeshpack.hmscript import flow
 from hybmeshpack.hmscript import ExecError
-import math
 
 
 # Prototype grids
@@ -129,6 +130,7 @@ def add_custom_rect_grid(algo, left, bottom, right=None, top=None):
        boundaries will be created by translation of **left** and **bottom**.
 
     :return: new grid identifier
+
     :raise: hmscript.ExecError, ValueError
 
     If given contours are not properly connected then program will try
@@ -153,6 +155,65 @@ def add_custom_rect_grid(algo, left, bottom, right=None, top=None):
         return c._get_added_names()[0][0]
     except Exception:
         raise ExecError('custom rectangular grid')
+
+
+def add_circ_rect_grid(p0, rad, step, sqrside=1.0, rcoef=1.0, algo="laplas8"):
+    """ Creates quadrangular cell grid in a circular area.
+    Resulting grid contains uniform square grid in the center of
+    defined area which is continued by a ring-like grid
+    towards the outer boundary.
+
+    :param list-of-floats p0: center point of circle area in [x, y] format
+
+    :param float rad: radius of circle area
+
+    :param float step: partition step of the outer boundary
+
+    :param positive-float sqrside: side of the inner square normalized by
+       the circle radius. Values greater then 1.4 are not allowed.
+
+    :param positive-float rcoef: radius direction refinement of
+       the ring part of the grid. This value approximately equals
+       the aspect ratio of cells near the outer boundary.
+       Values less then unity lead to refinement towards outer boundary.
+
+    :param str algo: Algorithms of assembling the ring part of the grid.
+       * ``'laplas8'`` - use laplas mapping for builing each 45 degree sector.
+
+    :return: new grid identifier
+
+    :raise: hmscript.ExecError, ValueError
+
+    """
+    # check input data
+    if (not isinstance(p0, list) or len(p0) != 2 or
+            not isinstance(p0[0], numbers.Real) or
+            not isinstance(p0[1], numbers.Real)):
+        raise ValueError("Invalid center point")
+    if (not isinstance(rad, numbers.Real) or rad <= 0):
+        raise ValueError("Invalid radius")
+    if (not isinstance(step, numbers.Real) or step <= 0):
+        raise ValueError("Invalid step")
+    if (not isinstance(sqrside, numbers.Real) or
+            sqrside <= 0 or sqrside > 1.4):
+        raise ValueError("Invalid sqrside")
+    if (not isinstance(rcoef, numbers.Real) or rcoef <= 0):
+        raise ValueError("Invalid rcoef")
+    if algo not in ["laplas8"]:
+        raise ValueError("Unknown algorithm")
+    # call
+    args = {'algo': algo,
+            'p0': Point2(*p0),
+            'rad': rad,
+            'step': step,
+            'sqrside': sqrside,
+            'rcoef': rcoef}
+    c = com.gridcom.AddCirc4Grid(args)
+    try:
+        flow.exec_command(c)
+        return c._get_added_names()[0][0]
+    except Exception:
+        raise ExecError('circ_rect_grid')
 
 
 # Contour prototypes
