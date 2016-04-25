@@ -30,7 +30,7 @@ def export_grid_hmg(g1, fname):
 def export_grid_msh(g1, fname, periodic_pairs=None):
     """Exports grid to fluent msh format
 
-    :param g1: 3d grid file identifier
+    :param g1: 2d grid file identifier
 
     :param str fname: output filename
 
@@ -40,18 +40,18 @@ def export_grid_msh(g1, fname, periodic_pairs=None):
 
       Each periodic condition is defined by three values:
 
-      * ``b-periodic`` - boundary identifier for periodic countour segment
+      * ``b-periodic`` - boundary identifier for periodic contour segment
       * ``b-shadow`` - boundary identifier for shadow contour segment
       * ``is_reversed`` - boolean which defines whether shadow contour segment
         should be reversed so that first point of periodic segment be
         equivalent to last point of shadow segment
 
       Periodic and shadow boundary segments should be singly connected and
-      topologically equalvalent.
+      topologically equivalent.
 
     :raises: hmscript.ExportError
 
-    Only grids with triangle/rectangle cells could be exported
+    Only grids with triangle/rectangle cells could be exported.
     """
     try:
         imex.export_grid("msh", fname, g1, flow=flow, adata=periodic_pairs)
@@ -62,12 +62,18 @@ def export_grid_msh(g1, fname, periodic_pairs=None):
 def export_grid_gmsh(g1, fname):
     """exports grid to gmsh ascii format
 
-    Args:
-       g1: grid identifier
+    :param g1: grid identifier
 
-       fname: output filename
+    :param fname: output filename
 
-    Only grids with triangle/rectangle cells could be exported
+    :raises: hmscript.ExportError
+
+    Only grids with triangle/rectangle cells could be exported.
+
+    Boundary edges will be exported as Elements of "Line" type.
+    All boundary types which present in grid will be exported as
+    Physical Groups with an id
+    identical to boundary index and a respective Physical Name.
     """
     try:
         imex.export_grid("gmsh", fname, g1, flow=flow)
@@ -246,11 +252,19 @@ def import_grid_msh(fname):
 def import_grid_gmsh(fname):
     """Imports grid from gmsh ascii file
 
-    Args:
-       fname: file name
+    :param str fname: file name
 
-    Returns:
-       grid identifier
+    :return: grid identifier
+
+    Only triangle and quad elements are supported.
+
+    Boundary types could be exported by passing boundary edges as
+    certain Elements of "Line" type. Their physical entity tag
+    (first one amoung real tags) will be treated as their boundary index.
+    For each such index the new boundary type will be registered in program
+    flow only if it has not been registered yet. Name for a new boundary
+    type will be taken from PhysicalNames field if it exists, otherwise
+    the default name "gmsh-boundary-index" will be used.
     """
     c = com.imcom.ImportGridGMSH({"filename": fname})
     flow.exec_command(c)

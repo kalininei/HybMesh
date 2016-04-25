@@ -220,7 +220,7 @@ def grid_excl_cont(c_grd, c_cnt, is_inner, cb):
     if res != 0:
         return res
     else:
-        raise Exception("Grid Exclusion failed")
+        raise Exception("Grid exclusion failed")
 
 
 def circ4grid(algo, c_p0, rad, step, sqrside, rcoef):

@@ -4,6 +4,11 @@
 
 using namespace HMCont2D;
 
+int ContourTree::TreeNode::level() const{
+	if (parent == NULL) return 0;
+	else return parent->level() + 1;
+}
+
 vector<ContourTree::TreeNode*> ContourTree::roots() const{
 	vector<TreeNode*> ret;
 	std::for_each(nodes.begin(), nodes.end(), 

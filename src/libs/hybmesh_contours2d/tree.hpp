@@ -18,6 +18,7 @@ struct ContourTree: public ECollection {
 	struct TreeNode: public Contour{
 		TreeNode* parent;
 		vector<TreeNode*> children;
+		int level() const;   //0 for root, etc
 	};
 
 	//all nodes

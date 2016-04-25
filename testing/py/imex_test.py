@@ -1,7 +1,7 @@
 # import os.path
 from hybmeshpack import hmscript as hm
 from hybmeshpack.hmscript import _dbg as hmdbg
-hm.check_compatibility("0.4.0")
+hm.check_compatibility("0.4.1")
 
 print "export 2d to fluent"
 bleft = hm.add_boundary_type(1, "bleft")
@@ -21,18 +21,18 @@ hm.set_boundary_type(g4, bfun=lambda x0, y0, x1, y1, b:
                       y0 + y1 == 2.8: 4}[True])
 hm.export_grid_vtk(g4, "g1.vtk")
 hm.export_contour_vtk(g4, "c1.vtk")
-hmdbg.check_ascii_file(15697319238564148717, "g1.vtk")
-hmdbg.check_ascii_file(16408920837426241157, "c1.vtk")
+hmdbg.check_ascii_file(15697319238564148717, "g1.vtk", "dev")
+hmdbg.check_ascii_file(16408920837426241157, "c1.vtk", "dev")
 hm.export_grid_msh(g4, "g1.msh")
-hmdbg.check_ascii_file(17685805227099775273, "g1.msh")
+hmdbg.check_ascii_file(17685805227099775273, "g1.msh", "dev")
 
 print "export 2d to fluent with periodic conditions"
 hm.export_grid_msh(g4, "g1.msh", [bbot, btop, True])
-hmdbg.check_ascii_file(3165188744058895474, "g1.msh")
+hmdbg.check_ascii_file(3165188744058895474, "g1.msh", "dev")
 
 print "export 2d to fluent with double periodic conditions"
 hm.export_grid_msh(g4, "g1.msh", [bbot, btop, True, bleft, bright, True])
-hmdbg.check_ascii_file(2759680993089544531, "g1.msh")
+hmdbg.check_ascii_file(2759680993089544531, "g1.msh", "dev")
 
 print "controlled fail on illegal periodic data"
 try:
@@ -43,7 +43,23 @@ except hm.ExportError:
 
 print "export to gmsh file"
 hm.export_grid_gmsh(g4, "g1.msh")
-hmdbg.check_ascii_file(15544215273974397325, "g1.msh")
+hmdbg.check_ascii_file(15544215273974397325, "g1.msh", "dev")
+
+print "import from gmsh file"
+hm.remove_all()
+p1, p2, p3, p4, p5 = [0, 0], [1, -1], [5, -1], [5, 1], [1, 1]
+c1 = hm.create_contour([p1, p2, p3, p4, p5, p1], [0, 1, 2, 3, 4])
+g1 = hm.add_triangle_grid(p1, p2, p5, 5)
+g2 = hm.add_unf_rect_grid(p2, p4, 10, 5)
+g = hm.unite_grids(g1, [(g2, 0)])
+g = hm.exclude_contours(g, c1, 'outer')
+hm.export_grid_gmsh(g, "g1.msh")
+hm.add_boundary_type(1, "b1")
+hm.add_boundary_type(3, "b3")
+g2 = hm.import_grid_gmsh("g1.msh")
+hm.export_grid_gmsh(g2, "g2.msh")
+hmdbg.check_ascii_file(8108300542786763763, "g1.msh")
+hmdbg.check_ascii_file(17108615107233824167, "g2.msh")
 hm.remove_all()
 
 print "import from fluent msh file"
@@ -68,13 +84,13 @@ hm.set_boundary_type(g2, circbnd)
 g3 = hm.unite_grids(g2, [(g1, 0.05)])
 g4 = hm.extrude_grid(g3, [0, 0.05, 0.2, 0.5, 0.65, 0.7], botbnd, topbnd)
 hm.export3d_grid_vtk(g4, None, "c1.vtk")
-hmdbg.check_ascii_file(7889578680359330313, "c1.vtk")
+hmdbg.check_ascii_file(7889578680359330313, "c1.vtk", 'dev')
 hm.export3d_grid_msh(g4, "g1.msh")
-hmdbg.check_ascii_file(450400077272399620, "g1.msh")
+hmdbg.check_ascii_file(450400077272399620, "g1.msh", 'dev')
 
 print "export 3d to fluent with periodic condition"
 hm.export3d_grid_msh(g4, "g1.msh", [botbnd, topbnd, [0, 0, 0.0], [0, 0, 0.7]])
-hmdbg.check_ascii_file(12326414976139824718, "g1.msh")
+hmdbg.check_ascii_file(12326414976139824718, "g1.msh", 'dev')
 hm.remove_all()
 
 print "export contour to tecplot"
@@ -91,14 +107,14 @@ hm.set_boundary_type(g1, 2)
 hm.set_boundary_type(g2, 3)
 g3 = hm.unite_grids(g1, [(g2, 0.5)], True, zero_angle_approx=180)
 hm.export_contour_tecplot(g3, "c1.dat")
-hmdbg.check_ascii_file(13195362596084466346, "c1.dat")
+hmdbg.check_ascii_file(13195362596084466346, "c1.dat", 'dev')
 hm.export_grid_tecplot(g3, "c1.dat")
-hmdbg.check_ascii_file(7412218476507145895, "c1.dat")
+hmdbg.check_ascii_file(7412218476507145895, "c1.dat", 'dev')
 
 print "export 3d grid to tecplot"
 g4 = hm.extrude_grid(g3, [0, 1, 2, 3, 5, 8, 9], 0, 10)
 hm.export3d_grid_tecplot(g4, "c1.dat")
-hmdbg.check_ascii_file(16956269303881327848, "c1.dat")
+hmdbg.check_ascii_file(16956269303881327848, "c1.dat", 'dev')
 
 g1 = hm.add_unf_rect_grid([0, 0], [10, 10], 10, 10)
 c1 = hm.create_contour([[-2, 4], [8, -2], [4, 12], [-2, 4]])

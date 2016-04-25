@@ -8,15 +8,17 @@ from hybmeshpack.hmscript import ExecError
 
 # Prototype grids
 def add_unf_rect_grid(p0, p1, nx, ny):
-    """Builds rectangular grid
+    """Builds rectangular grid.
 
-    Args:
-       p0, p1 (list-of-float): bottom left, top right points as [x, y] list
+    :param list-of-floats p0:
 
-       nx, ny (int): partition in x, y direction
+    :param list-of-floats p1: bottom left, top right points in [x, y] format.
 
-    Returns:
-       created grid identifier
+    :param int nx:
+
+    :param int ny: partition in x and y directions.
+
+    :returns: created grid identifier
 
     """
     c = com.gridcom.AddUnfRectGrid({"p0": Point2(*p0),
@@ -27,27 +29,25 @@ def add_unf_rect_grid(p0, p1, nx, ny):
     return c._get_added_names()[0][0]
 
 
-def add_unf_circ_grid(p0, rad, na, nr, coef=1, is_trian=True):
-    """Builds circular grid
+def add_unf_circ_grid(p0, rad, na, nr, coef=1.0, is_trian=True):
+    """Builds circular grid.
 
-    Args:
-       p0 (list-of-float): center coordinate as [x, y]
+    :param list-of-floats p0: center coordinate as [x, y]
 
-       rad (float): radius
+    :param float rad: radius
 
-       na, nr (int): partitions of arc and radius respectively
+    :param int na:
 
-    Kwargs:
-       coef (float): refinement coefficient::
+    :param int nr: partitions of arc and radius respectively
 
-         coef = 1: equidistant radius division
-         coef > 1: refinement towards center of circle
-         0 < coef < 1: refinement towards outer arc
+    :param float coef: refinement coefficient:
+         * ``coef = 1``: equidistant radius division
+         * ``coef > 1``: refinement towards center of circle
+         * ``0 < coef < 1``: refinement towards outer arc
 
-       is_trian (bool): True if center cell should be triangulated
+    :param bool is_trian: True if center cell should be triangulated
 
-    Returns:
-       created grid identifier
+    :returns: created grid identifier
 
     """
     c = com.gridcom.AddUnfCircGrid({
@@ -64,22 +64,22 @@ def add_unf_ring_grid(p0, radinner, radouter,
                       na, nr, coef=1.0):
     """Builds ring grid
 
-    Args:
-       p0 (list-of-float): center coordinates as [x, y]
+    :param list-of-floats p0: center coordinates as [x, y]
 
-       radinner, radouter (float): inner and outer radii
+    :param float radinner:
 
-       na, nr (int): arc and radius partition respectively
+    :param float radouter: inner and outer radii
 
-    Kwargs:
-       coef (float): refinement coefficient::
+    :param int na:
 
-         coef = 1: equidistant radius division
-         coef > 1: refinement towards center of circle
-         0 < coef < 1: refinement towards outer arc
+    :param int nr: arc and radius partition respectively
 
-    Returns:
-       created grid identifier
+    :param float coef: refinement coefficient:
+       * ``coef = 1``: equidistant radius division
+       * ``coef > 1``: refinement towards center of circle
+       * ``0 < coef < 1``: refinement towards outer arc
+
+    :return: created grid identifier
 
     """
     c = com.gridcom.AddUnfRingGrid({
@@ -94,13 +94,15 @@ def add_unf_ring_grid(p0, radinner, radouter,
 def add_triangle_grid(p0, p1, p2, nedge):
     """Creates structured grid in triangle area
 
-    Args:
-       ``p0, p1, p2``: triangle vertices in [x, y] format
+    :param list-of-floats p0:
 
-       ``nedge`` (int): partition of triangle edges
+    :param list-of-floats p1:
 
-    Returns:
-       identifier of newly created grid
+    :param list-of-floats p2: triangle vertices in [x, y] format
+
+    :param int nedge: partition of triangle edges
+
+    :return: identifier of newly created grid
 
     Resulting grid will contain quadrangle cells everywhere except
     area near ``p0``-``p2`` edge where triangle cells will be built.
@@ -123,8 +125,11 @@ def add_custom_rect_grid(algo, left, bottom, right=None, top=None):
          they should have same number of vertices as left/bottom.
 
     :param left:
+
     :param bottom:
+
     :param right:
+
     :param top: identifiers of base line segments.
        **right** and **top** could be ``None``. If so right and top
        boundaries will be created by translation of **left** and **bottom**.
@@ -134,12 +139,12 @@ def add_custom_rect_grid(algo, left, bottom, right=None, top=None):
     :raise: hmscript.ExecError, ValueError
 
     If given contours are not properly connected then program will try
-    to connect it with priority order:
+    to connect it with the following priority order:
 
-    1) set left contour
-    2) add bottom contour to left contour bottom point
-    3) add top contour to left contour top point
-    4) add right contour to bottom contour right point
+    1) set left contour;
+    2) add bottom contour to left contour bottom point;
+    3) add top contour to left contour top point;
+    4) add right contour to bottom contour right point;
     5) stretch right contour so its upper point fits top contour right point.
 
     """
@@ -161,13 +166,16 @@ def add_circ_rect_grid(p0, rad, step, sqrside=1.0, rcoef=1.0, algo="laplas8"):
     """ Creates quadrangular cell grid in a circular area.
     Resulting grid contains uniform square grid in the center of
     defined area which is continued by a ring-like grid
-    towards the outer boundary.
+    towards the outer circular boundary.
 
-    :param list-of-floats p0: center point of circle area in [x, y] format
+    :param list-of-floats p0: center point of circle area in [x, y] format.
 
-    :param float rad: radius of circle area
+    :param positive-float rad: radius of circle area.
 
-    :param float step: partition step of the outer boundary
+    :param positive-float step: approximate partition step of the outer
+       boundary.
+       Real step will be calculated on the basis of circle arc length
+       in such a way that number of steps be divisible by 8.
 
     :param positive-float sqrside: side of the inner square normalized by
        the circle radius. Values greater then 1.4 are not allowed.
@@ -178,7 +186,7 @@ def add_circ_rect_grid(p0, rad, step, sqrside=1.0, rcoef=1.0, algo="laplas8"):
        Values less then unity lead to refinement towards outer boundary.
 
     :param str algo: Algorithms of assembling the ring part of the grid.
-       * ``'laplas8'`` - use laplas mapping for builing each 45 degree sector.
+       * ``'laplas8'`` - use laplas mapping for building each 45 degree sector.
 
     :return: new grid identifier
 
@@ -220,18 +228,16 @@ def add_circ_rect_grid(p0, rad, step, sqrside=1.0, rcoef=1.0, algo="laplas8"):
 def add_rect_contour(p0, p1, bnd=0):
     """Adds four point closed rectangular contour
 
-    Args:
-       p0, p1 (list-of-floats): bottom left and top right coordinates of
+    :param list-of-floats p0:
+
+    :param list-of-floats p1: bottom left and top right coordinates of
        the contour
 
-    Kwargs:
-       bnd (boundary identifier): single or list of 4 boundary
+    :param bnd: single or list of 4 boundary
        identifiers (bottom, left, top, right) for contour segments.
        With the default value no boundary types will be set.
 
-    Returns:
-       Contour identifier
-
+    :return: Contour identifier
     """
     if isinstance(bnd, list):
         b = bnd[0:4]
@@ -248,20 +254,16 @@ def add_rect_contour(p0, p1, bnd=0):
 def add_circ_contour(p0, rad, n_arc, bnd=0):
     """Adds circle contour from given center and radius
 
-    Args:
-       p0 (list-of-floats): circle center
+    :param list-of-floats p0: circle center in [x, y] format
 
-       rad (float): circle radius
+    :param float rad: circle radius
 
-       n_arc (int): partition of circle arc
+    :param int n_arc: partition of circle arc
 
-    Kwargs:
-       bnd (boundary identifier): boundary identifier for contour.
+    :param bnd: boundary identifier for contour.
        With the default value no boundary types will be set.
 
-    Returns:
-       Contour identifier
-
+    :return: Contour identifier
     """
     c = com.contcom.AddCircCont({"p0": Point2(*p0), "rad": rad,
                                  "na": n_arc, "bnd": bnd})
@@ -272,21 +274,22 @@ def add_circ_contour(p0, rad, n_arc, bnd=0):
 def add_circ_contour2(p0, p1, p2, n_arc, bnd=0):
     """Adds circle contour from given arc points
 
-    Args:
-       p0, p1, p2: circle arc points as [x, y]
+    :param list-of-floats p0:
 
-       n_arc (int): partition of circle arc
+    :param list-of-floats p1:
 
-    Kwargs:
-       bnd (boundary identifier): boundary identifier for contour.
+    :param list-of-floats p2: circle arc points as [x, y] format
+
+    :param int n_arc: partition of circle arc
+
+    :param bnd: boundary identifier for contour.
        With the default value no boundary types will be set.
 
-    Returns:
-       Contour identifier
+    :return:  Contour identifier
 
     """
-    p0, p1, p2 = map(float, p0), map(float, p1), map(float, p2)
     try:
+        p0, p1, p2 = map(float, p0), map(float, p1), map(float, p2)
         xb, yb = p1[0] - p0[0], p1[1] - p0[1]
         xc, yc = p2[0] - p0[0], p2[1] - p0[1]
         A11, A12 = 2.0 * xb, 2.0 * yb
@@ -305,26 +308,25 @@ def add_circ_contour2(p0, p1, p2, n_arc, bnd=0):
 def add_circ_contour3(p0, p1, curv, n_arc, bnd=0):
     """Adds circle contour from given arc points and curvature
 
-    Args:
-       p0, p1: circle arc points
+    :param list-of-floats p0:
 
-       curv (float): circle curvature. Equals ``1.0/radius``.
+    :param list-of-floats p1: circle arc points in [x, y] format
 
-       n_arc (int): partition of circle arc
+    :param float curv: circle curvature. Equals ``1.0/radius``.
 
-    Kwargs:
-       bnd (boundary identifier): boundary identifier for contour.
+    :param int n_arc: partition of circle arc
+
+    :param bnd: boundary identifier for contour.
        With the default value no boundary types will be set.
 
-    Returns:
-       Contour identifier
+    :return: Contour identifier
 
     In the resulting circle ``p0``-``p1`` arc
     with counterclockwise direction will be shorter then
     ``p1``-``p0`` arc.
     """
-    p0, p1, curv = map(float, p0), map(float, p1), float(curv)
     try:
+        p0, p1, curv = map(float, p0), map(float, p1), float(curv)
         xa, ya = p1[0] - p0[0], p1[1] - p0[1]
         r = abs(1.0 / curv)
         a, b, c = -2.0 * xa, -2.0 * ya, xa * xa + ya * ya

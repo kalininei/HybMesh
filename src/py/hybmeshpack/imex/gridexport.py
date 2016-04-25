@@ -160,19 +160,27 @@ def gmsh(grid, fname, btypes=None):
     out.append("$MeshFormat")
     out.append("2.2 0 8")
     out.append("$EndMeshFormat")
+    # extract boundary types
+    bdict = {}
+    for v in grid.get_bnd_types():
+        if v not in bdict:
+            try:
+                if v == 0:
+                    nm = "default_boundary"
+                else:
+                    nm = btypes.get(index=v).name
+            except:
+                nm = "".join(["boundary", str(v)])
+            bdict[v] = nm
+    intphys = max(bdict.keys()) + 1
+
     # bc
     out.append("$PhysicalNames")
-    bset = set()
-    bset.add(0)
-    if btypes is not None:
-        for v in grid.bt.values():
-            bset.add(v)
-    out.append(str(len(bset) + 1))
-    intphys = max(bset) + 1
+    out.append(str(len(bdict) + 1))
     out.append(' '.join(["2", str(intphys), "\"interior\""]))
-    for b in sorted(bset):
+    for b in sorted(bdict.keys()):
         out.append(' '.join(["1", str(b),
-                   '"' + btypes.get(index=b).name + '"']))
+                   '"' + bdict[b] + '"']))
     out.append("$EndPhysicalNames")
     # nodes
     out.append("$Nodes")
@@ -194,11 +202,12 @@ def gmsh(grid, fname, btypes=None):
         out.append(' '.join([str(i + 1), etp, "2", str(intphys),
                    str(intphys), nind]))
     # line elements
+    n = grid.n_cells() + 1
     for i, b in enumerate(be):
-        n = str(i + 1 + grid.n_cells())
         nind = ' '.join(map(lambda x: str(x + 1), grid.edges[b]))
-        out.append(' '.join([n, "1", "2", str(grid.get_edge_bnd(b)),
-                   str(grid.get_edge_bnd(b)), nind]))
+        bind = str(grid.get_edge_bnd(b))
+        out.append(' '.join([str(n), "1", "2", bind, bind, nind]))
+        n += 1
 
     out.append("$EndElements")
 

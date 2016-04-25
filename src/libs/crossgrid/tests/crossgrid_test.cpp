@@ -255,6 +255,14 @@ void test14(){
 	
 	grid_free(res1);
 	grid_free(res2);
+	{
+		GridGeom g = GGeom::Constructor::RectGrid01(10, 12);
+		auto c = HMCont2D::Constructor::ContourFromPoints({0, 0.5, 0.5, 0, 1.1, 0.5, 0.5, 1.1}, true);
+		GridGeom* res3 = static_cast<GridGeom*>(grid_exclude_cont(&g, &c, true));
+		GGeom::Export::GridVTK(*res3, "res3.vtk");
+		add_check(grid_ncells(res3) == 67 && grid_npoints(res3) == 102, "cut contour touches grid contour");
+		grid_free(res3);
+	}
 }
 
 void test15(){
@@ -370,7 +378,7 @@ void test20(){
 	auto g6 = cross_grids(&g5, g4, 0.1, 0, 1, 0);
 
 	double a = grid_area(&g5)-ecollection_area(&c1)+grid_area(&g3);
-	add_check( fabs(grid_area(g6) - a)<1e-6, "resulting grid with a hole");
+	add_check( fabs(grid_area(g6) - a) < 1e-6, "resulting grid with a hole");
 
 	grid_free(g2);
 	grid_free(g4);

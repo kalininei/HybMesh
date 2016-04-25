@@ -192,6 +192,30 @@ void GGeom::Modify::DeepAdd(const GridGeom* from, GridGeom* to){
 	to->add_data(*from);
 }
 
+void GGeom::Modify::ReallocatePrimitives(GridGeom& grid){
+	ShpVector<GridPoint> newpoints(grid.n_points());
+	ShpVector<Cell> newcells(grid.n_cells());
+
+	for (int i=0; i<grid.n_points(); ++i){
+		newpoints[i].reset(new GridPoint(*grid.get_point(i)));
+	}
+	for (int i=0; i<grid.n_cells(); ++i){
+		newcells[i].reset(new Cell(*grid.get_cell(i)));
+	}
+	auto _indexer = aa::ptr_container_indexer(grid.points);
+	_indexer.convert();
+	for (int i=0; i<grid.n_cells(); ++i){
+		for (int j=0; j<grid.cells[i]->dim(); ++j){
+			int index = _indexer.index(grid.cells[i]->points[j]);
+			newcells[i]->points[j] = newpoints[index].get();
+		}
+	}
+	_indexer.restore();
+	std::swap(grid.points, newpoints);
+	std::swap(grid.cells, newcells);
+	grid.set_indicies();
+}
+
 void GGeom::Repair::Heal(GridGeom& grid){
 	grid.merge_congruent_points();
 	grid.delete_unused_points();

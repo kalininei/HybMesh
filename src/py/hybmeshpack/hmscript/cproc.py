@@ -7,15 +7,12 @@ from hybmeshpack.hmscript import ExecError
 def grid_bnd_to_contour(g1, simplify=True):
     """ Extracts grid boundary to user contour
 
-    Args:
-       g1: grid identifier
+    :param g1: grid identifier
 
-    Kwargs:
-       simplify (bool): if true deletes all non-significant points. Otherwise
+    :param bool simplify: if true deletes all non-significant points. Otherwise
        resulting contour will contain all boundary grid edges.
 
-    Returns:
-       contour identifier
+    :returns: contour identifier
     """
     c = com.contcom.GridBndToContour({"grid_name": g1,
                                       "simplify": simplify})
@@ -26,22 +23,20 @@ def grid_bnd_to_contour(g1, simplify=True):
 def simplify_contour(cont, simplify=True, angle=0, separate=False):
     """ Separates and simplify user contour
 
-    Args:
-       cont: source contour or grid identifier
+    :param cont: source contour or grid identifier
 
-    Kwargs:
-       simplify (bool): do simplification, i.e. make all segments non-collinear
+    :param bool simplify: do simplification, i.e. make all
+       segments non-collinear
        Collinear segments will not be splitted if they have different
        boundary types.
 
-       angle (float): minimum allowed angle between segments
+    :param degree angle: minimum allowed angle between segments
        after simplification (deg, >=0)
 
-       separate (bool): assemble list of singly connected contours from
+    :param bool separate: assemble list of singly connected contours from
        multiply connected source contour
 
-    Returns:
-        list of created contours ids
+    :returns: list of created contours ids
 
     """
     c = com.contcom.SimplifyContours({"names": [cont],
@@ -55,11 +50,9 @@ def simplify_contour(cont, simplify=True, angle=0, separate=False):
 def unite_contours(conts):
     """ Unites contours to single multiply connected contour
 
-    Args:
-       conts: list of contours identifiers to unite
+    :param conts: list of contours identifiers to unite
 
-    Returns:
-       contour identifier
+    :return: contour identifier
 
     .. note::
 
@@ -75,16 +68,13 @@ def unite_contours(conts):
 def add_boundary_type(index, name="boundary1"):
     """ Creates boundary type
 
-    Args:
-       index (int) - index of boundary (>0)
+    :param int index: index of boundary (>0)
 
-    Kwargs:
-       name (str) - user defined name of the boundary
+    :param str name: user defined name of the boundary
 
-    Returns:
-       integer boundary identifier
+    :returns: integer boundary identifier
 
-    If boundary with ``index`` already exists it will be overwriten.
+    If boundary with ``index`` already exists it will be overwritten.
     Name of the boundary should be unique, if it already exists it will
     be changed automatically.
 
@@ -97,16 +87,14 @@ def add_boundary_type(index, name="boundary1"):
 def set_boundary_type(cont, btps=None, bfun=None):
     """ Mark user or grid contour segments with boundary types.
 
-    Args:
-       cont - contour or grid identifier
+    :param cont: contour or grid identifier
 
-    Kwargs:
-       btps - list of boundary types identifiers for each segment
+    :param btps: list of boundary types identifiers for each segment
        or single identifier for the whole contour
 
-       bfun - function (x0, y0, x1, y1, bt) -> btype
-       which returns boundary type from segment endpoints
-       and old boundary type
+    :param  bfun: function ``(x0, y0, x1, y1, bt) -> btype``
+       which returns boundary type taking segment endpoints
+       and old boundary type as arguments.
 
     Example:
 
@@ -114,7 +102,7 @@ def set_boundary_type(cont, btps=None, bfun=None):
           :start-after: START OF EXAMPLE
           :end-before: END OF EXAMPLE
 
-    Only one of `btps`, `bfun` arguments should be defined.
+    Only one of **btps**, **bfun** arguments should be defined.
     """
     cdata = data.get_any_contour(cont)
     args = {"name": cont}

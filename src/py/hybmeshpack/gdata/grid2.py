@@ -39,6 +39,14 @@ class Grid2(bgeom.Point2SetStruct):
         except KeyError:
             return 0
 
+    def get_bnd_types(self):
+        """-> sorted unique list of indicies of all bnd types in the grid"""
+        ret = set()
+        for i, e in enumerate(self.edges_cells_connect()):
+            if -1 in e:
+                ret.add(self.get_edge_bnd(i))
+        return sorted(ret)
+
     def deepcopy(self):
         """ overriden from GeomStruct. returns deepcopied grid """
         #avoiding deepcopy of self.cont
@@ -79,7 +87,8 @@ class Grid2(bgeom.Point2SetStruct):
         for er in cls:
             newcell = []
             for j in range(len(er)):
-                nd1, nd2 = er[j - 1], er[j]
+                # nd1, nd2 = er[j - 1], er[j]
+                nd1, nd2 = er[j], er[(j + 1) % len(er)]
                 nd = (nd1, nd2) if nd1 < nd2 else (nd2, nd1)
                 edind = edmap.get(nd)
                 if (edind is None):
@@ -182,7 +191,7 @@ class Grid2(bgeom.Point2SetStruct):
         """ -> [[n1, n2, n3, n4], [n5, n6, ..., ], ...]
 
         get nodes indicies for each grid cell
-        in a counter-clockwise direction
+        in a counterclockwise direction
         """
         ret = [[] for i in range(self.n_cells())]
         for cell, cn in zip(self.cells, ret):

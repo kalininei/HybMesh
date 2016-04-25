@@ -67,6 +67,9 @@ static void ShallowAdd(const GridGeom* from, GridGeom* to, const std::vector<int
 		bool ind_to=true);
 static void DeepAdd(const GridGeom* from, GridGeom* to);
 
+//makes deepcopy of all primitives and makes indexation
+static void ReallocatePrimitives(GridGeom& grid);
+
 //Set of single connected meshes. Cells and Points are shallow copies
 //of the original. All indicies left unchanged
 static vector<GridGeom> SubGrids(const GridGeom& grid);

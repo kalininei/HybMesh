@@ -3,7 +3,7 @@ from hybmeshpack.hmscript._dbg import check, check_ascii_file
 import math
 global hm, check
 hm.check_compatibility("0.4.0")
-
+cont1 = []
 
 g1 = hm.add_unf_rect_grid([0, 0], [5, 1], 10, 10)
 hm.set_boundary_type(g1, 1)

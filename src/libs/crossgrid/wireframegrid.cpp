@@ -4,6 +4,7 @@
 #include <numeric>
 #include "assert.h"
 #include "intrusion.h"
+#include "procgrid.h"
 
 //constructors
 PtsGraph::PtsGraph(const GridGeom& g2){
@@ -240,6 +241,7 @@ GridGeom formgrid(const vector<tgPoint>& P, const vector<tgHalfEdge>& HE,
 }
 }//namespace
 
+
 GridGeom PtsGraph::togrid() const{
 	//assemble subgraphs each of which can be
 	//processed to a single connected grid
@@ -252,25 +254,62 @@ GridGeom PtsGraph::togrid() const{
 	//if only a single grid exists return it
 	if (grids.size() == 1) return GridGeom::sum(grids);
 
-	//collect all grid boundaries into a set of nested contours
-	ContoursCollection concol;
-	for (auto& g: grids){
-		auto gc = g.get_contours();
-		//should contain only single contour
-		if (gc.size() != 1) throw std::runtime_error(
-			"Can not assemble single contour around a grid");
-		concol.add_contour(gc[0]);
+	//assembling system of outer contours
+	HMCont2D::ContourTree cont;
+	for (int i=0; i<grids.size(); ++i){
+		auto c1 = GGeom::Info::Contour(grids[i]);
+		for (int j=0; j<c1.cont_count(); ++j){
+			shared_ptr<HMCont2D::Contour> x = c1.nodes[j];
+			cont.AddContour(x);
+		}
 	}
 
-	//if grid boundaries don't contain each other collect all data to one grid and return
-	if (concol.n_cont() == concol.n_inner_cont()) return GridGeom::sum(grids);
+	//if no inner contours make a summation
+	if (cont.roots().size() == cont.cont_count()) return GridGeom::sum(grids);
 
+	//some grids lay within cells of parent grids. We need the intrusion algo.
+	return PtsGraph::intrusion_algo(grids);
+}
+
+GridGeom PtsGraph::intrusion_algo(const vector<GridGeom>& g){
+	//1 divide grids into subgrids
+	vector<GridGeom> grids; grids.reserve(10*g.size());
+	for (auto& it: g){
+		auto sg = GGeom::Modify::SubGrids(it);
+		if (sg.size() == 1){ 
+			grids.push_back(std::move(sg[0]));
+		} else {
+			for (int i=0; i<sg.size(); ++i){
+				GGeom::Modify::ReallocatePrimitives(sg[i]);
+				grids.push_back(std::move(sg[i]));
+			}
+		}
+	}
+	//2 assemble tree for each singly connected grid
+	HMCont2D::ContourTree concol;
+	for (int i=0; i<grids.size(); ++i){
+		auto c1 = GGeom::Info::Contour(grids[i]);
+		for (int j=0; j<c1.cont_count(); ++j){
+			shared_ptr<HMCont2D::Contour> x = c1.nodes[j];
+			concol.AddContour(x);
+		}
+	}
+	
 	//set of level, parent_index, child_index
 	std::set<std::tuple<int, int, int>> lpc;
-	for (int i=0; i<concol.n_cont(); ++i){
-		int level = concol.get_level(i);
-		int parent = concol.get_parent_index(i);
-		if (level > 0) lpc.insert(std::make_tuple(level, parent, i));
+	for (int i=0; i<concol.cont_count(); ++i){
+		int level = concol.nodes[i]->level();
+		if (level == 0) continue;
+		auto parent_cont = concol.nodes[i]->parent;
+		int parent = -1;
+		for (int j=0; j<concol.cont_count(); ++j){
+			if (concol.nodes[j].get() == parent_cont){
+				parent = j;
+				break;
+			}
+		}
+		assert(parent != -1);
+		lpc.insert(std::make_tuple(level, parent, i));
 	}
 	//moving from the highest level of nesting
 	int parent=-1;
@@ -292,7 +331,7 @@ GridGeom PtsGraph::togrid() const{
 
 	//assemble first level grids
 	vector<GridGeom*> lev0;
-	for (int i=0; i<concol.n_cont(); ++i) if (concol.get_level(i) == 0){
+	for (int i=0; i<concol.cont_count(); ++i) if (concol.nodes[i]->level() == 0){
 		lev0.push_back(&grids[i]);
 	}
 	return GridGeom::sum(lev0);
@@ -604,15 +643,7 @@ PtsGraph PtsGraph::cut(const PtsGraph& wmain, const ContoursCollection& conts, i
 	//using the position of line center point
 	std::vector<Point> line_cnt = pg.center_line_points();
 	auto flt = conts.filter_points_i(line_cnt);
-	//######################################
 	std::vector<int>& badi = (dir==INSIDE) ? std::get<0>(flt) : std::get<2>(flt);
-	//std::vector<int> badi = std::get<1>(flt);
-	//if (dir == INSIDE){
-		//for (auto i: std::get<0>(flt)) badi.push_back(i);
-	//} else {
-		//for (auto i: std::get<2>(flt)) badi.push_back(i);
-	//}
-	//######################################
 	std::set<int> bad_lines(badi.begin(), badi.end());
 	aa::remove_entries(pg.lines, bad_lines);
 

@@ -83,7 +83,9 @@ private:
 		vector<double> // crossnodes
 	> impResT;
 	static impResT impose(const PtsGraph& main_graph, const PtsGraph& imp_graph, double eps);
-
+	
+	// subprocedure for togrid() function
+	static GridGeom intrusion_algo(const vector<GridGeom>& grids);
 private:
 	static impResT _impose_impl(const PtsGraph& main_graph, const PtsGraph& imp_graph, double eps);
 

@@ -1,4 +1,5 @@
 #include "contours.h"
+#include "hybmesh_contours2d.hpp"
 #include <tuple>
 #include "assert.h"
 
@@ -71,31 +72,8 @@ double PContour::area() const{
 
 //find internal point: cross algorithm
 Point PContour::inside_point_ca() const{
-	CGBoundingBox bb(*this, 0.5);
-	Point farp1(bb.xmin-134.11*geps, bb.ymin), farp2(bb.xmax+243.43*geps, bb.ymax);
-	//get all crosses
-	vector<double> crosses;
-	double ksieta[] = {-1, -1};
-	for (int i=0; i<n_points(); ++i){
-		SectCross(farp1, farp2, *get_point(i), *get_point(i+1), ksieta);
-		if (ksieta[1] > geps && ksieta[1] < 1+geps){
-			crosses.push_back(ksieta[0]);
-		}
-	}
-	if (crosses.size() < 2) throw std::runtime_error("failed to find inside point");
-	//sort crosses
-	sort(crosses.begin(), crosses.end());
-	//find longest cross inside segment
-	int ti = 0; double td = crosses[1] - crosses[0];
-	for (int i=2; i<crosses.size()-1; i+=2){
-		if (crosses[i+1]-crosses[i] > td){
-			ti = i;
-			td = crosses[i+1]-crosses[i];
-		}
-	}
-	//return a point
-	double w = (crosses[ti] + crosses[ti+1])/2.0;
-	Point ret=Point::Weigh(farp1, farp2, w);
+	auto cc = HMCont2D::Constructor::ContourFromPoints(pts, true);
+	Point ret = cc.InnerPoint();
 #ifndef NDEBUG
 	bool hint = true;
 	assert(this->is_inside(ret, &hint) == INSIDE);
@@ -242,8 +220,8 @@ void ContoursCollection::add_contour(const PContour& cnt){
 	auto newc = aa::add_shared(contours, PContour(cnt));
 	auto newe = aa::add_shared(entries, _entry(newc));
 	auto p = cnt.get_point(0);
-	//find highest contour which contain new one
 	auto tope = const_cast<ContoursCollection::_entry*>(efind(*p));
+	//find highest contour which contain new one
 	if (tope!=NULL){
 		//check if any tope contour lie within new one
 		for (auto c: tope->lower){

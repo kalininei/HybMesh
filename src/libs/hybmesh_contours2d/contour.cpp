@@ -367,17 +367,40 @@ Point inner_point_core(const Contour& c){
 	double ksieta[2];
 	//using iedge1, iedge2 which are normally equal to 1 and size()-1
 	//until first point is doulbled
+	Point best_cross;
+	double minksi = std::numeric_limits<double>::max();
+	int ilimit=iedge1 - 1;
+	//looking for cross going forward
 	for (int i=iedge1; i<iedge2; ++i){
 		const Edge* e = c.data[i].get();
 		Point b0 = *e->pstart;
 		Point b1 = *e->pend;
 		SectCrossWRenorm(a0, a1, b0, b1, ksieta);
-		if (ksieta[1]>-geps && ksieta[1]<1+geps){
-			Point crossp = Point::Weigh(b0, b1, ksieta[1]);
-			return Point::Weigh(a0, crossp, 0.5);
+		if (ksieta[0]>geps && ksieta[1]>-geps && ksieta[1]<1+geps){
+			minksi = ksieta[0];
+			best_cross = Point::Weigh(b0, b1, ksieta[1]);
+			ilimit = i;
+			break;
 		}
 	}
-	throw std::runtime_error("Failed to find contour inner point");
+	//looking for cross going backward
+	for (int i=iedge2-1; i>ilimit; --i){
+		const Edge* e = c.data[i].get();
+		Point b0 = *e->pstart;
+		Point b1 = *e->pend;
+		SectCrossWRenorm(a0, a1, b0, b1, ksieta);
+		if (ksieta[0]>geps && ksieta[1]>-geps && ksieta[1]<1+geps){
+			if (ksieta[0] < minksi){
+				minksi = ksieta[0];
+				best_cross = Point::Weigh(b0, b1, ksieta[1]);
+			}
+			break;
+		}
+	}
+	
+	//return value
+	assert(minksi < std::numeric_limits<double>::max() - 1.0);
+	return Point::Weigh(a0, best_cross, 0.5);
 }
 }//inner_point
 Point Contour::InnerPoint() const{

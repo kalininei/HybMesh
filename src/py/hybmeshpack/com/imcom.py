@@ -1,9 +1,7 @@
 import os.path
 import itertools
-from hybmeshpack import basic, gdata
+from hybmeshpack import gdata
 import hybmeshpack.basic.geom as bg
-from hybmeshpack.gdata import contour2
-from hybmeshpack.gdata import grid2
 from hybmeshpack.basic.geom import Point2
 import contcom
 import command
@@ -16,7 +14,7 @@ class _AbstractImport(objcom.AbstractAddRemove):
     'Import basic class'
     def __init__(self, argsdict):
         if 'name' not in argsdict:
-            argsdict['name'] = argsdict['filename']
+            argsdict['name'] = 'Grid1'
         super(_AbstractImport, self).__init__(argsdict)
 
     def _addrem_objects(self):
@@ -53,7 +51,7 @@ class _AbstractImportContour(_AbstractImport):
 
     def doc(self):
         return "Import contour from %s" % os.path.basename(
-                self.options['filename'])
+            self.options['filename'])
 
     def _read_data(self):
         #build
@@ -78,7 +76,7 @@ class _AbstractImportGrid(_AbstractImport):
 
     def doc(self):
         return "Import grid from %s" % os.path.basename(
-                self.options['filename'])
+            self.options['filename'])
 
     def _read_data(self):
         #build
@@ -119,8 +117,9 @@ class ImportContourASCII(_AbstractImportContour):
                 }
 
     def _read_contour(self):
-        nm, fn, bt, fc = [self.options[x] for x in
-                ['name', 'filename', 'btypes', 'force_closed']]
+        nm, fn, bt, fc = [
+            self.options[x] for x in
+            ['name', 'filename', 'btypes', 'force_closed']]
         st = map(float, file(fn).read().split())
         pts, eds, b = [], [], []
         it = iter(st)
@@ -275,7 +274,7 @@ class ImportGridMSH(_AbstractImportGrid):
         dtp = {}
         for d in dt:
             k = re.search('\d+', d).end(0)
-            w1, w2 = d[:k], d[k+1:]
+            w1, w2 = d[:k], d[k + 1:]
             w1 = int(w1)
             if w1 != 0:
                 if w1 not in dtp:
@@ -317,10 +316,10 @@ class ImportGridMSH(_AbstractImportGrid):
                 elif info[4] == 0:
                     line = conn[5 * i + 1: 5 * i + 5]
                 eds[i + index0 - 1] = [line[0] - 1,
-                        line[1] - 1,
-                        line[2] - 1,
-                        line[3] - 1,
-                        info[0]]
+                                       line[1] - 1,
+                                       line[2] - 1,
+                                       line[3] - 1,
+                                       info[0]]
 
         # read boundary names
         indshift = self._find_highest_bndindex() + 1
@@ -342,7 +341,7 @@ class ImportGridMSH(_AbstractImportGrid):
         # insert boundary types to the workflow
         for k, v in ztps.iteritems():
             self.addcom.append(
-                    contcom.EditBoundaryType({"index": k, "name": v}))
+                contcom.EditBoundaryType({"index": k, "name": v}))
             self.addcom[-1].do(self.receiver)
 
         # create grid
@@ -380,10 +379,6 @@ class ImportGridGMSH(_AbstractImportGrid):
                 'filename': command.BasicOption(str),
                 }
 
-    def _find_highest_bndindex(self):
-        bset = self.receiver.get_bnd_types()._ind_set()
-        return max(bset)
-
     def _parse(self):
         """ ->
             {bindex: bname}
@@ -392,7 +387,7 @@ class ImportGridGMSH(_AbstractImportGrid):
             [ [p1, p2, btype], ... ]
         """
         r1, r2, r3, r4 = {}, [], [], []
-        r2m = {}
+        r2m, r3m = {}, {}
         fn = self.options['filename']
         dt = file(fn).readlines()
         dt = map(lambda x: x.strip(), dt)
@@ -411,23 +406,26 @@ class ImportGridGMSH(_AbstractImportGrid):
                 k = int(dt[i + 1])
                 for d in dt[i + 2:i + 2 + k]:
                     ds = d.split()
-                    r2m[int(ds[0])] = Point2(float(ds[1]), float(ds[2]))
+                    r2m[int(ds[0]) - 1] = Point2(float(ds[1]), float(ds[2]))
                 i += k + 1
             # 3
             if dt[i] == "$Elements":
                 k = int(dt[i + 1])
                 for d in dt[i + 2:i + 2 + k]:
                     ds = map(int, d.split())
+                    index = ds[0] - 1
                     if ds[1] == 1:
                         # edge
                         tp = ds[3] if ds[2] > 0 else 0
-                        r4.append([ds[-2], ds[-1], tp])
+                        if tp > 0:
+                            r4.append([ds[-2] - 1, ds[-1] - 1, tp])
                     elif ds[1] == 2:
                         # triangle cell
-                        r3.append([ds[-3], ds[-2], ds[-1]])
+                        r3m[index] = [ds[-3] - 1, ds[-2] - 1, ds[-1] - 1]
                     elif ds[1] == 3:
                         # quad cell
-                        r3.append([ds[-4], ds[-3], ds[-2], ds[-1]])
+                        r3m[index] = [ds[-4] - 1, ds[-3] - 1,
+                                      ds[-2] - 1, ds[-1] - 1]
                     elif ds[1] == 15:
                         # ignore point cell
                         pass
@@ -435,57 +433,75 @@ class ImportGridGMSH(_AbstractImportGrid):
                         raise Exception("Not supported gmsh element type")
                 i += k + 1
             i += 1
+
         # point renumbering for successive indexing starting from zero
-        oldnew = {}
-        i = 0
-        for ind in sorted(r2m.keys()):
-            oldnew[ind] = i
-            r2.append(r2m[ind])
-            i += 1
-        for a in r4:
-            a[0] = oldnew[a[0]]
-            a[1] = oldnew[a[1]]
-        for i, a in enumerate(r3):
-            r3[i] = map(lambda x: oldnew[x], a)
+        need_point_renumbering = len(r2m) != max(r2m.keys()) + 1
+        if need_point_renumbering:
+            oldnew = {}
+            i = 0
+            for ind in sorted(r2m.keys()):
+                oldnew[ind] = i
+                r2.append(r2m[ind])
+                i += 1
+            for a in r4:
+                a[0] = oldnew[a[0]]
+                a[1] = oldnew[a[1]]
+            for a in r3m.values():
+                for i in range(len(a)):
+                    a[i] = oldnew[a[i]]
+        else:
+            for ind in sorted(r2m.keys()):
+                r2.append(r2m[ind])
+
+        for ind in sorted(r3m.keys()):
+            r3.append(r3m[ind])
+
         return r1, r2, r3, r4
 
-    def _build_bmap(self, bt, bedges):
-        """ -> { gmsh_type: (new_type, new_name) } """
-        bset = set()
+    def _add_boundaries(self, bt, bedges):
+        # collect all boundaries from bedges which not present in the flow
+        needed_boundaries = {}
+        flowbtypes = self.receiver.get_bnd_types()
         for b in bedges:
-            bset.add(b[2])
-        bshift = self._find_highest_bndindex()
-        ret = {}
-        i = 1
-        for k in sorted(bt.keys()):
-            if k in bset:
-                ret[k] = (bshift + i, bt[k])
-                i += 1
-        for k in bset:
-            if k not in ret:
-                ret[k] = (bshift + i, "Unknown")
-                i += 1
-        return ret
+            try:
+                if b[2] not in needed_boundaries:
+                    # if this doesn't raise hence boundary already presents
+                    flowbtypes.get(index=b[2])
+            except KeyError:
+                nm = '-'.join(["gmsh", "boundary", str(b[2])])
+                needed_boundaries[b[2]] = nm
 
-    def _add_boundaries(self, bmap):
-        for k, v in bmap.iteritems():
-            self.addcom.append(
-                    contcom.EditBoundaryType({
-                        "index": v[0], "name": v[1]}))
+        # give them names from bt
+        for k in needed_boundaries.keys():
+            try:
+                needed_boundaries[k] = bt[k]
+            except:
+                pass
+
+        # add needed boundaries to the flow
+        for k in sorted(needed_boundaries.keys()):
+            v = needed_boundaries[k]
+            com = contcom.EditBoundaryType({"index": k, "name": v})
+            self.addcom.append(com)
             self.addcom[-1].do(self.receiver)
 
     @staticmethod
-    def _set_boundaries(grid, bmap, bedges):
+    def _set_boundaries(grid, bedges):
         # edge index -> boundary index
         imap = {}
         bed1 = grid.boundary_contours()
         bed = []
         for b in bed1:
             bed.extend(b)
-        for i, b in enumerate(bed):
-            for b2 in bedges:
-                if b2[0] in grid.edges[b] and b2[1] in grid.edges[b]:
-                    imap[i] = bmap[b2[2]][0]
+        for be in bedges:
+            for e in bed:
+                edge = grid.edges[e]
+                p1 = edge[0]
+                p2 = edge[1]
+                if (be[0] == p1 and be[1] == p2) or\
+                        (be[0] == p2 and be[1] == p1):
+                    imap[e] = be[2]
+                    break
         # set
         grid.set_edge_bnd(imap)
 
@@ -493,9 +509,8 @@ class ImportGridGMSH(_AbstractImportGrid):
     def _read_grid(self):
         bt, pts, cls, bedges = self._parse()
         ret = gdata.grid2.Grid2.from_points_cells2(pts, cls)
-        bmap = self._build_bmap(bt, bedges)
-        self._add_boundaries(bmap)
-        self._set_boundaries(ret, bmap, bedges)
+        self._add_boundaries(bt, bedges)
+        self._set_boundaries(ret, bedges)
         ret.build_contour()
         return ret
 
