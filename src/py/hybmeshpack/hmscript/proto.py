@@ -178,7 +178,7 @@ def add_circ_rect_grid(p0, rad, step, sqrside=1.0, rcoef=1.0, algo="laplas8"):
        in such a way that number of steps be divisible by 8.
 
     :param positive-float sqrside: side of the inner square normalized by
-       the circle radius. Values greater then 1.4 are not allowed.
+       the circle radius. Values greater than 1.4 are not allowed.
 
     :param positive-float rcoef: radius direction refinement of
        the ring part of the grid. This value approximately equals
@@ -186,7 +186,9 @@ def add_circ_rect_grid(p0, rad, step, sqrside=1.0, rcoef=1.0, algo="laplas8"):
        Values less then unity lead to refinement towards outer boundary.
 
     :param str algo: Algorithms of assembling the ring part of the grid.
-       * ``'laplas8'`` - use laplas mapping for building each 45 degree sector.
+
+       * ``'laplas8'`` - use algebraic mapping for
+         building each 45 degree sector.
 
     :return: new grid identifier
 

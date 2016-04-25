@@ -116,7 +116,9 @@ shared_ptr<BGrid> BGrid::MeshSequence(vector<Options*>& data){
 
 shared_ptr<BGrid> BGrid::NoSelfIntersections(shared_ptr<BGrid> g, const HMCont2D::Contour& source){
 	//does grid have intersections
-	if (!GGeom::Repair::HasSelfIntersections(*g)) return g;
+	if (!GGeom::Repair::HasSelfIntersections(*g)){
+		return g;
+	}
 	//else do imposition on the basis of cells weights
 	auto wfun = [&](const Cell* c){
 		int w = g->get_weight(c);

@@ -20,7 +20,7 @@ Versions History
    * circle contour defined by three points and
      by two points with curvature coefficient
 
-   New python interface function:
+   New python interface functions:
 
    * :func:`remove_all_but`
    * :func:`reflect_geom` 
@@ -42,7 +42,7 @@ Versions History
    * fluent export with given periodic conditions
    * build rectangular grid on the basis of two or four open contours
 
-   New python interface function:
+   New python interface functions:
 
    * :func:`extrude_grid`
    * :func:`partition_contour` 
@@ -53,3 +53,20 @@ Versions History
    Python interface functions with new options:
 
    * *periodic_pairs* for :func:`export_grid_msh`
+* **0.4.1**:
+   New algorithms:
+
+   * build 3D grid by revolution of 2D grid around arbitrary `xy` vector
+   * 2D/3D grid export to tecplot ascii \*.dat format
+
+   New geometry constructors:
+   
+   * quadrangle grid in a circle area
+
+   New python interface functions:
+
+   * :func:`revolve_grid`
+   * :func:`add_circ_rect_grid` 
+   * :func:`export3d_grid_tecplot`
+   * :func:`export_grid_tecplot`
+   * :func:`export_contour_tecplot`

@@ -111,6 +111,7 @@ Building uniform grids in a primitive areas.
 .. autofunction:: add_unf_ring_grid
 .. autofunction:: add_triangle_grid
 .. autofunction:: add_custom_rect_grid
+.. autofunction:: add_circ_rect_grid
 
 Transformations
 +++++++++++++++
@@ -127,6 +128,8 @@ See :ref:`functionality` for procedures details.
 .. autofunction:: heal_grid
 
 .. autofunction:: extrude_grid
+
+.. autofunction:: revolve_grid
 
 Information
 -----------
@@ -153,18 +156,19 @@ Possible Grid export formats are
 * :ref:`hmg-file`
 * Fluent mesh format 
 * GMsh file format
-
-The current work flow can be also save to a :ref:`hmp-file` which
-can be opened in a gui application.
+* Tecplot file format
 
 .. autofunction:: export_grid_vtk
 .. autofunction:: export_grid_hmg
 .. autofunction:: export_grid_msh
 .. autofunction:: export_grid_gmsh
+.. autofunction:: export_grid_tecplot
 .. autofunction:: export_contour_vtk
 .. autofunction:: export_contour_hmc
+.. autofunction:: export_contour_tecplot
 .. autofunction:: export3d_grid_vtk
 .. autofunction:: export3d_grid_msh
+.. autofunction:: export3d_grid_tecplot
 .. autofunction:: save_project
 
 Imports

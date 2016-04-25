@@ -113,6 +113,6 @@ hm.export3d_grid_msh(
 
 def testf():
     from hybmeshpack.hmscript import _dbg as hmdbg
-    hmdbg.check_ascii_file(2556162334104726686, "res3d.msh")
+    hmdbg.check_ascii_file(2556162334104726686, "res3d.msh", "dev")
 
 testf()

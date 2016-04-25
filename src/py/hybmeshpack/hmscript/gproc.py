@@ -212,7 +212,7 @@ def extrude_grid(obj, zcoords, bottombc=0, topbc=0, sidebc=None):
 
 def revolve_grid(obj, p1, p2, n_phi=None,
                  phi=None, btype1=0, btype2=0, merge_central=False):
-    """ Creates 3D grid by revolving of 2D grid around defined vector
+    """ Creates 3D grid by revolution of 2D grid around a vector
 
     :param obj: 2d grid identifier
 

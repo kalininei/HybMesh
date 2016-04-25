@@ -2,8 +2,8 @@ source ../../src/libs/dbgscripts/hmout.gdb
 
 #call from testing directory
 file python
-set args ../../src/py/hybmesh.py -sx fromdoc/intro_shark.py -silent
+set args ../../src/py/hybmesh.py -sx tmp.py -silent
 set breakpoint pending on
-b contours.cpp:81
+b rectangle_grid_builder.cpp:157
 run
 

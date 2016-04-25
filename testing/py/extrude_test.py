@@ -61,7 +61,7 @@ hm.set_boundary_type(g2, 2)
 g3 = hm.unite_grids(g1, [(g2, 0.2)], True)
 g4 = hm.revolve_grid(g3, [0, 0], [0.4, 1], 20)
 hm.export3d_grid_tecplot(g4, "g1.msh")
-hmdbg.check_ascii_file(11816494025308685888, "g1.msh")
+hmdbg.check_ascii_file(11816494025308685888, "g1.msh", "dev")
 
 print "incomplete revolution, with contact, no tri"
 g1 = hm.add_unf_circ_grid([4, 4], 15, 32, 15, is_trian=False)

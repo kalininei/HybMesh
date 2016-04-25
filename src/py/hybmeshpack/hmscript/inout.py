@@ -146,7 +146,7 @@ def export3d_grid_msh(g1, fname, periodic_pairs=None):
 
 
 def export3d_grid_tecplot(g1, fname):
-    """Exports 3D grid to tecplot ascii format.
+    """Exports 3D grid to tecplot ascii \*.dat format.
 
     :param g1: 3D grid file identifier
 
@@ -154,8 +154,10 @@ def export3d_grid_tecplot(g1, fname):
 
     :raises: hmscript.ExportError
 
-    A grid zone and zones for each boundary surface (by boundary type)
-    will be created in output file.
+    A grid zone and zones for each boundary surface defined by boundary type
+    will be created in the output file.
+
+    All 3D cells will be saved as FEPOLYHEDRON elements.
     """
     try:
         imex.export_grid("tecplot3d", fname, g1, flow=flow)
@@ -164,13 +166,17 @@ def export3d_grid_tecplot(g1, fname):
 
 
 def export_grid_tecplot(g1, fname):
-    """exports grid to tecplot ascii format
+    """exports grid to tecplot ascii \*.dat format
 
     :param g1: grid identifier
 
     :param fname: output filename
 
     :raises: hmscript.ExportError
+
+    All cells will be saved as FEPolygon elements.
+    Boundary segments with same boundary type will be converted
+    to separate zones.
     """
     try:
         imex.export_grid("tecplot", fname, g1, flow=flow)
@@ -206,13 +212,17 @@ def export_contour_hmc(c1, fname):
 
 
 def export_contour_tecplot(c1, fname):
-    """exports contour to tecplot ascii format
+    """exports contour to tecplot ascii \*.dat format
 
     :param c1: contour identifier
 
     :param fname: output filename
 
     :raises: hmscript.ExportError
+
+    All contour segments will be saved to a zone called "Contour".
+    Additional zones will be created for all segments with same
+    boundary type.
     """
     try:
         imex.export_contour("tecplot", fname, c1, flow=flow)
@@ -250,7 +260,7 @@ def import_grid_msh(fname):
 
 
 def import_grid_gmsh(fname):
-    """Imports grid from gmsh ascii file
+    """Imports grid from gmsh ascii file.
 
     :param str fname: file name
 
@@ -261,8 +271,8 @@ def import_grid_gmsh(fname):
     Boundary types could be exported by passing boundary edges as
     certain Elements of "Line" type. Their physical entity tag
     (first one amoung real tags) will be treated as their boundary index.
-    For each such index the new boundary type will be registered in program
-    flow only if it has not been registered yet. Name for a new boundary
+    For each such index the new boundary type will be registered in the program
+    flow if it has not been registered yet. Name for the new boundary
     type will be taken from PhysicalNames field if it exists, otherwise
     the default name "gmsh-boundary-index" will be used.
     """
