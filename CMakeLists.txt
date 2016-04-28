@@ -84,7 +84,7 @@ if (WIN32)
 endif(WIN32)
 
 # ============================ Version
-set(APPVERSION 0.4.1)
+set(APPVERSION 0.4.2)
 
 # =========================== linking libraries flags
 #libGmsh: global definition of BUILD_GMSH, GMSH_TARGET, GMSH_INCLUDE

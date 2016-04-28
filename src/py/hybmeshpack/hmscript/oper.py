@@ -332,7 +332,8 @@ def build_boundary_grid(opts):
 
 
 def map_grid(base_grid, target_contour, base_points, target_points,
-             snap="no", project_to="line", btypes="from_grid"):
+             snap="no", project_to="line", btypes="from_grid",
+             algo="inverse-laplace"):
     """Performs mapping of base grid on another contour
 
     :param base_grid: grid identifier
@@ -367,6 +368,12 @@ def map_grid(base_grid, target_contour, base_points, target_points,
     :param str btypes:
        defines from what source boundary features for newly created grid
        would be taken: ``"from_grid"`` or ``"from_contour"``.
+
+    :param str algo:
+       defines algorithm of mapping:
+
+       * ``"direct-laplace"`` solves Laplace problem in base domain,
+       * ``"inverse-laplace"`` solves Laplace problem in target domain.
 
     :raises: ValueError, hmscript.ExecError
 
@@ -406,11 +413,14 @@ def map_grid(base_grid, target_contour, base_points, target_points,
             p.x, p.y = ctar.points[i].x, ctar.points[i].y
     else:
         raise ValueError("Unknown `project_to` = %s" % project_to)
+    if algo not in ['inverse-laplace', 'direct-laplace']:
+        raise ValueError("Unknown mapping algorithm")
     c = com.gridcom.MapGrid({"base": base_grid,
                              "target": target_contour,
                              "base_points": bpoints,
                              "target_points": tpoints,
                              "snap": snap,
+                             "algo": algo,
                              "btypes": btypes})
     try:
         flow.exec_command(c)

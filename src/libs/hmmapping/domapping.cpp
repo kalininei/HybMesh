@@ -1,0 +1,316 @@
+#include "domapping.hpp"
+#include "femassembly.hpp"
+#include "hmtimer.hpp"
+
+using namespace HMGMap::Impl;
+
+// ===================================== AuxGrid
+AuxGrid::AuxGrid(const HMCont2D::ContourTree& tree, const HMGMap::Options& opt): HMFem::Grid43(){
+	//build grid43
+	shared_ptr<HMFem::Grid43> g3;
+	// preliminary data
+	double area = HMCont2D::Area(tree);
+	auto elen = HMCont2D::ECollection::ELengths(tree);
+	double longest_edge = *max_element(elen.begin(), elen.end());
+	double shortest_edge = *min_element(elen.begin(), elen.end());
+	{// first try: uniform triangulation
+		double l1=sqrt(area/opt.fem_nrec);
+		g3 = HMFem::Grid43::Build3(tree, {}, l1);
+		//grid is too big. try another algorithm
+		if (g3 != 0 && g3->n_points()>opt.fem_nmax) g3.reset();
+	}
+	{
+		// TODO
+	}
+	if (g3 == 0) throw MapException("failed to triangulate given area");
+
+	swap_data(*g3, *this);
+}
+
+void AuxGrid::PlaceBndPoints(const MappedContourCollection& mcol){
+	double ksi;
+	//boundary edges
+	auto edges = get_edges(); 
+	vector<Edge> bedges;
+	std::copy_if(edges.begin(), edges.end(), std::back_inserter(bedges),
+			[](const Edge& e){ return e.is_boundary(); });
+	//for each boundary contour of input grid
+	for (int i=0; i<mcol.entry_num(); ++i){
+		//find mapped contour
+		auto cmapping = mcol.get(i);
+		//for each point in contour
+		for (auto p: cmapping->get_base()->all_points()){
+			//find mapped point
+			Point pmapped = cmapping->map_from_base(*p);
+			//find boundary edge which holds it
+			vector<Edge>::iterator fnd = bedges.begin();
+			while (fnd!=bedges.end()){
+				if (isOnSection(pmapped,
+						*get_point(fnd->p1),
+						*get_point(fnd->p2), ksi)){
+					break;
+				}
+				++fnd;
+			}
+			assert(fnd != bedges.end());
+			if (ISZERO(ksi) || ISZERO(ksi-1)) continue;
+			//new point
+			Point np = Point::Weigh(*get_point(fnd->p1),
+					*get_point(fnd->p2), ksi);
+			//add to grid points
+			points.emplace_back(new GridPoint(np.x, np.y, points.size()));
+			GridPoint* ap = points.back().get();
+			//change existing cell and add new one
+			shared_ptr<Cell> c1 = cells[fnd->any_cell()];
+			shared_ptr<Cell> c2(new Cell(cells.size()));
+			cells.push_back(c2);
+			int otherpoint=-1;
+			for (int i=0; i<3; ++i)
+				if (c1->points[i]->get_ind() != fnd->p1 &&
+						c1->points[i]->get_ind() != fnd->p2){
+					otherpoint = i;
+					break;
+				}
+			assert(otherpoint>=0);
+			if (otherpoint == 0){
+				c2->points.push_back(c1->points[0]);
+				c2->points.push_back(ap);
+				c2->points.push_back(c1->points[2]);
+				c1->points[2] = ap;
+			} else if (otherpoint == 1){
+				c2->points.push_back(c1->points[1]);
+				c2->points.push_back(c1->points[2]);
+				c2->points.push_back(ap);
+				c1->points[2] = ap;
+			} else {
+				c2->points.push_back(c1->points[2]);
+				c2->points.push_back(ap);
+				c2->points.push_back(c1->points[1]);
+				c1->points[1] = ap;
+			}
+			//change edges
+			Edge newedge;
+			if (otherpoint == 0){
+				fnd->p1 = c1->points[1]->get_ind();
+				fnd->p2 = ap->get_ind();
+				fnd->cell_left = c1->get_ind();
+				fnd->cell_right = -1;
+				newedge.p1 = c2->points[2]->get_ind();
+				newedge.p2 = ap->get_ind();
+				newedge.cell_left = -1;
+				newedge.cell_right = c2->get_ind();
+			} else if (otherpoint == 1){
+				fnd->p1 = c1->points[0]->get_ind();
+				fnd->p2 = ap->get_ind();
+				fnd->cell_left = -1;
+				fnd->cell_right = c1->get_ind();
+				newedge.p1 = c2->points[1]->get_ind();
+				newedge.p2 = ap->get_ind();
+				newedge.cell_left = c2->get_ind();
+				newedge.cell_right = -1;
+			} else {
+				fnd->p1 = c1->points[0]->get_ind();
+				fnd->p2 = ap->get_ind();
+				fnd->cell_left = c1->get_ind();
+				fnd->cell_right = -1;
+				newedge.p1 = c2->points[2]->get_ind();
+				newedge.p2 = ap->get_ind();
+				newedge.cell_left = -1;
+				newedge.cell_right = c2->get_ind();
+			}
+			bedges.push_back(newedge);
+		}
+	}
+}
+
+// ========================== General DoMapping
+void DoMapping::set_grid(const GridGeom& ig){
+	GGeom::Modify::ClearAll(inpgrid);
+	GGeom::Modify::ShallowAdd(&ig, &inpgrid);
+}
+void DoMapping::set_contour(const HMCont2D::ECollection& ecol){
+	contdata = ecol;
+}
+void DoMapping::set_points(const vector<Point>& gridpnt, const vector<Point>& contpnt){
+	gridpoints = gridpnt;
+	contpoints = contpnt;
+}
+GridGeom DoMapping::run(HMCallback::Caller2& cb){
+	//build solution area
+	cb.step_after(5, "Boundary mapping");
+	prepare_mapped_contour();
+	//build a fem triangle grid
+	cb.step_after(50, "Triangulation");
+	prepare_grid();
+	//assemble fem problem
+	cb.step_after(15, "FEM assembling");
+	laplace.reset(new HMFem::LaplasProblem(g3));
+
+	//solve direct problems
+	//resulting u, v are functions defined in g3 at mapped_outer domain
+	vector<double> u, v;
+	cb.step_after(20, "SLAE solution");
+	solve_uv_problems(u, v);
+
+	//draw a resulting grid
+	cb.step_after(5, "Grid building");
+	auto approx = g3->GetApprox();
+	auto pmod = [&](GridPoint* p){
+		double x = approx->Val(*p, u);
+		double y = approx->Val(*p, v);
+		p->set(x, y);
+	};
+	GridGeom ret = GGeom::Constructor::DeepCopy(inpgrid);
+	GGeom::Modify::PointModify(ret, pmod);
+
+	cb.step_after(5, "Snapping");
+	//snapping 
+	for (auto p: ret.get_bnd_points()){
+		Point p2 = HMCont2D::ECollection::ClosestPoint(mapped_outer, *p);
+		const_cast<GridPoint*>(p)->set(p2.x, p2.y);
+	}
+	if (opt.snap == "ADD_VERTICES"){
+		for (auto& n: mapped_outer.nodes)
+			GGeom::Modify::SnapToContour(ret, *n, {});
+	} else if (opt.snap == "SHIFT_VERTICES"){
+		for (auto& n: mapped_outer.nodes)
+			GGeom::Modify::ShiftToContour(ret, *n, {});
+	} else if (opt.snap != "NO"){
+		throw HMGMap::MapException(std::string("Unknown snapping option - ") + opt.snap);
+	}
+	if (!GGeom::Info::Check(ret)) throw HMGMap::MapException("Resulting grid is not valid");
+	return ret;
+}
+void DoMapping::prepare_mapped_contour(){
+	//assemble all contours
+	vector<HMCont2D::Contour> allconts = HMCont2D::Assembler::AllContours(contdata);
+	//get contours which contains given points
+	std::set<HMCont2D::Contour*> included_conts;
+	for (auto p: contpoints){
+		auto eres = HMCont2D::ECollection::FindClosestEdge(contdata, p);
+		HMCont2D::Edge* e = std::get<0>(eres);
+		for (auto& c: allconts){
+			if (c.contains(e)){
+				included_conts.insert(&c);
+				break;
+			}
+		}
+	}
+	//assemble a tree from that contours
+	mapped_outer.clear();
+	for (auto c: included_conts){
+		assert(c->is_closed());
+		mapped_outer.AddContour(*c);
+	}
+	mapped_outer = HMCont2D::Algos::Simplified(mapped_outer);
+
+	//input grid contour
+	inpgrid_outer = HMCont2D::Algos::Simplified(GGeom::Info::Contour(inpgrid));
+
+	//build boundary mapping
+	build_mcc();
+}
+void DoMapping::prepare_grid(){
+	build_grid3();
+	g3outer = GGeom::Info::Contour(*g3);
+}
+void DoMapping::build_mcc(){
+	//mapping inpgrid_outer to mapped_outer
+	int N = std::min(gridpoints.size(), contpoints.size());
+	std::set<HMCont2D::Contour*> used_gcontours;
+	for (int i=0; i<N; ++i){
+		Point p1 = gridpoints[i];
+		Point p2 = contpoints[i];
+		HMCont2D::Edge* e1 = std::get<0>(HMCont2D::ECollection::FindClosestEdge(inpgrid_outer, p1));
+		HMCont2D::Edge* e2 = std::get<0>(HMCont2D::ECollection::FindClosestEdge(mapped_outer, p2));
+		HMCont2D::Contour* c1 = inpgrid_outer.get_contour(e1);
+		HMCont2D::Contour* c2 = mapped_outer.get_contour(e2);
+		used_gcontours.insert(c1);
+		auto cfnd = mcol.insert(c1, c2);
+		cfnd->add_connection(p1, p2);
+	}
+	if (inpgrid_outer.cont_count() != used_gcontours.size())
+		throw HMGMap::MapException("All grid boundaries should contain at least one base point");
+}
+
+// =========================== DirectMapping
+void DirectMapping::build_grid3(){
+	g3.reset(new AuxGrid(inpgrid_outer, opt));
+}
+void DirectMapping::solve_uv_problems(vector<double>& u, vector<double>& v){
+	u.resize(g3->n_points(), 0.0);
+	v.resize(g3->n_points(), 0.0);
+
+	// u - problem
+	laplace->ClearBC();
+	for (auto n: g3outer.nodes){
+		HMCont2D::Edge *e = std::get<0>(HMCont2D::ECollection::FindClosestEdge(inpgrid_outer, *n->first()));
+		HMCont2D::Contour* c = inpgrid_outer.get_contour(e);
+		auto cmapping = mcol.find_by_base(c);
+		assert(cmapping != nullptr);
+		auto dirfunc = [cmapping](const GridPoint* p)->double{
+			return cmapping->map_from_base(*p).x;
+		};
+		laplace->SetDirichlet(*n, dirfunc);
+	}
+	laplace->Solve(u);
+
+	// v - problem
+	laplace->ClearBC();
+	for (auto n: g3outer.nodes){
+		HMCont2D::Edge *e = std::get<0>(HMCont2D::ECollection::FindClosestEdge(inpgrid_outer, *n->first()));
+		HMCont2D::Contour* c = inpgrid_outer.get_contour(e);
+		auto cmapping = mcol.find_by_base(c);
+		assert(cmapping != nullptr);
+		auto dirfunc = [cmapping](const GridPoint* p)->double{
+			return cmapping->map_from_base(*p).y;
+		};
+		laplace->SetDirichlet(*n, dirfunc);
+	}
+	laplace->QuickSolve_BC(v);
+}
+
+// =========================== InverseMapping
+void InverseMapping::build_grid3(){
+	g3.reset(new AuxGrid(mapped_outer, opt));
+	g3->PlaceBndPoints(mcol);
+}
+
+void InverseMapping::solve_uv_problems(vector<double>& u, vector<double>& v){
+	u.resize(g3->n_points(), 0.0);
+	v.resize(g3->n_points(), 0.0);
+
+	//u problem
+	for (auto n: g3outer.nodes){
+		HMCont2D::Edge *e = std::get<0>(HMCont2D::ECollection::FindClosestEdge(mapped_outer, *n->first()));
+		HMCont2D::Contour* c = mapped_outer.get_contour(e);
+		auto cmapping = mcol.find_by_mapped(c);
+		assert(cmapping != 0);
+		auto dirfunc = [cmapping](const GridPoint* p)->double{
+			return cmapping->map_from_mapped(*p).x;
+		};
+		laplace->SetDirichlet(*n, dirfunc);
+	}
+	laplace->Solve(u);
+
+	//v problem
+	laplace->ClearBC();
+	for (auto n: g3outer.nodes){
+		HMCont2D::Edge *e = std::get<0>(HMCont2D::ECollection::FindClosestEdge(mapped_outer, *n->first()));
+		HMCont2D::Contour* c = mapped_outer.get_contour(e);
+		auto cmapping = mcol.find_by_mapped(c);
+		assert(cmapping != 0);
+		auto dirfunc = [cmapping](const GridPoint* p)->double{
+			return cmapping->map_from_mapped(*p).y;
+		};
+		laplace->SetDirichlet(*n, dirfunc);
+	}
+	laplace->QuickSolve_BC(v);
+
+	//swap g3 coordinates and uv
+	auto modfun = [&u, &v](GridPoint* p){
+		std::swap(p->x, u[p->get_ind()]);
+		std::swap(p->y, v[p->get_ind()]);
+	};
+	GGeom::Modify::PointModify(*g3, modfun);
+}

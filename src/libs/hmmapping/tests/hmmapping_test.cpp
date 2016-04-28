@@ -12,8 +12,9 @@ void test01(){
 	GridGeom base = GGeom::Constructor::RectGrid01(10, 10);
 	auto cont = HMCont2D::Constructor::ContourFromPoints({0,0, 1,0, 1.5, 1, 1, 1.3, 0.7, 1.0}, true);
 	GridGeom mapped = HMGMap::MapGrid(base, cont,
-		{Point(0, 0), Point(1, 0), Point(1,1), Point(0, 1)},
-		{Point(0, 0), Point(1, 0), Point(1.5, 1), Point(0.7, 1.0)});
+		std::vector<Point>{Point(0, 0), Point(1, 0), Point(1,1), Point(0, 1)},
+		std::vector<Point>{Point(0, 0), Point(1, 0), Point(1.5, 1), Point(0.7, 1.0)},
+		HMGMap::Options("inverse-laplace"));
 	add_check(base.n_cells() == mapped.n_cells(), "cells number");
 	add_check(base.n_points() == mapped.n_points(), "nodes number");
 	add_check([&](){
@@ -23,6 +24,7 @@ void test01(){
 		if (a1<0.9*a2) return false;
 		return true;
 	}(), "grids area");
+	GGeom::Export::GridVTK(mapped, "g1.vtk");
 }
 
 void test02(){
@@ -38,8 +40,9 @@ void test02(){
 	bool was_err1 = false;
 	try{
 		GridGeom ans1 = HMGMap::MapGrid(base, ecol,
-			{Point(3, 1), Point(1, 3)},
-			{Point(0, 5), Point(5, 0)}
+			std::vector<Point> {Point(3, 1), Point(1, 3)},
+			std::vector<Point> {Point(0, 5), Point(5, 0)},
+			HMGMap::Options("inverse-laplace")
 		);
 	} catch (HMGMap::MapException &e) {
 		was_err1 = e.what() == (std::string)"Grid mapping exception: All grid boundaries should contain at least one base point";
@@ -49,33 +52,36 @@ void test02(){
 	bool was_err2 = false;
 	try{
 		GridGeom ans2 = HMGMap::MapGrid(base, ecol,
-			{Point(3, 1), Point(1, 3), Point(2, 1)},
-			{Point(0, 5), Point(5, 0), Point(0, -5)}
+			std::vector<Point> {Point(3, 1), Point(1, 3), Point(2, 1)},
+			std::vector<Point> {Point(0, 5), Point(5, 0), Point(0, -5)},
+			HMGMap::Options("inverse-laplace")
 		);
 	} catch (HMGMap::MapException &e) {
-		was_err2 = e.what() == (std::string)"Grid mapping exception: Resulting grid is not valid";
+		was_err2 = e.what() == (std::string)"Grid mapping exception: Contour-to-contour links are ambiguous";
 	}
 	add_check(was_err2, "points from same grid boundary are referenced to different mapped area");
 
 	bool was_err3 = false;
 	try{
 		GridGeom ans3 = HMGMap::MapGrid(base, ecol,
-			{Point(3, 1), Point(1, 3), Point(3, 3), Point(2, 1), Point(0, 1)},
-			{Point(5, 0), Point(0, 5), Point(0, -5), Point(2, 0), Point(-2, 0)}
+			std::vector<Point> {Point(3, 1), Point(1, 3), Point(3, 3), Point(2, 1), Point(0, 1)},
+			std::vector<Point> {Point(5, 0), Point(0, 5), Point(0, -5), Point(2, 0), Point(-2, 0)},
+			HMGMap::Options("inverse-laplace")
 		);
 	} catch (HMGMap::MapException &e) {
 		was_err3 = e.what() == (std::string)"Grid mapping exception: Invalid order of points in mapped contour";
 	}
 	add_check(was_err3, "invalid points ordering");
 
-	bool was_err4 = false;
 	try{
 		GridGeom ans4 = HMGMap::MapGrid(base, ecol,
-			{Point(3, 1), Point(1, 3), Point(3, 3), Point(2, 1), Point(0, 1)},
-			{Point(5, 0), Point(0, 5), Point(5, 5), Point(2, 0), Point(-2, 0)}
+			std::vector<Point> {Point(3, 1), Point(1, 3), Point(3, 3), Point(2, 1), Point(0, 1)},
+			std::vector<Point> {Point(5, 0), Point(0, 5), Point(5, 5), Point(2, 0), Point(-2, 0)},
+			HMGMap::Options("inverse-laplace")
 		);
-	} catch (HMGMap::MapException &e) { was_err4 = true; }
-	add_check(!was_err4, "valid data");
+		GGeom::Export::GridVTK(ans4, "g1.vtk");
+		add_file_check(5480434404272453656U, "g1.vtk", "valid doubly connected data");
+	} catch (HMGMap::MapException &e) {add_check(false, "valid doubly connected data");}
 }
 
 void test03(){
@@ -86,29 +92,33 @@ void test03(){
 	auto contc = HMCont2D::Constructor::Circle(200, 16, Point(8, 9));
 
 	GridGeom ans1 = HMGMap::MapGrid(circgrid, cont4,
-			{Point(4, 3)},
-			{Point(0, 0)}
+			std::vector<Point> {Point(4, 3)},
+			std::vector<Point> {Point(0, 0)},
+			HMGMap::Options("inverse-laplace")
 	);
 	add_check(ans1.n_points() == circgrid.n_points() &&
 	          ans1.n_cells() == circgrid.n_cells(), "circle to rectangle, one base point");
 
 	GridGeom ans2 = HMGMap::MapGrid(circgrid, cont4,
-			{Point(4, 3), Point(2, 5)},
-			{Point(0, 0), Point(3, 0)}
+			std::vector<Point> {Point(4, 3), Point(2, 5)},
+			std::vector<Point> {Point(0, 0), Point(3, 0)},
+			HMGMap::Options("inverse-laplace")
 	);
 	add_check(ans2.n_points() == circgrid.n_points() &&
 	          ans2.n_cells() == circgrid.n_cells(), "circle to rectangle, two base points");
 
 	GridGeom ans3 = HMGMap::MapGrid(circgrid, cont4,
-			{Point(4, 3), Point(2, 5), Point(2, 1), Point(0, 3)},
-			{Point(0, 0), Point(3, 0), Point(0, 2), Point(3,2)}
+			std::vector<Point> {Point(4, 3), Point(2, 5), Point(2, 1), Point(0, 3)},
+			std::vector<Point> {Point(0, 0), Point(3, 0), Point(0, 2), Point(3,2)},
+			HMGMap::Options("inverse-laplace")
 	);
 	add_check(ans3.n_points() == circgrid.n_points() &&
 	          ans3.n_cells() == circgrid.n_cells(), "circle to rectangle, four base points");
 
 	GridGeom ans4 = HMGMap::MapGrid(rectgrid, contc,
-	                {Point(0, 0)},
-	                {Point(-8, 9)}
+	                std::vector<Point> {Point(0, 0)},
+	                std::vector<Point> {Point(-8, 9)},
+			HMGMap::Options("inverse-laplace")
 	);
 	add_check(ans4.n_points() == rectgrid.n_points() &&
 	          ans4.n_cells() == rectgrid.n_cells(), "rectangle to circle, one base point");
@@ -119,20 +129,24 @@ void test04(){
 	GridGeom rectgrid = GGeom::Constructor::RectGrid01(10, 10);
 	auto mcont = HMCont2D::Constructor::ContourFromPoints(
 		{0,0, 2,2, 1,3, -4,3}, true);
-	HMGMap::Options opt;
+	HMGMap::Options opt("inverse-laplace");
 	opt.fem_nrec = 5000;
 
 	opt.snap = "ADD_VERTICES";
-	GridGeom ans1 = HMGMap::MapGrid(rectgrid, mcont, {Point(0,0)}, {Point(0,0)}, opt);
+	GridGeom ans1 = HMGMap::MapGrid(rectgrid, mcont,
+			std::vector<Point> {Point(0, 0)},
+			std::vector<Point> {Point(0, 0)}, opt);
 	add_check(fabs(HMCont2D::Area(mcont) - GGeom::Info::Area(ans1))<1e-12 &&
 	          rectgrid.n_points() + 3 == ans1.n_points(),
 		"snapping by adding points");
+	GGeom::Export::GridVTK(ans1, "ans1.vtk");
 
 	opt.snap = "SHIFT_VERTICES";
-	GridGeom ans2 = HMGMap::MapGrid(rectgrid, mcont, {Point(0,0)}, {Point(0,0)}, opt);
+	GridGeom ans2 = HMGMap::MapGrid(rectgrid, mcont, vector<Point>{Point(0,0)}, vector<Point> {Point(0,0)}, opt);
 	add_check(fabs(HMCont2D::Area(mcont) - GGeom::Info::Area(ans2))<1e-12 &&
 	          rectgrid.n_points() == ans2.n_points(),
 		"snapping by shifting points");
+	GGeom::Export::GridVTK(ans2, "ans2.vtk");
 }
 
 void test05(){
@@ -153,12 +167,37 @@ void test05(){
 	add_file_check(14945723505508438707U, "g1.vtk", "side = 0.5*rad");
 }
 
+void test06(){
+	std::cout<<"06. M-like target"<<std::endl;
+	GridGeom g1 = GGeom::Constructor::RectGrid01(10, 10);
+	auto cont = HMCont2D::Constructor::ContourFromPoints({0,0, 1,0, 1,1, 0.5, 0.2, 0,1}, true);
+
+	auto ans = HMGMap::MapGrid.Silent(g1, cont,
+			std::vector<Point> {Point(0,0), Point(1,0), Point(1,1), Point(0,1)},
+			std::vector<Point> {Point(0,0), Point(1,0), Point(1,1), Point(0,1)},
+			HMGMap::Options("inverse-laplace")
+	);
+	GGeom::Export::GridVTK(ans, "g1.vtk");
+	add_file_check(8817838078362901033U, "g1.vtk", "m-like target, inverse");
+
+	auto g1cont = GGeom::Info::Contour1(g1);
+	auto ans2 = HMGMap::MapGrid.Silent(ans, g1cont,
+			std::vector<Point> {Point(0,0), Point(1,0), Point(1,1), Point(0,1)},
+			std::vector<Point> {Point(0,0), Point(1,0), Point(1,1), Point(0,1)},
+			HMGMap::Options("direct-laplace")
+	);
+	GGeom::Export::GridVTK(ans2, "g1.vtk");
+	add_file_check(4588482714625395358U, "g1.vtk", "m-like base, direct");
+}
+
+
 int main(){
 	test01();
 	test02();
 	test03();
 	test04();
 	test05();
+	test06();
 
 	HMTesting::check_final_report();
 	std::cout<<"DONE"<<std::endl;

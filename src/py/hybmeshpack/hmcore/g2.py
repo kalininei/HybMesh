@@ -240,3 +240,35 @@ def circ4grid(algo, c_p0, rad, step, sqrside, rcoef):
     else:
         raise Exception("Quadrangular grid in circular area "
                         "grid builder failed")
+
+
+def map_grid(c_grid, c_cont, c_gpoints, c_cpoints, snap, algo, cb):
+    """maps grid on cont using gpoints, cpoints as basis.
+       snap = "no", "add_vertices", "shift_vertices"
+       algo = "inverse-laplace", "direct-laplace"
+       bt = "from_grid", "from_contour"
+    """
+    n = ct.c_int(len(c_gpoints) / 2)
+    # snap
+    s = ct.c_int(0)
+    if snap == "add_vertices":
+        s = ct.c_int(2)
+    elif snap == "shift_vertices":
+        s = ct.c_int(3)
+    elif snap == "no":
+        s = ct.c_int(1)
+    # algo
+    a = ct.c_int(0)
+    if algo == "direct-laplace":
+        a = ct.c_int(1)
+    elif algo == "inverse-laplace":
+        a = ct.c_int(2)
+
+    args = (c_grid, c_cont, n, c_gpoints, c_cpoints, s, a)
+    cb.initialize(libhmcport.build_grid_mapping, args)
+    cb.execute_command()
+    cret = cb.get_result()
+    if cret == 0:
+        raise Exception("Grid mapping failed")
+    else:
+        return cret

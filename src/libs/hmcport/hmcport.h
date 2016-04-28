@@ -183,7 +183,12 @@ Grid* boundary_layer_grid_wcb(int N, BoundaryLayerGridOption* opt,
 //   1 - no snapping
 //   2 - snap with addition of new nodes
 //   3 - snap by shifting points without addition new vertices
-Grid* build_grid_mapping(void* base_grid, void* target_contour, int Npnt, double* pbase, double* ptarget, int snap_method);
+//algo:
+//   1 - direct laplace
+//   2 - inverse laplace
+Grid* build_grid_mapping(void* base_grid, void* target_contour, int Npnt,
+		double* pbase, double* ptarget, int snap_method, int algo,
+		hmcport_callback cb);
 
 
 }; //extern C

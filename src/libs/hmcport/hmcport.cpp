@@ -616,7 +616,9 @@ Grid* boundary_layer_grid_wcb(int N, BoundaryLayerGridOption* popt,
 	}
 }
 
-Grid* build_grid_mapping(void* base_grid, void* target_contour, int Npnt, double* pbase, double* ptarget, int snap_method){
+Grid* build_grid_mapping(void* base_grid, void* target_contour, int Npnt,
+		double* pbase, double* ptarget, int snap_method, int algo,
+		hmcport_callback cb){
 	try{
 		GridGeom* g = static_cast<GridGeom*>(base_grid);
 		HMCont2D::ECollection* col = static_cast<HMCont2D::ECollection*>(target_contour);
@@ -631,7 +633,11 @@ Grid* build_grid_mapping(void* base_grid, void* target_contour, int Npnt, double
 			case 2: opt.snap = "ADD_VERTICES"; break;
 			case 3: opt.snap = "SHIFT_VERTICES"; break;
 		}
-		GridGeom ans = HMGMap::MapGrid(*g, *col, p1, p2, opt);
+		switch (algo){
+			case 1: opt.algo = "direct-laplace"; break;
+			case 2: opt.algo = "inverse-laplace"; break;
+		}
+		GridGeom ans = HMGMap::MapGrid.WithCallback(cb, *g, *col, p1, p2, opt);
 		return new GridGeom(std::move(ans));
 	} catch (const std::exception &e){
 		std::cout<<e.what()<<std::endl;

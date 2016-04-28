@@ -95,6 +95,10 @@ struct ContourTree: public ECollection {
 		to.ReloadEdges();
 		return res;
 	};
+	template<class TTarget, class = Tpp::IsBase<ContourTree, TTarget>>
+	static TDeepCopyResult DeepCopy(const ContourTree& from, TTarget& to) {
+		return DeepCopy(from, to, to._generator);
+	}
 };
 
 // ContourTree + set of open contours

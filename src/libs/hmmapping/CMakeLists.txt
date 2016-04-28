@@ -2,6 +2,7 @@
 set (HEADERS
 	hmmapping.hpp
 	gridmap.hpp
+	domapping.hpp
 	mapped_contour.hpp
 	rectangle_grid_builder.hpp
 	circrect.hpp
@@ -10,6 +11,7 @@ set (HEADERS
 set (SOURCES
 	hmmapping.cpp
 	gridmap.cpp
+	domapping.cpp
 	mapped_contour.cpp
 	rectangle_grid_builder.cpp
 	circrect.cpp

@@ -2,8 +2,7 @@ from hybmeshpack import hmscript as hm
 from hybmeshpack.hmscript._dbg import check, check_ascii_file
 import math
 global hm, check
-hm.check_compatibility("0.4.0")
-cont1 = []
+hm.check_compatibility("0.4.2")
 
 g1 = hm.add_unf_rect_grid([0, 0], [5, 1], 10, 10)
 hm.set_boundary_type(g1, 1)
@@ -28,17 +27,20 @@ check(hm.info_grid(a1) ==
       {'cell_types': {4: 100}, 'Nnodes': 121, 'Nedges': 220, 'Ncells': 100})
 check(hm.info_contour(a1) ==
       {'btypes': {2: 40}, 'Nnodes': 40, 'subcont': [40], 'Nedges': 40})
+hm.export_grid_vtk(a1, "g1.vtk")
 
 print "rectangle to square with sine edges: no, from_grid"
 a2 = hm.map_grid(
     g1, c1,
     [[0, 0], [5, 0], [5, 1], [0, 1]],
     [[0, 0], [1, 0], [1, 1], [0, 1]],
+    algo="direct-laplace",
     snap="no", btypes="from_grid")
 check(hm.info_grid(a2) ==
       {'cell_types': {4: 100}, 'Nnodes': 121, 'Nedges': 220, 'Ncells': 100})
 check(hm.info_contour(a2) ==
       {'btypes': {1: 40}, 'Nnodes': 40, 'subcont': [40], 'Nedges': 40})
+
 
 print "rectangle to square with sine edges: add_vertices, from_contour"
 a3 = hm.map_grid(
@@ -126,7 +128,7 @@ hm.export_grid_vtk(g1, "g1.vtk")
 check_ascii_file(17821553111849423570, "g1.vtk")
 check(hm.info_contour(g1)['btypes'] == {1: 5, 2: 45, 3: 45, 7: 5})
 
-print "laplas rectangular grid with linear input"
+print "laplace rectangular grid with linear input"
 g1 = hm.add_custom_rect_grid(
     "laplas",
     left_line_part, bottom_line_part,

@@ -47,7 +47,6 @@ class LaplasProblem{
 	std::set<TNeuData, TNeuCmp> neumann_data;
 	std::set<TDirData, TDirCmp> dirichlet_data;
 
-	//
 	void RebuildSolutionMatrix();
 public:
 	//constructors:
@@ -59,6 +58,7 @@ public:
 	LaplasProblem(shared_ptr<Grid43> g, shared_ptr<Mat> lap);
 
 	//boundary conditions: using vector of grid points
+	void ClearBC();
 	void SetDirichlet(const vector<const GridPoint*>& pts, TDirFunc f);
 	void SetNeumann(const vector<const GridPoint*>& pts, TNeuFunc f);
 
@@ -71,6 +71,9 @@ public:
 	//solve Ax=0 without bc rebuilding. Could be called
 	//only after Solve.
 	void QuickSolve(vector<double>& ans);
+
+	//solve Ax=0 with rebuilding of rhs vector with bc
+	void QuickSolve_BC(vector<double>& ans);
 
 	//f - is the solution of Laplas problem.
 	//pnt should be sorted as an open path ( pnt[0]->pnt[back] )

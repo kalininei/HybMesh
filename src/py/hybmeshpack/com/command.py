@@ -327,10 +327,11 @@ class Command(object):
         else:
             raise ObjectNotFound(name, self)
 
-    def ask_for_callback(self, tp):
+    def ask_for_callback(self, tp=None):
         """ ask parent flow interface for callback.
             Returns proper callback object
             tp - callback types from interf.
+               = None -> CB_CANCEL2 callback
         """
         try:
             return self.parent_flow.get_interface().ask_for_callback(tp)

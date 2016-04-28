@@ -239,7 +239,7 @@ GridGeom HMGMap::LaplasRectGrid(HMCont2D::Contour& left, HMCont2D::Contour& bot,
 	}
 
 	//calculate
-	return HMGMap::MapGrid(rg, ecol, base_points, mapped_points);
+	return HMGMap::MapGrid(rg, ecol, base_points, mapped_points, HMGMap::Options("direct-laplace"));
 }
 
 GridGeom HMGMap::FDMLaplasRectGrid(HMCont2D::Contour& left, HMCont2D::Contour& bot,

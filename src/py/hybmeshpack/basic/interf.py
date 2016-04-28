@@ -112,7 +112,7 @@ class Callback(object):
             return SilentCallbackNoCancel2
         elif tp == Callback.CB_CANCEL1:
             return SilentCallbackCancel1
-        elif tp == Callback.CB_CANCEL2:
+        elif tp == Callback.CB_CANCEL2 or tp is None:
             return SilentCallbackCancel2
         else:
             raise proc.EmbException('Unknown callback type %s' % str(tp))
@@ -205,7 +205,7 @@ class BasicInterface(object):
             return SilentCallbackNoCancel2()
         elif tp == Callback.CB_CANCEL1:
             return SilentCallbackCancel1()
-        elif tp == Callback.CB_CANCEL2:
+        elif tp == Callback.CB_CANCEL2 or tp is None:
             return SilentCallbackCancel2()
         else:
             raise proc.EmbException('Unknown callback tp %s' % str(tp))
@@ -284,7 +284,7 @@ class ConsoleInterface(BasicInterface):
             Returns proper callback class
         """
         # Only CB_CANCLE2 is implemented
-        if tp == Callback.CB_CANCEL2:
+        if tp == Callback.CB_CANCEL2 or tp is None:
             return ConsoleCallbackCancel2()
         else:
             return super(ConsoleInterface, self).ask_for_callback(tp)

@@ -96,6 +96,17 @@ Point Grid43::Approximator::LocalCoordinates3(const Cell* c, Point p){
 	double j12 = y2 - y1, j22 = y3 - y1;
 	double modj = (j22*j11 - j21*j12);
 
+	if (modj < geps*geps){
+		double ksi;
+		if (isOnSection(p, *c->get_point(0), *c->get_point(1), ksi)){
+			return Point(ksi, 0);
+		} else if (isOnSection(p, *c->get_point(1), *c->get_point(2), ksi)){
+			return Point(1-ksi, ksi);
+		} else if (isOnSection(p, *c->get_point(0), *c->get_point(2), ksi)){
+			return Point(0, ksi);
+		} else assert(false);
+	}
+
 	Point ksieta;
 	ksieta.x = ( j22*(p.x - x1) - j21*(p.y - y1))/modj;
 	ksieta.y = (-j12*(p.x - x1) + j11*(p.y - y1))/modj;

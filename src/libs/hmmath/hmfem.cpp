@@ -20,6 +20,12 @@ LaplasProblem::LaplasProblem(shared_ptr<Grid43> g, shared_ptr<Mat> lap):
 		solution_mat(),
 		rhs(grid->n_points(), 0.0){}
 
+void LaplasProblem::ClearBC(){
+	_neufunc.clear();
+	_dirfunc.clear();
+	neumann_data.clear();
+	dirichlet_data.clear();
+}
 void LaplasProblem::SetDirichlet(const vector<const GridPoint*>& pts, TDirFunc f){
 	_dirfunc.push_back(f);
 	for (auto p: pts){
@@ -74,6 +80,28 @@ void LaplasProblem::Solve(vector<double>& ans){
 
 
 void LaplasProblem::QuickSolve(vector<double>& ans){
+	solver->Solve(rhs, ans);
+}
+
+void LaplasProblem::QuickSolve_BC(vector<double>& ans){
+	std::fill(rhs.begin(), rhs.end(), 0.0);
+
+	//Neumann
+	for (auto& nc: neumann_data){
+		//val = (df/dn)*L/2;
+		double val = ((*nc.fun)(nc.point1, nc.point2)) * nc.dist / 2;
+		rhs[nc.point1->get_ind()] += val;
+		rhs[nc.point2->get_ind()] += val;
+	}
+
+	//Dirichlet. Strictly after Neumann
+	for (auto& dc: dirichlet_data){
+		//put 1 to diagonal and value to rhs
+		int ind = dc.point->get_ind();
+		double val = (*dc.fun)(dc.point);
+		rhs[ind] = val;
+	}
+
 	solver->Solve(rhs, ans);
 }
 

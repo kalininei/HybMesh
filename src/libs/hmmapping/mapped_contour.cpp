@@ -27,6 +27,31 @@ double MappedContour::loc2ex_base(double w) const{
 	return ret;
 }
 
+double MappedContour::loc2ex_mapped(double w) const{
+	if (ww_inv.size() == 1){
+		double ret = w - ww_inv.begin()->first;
+		if (ret>1) ret-=1;
+		if (ret<0) ret+=1;
+		return ret;
+	}
+	auto it = ww_inv.begin(), itprev = ww_inv.begin();
+	double ret = 0;
+	while (it!=ww_inv.end() && ret<ww_inv.size()){
+		itprev = it++;
+		double wprev = itprev->first;
+		double wnext = (it == ww_inv.end()) ? ww_inv.begin()->first + 1 : it->first;
+		if (it == ww_inv.end() && w < wprev) w+=1;
+		if (w>=wprev && w<=wnext){
+			ret += (w - wprev)/(wnext - wprev);
+			break;
+		}
+		ret += 1.0;
+	}
+	if (ISEQ(ret, ww_inv.size())) ret = 0;
+	assert(ret < ww_inv.size());
+	return ret;
+}
+
 double MappedContour::ex2loc_mapped(double w) const{
 	int ibs = std::floor(w);
 	auto it = ww.begin();
@@ -43,11 +68,34 @@ double MappedContour::ex2loc_mapped(double w) const{
 	return ret;
 }
 
+double MappedContour::ex2loc_base(double w) const{
+	int ibs = std::floor(w);
+	auto it = ww_inv.begin();
+	for (int i = 0; i<ibs; ++i) ++it;
+	double ws = it->second;
+	++it;
+	if (it == ww_inv.end()) it = ww_inv.begin();
+	double we = it->second;
+	if (we<=ws) we+=1;
+	double t = (w-ibs);
+	double ret = (1 - t) * ws + t * we;
+	if (ret<0) ret +=1;
+	if (ret>1) ret -=1;
+	return ret;
+}
+
 Point MappedContour::map_from_base(Point p) const{
 	double w = std::get<1>(base->coord_at(p));
 	double ec = loc2ex_base(w);
 	double wcont = ex2loc_mapped(ec);
 	return HMCont2D::Contour::WeightPoint(*mapped, wcont);
+}
+
+Point MappedContour::map_from_mapped(Point p) const{
+	double w = std::get<1>(mapped->coord_at(p));
+	double ec = loc2ex_mapped(w);
+	double wcont = ex2loc_base(ec);
+	return HMCont2D::Contour::WeightPoint(*base, wcont);
 }
 
 void MappedContour::check_ww() const{
@@ -67,6 +115,7 @@ void MappedContour::add_connection(Point pbase, Point pmapped){
 	double w2 = std::get<1>(mapped->coord_at(pmapped));
 	ww.emplace(w1, w2);
 	check_ww();
+	ww_inv.emplace(w2, w1);
 }
 
 MappedContour* MappedContourCollection::find_by_base(HMCont2D::Contour* bc){
@@ -77,13 +126,24 @@ MappedContour* MappedContourCollection::find_by_base(HMCont2D::Contour* bc){
 	return ret;
 }
 
-MappedContour* MappedContourCollection::insert(HMCont2D::Contour* cbase, HMCont2D::Contour* cmapped){
-	auto fnd = find_by_base(cbase);
-	if (fnd != 0){
-		if (fnd->mapped == cmapped) return fnd;
-		else throw HMGMap::MapException("Contour-to-contour links are ambiguous");
+MappedContour* MappedContourCollection::find_by_mapped(HMCont2D::Contour* bc){
+	MappedContour* ret = NULL;
+	for (auto s: data){
+		if (s->mapped == bc){ ret = s.get(); break; }
 	}
-	shared_ptr<MappedContour> n(new MappedContour(cbase, cmapped));
-	data.push_back(n);
-	return data.back().get();
+	return ret;
+}
+
+MappedContour* MappedContourCollection::insert(HMCont2D::Contour* cbase, HMCont2D::Contour* cmapped){
+	auto fnd1 = find_by_base(cbase);
+	auto fnd2 = find_by_mapped(cmapped);
+	if (fnd1 != 0 && fnd1 == fnd2){
+		return fnd1;
+	} else if (fnd1 == 0 && fnd2 == 0){
+		shared_ptr<MappedContour> n(new MappedContour(cbase, cmapped));
+		data.push_back(n);
+		return data.back().get();
+	} else{
+		throw HMGMap::MapException("Contour-to-contour links are ambiguous");
+	}
 }

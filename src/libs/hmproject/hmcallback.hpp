@@ -193,9 +193,10 @@ public:
 	TExecutor& functor(){ return exe; }
 	const TExecutor& functor() const{ return exe; }
 
-	//call with last set callback
+	//call with inactive callback
 	template<class... Args>
 	TRet<Args...> operator()(Args&&... arg){
+		exe.set_callback(silent2);
 		return invoke(std::forward<Args>(arg)...);
 	}
 

@@ -3,7 +3,8 @@
 
 source ../../src/libs/dbgscripts/hmout.gdb
 
-file ./crossgrid_test
+file ./hmmaping_test
 set breakpoint pending on
-b contours.cpp:106
+#b domapping.cpp:140
+b femgrid43.cpp:100
 run 

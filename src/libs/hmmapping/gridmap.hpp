@@ -18,20 +18,26 @@ struct Options{
 	int fem_nmin;
 	int fem_nrec;
 	int fem_nedge;
+
 	std::string snap;   //NO, ADD_VERTICES, SHIFT_VERTICES
-	Options(): fem_nmax(100000), fem_nmin(1000), fem_nrec(10000), fem_nedge(3),
-	           snap("NO"){}
+	std::string algo;   //direct-laplace, inverse-laplace
+
+	Options(std::string _algo="inverse-laplace", std::string _snap="NO"):
+		fem_nmax(100000), fem_nmin(1000), fem_nrec(10000), fem_nedge(3),
+		snap(_snap), algo(_algo){}
 };
 
-GridGeom MapGrid(const GridGeom& base, const HMCont2D::ECollection& area,
-		vector<Point> base_points,
-		vector<Point> mapped_points,
-		Options opt=Options());
+struct TMapGrid: public HMCallback::ExecutorBase{
+	HMCB_SET_PROCNAME("Domain mapping");
+	HMCB_SET_DEFAULT_DURATION(110);
 
-
-
+	GridGeom _run(const GridGeom& base,
+			const HMCont2D::ECollection& area,
+			vector<Point> base_points,
+			vector<Point> mapped_points,
+			Options opt);
+};
+extern HMCallback::FunctionWithCallback<TMapGrid> MapGrid;
 
 }
-
-
 #endif

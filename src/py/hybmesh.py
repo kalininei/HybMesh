@@ -44,10 +44,10 @@ def main():
             if r[1] is None:
                 print 'Failed to check for latest version'
             elif r[2] == -1:
-                print 'New version %s is availible at %s' % \
+                print 'New version %s is available at %s' % \
                     (r[1], progdata.project_url())
             else:
-                print 'No updates are availible'
+                print 'No updates are available'
             sys.exit()
 
     # execution

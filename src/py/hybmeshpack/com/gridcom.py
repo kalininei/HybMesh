@@ -4,7 +4,7 @@ import objcom
 from hybmeshpack import gdata, basic
 import hybmeshpack.basic.geom as bgeom
 from unite_grids import (setbc_from_conts, add_bc_from_cont,
-                         boundary_layer_grid, map_grid)
+                         boundary_layer_grid)
 from hybmeshpack.hmcore import g2 as g2core
 from hybmeshpack.hmcore import c2 as c2core
 from hybmeshpack.hmcore import libhmcport
@@ -672,6 +672,7 @@ class MapGrid(NewGridCommand):
             target_poitns - points of the target contour
             snap - snapping algo ("no", "add_vertices", "shift_vertices")
             btypes - source of boundary features ("from_grid", "from_contour")
+            algo ('inverse-laplace', 'direct-laplace')
         """
         return {'name': command.BasicOption(str),
                 'base': command.BasicOption(str),
@@ -680,24 +681,110 @@ class MapGrid(NewGridCommand):
                 'target_points': command.ListOfOptions(command.Point2Option()),
                 'snap': command.BasicOption(str),
                 'btypes': command.BasicOption(str),
+                'algo': command.BasicOption(str)
                 }
+
+    def _treat_boundaries(self, grid, method):
+        grid.build_contour()
+        # treat boundaries
+        if method == "from_contour":
+            c = self.any_cont_by_name(self.options['target'])
+            add_bc_from_cont(grid.cont, c, force=3)
+        elif method == "from_grid":
+            g = self.grid_by_name(self.options['base'])
+            # 1. assemble boundary edges: edge index -> bnd feature
+            ret_full_bnd = grid.boundary_contours()
+            ret_bnd_edges = []
+            for ecol in ret_full_bnd:
+                ret_bnd_edges.extend(ecol)
+            grid_bnd_edges = []
+            for ecol in g.boundary_contours():
+                grid_bnd_edges.extend(ecol)
+            # 2. whether boundary edge has its sibling in grid
+            is_old_edge = []
+            oldptsnum = g.n_points()
+            for ei in ret_bnd_edges:
+                e = grid.edges[ei]
+                is_old_edge.append(e[0] < oldptsnum and e[1] < oldptsnum)
+
+            # 3. build dictionary for boundary edges in grid
+            def etostr(e):
+                return str(min(e[0], e[1])) + '-' + str(max(e[0], e[1]))
+            old_ebt = {}
+            for ei in grid_bnd_edges:
+                bt = 0
+                if ei in g.bt:
+                    bt = g.bt[ei]
+                old_ebt[etostr(g.edges[ei])] = bt
+
+            # 4. restore bfeatures for old edges
+            for i, ei in enumerate(ret_bnd_edges):
+                if is_old_edge[i]:
+                    bt = old_ebt[etostr(grid.edges[ei])]
+                    if bt > 0:
+                        grid.bt[ei] = bt
+
+            # 5. boundary types for new edges
+            for c in ret_full_bnd:
+                # find any old edge
+                for istart, ei in enumerate(c):
+                    if is_old_edge[ret_bnd_edges.index(ei)]:
+                        break
+                else:
+                    # no old edges in current contour
+                    # this should not happen
+                    continue
+                # starting from old edge fill all new ones
+                bcur = grid.get_edge_bnd(c[istart])
+                for i in range(len(c)):
+                    icur = i + istart
+                    if icur >= len(c):
+                        icur -= len(c)
+                    ecur = c[icur]
+                    if is_old_edge[ret_bnd_edges.index(ecur)]:
+                        bcur = grid.get_edge_bnd(c[icur])
+                    else:
+                        if bcur > 0:
+                            grid.bt[c[icur]] = bcur
+        else:
+            raise ValueError("Unknown btypes = " + str(bt))
 
     def _build_grid(self):
         '-> grid2.Grid2'
+        g = self.grid_by_name(self.options['base'])
+        c = self.any_cont_by_name(self.options['target'])
+        cb = self.ask_for_callback()
+
+        c_grid, c_cont, c_ret = 0, 0, 0
         try:
-            _, _, g = self.receiver.get_grid(name=self.options['base'])
-        except:
-            raise command.ObjectNotFound(self.options['base'])
-        try:
-            _, _, c = self.receiver.get_ucontour(name=self.options['target'])
-        except:
-            raise command.ObjectNotFound(self.options['target'])
-        try:
-            ret = map_grid(g, c, self.options['base_points'],
-                           self.options['target_points'],
-                           self.options['snap'],
-                           self.options['btypes'])
+            # build c grid, contour
+            c_grid = g2core.grid_to_c(g)
+            c_cont = c2core.cont2_to_c(c)
+
+            # build points array
+            bp, tp = self.options['base_points'], self.options['target_points']
+            p1, p2 = [], []
+            for i in range(min(len(bp), len(tp))):
+                p1.append(bp[i].x)
+                p1.append(bp[i].y)
+                p2.append(tp[i].x)
+                p2.append(tp[i].y)
+            p1 = g2core.list_to_c(p1, float)
+            p2 = g2core.list_to_c(p2, float)
+
+            # mapping procedure
+            c_ret = g2core.map_grid(c_grid, c_cont, p1, p2,
+                                    self.options['snap'],
+                                    self.options['algo'], cb)
+
+            # copy from c
+            ret = g2core.grid_from_c(c_ret)
+            self._treat_boundaries(ret, self.options['btypes'])
+            return ret
         except Exception as e:
             raise command.ExecutionError('Mapping error: %s' % str(e),
                                          self, e)
-        return ret
+        finally:
+            g2core.free_c_grid(c_grid) if c_grid != 0 else None
+            c2core.free_cont2(c_cont) if c_cont != 0 else None
+            g2core.free_c_grid(c_ret) if c_ret != 0 else None
