@@ -194,7 +194,7 @@ void test06(){
 		auto g3d = RevolveGrid2D(g2d, {0, 90, 180, 270, 360}, Point(0, 0), Point(0, 1), true,
 				bc0, bc0, bc0);
 		HMGrid3D::Export::GridTecplot.Silent(g3d, "g1.dat");
-		add_file_check(16481374492149274315U, "g1.dat", "single cell, distant, complete");
+		add_file_check(8732440237994901672U, "g1.dat", "single cell, distant, complete");
 	}
 	{
 		auto g3d = RevolveGrid2D(g2d, {0, 90, 100}, Point(0, 0), Point(0, 1), true,
@@ -212,7 +212,7 @@ void test06(){
 		auto h2d = GGeom::Constructor::RectGrid(Point(0, 0), Point(2, 1), 4, 3);
 		auto g3d = RevolveGrid2D(h2d, {0, 90, 110, 180, 250, 330, 360}, Point(0, 0), Point(0, 1), true);
 		HMGrid3D::Export::GridTecplot.Silent(g3d, "g1.dat");
-		add_file_check(15759408446281820711U, "g1.dat", "with contact, complete");
+		add_file_check(5490115627065179709U, "g1.dat", "with contact, complete");
 	}
 	{
 		auto g1 = GGeom::Constructor::RectGrid(Point(0, 0), Point(10, 10), 10, 10);
@@ -273,7 +273,7 @@ void test07(){
 		add_file_check(12664340621499564857U, "g1.dat", "no tri, complex connections, incomplete");
 		auto g3 = RevolveGrid2D(g1, {0, 90, 180, 270, 360}, Point(0,0), Point(0,1), false);
 		HMGrid3D::Export::GridTecplot.Silent(g3, "g1.dat");
-		add_file_check(2467448280797112561U, "g1.dat", "no tri, complex connections, complete");
+		add_file_check(2848618625331037303U, "g1.dat", "no tri, complex connections, complete");
 	}
 }
 int main(){

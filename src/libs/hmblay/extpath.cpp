@@ -67,13 +67,20 @@ void PathPntData::set_exact_angle(int dir, bool redefine_type){
 	}
 }
 
-double ExtPath::largest_depth(){
-	double k = 0;
+double ExtPath::largest_depth() const{
 	vector<double> h; h.reserve(ext_data.size());
 	for (auto& e: ext_data) h.push_back(e.opt->partition.back());
 	if (!is_closed()) h.resize(h.size() - 1);
 	return *std::max_element(h.begin(), h.end());
 }
+
+int ExtPath::largest_vpart_size() const{
+	vector<int> h(ext_data.size());
+	for (int i=0; i<ext_data.size(); ++i) h[i] = ext_data[i].opt->partition.size();
+	if (!is_closed()) h.resize(h.size() - 1);
+	return *std::max_element(h.begin(), h.end());
+}
+
 ExtPath ExtPath::Assemble(const vector<Options*>& data){
 	//data[i]->path are in strict sequence.
 	//all data may have different options

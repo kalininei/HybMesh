@@ -8,12 +8,6 @@
 
 namespace HMGMap{namespace Impl{
 
-struct AuxGrid: public HMFem::Grid43{
-	AuxGrid(const HMCont2D::ContourTree& tree, const HMGMap::Options& opt);
-
-	void PlaceBndPoints(const MappedContourCollection& mcol);
-};
-
 struct DoMapping{
 	DoMapping(const HMGMap::Options& _opt): opt(_opt), inpgrid(GGeom::Constructor::EmptyGrid()){}
 	
@@ -38,7 +32,7 @@ protected:
 	HMCont2D::ContourTree mapped_outer;
 	HMCont2D::ContourTree inpgrid_outer;
 	//those are filled by prepare_grid and its subroutines
-	shared_ptr<AuxGrid> g3;   //triangle grid
+	shared_ptr<HMFem::Grid43> g3;   //triangle grid
 	HMCont2D::ContourTree g3outer;  //triangle grid borders
 	shared_ptr<HMFem::LaplasProblem> laplace; //laplace problem
 
@@ -92,7 +86,7 @@ private:
 	HMCont2D::ContourTree mapped_outer;
 	HMCont2D::ContourTree inpgrid_outer;
 	//those are filled by prepare_grid and its subroutines
-	shared_ptr<AuxGrid> g3;   //triangle grid within mapped_outer
+	shared_ptr<HMFem::Grid43> g3;   //triangle grid within mapped_outer
 	HMCont2D::ContourTree g3outer;  //triangle grid borders
 	shared_ptr<HMFem::LaplasProblem> laplace; //laplace problem
 

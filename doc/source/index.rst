@@ -19,6 +19,7 @@ Contents:
    installation
    usage
    functionality
+   prototypes
    pyinterface
    fileformats
    vers

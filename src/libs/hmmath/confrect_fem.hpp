@@ -31,11 +31,11 @@ class ToRect: public HMMath::Conformal::Rect{
 
 	//h - linear size of fem grid element.
 	//If fails -> _module = -1;
-	ToRect(const vector<Point>& path, int i1, int i2, int i3, double h);
+	ToRect(const vector<Point>& path, int i1, int i2, int i3, const Options& opt);
 
 	//==== Constructor subroutines
 	//build fem grid: fills grid, approx, origs, left/bottom/right/top
-	void BuildGrid(const vector<Point>& path, int i1, int i2, int i3, double h);
+	void BuildGrid(const vector<Point>& path, int i1, int i2, int i3, int n);
 	//main costruction procedure: fills u, v, module
 	void DoMapping();
 	//fills inv_* data
@@ -80,12 +80,12 @@ class ToAnnulus: public HMMath::Conformal::Annulus{
 
 	//constructor
 	ToAnnulus(const vector<Point>& outer_path,
-			const vector<Point>& inner_path, double h);
+			const vector<Point>& inner_path, const Options& opt);
 
 	//Constructor subroutines
 	//builds doubly connected grid. Temporary fills grid, approx, outer, inner
 	void BuildGrid1(const vector<Point>& outer_path,
-			const vector<Point>& inner_path, double h);
+			const vector<Point>& inner_path, int n);
 
 	//fills u (temporary), _module
 	void DoMappingU();
@@ -96,7 +96,7 @@ class ToAnnulus: public HMMath::Conformal::Annulus{
 	//fills vgrid, vapprox, v_outer/inner_origs, v_raz_io/oi
 	void BuildGrid2(const vector<Point>& outer_path,
 			const vector<Point>& inner_path,
-			double h,
+			int n,
 			const HMCont2D::Contour& razor);
 
 	//fills u, v

@@ -76,7 +76,7 @@ static vector<GridGeom> SubGrids(const GridGeom& grid);
 
 //if boundary edge points (p1, p2) lie on cont then
 //all significant contour points between (p1, p2) will present in grid
-//grid should be located to left of contour
+//grid should be located to the left of the contour
 //snap_nodes is a list of points which will be snapped to contour before procedure starts
 static void SnapToContour(GridGeom& grid, const HMCont2D::Contour& cont,
 		const std::vector<GridPoint*>& snap_nodes);
@@ -84,6 +84,10 @@ static void SnapToContour(GridGeom& grid, const HMCont2D::Contour& cont,
 //if it is non-significant by itself. Otherwise does nothing
 static void ShiftToContour(GridGeom& grid, const HMCont2D::Contour& cont,
 		const std::vector<GridPoint*>& snap_nodes);
+//all boundary contour nodes will be moved to edges or vertices of cont
+//algo = 1 -> to edges
+//algo = 2 -> to vertices
+static void SnapAllBoundary(GridGeom& grid, const HMCont2D::ECollection& cont, int algo);
 
 //no complicated boundary cell edges
 //angle is between [0, M_PI]

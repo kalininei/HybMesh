@@ -2,6 +2,7 @@
 #include "procgrid.h"
 #include "hmmapping.hpp"
 #include "hmfdm.hpp"
+#include "hmconformal.hpp"
 
 namespace{
 struct Cont4Connection{
@@ -10,8 +11,12 @@ struct Cont4Connection{
 	                                               //  |          |
 	                                               //  |          |
 	                                               //  l1 b1---b2 r1 
+	const HMCont2D::Contour *pleft, *pbot, *pright, *ptop;
+
 	Cont4Connection(HMCont2D::Contour& left, HMCont2D::Contour& bot,
 			HMCont2D::Contour& right, HMCont2D::Contour& top){
+		pleft = &left; pbot = &bot;
+		pright = &right; ptop = &top;
 		//check for open contours
 		if (left.is_closed() || bot.is_closed() || top.is_closed() || right.is_closed()){
 			throw std::runtime_error("contours should be open");
@@ -58,6 +63,34 @@ struct Cont4Connection{
 			if (m1 > m2) std::swap(r1, r2);
 		}
 	}
+	HMCont2D::Contour directed_left() const{
+		HMCont2D::Contour ret;
+		HMCont2D::Contour::DeepCopy(*pleft, ret);
+		if (ret.first() != l1){ ret.ReallyReverse(); }
+		assert(ret.first() == l1);
+		return ret;
+	}
+	HMCont2D::Contour directed_top() const{
+		HMCont2D::Contour ret;
+		HMCont2D::Contour::DeepCopy(*ptop, ret);
+		if (ret.first() != t1){ ret.ReallyReverse(); }
+		assert(ret.first() == t1);
+		return ret;
+	}
+	HMCont2D::Contour directed_bot() const{
+		HMCont2D::Contour ret;
+		HMCont2D::Contour::DeepCopy(*pbot, ret);
+		if (ret.first() != b1){ ret.ReallyReverse(); }
+		assert(ret.first() == b1);
+		return ret;
+	}
+	HMCont2D::Contour directed_right() const{
+		HMCont2D::Contour ret;
+		HMCont2D::Contour::DeepCopy(*pright, ret);
+		if (ret.first() != r1){ ret.ReallyReverse(); }
+		assert(ret.first() == r1);
+		return ret;
+	}
 };
 
 Cont4Connection connect_rect_segments(HMCont2D::Contour& left, HMCont2D::Contour& bot,
@@ -95,6 +128,8 @@ void check_direction(GridGeom& ret){
 			std::reverse(c->points.begin(), c->points.end());} );
 	}
 }
+
+
 
 }
 
@@ -147,9 +182,37 @@ GridGeom HMGMap::LinearRectGrid(HMCont2D::Contour& left, HMCont2D::Contour& bot,
 	return ret;
 }
 
-GridGeom HMGMap::ConformalRectGrid(HMCont2D::Contour& left, HMCont2D::Contour& bot,
-		HMCont2D::Contour& right, HMCont2D::Contour& top){
-	_THROW_NOT_IMP_;
+GridGeom HMGMap::OrthogonalRectGrid(HMCont2D::Contour& _left, HMCont2D::Contour& _bot,
+		HMCont2D::Contour& _right, HMCont2D::Contour& _top){
+	Cont4Connection cn = connect_rect_segments(_left, _bot, _right, _top);
+	HMCont2D::Contour left = cn.directed_left();
+	HMCont2D::Contour bot = cn.directed_bot();
+	HMCont2D::Contour right = cn.directed_right();
+	HMCont2D::Contour top = cn.directed_top();
+	HMMath::Conformal::Options opt;
+	opt.use_scpack = false;
+	opt.use_rect_approx = false;
+	opt.fem_nrec = std::max(std::min(10000, left.size()*right.size()*2), 500);
+	auto cmap = HMMath::Conformal::Rect::Factory(left, right, bot, top, opt);
+	GridGeom ret = GGeom::Constructor::RectGrid01(bot.size(), left.size());
+	//grid to conformal rectangle
+	vector<Point> xpts = cmap->MapToRectangle(bot.ordered_points());
+	vector<Point> ypts = cmap->MapToRectangle(left.ordered_points());
+	auto to_conf = [&xpts, &ypts, &bot](GridPoint* p){
+		int i = p->get_ind() % (bot.size() + 1);
+		int j = p->get_ind() / (bot.size() + 1);
+		p->set(xpts[i].x, ypts[j].y);
+	};
+	GGeom::Modify::PointModify(ret, to_conf);
+	//grid to physical domain
+	vector<Point> gpnt(ret.n_points());
+	for (int i=0; i<ret.n_points(); ++i) gpnt[i] = *ret.get_point(i);
+	vector<Point> physpnt = cmap->MapToPolygon(gpnt);
+	GGeom::Modify::PointModify(ret, [&physpnt](GridPoint* p){
+			Point& pp = physpnt[p->get_ind()];
+			p->set(pp.x, pp.y);
+	});
+	return ret;
 }
 
 GridGeom HMGMap::LaplasRectGrid(HMCont2D::Contour& left, HMCont2D::Contour& bot,

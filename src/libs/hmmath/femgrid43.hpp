@@ -37,7 +37,48 @@ public:
 	class Approximator;
 	shared_ptr<Approximator> GetApprox() const;
 	class IsolineBuilder;
+
+	//first and last points  in pts should be equal to existing grid points
+	//connected by boundary edge. All middle points will be added between them,
+	//cell will be triangulated.
+	void AddSegments(const vector<vector<Point>>& pts);
 };
+
+//build auxiliary triangle grid for elliptic problems fem solution
+//all points of tree will present in resulting grid
+//nrec, nmax - recommended and maximum allowed number of resulting grid vertices
+struct TAuxGrid3: public HMCallback::ExecutorBase{
+	HMCB_SET_PROCNAME("Auxiliary Triangulation");
+	HMCB_SET_DEFAULT_DURATION(100);
+
+	//minumum allowed length of section normalized by recommended length
+	static constexpr double ZEROANGLE = M_PI/4;
+	static constexpr double CORRECTION_FACTOR = 1.13;
+
+	Grid43 _run(const HMCont2D::ContourTree& _tree,
+			const vector<HMCont2D::Contour>& _constraints,
+			int nrec, int nmax);
+	Grid43 _run(const HMCont2D::ContourTree& tree, int nrec, int nmax);
+	Grid43 _run(const HMCont2D::Contour& cont, int nrec, int nmax);
+private:
+	HMCont2D::ContourTree tree;
+	ShpVector<HMCont2D::Contour> constraints;
+	HMCont2D::PCollection pcol;
+
+	double step_estimate(const HMCont2D::ContourTree& tree, int nrec);
+	void adopt_boundary(HMCont2D::ContourTree& tree, double h,
+			vector<vector<Point>>& lost);
+	void adopt_contour(HMCont2D::Contour& cont, double h,
+			vector<vector<Point>>& lost);
+	void input(const HMCont2D::ContourTree& _tree, const vector<HMCont2D::Contour>& _constraints);
+	vector<Point*> gather_section(const vector<Point*>& ordered, int start, double h);
+
+	std::unordered_set<Point*> mandatory_points;
+	void mandatory_corner_points(const HMCont2D::Contour& cont);
+	void mandatory_intersections(HMCont2D::Contour& c1, HMCont2D::Contour& c2);
+	void clear();
+};
+extern HMCallback::FunctionWithCallback<TAuxGrid3> AuxGrid3;
 
 class Grid43::Approximator{
 	const Grid43* grid;

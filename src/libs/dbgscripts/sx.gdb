@@ -2,8 +2,8 @@ source ../../src/libs/dbgscripts/hmout.gdb
 
 #call from testing directory
 file python
-set args ../../src/py/hybmesh.py -sx tmp.py -silent
+set args ../../src/py/hybmesh.py -sx fromdoc/intro_hcyl.py -silent
 set breakpoint pending on
-b rectangle_grid_builder.cpp:157
+b bgrid.cpp:82
 run
 

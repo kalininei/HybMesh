@@ -68,6 +68,7 @@ public:
 	
 	static shared_ptr<BGrid> MeshSequence(vector<Options*>& data);
 	static shared_ptr<BGrid> ImposeBGrids(ShpVector<BGrid>& gg);
+
 };
 
 

@@ -1,6 +1,10 @@
 #include "confrect_fem.hpp"
 #include "hmfem.hpp"
 #include "femassembly.hpp"
+#include "debug_grid2d.h"
+
+#define FEM_NMAX 1000000
+#define APPROX_PART 200
 
 using namespace HMMath::Conformal::Impl::ConfFem;
 namespace{
@@ -62,17 +66,18 @@ double LinTriangleSize(double area, int ncells){ return 1.5*sqrt(4.0*(area/ncell
 
 }
 
-ToRect::ToRect(const vector<Point>& path, int i1, int i2, int i3, double h){
+ToRect::ToRect(const vector<Point>& path, int i1, int i2, int i3, const Options& opt){
 	//1) build fem grid: fill grid, origs, HMCont2D::Contour data
-	BuildGrid(path, i1, i2, i3, h);
+	BuildGrid(path, i1, i2, i3, opt.fem_nrec);
 	//2) compute mapping: fill u, v, module, approx
 	DoMapping();
 	//3) build inverse
 	BuildInverse();
 }
 
-void ToRect::BuildGrid(const vector<Point>& path, int i1, int i2, int i3, double h){
-	grid = HMFem::Grid43::Build3(path, h);
+void ToRect::BuildGrid(const vector<Point>& path, int i1, int i2, int i3, int n){
+	auto cont = HMCont2D::Constructor::ContourFromPoints(path, true);
+	grid.reset(new HMFem::Grid43(HMFem::AuxGrid3(cont, n, FEM_NMAX)));
 	approx = grid->GetApprox();
 	//2) restore origs
 	HMCont2D::Contour c = GGeom::Info::Contour1(*grid);
@@ -135,33 +140,12 @@ void ToRect::BuildInverse(){
 	}
 }
 
-double ToRect::HEstimate(const vector<Point>& path, int segn, int nmax){
-	double h = 1e10;
-	//1) calculate h depending on segment partition
-	for (int i=0; i<path.size(); ++i){
-		int inext = (i == path.size() - 1) ? 0 : i+1;
-		double d = Point::dist(path[i], path[inext]);
-		if (d<h) h = d;
-	}
-	//using +1 because of TriGrid::TriangulateArea implementation
-	h /= (segn+1);
-	//2) estimate total number of cells and correct h if necessary
-	double A = 0;
-	for (int i=1; i<path.size()-1; ++i){
-		A += triarea(path[0], path[i], path[i+1]);
-	}
-	A = fabs(A);
-	double Nest = A/(h*h);
-	if (Nest<=nmax) return h;
-	else return LinTriangleSize(A, nmax);
-}
-
 shared_ptr<ToRect>
 ToRect::Build(const vector<Point>& path, int i1, int i2, int i3, const Options& opt){
 	// - calculate step size
-	double h = HEstimate(path, opt.fem_segment_partition, opt.fem_nmax);
+	//double h = HEstimate(path, opt.fem_segment_partition, opt.fem_nmax);
 	// - build mapping
-	shared_ptr<ToRect> ret(new ToRect(path, i1, i2, i3, h));
+	shared_ptr<ToRect> ret(new ToRect(path, i1, i2, i3, opt));
 	// - return
 	if (ret->module() > 0) return ret;
 	else return 0;
@@ -197,49 +181,22 @@ vector<Point> ToRect::RectPoints() const{
 // ================== Annulus
 shared_ptr<ToAnnulus>
 ToAnnulus::Build(const vector<Point>& outer_path, const vector<Point>& inner_path, const Options& opt){
-	// - calculate step size
-	double h = HEstimate(outer_path, inner_path, opt.fem_segment_partition, opt.fem_nmax);
 	// - build mapping
-	shared_ptr<ToAnnulus> ret(new ToAnnulus(outer_path, inner_path, h));
+	shared_ptr<ToAnnulus> ret(new ToAnnulus(outer_path, inner_path, opt));
 	// - return
 	if (ret->module() > 0) return ret;
 	else return 0;
 }
 
-double ToAnnulus::HEstimate(const vector<Point>& outer_path, const vector<Point>& inner_path,
-		int segn, int nmax){
-	double h = 1e10;
-	//1) calculate h depending on segment partition
-	for (int i=0; i<outer_path.size(); ++i){
-		int inext = (i == outer_path.size() - 1) ? 0 : i+1;
-		double d = Point::dist(outer_path[i], outer_path[inext]);
-		if (d<h) h = d;
-	}
-	for (int i=0; i<inner_path.size(); ++i){
-		int inext = (i == inner_path.size() - 1) ? 0 : i+1;
-		double d = Point::dist(inner_path[i], inner_path[inext]);
-		if (d<h) h = d;
-	}
-	//using +1 because of TriGrid::TriangulateArea implementation
-	h /= (segn+1);
-	//2) estimate total number of cells and correct h if necessary
-	double A=0;
-	for (int i=1; i<outer_path.size()-1; ++i){
-		A += triarea(outer_path[0], outer_path[i], outer_path[i+1]);
-	}
-	for (int i=1; i<inner_path.size()-1; ++i){
-		A -= triarea(inner_path[0], inner_path[i], inner_path[i+1]);
-	}
-	A = fabs(A);
-	int Nest = A/(h*h);
-	if (Nest<=nmax) return h;
-	else return LinTriangleSize(A, nmax);
-}
-
 void ToAnnulus::BuildGrid1(const vector<Point>& outer_path, const vector<Point>& inner_path,
-		double h){
+		int n){
 	//grid
-	grid = HMFem::Grid43::Build3({outer_path, inner_path}, h);
+	auto c1 = HMCont2D::Constructor::ContourFromPoints(inner_path, true);
+	auto c2 = HMCont2D::Constructor::ContourFromPoints(outer_path, true);
+	HMCont2D::ContourTree pretree;
+	pretree.AddContour(c1);
+	pretree.AddContour(c2);
+	grid.reset(new HMFem::Grid43(HMFem::AuxGrid3(pretree, n, FEM_NMAX)));
 	approx = grid->GetApprox();
 	//boundary indicies
 	HMCont2D::ContourTree ct = GGeom::Info::Contour(*grid);
@@ -299,7 +256,7 @@ HMCont2D::Container<HMCont2D::Contour> ToAnnulus::SteepestDescentUCurve(){
 
 void ToAnnulus::BuildGrid2(const vector<Point>& outer_path,
 		const vector<Point>& inner_path,
-		double h,
+		int n,
 		const HMCont2D::Contour& razor){
 	//starting from grid/approx filled with doubly-connected grid
 	//0) assemble inner and outer contours
@@ -314,9 +271,8 @@ void ToAnnulus::BuildGrid2(const vector<Point>& outer_path,
 	ct.AddContour(sho);
 	
 	//1) assemble doubly-connected contour
-	ShpVector<HMCont2D::Contour> rc;
-	aa::add_shared(rc, HMCont2D::Contour(razor));
-	grid = HMFem::Grid43::Build3(ct, rc, h);
+	grid.reset(new HMFem::Grid43(HMFem::AuxGrid3(
+		ct, vector<HMCont2D::Contour> {razor}, n, FEM_NMAX)));
 	//2) rip double-connected contour by razor polyline
 	//2.1) get points which lie on razor
 	std::vector<const GridPoint*> razor_points;
@@ -421,16 +377,16 @@ void ToAnnulus::BuildInverse(){
 }
 
 ToAnnulus::ToAnnulus(const vector<Point>& outer_path, const vector<Point>& inner_path,
-		double h){
+		const Options& opt){
 	pzero = inner_path[0];
 	//1) Build a grid for modulus+cirlce computation
-	BuildGrid1(outer_path, inner_path, h);
+	BuildGrid1(outer_path, inner_path, opt.fem_nrec);
 	//2) Compute u and modulus
 	DoMappingU();
 	//3) Build a steepest descent curve
 	auto sd = SteepestDescentUCurve();
 	//4) Build a grid for conjugate function solution
-	BuildGrid2(outer_path, inner_path, h, sd);
+	BuildGrid2(outer_path, inner_path, opt.fem_nrec, sd);
 	//5) Recompute u on singly connected grid, Compute v
 	DoMapping();
 	//7) Build inverse grid

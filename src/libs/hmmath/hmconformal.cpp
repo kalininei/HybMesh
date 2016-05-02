@@ -67,6 +67,27 @@ bool Options::CanUseDSCPACK() const{
 	return use_scpack;
 }
 
+vector<Point> Rect::MapToPolygon(const vector<Point*>& input) const{
+	vector<Point> pvec(input.size());
+	for (int i=0; i<input.size(); ++i){pvec[i].set(input[i]->x, input[i]->y);}
+	return MapToPolygon(pvec);
+}
+vector<Point> Rect::MapToRectangle(const vector<Point*>& input) const{
+	vector<Point> pvec(input.size());
+	for (int i=0; i<input.size(); ++i){pvec[i].set(input[i]->x, input[i]->y);}
+	return MapToRectangle(pvec);
+}
+
+shared_ptr<Rect> Rect::Factory(
+		const HMCont2D::Contour& left,
+		const HMCont2D::Contour& right,
+		const HMCont2D::Contour& bot,
+		const HMCont2D::Contour& top,
+		const Options& opt){
+	auto input = FactoryInput(left, right, bot, top);
+	return Factory(std::get<0>(input), std::get<1>(input), opt);
+}
+
 shared_ptr<Rect> Rect::Factory(
 		const vector<Point>& _path,
 		std::array<int, 4> corners,

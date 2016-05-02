@@ -119,7 +119,7 @@ void RightConnector::BuildInternals() {
 
 	//2) assemble connector
 	connection_area = MappedRect::Factory(left, right, bot, top,
-			prev->rect->use_rect_approx());
+			top.size()*right.size()*1.5, prev->rect->use_rect_approx());
 	connection_grid.reset(new MappedMesher(connection_area.get(), 0.0, 1.0));
 
 	//3) build a grid there

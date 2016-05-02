@@ -38,6 +38,12 @@ HMCont2D::Container<Contour> CutContourByLen(const Contour& source, double len1,
 HMCont2D::Container<HMCont2D::ECollection> ECol(const vector<Point>& pnt, const vector<int>& eds);
 HMCont2D::Container<HMCont2D::ECollection> ECol(int npnt, int neds, double* pnt, int* eds);
 
+
+//Perturbed contour between two points.
+//perturbation(double x) gives magnitude of perturbation from (p1,p2) segment coordinate
+HMCont2D::Container<HMCont2D::Contour> PerturbedContour(Point p1, Point p2, int npart,
+		std::function<double(double)> perturbation);
+
 }};
 
 #endif

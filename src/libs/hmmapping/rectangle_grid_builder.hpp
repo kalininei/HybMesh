@@ -9,7 +9,7 @@ namespace HMGMap{
 GridGeom LinearRectGrid(HMCont2D::Contour& left, HMCont2D::Contour& bot,
 	HMCont2D::Contour& right, HMCont2D::Contour& top);
 
-GridGeom ConformalRectGrid(HMCont2D::Contour& left, HMCont2D::Contour& bot,
+GridGeom OrthogonalRectGrid(HMCont2D::Contour& left, HMCont2D::Contour& bot,
 	HMCont2D::Contour& right, HMCont2D::Contour& top);
 
 GridGeom LaplasRectGrid(HMCont2D::Contour& left, HMCont2D::Contour& bot,

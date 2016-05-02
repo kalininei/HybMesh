@@ -130,7 +130,7 @@ void* custom_rectangular_grid(int algo, void* left, void* bot, void* right, void
 		} else if (algo == 1){
 			ret = new GridGeom(HMGMap::LaplasRectGrid(*left1, *bot1, *right1, *top1));
 		} else if (algo == 2){
-			ret = new GridGeom(HMGMap::ConformalRectGrid(*left1, *bot1, *right1, *top1));
+			ret = new GridGeom(HMGMap::OrthogonalRectGrid(*left1, *bot1, *right1, *top1));
 		} else throw std::runtime_error("unknown algorithm");
 		ret->undo_scale(sc);
 	} catch (std::runtime_error &e){

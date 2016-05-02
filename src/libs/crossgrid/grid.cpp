@@ -176,10 +176,23 @@ GridGeom::GridGeom(int Npts, int Ncells, double* pts, int* cls){
 		}
 	}
 }
-void GridGeom::set_indicies(){
+void GridGeom::set_indicies() const{
+	set_cell_indicies();
+	set_point_indicies();
 	int i=0, j=0;
 	for (auto p: points) p->ind = i++;
 	for (auto c: cells)  c->ind = j++;
+}
+void GridGeom::set_cell_indicies() const{
+	int j=0;
+	for (auto c: cells)  c->ind = j++;
+}
+void GridGeom::set_point_indicies() const{
+	int i=0;
+	for (auto p: points) p->ind = i++;
+}
+void GridGeom::set_cell_index(const Cell* c, int i){
+	c->ind = i;
 }
 
 void GridGeom::delete_unused_points(){

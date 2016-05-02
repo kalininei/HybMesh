@@ -3,6 +3,7 @@
 #include "trigrid.h"
 #include "bgrid_impose.hpp"
 #include "connectors.hpp"
+#include "hmtimer.hpp"
 
 using namespace HMBlay::Impl;
 
@@ -26,9 +27,13 @@ shared_ptr<BGrid> BGrid::MeshFullPath(const ExtPath& epath){
 	ShpVector<MappedRect> mps;
 	bool use_rect_approx = !epath.ext_data[0].opt->force_conformal;
 	for (auto& p: pths){
+		//estimate vertical and horizontal partition
+		int isz = p.PathPartition(0, p.length()).size();
+		int jsz = p.largest_vpart_size();
+
 		double h = p.largest_depth();
 		mps.push_back(MappedRect::Factory(p.leftbc, p.rightbc, p, h,
-					use_rect_approx));
+					isz*jsz*1.5, use_rect_approx));
 	}
 
 	//3. build rectangular meshers
@@ -72,7 +77,9 @@ shared_ptr<BGrid> BGrid::MeshFullPath(const ExtPath& epath){
 	}
 
 	//6. Connection procedures
-	for (auto& c: connectors) c->Apply();
+	for (auto& c: connectors){
+		c->Apply();
+	}
 	
 	//7. Gather all resulting meshes
 	shared_ptr<BGrid> g(new BGrid());
@@ -88,7 +95,7 @@ shared_ptr<BGrid> BGrid::MeshFullPath(const ExtPath& epath){
 		g->merge_congruent_points();
 	} else {
 		assert(mesher4.size() == 1);
-		g.reset(new BGrid(mesher4[0]->result));
+		g->ShallowAdd(mesher4[0]->result);
 	}
 
 	return g;
@@ -154,17 +161,17 @@ shared_ptr<BGrid> BGrid::ImposeBGrids(ShpVector<BGrid>& gg){
 }
 
 void BGrid::AddWeights(const std::map<const Cell*, int>& w){
-	for (auto it: w){
-		auto fnd = std::find_if(cells.begin(), cells.end(),
-				[&it](shared_ptr<Cell> c){ return c.get() == it.first; });
-		if (fnd != cells.end()) weight[it.first] = it.second;
+	for (auto& it: w) set_cell_index(it.first, -1);
+	set_cell_indicies();
+	for (auto& it: w){
+		if (it.first->get_ind()>=0) weight[it.first] = it.second;
 	}
 }
 void BGrid::AddSourceFeat(const std::map<const Cell*, shared_ptr<int>>& f){
-	for (auto it: f){
-		auto fnd = std::find_if(cells.begin(), cells.end(),
-				[&it](shared_ptr<Cell> c){ return c.get() == it.first; });
-		if (fnd != cells.end()) source_feat[it.first] = it.second;
+	for (auto& it: f) set_cell_index(it.first, -1);
+	set_cell_indicies();
+	for (auto& it: f){
+		if (it.first->get_ind()>=0) source_feat[it.first] = it.second;
 	}
 }
 

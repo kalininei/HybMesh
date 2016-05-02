@@ -23,7 +23,7 @@ struct Options{
 	std::string algo;   //direct-laplace, inverse-laplace
 
 	Options(std::string _algo="inverse-laplace", std::string _snap="NO"):
-		fem_nmax(100000), fem_nmin(1000), fem_nrec(10000), fem_nedge(3),
+		fem_nmax(100000), fem_nmin(100), fem_nrec(1000), fem_nedge(3),
 		snap(_snap), algo(_algo){}
 };
 

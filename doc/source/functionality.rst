@@ -14,8 +14,8 @@ Contour is a set of points connected in a defined order with each contour
 section bearing a boundary type feature. Contour can be open or closed or
 even multiply-connected (bounding a multiply connected domain).
 Their direction could not be set implicitly. In fact
-all contours which bound a domain apply left direction of traversal: 
-all outer subcontours are traced counterclockwise and inner ones - 
+all contours which bound a domain apply left direction of traversal:
+all outer subcontours are traced counterclockwise and inner ones -
 in the opposite.
 
 Grid is a set of cells which are defined as a sequences of points.
@@ -24,7 +24,7 @@ the only restriction applied to a grid cell is that it can not
 be multiply connected.
 
 .. warning::
-   
+
   Not every grid format supports arbitrary cells.
   Most FEM grids (like those used in GMsh) could contain
   only triangular or quadrangular cells. This should be
@@ -34,7 +34,7 @@ Each grid contains its own bounding contour which is
 referenced as a grid contour.
 It includes all boundary nodes of the grid along with grid boundary features.
 Most procedures which take contour as an invariable input parameter (e.g.
-set boundary types, exclude contour from a grid etc.) could also be done 
+set boundary types, exclude contour from a grid etc.) could also be done
 using grid contours addressed by a grid internal name.
 
 Boundary type is a non-geometric object which is defined
@@ -111,7 +111,7 @@ smoother triangle grid within the buffer (see picture below).
 Sometimes it is useful to superpose grids without building triangulated buffer. This could be
 done by setting zero buffer zone size.
 However, if vertices of *base grid* and *overlaid grid* do not coincide at contact line superposed
-grid will contain hanging nodes (see second example at picture below). 
+grid will contain hanging nodes (see second example at picture below).
 The necessity of superposing grids with zero buffer could be arisen e.g. while connecting grid to
 an outer boundary grid built from its own contour.
 
@@ -142,7 +142,7 @@ With this option is on it is guaranteed that:
 However there are some possible drawbacks of this option.
 Picture below illustrates superposition of two square grid with complicated boundary set.
 First example shows the result of operation with fixed boundary vertices.
-Due to the fact that points of intersection don't hit any of the *overlaid grid*  
+Due to the fact that points of intersection don't hit any of the *overlaid grid*
 initial vertices two hanging nodes have appeared in the result.
 Furthermore since some of boundary nodes of *base grid* lied too close to
 these intersection points highly skewed triangles were built in the buffer zone.
@@ -159,7 +159,7 @@ segments but the resulting grid don't contain any hanging nodes or highly skewed
 
 
 .. _zero-angle-app:
-   
+
 Zero angle approximation
 ++++++++++++++++++++++++
 
@@ -180,14 +180,14 @@ input grid intersection domain.
 .. figure:: grid_imposition8.png
    :width: 700 px
 
-   fig7. Superposition without fixing boundary nodes and different 
+   fig7. Superposition without fixing boundary nodes and different
    zero angle :math:`{\alpha}_0` values
 
 .. _emptyholes:
 
 Empty holes
 +++++++++++
-If this option of grid superposition is set to true than all hulls presented at *overlaid grid* will be 
+If this option of grid superposition is set to true than all hulls presented at *overlaid grid* will be
 preserved as hulls in the result grid. Otherwise these hulls will be filled according to
 general algorithm. The effect of this option is shown at picture below.
 
@@ -197,14 +197,34 @@ general algorithm. The effect of this option is shown at picture below.
    fig8. Superposition with/without *Empty holes* option
 
 
-.. _bgrids:
+.. _gridclip:
 
-Building Boundary Grids
------------------------
-TODO
+Clip Grid
+---------
+
 
 .. _gridmappings:
 
 Grid Mapping
 ------------
-TODO
+This procedure maps the domain containing grid (*base domain*) to any other domain with equal
+connectivity (*target domain*) and uses this mapping to translate grid to it.
+
+Uses elliptic problems
+
+No restrictions
+
+boundary points
++++++++++++++++
+
+algorithm
++++++++++
+
+snapping
+++++++++
+
+Contour Operations
+------------------
+
+3D Grid Building
+----------------

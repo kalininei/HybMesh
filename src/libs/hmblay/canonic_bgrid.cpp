@@ -1,5 +1,6 @@
 #include "canonic_bgrid.hpp"
 #include "hmfem.hpp"
+#include "hmtimer.hpp"
 
 #define USE_ANALYTICAL_MAPPINGS false
 
@@ -8,7 +9,7 @@ using namespace HMBlay::Impl;
 shared_ptr<MappedRect>
 MappedRect::Factory(HMCont2D::Contour& left, HMCont2D::Contour& right,
 		HMCont2D::Contour& bottom, HMCont2D::Contour& top,
-		bool use_rect_approx){
+		int femn, bool use_rect_approx){
 	assert(*left.first() == *bottom.first());
 	assert(*left.last() == *top.first());
 	assert(*right.first() == *bottom.last());
@@ -25,7 +26,7 @@ MappedRect::Factory(HMCont2D::Contour& left, HMCont2D::Contour& right,
 	}
 	//left/right do not coincide. We need mapping to rectangle.
 	return std::make_shared<RectForOpenArea>(
-		left, right, bottom, top, use_rect_approx
+		left, right, bottom, top, femn, use_rect_approx
 	);
 };
 
@@ -89,7 +90,7 @@ HMBlay::Impl::ContoursWeight(const HMCont2D::Contour& c1, Point p1,
 shared_ptr<MappedRect>
 MappedRect::Factory(HMCont2D::Contour& left, HMCont2D::Contour& right,
 		HMCont2D::Contour& bottom, double h,
-		bool use_rect_approx){
+		int femn, bool use_rect_approx){
 	assert(*left.first() == *bottom.first());
 	assert(*right.first() == *bottom.last());
 
@@ -117,7 +118,7 @@ MappedRect::Factory(HMCont2D::Contour& left, HMCont2D::Contour& right,
 			is90(an1) && is90(an2)){
 		HMCont2D::Contour top;
 		top.add_value(HMCont2D::Edge(op_left.back(), op_right.back()));
-		return Factory(left2, right2, bottom, top, use_rect_approx);
+		return Factory(left2, right2, bottom, top, femn, use_rect_approx);
 	}
 
 	//4) if left and right are straight and angles are >= pi/2
@@ -193,7 +194,7 @@ GEOMETRY_RESULT_CHECK:
 		auto cr3 = HMCont2D::Algos::Cross(right2, top);
 		if (std::get<0>(cr3) && !ISEQ(std::get<2>(cr3), 1.0)) goto GEOMETRY_FAILED;
 		//all checks were passed
-		return Factory(left2, right2, bottom, top, use_rect_approx);
+		return Factory(left2, right2, bottom, top, femn, use_rect_approx);
 	}
 
 GEOMETRY_FAILED:
@@ -210,7 +211,7 @@ double MappedRect::bot2top(double w) const{ return conf2top(bot2conf(w)); }
 // ============ Open area
 RectForOpenArea::RectForOpenArea(HMCont2D::Contour& left, HMCont2D::Contour& right,
 			HMCont2D::Contour& bottom, HMCont2D::Contour& top,
-			bool use_rect_approx, bool force_rect_approx):
+			int femn, bool use_rect_approx, bool force_rect_approx):
 			MappedRect(left, right, bottom, top, use_rect_approx){
 	if (force_rect_approx){
 		core = HMMath::Conformal::Impl::RectApprox::Build(left, right, bottom, top);
@@ -239,6 +240,7 @@ RectForOpenArea::RectForOpenArea(HMCont2D::Contour& left, HMCont2D::Contour& rig
 	opt.right_angle_eps = M_PI/8.0;
 	opt.length_weight = 1.02;
 	opt.use_scpack = USE_ANALYTICAL_MAPPINGS;
+	opt.fem_nrec = std::min(10000, std::max(100, femn));
 	core = HMMath::Conformal::Rect::Factory(path, corners, opt);
 };
 
@@ -484,7 +486,6 @@ void MappedMesher::Fill(TBotPart bottom_partitioner, TVertPart vertical_partitio
 	for (auto p: GGeom::Info::BoundaryPoints(g4)){
 		if (ISZERO(p->y)) botpts.push_back(p);
 	}
-
 	//5) fill layer weights and feature
 	std::map<const Cell*, int> lweights;
 	shared_ptr<int> pfeat(new int());
@@ -519,8 +520,13 @@ void MappedMesher::Fill(TBotPart bottom_partitioner, TVertPart vertical_partitio
 	int kc = 0;
 	for (int j=0; j<jsz-1; ++j){
 		for (int i=0; i<isz-1; ++i){
-			if (vlines[i].size() < j+2 || vlines[i+1].size() < j+2)
+			if (vlines[i].size() < j+2 || vlines[i+1].size() < j+2){
 				ucells.push_back(g4.get_cell(kc));
+				auto fnd1 = lweights.find(ucells.back());
+				auto fnd2 = feat.find(ucells.back());
+				if (fnd1 != lweights.end()) lweights.erase(fnd1);
+				if (fnd2 != feat.end()) feat.erase(fnd2);
+			}
 			++kc;
 		}
 	}

@@ -39,7 +39,8 @@ struct ExtPath: public HMCont2D::Contour{
 	HMCont2D::Contour* full_source;
 
 	//get methods
-	double largest_depth();
+	double largest_depth() const;
+	int largest_vpart_size() const;
 
 
 	//makes a partition of path from given lengths of start point to given

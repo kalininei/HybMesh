@@ -95,3 +95,7 @@ GridGeom HMGMap::Circ4Prototype(Point center, double rad, int n, double a, doubl
 	GGeom::Modify::PointModify(grect, pmod);
 	return grect;
 }
+
+GridGeom Circ4Prototype2(Point center, double rad, int n, double a, double hcoef){
+	_THROW_NOT_IMP_;
+}

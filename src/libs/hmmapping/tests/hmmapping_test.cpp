@@ -74,13 +74,15 @@ void test02(){
 	add_check(was_err3, "invalid points ordering");
 
 	try{
+		HMGMap::Options opt("inverse-laplace");
+		opt.fem_nrec = 1000;
 		GridGeom ans4 = HMGMap::MapGrid(base, ecol,
 			std::vector<Point> {Point(3, 1), Point(1, 3), Point(3, 3), Point(2, 1), Point(0, 1)},
 			std::vector<Point> {Point(5, 0), Point(0, 5), Point(5, 5), Point(2, 0), Point(-2, 0)},
-			HMGMap::Options("inverse-laplace")
+			opt
 		);
 		GGeom::Export::GridVTK(ans4, "g1.vtk");
-		add_file_check(5480434404272453656U, "g1.vtk", "valid doubly connected data");
+		add_file_check(11959578928402032687U, "g1.vtk", "valid doubly connected data");
 	} catch (HMGMap::MapException &e) {add_check(false, "valid doubly connected data");}
 }
 
@@ -156,11 +158,11 @@ void test05(){
 	auto sk = GGeom::Info::Skewness(g1);
 	auto maxel = std::max_element(sk.begin(), sk.end());
 	add_check(ISZERO(*maxel - 0.5), "skewness");
-	add_file_check(8849316823715813599U, "g1.vtk", "no refinement, side = 1.0*rad");
+	add_file_check(4015375048829588252U, "g1.vtk", "no refinement, side = 1.0*rad");
 
 	GridGeom g2 = HMGMap::Circ4Prototype(Point(3, 1), 2.0, 24, 1.0, 0.3);
 	GGeom::Export::GridVTK(g2, "g1.vtk");
-	add_file_check(7197682274436151092U, "g1.vtk", "with refinement, side = 1.0*rad");
+	add_file_check(17078135237454258052U, "g1.vtk", "with refinement, side = 1.0*rad");
 
 	GridGeom g3 = HMGMap::Circ4Prototype(Point(-3, 1), 0.2, 80, 0.5, 1.0);
 	GGeom::Export::GridVTK(g3, "g1.vtk");
@@ -178,7 +180,7 @@ void test06(){
 			HMGMap::Options("inverse-laplace")
 	);
 	GGeom::Export::GridVTK(ans, "g1.vtk");
-	add_file_check(8817838078362901033U, "g1.vtk", "m-like target, inverse");
+	add_file_check(5133065268170907878U, "g1.vtk", "m-like target, inverse");
 
 	auto g1cont = GGeom::Info::Contour1(g1);
 	auto ans2 = HMGMap::MapGrid.Silent(ans, g1cont,
@@ -190,6 +192,34 @@ void test06(){
 	add_file_check(4588482714625395358U, "g1.vtk", "m-like base, direct");
 }
 
+void test07(){
+	std::cout<<"07. Orthonal grid in curvilinear quadrangle"<<std::endl;
+	{
+		//initial contours
+		HMCont2D::PCollection pcol;
+		auto left1 = HMCont2D::Constructor::PerturbedContour(Point(0, 0), Point(-0.11, 1), 1000,
+				[](double x){ return 0.2*sin(2*M_PI*x); });
+		auto bot1 = HMCont2D::Constructor::PerturbedContour(Point(0, 0), Point(3, 0), 1000,
+				[](double x){ return 0.13*sin(8*M_PI*x); });
+		auto right1 = HMCont2D::Constructor::PerturbedContour(Point(3, 0), Point(3.06, 1), 1000,
+				[](double x){ return 0.07*sin(4*M_PI*x); });
+		auto top1 = HMCont2D::Constructor::PerturbedContour(Point(-0.11, 1), Point(3.06, 1), 1000,
+				[](double x){ return 0.1*sin(6*M_PI*x); });
+		//partition
+		auto left = HMCont2D::Algos::Partition(0.1, left1, pcol);
+		auto bot = HMCont2D::Algos::Partition(0.1, bot1, pcol);
+		auto right = HMCont2D::Algos::Partition(0.1, right1, pcol);
+		auto top = HMCont2D::Algos::Partition(0.1, top1, pcol);
+		//build grid
+		HMCont2D::SaveVtk(left, "left.vtk");
+		HMCont2D::SaveVtk(bot, "bot.vtk");
+		HMCont2D::SaveVtk(right, "right.vtk");
+		HMCont2D::SaveVtk(top1, "top.vtk");
+		GridGeom ans = HMGMap::OrthogonalRectGrid(left, bot, right1, top1);
+		GGeom::Export::GridVTK(ans, "g1.vtk");
+	}
+}
+
 
 int main(){
 	test01();
@@ -198,6 +228,7 @@ int main(){
 	test04();
 	test05();
 	test06();
+	test07();
 
 	HMTesting::check_final_report();
 	std::cout<<"DONE"<<std::endl;

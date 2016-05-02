@@ -223,7 +223,7 @@ void GGeom::Repair::Heal(GridGeom& grid){
 }
 
 bool GGeom::Repair::HasSelfIntersections(const GridGeom& grid){
-	int n = 20;
+	int n = 100;
 	GGeom::Info::CellFinder cfinder(&grid, n, n);
 	double ksieta[2];
 	for (int i=0; i<n*n; ++i){
@@ -511,6 +511,36 @@ void GGeom::Modify::ShiftToContour(GridGeom& grid, const HMCont2D::Contour& cont
 		}
 	}
 	grid.set_indicies();
+}
+
+void GGeom::Modify::SnapAllBoundary(GridGeom& grid, const HMCont2D::ECollection& cont, int algo){
+	auto gtree = GGeom::Info::Contour(grid);
+	if (algo == 2){
+		auto source = cont.all_points();
+		for (auto p: gtree.all_points()){
+			double minmeas = std::numeric_limits<double>::max();
+			Point* to_p = 0;
+			for (int i=0; i<source.size(); ++i){
+				double m = Point::meas(*source[i], *p);
+				if (m < minmeas){
+					minmeas = m;
+					to_p = source[i];
+				}
+				if (minmeas<geps*geps) break;
+			}
+			p->set(to_p->x, to_p->y);
+		}
+	} else {
+		for (auto p: gtree.all_points()){
+			auto closest = HMCont2D::ECollection::FindClosestEdge(cont, *p);
+			if (std::get<1>(closest) > geps){
+				HMCont2D::Edge* e = std::get<0>(closest);
+				double w = std::get<2>(closest); 
+				Point pnew = Point::Weigh(*e->pstart, *e->pend, w);
+				p->set(pnew.x, pnew.y);
+			}
+		}
+	}
 }
 
 void GGeom::Modify::SimplifyBoundary(GridGeom& grid, double angle){

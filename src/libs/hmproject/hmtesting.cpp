@@ -46,6 +46,7 @@ std::string HMTesting::convert_floats(const std::string& inp, int rnd){
 	for (int i=0; i<rnd; ++i) rmult*=10;
 	auto rndfun = [&rmult](double& x){
 		x = round(x*rmult)/rmult;
+		if (ISZERO(x)) x = 0;  //to avoid '-0'
 	};
 	
 	vector<std::string> sp = split(inp, ".");

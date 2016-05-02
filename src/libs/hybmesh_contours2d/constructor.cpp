@@ -131,3 +131,21 @@ HMCont2D::Container<HMCont2D::ECollection> cns::ECol(int npnt, int neds, double*
 	}
 	return ECol(pvec, evec);
 }
+
+HMCont2D::Container<HMCont2D::Contour> cns::PerturbedContour(Point p1, Point p2, int npart,
+		std::function<double(double)> perturbation){
+	vector<Point> pp(npart+1);
+	pp[0] = p1;
+	pp.back() = p2;
+	Vect pvec = p2 - p1;
+	for (int i=1; i<npart; ++i){
+		double t = (double)i/(npart);
+		double m = perturbation(t);
+		Vect perpvec(-pvec.y, pvec.x);
+		if (m<0) perpvec *= -1.0;
+		vecSetLen(perpvec, fabs(m));
+		pp[i] = Point::Weigh(p1, p2, t);
+		pp[i] += perpvec;
+	}
+	return cns::ContourFromPoints(pp);
+}

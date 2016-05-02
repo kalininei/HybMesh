@@ -13,6 +13,7 @@ namespace HMGMap{
 //hcoef < 1 gives refinement towards outer boundary
 GridGeom Circ4Prototype(Point center, double rad, int n, double a=1.0, double hcoef=1.0);
 
+GridGeom Circ4Prototype2(Point center, double rad, int n, double a=1.0, double hcoef=1.0);
 
 }
 

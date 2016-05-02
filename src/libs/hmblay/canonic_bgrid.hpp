@@ -68,7 +68,7 @@ public:
 	static shared_ptr<MappedRect>
 	Factory(HMCont2D::Contour& left, HMCont2D::Contour& right,
 			HMCont2D::Contour& bottom, HMCont2D::Contour& top,
-			bool use_rect_approx);
+			int femn, bool use_rect_approx);
 	//build forcing usage of rectangle approximation
 	static shared_ptr<MappedRect>
 	RectApprox(HMCont2D::Contour& left, HMCont2D::Contour& right,
@@ -78,7 +78,7 @@ public:
 	static shared_ptr<MappedRect>
 	Factory(HMCont2D::Contour& left, HMCont2D::Contour& right,
 			HMCont2D::Contour& bottom, double h,
-			bool use_rect_approx);
+			int femn, bool use_rect_approx);
 };
 
 class RectForOpenArea: public MappedRect{
@@ -87,7 +87,7 @@ protected:
 public:
 	RectForOpenArea(HMCont2D::Contour& left, HMCont2D::Contour& right,
 			HMCont2D::Contour& bottom, HMCont2D::Contour& top,
-			bool use_rect_approx, bool force_rect_approx=false);
+			int femn, bool use_rect_approx, bool force_rect_approx=false);
 	HMCont2D::PCollection MapToReal(const vector<const Point*>& p) const override;
 	HMCont2D::PCollection MapToSquare(const vector<const Point*>& p) const override;
 

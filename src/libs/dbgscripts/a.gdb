@@ -3,8 +3,7 @@
 
 source ../../src/libs/dbgscripts/hmout.gdb
 
-file ./hmmaping_test
+file ./hmblay_test
 set breakpoint pending on
-#b domapping.cpp:140
-b femgrid43.cpp:100
+b hmblay.cpp:44
 run 

@@ -123,7 +123,8 @@ cross_core(const Contour& c1, const Contour& c2, bool is1){
 	for (int i=0; i<op1.size()-1; ++i){
 		L2 = 0;
 		for (int j=0; j<op2.size()-1; ++j){
-			if (SectCross(*op1[i], *op1[i+1], *op2[j], *op2[j+1], ksieta)){
+			SectCross(*op1[i], *op1[i+1], *op2[j], *op2[j+1], ksieta);
+			if (ksieta[0]>-geps && ksieta[0]<1+geps && ksieta[1]>-geps && ksieta[1]<1+geps){
 				addcross(
 					Point::Weigh(*op1[i], *op1[i+1], ksieta[0]),
 					(L1 + lens1[i]*ksieta[0])/flen1,

@@ -69,7 +69,7 @@ hmdbg.check(hm.info_grid(g1) ==
              'Nnodes': 1196, 'Nedges': 2382, 'Ncells': 1186})
 hmdbg.check(len(hm.registered_btypes()) == 6)
 hm.export_grid_msh(g1, "g1.msh")
-hmdbg.check_ascii_file(5451484514478576657, "g1.msh")
+hmdbg.check_ascii_file(11097986397215261008, "g1.msh")
 hm.remove_all()
 
 print "export 3d to fluent"

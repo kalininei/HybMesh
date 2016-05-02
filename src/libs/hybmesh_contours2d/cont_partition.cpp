@@ -316,7 +316,7 @@ std::pair<
 			auto it1 = ins.first;
 			auto it2 = std::next(ins.first);
 			double t = (it1->first - it0->first)/(it2->first - it0->first);
-			it1->second = (1-t)*it0->second + t*it1->second;
+			it1->second = (1-t)*it0->second + t*it2->second;
 		}
 	}
 	return ins;

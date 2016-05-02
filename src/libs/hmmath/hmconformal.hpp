@@ -14,8 +14,7 @@ struct Options{
 		right_angle_eps(geps),     //negligible right angle diviation
 		length_weight(1.0+geps),   //negligible lenght deviation at which polyline is treated as a straight line
 		scpack_ratio_limit(5.1),   //width/height limit at which scpack is used
-		fem_segment_partition(4),  //how many fem points will be set to source segment
-		fem_nmax(10000){}          //maximum number of fem points
+		fem_nrec(1000){}           //recommended number of fem points
 
 	// ===== rectangle approximation settings
 	//if we consider rectangle approximation
@@ -40,10 +39,8 @@ struct Options{
 	bool CanUseDSCPACK() const;
 
 	//===== fem settings
-	//recommended segment partition
-	int fem_segment_partition;
-	//maximum grid dimension
-	int fem_nmax;
+	//recommended fem grid partition
+	int fem_nrec;
 };
 
 
@@ -54,6 +51,8 @@ public:
 	virtual double module() const = 0;
 	virtual vector<Point> MapToPolygon(const vector<Point>& input) const = 0;
 	virtual vector<Point> MapToRectangle(const vector<Point>& input) const = 0;
+	virtual vector<Point> MapToPolygon(const vector<Point*>& input) const;
+	virtual vector<Point> MapToRectangle(const vector<Point*>& input) const;
 
 	Point MapToPolygon1(Point p) const { return MapToPolygon(vector<Point> {p})[0]; }
 	Point MapToRectangle1(Point p) const { return MapToRectangle(vector<Point> {p})[0]; }
@@ -68,6 +67,13 @@ public:
 	static shared_ptr<Rect> Factory(
 			const vector<Point>& path,
 			std::array<int, 4> corners,
+			const Options& opt = Options());
+
+	static shared_ptr<Rect> Factory(
+			const HMCont2D::Contour& left,
+			const HMCont2D::Contour& right,
+			const HMCont2D::Contour& bot,
+			const HMCont2D::Contour& top,
 			const Options& opt = Options());
 
 	//prepare data for factory input from 4 connected contours

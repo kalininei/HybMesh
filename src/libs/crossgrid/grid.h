@@ -15,7 +15,7 @@ struct Repair;
 };
 
 class GridPoint: public Point{
-	int ind;
+	mutable int ind;
 public:
 	GridPoint(double x, double y, int _ind=0): Point(x,y), ind(_ind){}
 	GridPoint(const Point& p): Point(p), ind(0){}
@@ -26,7 +26,7 @@ public:
 };
 
 class Cell{
-	int ind;
+	mutable int ind;
 	//reverses points array if neseccary
 	void check_ordering();
 public:
@@ -80,8 +80,11 @@ protected:
 	//make all cells be counter clockwise
 	void force_cells_ordering();
 	//indexation
-	void set_indicies();
+	void set_indicies() const;
 	void delete_unused_points();
+	void set_cell_indicies() const;
+	void set_point_indicies() const;
+	static void set_cell_index(const Cell* c, int i);
 	//data manipulation
 	static void add_point_to_cell(Cell* c, GridPoint* p){ c->points.push_back(p); }
 	static void change_point_of_cell(Cell* c, int j, GridPoint* p){ c->points[j] = p; }
@@ -92,7 +95,7 @@ protected:
 	vector<Point> cells_internal_points() const;
 	//constructors
 	GridGeom(){};
-	GridGeom(const GridGeom& g);
+	GridGeom(const GridGeom& g); //deep copy constructor
 	GridGeom& operator=(GridGeom g);
 	//swaps points and cells arrays between two grids
 	static void swap_data(GridGeom& g1, GridGeom& g2);
