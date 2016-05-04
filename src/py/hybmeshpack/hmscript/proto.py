@@ -123,6 +123,11 @@ def add_custom_rect_grid(algo, left, bottom, right=None, top=None):
        * ``'linear'`` - connects respective points of opposite
          contours by straight lines. If right/top contours are defined
          they should have same number of vertices as left/bottom.
+       * ``'laplace-inverse'`` -
+       * ``'laplace-direct'`` - connects points using solution of Dirichlet
+         elliptic problem
+       * ``'orthogonal'`` - builds orthogonal grid based on **left** and
+         **bottom** partition. Partitions of **right** and **top** are ignored.
 
     :param left:
 
@@ -138,14 +143,25 @@ def add_custom_rect_grid(algo, left, bottom, right=None, top=None):
 
     :raise: hmscript.ExecError, ValueError
 
+    **left**, **bottom**, **right** and **top** nomenclature is conventional.
+    In fact user can pass contours regardless of their real physical location
+    and direction keeping in mind that grid boundary
+    segment obtained from **left** (or **top**)
+    will be opposite to one from **right** (or **bottom**).
+
     If given contours are not properly connected then program will try
-    to connect it with the following priority order:
+    to connect it with the following priority order (keeping **left** fixed):
 
     1) set left contour;
     2) add bottom contour to left contour bottom point;
     3) add top contour to left contour top point;
     4) add right contour to bottom contour right point;
     5) stretch right contour so its upper point fits top contour right point.
+
+    As a result of these modifications:
+     * for contour passed as **left** both position and shape are preserved;
+     * for **top** and **bot** shape is preserved;
+     * for **right** both position and shape could be changed.
 
     """
     # call
@@ -162,7 +178,7 @@ def add_custom_rect_grid(algo, left, bottom, right=None, top=None):
         raise ExecError('custom rectangular grid')
 
 
-def add_circ_rect_grid(p0, rad, step, sqrside=1.0, rcoef=1.0, algo="laplas8"):
+def add_circ_rect_grid(p0, rad, step, sqrside=1.0, rcoef=1.0, algo="linear"):
     """ Creates quadrangular cell grid in a circular area.
     Resulting grid contains uniform square grid in the center of
     defined area which is continued by a ring-like grid
@@ -187,8 +203,13 @@ def add_circ_rect_grid(p0, rad, step, sqrside=1.0, rcoef=1.0, algo="laplas8"):
 
     :param str algo: Algorithms of assembling the ring part of the grid.
 
-       * ``'laplas8'`` - use algebraic mapping for
+       * ``'linear'`` - use weighted approach for each ray partition
+       * ``'laplace'`` - use algebraic mapping for
          building each 45 degree sector.
+       * ``'orthogonal-circ'`` - build orthogonal grid keeping
+         uniform grid at outer circle
+       * ``'orthogonal-rect'`` - build orthogonal grid keeping
+         uniform grid at inner rectangle
 
     :return: new grid identifier
 
@@ -209,7 +230,7 @@ def add_circ_rect_grid(p0, rad, step, sqrside=1.0, rcoef=1.0, algo="laplas8"):
         raise ValueError("Invalid sqrside")
     if (not isinstance(rcoef, numbers.Real) or rcoef <= 0):
         raise ValueError("Invalid rcoef")
-    if algo not in ["laplas8"]:
+    if algo not in ["laplace", "linear", "orthogonal-rect", "orthogonal-circ"]:
         raise ValueError("Unknown algorithm")
     # call
     args = {'algo': algo,

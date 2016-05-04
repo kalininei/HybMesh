@@ -48,7 +48,7 @@ public:
 //all points of tree will present in resulting grid
 //nrec, nmax - recommended and maximum allowed number of resulting grid vertices
 struct TAuxGrid3: public HMCallback::ExecutorBase{
-	HMCB_SET_PROCNAME("Auxiliary Triangulation");
+	HMCB_SET_PROCNAME("Auxiliary triangulation");
 	HMCB_SET_DEFAULT_DURATION(100);
 
 	//minumum allowed length of section normalized by recommended length

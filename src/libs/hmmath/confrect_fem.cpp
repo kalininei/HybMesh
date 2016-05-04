@@ -66,89 +66,92 @@ double LinTriangleSize(double area, int ncells){ return 1.5*sqrt(4.0*(area/ncell
 
 }
 
-ToRect::ToRect(const vector<Point>& path, int i1, int i2, int i3, const Options& opt){
+HMCallback::FunctionWithCallback<ToRect::TBuild> ToRect::Build;
+ToRect ToRect::TBuild::_run(const vector<Point>& path, int i1, int i2, int i3, const Options& opt){
+	ToRect ret;
+
 	//1) build fem grid: fill grid, origs, HMCont2D::Contour data
-	BuildGrid(path, i1, i2, i3, opt.fem_nrec);
+	BuildGrid(ret, path, i1, i2, i3, opt.fem_nrec);
 	//2) compute mapping: fill u, v, module, approx
-	DoMapping();
+	DoMapping(ret);
 	//3) build inverse
-	BuildInverse();
+	BuildInverse(ret);
+
+	return ret;
 }
 
-void ToRect::BuildGrid(const vector<Point>& path, int i1, int i2, int i3, int n){
+void ToRect::TBuild::BuildGrid(ToRect& r, const vector<Point>& path, int i1, int i2, int i3, int n){
+	//1) build grid
+	auto subcaller = callback->bottom_line_subrange(45);
 	auto cont = HMCont2D::Constructor::ContourFromPoints(path, true);
-	grid.reset(new HMFem::Grid43(HMFem::AuxGrid3(cont, n, FEM_NMAX)));
-	approx = grid->GetApprox();
+	r.grid.reset(new HMFem::Grid43(HMFem::AuxGrid3.UseCallback(subcaller, cont, n, FEM_NMAX)));
+
+	callback->step_after(5, "Assembling original contour");
+	r.approx = r.grid->GetApprox();
 	//2) restore origs
-	HMCont2D::Contour c = GGeom::Info::Contour1(*grid);
-	origs = GetGridIndicies(path, c.ordered_points());
+	HMCont2D::Contour c = GGeom::Info::Contour1(*r.grid);
+	r.origs = GetGridIndicies(path, c.ordered_points());
 	//3) build orig contours
-	auto left = HMCont2D::Assembler::Contour1(c, grid->get_point(origs[0]), grid->get_point(origs[i1]));
-	auto bottom = HMCont2D::Assembler::Contour1(c, grid->get_point(origs[i1]), grid->get_point(origs[i2]));
-	auto right = HMCont2D::Assembler::Contour1(c, grid->get_point(origs[i2]), grid->get_point(origs[i3]));
-	auto top = HMCont2D::Assembler::Contour1(c, grid->get_point(origs[i3]), grid->get_point(origs[0]));
-	ileft = GetGridIndicies(left.ordered_points());
-	iright = GetGridIndicies(right.ordered_points());
-	itop = GetGridIndicies(top.ordered_points());
-	ibottom = GetGridIndicies(bottom.ordered_points());
+	auto left = HMCont2D::Assembler::Contour1(c, r.grid->get_point(r.origs[0]), r.grid->get_point(r.origs[i1]));
+	auto bottom = HMCont2D::Assembler::Contour1(c, r.grid->get_point(r.origs[i1]), r.grid->get_point(r.origs[i2]));
+	auto right = HMCont2D::Assembler::Contour1(c, r.grid->get_point(r.origs[i2]), r.grid->get_point(r.origs[i3]));
+	auto top = HMCont2D::Assembler::Contour1(c, r.grid->get_point(r.origs[i3]), r.grid->get_point(r.origs[0]));
+	r.ileft = GetGridIndicies(left.ordered_points());
+	r.iright = GetGridIndicies(right.ordered_points());
+	r.itop = GetGridIndicies(top.ordered_points());
+	r.ibottom = GetGridIndicies(bottom.ordered_points());
 }
 
-void ToRect::DoMapping(){
+void ToRect::TBuild::DoMapping(ToRect& r){
 	using namespace HMFem;
-	u.resize(grid->n_points(), 0.0);
-	v.resize(grid->n_points(), 0.0);
+	r.u.resize(r.grid->n_points(), 0.0);
+	r.v.resize(r.grid->n_points(), 0.0);
 	//1) assemble pure laplas operator
-	auto laplas = Assemble::PureLaplas(*grid);
+	callback->step_after(10, "Laplace operator");
+	auto laplas = Assemble::PureLaplas(*r.grid);
 	//2.1) Laplas problem for u
-	auto ulaplas = LaplasProblem(grid, laplas);
-	ulaplas.SetDirichlet(ExtractPoints(*grid, ileft), [](const GridPoint*){ return 0; });
-	ulaplas.SetDirichlet(ExtractPoints(*grid, iright), [](const GridPoint*){ return 1; });
-	ulaplas.Solve(u);
+	callback->step_after(10, "U-problem");
+	auto ulaplas = LaplasProblem(r.grid, laplas);
+	ulaplas.SetDirichlet(ExtractPoints(*r.grid, r.ileft), [](const GridPoint*){ return 0; });
+	ulaplas.SetDirichlet(ExtractPoints(*r.grid, r.iright), [](const GridPoint*){ return 1; });
+	ulaplas.Solve(r.u);
 	//2.2) Laplas problem for v
-	auto vlaplas = LaplasProblem(grid, laplas);
-	vlaplas.SetDirichlet(ExtractPoints(*grid, ibottom), [](const GridPoint*){ return 0; });
-	vlaplas.SetDirichlet(ExtractPoints(*grid, itop), [](const GridPoint*){ return 1; });
-	vlaplas.Solve(v);
+	callback->step_after(10, "V-problem");
+	auto vlaplas = LaplasProblem(r.grid, laplas);
+	vlaplas.SetDirichlet(ExtractPoints(*r.grid, r.ibottom), [](const GridPoint*){ return 0; });
+	vlaplas.SetDirichlet(ExtractPoints(*r.grid, r.itop), [](const GridPoint*){ return 1; });
+	vlaplas.Solve(r.v);
 
 	//3) Compute modulus
+	callback->step_after(5, "Modulus");
 	//Calculating using area integration.
 	//Taking into account 
 	//    Int(dvdn)dtop = Int (dvdn*v) dG = Int (grad v)^2 dD
-	_module = IntegralGrad2(grid, v);
+	r._module = IntegralGrad2(r.grid, r.v);
 	
 	//4) correct u according to modulus
-	for (auto& x: u) x *= _module;
+	for (auto& x: r.u) x *= r._module;
 }
 
-void ToRect::BuildInverse(){
+void ToRect::TBuild::BuildInverse(ToRect& r){
+	callback->step_after(15, "Inversion");
 	//grid
-	inv_grid.reset(new HMFem::Grid43());
-	GGeom::Modify::DeepAdd(grid.get(), inv_grid.get());
-	auto modfun = [&](GridPoint* p){
-		p->x = u[p->get_ind()];
-		p->y = v[p->get_ind()];
+	r.inv_grid.reset(new HMFem::Grid43());
+	GGeom::Modify::DeepAdd(r.grid.get(), r.inv_grid.get());
+	auto modfun = [&r](GridPoint* p){
+		p->x = r.u[p->get_ind()];
+		p->y = r.v[p->get_ind()];
 	};
-	GGeom::Modify::PointModify(*inv_grid, modfun);
+	GGeom::Modify::PointModify(*r.inv_grid, modfun);
 	//approximator
-	inv_approx = inv_grid->GetApprox();
+	r.inv_approx = r.inv_grid->GetApprox();
 	//inverse functions
-	inv_u.resize(inv_grid->n_points());
-	inv_v.resize(inv_grid->n_points());
-	for (int i=0; i<inv_u.size(); ++i){
-		inv_u[i] = grid->get_point(i)->x;
-		inv_v[i] = grid->get_point(i)->y;
+	r.inv_u.resize(r.inv_grid->n_points());
+	r.inv_v.resize(r.inv_grid->n_points());
+	for (int i=0; i<r.inv_u.size(); ++i){
+		r.inv_u[i] = r.grid->get_point(i)->x;
+		r.inv_v[i] = r.grid->get_point(i)->y;
 	}
-}
-
-shared_ptr<ToRect>
-ToRect::Build(const vector<Point>& path, int i1, int i2, int i3, const Options& opt){
-	// - calculate step size
-	//double h = HEstimate(path, opt.fem_segment_partition, opt.fem_nmax);
-	// - build mapping
-	shared_ptr<ToRect> ret(new ToRect(path, i1, i2, i3, opt));
-	// - return
-	if (ret->module() > 0) return ret;
-	else return 0;
 }
 
 vector<Point> ToRect::MapToPolygon(const vector<Point>& input) const{

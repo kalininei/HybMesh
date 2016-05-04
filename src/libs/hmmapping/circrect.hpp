@@ -11,10 +11,9 @@ namespace HMGMap{
 //hcoef - radial step near the outer side of contour will be hcoef*2*pi*rad/n;
 //hcoef = 1 gives square cells
 //hcoef < 1 gives refinement towards outer boundary
-GridGeom Circ4Prototype(Point center, double rad, int n, double a=1.0, double hcoef=1.0);
-
-GridGeom Circ4Prototype2(Point center, double rad, int n, double a=1.0, double hcoef=1.0);
-
+//algos : "linear", "laplace", "orthogonal-circ", "orthogonal-rect"
+GridGeom Circ4Prototype(Point center, double rad, int n, std::string algo,
+	double a=1.0, double hcoef=1.0);
 }
 
 #endif

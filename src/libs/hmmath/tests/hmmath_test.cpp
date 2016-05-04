@@ -110,15 +110,15 @@ void test04(){
 	//opt.fem_segment_partition = 12;
 	auto trans1 = HMMath::Conformal::Impl::ConfFem::ToRect::Build(
 			std::get<0>(inp1), sz1/4, sz1/2, 3*sz1/4, opt);
-	Point p1  = trans1->MapToRectangle1(po);
-	Point p11 = trans1->MapToPolygon1(p1);
+	Point p1  = trans1.MapToRectangle1(po);
+	Point p11 = trans1.MapToPolygon1(p1);
 
 	//fem 2
 	//opt.fem_segment_partition = 11;
 	auto trans2 = HMMath::Conformal::Impl::ConfFem::ToRect::Build(
 			std::get<0>(inp1), sz1/4, sz1/2, 3*sz1/4, opt);
-	Point p2  = trans2->MapToRectangle1(po);
-	Point p22 = trans2->MapToPolygon1(p2);
+	Point p2  = trans2.MapToRectangle1(po);
+	Point p22 = trans2.MapToPolygon1(p2);
 
 	//scpack
 	auto trans3 = HMMath::Conformal::Impl::SCPack::ToRect::Build(
@@ -127,8 +127,8 @@ void test04(){
 	Point p33 = trans3->MapToPolygon1(p3);
 
 
-	add_check(fabs(trans1->module() - 1.05)<0.02, "fem, even partition: module");
-	add_check(fabs(trans2->module() - 1.05)<0.02, "fem, odd partition: module");
+	add_check(fabs(trans1.module() - 1.05)<0.02, "fem, even partition: module");
+	add_check(fabs(trans2.module() - 1.05)<0.02, "fem, odd partition: module");
 	add_check(fabs(trans3->module() - 1.05)<0.02, "scpack: module");
 
 	add_check(po == p11, "fem, even: forward->backward");
@@ -338,7 +338,6 @@ int main(){
 	test06();
 	test07();
 	test08();
-
 
 	HMTesting::check_final_report();
 	std::cout<<"DONE"<<std::endl;

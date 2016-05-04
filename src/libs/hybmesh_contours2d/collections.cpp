@@ -1,5 +1,6 @@
-#include "collections.hpp"
 #include <fstream>
+#include <unordered_map>
+#include "collections.hpp"
 using namespace HMCont2D;
 
 ScaleBase PCollection::Scale01(PCollection& pc){
@@ -170,5 +171,26 @@ BoundingBox ECollection::BBox(const ECollection& p, double eps){
 	return ret;
 }
 
+void ECollection::ReallocatePoints(PCollection& pcol){
+	std::unordered_map<Point*, shared_ptr<Point>> inserter;
+	for (auto e: data){
+		assert(e->pstart != NULL && e->pend != NULL);
+		auto fnd1 = inserter.find(e->pstart);
+		if (fnd1 == inserter.end()){
+			auto emp = inserter.emplace(e->pstart,
+				shared_ptr<Point>(new Point(*e->pstart)));
+			fnd1 = emp.first;
+			pcol.add_value(fnd1->second);
+		}
+		auto fnd2 = inserter.find(e->pend);
+		if (fnd2 == inserter.end()){
+			auto emp = inserter.emplace(e->pend,
+				shared_ptr<Point>(new Point(*e->pend)));
+			fnd2 = emp.first;
+			pcol.add_value(fnd2->second);
+		}
 
-
+		e->pstart = fnd1->second.get();
+		e->pend = fnd2->second.get();
+	}
+}

@@ -133,28 +133,28 @@ def free_boundary_types(bt):
     libhmcport.free_grid2_boundary_types(bt)
 
 
-def custom_rectangular_grid(algo, c_left, c_bot, c_right, c_top):
-    """ algo: one of ['linear', 'conformal', 'laplas']
+def custom_rectangular_grid(algo, c_left, c_bot, c_right, c_top, cb):
+    """ algo: one of ['linear', 'inverse-laplace',
+                      'direct-laplace', 'orthogonal']
         c_*: c allocated contours.
         returns c allocated 2d grid or raises
-        if contours are not properly connected they will be moved in order:
-            1) put c_left
-            2) move c_bot to bottom left point
-            3) move c_top to top left point
-            4) move c_right to bottom right point
-            5) stretch c_right to fit top right point
-        so after procedure points coordinates of c_* data may be changed
+        After procedure points coordinates of c_* data may be changed.
     """
     if algo == 'linear':
         c_algo = ct.c_int(0)
-    elif algo == 'laplas':
+    elif algo == 'inverse-laplace':
         c_algo = ct.c_int(1)
-    elif algo == 'conformal':
+    elif algo == 'direct-laplace':
         c_algo = ct.c_int(2)
+    elif algo == 'orthogonal':
+        c_algo = ct.c_int(3)
     else:
         raise ValueError("Invalid custom rectangular grid algo")
-    res = libhmcport.custom_rectangular_grid(
-        c_algo, c_left, c_bot, c_right, c_top)
+
+    args = (c_algo, c_left, c_bot, c_right, c_top)
+    cb.initialize(libhmcport.custom_rectangular_grid, args)
+    cb.execute_command()
+    res = cb.get_result()
     if res == 0:
         raise Exception('Custom rectangular grid builder failed')
     return res
@@ -225,8 +225,14 @@ def grid_excl_cont(c_grd, c_cnt, is_inner, cb):
 
 def circ4grid(algo, c_p0, rad, step, sqrside, rcoef):
     """ -> c_grid or raise """
-    if algo == "laplas8":
+    if algo == "linear":
         c_algo = ct.c_int(0)
+    elif algo == "laplace":
+        c_algo = ct.c_int(1)
+    elif algo == "orthogonal-circ":
+        c_algo = ct.c_int(2)
+    elif algo == "orthogonal-rect":
+        c_algo = ct.c_int(3)
     else:
         raise ValueError("Unknown algorithm")
 

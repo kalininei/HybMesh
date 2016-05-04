@@ -4,13 +4,149 @@
 #include "hmfdm.hpp"
 #include "hmconformal.hpp"
 
+HMCallback::FunctionWithCallback<HMGMap::TOrthogonalRectGrid> HMGMap::OrthogonalRectGrid;
+HMCallback::FunctionWithCallback<HMGMap::TLaplaceRectGrid> HMGMap::LaplaceRectGrid;
+
 namespace{
+
+HMCont2D::Container<HMCont2D::Contour> deepcopy(const HMCont2D::Contour& cont, bool isrev){
+	vector<Point*> p1 = cont.ordered_points();
+	vector<Point> p2(p1.size());
+	for (int i=0; i<p1.size(); ++i) p2[i].set(p1[i]->x, p1[i]->y);
+	if (isrev) std::reverse(p2.begin(), p2.end());
+	return HMCont2D::Constructor::ContourFromPoints(p2);
+}
+
+bool has_self_cross(const HMCont2D::Contour& cont){
+	double ksieta[2];
+	for (int i=0; i<cont.size()-2; ++i){
+		for (int j=i+2; j<cont.size(); ++j){
+			Point& p1 = *cont.data[i]->pstart;
+			Point& p2 = *cont.data[i]->pend;
+			Point& p3 = *cont.data[j]->pstart;
+			Point& p4 = *cont.data[j]->pend;
+			SectCross(p1, p2, p3, p4, ksieta);
+			if (ksieta[0]>-geps && ksieta[0]<1+geps &&
+				ksieta[1]>-geps && ksieta[1]<1+geps) return true;
+		}
+	}
+	return false;
+}
+bool check_for_no_cross(const HMCont2D::Contour& left, const HMCont2D::Contour& bot,
+		const HMCont2D::Contour& right, const HMCont2D::Contour& top){
+	if (HMCont2D::Algos::CrossAll(left, bot).size() != 1) return false;
+	if (HMCont2D::Algos::CrossAll(left, top).size() != 1) return false;
+	if (std::get<0>(HMCont2D::Algos::Cross(left, right))) return false;
+	if (std::get<0>(HMCont2D::Algos::Cross(bot, top))) return false;
+	if (HMCont2D::Algos::CrossAll(bot, right).size() != 1) return false;
+	if (HMCont2D::Algos::CrossAll(top, right).size() != 1) return false;
+	if (has_self_cross(right)) return false;  //only right was modified pointwisely
+	return true;
+}
+
+double connect_vec_points(const vector<Point*>& left, const vector<Point*>& bot,
+		const vector<Point*>& right, const vector<Point*>& top){
+	Point bot_move=*left[0] - *bot[0];
+	for (auto p: bot) *p += bot_move;
+	Point top_move=*left.back() - *top[0];
+	for (auto p: top) *p += top_move;
+	Point right_move1 = *bot.back() - *right[0];
+	Point right_move2 = *top.back() - *right.back();
+	auto rw = HMCont2D::Contour::EWeights(HMCont2D::Constructor::ContourFromPoints(right));
+	for (int i=0; i<rw.size(); ++i){
+		*right[i] += (right_move1 * (1.0-rw[i]) + right_move2 * rw[i]);
+	}
+	return vecLen(bot_move) + vecLen(top_move) +
+		vecLen(right_move1) + vecLen(right_move2);
+}
+
+double tryopt(int opt, const HMCont2D::Contour& _left, const HMCont2D::Contour& _bot,
+		const HMCont2D::Contour& _right, const HMCont2D::Contour& _top){
+	bool left_rev = opt & 1;
+	bool right_rev = opt & 2;
+	bool top_rev = opt & 4;
+	bool bot_rev = opt & 8;
+
+	auto left = deepcopy(_left, left_rev);
+	auto right = deepcopy(_right, right_rev);
+	auto top = deepcopy(_top, top_rev);
+	auto bot = deepcopy(_bot, bot_rev);
+
+	double ret = connect_vec_points(left.ordered_points(), bot.ordered_points(),
+			right.ordered_points(), top.ordered_points());
+
+	if (check_for_no_cross(left, bot, right, top)){
+		return ret;
+	} else {
+		return -1;
+	}
+}
+
+vector<HMCont2D::Contour> modify_contours(int opt, HMCont2D::Contour& left, HMCont2D::Contour& bot,
+		HMCont2D::Contour& right, HMCont2D::Contour& top){
+	vector<Point*> leftp=left.ordered_points();
+	vector<Point*> botp=bot.ordered_points();
+	vector<Point*> rightp=right.ordered_points();
+	vector<Point*> topp = top.ordered_points();
+	if (opt & 1) std::reverse(leftp.begin(), leftp.end());
+	if (opt & 2) std::reverse(rightp.begin(), rightp.end());
+	if (opt & 4) std::reverse(topp.begin(), topp.end());
+	if (opt & 8) std::reverse(botp.begin(), botp.end());
+	connect_vec_points(leftp, botp, rightp, topp);
+	//calculate area and swap roles if needed
+	vector<Point*> closed;
+	closed.insert(closed.end(), leftp.rbegin()+1, leftp.rend());
+	closed.insert(closed.end(), botp.begin()+1, botp.end());
+	closed.insert(closed.end(), rightp.begin()+1, rightp.end());
+	closed.insert(closed.end(), topp.rbegin()+1, topp.rend());
+	double area = HMCont2D::Area(HMCont2D::Constructor::ContourFromPoints(closed, true));
+	assert(fabs(area)>geps*geps);
+
+	//assemble result
+	vector<HMCont2D::Contour> ret;
+	if (area > 0){
+		ret.push_back(HMCont2D::Constructor::ContourFromPoints(leftp));
+		ret.push_back(HMCont2D::Constructor::ContourFromPoints(botp));
+		ret.push_back(HMCont2D::Constructor::ContourFromPoints(rightp));
+		ret.push_back(HMCont2D::Constructor::ContourFromPoints(topp));
+	} else {
+		std::reverse(botp.begin(), botp.end());
+		std::reverse(topp.begin(), topp.end());
+		ret.push_back(HMCont2D::Constructor::ContourFromPoints(rightp));
+		ret.push_back(HMCont2D::Constructor::ContourFromPoints(botp));
+		ret.push_back(HMCont2D::Constructor::ContourFromPoints(leftp));
+		ret.push_back(HMCont2D::Constructor::ContourFromPoints(topp));
+	}
+	return ret;
+}
+
+vector<HMCont2D::Contour> connect_contours(HMCont2D::Contour& left, HMCont2D::Contour& bot,
+		HMCont2D::Contour& right, HMCont2D::Contour& top){
+	if (left.is_closed() || bot.is_closed() || right.is_closed() || top.is_closed())
+		throw std::runtime_error("Closed contours are not allowed");
+	if (has_self_cross(left) || has_self_cross(bot) || has_self_cross(right) || has_self_cross(top))
+		throw std::runtime_error("Contour with a self cross is not allowed");
+	std::map<double, int> allcases;
+	int best_option = -1;
+	for (int opt=0; opt<16; ++opt){
+		double ans = tryopt(opt, left, bot, right, top);
+		if (ISZERO(ans)) {best_option = opt; break;}
+		if (ans > 0) allcases[ans] = opt;
+	}
+	if (best_option < 0 && allcases.size() > 0) best_option = allcases.begin()->second;
+	if (best_option < 0) throw std::runtime_error("Failed to connect contours into quadrangle");
+
+	return modify_contours(best_option, left, bot, right, top);
+}
+
+
+/*
 struct Cont4Connection{
 	Point *l1, *l2, *r1, *r2, *t1, *t2, *b1, *b2; //ordered corner points of each contour
 	                                               //  l2 t1---t2 r2
 	                                               //  |          |
 	                                               //  |          |
-	                                               //  l1 b1---b2 r1 
+	                                               //  l1 b1---b2 r1
 	const HMCont2D::Contour *pleft, *pbot, *pright, *ptop;
 
 	Cont4Connection(HMCont2D::Contour& left, HMCont2D::Contour& bot,
@@ -119,6 +255,7 @@ Cont4Connection connect_rect_segments(HMCont2D::Contour& left, HMCont2D::Contour
 	}
 	return cn;
 }
+*/
 
 //check direction of first cell and reverse all cells if needed
 void check_direction(GridGeom& ret){
@@ -127,48 +264,51 @@ void check_direction(GridGeom& ret){
 		GGeom::Modify::CellModify(ret, [](Cell* c){
 			std::reverse(c->points.begin(), c->points.end());} );
 	}
+	if (!GGeom::Info::Check(ret)) throw HMGMap::MapException("Resulting grid is not valid");
 }
 
-
-
 }
 
-GridGeom HMGMap::LinearRectGrid(HMCont2D::Contour& left, HMCont2D::Contour& bot,
-		HMCont2D::Contour& right, HMCont2D::Contour& top){
-	int nleft = left.size();
-	int nbot = bot.size();
-	if (nleft != right.size() || nbot != top.size())
+GridGeom HMGMap::LinearRectGrid(HMCont2D::Contour& _left, HMCont2D::Contour& _bot,
+		HMCont2D::Contour& _right, HMCont2D::Contour& _top){
+	if (_left.size() != _right.size() || _bot.size() != _top.size())
 		throw std::runtime_error("right/top contours should have same number "
 				"of nodes as left/bottom for linear rectangle grid algo");
 
-	Cont4Connection cn = connect_rect_segments(left, bot, right, top);
-	//assemble ordered points for each contour and their weights
-	auto pleft = left.ordered_points();
-	auto pbot = bot.ordered_points();
-	auto pright = right.ordered_points();
-	auto ptop = top.ordered_points();
-	//reverse if needed
-	if (pleft[0] != cn.l1) std::reverse(pleft.begin(), pleft.end());
-	if (pbot[0] != cn.b1) std::reverse(pbot.begin(), pbot.end());
-	if (ptop[0] != cn.t1) std::reverse(ptop.begin(), ptop.end());
-	if (pright[0] != cn.r1) std::reverse(pright.begin(), pright.end());
+	//Cont4Connection cn = connect_rect_segments(left, bot, right, top);
+	////assemble ordered points for each contour and their weights
+	//auto pleft = left.ordered_points();
+	//auto pbot = bot.ordered_points();
+	//auto pright = right.ordered_points();
+	//auto ptop = top.ordered_points();
+	////reverse if needed
+	//if (pleft[0] != cn.l1) std::reverse(pleft.begin(), pleft.end());
+	//if (pbot[0] != cn.b1) std::reverse(pbot.begin(), pbot.end());
+	//if (ptop[0] != cn.t1) std::reverse(ptop.begin(), ptop.end());
+	//if (pright[0] != cn.r1) std::reverse(pright.begin(), pright.end());
+	auto newcont = connect_contours(_left, _bot, _right, _top);
+	auto& left = newcont[0]; auto pleft = left.ordered_points();
+	auto& bot = newcont[1]; auto pbot = bot.ordered_points();
+	auto& right = newcont[2]; auto pright = right.ordered_points();
+	auto& top = newcont[3]; auto ptop = top.ordered_points();
+
 	//build grid main grid connectivity
-	GridGeom ret = GGeom::Constructor::RectGrid01(nbot, nleft);
+	GridGeom ret = GGeom::Constructor::RectGrid01(bot.size(), left.size());
 	//shift nodes
 	auto allnodes = GGeom::Info::SharePoints(ret);
 	int k=0;
 	double ksieta[2];
-	for (int j=0; j<nleft+1; ++j){
+	for (int j=0; j<left.size()+1; ++j){
 		Point* lp = pleft[j];
 		Point* rp = pright[j];
-		for (int i=0; i<nbot+1; ++i){
+		for (int i=0; i<bot.size()+1; ++i){
 			Point* tp = ptop[i];
 			Point* bp = pbot[i];
 			Point* p = allnodes[k++].get();
 			if (i == 0) *p = *lp;
-			else if (i == nbot) *p = *rp;
+			else if (i == bot.size()) *p = *rp;
 			else if (j == 0) *p = *bp;
-			else if (j == nleft) *p = *tp;
+			else if (j == left.size()) *p = *tp;
 			else{
 				bool iscr = SectCross(*lp, *rp, *bp, *tp, ksieta);
 				if (!iscr) throw std::runtime_error("failed to find section cross");
@@ -177,34 +317,52 @@ GridGeom HMGMap::LinearRectGrid(HMCont2D::Contour& left, HMCont2D::Contour& bot,
 
 		}
 	}
-
 	check_direction(ret);
 	return ret;
 }
 
-GridGeom HMGMap::OrthogonalRectGrid(HMCont2D::Contour& _left, HMCont2D::Contour& _bot,
+GridGeom HMGMap::TOrthogonalRectGrid::_run(HMCont2D::Contour& _left, HMCont2D::Contour& _bot,
 		HMCont2D::Contour& _right, HMCont2D::Contour& _top){
-	Cont4Connection cn = connect_rect_segments(_left, _bot, _right, _top);
-	HMCont2D::Contour left = cn.directed_left();
-	HMCont2D::Contour bot = cn.directed_bot();
-	HMCont2D::Contour right = cn.directed_right();
-	HMCont2D::Contour top = cn.directed_top();
+	callback->step_after(5, "Connect contours");
+	//Cont4Connection cn = connect_rect_segments(_left, _bot, _right, _top);
+	//HMCont2D::Contour left = cn.directed_left();
+	//HMCont2D::Contour bot = cn.directed_bot();
+	//HMCont2D::Contour right = cn.directed_right();
+	//HMCont2D::Contour top = cn.directed_top();
+	auto conres = connect_contours(_left, _bot, _right, _top);
+	auto& left = conres[0];
+	auto& bot = conres[1];
+	auto& right = conres[2];
+	auto& top = conres[3];
+
+	//previous procedure can swap left/right contours.
+	//We use input left as a source, so we need to know whether the swap occured.
+	bool left_basic = (left.first() == _left.first() ||
+			   left.first() == _left.last());
+
+	auto subcaller = callback->bottom_line_subrange(80);
 	HMMath::Conformal::Options opt;
 	opt.use_scpack = false;
 	opt.use_rect_approx = false;
 	opt.fem_nrec = std::max(std::min(10000, left.size()*right.size()*2), 500);
-	auto cmap = HMMath::Conformal::Rect::Factory(left, right, bot, top, opt);
+	auto cmap = HMMath::Conformal::BuildRect.UseCallback(subcaller,
+			left, right, bot, top, opt);
 	GridGeom ret = GGeom::Constructor::RectGrid01(bot.size(), left.size());
+
 	//grid to conformal rectangle
+	callback->step_after(10, "Map grid", 2, 1);
 	vector<Point> xpts = cmap->MapToRectangle(bot.ordered_points());
-	vector<Point> ypts = cmap->MapToRectangle(left.ordered_points());
+	vector<Point> ypts = left_basic ? cmap->MapToRectangle(left.ordered_points())
+	                                : cmap->MapToRectangle(right.ordered_points());
 	auto to_conf = [&xpts, &ypts, &bot](GridPoint* p){
 		int i = p->get_ind() % (bot.size() + 1);
 		int j = p->get_ind() / (bot.size() + 1);
 		p->set(xpts[i].x, ypts[j].y);
 	};
 	GGeom::Modify::PointModify(ret, to_conf);
+
 	//grid to physical domain
+	callback->subprocess_step_after(1);
 	vector<Point> gpnt(ret.n_points());
 	for (int i=0; i<ret.n_points(); ++i) gpnt[i] = *ret.get_point(i);
 	vector<Point> physpnt = cmap->MapToPolygon(gpnt);
@@ -212,106 +370,24 @@ GridGeom HMGMap::OrthogonalRectGrid(HMCont2D::Contour& _left, HMCont2D::Contour&
 			Point& pp = physpnt[p->get_ind()];
 			p->set(pp.x, pp.y);
 	});
+
+	callback->step_after(5, "Grid check");
+	check_direction(ret);
 	return ret;
 }
 
-GridGeom HMGMap::LaplasRectGrid(HMCont2D::Contour& left, HMCont2D::Contour& bot,
-		HMCont2D::Contour& right, HMCont2D::Contour& top){
-	Cont4Connection cn = connect_rect_segments(left, bot, right, top);
-
-	// --- prepare for map grid invoke
-	//weights and ordered points
-	auto rev_if_needed = [](HMCont2D::Contour& cont, Point* p0, vector<Point*>& op, vector<double>& w){
-		if (cont.first() != p0){
-			std::reverse(op.begin(), op.end());
-			for (auto& v: w) v = 1 - v;
-			std::reverse(w.begin(), w.end());
-		}
-	};
-	auto left_points = left.ordered_points(); auto left_w = HMCont2D::Contour::EWeights(left);
-	auto right_points = right.ordered_points(); auto right_w = HMCont2D::Contour::EWeights(right);
-	auto top_points = top.ordered_points(); auto top_w = HMCont2D::Contour::EWeights(top);
-	auto bottom_points = bot.ordered_points(); auto bottom_w = HMCont2D::Contour::EWeights(bot);
-	rev_if_needed(left, cn.l1, left_points, left_w);
-	rev_if_needed(right, cn.r1, right_points, right_w);
-	rev_if_needed(top, cn.t1, top_points, top_w);
-	rev_if_needed(bot, cn.b1, bottom_points, bottom_w);
-
-	// --- assemble ecollection from input contours
-	HMCont2D::ECollection ecol1, ecol2, ecol3, ecol4;
-	HMCont2D::ECollection::DeepCopy(left, ecol1);
-	HMCont2D::ECollection::DeepCopy(bot, ecol2);
-	HMCont2D::ECollection::DeepCopy(right, ecol3);
-	HMCont2D::ECollection::DeepCopy(top, ecol4);
-
-	// --- change b1->l1; t1->l2; r1->b2; r2->t2
-	auto change_end_points = [](Point* from, Point* to, HMCont2D::ECollection& ecol){
-		if (ecol.data[0]->pstart == from) ecol.data[0]->pstart = to;
-		else if (ecol.data[0]->pend == from) ecol.data[0]->pend = to;
-		else if (ecol.data.back()->pstart == from) ecol.data.back()->pend = to;
-		else if (ecol.data.back()->pend == from) ecol.data.back()->pend = to;
-		else assert(false);
-	};
-	change_end_points(cn.b1, cn.l1, ecol2);
-	change_end_points(cn.t1, cn.l2, ecol4);
-	change_end_points(cn.r1, cn.b2, ecol3);
-	change_end_points(cn.r2, cn.t2, ecol3);
-
-	// --- gather all collection in one
-	HMCont2D::ECollection ecol;
-	ecol.Unite(ecol1);
-	ecol.Unite(ecol2);
-	ecol.Unite(ecol3);
-	ecol.Unite(ecol4);
-
-	//basic rectangle grid grid
-	int nleft = left.size();
-	int nbot = bot.size();
-	if (nleft != right.size() || nbot != top.size())
-		throw std::runtime_error("right/top contours should have same number "
-				"of nodes as left/bottom for laplas rectangle grid algo");
-	//create rectangle of four lines with each lines partition equals input data
-	vector<Point> left_aux, bot_aux, right_aux, top_aux;
-	for (int i=0; i < nleft+1; ++i){
-		left_aux.push_back(Point(0, left_w[i]));
-		right_aux.push_back(Point(1, right_w[i]));
-	}
-	for (int i=0; i < nbot+1; ++i){
-		bot_aux.push_back(Point(bottom_w[i], 0));
-		top_aux.push_back(Point(top_w[i], 1));
-	}
-	auto cleft_aux = HMCont2D::Constructor::ContourFromPoints(left_aux);
-	auto cbot_aux = HMCont2D::Constructor::ContourFromPoints(bot_aux);
-	auto cright_aux = HMCont2D::Constructor::ContourFromPoints(right_aux);
-	auto ctop_aux = HMCont2D::Constructor::ContourFromPoints(top_aux);
-	GridGeom rg = LinearRectGrid(cleft_aux, cbot_aux, cright_aux, ctop_aux);
-	
-	//points mappints
-	vector<Point> base_points, mapped_points;
-	for (int i=0; i<left_points.size(); ++i){
-		mapped_points.push_back(*left_points[i]);
-		base_points.push_back(*rg.get_point((nbot+1) * i));
-		mapped_points.push_back(*right_points[i]);
-		base_points.push_back(*rg.get_point((nbot+1) * i + nbot));
-	}
-	for (int i=0; i<bottom_points.size(); ++i){
-		mapped_points.push_back(*bottom_points[i]);
-		base_points.push_back(*rg.get_point(i));
-		mapped_points.push_back(*top_points[i]);
-		base_points.push_back(*rg.get_point(nleft*(nbot+1) + i));
-	}
-
-	//calculate
-	return HMGMap::MapGrid(rg, ecol, base_points, mapped_points, HMGMap::Options("direct-laplace"));
-}
-
-GridGeom HMGMap::FDMLaplasRectGrid(HMCont2D::Contour& left, HMCont2D::Contour& bot,
-	HMCont2D::Contour& right, HMCont2D::Contour& top){
-	if (left.size() != right.size() || bot.size() != top.size())
+GridGeom HMGMap::FDMLaplasRectGrid(HMCont2D::Contour& _left, HMCont2D::Contour& _bot,
+	HMCont2D::Contour& _right, HMCont2D::Contour& _top){
+	if (_left.size() != _right.size() || _bot.size() != _top.size())
 		throw std::runtime_error("right/top contours should have same number "
 				"of nodes as left/bottom for laplas rectangle grid algo");
 
-	Cont4Connection cn = connect_rect_segments(left, bot, right, top);
+	//Cont4Connection cn = connect_rect_segments(left, bot, right, top);
+	auto conres = connect_contours(_left, _bot, _right, _top);
+	auto& left = conres[0];
+	auto& bot = conres[1];
+	auto& right = conres[2];
+	auto& top = conres[3];
 
 	//assembling fdm grid
 	vector<double> x(top.size()+1, 0);
@@ -363,7 +439,82 @@ GridGeom HMGMap::FDMLaplasRectGrid(HMCont2D::Contour& left, HMCont2D::Contour& b
 				p->x = xcoords[p->get_ind()];
 				p->y = ycoords[p->get_ind()];
 			});
-	
+
 	check_direction(ret);
 	return ret;
+}
+
+GridGeom HMGMap::TLaplaceRectGrid::_run(HMCont2D::Contour& left, HMCont2D::Contour& bot,
+		HMCont2D::Contour& right, HMCont2D::Contour& top, std::string algo){
+	if (left.size() != right.size() || bot.size() != top.size())
+		throw std::runtime_error("right/top contours should have same number "
+				"of nodes as left/bottom for laplace rectangle grid algo");
+	callback->step_after(5, "Connect contours");
+
+	//Cont4Connection cn = connect_rect_segments(left, bot, right, top);
+	//auto left1 = cn.directed_left();
+	//auto top1 = cn.directed_top();
+	//auto bot1 = cn.directed_bot();
+	//auto right1 = cn.directed_right();
+
+	auto conres = connect_contours(left, bot, right, top);
+	auto& left1 = conres[0];
+	auto& bot1 = conres[1];
+	auto& right1 = conres[2];
+	auto& top1 = conres[3];
+
+	//enclose
+	top1.data[0]->pstart = left1.data.back()->pend;
+	bot1.data[0]->pstart = left1.data[0]->pstart;
+	right1.data[0]->pstart = bot1.data.back()->pend;
+	right1.data.back()->pend = top1.data.back()->pend;
+
+	//build base grid
+	callback->step_after(5, "Assemble base grid");
+	auto weight_contour = [](const HMCont2D::Contour& icont, bool vert, bool plus_one){
+		vector<double> w = HMCont2D::Contour::EWeights(icont);
+		vector<Point> pp; pp.reserve(w.size());
+		for (auto it: w) pp.push_back(Point(it, 0));
+		if (plus_one) for (auto& p: pp) p.y+=1;
+		if (vert) for (auto& p: pp) std::swap(p.x, p.y);
+		return HMCont2D::Constructor::ContourFromPoints(pp);
+	};
+	auto rectleft = weight_contour(left1, true, false);
+	auto rectright = weight_contour(right1, true, true);
+	auto rectbot = weight_contour(bot1, false, false);
+	auto recttop = weight_contour(top1, false, true);
+	GridGeom base = HMGMap::LinearRectGrid(rectleft, rectbot, rectright, recttop);
+
+	//map grid base and mapped points
+	callback->step_after(10, "Boundary mapping");
+	vector<Point> base_pnt;
+	vector<Point> mapped_pnt;
+	auto add_point_map = [&base_pnt, &mapped_pnt](
+			const HMCont2D::Contour& bcont,
+			const HMCont2D::Contour& mcont){
+		auto v1 = bcont.ordered_points(), v2 = mcont.ordered_points();
+		for (int i=0; i<v1.size(); ++i){
+			base_pnt.push_back(*v1[i]);
+			mapped_pnt.push_back(*v2[i]);
+		}
+	};
+	add_point_map(rectleft, left1);
+	add_point_map(rectright, right1);
+	add_point_map(rectbot, bot1);
+	add_point_map(recttop, top1);
+
+	//area building
+	HMCont2D::ECollection ecol;
+	ecol.Unite(left1);
+	ecol.Unite(right1);
+	ecol.Unite(top1);
+	ecol.Unite(bot1);
+
+	//options
+	HMGMap::Options opt(algo);
+	opt.fem_nrec = 1.5*(left1.size()+1)*(bot1.size()+1);
+
+	//calculate
+	auto subcaller = callback->bottom_line_subrange(80);
+	return HMGMap::MapGrid.UseCallback(subcaller, base, ecol, base_pnt, mapped_pnt, opt);
 }

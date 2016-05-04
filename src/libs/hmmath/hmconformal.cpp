@@ -102,8 +102,9 @@ shared_ptr<Rect> Rect::Factory(
 	shared_ptr<Rect> ret;
 	//check if we can use rectangle approximation
 	//without building conformal mapping
-	if (opt.CanUseRectApprox(path, i1, i2, i3))
+	if (opt.CanUseRectApprox(path, i1, i2, i3)){
 		ret = Impl::RectApprox::Build(path, i1, i2, i3);
+	}
 	if (ret) return ret;
 	
 	//So we can not. 
@@ -127,8 +128,8 @@ shared_ptr<Rect> Rect::Factory(
 */
 	
 	//The only chance left is a direct fem solution
-	//of the Laplas problem
-	ret = Impl::ConfFem::ToRect::Build(path, i1, i2, i3, opt);
+	//of the Laplace problem
+	ret = std::make_shared<Impl::ConfFem::ToRect>(Impl::ConfFem::ToRect::Build(path, i1, i2, i3, opt));
 
 	if (!ret) throw std::runtime_error("Failed to build mapping to rectangle");
 
@@ -186,6 +187,46 @@ Rect::FactoryInput(const HMCont2D::Contour& cont, const std::array<int,4>& a){
 	}
 
 	return ret;
+}
+
+HMCallback::FunctionWithCallback<HMMath::Conformal::TBuildRect> HMMath::Conformal::BuildRect;
+shared_ptr<Rect> TBuildRect::_run(const HMCont2D::Contour& left,
+		const HMCont2D::Contour& right,
+		const HMCont2D::Contour& bot,
+		const HMCont2D::Contour& top,
+			const Options& opt){
+	callback->step_after(5, "Sorting input");
+	auto inp = Rect::FactoryInput(left, right, bot, top);
+	auto& _path = std::get<0>(inp);
+	auto& corners = std::get<1>(inp);
+	//rebuild path so that corners[0] = 0;
+	vector<Point> path(_path);
+	std::rotate(path.begin(), path.begin() + corners[0], path.end());
+	int i1 = corners[1] - corners[0]; if (i1<0) i1+=path.size();
+	int i2 = corners[2] - corners[0]; if (i2<0) i2+=path.size();
+	int i3 = corners[3] - corners[0]; if (i3<0) i3+=path.size();
+
+	callback->step_after(5, "Trying approximations");
+	shared_ptr<Rect> ret;
+	//check if we can use rectangle approximation
+	//without building conformal mapping
+	if (opt.CanUseRectApprox(path, i1, i2, i3)){
+		ret = Impl::RectApprox::Build(path, i1, i2, i3);
+	}
+	if (ret) return ret;
+	
+	//So we can not. 
+	//Lets check if polygon is not
+	//too oblong and we can use SCPACK routines
+	if (opt.CanUseSCPACK(path, i1, i2, i3)){
+		ret = Impl::SCPack::ToRect::Build(path, i1, i2, i3);
+	}
+	if (ret && std::max(ret->module(), 1.0/ret->module()) < opt.scpack_ratio_limit) return ret;
+	
+	//numerical solution of the Laplace problem
+	auto subcaller = callback->bottom_line_subrange(90);
+	return std::make_shared<Impl::ConfFem::ToRect>(
+		Impl::ConfFem::ToRect::Build.UseCallback(subcaller, path, i1, i2, i3, opt));
 }
 
 shared_ptr<Impl::RectApprox>

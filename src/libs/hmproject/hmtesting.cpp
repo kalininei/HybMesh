@@ -129,3 +129,9 @@ void HMTesting::add_file_check(size_t hash, std::string fn, std::string info){
 		std::cout<<"\t\tinput file hash   = "<<hash<<std::endl;
 	}
 }
+
+void HMTesting::add_file_check(std::string f1, std::string f2, std::string info){
+	size_t h1 = calculate_file_hash(f1);
+	size_t h2 = calculate_file_hash(f2);
+	add_check(h1 == h2, info);
+}

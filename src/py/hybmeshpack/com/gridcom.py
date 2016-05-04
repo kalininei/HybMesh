@@ -70,6 +70,8 @@ class AddCustomRectGrid(NewGridCommand):
     def _build_grid(self):
         from unite_grids import add_bc_from_cont
         so = self.options
+        # callback
+        cb = self.ask_for_callback()
         # declare all c variables as 0 to invoke memory free at exit
         c_left, c_bot, c_right, c_top, c_ret, c_retcont =\
             0, 0, 0, 0, 0, 0
@@ -92,7 +94,7 @@ class AddCustomRectGrid(NewGridCommand):
 
             # call c procedure
             c_ret = g2core.custom_rectangular_grid(
-                so['algo'], c_left, c_bot, c_right, c_top)
+                so['algo'], c_left, c_bot, c_right, c_top, cb)
 
             # build grid
             ret = g2core.grid_from_c(c_ret)
@@ -101,7 +103,7 @@ class AddCustomRectGrid(NewGridCommand):
             c_retcont = c2core.cont2_to_c(retcont)
 
             # boundary types
-            # use c_* contours as sources sinces they were changed
+            # use c_* contours as sources since they were changed
             # in custom_rectangular_grid procedure to fit resulting grid
             # boundary
             add_bc_from_cont(retcont, left, c_retcont, c_left, force=2)

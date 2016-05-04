@@ -130,34 +130,55 @@ check(hm.info_contour(g1)['btypes'] == {1: 5, 2: 45, 3: 45, 7: 5})
 
 print "laplace rectangular grid with linear input"
 g1 = hm.add_custom_rect_grid(
-    "laplas",
+    "inverse-laplace",
     left_line_part, bottom_line_part,
     right_line_part, top_line_part)
 check(hm.info_contour(g1)['btypes'] == {1: 5, 2: 45, 3: 45, 4: 5})
 
-# print "laplas with sined upper"
-# pts = []
-# for i in range(100):
-#     x = 2 * float(i) / 99
-#     y = 1 + 0.1 * math.sin(8.0 * math.pi * i / 99) - 0.1 * x
-#     pts.append([x, y])
-# top_line2 = hm.create_contour(pts, 8)
-# top_line_part2 = hm.partition_contour(
-#     top_line2, "ref_points",
-#     [0.005, [0, 1], 0.23, [2, 1]]
-# )
-# left_line_part = hm.partition_contour(left_line, "const", 0.05)
-# g1 = hm.add_custom_rect_grid(
-#     "laplas",
-#     left_line_part, bottom_line_part,
-#     None, top_line_part2)
+print "laplace with sined upper"
+pts = []
+for i in range(100):
+    x = 2 * float(i) / 99
+    y = 1 + 0.1 * math.sin(8.0 * math.pi * i / 99) - 0.1 * x
+    pts.append([x, y])
+top_line2 = hm.create_contour(pts, 8)
+top_line_part2 = hm.partition_contour(
+    top_line2, "ref_points",
+    [0.005, [0, 1], 0.23, [2, 1]]
+)
+left_line_part = hm.partition_contour(left_line, "const", 0.05)
+g1 = hm.add_custom_rect_grid(
+    "inverse-laplace",
+    left_line_part, bottom_line_part,
+    None, top_line_part2)
+hm.export_grid_vtk(g1, "g1.vtk")
+check_ascii_file(3760527376004093232, "g1.vtk")
+check(hm.info_contour(g1)['btypes'] == {8: 45, 1: 40, 2: 45})
 
+g1 = hm.add_custom_rect_grid(
+    "orthogonal",
+    top_line_part2, left_line_part, bottom_line_part, None)
+hm.export_grid_vtk(g1, "g1.vtk")
+check_ascii_file(8210849007429468971, "g1.vtk")
+check(hm.info_contour(g1)['btypes'] == {8: 45, 1: 40, 2: 45})
 
-# hm.export_grid_vtk(g1, "g1.vtk")
-# hm.export_contour_vtk(g1, "c1.vtk")
+left_line_part2 = hm.partition_contour(
+    left_line, "ref_points",
+    [0.1, [0, 1], 0.01, [0, 0.5], 0.1, [0, 0]])
+g1 = hm.add_custom_rect_grid(
+    "direct-laplace",
+    top_line_part2, left_line_part2, None, None)
+hm.export_grid_vtk(g1, "g1.vtk")
+check_ascii_file(11365382636530409072, "g1.vtk")
+check(hm.info_contour(g1)['btypes'] == {8: 90, 1: 52})
 
+hm.export_grid_vtk(g1, "g1.vtk")
+hm.export_contour_vtk(g1, "c1.vtk")
 
 print "circ4grid"
-g1 = hm.add_circ_rect_grid([10, 10], 10, 1)
+g1 = hm.add_circ_rect_grid([10, 10], 10, 1, algo="laplace")
 hm.export_grid_vtk(g1, "g1.vtk")
 check_ascii_file(11741953394189746279, "g1.vtk")
+g1 = hm.add_circ_rect_grid([10, 10], 10, 1, algo="orthogonal-circ")
+hm.export_grid_vtk(g1, "g1.vtk")
+check_ascii_file(13550186317358967162, "g1.vtk")

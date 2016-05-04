@@ -239,6 +239,8 @@ struct ECollection: public Tpp::Collection<Edge>{
 
 	vector<Point*> all_points() const;
 
+	void ReallocatePoints(PCollection& pcol);
+
 	//Methods
 	static void SaveVtk(const ECollection& dt, const char* fn);
 	//pointer to closest point

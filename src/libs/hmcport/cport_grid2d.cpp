@@ -111,7 +111,8 @@ int export_tecplot_grid(const Grid* grid, const char* fname,
 	}
 }
 
-void* custom_rectangular_grid(int algo, void* left, void* bot, void* right, void* top){
+void* custom_rectangular_grid(int algo, void* left, void* bot,
+		void* right, void* top, hmcport_callback cb){
 	//gather data
 	HMCont2D::Contour* left1 = static_cast<HMCont2D::Contour*>(left);
 	HMCont2D::Contour* bot1 = static_cast<HMCont2D::Contour*>(bot);
@@ -128,9 +129,14 @@ void* custom_rectangular_grid(int algo, void* left, void* bot, void* right, void
 		if (algo == 0){
 			ret = new GridGeom(HMGMap::LinearRectGrid(*left1, *bot1, *right1, *top1));
 		} else if (algo == 1){
-			ret = new GridGeom(HMGMap::LaplasRectGrid(*left1, *bot1, *right1, *top1));
+			ret = new GridGeom(HMGMap::LaplaceRectGrid.WithCallback(
+				cb, *left1, *bot1, *right1, *top1, "inverse-laplace"));
 		} else if (algo == 2){
-			ret = new GridGeom(HMGMap::OrthogonalRectGrid(*left1, *bot1, *right1, *top1));
+			ret = new GridGeom(HMGMap::LaplaceRectGrid.WithCallback(
+				cb, *left1, *bot1, *right1, *top1, "direct-laplace"));
+		} else if (algo == 3){
+			ret = new GridGeom(HMGMap::OrthogonalRectGrid.WithCallback(
+				cb, *left1, *bot1, *right1, *top1));
 		} else throw std::runtime_error("unknown algorithm");
 		ret->undo_scale(sc);
 	} catch (std::runtime_error &e){
@@ -150,14 +156,16 @@ Grid* circ4grid(int algo, double* center, double rad, double step, double sqrsid
 	try{
 		double n = 2*M_PI*rad/step;
 		int n1 = round(n/8.0);
+		std::string stralgo;
 		switch (algo){
-			case 0:
-				ret = new GridGeom(HMGMap::Circ4Prototype(Point(0, 0), 1.0, 8*n1, sqrside,
-					outer_refinement));
-				break;
-			default:
-				throw std::runtime_error("unknown algorithm");
+			case 0: stralgo="linear"; break;
+			case 1: stralgo="laplace"; break;
+			case 2: stralgo="orthogonal-circ"; break;
+			case 3: stralgo="orthogonal-rect"; break;
+			default: throw std::runtime_error("unknown algorithm");
 		};
+		ret = new GridGeom(HMGMap::Circ4Prototype(Point(0, 0), 1.0, 8*n1,
+			stralgo, sqrside, outer_refinement));
 		//unscale
 		ScaleBase sc(center[0], center[1], rad);
 		ret->undo_scale(sc);

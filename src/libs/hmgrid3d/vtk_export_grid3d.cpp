@@ -173,15 +173,15 @@ vector< vtkcell_expression > cell_assembler(const SGrid& ser,
 }
 
 void hme::TGridVTK::_run(const SGrid& ser, std::string fn){
-	callback.step_after(20, "Assembling faces");
+	callback->step_after(20, "Assembling faces");
 	vector<vector<int>> aface = ser.face_vertex();
 
-	callback.step_after(20, "Assembling cells");
+	callback->step_after(20, "Assembling cells");
 	vector< vtkcell_expression > vtkcell = cell_assembler(ser, aface);
 	int nffull = std::accumulate(vtkcell.begin(), vtkcell.end(), 0, 
 			[](int s, const vtkcell_expression& v){ return s + v.wsize(); });
 
-	callback.silent_step_after(40, "Writing to file", 2, 0);
+	callback->silent_step_after(40, "Writing to file", 2, 0);
 	//write to file:
 	//header
 	std::ofstream fs(fn);
@@ -190,14 +190,14 @@ void hme::TGridVTK::_run(const SGrid& ser, std::string fn){
 	fs<<"ASCII"<<std::endl;
 
 	//Points
-	callback.subprocess_step_after(1);
+	callback->subprocess_step_after(1);
 	fs<<"DATASET UNSTRUCTURED_GRID"<<std::endl;
 	fs<<"POINTS "<<ser.n_vert<< " float"<<std::endl;
 	for (int i=0; i<3*ser.n_vert; i+=3)
 		fs<<ser.vert[i]<<" "<<ser.vert[i+1]<<" "<<ser.vert[i+2]<<std::endl;
 
 	//Cells
-	callback.subprocess_step_after(1);
+	callback->subprocess_step_after(1);
 	fs<<"CELLS  "<<vtkcell.size()<<"   "<<nffull<<std::endl;
 	for (auto& f: vtkcell) fs<<f.to_string()<<std::endl;
 	fs<<"CELL_TYPES  "<<vtkcell.size()<<std::endl;
@@ -344,25 +344,25 @@ struct bnd_face_data{
 
 void hme::TBoundaryVTK::_run(const SGrid& ser, std::string fn){
 	bnd_face_data fdata(ser);
-	callback.step_after(20, "Extract boundary", 4, 1);
+	callback->step_after(20, "Extract boundary", 4, 1);
 	fdata.n1_extract_bfaces();
 	fdata.n11_extract_boundaries();
 
-	callback.subprocess_step_after(2);
+	callback->subprocess_step_after(2);
 	fdata.n12_assemble_gfv();
 	fdata.n2_extract_bvert();
 
-	callback.subprocess_step_after(1);
+	callback->subprocess_step_after(1);
 	fdata.n3_extract_bcells();
-	callback.subprocess_fin();
+	callback->subprocess_fin();
 
-	callback.step_after(10, "Renumber vertices");
+	callback->step_after(10, "Renumber vertices");
 	fdata.n4_vertices_raw();
 
-	callback.step_after(10, "Assemble faces");
+	callback->step_after(10, "Assemble faces");
 	fdata.n5_faces_raw();
 
-	callback.silent_step_after(10, "Write to file", 3);
+	callback->silent_step_after(10, "Write to file", 3);
 	//write to file:
 	//header
 	std::ofstream fs(fn);
@@ -371,15 +371,15 @@ void hme::TBoundaryVTK::_run(const SGrid& ser, std::string fn){
 	fs<<"ASCII"<<std::endl;
 
 	//points
-	callback.subprocess_step_after(1);
+	callback->subprocess_step_after(1);
 	fdata.write_points(fs);
 
 	//faces
-	callback.subprocess_step_after(1);
+	callback->subprocess_step_after(1);
 	fdata.write_faces(fs);
 
 	//additional info
-	callback.subprocess_step_after(1);
+	callback->subprocess_step_after(1);
 	fs<<"POINT_DATA"<<" "<<fdata.n_vert()<<std::endl;
 	fdata.write_array(fs, fdata.vindices, "vertex_global_indices");
 	fs<<"CELL_DATA"<<" "<<fdata.n_faces()<<std::endl;
@@ -391,6 +391,6 @@ void hme::TBoundaryVTK::_run(const SGrid& ser, std::string fn){
 }
 
 void hme::TAllVTK::_run(const SGrid& g, std::string fngrid, std::string fnbnd){
-	GridVTK.MoveCallback(callback, g, fngrid);
-	BoundaryVTK.MoveCallback(callback, g, fnbnd);
+	GridVTK.MoveCallback(*callback, g, fngrid);
+	BoundaryVTK.MoveCallback(*callback, g, fnbnd);
 }

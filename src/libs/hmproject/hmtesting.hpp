@@ -13,6 +13,9 @@ namespace HMTesting{
 	//compares file with given hash value with floats rounding
 	void add_file_check(size_t hash, std::string fn, std::string info);
 
+	//compares two files
+	void add_file_check(std::string fn1, std::string fn2, std::string info);
+
 	//calculate ascii file content hash with float rounding
 	size_t calculate_file_hash(std::string fn);
 

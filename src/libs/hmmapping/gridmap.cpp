@@ -25,7 +25,7 @@ GridGeom HMGMap::TMapGrid::_run(const GridGeom& base,
 		vector<Point> mapped_points,
 		Options opt){
 	//1) scale
-	callback.step_after(5, "Initializing");
+	callback->step_after(5, "Initializing");
 	ScaleBase bscale, cscale;
 	GridGeom g = scale_base_grid(base, bscale);
 	HMCont2D::Container<HMCont2D::ECollection> c = scale_mapped_domain(area, cscale);
@@ -44,9 +44,9 @@ GridGeom HMGMap::TMapGrid::_run(const GridGeom& base,
 	dm->set_contour(c);
 	dm->set_points(base_points, mapped_points);
 	//3) build
-	GridGeom ret = dm->run(callback);
+	GridGeom ret = dm->run(*callback);
 	//4) unscale and return
-	callback.step_after(5, "Finilizing");
+	callback->step_after(5, "Finilizing");
 	ret.undo_scale(cscale);
 	return ret;
 }

@@ -96,7 +96,7 @@ void write_row_n(std::ostream& str, Func&& fun, const vector<V>& vals){
 };
 
 void hme::TGridTecplot::_run(const SGrid& ser, std::string fn, BFun bnames){
-	callback.step_after(30, "Assembling connectivity");
+	callback->step_after(30, "Assembling connectivity");
 	//face->nodes connectivity
 	vector<vector<int>> face_nodes = ser.face_vertex();
 	//total face connectivity
@@ -126,20 +126,20 @@ void hme::TGridTecplot::_run(const SGrid& ser, std::string fn, BFun bnames){
 		}
 	}
 	//serializing surfaces
-	callback.silent_step_after(20, "Serialize surfaces", surfaces_geom.size());
+	callback->silent_step_after(20, "Serialize surfaces", surfaces_geom.size());
 	std::map<int, SurfSerial> surfaces; 
 	{
 		auto _indexer = aa::ptr_container_indexer(ser.vvert);
 		_indexer.convert();
 		for (auto& m: surfaces_geom){
-			callback.subprocess_step_after(1);
+			callback->subprocess_step_after(1);
 			surfaces.emplace(m.first, SurfSerial(m.second, _indexer));
 		}
 		_indexer.restore();
 	}
 
 	// ====== write to file:
-	callback.silent_step_after(30, "Write to file", 10);
+	callback->silent_step_after(30, "Write to file", 10);
 	std::ofstream of(fn);
 	of.precision(10);
 	//====== main header
@@ -154,27 +154,27 @@ void hme::TGridTecplot::_run(const SGrid& ser, std::string fn, BFun bnames){
 	of<<"TotalNumFaceNodes="<<totalfn<<std::endl;
 	of<<"NumConnectedBoundaryFaces=0, TotalNumBoundaryConnections=0"<<std::endl;
 	//points
-	callback.subprocess_step_after(3);
+	callback->subprocess_step_after(3);
 	write_row_n<3, 0, 20>(of, [](double v){ return v; }, ser.vert);
 	write_row_n<3, 1, 20>(of, [](double v){ return v; }, ser.vert);
 	write_row_n<3, 2, 20>(of, [](double v){ return v; }, ser.vert);
 	//face dims
-	callback.subprocess_step_after(1);
+	callback->subprocess_step_after(1);
 	//for (int i=0; i<face_nodes.size(); ++i) of<<face_nodes[i].size()<<std::endl;
 	write_row_n<1, 0, 20>(of, [](const vector<int>& v){ return v.size(); }, face_nodes);
 	//face->nodes
-	callback.subprocess_step_after(3);
+	callback->subprocess_step_after(3);
 	for (int i=0; i<face_nodes.size(); ++i){
 		for (int j=0; j<face_nodes[i].size(); ++j) of<<face_nodes[i][j]+1<<" ";
 		of<<std::endl;
 	}
 	//face left/right cells
-	callback.subprocess_step_after(2);
+	callback->subprocess_step_after(1);
 	write_row_n<1, 0, 20>(of, [](const int& v){ return v + 1; }, left_cells);
 	write_row_n<1, 0, 20>(of, [](const int& v){ return v + 1; }, right_cells);
 
 	//====== boundary surfaces
-	callback.subprocess_step_after(4);
+	callback->subprocess_step_after(3);
 	for (auto& s: surfaces){
 		std::string name = bnames(s.first); 
 		of<<"ZONE T=\""<<name<<"\""<<std::endl;
@@ -197,7 +197,7 @@ void hme::TGridTecplot::_run(const SGrid& ser, std::string fn, BFun bnames){
 
 
 void hme::TBoundaryTecplot::_run(const SGrid& g, std::string fn, BFun bnames){
-	callback.step_after(30, "Assembling Surfaces");
+	callback->step_after(30, "Assembling Surfaces");
 	ShpVector<Face> af = g.vfaces;
 	//assembling surfaces
 	std::map<int, HMGrid3D::Surface> surfaces_geom; 
@@ -212,11 +212,11 @@ void hme::TBoundaryTecplot::_run(const SGrid& g, std::string fn, BFun bnames){
 		}
 	}
 	//serializing surfaces
-	callback.silent_step_after(20, "Serialize surfaces", surfaces_geom.size());
+	callback->silent_step_after(20, "Serialize surfaces", surfaces_geom.size());
 	std::map<int, SurfSerial> surfaces; 
 	{
 		for (auto& m: surfaces_geom){
-			callback.subprocess_step_after(1);
+			callback->subprocess_step_after(1);
 			const ShpVector<Vertex> allvert = m.second.allvertices();
 			auto _indexer = aa::ptr_container_indexer(allvert);
 			_indexer.convert();
@@ -227,7 +227,7 @@ void hme::TBoundaryTecplot::_run(const SGrid& g, std::string fn, BFun bnames){
 	}
 
 	// ====== write to file:
-	callback.silent_step_after(30, "Write to file", surfaces.size());
+	callback->silent_step_after(30, "Write to file", surfaces.size());
 	std::ofstream of(fn);
 	of.precision(10);
 	//====== main header
@@ -235,7 +235,7 @@ void hme::TBoundaryTecplot::_run(const SGrid& g, std::string fn, BFun bnames){
 	of<<"VARIABLES=\"X\" \"Y\" \"Z\""<<std::endl;
 	//====== boundary surfaces
 	for (auto& s: surfaces){
-		callback.subprocess_step_after(1);
+		callback->subprocess_step_after(1);
 		std::string name = bnames(s.first); 
 		of<<"ZONE T=\""<<name<<"\""<<std::endl;
 		of<<"Nodes="<<s.second.n_vert<<std::endl;

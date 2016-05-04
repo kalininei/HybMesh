@@ -30,16 +30,21 @@ int export_tecplot_grid(const Grid* grid, const char* fname,
 //builds rectangular grid on basis of four open HMCont2D::Contour objects
 //algo is:
 //  0) linear connection
-//  1) laplas connection
-//  2) conformal connection
+//  1) laplace-inverse connection
+//  2) laplace-direct connection
+//  3) orthogonal connection
 //if input are not positioned correctly their vertices coordinates will be changed
 //returns pointer to GridGeom or NULL if failed
-void* custom_rectangular_grid(int algo, void* left, void* bot, void* right, void* top);
+void* custom_rectangular_grid(int algo, void* left, void* bot,
+		void* right, void* top, hmcport_callback cb_fun);
 
 //builds a grid with quadrangle cells in a circular area. it contains uniform square grid
 //in the center and ring-like grid at the outer boundary.
 //algo:
-//	0: laplas8
+//	0: linear
+//	1: laplace
+//	2: orthogonal-circ
+//	3: orthogonal-rect
 //center[2]: x, y of center point
 //rad: radius of circle area
 //step: step size at the outer boundary

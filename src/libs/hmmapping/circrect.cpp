@@ -1,6 +1,7 @@
 #include "circrect.hpp"
 #include "rectangle_grid_builder.hpp"
 #include "procgrid.h"
+#include "debug_grid2d.h"
 
 namespace{
 
@@ -20,9 +21,53 @@ void reflect_and_merge(GridGeom& g, Point p1, Point p2){
 	GGeom::Repair::Heal(g);
 }
 
-};
+GridGeom laplace_algo(HMCont2D::Contour& left, HMCont2D::Contour& bot,
+		HMCont2D::Contour& right, HMCont2D::Contour& top){
+	return HMGMap::FDMLaplasRectGrid(left, bot, right, top);
+}
 
-GridGeom HMGMap::Circ4Prototype(Point center, double rad, int n, double a, double hcoef){
+GridGeom linear_algo(HMCont2D::Contour& left, HMCont2D::Contour& bot,
+		HMCont2D::Contour& right, HMCont2D::Contour& top){
+	GridGeom ret = GGeom::Constructor::RectGrid01(bot.size(), left.size());
+
+	auto pleft = left.ordered_points();
+	auto pbot = bot.ordered_points();
+	auto ptop = top.ordered_points();
+	auto w = HMCont2D::Contour::EWeights(left);
+
+	for (int i=0; i<bot.size()+1; ++i){
+		Point p1 = *pbot[i];
+		Point p2 = *ptop[i];
+		for (int j=0; j<left.size()+1; ++j){
+			GridPoint* gp = ret.get_point(i + pbot.size()*j);
+			gp->set(Point::Weigh(p1, p2, w[j]));
+		}
+	}
+
+	return ret;
+}
+
+GridGeom ortho_algo(HMCont2D::Contour& left, HMCont2D::Contour& bot,
+		HMCont2D::Contour& right, HMCont2D::Contour& top){
+	GridGeom ret = HMGMap::OrthogonalRectGrid(left, bot, right, top);
+	//modify top points so they lay on the circle
+	double rad = left.last()->y;
+	for (int i=0; i<bot.size()+1; ++i){
+		int ind = i + left.size()*(bot.size()+1);
+		GridPoint* gp = ret.get_point(ind);
+		vecSetLen(*gp, rad);
+	}
+	return ret;
+}
+
+GridGeom ortho_circ_algo(HMCont2D::Contour& left, HMCont2D::Contour& bot,
+		HMCont2D::Contour& right, HMCont2D::Contour& top){
+	return HMGMap::OrthogonalRectGrid(left, top, right, bot);
+}
+}
+
+GridGeom HMGMap::Circ4Prototype(Point center, double rad, int n, std::string algo,
+		double a, double hcoef){
 	if (a>1.4) throw std::runtime_error("square side is too big");
 
 	assert(n % 8 == 0);
@@ -72,7 +117,31 @@ GridGeom HMGMap::Circ4Prototype(Point center, double rad, int n, double a, doubl
 	auto right = HMCont2D::Constructor::ContourFromPoints(rightpoints);
 	
 	//make mapping
-	auto gcirc = HMGMap::FDMLaplasRectGrid(left, bot, right, top);
+	GridGeom gcirc = [&](){
+		if (algo == "linear") return linear_algo(left, bot, right, top);
+		else if (algo == "laplace") return laplace_algo(left, bot, right, top);
+		else if (algo == "orthogonal-rect") return ortho_algo(left, bot, right, top);
+		else if (algo == "orthogonal-circ") return ortho_circ_algo(left, bot, right, top);
+		else throw std::runtime_error("unknown circ4grid algorithm");
+	}();
+
+	//orthogonal-circ can give non-uniform rectangle,
+	//so we take bottom nodes explicitly from gcirc
+	//to use it as a base for internal rectangle grid building
+	vector<double> botc(2*n1+1);
+	if (algo == "orthogonal-circ"){
+		auto botcont = HMCont2D::Constructor::CutContour(
+			GGeom::Info::Contour1(gcirc), Point(0, a), Point(a, a));
+		int i=0;
+		for (auto p: botcont.ordered_points()){
+			botc[n1+i] =  p->x;
+			botc[n1-i] = -p->x;
+			++i;
+		}
+	} else {
+		double h = a/n1;
+		for (int i=0; i<2*n1+1; ++i) botc[i] = -a + i*h;
+	}
 
 	//enclose grids
 	reflect_and_merge(gcirc, pright0, pright1);
@@ -80,8 +149,7 @@ GridGeom HMGMap::Circ4Prototype(Point center, double rad, int n, double a, doubl
 	reflect_and_merge(gcirc, Point(0, 0), Point(1, 0));
 
 	//inner rectangle grid
-	auto grect = GGeom::Constructor::RectGrid(
-			Point(-a, -a), Point(a, a), 2*n1, 2*n1);
+	auto grect = GGeom::Constructor::RectGrid(botc, botc);
 
 	//connect all grids
 	GGeom::Modify::ShallowAdd(&gcirc, &grect);
@@ -94,8 +162,4 @@ GridGeom HMGMap::Circ4Prototype(Point center, double rad, int n, double a, doubl
 	};
 	GGeom::Modify::PointModify(grect, pmod);
 	return grect;
-}
-
-GridGeom Circ4Prototype2(Point center, double rad, int n, double a, double hcoef){
-	_THROW_NOT_IMP_;
 }

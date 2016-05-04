@@ -3,6 +3,7 @@
 #include <iomanip>
 #include "hmcallback.hpp"
 #include "hmtimer.hpp"
+#include "hmproject.h"
 
 using namespace HMCallback;
 
@@ -189,6 +190,21 @@ Caller2 Caller2::subrange(double parent_duration, double child_duration){
 		return f(s1, s2, parent_start + parent_duration*p1, p2);
 	};
 	return Caller2(name1, child_duration, sf);
+}
+
+shared_ptr<Caller2> Caller2::bottom_line_subrange(double parent_duration){
+	silent_step_after(parent_duration, "");
+
+	shared_ptr<Caller2> ret(new Caller2());
+	auto sf = [&](const char* s1, const char* s2, double p1, double p2)->int{
+		if (p2 == 1.0 && p1 != 1.0) return OK; //ignore subprocess finish
+		double w1 = prog1/dur1;
+		double w2 = p1;
+		if (p2>0) w2 += p2*ret->step_before1/ret->dur1;
+		return call(name1.c_str(), s1, w1, w2);
+	};
+	ret->setfun(sf);
+	return ret;
 }
 
 LoopCaller2 Caller2::looper(double parent_duration, double nloops, std::string caption){

@@ -1,6 +1,7 @@
 #include "domapping.hpp"
 #include "femassembly.hpp"
 #include "hmtimer.hpp"
+#include "debug_grid2d.h"
 
 using namespace HMGMap::Impl;
 
@@ -21,7 +22,7 @@ GridGeom DoMapping::run(HMCallback::Caller2& cb){
 	cb.step_after(5, "Boundary mapping");
 	prepare_mapped_contour();
 	//build a fem triangle grid
-	cb.step_after(50, "Triangulation");
+	cb.step_after(45, "Triangulation");
 	prepare_grid();
 	//assemble fem problem
 	cb.step_after(15, "FEM assembling");
@@ -59,6 +60,7 @@ GridGeom DoMapping::run(HMCallback::Caller2& cb){
 	} else if (opt.snap != "NO"){
 		throw HMGMap::MapException(std::string("Unknown snapping option - ") + opt.snap);
 	}
+	cb.step_after(5, "Check grid");
 	if (!GGeom::Info::Check(ret)) throw HMGMap::MapException("Resulting grid is not valid");
 	return ret;
 }
@@ -116,8 +118,31 @@ void DoMapping::build_mcc(){
 
 // =========================== DirectMapping
 void DirectMapping::build_grid3(){
+	//add corner points from inpgrid to mapped_outer
+	HMCont2D::ContourTree inpgrid2;
+	HMCont2D::ContourTree::DeepCopy(inpgrid_outer, inpgrid2);
+	HMCont2D::PCollection pcol;
+	for (int i=0; i<mcol.entry_num(); ++i){
+		//find mapped contour
+		auto cmapping = mcol.get(i);
+		auto base_contour = cmapping->get_base();
+		HMCont2D::Contour* copied_base_contour=0;
+		for (int j=0; j<inpgrid_outer.nodes.size(); ++j){
+			if (inpgrid_outer.nodes[j].get() == base_contour){
+				copied_base_contour = inpgrid2.nodes[j].get();
+				break;
+			}
+		}
+		//for each point in contour
+		for (auto p: cmapping->get_mapped()->all_points()){
+			//find mapped point
+			Point pbase = cmapping->map_from_mapped(*p);
+			copied_base_contour->GuaranteePoint(pbase, pcol);
+		}
+	}
+	
 	g3.reset(new HMFem::Grid43(
-		HMFem::AuxGrid3(inpgrid_outer, opt.fem_nrec, opt.fem_nmax)));
+		HMFem::AuxGrid3(inpgrid2, opt.fem_nrec, opt.fem_nmax)));
 }
 void DirectMapping::solve_uv_problems(vector<double>& u, vector<double>& v){
 	u.resize(g3->n_points(), 0.0);

@@ -29,25 +29,22 @@ class ToRect: public HMMath::Conformal::Rect{
 	//discrete mapping function to physical domain
 	vector<double> inv_u, inv_v;
 
-	//h - linear size of fem grid element.
-	//If fails -> _module = -1;
-	ToRect(const vector<Point>& path, int i1, int i2, int i3, const Options& opt);
-
-	//==== Constructor subroutines
-	//build fem grid: fills grid, approx, origs, left/bottom/right/top
-	void BuildGrid(const vector<Point>& path, int i1, int i2, int i3, int n);
-	//main costruction procedure: fills u, v, module
-	void DoMapping();
-	//fills inv_* data
-	void BuildInverse();
-
-	//estimates linear size of triangle grid
-	//Nmax - maximum number of nodes
-	//hrec - recommended linear size
-	static double HEstimate(const vector<Point>& path, int segn, int nmax);
 public:
-	static shared_ptr<ToRect>
-	Build(const vector<Point>& path, int i1, int i2, int i3, const Options& opt=Options());
+	struct TBuild: public HMCallback::ExecutorBase{
+		HMCB_SET_PROCNAME("Numerical conformal mapping to rectangle");
+		HMCB_SET_DEFAULT_DURATION(100);
+
+		ToRect _run(const vector<Point>& path, int i1, int i2, int i3, const Options& opt=Options());
+	private:
+		//==== Constructor subroutines
+		//build fem grid: fills grid, approx, origs, left/bottom/right/top
+		void BuildGrid(ToRect& r, const vector<Point>& path, int i1, int i2, int i3, int n);
+		//main costruction procedure: fills u, v, module
+		void DoMapping(ToRect& r);
+		//fills inv_* data
+		void BuildInverse(ToRect& r);
+	};
+	static HMCallback::FunctionWithCallback<TBuild> Build;
 
 	//conformal module
 	double module() const override { return _module; }
@@ -104,12 +101,6 @@ class ToAnnulus: public HMMath::Conformal::Annulus{
 
 	//fills inv_* data
 	void BuildInverse();
-
-	//estimates linear size of triangle grid
-	//Nmax - maximum number of nodes
-	//hrec - recommended linear size
-	static double HEstimate(const vector<Point>& outer_path,
-			const vector<Point>& inner_path, int segn, int nmax);
 
 	// ===================== mapping subroutins and data
 	mutable shared_ptr<HMCont2D::Contour> _inv_cont;

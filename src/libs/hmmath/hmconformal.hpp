@@ -3,6 +3,7 @@
 #include "hmproject.h"
 #include "bgeom2d.h"
 #include "hybmesh_contours2d.hpp"
+#include "hmcallback.hpp"
 
 namespace HMMath{ namespace Conformal{
 
@@ -89,6 +90,18 @@ public:
 	static std::tuple<vector<Point>, std::array<int, 4>>
 	FactoryInput(const HMCont2D::Contour& cont, const std::array<int,4>& a);
 };
+
+struct TBuildRect: public HMCallback::ExecutorBase{
+	HMCB_SET_PROCNAME("Conformal mapping to rectangle");
+	HMCB_SET_DEFAULT_DURATION(100);
+
+	shared_ptr<Rect> _run(const HMCont2D::Contour& left,
+		const HMCont2D::Contour& right,
+		const HMCont2D::Contour& bot,
+		const HMCont2D::Contour& top,
+		const Options& opt);
+};
+extern HMCallback::FunctionWithCallback<TBuildRect> BuildRect;
 
 class Annulus{
 public:

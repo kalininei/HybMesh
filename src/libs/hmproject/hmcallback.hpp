@@ -1,6 +1,7 @@
 #ifndef HYBMESH_CALLBACK_HPP
 #define HYBMESH_CALLBACK_HPP
 #include <functional>
+#include "hmproject.h"
 
 namespace HMCallback{
 struct Caller2;
@@ -54,6 +55,7 @@ struct Caller2{
 	void subprocess_step_after(double progress);
 
 	Caller2 subrange(double parent_duration, double child_duration);
+	std::shared_ptr<Caller2> bottom_line_subrange(double parent_duration);
 	LoopCaller2 looper(double parent_duration, double nloops, std::string caption);
 
 	//output 100%
@@ -117,17 +119,18 @@ struct GetDuration{
 //base class for functors with callback
 class ExecutorBase{
 	//used/assigned by FunctionWithCallback<>
-	void init(const char* nm, double dur){ callback.reset(nm, dur); }
-	void fin(){ callback.fin(); }
+	void init(const char* nm, double dur){ callback->reset(nm, dur); }
+	void fin(){ callback->fin(); }
 protected:
 	//used by _run(...) procedures
-	HMCallback::Caller2 callback;
+	shared_ptr<HMCallback::Caller2> callback;
 
-	ExecutorBase(): callback("", 0, silent2){}
+	ExecutorBase(): callback(new HMCallback::Caller2()){}
 
-	void set_callback(Fun2 func){ callback.setfun(func); }
-	void set_callback(HMCallback::Caller2 func){ callback = func; }
-	void swap_callback(Caller2& f){ std::swap(callback, f); }
+	void set_callback(Fun2 func){ callback->setfun(func); }
+	void set_callback(HMCallback::Caller2 func){ callback.reset(new Caller2(func)); }
+	void set_callback(std::shared_ptr<HMCallback::Caller2> func){ callback = func; }
+	void swap_callback(Caller2& f){ std::swap(*callback, f); }
 
 	template<class X>
 	friend class FunctionWithCallback;
@@ -187,6 +190,14 @@ class FunctionWithCallback{
 		Beholder1<Args...> b(cb, &exe);  //to call exe->fin() before return;
 		return exe._run(std::forward<Args>(arg)...);
 	}
+	
+	//execution with exeisted callback function with reset
+	template<class... Args>
+	TRet<Args...> invoke2(shared_ptr<Caller2> cb, Args&&... arg){
+		exe.set_callback(cb);
+		Beholder<Args...> b(&exe);  //to call exe->fin() before return;
+		return exe._run(std::forward<Args>(arg)...);
+	}
 public:
 	FunctionWithCallback(): exe(){}
 
@@ -221,7 +232,7 @@ public:
 		return invoke(std::forward<Args>(arg)...);
 	}
 
-	//call with defined callback with its initializing
+	//call with defined callback with its copy and initializing
 	template<class TCallback, class... Args>
 	TRet<Args...> WithCallback(TCallback&& cb, Args&&... arg){
 		exe.set_callback(std::forward<TCallback>(cb));
@@ -232,6 +243,12 @@ public:
 	template<class... Args>
 	TRet<Args...> MoveCallback(Caller2& cb, Args&&... arg){
 		return invoke1(cb, std::forward<Args>(arg)...);
+	}
+	//
+	//run with existing callback without copy but with initializing
+	template<class... Args>
+	TRet<Args...> UseCallback(shared_ptr<Caller2> cb, Args&&... arg){
+		return invoke2(cb, std::forward<Args>(arg)...);
 	}
 
 };

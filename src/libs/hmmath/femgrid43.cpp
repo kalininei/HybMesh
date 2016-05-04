@@ -456,25 +456,25 @@ Grid43 HMFem::TAuxGrid3::_run(const HMCont2D::ContourTree& _tree,
 		int nrec, int nmax){
 	assert(nrec<nmax);
 	//1)
-	callback.step_after(5, "Estimate step");
+	callback->step_after(5, "Estimate step");
 	double hest = step_estimate(_tree, nrec);
 	//2)
-	callback.step_after(10, "Adopt boundary");
+	callback->step_after(10, "Adopt boundary");
 	input(_tree, _constraints);
 	vector<vector<Point>> lost_points;
 	adopt_boundary(tree, CORRECTION_FACTOR*hest, lost_points);
 	for (auto c: constraints) adopt_contour(*c, CORRECTION_FACTOR*hest, lost_points);
 	//3)
-	callback.step_after(60, "Triangulate");
+	callback->step_after(60, "Triangulate");
 	//1.1 is a correction coefficient gained by expiriments
 	auto ret = Grid43::Build3(tree, constraints, 1.01*CORRECTION_FACTOR*hest);
 	if (ret->n_points() > nmax) throw std::runtime_error("Failed to build auxiliary triangle grid");
 	if (lost_points.size() == 0) return std::move(*ret);
 	//4)
-	callback.step_after(15, "Snapping");
+	callback->step_after(15, "Snapping");
 	ret->AddSegments(lost_points);
 	//5)
-	callback.step_after(10, "Boundary triangles");
+	callback->step_after(10, "Boundary triangles");
 	ret = Grid43::Build3(ret.get());
 	//6)
 	clear();

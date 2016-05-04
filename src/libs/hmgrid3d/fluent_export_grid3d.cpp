@@ -332,10 +332,10 @@ HMGrid3D::SGrid hme::PeriodicData::assemble(const HMGrid3D::SGrid& g,
 
 void hme::TGridMSH::_run(const SGrid& g, std::string fn,
 		BFun btype_name, PeriodicData periodic){
-	callback.step_after(30, "Periodic merging");
+	callback->step_after(30, "Periodic merging");
 	std::map<Face*, Face*> periodic_cells;
 	HMGrid3D::SGrid gp = periodic.assemble(g, periodic_cells);
-	return gridmsh(callback, gp, fn, btype_name, periodic_cells);
+	return gridmsh(*callback, gp, fn, btype_name, periodic_cells);
 }
 
 void hme::TGridMSH::_run(const HMGrid3D::SGrid& g, std::string fn,
@@ -344,7 +344,7 @@ void hme::TGridMSH::_run(const HMGrid3D::SGrid& g, std::string fn,
 }
 
 void hme::TGridMSH::_run(const HMGrid3D::SGrid& g, std::string fn, BFun btype_name){
-	return gridmsh(callback, g, fn, btype_name);
+	return gridmsh(*callback, g, fn, btype_name);
 }
 
 void hme::TGridMSH::_run(const HMGrid3D::SGrid& g, std::string fn){
