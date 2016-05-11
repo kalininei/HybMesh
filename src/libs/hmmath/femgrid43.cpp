@@ -1,8 +1,24 @@
 #include "femgrid43.hpp"
 #include "trigrid.h"
 #include "procgrid.h"
+#include "debug_grid2d.h"
 
 using namespace HMFem;
+
+bool Grid43::check(){
+	GGeom::Debug::save_vtk(*this, "before.vtk");
+	for (int i=0; i<n_cells(); ++i){
+		if (cells[i]->dim() == 3){
+			if (triarea(*cells[i]->points[0],
+					*cells[i]->points[1],
+					*cells[i]->points[2]) < -geps*geps)
+				return false;
+		} else {
+			_THROW_NOT_IMP_;
+		}
+	}
+	return true;
+}
 
 shared_ptr<Grid43>
 Grid43::Build(GridGeom* parent){
@@ -50,6 +66,15 @@ Grid43::Build3(const HMCont2D::ContourTree& conts,
 		const ShpVector<HMCont2D::Contour>& constr,
 		double h){
 	TriGrid g1(conts, constr, h);
+	shared_ptr<Grid43> ret(new Grid43());
+	GGeom::Modify::ShallowAdd(&g1, ret.get());
+	return ret;
+}
+shared_ptr<Grid43>
+Grid43::Build3(const HMCont2D::ContourTree& conts,
+	const ShpVector<HMCont2D::Contour>& constraints,
+	std::map<Point*, double>& h, double hh){
+	TriGrid g1(conts, constraints, h, hh);
 	shared_ptr<Grid43> ret(new Grid43());
 	GGeom::Modify::ShallowAdd(&g1, ret.get());
 	return ret;
@@ -211,7 +236,7 @@ Point Grid43::Approximator::LocalCoordinates3(const Cell* c, Point p){
 	double j12 = y2 - y1, j22 = y3 - y1;
 	double modj = (j22*j11 - j21*j12);
 
-	if (modj < geps*geps){
+	if (fabs(modj) < geps*geps){
 		double ksi;
 		if (isOnSection(p, *c->get_point(0), *c->get_point(1), ksi)){
 			return Point(ksi, 0);
@@ -219,7 +244,9 @@ Point Grid43::Approximator::LocalCoordinates3(const Cell* c, Point p){
 			return Point(1-ksi, ksi);
 		} else if (isOnSection(p, *c->get_point(0), *c->get_point(2), ksi)){
 			return Point(0, ksi);
-		} else assert(false);
+		} else {
+			assert(false);
+		}
 	}
 
 	Point ksieta;
@@ -253,18 +280,133 @@ double Grid43::Approximator::Interpolate4(const Cell* c, Point ksieta, const vec
 	_THROW_NOT_IMP_;
 }
 
+void Grid43::Approximator::FillJ3(std::array<double, 5>& J, const Cell* c){
+	auto &x1 = c->get_point(0)->x, &x2 = c->get_point(1)->x, &x3 = c->get_point(2)->x;
+	auto &y1 = c->get_point(0)->y, &y2 = c->get_point(1)->y, &y3 = c->get_point(2)->y;
+
+	J[1] = x2 - x1; J[3] = x3 - x1;
+	J[2] = y2 - y1, J[4] = y3 - y1;
+	J[0] = (J[4]*J[1] - J[3]*J[2]);
+}
+
+void Grid43::Approximator::FillJ4(std::array<double, 5>& J, const Point& p, const Cell* c){
+	_THROW_NOT_IMP_;
+}
+
+const Cell* Grid43::Approximator::FindPositive(const Point& p, Point& ksieta) const{
+	auto candidates = cfinder->CellCandidates(p);
+	std::array<double, 5> J; //modj, j11, j12, j21, j22
+	std::vector<Point> bad_ksieta(candidates.size());
+	for (int i=0; i<candidates.size(); ++i){
+		auto& c = candidates[i];
+		auto& ke = bad_ksieta[i];
+		if (c->dim() == 3){FillJ3(J, c);}
+		else if (c->dim() == 4){ _THROW_NOT_IMP_;}
+		else { assert(false); }
+		if (fabs(J[0]) < geps*geps){
+			double ksi;
+			if (isOnSection(p, *c->get_point(0), *c->get_point(1), ksi)){
+				ke = Point(ksi, 0);
+			} else if (isOnSection(p, *c->get_point(1), *c->get_point(2), ksi)){
+				ke = Point(1-ksi, ksi);
+			} else if (isOnSection(p, *c->get_point(0), *c->get_point(2), ksi)){
+				ke = Point(0, ksi);
+			} else assert(false);
+		} else {
+			auto cp = c->get_point(0);
+			ke.x = ( J[4]*(p.x - cp->x) - J[3]*(p.y - cp->y))/J[0];
+			ke.y = (-J[2]*(p.x - cp->x) + J[1]*(p.y - cp->y))/J[0];
+		}
+		if (J[0] > -geps*geps && ke.x>-geps && ke.x<1+geps && ke.y>-geps && ke.y<1-ke.x+geps){
+			ksieta = ke;
+			return c;
+		}
+	}
+	//find best outer approximation
+	int besti=-1;
+	double bestdist = std::numeric_limits<double>::max();
+	for (int i=0; i<candidates.size(); ++i){
+		auto& ke = bad_ksieta[i];
+		//if negative triangle contains point
+		if (ke.x>-geps && ke.x<1+geps && ke.y>-geps && ke.y<1-ke.x+geps){
+			besti = i;
+			break;
+		}
+		//point lies outside a positive triangle: find measure to the basis triangle
+		double d = std::min(Point::meas_section(ke, Point(0,0), Point(1,0)),
+			std::min(Point::meas_section(ke, Point(1,0), Point(0,1)),
+				Point::meas_section(ke, Point(0,1), Point(0,0))));
+		if (d<bestdist) besti = i;
+	}
+	if (besti>-1){
+		ksieta = bad_ksieta[besti];
+		return candidates[besti];
+	} else throw GGeom::EOutOfArea(p);
+}
+
 double Grid43::Approximator::Val(Point p, const vector<double>& fun) const{
-	const Cell* c = cfinder->Find(p);
-	Point ksieta = LocalCoordinates(c, p);
+	Point ksieta;
+	const Cell* c = FindPositive(p, ksieta);
 	return Interpolate(c, ksieta, fun);
 }
 
 
 vector<double> Grid43::Approximator::Vals(Point p, const vector<const vector<double>*>& funs) const{
-	const Cell* c = cfinder->Find(p);
-	Point ksieta = LocalCoordinates(c, p);
+	Point ksieta;
+	const Cell* c = FindPositive(p, ksieta);
 	vector<double> ret;
 	for (auto& fun: funs) ret.push_back(Interpolate(c, ksieta, *fun));
+	return ret;
+}
+
+const vector<Edge>& Grid43::Approximator::BndEdgesByPnt(const Point& p) const{
+	if (bndedges.size() == 0){
+		bndedges.resize(cfinder->NumSquares(), vector<Edge>());
+		std::set<Edge> ed = grid->get_edges();
+		for (auto e: ed) if (e.is_boundary()){
+			BoundingBox bb(*grid->get_point(e.p1), *grid->get_point(e.p2));
+			BoundingBox bb2(bb);
+			bb2.xmin -= 0.1*(bb.xmax - bb.xmin);
+			bb2.xmax += 0.1*(bb.xmax - bb.xmin);
+			bb2.ymin -= 0.1*(bb.ymax - bb.ymin);
+			bb2.ymax += 0.1*(bb.ymax - bb.ymin);
+			auto ind = cfinder->IndSet(bb2);
+			for (auto i: ind) if (i>=0 && i<cfinder->NumSquares()){
+				bndedges[i].push_back(e);
+			}
+		}
+	}
+	return bndedges[cfinder->GetSquare(p)];
+}
+double Grid43::Approximator::BndVal(const Point& p, const vector<double>& fun) const{
+	vector<Edge> ec = BndEdgesByPnt(p);
+	vector<double> ksi(ec.size());
+	vector<double> dist(ec.size());
+	for (int i=0; i<ksi.size(); ++i){
+		auto& edge = ec[i];
+		dist[i] = Point::meas_section(p, *grid->get_point(edge.p1), *grid->get_point(edge.p2), ksi[i]);
+	}
+	int mi = std::min_element(dist.begin(), dist.end()) - dist.begin();
+	assert(mi<dist.size());
+	auto& edge = ec[mi];
+	return (1 - ksi[mi])*fun[edge.p1] + ksi[mi]*fun[edge.p2];
+}
+vector<double> Grid43::Approximator::BndVals(const Point& p, const vector<const vector<double>*>& funs) const{
+	vector<Edge> ec = BndEdgesByPnt(p);
+	vector<double> ksi(ec.size());
+	vector<double> dist(ec.size());
+	for (int i=0; i<ksi.size(); ++i){
+		auto& edge = ec[i];
+		dist[i] = Point::meas_section(p, *grid->get_point(edge.p1), *grid->get_point(edge.p2), ksi[i]);
+	}
+	int mi = std::min_element(dist.begin(), dist.end()) - dist.begin();
+	assert(mi<dist.size());
+	auto& edge = ec[mi];
+	vector<double> ret;
+	for (auto& fun: funs){
+		double v = (1 - ksi[mi])*(*fun)[edge.p1] + ksi[mi]*(*fun)[edge.p2];
+		ret.push_back(v);
+	}
 	return ret;
 }
 
@@ -368,22 +510,6 @@ double TAuxGrid3::step_estimate(const HMCont2D::ContourTree& tree, int nrec){
 	return sqrt(2.3094017677*triarea);
 }
 
-vector<Point*> TAuxGrid3::gather_section(const vector<Point*>& pts, int start, double h){
-	assert(start+1<pts.size());
-	vector<Point*> ret {pts[start], pts[start+1]};
-	double len = Point::dist(*ret[0], *ret[1]);
-	if (len < h) for (int i=start+2; i<pts.size(); ++i){
-		//length check
-		len += Point::dist(*pts[i], *pts[i-1]);
-		if (len > h) break;
-		//mandatory check
-		if (mandatory_points.find(pts[i-1]) != mandatory_points.end()) break;
-		//push
-		ret.push_back(pts[i]);
-	}
-	return ret;
-}
-
 void TAuxGrid3::input(const HMCont2D::ContourTree& _tree, const vector<HMCont2D::Contour>& _constraints){
 	clear();
 	//deep copy edges input to internal structure
@@ -394,24 +520,11 @@ void TAuxGrid3::input(const HMCont2D::ContourTree& _tree, const vector<HMCont2D:
 		HMCont2D::Contour::DeepCopy(c, *constraints.back());
 	}
 	//fill mandatory points
-	for (auto& c: tree.nodes) mandatory_corner_points(*c);
-	for (auto& c: constraints) mandatory_corner_points(*c);
 	for (int i=0; i<constraints.size(); ++i){
 		for (int j=0; j<constraints.size(); ++j) if (i!=j){
 			mandatory_intersections(*constraints[i], *constraints[j]);
 		}
 		for (auto& c: tree.nodes) mandatory_intersections(*constraints[i], *c);
-	}
-}
-
-void TAuxGrid3::mandatory_corner_points(const HMCont2D::Contour& cont){
-	auto op = cont.ordered_points();
-	if (cont.is_closed()) op.push_back(op[1]);
-	for (int i=1; i<op.size()-1; ++i){
-		double a = Angle(*op[i-1], *op[i], *op[i+1]);
-		if (ISEQLOWER(a, M_PI - ZEROANGLE) || ISEQGREATER(a, M_PI + ZEROANGLE)){
-			mandatory_points.insert(op[i]);
-		}
 	}
 }
 
@@ -428,21 +541,21 @@ void TAuxGrid3::mandatory_intersections(HMCont2D::Contour& c1, HMCont2D::Contour
 
 void TAuxGrid3::adopt_contour(HMCont2D::Contour& cont, double h,
 		vector<vector<Point>>& lost){
+	auto repart = HMCont2D::Algos::Coarsening(cont, mandatory_points, pcol, h,
+			ZEROANGLE, 0.2);
 	vector<Point*> ret;
-	vector<Point*> ptree = cont.ordered_points();
-	ret.reserve(ptree.size());
-	int i=0;
-	while (i<ptree.size()-1){
-		vector<Point*> gsec = gather_section(ptree, i, h);
-		if (gsec.size() > 2){
-			lost.emplace_back(vector<Point>(gsec.size()));
-			for (int j=0; j<gsec.size(); ++j) lost.back()[j] = *gsec[j];
+	for (int i=0; i<repart.size(); ++i){
+		auto& v = repart[i];
+		ret.push_back(v[0]);
+		if (v.size() > 1){
+			lost.push_back(vector<Point>());
+			for (int i=0; i<v.size(); ++i){
+				lost.back().push_back(*v[i]);
+			}
+			lost.back().push_back(*repart[(i+1) % repart.size()][0]);
 		}
-		ret.push_back(gsec[0]);
-		i+=gsec.size()-1;
 	}
-	ret.push_back(ptree.back());
-	cont = HMCont2D::Constructor::ContourFromPoints(ret);
+	cont = HMCont2D::Constructor::ContourFromPoints(ret, cont.is_closed());
 }
 
 void TAuxGrid3::adopt_boundary(HMCont2D::ContourTree& tree, double h,
@@ -466,9 +579,8 @@ Grid43 HMFem::TAuxGrid3::_run(const HMCont2D::ContourTree& _tree,
 	for (auto c: constraints) adopt_contour(*c, CORRECTION_FACTOR*hest, lost_points);
 	//3)
 	callback->step_after(60, "Triangulate");
-	//1.1 is a correction coefficient gained by expiriments
-	auto ret = Grid43::Build3(tree, constraints, 1.01*CORRECTION_FACTOR*hest);
-	if (ret->n_points() > nmax) throw std::runtime_error("Failed to build auxiliary triangle grid");
+	auto ret = Grid43::Build3(tree, constraints, 10*CORRECTION_FACTOR*hest);
+	if (ret->n_points() > nmax) { clear(); throw std::runtime_error("Failed to build auxiliary triangle grid");}
 	if (lost_points.size() == 0) return std::move(*ret);
 	//4)
 	callback->step_after(15, "Snapping");
@@ -477,10 +589,12 @@ Grid43 HMFem::TAuxGrid3::_run(const HMCont2D::ContourTree& _tree,
 	callback->step_after(10, "Boundary triangles");
 	ret = Grid43::Build3(ret.get());
 	//6)
+	assert(ret->check());
 	clear();
 	return std::move(*ret);
 }
 void HMFem::TAuxGrid3::clear(){
+	//explicit clear because there is the reusable entry of TAuxGrid class
 	tree = HMCont2D::ContourTree();
 	constraints.clear();
 	pcol.clear();

@@ -25,6 +25,8 @@ public:
 	const HMCont2D::Contour* get_mapped() const { return mapped; }
 
 	Point map_from_base(Point p) const; //returns point on mapped contour
+	Point map_from_base(double w) const; //returns point on mapped contour from base weight 
+
 	Point map_from_mapped(Point p) const;  //returns point on base contour
 	void add_connection(Point pbase, Point pmapped);
 	friend class MappedContourCollection;
@@ -40,6 +42,8 @@ public:
 	const MappedContour* get(int i) const { return data[i].get(); }
 	//inserts iff cbase->cmapped pair was not found.
 	MappedContour* insert(HMCont2D::Contour* cbase, HMCont2D::Contour* cmapped);
+
+	Point map_from_base(Point p) const;
 };
 
 

@@ -3,6 +3,7 @@
 #include "hmmapping.hpp"
 #include "hmfdm.hpp"
 #include "hmconformal.hpp"
+#include "debug_grid2d.h"
 
 HMCallback::FunctionWithCallback<HMGMap::TOrthogonalRectGrid> HMGMap::OrthogonalRectGrid;
 HMCallback::FunctionWithCallback<HMGMap::TLaplaceRectGrid> HMGMap::LaplaceRectGrid;
@@ -324,11 +325,6 @@ GridGeom HMGMap::LinearRectGrid(HMCont2D::Contour& _left, HMCont2D::Contour& _bo
 GridGeom HMGMap::TOrthogonalRectGrid::_run(HMCont2D::Contour& _left, HMCont2D::Contour& _bot,
 		HMCont2D::Contour& _right, HMCont2D::Contour& _top){
 	callback->step_after(5, "Connect contours");
-	//Cont4Connection cn = connect_rect_segments(_left, _bot, _right, _top);
-	//HMCont2D::Contour left = cn.directed_left();
-	//HMCont2D::Contour bot = cn.directed_bot();
-	//HMCont2D::Contour right = cn.directed_right();
-	//HMCont2D::Contour top = cn.directed_top();
 	auto conres = connect_contours(_left, _bot, _right, _top);
 	auto& left = conres[0];
 	auto& bot = conres[1];

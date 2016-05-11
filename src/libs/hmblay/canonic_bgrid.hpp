@@ -39,6 +39,9 @@ public:
 
 	//real coordinates from normalized in [0,1] square
 	virtual HMCont2D::PCollection MapToReal(const vector<const Point*>& p) const = 0;
+	HMCont2D::PCollection MapToReal(const vector<Point*>& p) const{
+		return MapToReal(vector<const Point*>(p.begin(), p.end()));
+	}
 	Point MapToReal(const Point& p) const{ return *(MapToReal({&p}).point(0)); }
 	
 	//square coordinates from real coordinates
@@ -47,8 +50,11 @@ public:
 		return MapToSquare(vector<const Point*>(p.begin(), p.end()));
 	}
 	Point MapToSquare(const Point& p) const { return *(MapToSquare({&p}).point(0)); }
+
+	virtual Point MapBndToReal(const Point& p) const { return MapToReal(p); }
+	virtual Point MapBndToSquare(const Point& p) const { return MapToSquare(p); }
 	
-	//weights transformer
+	//weights transformers
 	virtual double conf2top(double w) const = 0;
 	virtual double conf2bot(double w) const = 0;
 	virtual double top2conf(double w) const = 0;
@@ -120,6 +126,9 @@ public:
 	//mapping functions
 	HMCont2D::PCollection MapToReal(const vector<const Point*>& p) const override;
 	HMCont2D::PCollection MapToSquare(const vector<const Point*>& p) const override;
+
+	Point MapBndToReal(const Point& p) const override;
+	Point MapBndToSquare(const Point& p) const override;
 
 	double conf2top(double w) const override;
 	double conf2bot(double w) const override;

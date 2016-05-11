@@ -133,6 +133,20 @@ void RightConnector::BuildInternals() {
 	auto vert_part=[&f2out](double)->vector<double>{ return f2out; };
 
 	connection_grid->Fill(bot_part, vert_part, 1);
+
+	//snap to top and right contours
+	//1. top
+	auto toppnt = top.ordered_points();
+	for (int i=0; i<toppnt.size(); ++i){
+		int gridind = right.size()*toppnt.size() + i;
+		connection_grid->result.get_point(gridind)->set(*toppnt[i]);
+	}
+	//2. right
+	auto rpnt = right.ordered_points();
+	for (int i=0; i<rpnt.size(); ++i){
+		int gridind = i*(top.size()+1) + top.size();
+		connection_grid->result.get_point(gridind)->set(*rpnt[i]);
+	}
 }
 
 // ============================ Reentrant connector
@@ -144,7 +158,6 @@ void ReentrantConnector::BuildInternals(){
 	// during ExtPath division
 	assert(ISEQ( left.length(), Point::dist(*left.first(), *left.last()) ));
 	assert(ISEQ( bot.length(),  Point::dist(*bot.first(), *bot.last())  ));
-	//why is it here?
 	//int sz = std::min(left.size(), bot.size());
 	//if (left.size()>sz) left = HMCont2D::ECollection::ShallowCopy(left, 0, sz);
 	//if (bot.size()>sz) bot = HMCont2D::ECollection::ShallowCopy(bot, 0, sz);

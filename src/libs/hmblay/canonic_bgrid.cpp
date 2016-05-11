@@ -244,10 +244,6 @@ RectForOpenArea::RectForOpenArea(HMCont2D::Contour& left, HMCont2D::Contour& rig
 	core = HMMath::Conformal::Rect::Factory(path, corners, opt);
 };
 
-//void RectMappedRect::BuildCore(bool use_rect_approx){
-//        core = HMMath::Conformal::Impl::RectApprox::Build(left, right, bottom, top);
-//}
-
 HMCont2D::PCollection RectForOpenArea::MapToReal(const vector<const Point*>& p) const{
 	vector<Point> ret(p.size());
 	double m = core->module();
@@ -284,28 +280,28 @@ HMCont2D::PCollection RectForOpenArea::MapToSquare(const vector<const Point*>& p
 }
 
 double RectForOpenArea::conf2top(double w) const {
-	auto p = MappedRect::MapToReal(Point(w, 1));
+	auto p = MappedRect::MapBndToReal(Point(w, 1));
 	return std::get<1>(TopContour().coord_at(p));
 };
 double RectForOpenArea::conf2bot(double w) const {
-	auto p = MappedRect::MapToReal(Point(w, 0));
+	auto p = MappedRect::MapBndToReal(Point(w, 0));
 	return std::get<1>(BottomContour().coord_at(p));
 }
 double RectForOpenArea::top2conf(double w) const {
 	auto col = HMCont2D::Contour::WeightPoints(TopContour(), {w});
-	return MappedRect::MapToSquare(*col.point(0)).x;
+	return MappedRect::MapBndToSquare(*col.point(0)).x;
 }
 double RectForOpenArea::bot2conf(double w) const {
 	auto col = HMCont2D::Contour::WeightPoints(BottomContour(), {w});
-	return MappedRect::MapToSquare(*col.point(0)).x;
+	return MappedRect::MapBndToSquare(*col.point(0)).x;
 }
 double RectForOpenArea::right2conf(double w) const{
 	auto col = HMCont2D::Contour::WeightPoints(RightContour(), {w});
-	return MappedRect::MapToSquare(*col.point(0)).y;
+	return MappedRect::MapBndToSquare(*col.point(0)).y;
 }
 double RectForOpenArea::left2conf(double w) const{
 	auto col = HMCont2D::Contour::WeightPoints(LeftContour(), {w});
-	return MappedRect::MapToSquare(*col.point(0)).y;
+	return MappedRect::MapBndToSquare(*col.point(0)).y;
 }
 
 
@@ -428,35 +424,72 @@ HMCont2D::PCollection RectForClosedArea::MapToSquare(const vector<const Point*>&
 	return ret;
 }
 
+Point RectForClosedArea::MapBndToReal(const Point& p) const{
+	//length of curve of first point of inner circle
+	double phi0 = (top_is_outer) ? core->PhiInner(0) : core->PhiOuter(0);
+	//vector of points in canonic area
+	double an, r;
+	an = ToAngle(2*M_PI*p.x + phi0);
+	if (top_is_outer){
+		r  = p.y*(1-core->module()) + core->module();
+	} else {
+		r  = (1 - p.y)*(1-core->module()) + core->module();
+	}
+	//do mapping
+	return core->MapToOriginalBnd(Point(r*cos(an), r*sin(an)));
+}
+Point RectForClosedArea::MapBndToSquare(const Point& p) const{
+	//map to canonic
+	Point p2 = core->MapToAnnulusBnd(p);
+	//(x, y) -> (rad, phi)
+	p2 = Point(sqrt(sqr(p2.x) + sqr(p2.y)), atan2(p2.y, p2.x));
+	//(rad, phi) -> (bottom length, rad - inner_radius)
+	double m = core->module();
+	p2 = Point(p2.y*m, p2.x - m);
+	//normalize
+	double maxx = 2*M_PI*m, maxy = 1.0 - m; 
+	double phi0 = (top_is_outer)?core->PhiInner(0):core->PhiOuter(0);
+	double x0 = core->module()*phi0;
+	p2 = [&](const Point& p){
+		Point ret(p.x - x0, p.y);
+		while (ret.x < 0) ret.x += 2*M_PI*m;
+		ret.x/=maxx; ret.y/=maxy;
+		return ret;
+	}(p2);
+	//if top is not out -> reverse y
+	if (!top_is_outer) p2 = Point(p2.x, 1.0 - p2.y);
+
+	return p2;
+}
+
 //TODO: move to MappedRect maybe?
 double RectForClosedArea::conf2top(double w) const {
-	_THROW_NOT_IMP_;
-	auto p = MappedRect::MapToReal(Point(w, 1));
+	auto p = MapBndToReal(Point(w, 1));
 	return std::get<1>(TopContour().coord_at(p));
 };
 double RectForClosedArea::conf2bot(double w) const {
 	_THROW_NOT_IMP_;
-	auto p = MappedRect::MapToReal(Point(w, 0));
+	auto p = MapBndToReal(Point(w, 0));
 	return std::get<1>(BottomContour().coord_at(p));
 }
 double RectForClosedArea::top2conf(double w) const {
 	_THROW_NOT_IMP_;
 	auto col = HMCont2D::Contour::WeightPoints(TopContour(), {w});
-	return MappedRect::MapToSquare(*col.point(0)).x;
+	return MapBndToSquare(*col.point(0)).x;
 }
 double RectForClosedArea::bot2conf(double w) const {
 	auto p = HMCont2D::Contour::WeightPoint(BottomContour(), w);
-	return MappedRect::MapToSquare(p).x;
+	return MapBndToSquare(p).x;
 }
 double RectForClosedArea::right2conf(double w) const{
 	_THROW_NOT_IMP_;
 	auto col = HMCont2D::Contour::WeightPoints(RightContour(), {w});
-	return MappedRect::MapToSquare(*col.point(0)).y;
+	return MapBndToSquare(*col.point(0)).y;
 }
 double RectForClosedArea::left2conf(double w) const{
 	_THROW_NOT_IMP_;
 	auto col = HMCont2D::Contour::WeightPoints(LeftContour(), {w});
-	return MappedRect::MapToSquare(*col.point(0)).y;
+	return MapBndToSquare(*col.point(0)).y;
 }
 
 // ========================== MappedMesher
@@ -506,6 +539,19 @@ void MappedMesher::Fill(TBotPart bottom_partitioner, TVertPart vertical_partitio
 			++k;
 		}
 	}
+	//6) save boundary points
+	vector<std::weak_ptr<GridPoint>> wleft, wright, wtop, wbot;
+	{
+		auto shp = GGeom::Info::SharePoints(g4);
+		for (int i=0; i<isz; ++i){
+			wbot.push_back(shp[i]);
+			wtop.push_back(shp[isz*(jsz-1)+i]);
+		}
+		for (int j=0; j<jsz; ++j){
+			wleft.push_back(shp[isz*j]);
+			wright.push_back(shp[isz*j+isz-1]);
+		}
+	}
 
 	//6) copy left/right points to pcollections
 	vector<int> right_indicies, left_indicies;
@@ -531,7 +577,7 @@ void MappedMesher::Fill(TBotPart bottom_partitioner, TVertPart vertical_partitio
 		}
 	}
 	GGeom::Modify::RemoveCells(g4, ucells);
-	//8) Remove deleted points from left/right
+	//8.1) Remove deleted points from left/right
 	left_points.RemoveUnused();
 	right_points.RemoveUnused();
 
@@ -547,18 +593,43 @@ void MappedMesher::Fill(TBotPart bottom_partitioner, TVertPart vertical_partitio
 		p->set(bpart[i], vlines[i][j]);
 	};
 	GGeom::Modify::PointModify(g4, toweights);
+	for (int i=0; i<vlines.size(); ++i){
+		if (!ISEQ(vlines[i].back(), 1.0)) wtop[i].reset();
+	}
+	
 
 	//10) modify points using mapping
-	vector<const Point*> p(g4.n_points());
-	for (int i=0; i<g4.n_points(); ++i) p[i] = g4.get_point(i);
-	HMCont2D::PCollection mp = rect->MapToReal(p);
-	auto mapfunc = [&mp](GridPoint* p){
-		p->x = mp.point(p->get_ind())->x;
-		p->y = mp.point(p->get_ind())->y;
-	};
-	GGeom::Modify::PointModify(g4, mapfunc);
+	vector<Point*> ap(g4.n_points());
+	for (int i=0; i<g4.n_points(); ++i) ap[i] = g4.get_point(i);
+	HMCont2D::PCollection mp = rect->MapToReal(ap);
+	for (int i=0; i<g4.n_points(); ++i) ap[i]->set(*mp.point(i));
 
 	//10) all bt points should present in g4 (e.g. for IGNORE_ALL stepping)
+	if (!bt.is_closed() && ISZERO(wstart)) for (int i=0; i<wleft.size(); ++i){
+		if (!wleft[i].expired()){
+			//TODO
+		}
+	}
+	if (!bt.is_closed() && ISEQ(wend, 1.0)) for (int i=0; i<wright.size(); ++i){
+		if (!wright[i].expired()){
+			//TODO
+		}
+	}
+	bpart = bottom_partitioner(wbot_start, wbot_end);
+	for (int i=0; i<wbot.size(); ++i){
+		if (!wbot[i].expired()){
+			Point& p = *wbot[i].lock();
+			p.set(HMCont2D::Contour::WeightPoint(rect->BottomContour(), bpart[i]));
+		}
+	}
+	for (int i=0; i<wtop.size(); ++i){
+		if (!wtop[i].expired()){
+			Point& p = *wtop[i].lock();
+			double w = rect->bot2top(bpart[i]);
+			p.set(HMCont2D::Contour::WeightPoint(rect->TopContour(), w));
+		}
+	}
+
 	//bottom contour
 	vector<GridPoint*> ppbot;
 	for (auto p: botpts) ppbot.push_back(p.get());
@@ -605,11 +676,3 @@ HMCont2D::Contour MappedMesher::LeftContour(){
 HMCont2D::Contour MappedMesher::RightContour(){
 	return HMCont2D::Constructor::ContourFromPoints(right_points, false);
 }
-
-
-
-
-
-
-
-

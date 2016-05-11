@@ -61,6 +61,7 @@ class ToAnnulus: public HMMath::Conformal::Annulus{
 	double _module;
 	shared_ptr<HMFem::Grid43> grid;
 	shared_ptr<HMFem::Grid43::Approximator> approx;
+	vector<vector<Edge>> bndedges;
 	vector<double> u, v;   //radius, phi in canonical domain
 	Point pzero;  //inner point in (x,y) with phi = 0;
 
@@ -72,6 +73,7 @@ class ToAnnulus: public HMMath::Conformal::Annulus{
 	//fem grid in canonic area
 	shared_ptr<HMFem::Grid43> inv_grid;
 	shared_ptr<HMFem::Grid43::Approximator> inv_approx;
+	vector<vector<Edge>> inv_bndedges;
 	//discrete mapping function to physical domain
 	vector<double> inv_u, inv_v;
 
@@ -121,6 +123,9 @@ public:
 	//mapping functions
 	vector<Point> MapToOriginal(const vector<Point>& input) const override;
 	vector<Point> MapToAnnulus(const vector<Point>& input) const override;
+
+	Point MapToAnnulusBnd(const Point& p) const override;
+	Point MapToOriginalBnd(const Point& p) const override;
 
 	//calculate angle at which i-th point is mapped to annulus
 	double PhiInner(int i) const override;

@@ -683,7 +683,8 @@ class MapGrid(NewGridCommand):
                 'target_points': command.ListOfOptions(command.Point2Option()),
                 'snap': command.BasicOption(str),
                 'btypes': command.BasicOption(str),
-                'algo': command.BasicOption(str)
+                'algo': command.BasicOption(str),
+                'return_invalid': command.BoolOption(),
                 }
 
     def _treat_boundaries(self, grid, method):
@@ -777,7 +778,8 @@ class MapGrid(NewGridCommand):
             # mapping procedure
             c_ret = g2core.map_grid(c_grid, c_cont, p1, p2,
                                     self.options['snap'],
-                                    self.options['algo'], cb)
+                                    self.options['algo'], 
+                                    self.options['return_invalid'], cb)
 
             # copy from c
             ret = g2core.grid_from_c(c_ret)

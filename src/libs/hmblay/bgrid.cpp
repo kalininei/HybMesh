@@ -4,6 +4,7 @@
 #include "bgrid_impose.hpp"
 #include "connectors.hpp"
 #include "hmtimer.hpp"
+#include "debug_grid2d.h"
 
 using namespace HMBlay::Impl;
 

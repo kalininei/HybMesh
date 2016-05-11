@@ -578,6 +578,64 @@ void test14(){
 
 }
 
+void test15(){
+	std::cout<<"15. Contour repartition"<<std::endl;
+	auto watch_res = [](const vector<vector<Point*>>& inp, bool isclosed){
+		vector<Point*> allpnt;
+		for (auto& v1: inp) for (auto& v2: v1) allpnt.push_back(v2);
+		vector<Point*> vertpnt;
+		for (auto& v1: inp) vertpnt.push_back(v1[0]);
+		auto c1 = HMCont2D::Constructor::ContourFromPoints(allpnt, isclosed);
+		auto c2 = HMCont2D::Constructor::ContourFromPoints(vertpnt, isclosed);
+		HMCont2D::SaveVtk(c1, "res1.vtk");
+		PCollection pcol;
+		for (auto p: c2.all_points()) pcol.add_value(*p);
+		HMCont2D::SaveVtk(pcol, "res2.vtk");
+	};
+	auto totpnts = [](const vector<vector<Point*>>& inp){
+		int ret = 0;
+		for (auto& v: inp) ret+=v.size();
+		return ret;
+	};
+	auto vpnts = [](const vector<vector<Point*>>& inp){ return inp.size(); };
+	{
+		PCollection pcol;
+		auto c1 = HMCont2D::Constructor::ContourFromPoints({0,0, 0.99,0, 1,0, 1,1, 0,0.973}, true);
+		Point* mp = c1.ordered_points()[1];
+		auto res1 = HMCont2D::Algos::Coarsening(c1, {}, pcol, 0.312678, M_PI/4, 0.4);
+		add_check(totpnts(res1) == 13 && vpnts(res1) == 12 && pcol.size() == 8, "coarse square");
+		pcol.clear();
+		auto res2 = HMCont2D::Algos::Coarsening(c1, {mp}, pcol, 0.312678, M_PI/4, 0.4);
+		add_check(totpnts(res2) == 21 && vpnts(res2) == 21 && pcol.size() == 16, "coarse square with a mandatory point");
+	}
+	{
+		PCollection pcol;
+		auto c1 = HMCont2D::Constructor::ContourFromPoints({0,0, 1,0, 1,1});
+		std::map<double, double> m;
+		m[0] = 0.2; m[0.5] = 0.1; m[0.75] = 0.01; m[1]=0.2;
+		auto c2 = HMCont2D::Algos::WeightedPartition(m, c1, c1.pdata, {c1.ordered_points()[1]});
+		auto res = HMCont2D::Algos::Coarsening(c2, {}, pcol, 0.2, M_PI/4, 0.2);
+		add_check(pcol.size()==1 && totpnts(res) == 30 && vpnts(res) == 11 , "open contour");
+	}
+	{
+		PCollection pcol;
+		auto c1 = HMCont2D::Constructor::Circle(133, 1, Point(0, 0));
+		for (auto p: c1.pdata) p->y/=4;
+		auto res = HMCont2D::Algos::Coarsening(c1, {}, pcol, 0.1, M_PI/4, 0.2);
+		add_check(pcol.size()==2 && vpnts(res) == 43 && totpnts(res) == 135, "ellipse");
+	}
+	{
+		PCollection pcol;
+		auto c1 = HMCont2D::Constructor::Circle(112, 1, Point(0, 0));
+		for (auto p: c1.pdata) p->y/=5;
+		auto c2 = HMCont2D::Constructor::Circle(256, 0.07, Point(-0.95, 0));
+		auto c3 = HMCont2D::Clip::Difference(c1, c2);
+		auto res = HMCont2D::Algos::Coarsening(*c3.nodes[0], {}, pcol, 0.2, M_PI/4, 0.2);
+		add_check(pcol.size()==0 && vpnts(res) == 29 && totpnts(res) == 216, "ellipse minus circ");
+	}
+
+};
+
 
 int main(){
 	std::cout<<"hybmesh_contours2d testing"<<std::endl;
@@ -598,6 +656,7 @@ int main(){
 	test12();
 	test13();
 	test14();
+	test15();
 
 
 	HMTesting::check_final_report();

@@ -78,11 +78,11 @@ void test02(){
 		opt.fem_nrec = 1000;
 		GridGeom ans4 = HMGMap::MapGrid(base, ecol,
 			std::vector<Point> {Point(3, 1), Point(1, 3), Point(3, 3), Point(2, 1), Point(0, 1)},
-			std::vector<Point> {Point(5, 0), Point(0, 5), Point(5, 5), Point(2, 0), Point(-2, 0)},
+			std::vector<Point> {Point(5, 0), Point(0, 5), Point(5, 5), Point(2, 0.1), Point(-2, 0.1)},
 			opt
 		);
 		GGeom::Export::GridVTK(ans4, "g1.vtk");
-		add_file_check(11959578928402032687U, "g1.vtk", "valid doubly connected data");
+		add_file_check(12327043228302344750U, "g1.vtk", "valid doubly connected data");
 	} catch (HMGMap::MapException &e) {add_check(false, "valid doubly connected data");}
 }
 
@@ -99,7 +99,7 @@ void test03(){
 			HMGMap::Options("inverse-laplace")
 	);
 	add_check(ans1.n_points() == circgrid.n_points() &&
-	          ans1.n_cells() == circgrid.n_cells(), "circle to rectangle, one base point");
+		  ans1.n_cells() == circgrid.n_cells(), "circle to rectangle, one base point");
 
 	GridGeom ans2 = HMGMap::MapGrid(circgrid, cont4,
 			std::vector<Point> {Point(4, 3), Point(2, 5)},
@@ -107,7 +107,7 @@ void test03(){
 			HMGMap::Options("inverse-laplace")
 	);
 	add_check(ans2.n_points() == circgrid.n_points() &&
-	          ans2.n_cells() == circgrid.n_cells(), "circle to rectangle, two base points");
+		  ans2.n_cells() == circgrid.n_cells(), "circle to rectangle, two base points");
 
 	GridGeom ans3 = HMGMap::MapGrid(circgrid, cont4,
 			std::vector<Point> {Point(4, 3), Point(2, 5), Point(2, 1), Point(0, 3)},
@@ -115,7 +115,7 @@ void test03(){
 			HMGMap::Options("inverse-laplace")
 	);
 	add_check(ans3.n_points() == circgrid.n_points() &&
-	          ans3.n_cells() == circgrid.n_cells(), "circle to rectangle, four base points");
+		  ans3.n_cells() == circgrid.n_cells(), "circle to rectangle, four base points");
 
 	GridGeom ans4 = HMGMap::MapGrid(rectgrid, contc,
 	                std::vector<Point> {Point(0, 0)},
@@ -165,7 +165,7 @@ void test05(){
 		add_file_check(5891876269123787812U, "g1.vtk", "linear algo");
 		add_file_check(11915288752093428457U, "g2.vtk", "laplace algo");
 		add_file_check(2894475605549726641U, "g3.vtk", "orthogonal-circ algo");
-		add_file_check(2264450797793073388U, "g4.vtk", "orthogonal-rect algo");
+		add_file_check(11434565844711044662U, "g4.vtk", "orthogonal-rect algo");
 	}
 	{
 		GridGeom g1 = HMGMap::Circ4Prototype(Point(0, 0), 1.0, 24, "laplace", 1.0, 1.0);
@@ -225,9 +225,14 @@ void test07(){
 		auto left = HMCont2D::Algos::Partition(0.1, left1, pcol);
 		auto bot = HMCont2D::Algos::Partition(0.1, bot1, pcol);
 		//build grid
+		HMCont2D::ECollection ecol;
+		ecol.Unite(left);
+		ecol.Unite(bot);
+		ecol.Unite(right1);
+		ecol.Unite(top1);
 		GridGeom ans = HMGMap::OrthogonalRectGrid(left, bot, right1, top1);
 		GGeom::Export::GridVTK(ans, "g1.vtk");
-		add_file_check(7161993174729793785U, "g1.vtk", "grid");
+		add_file_check(15045105319010820220U, "g1.vtk", "grid");
 	}
 }
 void test08(){
@@ -256,11 +261,11 @@ void test08(){
 
 		GridGeom ans1 = HMGMap::LaplaceRectGrid(left, bot, right, top, "inverse-laplace");
 		GGeom::Export::GridVTK(ans1, "g1.vtk");
-		add_file_check(1091214751084657695U, "g1.vtk", "inverse algorithm");
+		add_file_check(249036200226773492U, "g1.vtk", "inverse algorithm");
 
 		GridGeom ans2 = HMGMap::LaplaceRectGrid(left, bot, right, top, "direct-laplace");
 		GGeom::Export::GridVTK(ans2, "g2.vtk");
-		add_file_check(13367473563095660898U, "g2.vtk", "direct algorithm");
+		add_file_check(8128882274083553470U, "g2.vtk", "direct algorithm");
 
 		add_check(ISEQ(GGeom::Info::Area(ans1), GGeom::Info::Area(ans2)), "areas equality");
 	}
@@ -358,7 +363,7 @@ void test09(){
 
 		GridGeom ans1 = HMGMap::LaplaceRectGrid(top, left, bot, right, "direct-laplace");
 		GGeom::Export::GridVTK(ans1, "g2.vtk");
-		add_file_check(3644615948933232213U, "g2.vtk", "top & left");
+		add_file_check(10632025654238734430U, "g2.vtk", "top & left");
 	}
 	{
 		HMCont2D::PCollection pcol;
@@ -371,7 +376,7 @@ void test09(){
 
 		GridGeom ans1 = HMGMap::LaplaceRectGrid(right, bot, left, top, "direct-laplace");
 		GGeom::Export::GridVTK(ans1, "g2.vtk");
-		add_file_check(9866934026284529294U, "g2.vtk", "right & bot");
+		add_file_check(3343378953437338469U, "g2.vtk", "right & bot");
 	}
 }
 

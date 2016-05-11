@@ -248,7 +248,8 @@ def circ4grid(algo, c_p0, rad, step, sqrside, rcoef):
                         "grid builder failed")
 
 
-def map_grid(c_grid, c_cont, c_gpoints, c_cpoints, snap, algo, cb):
+def map_grid(c_grid, c_cont, c_gpoints, c_cpoints, snap, algo,
+             return_invalid, cb):
     """maps grid on cont using gpoints, cpoints as basis.
        snap = "no", "add_vertices", "shift_vertices"
        algo = "inverse-laplace", "direct-laplace"
@@ -269,8 +270,10 @@ def map_grid(c_grid, c_cont, c_gpoints, c_cpoints, snap, algo, cb):
         a = ct.c_int(1)
     elif algo == "inverse-laplace":
         a = ct.c_int(2)
+    #invalid
+    inv = ct.c_int(1 if return_invalid else 0)
 
-    args = (c_grid, c_cont, n, c_gpoints, c_cpoints, s, a)
+    args = (c_grid, c_cont, n, c_gpoints, c_cpoints, s, a, inv)
     cb.initialize(libhmcport.build_grid_mapping, args)
     cb.execute_command()
     cret = cb.get_result()

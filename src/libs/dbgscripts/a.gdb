@@ -3,7 +3,8 @@
 
 source ../../src/libs/dbgscripts/hmout.gdb
 
-file ./hmmaping_test
+file ./hmblay_test
 set breakpoint pending on
-b rectangle_grid_builder.cpp:125
+#b grid.cpp:457
+b bgrid.cpp:27
 run 

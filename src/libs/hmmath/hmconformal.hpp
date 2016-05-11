@@ -123,8 +123,12 @@ public:
 	virtual vector<Point> MapToOriginal(const vector<Point>& input) const = 0;
 	virtual vector<Point> MapToAnnulus(const vector<Point>& input) const = 0;
 
-	Point MapToOriginal1(Point p){ return MapToOriginal(vector<Point> {p})[0]; }
-	Point MapToAnnulus1(Point p){ return MapToAnnulus(vector<Point> {p})[0]; }
+
+	Point MapToOriginal1(const Point& p) const { return MapToOriginal(vector<Point> {p})[0]; }
+	Point MapToAnnulus1(const Point& p) const { return MapToAnnulus(vector<Point> {p})[0]; }
+	
+	virtual Point MapToAnnulusBnd(const Point& p) const { return MapToAnnulus1(p); }
+	virtual Point MapToOriginalBnd(const Point& p) const { return MapToOriginal1(p); }
 
 	//calculate angle at which i-th point is mapped to annulus
 	virtual double PhiInner(int i) const = 0;

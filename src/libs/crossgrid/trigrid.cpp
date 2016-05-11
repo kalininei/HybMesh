@@ -9,6 +9,11 @@ void TriGrid::FillFromGModel(void* gmod){
 	GModel* m = static_cast<GModel*>(gmod);
 	
 	//--- build mesh
+	//!! gmsh 2.11 doesn't work correctly without this line
+	//   if chararcteristic mesh size is not 1.0
+	auto bb = m->bounds();
+	GmshSetBoundingBox(bb.min()[0], bb.max()[0], bb.min()[1], bb.max()[1], 0, 0);
+	//GmshWriteFile("FF.opt");
 	//m->writeGEO("gmsh_geo.geo");
 	m->mesh(2);
 	//m->writeMSH("gmsh_msh.msh");

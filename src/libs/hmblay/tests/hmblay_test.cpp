@@ -56,7 +56,6 @@ void test01(){
 		}
 		return true;
 	}(), cn);
-	//GGeom::Debug::save_vtk(Ans3, "g1.vtk");
 }
 
 void test02(){
@@ -84,7 +83,7 @@ void test02(){
 	//maximum outer element is no more then two times bigger then minimum
 	double mina1 = *(std::min_element(area1.begin(), area1.end()));
 	double maxa1 = *(std::max_element(area1.begin(), area1.end()));
-	add_check(mina1>0 && maxa1/mina1<2.1, cn);
+	add_check(mina1>0 && maxa1/mina1<2.4, cn);
 
 	cn = std::string("8-side polygon with inner layer");
 	inp.direction = HMBlay::DirectionFromString("INNER");
@@ -96,7 +95,8 @@ void test02(){
 	//maximum outer element is bigger not more then two times then minimum
 	double mina2 = *(std::min_element(area2.begin(), area2.end()));
 	double maxa2 = *(std::max_element(area2.begin(), area2.end()));
-	add_check(mina2>0 && maxa2/mina2<2.1, cn);
+	add_check(mina2>0 && maxa2/mina2<2.4, cn);
+	GGeom::Debug::save_vtk(Ans2, "ret2.vtk");
 };
 
 
@@ -180,6 +180,7 @@ void test04(){
 	std::swap(inp2.start, inp2.end);
 	inp2.bnd_step = 0.1;
 	GridGeom Ans2 = HMBlay::BuildBLayerGrid({inp1, inp2});
+	GGeom::Debug::save_vtk(Ans2, "ans2.vtk");
 	add_check([&](){
 		for (int i=0; i<Ans2.n_cells(); ++i) if (Ans2.get_cell(i)->area()<0) return false;
 		if (Ans2.n_cells()/4 != Ans2.n_points()/5) return false;
@@ -187,8 +188,8 @@ void test04(){
 		for (int i=0; i<Ans2.n_points(); ++i) if (Ans2.get_point(i)->y>10+0.4+1e-12) return false;
 		bool hasp1=false, hasp2=false;
 		for (int i=0; i<Ans2.n_points(); ++i){
-			if (Point::dist(*Ans2.get_point(i), Point(10.8, 0))<1e-2) hasp1 = true;
-			if (Point::dist(*Ans2.get_point(i),Point(-10.8, 0))<1e-2) hasp2 = true;
+			if (Point::dist(*Ans2.get_point(i), Point(10.8, 0))<5e-2) hasp1 = true;
+			if (Point::dist(*Ans2.get_point(i),Point(-10.8, 0))<5e-2) hasp2 = true;
 		}
 		if (!hasp1 || !hasp2) return false;
 		return true;
@@ -547,6 +548,8 @@ void test14(){
 	inp1.bnd_step = 0.03;
 	inp1.force_conformal = true;
 	inp1.partition = {0, 0.01, 0.02, 0.03, 0.04, 0.053, 0.07, 0.095, 0.12};
+
+	HMCont2D::SaveVtk(c1, "ecol.vtk");
 
 	GridGeom g1 = HMBlay::BuildBLayerGrid({inp1});
 	GridGeom basgrid1 = GGeom::Constructor::RectGrid(Point(-0.1, -0.1), Point(1.1, 1.1), 30, 30);

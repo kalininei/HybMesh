@@ -3,6 +3,7 @@
 #include "contour.hpp"
 #include "tree.hpp"
 #include "cont_partition.hpp"
+#include "cont_repart.hpp"
 
 namespace HMCont2D{
 

@@ -57,7 +57,7 @@ def exclude_contours(grid, conts, what):
 
 def unite_grids(base_grid, over_grids, empty_holes=False, fix_bnd=False,
                 zero_angle_approx=0):
-    """Makes grids superpositions
+    """Makes grids superpositions.
 
     :param base_grid: basic grid identifier
 
@@ -69,31 +69,25 @@ def unite_grids(base_grid, over_grids, empty_holes=False, fix_bnd=False,
     :param bool empty_holes: keep all empty zones
       (in case of multiple connectivity)
       of imposed grids in the resulting grid.
-      (see :ref:`emptyholes` for details)
 
     :param bool fix_bnd: whether to fix all boundary nodes
-      (see :ref:`fixbnd` for details)
 
     :param positive-degree zero_angle_approx:
       defines deviation from the straight angle which is considered
       insignificant. Grid boundary vertices which provide insignificant
       contour turns could be moved in order to obtain better result.
       Makes sense only if ``fix_bnd = False``.
-      (see :ref:`zero-angle-app` for details)
 
     :return: identifier of the newly created grid
 
     :raises: hmscript.ExecError
 
-    Each next grid will be imposed on the result of previous imposition.
+    See detailed options description in :ref:`gridimp`.
 
     Example:
        .. literalinclude:: ../../testing/py/fromdoc/ex_unite_grids.py
            :start-after: START OF EXAMPLE
            :end-before: END OF EXAMPLE
-
-    See also:
-       :ref:`gridimp`
 
     """
     args = {"base": base_grid, "empty_holes": empty_holes,
@@ -333,7 +327,7 @@ def build_boundary_grid(opts):
 
 def map_grid(base_grid, target_contour, base_points, target_points,
              snap="no", project_to="line", btypes="from_grid",
-             algo="inverse-laplace"):
+             algo="inverse-laplace", return_invalid=False):
     """Performs mapping of base grid on another contour
 
     :param base_grid: grid identifier
@@ -375,17 +369,28 @@ def map_grid(base_grid, target_contour, base_points, target_points,
        * ``"direct-laplace"`` solves Laplace problem in base domain,
        * ``"inverse-laplace"`` solves Laplace problem in target domain.
 
+    :param bool return_invalid: if this flag is on
+       then the procedure will return a grid even if it is not valid
+       (has self-intersections). Such grids could be exported to
+       simple formats (like vtk or tecplot) in order to detect
+       bad regions and give user a hint of how to adopt
+       input data to gain acceptable result.
+
+       .. warning:: Never use invalid grids for further operations.
+
     :raises: ValueError, hmscript.ExecError
 
     :returns: identifier of newly created grid
 
-    Area mapping will take place in such a way that i-th point of
+    Domain mapping will take place in such a way that i-th point of
     ``target_points`` will be translated into i-th point of
     ``contour_points``. Each outer and inner contour of ``base_grid``
     should contain at least one point in ``target_points`` array.
     Order of points in given points array doesn't matter.
     Resulting grid topology will be equal to ``base_grid`` topology
     until ``snap="add_vertices"`` is defined.
+
+    See detailed options description in :ref:`gridmappings`.
     """
     n = max(len(base_points), len(target_points))
     bpoints = []
@@ -421,7 +426,8 @@ def map_grid(base_grid, target_contour, base_points, target_points,
                              "target_points": tpoints,
                              "snap": snap,
                              "algo": algo,
-                             "btypes": btypes})
+                             "btypes": btypes,
+                             "return_invalid": return_invalid})
     try:
         flow.exec_command(c)
         return c._get_added_names()[0][0]

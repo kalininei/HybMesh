@@ -186,8 +186,11 @@ Grid* boundary_layer_grid_wcb(int N, BoundaryLayerGridOption* opt,
 //algo:
 //   1 - direct laplace
 //   2 - inverse laplace
+//if return_invalid = true then grid will be returned even if it is not valid,
+//otherwise returns NULL in case of errors.
 Grid* build_grid_mapping(void* base_grid, void* target_contour, int Npnt,
 		double* pbase, double* ptarget, int snap_method, int algo,
+		int return_invalid,
 		hmcport_callback cb);
 
 

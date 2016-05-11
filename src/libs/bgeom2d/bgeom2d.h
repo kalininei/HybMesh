@@ -248,7 +248,6 @@ class BoundingBox{
 protected:
 	void init();
 public:
-
 	double xmin, xmax, ymin, ymax;
 
 	BoundingBox():xmin(0), xmax(1), ymin(0), ymax(1){}

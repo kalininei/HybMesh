@@ -36,21 +36,32 @@ GridGeom DoMapping::run(HMCallback::Caller2& cb){
 
 	//draw a resulting grid
 	cb.step_after(5, "Grid building");
-	auto approx = g3->GetApprox();
-	auto pmod = [&](GridPoint* p){
-		double x = approx->Val(*p, u);
-		double y = approx->Val(*p, v);
-		p->set(x, y);
-	};
 	GridGeom ret = GGeom::Constructor::DeepCopy(inpgrid);
-	GGeom::Modify::PointModify(ret, pmod);
+	//receive boundary points
+	vector<bool> is_boundary(ret.n_points(), false);
+	for (auto p: ret.get_bnd_points()) is_boundary[p->get_ind()] = true;
+	auto approx = g3->GetApprox();
+	//do mappings
+	for (int i=0; i<ret.n_points(); ++i){
+		GridPoint* p = ret.get_point(i);
+		if (is_boundary[i]){
+			p->set(mcol.map_from_base(*p));
+		} else {
+			double x = approx->Val(*p, u);
+			double y = approx->Val(*p, v);
+			p->set(x, y);
+		}
+	}
+
+	cb.step_after(5, "Check grid");
+	if (!GGeom::Info::Check(ret)) throw HMGMap::EInvalidGrid(std::move(ret));
 
 	cb.step_after(5, "Snapping");
 	//snapping 
-	for (auto p: ret.get_bnd_points()){
-		Point p2 = HMCont2D::ECollection::ClosestPoint(mapped_outer, *p);
-		const_cast<GridPoint*>(p)->set(p2.x, p2.y);
-	}
+	//for (auto p: ret.get_bnd_points()){
+	//        Point p2 = HMCont2D::ECollection::ClosestPoint(mapped_outer, *p);
+	//        const_cast<GridPoint*>(p)->set(p2.x, p2.y);
+	//}
 	if (opt.snap == "ADD_VERTICES"){
 		for (auto& n: mapped_outer.nodes)
 			GGeom::Modify::SnapToContour(ret, *n, {});
@@ -60,8 +71,6 @@ GridGeom DoMapping::run(HMCallback::Caller2& cb){
 	} else if (opt.snap != "NO"){
 		throw HMGMap::MapException(std::string("Unknown snapping option - ") + opt.snap);
 	}
-	cb.step_after(5, "Check grid");
-	if (!GGeom::Info::Check(ret)) throw HMGMap::MapException("Resulting grid is not valid");
 	return ret;
 }
 void DoMapping::prepare_mapped_contour(){
@@ -140,6 +149,7 @@ void DirectMapping::build_grid3(){
 			copied_base_contour->GuaranteePoint(pbase, pcol);
 		}
 	}
+	inpgrid2.ReloadEdges();
 	
 	g3.reset(new HMFem::Grid43(
 		HMFem::AuxGrid3(inpgrid2, opt.fem_nrec, opt.fem_nmax)));
@@ -175,6 +185,7 @@ void DirectMapping::solve_uv_problems(vector<double>& u, vector<double>& v){
 		laplace->SetDirichlet(*n, dirfunc);
 	}
 	laplace->QuickSolve_BC(v);
+
 }
 
 // =========================== InverseMapping
@@ -201,6 +212,7 @@ void InverseMapping::build_grid3(){
 			copied_mapped_contour->GuaranteePoint(pmapped, pcol);
 		}
 	}
+	mapped2.ReloadEdges();
 	
 	//build grid
 	g3.reset(new HMFem::Grid43(
@@ -237,7 +249,7 @@ void InverseMapping::solve_uv_problems(vector<double>& u, vector<double>& v){
 		laplace->SetDirichlet(*n, dirfunc);
 	}
 	laplace->QuickSolve_BC(v);
-
+	
 	//swap g3 coordinates and uv
 	auto modfun = [&u, &v](GridPoint* p){
 		std::swap(p->x, u[p->get_ind()]);

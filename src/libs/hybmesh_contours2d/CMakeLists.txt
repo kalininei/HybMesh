@@ -15,6 +15,7 @@ set (HEADERS
 	cont_assembler.hpp
 	algos.hpp
 	cont_partition.hpp
+	cont_repart.hpp
 )
 
 set (SOURCES
@@ -30,6 +31,7 @@ set (SOURCES
 	cont_assembler.cpp
 	algos.cpp
 	cont_partition.cpp
+	cont_repart.cpp
 )
 
 source_group ("Header Files" FILES ${HEADERS} ${HEADERS})

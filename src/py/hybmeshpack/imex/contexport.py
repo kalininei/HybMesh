@@ -37,7 +37,7 @@ def tecplot(cont, fname, bt=None):
     # --- main contour
     out.extend(['ZONE T="Contour"',
                 'ZONETYPE=FELINESEG',
-                'N=%i E=%i' % (cont.n_edges(), cont.n_points()),
+                'N=%i E=%i' % (cont.n_points(), cont.n_edges()),
                 'DATAPACKING=BLOCK'
                 ])
     for p in cont.points:

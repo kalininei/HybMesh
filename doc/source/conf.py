@@ -31,6 +31,7 @@ sys.path.insert(0, os.path.abspath('../../src/py'))
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.todo',
+    'sphinx.ext.pngmath'
 ]
 todo_include_todos = True
 

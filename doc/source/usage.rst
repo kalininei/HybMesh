@@ -53,7 +53,7 @@ prints installed hybmesh version;
 
   > hybmesh -u
 
-checks for latest release update on the github repository of the project
+checks for latest release update in the github repository of the project
 (Internet connection is required).
 
 

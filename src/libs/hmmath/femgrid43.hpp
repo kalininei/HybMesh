@@ -9,6 +9,8 @@ namespace HMFem{
 //but has connectivity with only 3/4 nodes elements
 class Grid43: public GridGeom{
 public:
+	bool check();
+
 	//build grid by simplification of
 	//arbitraty cell grid
 	static shared_ptr<Grid43>
@@ -28,6 +30,11 @@ public:
 	Build3(const HMCont2D::ContourTree& conts,
 		const ShpVector<HMCont2D::Contour>& constraints,
 		double h);
+
+	static shared_ptr<Grid43>
+	Build3(const HMCont2D::ContourTree& conts,
+		const ShpVector<HMCont2D::Contour>& constraints,
+		std::map<Point*, double>& h, double hh);
 
 	//build a triangle grid which shares points whith
 	//common grid
@@ -73,9 +80,9 @@ private:
 	void input(const HMCont2D::ContourTree& _tree, const vector<HMCont2D::Contour>& _constraints);
 	vector<Point*> gather_section(const vector<Point*>& ordered, int start, double h);
 
-	std::unordered_set<Point*> mandatory_points;
-	void mandatory_corner_points(const HMCont2D::Contour& cont);
+	std::set<Point*> mandatory_points;
 	void mandatory_intersections(HMCont2D::Contour& c1, HMCont2D::Contour& c2);
+	static bool angle_check(const vector<Point*>& line);
 	void clear();
 };
 extern HMCallback::FunctionWithCallback<TAuxGrid3> AuxGrid3;
@@ -83,6 +90,12 @@ extern HMCallback::FunctionWithCallback<TAuxGrid3> AuxGrid3;
 class Grid43::Approximator{
 	const Grid43* grid;
 	shared_ptr<GGeom::Info::CellFinder> cfinder;
+	//try to find point amoung cells with positive ordering.
+	//if fails->searches amoung others
+	//if fails->throws EOutOfArea
+	const Cell* FindPositive(const Point& p, Point& ksieta) const;
+	static void FillJ3(std::array<double, 5>& J, const Cell* c);
+	static void FillJ4(std::array<double, 5>& J, const Point& p, const Cell* c);
 
 	static Point LocalCoordinates(const Cell* c, Point p);
 	static Point LocalCoordinates3(const Cell* c, Point p);
@@ -90,6 +103,9 @@ class Grid43::Approximator{
 	static double Interpolate(const Cell* c, Point ksieta, const vector<double>& fun);
 	static double Interpolate3(const Cell* c, Point ksieta, const vector<double>& fun);
 	static double Interpolate4(const Cell* c, Point ksieta, const vector<double>& fun);
+
+	mutable vector<vector<Edge>> bndedges;
+	const vector<Edge>& BndEdgesByPnt(const Point& p) const;
 public:
 	Approximator(const Grid43* g, int nx=20, int ny=20):
 		grid(g),
@@ -99,6 +115,9 @@ public:
 	//If p is not within grid throws OutOfArea
 	double Val(Point p, const vector<double>& fun) const;
 	vector<double> Vals(Point, const vector<const vector<double>*>& funs) const;
+
+	double BndVal(const Point& p, const vector<double>& fun) const;
+	vector<double> BndVals(const Point& p, const vector<const vector<double>*>& funs) const;
 };
 
 class Grid43::IsolineBuilder{

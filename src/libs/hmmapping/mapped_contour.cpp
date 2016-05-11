@@ -86,6 +86,10 @@ double MappedContour::ex2loc_base(double w) const{
 
 Point MappedContour::map_from_base(Point p) const{
 	double w = std::get<1>(base->coord_at(p));
+	return map_from_base(w);
+}
+
+Point MappedContour::map_from_base(double w) const{
 	double ec = loc2ex_base(w);
 	double wcont = ex2loc_mapped(ec);
 	return HMCont2D::Contour::WeightPoint(*mapped, wcont);
@@ -147,3 +151,26 @@ MappedContour* MappedContourCollection::insert(HMCont2D::Contour* cbase, HMCont2
 		throw HMGMap::MapException("Contour-to-contour links are ambiguous");
 	}
 }
+
+Point MappedContourCollection::map_from_base(Point p) const{
+	//1) find closest contour
+	MappedContour* closest=0;
+	double closest_w;
+	double closest_dist;
+	
+	for (int i=0; i<data.size(); ++i){
+		auto coord = data[i]->base->coord_at(p);
+		double dist = std::get<4>(coord);
+		if (closest == 0 || dist < closest_dist){
+			closest = data[i].get();
+			closest_w = std::get<1>(coord);
+			closest_dist = dist;
+			if (ISZERO(dist)) break;
+		}
+	}
+	
+	//2) map
+	return closest->map_from_base(closest_w);
+}
+
+

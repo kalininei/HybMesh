@@ -4,6 +4,7 @@ source ../../src/libs/dbgscripts/hmout.gdb
 file python
 set args ../../src/py/hybmesh.py -sx fromdoc/intro_hcyl.py -silent
 set breakpoint pending on
-b bgrid.cpp:82
+#b femgrid43.cpp:562
+#b cont_repart.cpp:399
 run
 

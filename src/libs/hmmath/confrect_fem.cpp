@@ -462,3 +462,12 @@ const HMCont2D::Contour* ToAnnulus::InvGridContour() const{
 	}
 	return _inv_cont.get();
 }
+
+Point ToAnnulus::MapToAnnulusBnd(const Point& p) const{
+	vector<double> s = approx->BndVals(p, {&u, &v});
+	return Point(s[0]*cos(s[1]), s[0]*sin(s[1]));
+}
+Point ToAnnulus::MapToOriginalBnd(const Point& p) const{
+	vector<double> s = inv_approx->BndVals(p, {&inv_u, &inv_v});
+	return Point(s[0], s[1]);
+}

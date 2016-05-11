@@ -18,7 +18,7 @@ public:
 class EOutOfArea: public EException{
 	static std::string Msg(Point p){
 		std::ostringstream s;
-		s<<"Point "<<p<<" lies outside grid area"<<std::endl;
+		s<<"Point ("<<p.x<<", "<<p.y<<") lies outside grid area"<<std::endl;
 		return s.str();
 	};
 public:
@@ -132,8 +132,6 @@ class CellFinder{
 	Point p0;
 	vector<vector<const Cell*>> cells_by_square;
 
-	int GetSquare(const Point& p) const;
-	std::set<int> IndSet(const BoundingBox& bbox) const;
 public:
 	CellFinder(const GridGeom* g, int nx, int ny);
 	//Find cell containing point.
@@ -141,6 +139,10 @@ public:
 	const Cell* Find(const Point& p) const;
 	const Cell* FindExcept(const Point& p, const std::set<const Cell*>& exc) const;
 
+	//squares management
+	std::set<int> IndSet(const BoundingBox& bbox) const;
+	int NumSquares() const { return Nx*Nx; }
+	int GetSquare(const Point& p) const;
 	//vector of cells which can contain given point
 	const vector<const Cell*>& CellCandidates(const Point& p) const;
 	const vector<const Cell*>& CellsBySquare(int i) const { return cells_by_square[i]; }

@@ -13,6 +13,14 @@ public:
 			std::string("Grid mapping exception: ") + m){};
 };
 
+class EInvalidGrid: public MapException{
+public:
+	GridGeom invalid_grid;
+	EInvalidGrid(GridGeom&& g) noexcept:
+		MapException("Resulting grid is not valid"),
+		invalid_grid(std::move(g)){};
+};
+
 struct Options{
 	int fem_nmax;
 	int fem_nmin;

@@ -10,7 +10,7 @@ using HMTesting::add_check;
 
 void test01(){
 	using namespace HMMath::Conformal::Impl::SCPack;
-	std::cout<<"SCPACK conformal mapping"<<std::endl;
+	std::cout<<"01. SCPACK conformal mapping"<<std::endl;
 	auto left = HMCont2D::Constructor::ContourFromPoints({
 			Point {0.4, 0.2},
 			Point {0.47662610, 0.22298783},
@@ -46,7 +46,7 @@ void test01(){
 
 void test02(){
 	using namespace HMMath::Conformal::Impl;
-	std::cout<<"Rectangle approximation of conformal mapping"<<std::endl;
+	std::cout<<"02. Rectangle approximation of conformal mapping"<<std::endl;
 	auto top = HMCont2D::Constructor::ContourFromPoints({
 		Point{0.43701993, 0.07659573},
 		Point{0.44410482, 0.07840499},
@@ -81,7 +81,7 @@ void test02(){
 
 void test03(){
 	using namespace HMMath::Conformal::Impl::DSCPack;
-	std::cout<<"DSCPack conformal mapping"<<std::endl;
+	std::cout<<"03. DSCPack conformal mapping"<<std::endl;
 
 	auto bot1 = HMCont2D::Constructor::Circle(8, 2, Point(0,0.1));
 	auto top1 = HMCont2D::Constructor::Circle(10, 4, Point(0,0.1));
@@ -99,7 +99,7 @@ void test03(){
 }
 
 void test04(){
-	std::cout<<"Conformal mapping to rectangle: FEM vs SCPACK"<<std::endl;
+	std::cout<<"04. Conformal mapping to rectangle: FEM vs SCPACK"<<std::endl;
 	int sz1 = 13;
 	auto r1 = HMCont2D::Constructor::Circle(sz1, 10, Point(0,0));
 	auto inp1 = HMMath::Conformal::Rect::FactoryInput(r1, {0, sz1/4, sz1/2, 3*sz1/4});
@@ -107,14 +107,12 @@ void test04(){
 
 	HMMath::Conformal::Options opt;
 	//fem 1
-	//opt.fem_segment_partition = 12;
 	auto trans1 = HMMath::Conformal::Impl::ConfFem::ToRect::Build(
 			std::get<0>(inp1), sz1/4, sz1/2, 3*sz1/4, opt);
 	Point p1  = trans1.MapToRectangle1(po);
 	Point p11 = trans1.MapToPolygon1(p1);
 
 	//fem 2
-	//opt.fem_segment_partition = 11;
 	auto trans2 = HMMath::Conformal::Impl::ConfFem::ToRect::Build(
 			std::get<0>(inp1), sz1/4, sz1/2, 3*sz1/4, opt);
 	Point p2  = trans2.MapToRectangle1(po);
@@ -140,7 +138,7 @@ void test04(){
 }
 
 void test05(){
-	std::cout<<"fem in square"<<std::endl;
+	std::cout<<"05. fem in square"<<std::endl;
 	Point p1{0.0, 0.0}, p2{2.0, 0.0}, p3{2.0, 1.0}, p4{0.0, 1.0};
 
 	//-> Dfdn(bottom), Dfdx(area), DfDy(area)
@@ -197,7 +195,7 @@ void test05(){
 }
 
 void test06(){
-	std::cout<<"Conformal mapping to annulus: FEM vs DSCPACK"<<std::endl;
+	std::cout<<"06. Conformal mapping to annulus: FEM vs DSCPACK"<<std::endl;
 
 	auto top = HMCont2D::Constructor::Circle(12, 1.5, Point(10,0.1));
 	auto bot = HMCont2D::Constructor::Circle(5, 0.4, Point(10.5,0.2));
@@ -288,7 +286,6 @@ void test08(){
 		HMCont2D::ContourTree tree;
 		tree.AddContour(sqrcont);
 		GridGeom ans1 = HMFem::AuxGrid3(tree, vector<HMCont2D::Contour> {constr}, 1000, 1000000);
-		GGeom::Export::GridVTK(ans1, "g1.vtk");
 		add_check([&](){
 			auto fpoint = [&](double x, double y){
 				Point pp(x, y);
@@ -311,7 +308,20 @@ void test08(){
 		tree.AddContour(sqrcont2);
 		GridGeom ans1 = HMFem::AuxGrid3(tree,
 				vector<HMCont2D::Contour> {lineconst}, 500, 100000);
-		add_check(ans1.n_points() == 816 && ans1.n_cells() == 1501, "touching coarse constraint");
+		add_check(ans1.n_points() < 700 && ans1.n_cells() < 1200 &&
+			[&](){
+				Point p1(0.5, 0), p2(0.2, 0.5);
+				double ksieta[2];
+				for (auto e: ans1.get_edges()){
+					Point p3 = *ans1.get_point(e.p1);
+					Point p4 = *ans1.get_point(e.p2);
+					if (SectCross(p1, p2, p3, p4, ksieta)){
+						if (ksieta[1]>geps && ksieta[1]<1-geps) return false;
+					}
+				}
+				return true;
+			}()
+			, "touching coarse constraint");
 	}
 	{
 		auto sqrcont = HMCont2D::Constructor::ContourFromPoints({0,0, 1,0, 1,1, 0,1}, true);
@@ -325,7 +335,7 @@ void test08(){
 		tree.AddContour(sqrcont2);
 		GridGeom ans1 = HMFem::AuxGrid3(tree,
 				vector<HMCont2D::Contour> {lineconst2}, 500, 100000);
-		add_check(ans1.n_points() == 882 && ans1.n_cells() == 1656, "touching fine constraint");
+		add_check(ans1.n_points() < 800, "touching fine constraint");
 	}
 };
 
