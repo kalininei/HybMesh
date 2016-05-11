@@ -57,7 +57,8 @@ double connect_vec_points(const vector<Point*>& left, const vector<Point*>& bot,
 	for (int i=0; i<rw.size(); ++i){
 		*right[i] += (right_move1 * (1.0-rw[i]) + right_move2 * rw[i]);
 	}
-	return vecLen(bot_move) + vecLen(top_move) +
+	//if bot_move and top_move are equal than moving top is better
+	return 1.001*vecLen(bot_move) + vecLen(top_move) +
 		vecLen(right_move1) + vecLen(right_move2);
 }
 

@@ -115,19 +115,21 @@ def add_triangle_grid(p0, p1, p2, nedge):
 
 
 def add_custom_rect_grid(algo, left, bottom, right=None, top=None):
-    """ Creates rectangular grid on the basis of four lines using
-    contour vertices for partitioning.
+    """ Creates rectangular grid on the basis of four curvilinear contours
+    using contour vertices for partition.
+    See details in :ref:`custom_rect_grid`.
 
     :param str algo: Algorithms of building:
 
        * ``'linear'`` - connects respective points of opposite
          contours by straight lines. If right/top contours are defined
-         they should have same number of vertices as left/bottom.
-       * ``'laplace-inverse'`` -
-       * ``'laplace-direct'`` - connects points using solution of Dirichlet
-         elliptic problem
+         they should have same number of vertices as left/bottom;
+       * ``'inverse_laplace'`` -
+       * ``'direct_laplace'`` - connects points using solution of
+         laplace equation with Dirichlet boundary conditions;
        * ``'orthogonal'`` - builds orthogonal grid based on **left** and
-         **bottom** partition. Partitions of **right** and **top** are ignored.
+         **bottom** partition.
+         Partitions of **right** and **top** are ignored.
 
     :param left:
 
@@ -135,7 +137,7 @@ def add_custom_rect_grid(algo, left, bottom, right=None, top=None):
 
     :param right:
 
-    :param top: identifiers of base line segments.
+    :param top: identifiers of curvilinear domain sides.
        **right** and **top** could be ``None``. If so right and top
        boundaries will be created by translation of **left** and **bottom**.
 
@@ -143,27 +145,10 @@ def add_custom_rect_grid(algo, left, bottom, right=None, top=None):
 
     :raise: hmscript.ExecError, ValueError
 
-    **left**, **bottom**, **right** and **top** nomenclature is conventional.
-    In fact user can pass contours regardless of their real physical location
-    and direction keeping in mind that grid boundary
-    segment obtained from **left** (or **top**)
-    will be opposite to one from **right** (or **bottom**).
-
-    If given contours are not properly connected then program will try
-    to connect it with the following priority order (keeping **left** fixed):
-
-    1) set left contour;
-    2) add bottom contour to left contour bottom point;
-    3) add top contour to left contour top point;
-    4) add right contour to bottom contour right point;
-    5) stretch right contour so its upper point fits top contour right point.
-
-    As a result of these modifications:
-     * for contour passed as **left** both position and shape are preserved;
-     * for **top** and **bot** shape is preserved;
-     * for **right** both position and shape could be changed.
-
     """
+    if algo not in ['linear', 'inverse_laplace', 'direct_laplace',
+                    'orthogonal']:
+        raise ValueError("Unknown algorithm %s" % str(algo))
     # call
     args = {'algo': algo,
             'left': left,
@@ -180,9 +165,7 @@ def add_custom_rect_grid(algo, left, bottom, right=None, top=None):
 
 def add_circ_rect_grid(p0, rad, step, sqrside=1.0, rcoef=1.0, algo="linear"):
     """ Creates quadrangular cell grid in a circular area.
-    Resulting grid contains uniform square grid in the center of
-    defined area which is continued by a ring-like grid
-    towards the outer circular boundary.
+    See details in :ref:`circrect_grid`.
 
     :param list-of-floats p0: center point of circle area in [x, y] format.
 
@@ -190,15 +173,12 @@ def add_circ_rect_grid(p0, rad, step, sqrside=1.0, rcoef=1.0, algo="linear"):
 
     :param positive-float step: approximate partition step of the outer
        boundary.
-       Real step will be calculated on the basis of circle arc length
-       in such a way that number of steps be divisible by 8.
 
     :param positive-float sqrside: side of the inner square normalized by
        the circle radius. Values greater than 1.4 are not allowed.
 
     :param positive-float rcoef: radius direction refinement of
-       the ring part of the grid. This value approximately equals
-       the aspect ratio of cells near the outer boundary.
+       the ring part of the grid.
        Values less then unity lead to refinement towards outer boundary.
 
     :param str algo: Algorithms of assembling the ring part of the grid.
@@ -206,9 +186,9 @@ def add_circ_rect_grid(p0, rad, step, sqrside=1.0, rcoef=1.0, algo="linear"):
        * ``'linear'`` - use weighted approach for each ray partition
        * ``'laplace'`` - use algebraic mapping for
          building each 45 degree sector.
-       * ``'orthogonal-circ'`` - build orthogonal grid keeping
+       * ``'orthogonal_circ'`` - build orthogonal grid keeping
          uniform grid at outer circle
-       * ``'orthogonal-rect'`` - build orthogonal grid keeping
+       * ``'orthogonal_rect'`` - build orthogonal grid keeping
          uniform grid at inner rectangle
 
     :return: new grid identifier
@@ -230,7 +210,7 @@ def add_circ_rect_grid(p0, rad, step, sqrside=1.0, rcoef=1.0, algo="linear"):
         raise ValueError("Invalid sqrside")
     if (not isinstance(rcoef, numbers.Real) or rcoef <= 0):
         raise ValueError("Invalid rcoef")
-    if algo not in ["laplace", "linear", "orthogonal-rect", "orthogonal-circ"]:
+    if algo not in ["laplace", "linear", "orthogonal_rect", "orthogonal_circ"]:
         raise ValueError("Unknown algorithm")
     # call
     args = {'algo': algo,

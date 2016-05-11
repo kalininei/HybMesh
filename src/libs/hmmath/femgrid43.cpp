@@ -6,7 +6,6 @@
 using namespace HMFem;
 
 bool Grid43::check(){
-	GGeom::Debug::save_vtk(*this, "before.vtk");
 	for (int i=0; i<n_cells(); ++i){
 		if (cells[i]->dim() == 3){
 			if (triarea(*cells[i]->points[0],

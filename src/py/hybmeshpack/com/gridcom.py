@@ -674,7 +674,7 @@ class MapGrid(NewGridCommand):
             target_poitns - points of the target contour
             snap - snapping algo ("no", "add_vertices", "shift_vertices")
             btypes - source of boundary features ("from_grid", "from_contour")
-            algo ('inverse-laplace', 'direct-laplace')
+            algo ('inverse_laplace', 'direct_laplace')
         """
         return {'name': command.BasicOption(str),
                 'base': command.BasicOption(str),

@@ -1,3 +1,5 @@
+.. py:module:: hybmeshpack.hmscript
+
 .. _functionality:
 
 Functionality
@@ -278,6 +280,8 @@ be valid, i.e.:
   then point :math:`p'_3` should lie between corresponding
   points :math:`p'_1, p'_2` on the target contour.
 
+.. _laplace_map_algo:
+
 Algorithms
 ++++++++++
 
@@ -385,6 +389,28 @@ provides better mapping near the boundaries (see examples in fig.4c, fig.5).
 Snapping
 ++++++++
 
+The domain of a grid obtained by mapping procedure will not exactly equal the target domain
+until boundary mapping for each valuable  *target domain* vertex is explicitly defined (see fig.6a).
+However the program can evolute a special postprocessing procedure which modifies
+resulting boundary vertices with respect to original *target contour*.
+
+.. figure:: map_grid6.png
+   :width: 400 px
+
+   fig.6. Grid map with snapping. Magenta markers denote *target domain* vertices.
+
+With the snapping option *"Shift vertices"* all boundary vertices of resulting grid will be
+shifted to closest valuable *target* vertex (see fig.6b). Option *"Add vertices"* forces
+all boundary edges be extended by *target* vertices which lie between edge end points ( see fig.6c).
+The latter guarantees that the resulting domain will be equal to the original *target domain*, however
+it changes grid topology so that it won't be the same as the topology of the *base grid*.
+
+Snapping for each boundary edge will only take place if it is valid, i.e. it
+will not result in intersections with internal grid edges.
+
+
+Python interface function: :func:`map_grid`.
+See also: :ref:`custom_rect_grid`, :ref:`circrect_grid`.
 
 Contour Operations
 ------------------

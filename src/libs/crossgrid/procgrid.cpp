@@ -504,7 +504,7 @@ void GGeom::Modify::ShiftToContour(GridGeom& grid, const HMCont2D::Contour& cont
 			}
 		}
 		if (ok){
-			for (auto& s2: allshifts)
+			for (auto& s2: allshifts) if (&s2 != &s)
 				if (s.to == s2.to || s.from == s2.from) s2.from = NULL;
 		} else {
 			s.from->set(bu);

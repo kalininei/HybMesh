@@ -30,8 +30,8 @@ int export_tecplot_grid(const Grid* grid, const char* fname,
 //builds rectangular grid on basis of four open HMCont2D::Contour objects
 //algo is:
 //  0) linear connection
-//  1) laplace-inverse connection
-//  2) laplace-direct connection
+//  1) inverse-laplace connection
+//  2) direct-laplace connection
 //  3) orthogonal connection
 //if input are not positioned correctly their vertices coordinates will be changed
 //returns pointer to GridGeom or NULL if failed

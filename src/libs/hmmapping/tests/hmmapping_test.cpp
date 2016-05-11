@@ -362,8 +362,8 @@ void test09(){
 		bot.ReallocatePoints(pcol); right.ReallocatePoints(pcol);
 
 		GridGeom ans1 = HMGMap::LaplaceRectGrid(top, left, bot, right, "direct-laplace");
-		GGeom::Export::GridVTK(ans1, "g2.vtk");
-		add_file_check(10632025654238734430U, "g2.vtk", "top & left");
+		GGeom::Export::GridVTK(ans1, "g3.vtk");
+		add_file_check(11091658640678329136U, "g3.vtk", "top & left");
 	}
 	{
 		HMCont2D::PCollection pcol;
@@ -375,8 +375,8 @@ void test09(){
 		bot.ReallocatePoints(pcol); right.ReallocatePoints(pcol);
 
 		GridGeom ans1 = HMGMap::LaplaceRectGrid(right, bot, left, top, "direct-laplace");
-		GGeom::Export::GridVTK(ans1, "g2.vtk");
-		add_file_check(3343378953437338469U, "g2.vtk", "right & bot");
+		GGeom::Export::GridVTK(ans1, "g4.vtk");
+		add_file_check(15643697133166545954U, "g4.vtk", "right & bot");
 	}
 }
 

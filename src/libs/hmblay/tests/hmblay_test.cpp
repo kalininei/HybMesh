@@ -96,7 +96,6 @@ void test02(){
 	double mina2 = *(std::min_element(area2.begin(), area2.end()));
 	double maxa2 = *(std::max_element(area2.begin(), area2.end()));
 	add_check(mina2>0 && maxa2/mina2<2.4, cn);
-	GGeom::Debug::save_vtk(Ans2, "ret2.vtk");
 };
 
 
@@ -180,7 +179,6 @@ void test04(){
 	std::swap(inp2.start, inp2.end);
 	inp2.bnd_step = 0.1;
 	GridGeom Ans2 = HMBlay::BuildBLayerGrid({inp1, inp2});
-	GGeom::Debug::save_vtk(Ans2, "ans2.vtk");
 	add_check([&](){
 		for (int i=0; i<Ans2.n_cells(); ++i) if (Ans2.get_cell(i)->area()<0) return false;
 		if (Ans2.n_cells()/4 != Ans2.n_points()/5) return false;
@@ -225,7 +223,6 @@ void test04(){
 		if (cp!=4) return false;
 		return true;
 	}(), cn);
-	GGeom::Debug::save_vtk(Ans4, "g1.vtk");
 }
 
 

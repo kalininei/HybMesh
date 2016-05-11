@@ -327,23 +327,26 @@ def build_boundary_grid(opts):
 
 def map_grid(base_grid, target_contour, base_points, target_points,
              snap="no", project_to="line", btypes="from_grid",
-             algo="inverse-laplace", return_invalid=False):
-    """Performs mapping of base grid on another contour
+             algo="inverse_laplace", return_invalid=False):
+    """Performs mapping of base grid on another contour.
+    See detailed options description in :ref:`gridmappings`.
 
-    :param base_grid: grid identifier
+    :param base_grid: grid identifier.
 
-    :param target_contour: contour identifier
+    :param target_contour: contour identifier.
 
     :param base_points: collection of points in ``[[x0, y0], [x1, y1], ...]``
-      format which lie on the ``base_grid`` contour (if a point doesn't lie on
-      contour it would be projected to it)
+      format which lie on the **base_grid** contour (if a point doesn't lie on
+      contour it would be projected to it).
 
     :param target_points: collection of points in ``[[x0, y0], [x1, y1], ...]``
-      format which lie on the ``target_contour``
+      format which lie on the **target_contour**.
+      The i-th point of **target_points** will be mapped into i-th point of
+      **contour_points**. 
 
     :param str snap:
-      an option which defines postprocessing algorithm of snapping
-      newly created grid to ``target_contour``:
+      an option which defines post processing algorithm of snapping
+      newly created grid to *target_contour*:
 
       * ``"no"`` - no snapping
       * ``"add_vertices"`` - snap by adding new vertices if that will not
@@ -366,15 +369,15 @@ def map_grid(base_grid, target_contour, base_points, target_points,
     :param str algo:
        defines algorithm of mapping:
 
-       * ``"direct-laplace"`` solves Laplace problem in base domain,
-       * ``"inverse-laplace"`` solves Laplace problem in target domain.
+       * ``"direct_laplace"`` solves Laplace problem in base domain,
+       * ``"inverse_laplace"`` solves Laplace problem in target domain.
 
     :param bool return_invalid: if this flag is on
        then the procedure will return a grid even if it is not valid
        (has self-intersections). Such grids could be exported to
        simple formats (like vtk or tecplot) in order to detect
        bad regions and give user a hint of how to adopt
-       input data to gain acceptable result.
+       input data to gain an acceptable result.
 
        .. warning:: Never use invalid grids for further operations.
 
@@ -382,15 +385,6 @@ def map_grid(base_grid, target_contour, base_points, target_points,
 
     :returns: identifier of newly created grid
 
-    Domain mapping will take place in such a way that i-th point of
-    ``target_points`` will be translated into i-th point of
-    ``contour_points``. Each outer and inner contour of ``base_grid``
-    should contain at least one point in ``target_points`` array.
-    Order of points in given points array doesn't matter.
-    Resulting grid topology will be equal to ``base_grid`` topology
-    until ``snap="add_vertices"`` is defined.
-
-    See detailed options description in :ref:`gridmappings`.
     """
     n = max(len(base_points), len(target_points))
     bpoints = []
@@ -418,7 +412,7 @@ def map_grid(base_grid, target_contour, base_points, target_points,
             p.x, p.y = ctar.points[i].x, ctar.points[i].y
     else:
         raise ValueError("Unknown `project_to` = %s" % project_to)
-    if algo not in ['inverse-laplace', 'direct-laplace']:
+    if algo not in ['inverse_laplace', 'direct_laplace']:
         raise ValueError("Unknown mapping algorithm")
     c = com.gridcom.MapGrid({"base": base_grid,
                              "target": target_contour,

@@ -1,30 +1,31 @@
 #!/usr/bin/env python
 """
 Console interface for HybMesh. Possible arguments:
--v: print version and exit
--u: check for updates and exit
--x fn.hmp [-sgrid gname fmt fn] [-sproj fn] [-silent]
-    Execute command flow from 'hmp' file and saves resulting data. Options are
-    -sgrid gname fmt fn: export resulting grid with called gname to
-    file fn using format fmt. Can be called multiple times.
-        Formats:
-            vtk - vtk format
-            hmg - native HybMesh format
-            msh - fluent mesh format
-
-    -sproj fn.hmp: save project file after execution to file fn.hmp
-    -silent: no console callback during execution
-
-    Example:
-    > hybmesh -x state1.hmp -sgrid Grid1 vtk grid1.vtk -sproj final.hmp
-        1) loads data from stat1.hmp
-        2) executes command flow
-        3) exports Grid1 to vtk format
-        4) saves finalized project to final.hmp
+-v -- print version and exit
+-u -- check for updates and exit
 -sx fn.py [-silent]
     Execute hybmesh python script fn.py
     -silent: no console callback during execution
 """
+# -x fn.hmp [-sgrid gname fmt fn] [-sproj fn] [-silent]
+#     Execute command flow from 'hmp' file and saves resulting data.
+#     Options are
+#     -sgrid gname fmt fn: export resulting grid with called gname to
+#     file fn using format fmt. Can be called multiple times.
+#         Formats:
+#             vtk - vtk format
+#             hmg - native HybMesh format
+#             msh - fluent mesh format
+
+#     -sproj fn.hmp: save project file after execution to file fn.hmp
+#     -silent: no console callback during execution
+
+#     Example:
+#     > hybmesh -x state1.hmp -sgrid Grid1 vtk grid1.vtk -sproj final.hmp
+#         1) loads data from stat1.hmp
+#         2) executes command flow
+#         3) exports Grid1 to vtk format
+#         4) saves finalized project to final.hmp
 import sys
 from hybmeshpack import progdata, imex, basic
 

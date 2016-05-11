@@ -70,3 +70,17 @@ Versions History
    * :func:`export3d_grid_tecplot`
    * :func:`export_grid_tecplot`
    * :func:`export_contour_tecplot`
+
+* **0.4.2**:
+   New algorithms:
+
+   * inverse Laplace algorithm for grid mapping,
+   * Laplace and orthogonal algorithms for custom rectangular grid constructor,
+   * Laplace and orthogonal algorithms for quadrangle grid in a circle area constructor.
+
+   Python interface functions with new options:
+
+   * *algo* = ``direct_laplace``, ``inverse_laplace`` for :func:`map_grid`,
+   * *return_invalid* for :func:`map_grid`,
+   * *algo* = ``laplace``, ``orthogonal_circ``, ``orthogonal_rect`` for :func:`add_circ_rect_grid`,
+   * *algo* = ``direct_laplace``, ``inverse_laplace``, ``orthogonal`` for :func:`add_custom_rect_grid`.

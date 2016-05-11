@@ -134,17 +134,17 @@ def free_boundary_types(bt):
 
 
 def custom_rectangular_grid(algo, c_left, c_bot, c_right, c_top, cb):
-    """ algo: one of ['linear', 'inverse-laplace',
-                      'direct-laplace', 'orthogonal']
+    """ algo: one of ['linear', 'inverse_laplace',
+                      'direct_laplace', 'orthogonal']
         c_*: c allocated contours.
         returns c allocated 2d grid or raises
         After procedure points coordinates of c_* data may be changed.
     """
     if algo == 'linear':
         c_algo = ct.c_int(0)
-    elif algo == 'inverse-laplace':
+    elif algo == 'inverse_laplace':
         c_algo = ct.c_int(1)
-    elif algo == 'direct-laplace':
+    elif algo == 'direct_laplace':
         c_algo = ct.c_int(2)
     elif algo == 'orthogonal':
         c_algo = ct.c_int(3)
@@ -229,9 +229,9 @@ def circ4grid(algo, c_p0, rad, step, sqrside, rcoef):
         c_algo = ct.c_int(0)
     elif algo == "laplace":
         c_algo = ct.c_int(1)
-    elif algo == "orthogonal-circ":
+    elif algo == "orthogonal_circ":
         c_algo = ct.c_int(2)
-    elif algo == "orthogonal-rect":
+    elif algo == "orthogonal_rect":
         c_algo = ct.c_int(3)
     else:
         raise ValueError("Unknown algorithm")
@@ -252,7 +252,7 @@ def map_grid(c_grid, c_cont, c_gpoints, c_cpoints, snap, algo,
              return_invalid, cb):
     """maps grid on cont using gpoints, cpoints as basis.
        snap = "no", "add_vertices", "shift_vertices"
-       algo = "inverse-laplace", "direct-laplace"
+       algo = "inverse_laplace", "direct_laplace"
        bt = "from_grid", "from_contour"
     """
     n = ct.c_int(len(c_gpoints) / 2)
@@ -266,9 +266,9 @@ def map_grid(c_grid, c_cont, c_gpoints, c_cpoints, snap, algo,
         s = ct.c_int(1)
     # algo
     a = ct.c_int(0)
-    if algo == "direct-laplace":
+    if algo == "direct_laplace":
         a = ct.c_int(1)
-    elif algo == "inverse-laplace":
+    elif algo == "inverse_laplace":
         a = ct.c_int(2)
     #invalid
     inv = ct.c_int(1 if return_invalid else 0)
