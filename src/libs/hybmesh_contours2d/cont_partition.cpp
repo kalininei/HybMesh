@@ -1,5 +1,6 @@
 #include "cont_partition.hpp"
 #include "constructor.hpp"
+#include "piecewise.hpp"
 
 using namespace HMCont2D;
 namespace cns = Algos;
@@ -254,7 +255,11 @@ vector<double> partition_new_points_w(double step, const Contour& contour){
 }
 vector<double> partition_new_points_w(std::map<double, double> basis, const Contour& contour){
 	assert(basis.size()>0);
-	if (basis.size() == 1) return partition_new_points_w(basis.begin()->second, contour);
+	bool isconst = true;
+	for (auto& v: basis) if (!ISEQ(v.second, basis.begin()->second)){
+		isconst = false; break;
+	}
+	if (isconst) return partition_new_points_w(basis.begin()->second, contour);
 	double len = contour.length();
 	for (auto& m: basis) m.second/=len;
 	//for closed contour values at 0 and 1 should match
@@ -280,25 +285,6 @@ vector<double> partition_new_points_w(std::map<double, double> basis, const Cont
 	auto ret = Partition01::Build(basis);
 	if (contour.is_closed() && ret.size()<4) return {0, 1.0/3.0, 2.0/3.0, 1.0};
 	else return ret;
-
-	//auto funcstep = [&](double x)->double{
-		//if (x<=basis.begin()->first) return basis.begin()->second;
-		//if (x>=basis.rbegin()->first) return basis.rbegin()->second;
-		//auto it0 = basis.begin();
-		//while (x>it0->first) ++it0;
-		//auto it1 = it0--;
-		//double ret = (it0->second*(it1->first-x) + it1->second*(x-it0->first));
-		//return x + ret/(it1->first - it0->first);
-	//};
-	//vector<double> ret;
-	//ret.push_back(0);
-	//while (ret.back()<1.0) ret.push_back(funcstep(ret.back()));
-	////analyze last entry
-	//if ((ret.back() - 1.0) > 1.0 - ret[ret.size() - 1]) ret.resize(ret.size()-1);
-	//if (ret.size()<3) return {0, 1};
-	//double stretch_coef = 1.0/ret.back();
-	//for (auto& x: ret) x*=stretch_coef;
-	//return ret;
 }
 
 double build_substep(double step, const Contour&, Point*, Point*){ return step; }
@@ -349,6 +335,7 @@ std::map<double, double> build_substep(std::map<double, double> step,
 		for (auto it = step.begin(); it!=step.end(); ++it){
 			if (it->first >= 1) break;
 			step[it->first + 1] = it->second;
+			step[it->first - 1] = it->second;
 		}
 		if (ISEQLOWER(w1, w0)) w1 += 1;
 	}
@@ -382,19 +369,23 @@ Contour partition_core(A& step, const Contour& contour, PCollection& pstore){
 	cpoints.push_back(contour.last());
 	return Constructor::ContourFromPoints(cpoints);
 }
+
+template<class A>
+Contour partition_section(A& step, const Contour& cont, PCollection& pstore, Point* pstart, Point* pend){
+	Contour sub = Assembler::Contour1(cont, pstart, pend);
+	A substep = build_substep(step, cont, pstart, pend);
+	return partition_core(substep, sub, pstore);
+}
 //returns repartitioned copy of a contour
 template<class A>
 Contour partition_core(A& step, const Contour& contour, PCollection& pstore, const std::list<Point*>& keep){
 	auto it0 = keep.begin(), it1 = std::next(it0);
 	Contour ret;
 	while (it1 != keep.end()){
-		Contour sub = Assembler::Contour1(contour, *it0, *it1);
-		A substep = build_substep(step, contour, *it0, *it1);
-		Contour psub = partition_core(substep, sub, pstore);
-		ret.Unite(psub);
+		ret.Unite(partition_section(step, contour, pstore, *it0, *it1));
 		//if sub.size() == 1 then its direction is not defined
 		//so we need to check the resulting direction.
-		//We did it after second Unition when direction matters
+		//We did it after second union when direction matters
 		if (it0 == std::next(keep.begin())){
 			if (ret.last() != *it1) ret.Reverse();
 		}
@@ -403,9 +394,8 @@ Contour partition_core(A& step, const Contour& contour, PCollection& pstore, con
 	}
 	return ret;
 }
-template<class A>
-Contour partition_with_keepit(A& step, const Contour& contour, PCollection& pstore,
-		const std::vector<Point*>& keepit){
+
+std::list<Point*> build_sorted_pnt(const Contour& contour, const std::vector<Point*>& keepit){
 	//sort points in keepit and add start, end point there
 	vector<Point*> orig_pnt = contour.ordered_points();
 	std::set<Point*> keepset(keepit.begin(), keepit.end());
@@ -417,7 +407,7 @@ Contour partition_with_keepit(A& step, const Contour& contour, PCollection& psto
 
 	//add first, last points
 	if (!contour.is_closed()){
-		if (*keep_sorted.begin() != orig_pnt[0])
+		if (keep_sorted.size() == 0 || *keep_sorted.begin() != orig_pnt[0])
 			keep_sorted.push_front(orig_pnt[0]);
 		if (*keep_sorted.rbegin() != orig_pnt.back())
 			keep_sorted.push_back(orig_pnt.back());
@@ -430,6 +420,12 @@ Contour partition_with_keepit(A& step, const Contour& contour, PCollection& psto
 		keep_sorted.push_back(orig_pnt[0]);
 	}
 
+	return keep_sorted;
+}
+template<class A>
+Contour partition_with_keepit(A& step, const Contour& contour, PCollection& pstore,
+		const std::vector<Point*>& keepit){
+	std::list<Point*> keep_sorted = build_sorted_pnt(contour, keepit);
 	//call core procedure
 	return partition_core(step, contour, pstore, keep_sorted);
 }
@@ -469,4 +465,144 @@ Contour cns::WeightedPartition(const std::map<double, double>& basis,
 		const Contour& contour, PCollection& pstore,
 		const std::vector<Point*>& keepit){
 	return partition_with_keepit(basis, contour, pstore, keepit);
+}
+Contour cns::WeightedPartition(std::map<double, double> basis,
+		const Contour& contour, PCollection& pstore,
+		int nedges, const std::vector<Point*>& keepit){
+	if (nedges<=0) return WeightedPartition(basis, contour, pstore, keepit);
+	std::list<Point*> keep_sorted = build_sorted_pnt(contour, keepit);
+	if (contour.is_closed() && (keep_sorted.size()>nedges || nedges<3))
+		throw std::runtime_error("Failed to satisfy forced number of edges property");
+	if (!contour.is_closed() && keep_sorted.size()>nedges+1)
+		throw std::runtime_error("Failed to satisfy forced number of edges property");
+	if ((contour.is_closed() && keep_sorted.size() == nedges) || (
+			!contour.is_closed() && keep_sorted.size() == nedges+1)){
+		std::vector<Point*> p(keep_sorted.begin(), keep_sorted.end());
+		return Constructor::ContourFromPoints(p, false);
+	} else {
+		//lengths of keep points
+		std::vector<double> lengths;
+		for (auto it = keep_sorted.begin(); it!=--keep_sorted.end(); ++it){
+			auto c = contour.coord_at(**it);
+			lengths.push_back(std::get<0>(c));
+		}
+		lengths.push_back(contour.length());
+		//h(len) function
+		HMPW::LinearPiecewise pw;
+		for (auto& v: basis){
+			double x = v.first*lengths.back();
+			double y = v.second;
+			pw.add_point(x, y);
+		}
+		if (!ISEQ(basis.begin()->first, 0)){
+			if (contour.is_closed()){
+				pw.add_point((basis.rbegin()->first - 1)*lengths.back(), basis.rbegin()->second);
+			} else {
+				pw.add_point(0, basis.begin()->second);
+			}
+		}
+		if (!ISEQ(basis.rbegin()->first, 1.0)){
+			if (contour.is_closed()){
+				pw.add_point((basis.begin()->first + 1)*lengths.back(), basis.begin()->second);
+			} else {
+				pw.add_point(lengths.back(), basis.rbegin()->second);
+			}
+		}
+		//modify data to fit nedges
+		double haver = pw.Average(0, lengths.back());
+		double naver = lengths.back()/haver;
+		for (auto& v: basis) v.second*=(naver/nedges);
+		pw *= (naver/nedges);
+		//build approximations for each subcontour partition number
+		std::vector<double> nums_double;
+		for (int i=0; i<lengths.size()-1; ++i){
+			double len = lengths[i+1] - lengths[i];
+			double av = pw.Average(lengths[i], lengths[i+1]);
+			nums_double.push_back(len/av);
+		}
+		double sum_double = std::accumulate(nums_double.begin(), nums_double.end(), 0.0);
+		for (auto& v: nums_double) v*=(double(nedges)/sum_double);
+		vector<int> nums = RoundVector(nums_double, vector<int>(nums_double.size(), 1));
+		//build subcontours
+		auto it0 = keep_sorted.begin(), it1 = std::next(it0);
+		auto itn = nums.begin();
+		Contour ret;
+		while (it1 != keep_sorted.end()){
+			Contour psub;
+			PCollection ps;
+			double leftx=-std::numeric_limits<double>::max(), rightx=std::numeric_limits<double>::max();
+			int lefty=0, righty=0;
+			int tries=0;
+			double coef = 1;
+			if (*itn == 1){
+				psub = Constructor::ContourFromPoints(vector<Point*>{*it0, *it1});
+			} else for (tries=0; tries<100; ++tries){
+				//try
+				ps.clear();
+				auto b = basis;
+				for (auto& it: b) it.second*=coef;
+				psub = partition_section(b, contour, ps, *it0, *it1);
+				if (psub.size() == *itn) break;
+				//approximate
+				if (psub.size() < *itn){
+					leftx = coef; lefty = psub.size();
+				} else{
+					rightx = coef; righty = psub.size();
+				}
+				if (leftx == -std::numeric_limits<double>::max()){
+					coef = rightx * righty / (*itn);
+				} else if (rightx == std::numeric_limits<double>::max()){
+					coef = leftx * lefty / (*itn);
+				} else{
+					double t = double(*itn - lefty)/(righty - lefty);
+					coef = (1.0-t)*leftx + t*rightx;
+				}
+			}
+			if (tries >= 100) throw std::runtime_error(
+				"Failed to satisfy forced number of edges property");
+			pstore.Unite(ps);
+			ret.Unite(psub);
+			if (it0 == std::next(keep_sorted.begin())){
+				if (ret.last() != *it1) ret.Reverse();
+			}
+			++it0; ++it1; ++itn;
+		}
+		assert(ret.size() == nedges);
+		return ret;
+	}
+}
+
+vector<int> cns::RoundVector(const vector<double>& vect, const vector<int>& minsize){
+	int sum = (int)std::round(std::accumulate(vect.begin(), vect.end(), 0.0));
+	int minnum = std::accumulate(minsize.begin(), minsize.end(), 0);
+	if (sum < minnum) throw std::runtime_error("Failed to satisfy forced number of edges property");
+	if (sum == minnum) return minsize;
+	std::vector<int> nums;
+	std::vector<double> positive_errors, negative_errors;
+	for (int i=0; i<vect.size(); ++i){
+		double n = vect[i];
+		int nr = std::max(minsize[i], (int)std::round(n));
+		nums.push_back(nr);
+		positive_errors.push_back((nr - n + 1)/n);
+		negative_errors.push_back(nr > minsize[i] ? (n - nr + 1)/n :
+			       std::numeric_limits<double>::max());
+	}
+	//fit approximation to equal nedges
+	int sumn = std::accumulate(nums.begin(), nums.end(), 0);
+	while (sumn > sum){
+		int index = std::min_element(negative_errors.begin(), negative_errors.end())-
+			negative_errors.begin();
+		assert(negative_errors[index] != std::numeric_limits<double>::max());
+		--nums[index]; --sumn;
+		if (nums[index] > minsize[index])
+			negative_errors[index] = (vect[index]-nums[index]+1)/vect[index];
+		else negative_errors[index] = std::numeric_limits<double>::max();
+	}
+	while (sumn < sum){
+		int index = std::min_element(positive_errors.begin(), positive_errors.end())-
+			positive_errors.begin();
+		++nums[index]; ++sumn;
+		positive_errors[index] = (nums[index] - vect[index] + 1)/vect[index];
+	}
+	return nums;
 }

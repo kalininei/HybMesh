@@ -249,6 +249,7 @@ void InverseMapping::solve_uv_problems(vector<double>& u, vector<double>& v){
 		laplace->SetDirichlet(*n, dirfunc);
 	}
 	laplace->QuickSolve_BC(v);
+
 	
 	//swap g3 coordinates and uv
 	auto modfun = [&u, &v](GridPoint* p){

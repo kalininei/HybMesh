@@ -1,7 +1,7 @@
 from hybmeshpack import hmscript as hm
-from hybmeshpack.hmscript._dbg import check
+from hybmeshpack.hmscript._dbg import check, check_ascii_file
 global hm, check
-hm.check_compatibility("0.4.0")
+hm.check_compatibility("0.4.3")
 
 
 def check_cont(cont, nn, ne, scont, btypes):
@@ -156,4 +156,47 @@ c2 = hm.partition_contour(i4, "ref_points", [1.0, [0, 0],
                                              0.01, [1, 1]], angle0=-1)
 check(hm.info_contour(c1)['Nedges'] == 5)
 check(hm.info_contour(c2)['Nedges'] == 6)
+hm.remove_all()
+
+print "contour partition with given nedges"
+cont = hm.create_contour([[0, 5], [1, 5], [0.5, 5.5]])
+cont2 = hm.partition_contour(cont, "const", 1, nedges=2)
+check(hm.info_contour(cont2)['Nedges'] == 2)
+cont2 = hm.partition_contour(cont, "const", 1, nedges=6)
+check(hm.info_contour(cont2)['Nedges'] == 6)
+hm.export_contour_vtk(cont2, "c.vtk")
+check_ascii_file(13813652183113259463, "c.vtk")
+
+ccirc = hm.add_circ_contour([0, 0], 1, 16)
+cont2 = hm.partition_contour(ccirc, "const", 1, nedges=3)
+check(hm.info_contour(cont2)['Nedges'] == 3)
+
+cont2 = hm.partition_contour(ccirc, "const", 1, nedges=22)
+check(hm.info_contour(cont2)['Nedges'] == 22)
+
+contcom = hm.unite_contours([ccirc, cont])
+
+cont2 = hm.partition_contour(contcom, "const", 1, nedges=5)
+check(hm.info_contour(cont2)['Nedges'] == 5)
+
+cont2 = hm.partition_contour(contcom, "const", 1, nedges=15)
+check(hm.info_contour(cont2)['Nedges'] == 15)
+
+cont2 = hm.partition_contour(
+    ccirc, "ref_points", [0.1, [0.5, 0.5], 0.3, [-0.5, -0.5]], nedges=3)
+hm.export_contour_vtk(cont2, "c.vtk")
+check_ascii_file(3339651189406511573, "c.vtk")
+
+cont2 = hm.partition_contour(
+    ccirc, "ref_points", [0.1, [0.5, 0.5], 0.3, [-0.5, -0.5]], nedges=30)
+check(hm.info_contour(cont2)['Nedges'] == 30)
+
+cont2 = hm.partition_contour(
+    ccirc, "ref_points", [0.1, [0.5, 0.5], 0.3, [-0.5, -0.5]], angle0=0,
+    nedges=30)
+check(hm.info_contour(cont2)['Nedges'] == 30)
+check(hm.domain_area(cont2) == hm.domain_area(ccirc))
+
+hm.export_contour_vtk(ccirc, "c1.vtk")
+hm.export_contour_vtk(cont2, "c.vtk")
 hm.remove_all()

@@ -636,6 +636,45 @@ void test15(){
 
 };
 
+void test16(){
+	std::cout<<"16. Contour partition with fixed nedges"<<std::endl;
+	HMCont2D::PCollection pcol;
+	{
+		auto inp1 = HMCont2D::Constructor::ContourFromPoints({0,0, 1,0});
+		std::map<double, double> m1;
+		m1.clear(); m1[0]=0.1; m1[1.0]=0.4;
+		auto ans1 = HMCont2D::Algos::WeightedPartition(m1, inp1, pcol, 10, {});
+		m1.clear(); m1[0.1]=1; m1[0.4]=5; m1[0.8]=2;
+		auto ans2 = HMCont2D::Algos::WeightedPartition(m1, inp1, pcol, 50, {});
+		m1.clear(); m1[0] = 1;
+		auto ans3 = HMCont2D::Algos::WeightedPartition(m1, inp1, pcol, 4, {});
+		add_check(ans1.size() == 10 && ans2.size() == 50 && ans3.size()==4, "single segment");
+	}
+	{
+		auto inp1 = HMCont2D::Constructor::ContourFromPoints({0,0, 2,0, 2,1, 0,1}, true);
+		std::map<double, double> m;
+		std::vector<Point*> ap = inp1.ordered_points();
+		m.clear(); m[1.0/6.0]=5; m[4.0/6.0]=1;
+		auto ans1 = HMCont2D::Algos::WeightedPartition(m, inp1, pcol, 50, ap);
+		add_check(ans1.size() == 50 &&
+				ISEQ(HMCont2D::Contour::ELengths(ans1)[0], 
+					HMCont2D::Contour::ELengths(ans1)[9]), "closed contour");
+	}
+	{
+		auto inp1 = HMCont2D::Constructor::ContourFromPoints({0,0, 0.001,0, 1.99,0, 2,0, 2,1, 0,1}, true);
+		std::map<double, double> m;
+		std::vector<Point*> ap = inp1.ordered_points();
+		ap.erase(ap.begin()+1);
+		m.clear(); m[1.0/6.0]=5; m[4.0/6.0]=1;
+		auto ans1 = HMCont2D::Algos::WeightedPartition(m, inp1, pcol, 20, ap);
+		HMCont2D::SaveVtk(ans1, "ans1.vtk");
+		add_check(ans1.size() == 20 &&
+				ISEQ(HMCont2D::Contour::ELengths(ans1)[5], 
+					HMCont2D::Contour::ELengths(ans1)[19]) &&
+				ISEQ(HMCont2D::Contour::ELengths(ans1)[4], 0.01), "closed contour with restriction");
+	}
+}
+
 
 int main(){
 	std::cout<<"hybmesh_contours2d testing"<<std::endl;
@@ -657,6 +696,7 @@ int main(){
 	test13();
 	test14();
 	test15();
+	test16();
 
 
 	HMTesting::check_final_report();

@@ -5,6 +5,7 @@ set (HEADERS
 	hmtimer.hpp
 	hmcallback.hpp
 	hmtesting.hpp
+	piecewise.hpp
 )
 
 set (SOURCES

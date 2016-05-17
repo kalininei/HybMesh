@@ -535,7 +535,8 @@ class PartitionContour(objcom.AbstractAddRemove):
                 'step': command.ListOfOptions(command.BasicOption(float)),
                 'angle0': command.BasicOption(float),
                 'base': command.BasicOption(str),
-                'keepbnd': command.BoolOption()
+                'keepbnd': command.BoolOption(),
+                'nedges': command.NoneOr(command.BasicOption(int))
                 }
 
     def _addrem_objects(self):
@@ -555,7 +556,8 @@ class PartitionContour(objcom.AbstractAddRemove):
             c_ret, c_bnd = c2core.contour_partition(c_cont, c_bt, c_step,
                                                     so['algo'],
                                                     so['angle0'],
-                                                    so['keepbnd'])
+                                                    so['keepbnd'],
+                                                    so['nedges'])
             ret = c2core.cont2_from_c(c_ret, c_bnd)
             c2core.free_cont2(c_ret)
             return [], [], [(so["name"], ret)], []

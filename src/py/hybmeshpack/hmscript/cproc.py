@@ -185,7 +185,8 @@ def clip_domain(dom1, dom2, operation, simplify=True):
         return None
 
 
-def partition_contour(cont, algo, step, angle0=30, keep_bnd=False):
+def partition_contour(cont, algo, step, angle0=30, keep_bnd=False,
+                      nedges=None):
     """ Makes connected contour partition
 
     :param cont: Contour or grid identifier
@@ -210,11 +211,17 @@ def partition_contour(cont, algo, step, angle0=30, keep_bnd=False):
     :param bool keep_bnd: if that is True than vertices which have different
        boundary features on their right and left sides will be preserved
 
+    :param int nedges: if this parameter is not None then it provides
+       exact number of edges in the resulting contour. To satisfy this
+       condition **step** value will be multiplied by an appropriate factor.
+       If it can not be satisfied (due to
+       angle or boundary restrictions) then an exception will be raised.
+
     :returns: new contour identifier
 
     :raises: hmscript.ExecError, ValueError
 
-    Points set defined by user for ``algo='ref_points'`` algorithm 
+    Points set defined by user for ``algo='ref_points'`` algorithm
     will not present in resulting contour. It just shows locations
     where step size of given length should be applied. If any point
     of this set is not located on the input contour then it will be
@@ -249,6 +256,9 @@ def partition_contour(cont, algo, step, angle0=30, keep_bnd=False):
                 raise ValueError(errs)
     else:
         raise ValueError("unknown partition angorithm")
+    if nedges is not None:
+        if not isinstance(nedges, numbers.Integral):
+            raise ValueError("invalid nedges value")
     # prepare arguments for command
     if algo == "const":
         plain_step = [step]
@@ -262,7 +272,8 @@ def partition_contour(cont, algo, step, angle0=30, keep_bnd=False):
             "step": plain_step,
             "angle0": angle0,
             "keepbnd": keep_bnd,
-            "base": cont}
+            "base": cont,
+            "nedges": nedges}
     # call
     c = com.contcom.PartitionContour(args)
     try:

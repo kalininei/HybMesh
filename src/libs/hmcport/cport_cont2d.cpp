@@ -15,13 +15,50 @@ const HMCont2D::ECollection* to_ecol(const void* g){
 namespace{
 
 HMCont2D::Container<HMCont2D::ECollection>
-const_partition(const HMCont2D::ExtendedTree& etree, double step, const vector<Point*>& keep){
+const_partition(const HMCont2D::ExtendedTree& etree, double step, const vector<Point*>& keep, int ne){
 	HMCont2D::PCollection _pdata;
 	vector<HMCont2D::Contour> partdata;
-	for (int i=0; i<etree.cont_count(); ++i){
+	int cc = etree.cont_count();
+	if (ne <= 0) for (int i=0; i<cc; ++i){
 		partdata.push_back(
 			HMCont2D::Algos::Partition(step, *etree.get_contour(i),
 				_pdata, keep));
+	} else {
+		vector<double> lens;
+		for (int i=0; i<cc; ++i) lens.push_back(etree.get_contour(i)->length());
+		//minimum size includes all keep points
+		vector<int> minsize(cc, 0);
+		for (int i=0; i<keep.size(); ++i){
+			auto c = etree.get_contour(keep[i]);
+			if (c == NULL) continue;
+			else for (int j=0; j<cc; ++j){
+				if (etree.get_contour(j) == c) {
+					if (c->is_closed() ||
+						(keep[i] != c->first() && keep[i] != c->last()))
+							++minsize[j];
+					break;
+				}
+			}
+		}
+		for (int i=0; i<cc; ++i){
+			if (!etree.get_contour(i)->is_closed()) minsize[i]++;
+			if (etree.get_contour(i)->is_closed() && minsize[i]<3) minsize[i] = 3;
+		}
+		//nums double
+		vector<double> nums_double;
+		double full_len = std::accumulate(lens.begin(), lens.end(), 0.0);
+		for (int i=0; i<lens.size(); ++i){
+			nums_double.push_back(lens[i]/full_len*ne);
+		}
+		//nums int
+		vector<int> nums = HMCont2D::Algos::RoundVector(nums_double, minsize);
+		//building
+		std::map<double, double> m; m[0]=step;
+		for (int i=0; i<etree.cont_count(); ++i){
+			partdata.push_back(
+				HMCont2D::Algos::WeightedPartition(m, *etree.get_contour(i),
+					_pdata, nums[i], keep));
+		}
 	}
 	//assemble data
 	HMCont2D::Container<HMCont2D::ECollection> ret;
@@ -34,11 +71,11 @@ const_partition(const HMCont2D::ExtendedTree& etree, double step, const vector<P
 HMCont2D::Container<HMCont2D::ECollection>
 refp_partition(const HMCont2D::Contour& cont,
 		const vector<double>& steps, const vector<Point>& bpoints,
-		const vector<Point*>& keep){
+		const vector<Point*>& keep, int ne){
 	if (bpoints.size() == 1){
 		HMCont2D::ExtendedTree etree;
 		etree.AddContour(cont);
-		return const_partition(etree, steps[0], keep);
+		return const_partition(etree, steps[0], keep, ne);
 	}
 	//assemble weights
 	std::map<double, double> weights;
@@ -48,7 +85,8 @@ refp_partition(const HMCont2D::Contour& cont,
 	}
 	//call partition
 	HMCont2D::PCollection _pdata;
-	HMCont2D::Contour cret = HMCont2D::Algos::WeightedPartition(weights, cont, _pdata, keep); 
+	HMCont2D::Contour cret = (ne<=0) ? HMCont2D::Algos::WeightedPartition(weights, cont, _pdata, keep)
+	                                 : HMCont2D::Algos::WeightedPartition(weights, cont, _pdata, ne, keep);
 	//assemble return data
 	HMCont2D::Container<HMCont2D::ECollection> ret;
 	HMCont2D::Container<HMCont2D::ECollection>::DeepCopy(cret, ret);
@@ -68,7 +106,7 @@ refp_partition(const HMCont2D::Contour& cont,
 // outbnd - boundary feature for each output contour edge
 // returns new ECollection pointer or NULL if failed
 void* contour_partition(void* cont, int* btypes, int algo,
-		int n_steps, double* steps, double a0, int keepbnd,
+		int n_steps, double* steps, double a0, int keepbnd, int nedges,
 		int* n_outbnd, int** outbnd){
 	typedef HMCont2D::ECollection TCol;
 	typedef HMCont2D::Container<TCol> TCont;
@@ -129,13 +167,13 @@ void* contour_partition(void* cont, int* btypes, int algo,
 		//call partition algorithm
 		TCont out;
 		if (algo == 0){
-			out = const_partition(ext, basic_steps[0], keep_points);
+			out = const_partition(ext, basic_steps[0], keep_points, nedges);
 		} else if (algo == 1){
 			if (ext.cont_count() != 1){
 				throw std::runtime_error("only singly connected contours "
 						"are allowed for refference point partition");
 			}
-			out = refp_partition(*ext.get_contour(0), basic_steps, basic_points, keep_points);
+			out = refp_partition(*ext.get_contour(0), basic_steps, basic_points, keep_points, nedges);
 		}
 		//boundary assignment
 		*n_outbnd = out.size();

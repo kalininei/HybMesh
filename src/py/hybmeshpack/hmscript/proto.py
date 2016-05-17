@@ -1,5 +1,6 @@
 import numbers
 import math
+import copy
 from hybmeshpack import com
 from hybmeshpack.basic.geom import Point2, angle_3pnt
 from hybmeshpack.hmscript import flow
@@ -114,7 +115,8 @@ def add_triangle_grid(p0, p1, p2, nedge):
     return c._get_added_names()[0][0]
 
 
-def add_custom_rect_grid(algo, left, bottom, right=None, top=None):
+def add_custom_rect_grid(algo, left, bottom, right=None, top=None,
+                         hermite_tfi_w=[1.0, 1.0, 1.0, 1.0]):
     """ Creates rectangular grid on the basis of four curvilinear contours
     using contour vertices for partition.
     See details in :ref:`custom_rect_grid`.
@@ -122,8 +124,9 @@ def add_custom_rect_grid(algo, left, bottom, right=None, top=None):
     :param str algo: Algorithms of building:
 
        * ``'linear'`` - connects respective points of opposite
-         contours by straight lines. If right/top contours are defined
-         they should have same number of vertices as left/bottom;
+         contours by straight lines.
+       * ``'linear_tfi'`` - linear transfinite interpolation
+       * ``'hermite_tfi'`` - hermite transfinite interpolation
        * ``'inverse_laplace'`` -
        * ``'direct_laplace'`` - connects points using solution of
          laplace equation with Dirichlet boundary conditions;
@@ -141,20 +144,28 @@ def add_custom_rect_grid(algo, left, bottom, right=None, top=None):
        **right** and **top** could be ``None``. If so right and top
        boundaries will be created by translation of **left** and **bottom**.
 
+    :param list-of-floats hermite_tfi_w:
+       perpendicularity weights
+       for **left**, **bottom**, **right**, **top** contours respectively
+       for **algo** = ``'hermite_tfi'``
+
     :return: new grid identifier
 
     :raise: hmscript.ExecError, ValueError
 
     """
     if algo not in ['linear', 'inverse_laplace', 'direct_laplace',
-                    'orthogonal']:
+                    'orthogonal', 'linear_tfi', 'hermite_tfi']:
         raise ValueError("Unknown algorithm %s" % str(algo))
+    if not isinstance(hermite_tfi_w, list) or len(hermite_tfi_w) != 4:
+        raise ValueError("invalid hermite_tfi perpendicularity weights")
     # call
     args = {'algo': algo,
             'left': left,
             'right': right,
             'bot': bottom,
-            'top': top}
+            'top': top,
+            'her_w': copy.deepcopy(hermite_tfi_w)}
     c = com.gridcom.AddCustomRectGrid(args)
     try:
         flow.exec_command(c)

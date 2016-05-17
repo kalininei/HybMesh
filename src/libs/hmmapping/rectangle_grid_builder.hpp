@@ -33,6 +33,16 @@ extern HMCallback::FunctionWithCallback<TLaplaceRectGrid> LaplaceRectGrid;
 GridGeom FDMLaplasRectGrid(HMCont2D::Contour& left, HMCont2D::Contour& bot,
 	HMCont2D::Contour& right, HMCont2D::Contour& top);
 
+GridGeom LinearTFIRectGrid(HMCont2D::Contour& left, HMCont2D::Contour& bot,
+		HMCont2D::Contour& right, HMCont2D::Contour& top);
+
+GridGeom LinearTFIRectGrid2(HMCont2D::Contour& left, HMCont2D::Contour& bot,
+		HMCont2D::Contour& right, HMCont2D::Contour& top);
+
+//c = [cleft, cbot, cright, ctop]
+GridGeom CubicTFIRectGrid(HMCont2D::Contour& left, HMCont2D::Contour& bot,
+		HMCont2D::Contour& right, HMCont2D::Contour& top, std::array<double, 4> c);
+
 }
 #endif
 

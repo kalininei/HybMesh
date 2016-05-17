@@ -112,7 +112,7 @@ int export_tecplot_grid(const Grid* grid, const char* fname,
 }
 
 void* custom_rectangular_grid(int algo, void* left, void* bot,
-		void* right, void* top, hmcport_callback cb){
+		void* right, void* top, double* her_w, hmcport_callback cb){
 	//gather data
 	HMCont2D::Contour* left1 = static_cast<HMCont2D::Contour*>(left);
 	HMCont2D::Contour* bot1 = static_cast<HMCont2D::Contour*>(bot);
@@ -137,6 +137,12 @@ void* custom_rectangular_grid(int algo, void* left, void* bot,
 		} else if (algo == 3){
 			ret = new GridGeom(HMGMap::OrthogonalRectGrid.WithCallback(
 				cb, *left1, *bot1, *right1, *top1));
+		} else if (algo == 4){
+			ret = new GridGeom(HMGMap::LinearTFIRectGrid(
+				*left1, *bot1, *right1, *top1));
+		} else if (algo == 5){
+			ret = new GridGeom(HMGMap::CubicTFIRectGrid(
+				*left1, *bot1, *right1, *top1, {her_w[0], her_w[1], her_w[2], her_w[3]}));
 		} else throw std::runtime_error("unknown algorithm");
 		ret->undo_scale(sc);
 	} catch (std::runtime_error &e){

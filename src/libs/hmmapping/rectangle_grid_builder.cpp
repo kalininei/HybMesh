@@ -141,124 +141,6 @@ vector<HMCont2D::Contour> connect_contours(HMCont2D::Contour& left, HMCont2D::Co
 	return modify_contours(best_option, left, bot, right, top);
 }
 
-
-/*
-struct Cont4Connection{
-	Point *l1, *l2, *r1, *r2, *t1, *t2, *b1, *b2; //ordered corner points of each contour
-	                                               //  l2 t1---t2 r2
-	                                               //  |          |
-	                                               //  |          |
-	                                               //  l1 b1---b2 r1
-	const HMCont2D::Contour *pleft, *pbot, *pright, *ptop;
-
-	Cont4Connection(HMCont2D::Contour& left, HMCont2D::Contour& bot,
-			HMCont2D::Contour& right, HMCont2D::Contour& top){
-		pleft = &left; pbot = &bot;
-		pright = &right; ptop = &top;
-		//check for open contours
-		if (left.is_closed() || bot.is_closed() || top.is_closed() || right.is_closed()){
-			throw std::runtime_error("contours should be open");
-		}
-		//guess of top left, bottom left
-		double m11 = Point::meas(*left.first(), *bot.first());
-		double m12 = Point::meas(*left.first(), *bot.last());
-		double m21 = Point::meas(*left.last(), *bot.first());
-		double m22 = Point::meas(*left.last(), *bot.last());
-		if (m11 <= m12 && m11 <= m21 && m11 <= m22){
-			l1 = left.first(); l2 = left.last();
-			b1 = bot.first(); b2 = bot.last();
-		} else if (m12 <= m11 && m12 <= m21 && m12 <= m22){
-			l1 = left.first(); l2 = left.last();
-			b1 = bot.last(); b2 = bot.first();
-		} else if (m21 <= m11 && m21 <= m12 && m21 <= m22){
-			l1 = left.last(); l2 = left.first();
-			b1 = bot.first(); b2 = bot.last();
-		} else {
-			l1 = left.last(); l2 = left.first();
-			b1 = bot.last(); b2 = bot.first();
-		}
-		// top contour
-		//if top contour is simply a copy of bottom
-		if (ISZERO(Point::dist(*bot.first(), *top.first())) &&
-				ISZERO(Point::dist(*bot.last(), *top.last()))){
-			t1 = top.first(); t2 = top.last();
-			if (bot.first() != b1) std::swap(t1, t2);
-		} else {
-			double m1 = Point::meas(*top.first(), *l2);
-			double m2 = Point::meas(*top.last(), *l2);
-			t1 = top.first(); t2 = top.last();
-			if (m1 > m2) std::swap(t1, t2);
-		}
-		//right contour
-		if (ISZERO(Point::dist(*left.first(), *right.first())) &&
-				ISZERO(Point::dist(*left.last(), *right.last()))){
-			r1 = right.first(); r2 = right.last();
-			if (left.first() != l1) std::swap(r1, r2);
-		} else {
-			double m1 = Point::meas(*right.first(), *b2);
-			double m2 = Point::meas(*right.last(), *b2);
-			r1 = right.first(); r2 = right.last();
-			if (m1 > m2) std::swap(r1, r2);
-		}
-	}
-	HMCont2D::Contour directed_left() const{
-		HMCont2D::Contour ret;
-		HMCont2D::Contour::DeepCopy(*pleft, ret);
-		if (ret.first() != l1){ ret.ReallyReverse(); }
-		assert(ret.first() == l1);
-		return ret;
-	}
-	HMCont2D::Contour directed_top() const{
-		HMCont2D::Contour ret;
-		HMCont2D::Contour::DeepCopy(*ptop, ret);
-		if (ret.first() != t1){ ret.ReallyReverse(); }
-		assert(ret.first() == t1);
-		return ret;
-	}
-	HMCont2D::Contour directed_bot() const{
-		HMCont2D::Contour ret;
-		HMCont2D::Contour::DeepCopy(*pbot, ret);
-		if (ret.first() != b1){ ret.ReallyReverse(); }
-		assert(ret.first() == b1);
-		return ret;
-	}
-	HMCont2D::Contour directed_right() const{
-		HMCont2D::Contour ret;
-		HMCont2D::Contour::DeepCopy(*pright, ret);
-		if (ret.first() != r1){ ret.ReallyReverse(); }
-		assert(ret.first() == r1);
-		return ret;
-	}
-};
-
-Cont4Connection connect_rect_segments(HMCont2D::Contour& left, HMCont2D::Contour& bot,
-		HMCont2D::Contour& right, HMCont2D::Contour& top){
-	Cont4Connection cn(left, bot, right, top);
-	//move bottom contour
-	Point mv1 = *cn.l1 - *cn.b1;
-	for (auto p: bot.all_points()) *p += mv1;
-	//move top
-	Point mv2 = *cn.l2 - *cn.t1;
-	for (auto p: top.all_points()) *p += mv2;
-	//move right
-	Point mv3 = *cn.b2 - *cn.r1;
-	for (auto p: right.all_points()) *p += mv3;
-	//stretch right contour to r2 = t2
-	if (!ISZERO(Point::dist(*cn.t2, *cn.r2))){
-		Vect mv = *cn.t2 - *cn.r2;
-		bool isrev = right.first() != cn.r1;
-		auto ew = HMCont2D::Contour::EWeights(right);
-		if (isrev) for (auto& v: ew) v = 1 - v;
-		int i=0;
-		for (auto p: right.ordered_points()){
-			Vect mvl = mv * ew[i++];
-			*p += mvl;
-		}
-	}
-	return cn;
-}
-*/
-
 //check direction of first cell and reverse all cells if needed
 void check_direction(GridGeom& ret){
 	if (ret.n_cells() == 0) return;
@@ -266,7 +148,7 @@ void check_direction(GridGeom& ret){
 		GGeom::Modify::CellModify(ret, [](Cell* c){
 			std::reverse(c->points.begin(), c->points.end());} );
 	}
-	if (!GGeom::Info::Check(ret)) throw HMGMap::MapException("Resulting grid is not valid");
+	if (!GGeom::Info::Check(ret)) throw HMGMap::EInvalidGrid(std::move(ret));
 }
 
 }
@@ -277,17 +159,6 @@ GridGeom HMGMap::LinearRectGrid(HMCont2D::Contour& _left, HMCont2D::Contour& _bo
 		throw std::runtime_error("right/top contours should have same number "
 				"of nodes as left/bottom for linear rectangle grid algo");
 
-	//Cont4Connection cn = connect_rect_segments(left, bot, right, top);
-	////assemble ordered points for each contour and their weights
-	//auto pleft = left.ordered_points();
-	//auto pbot = bot.ordered_points();
-	//auto pright = right.ordered_points();
-	//auto ptop = top.ordered_points();
-	////reverse if needed
-	//if (pleft[0] != cn.l1) std::reverse(pleft.begin(), pleft.end());
-	//if (pbot[0] != cn.b1) std::reverse(pbot.begin(), pbot.end());
-	//if (ptop[0] != cn.t1) std::reverse(ptop.begin(), ptop.end());
-	//if (pright[0] != cn.r1) std::reverse(pright.begin(), pright.end());
 	auto newcont = connect_contours(_left, _bot, _right, _top);
 	auto& left = newcont[0]; auto pleft = left.ordered_points();
 	auto& bot = newcont[1]; auto pbot = bot.ordered_points();
@@ -448,12 +319,6 @@ GridGeom HMGMap::TLaplaceRectGrid::_run(HMCont2D::Contour& left, HMCont2D::Conto
 				"of nodes as left/bottom for laplace rectangle grid algo");
 	callback->step_after(5, "Connect contours");
 
-	//Cont4Connection cn = connect_rect_segments(left, bot, right, top);
-	//auto left1 = cn.directed_left();
-	//auto top1 = cn.directed_top();
-	//auto bot1 = cn.directed_bot();
-	//auto right1 = cn.directed_right();
-
 	auto conres = connect_contours(left, bot, right, top);
 	auto& left1 = conres[0];
 	auto& bot1 = conres[1];
@@ -514,4 +379,173 @@ GridGeom HMGMap::TLaplaceRectGrid::_run(HMCont2D::Contour& left, HMCont2D::Conto
 	//calculate
 	auto subcaller = callback->bottom_line_subrange(80);
 	return HMGMap::MapGrid.UseCallback(subcaller, base, ecol, base_pnt, mapped_pnt, opt);
+}
+
+GridGeom HMGMap::LinearTFIRectGrid(HMCont2D::Contour& left, HMCont2D::Contour& bot,
+		HMCont2D::Contour& right, HMCont2D::Contour& top){
+	if (left.size() != right.size() || bot.size() != top.size())
+		throw std::runtime_error("right/top contours should have same number "
+				"of nodes as left/bottom for tfi algo");
+
+	auto conres = connect_contours(left, bot, right, top);
+	auto& left1 = conres[0];
+	auto& bot1 = conres[1];
+	auto& right1 = conres[2];
+	auto& top1 = conres[3];
+	vector<Point*> leftp = left1.ordered_points();
+	vector<Point*> botp = bot1.ordered_points();
+	vector<Point*> rightp = right1.ordered_points();
+	vector<Point*> topp = top1.ordered_points();
+	Point p00 = *leftp[0];
+	Point p10 = *rightp[0];
+	Point p01 = *topp[0];
+	Point p11 = *topp.back();
+	vector<double> ksi = HMCont2D::Contour::EWeights(bot1);
+	vector<double> ksi2 = HMCont2D::Contour::EWeights(top1);
+	vector<double> eta = HMCont2D::Contour::EWeights(left1);
+	vector<double> eta2 = HMCont2D::Contour::EWeights(right1);
+	for (int i=0; i<ksi.size(); ++i) ksi[i] = (ksi[i] + ksi2[i])/2.0;
+	for (int i=0; i<eta.size(); ++i) eta[i] = (eta[i] + eta2[i])/2.0;
+	//for (int i=0; i<ksi.size(); ++i) ksi[i] = (double)i/(ksi.size()-1);
+	//for (int i=0; i<eta.size(); ++i) eta[i] = (double)i/(eta.size()-1);
+
+	GridGeom U = GGeom::Constructor::RectGrid01(bot.size(), left.size());
+	GridGeom V = GGeom::Constructor::RectGrid01(bot.size(), left.size());
+	GridGeom UV = GGeom::Constructor::RectGrid01(bot.size(), left.size());
+
+	for (int j=0; j<left.size()+1; ++j){
+		//double eta = double(j)/(left.size());
+		double e = eta[j];
+		for (int i=0; i<bot.size()+1; ++i){
+			//double ksi = double(i)/(bot.size());
+			double k = ksi[i];
+			int gi = i + j*(bot.size()+1);
+			U.get_point(gi)->set(Point::Weigh(*leftp[j], *rightp[j], k));
+			V.get_point(gi)->set(Point::Weigh(*botp[i], *topp[i], e));
+			UV.get_point(gi)->set(
+				p00*(1-k)*(1-e) + p11*k*e + p10*k*(1-e) + p01*(1-k)*e
+			);
+		}
+	}
+
+	for (int i=0; i<U.n_points(); ++i){
+		GridPoint*  p1 = U.get_point(i);
+		GridPoint*  p2 = V.get_point(i);
+		GridPoint*  p3 = UV.get_point(i);
+		p1->set(*p1 + *p2 - *p3);
+	}
+	check_direction(U);
+	return U;
+}
+
+GridGeom HMGMap::CubicTFIRectGrid(HMCont2D::Contour& left, HMCont2D::Contour& bot,
+		HMCont2D::Contour& right, HMCont2D::Contour& top, std::array<double, 4> c){
+	if (left.size() != right.size() || bot.size() != top.size())
+		throw std::runtime_error("right/top contours should have same number "
+				"of nodes as left/bottom for tfi algo");
+
+	auto conres = connect_contours(left, bot, right, top);
+	auto& left1 = conres[0];
+	auto& bot1 = conres[1];
+	auto& right1 = conres[2];
+	auto& top1 = conres[3];
+	vector<Point*> leftp = left1.ordered_points();
+	vector<Point*> botp = bot1.ordered_points();
+	vector<Point*> rightp = right1.ordered_points();
+	vector<Point*> topp = top1.ordered_points();
+	vector<double> ksi = HMCont2D::Contour::EWeights(bot1);
+	vector<double> ksi2 = HMCont2D::Contour::EWeights(top1);
+	vector<double> eta = HMCont2D::Contour::EWeights(left1);
+	vector<double> eta2 = HMCont2D::Contour::EWeights(right1);
+	for (int i=0; i<ksi.size(); ++i) ksi[i] = (ksi[i] + ksi2[i])/2.0;
+	for (int i=0; i<eta.size(); ++i) eta[i] = (eta[i] + eta2[i])/2.0;
+
+	vector<Point> dksi_left, dksi_right, deta_bot, deta_top;
+	vector<double> a01, a02, a11, a12, b01, b02, b11, b12;
+
+	for (int i=0; i<bot.size()+1; ++i){
+		//deta
+		int i2, i1;
+		if (i==0){
+			i1 = 0; i2 = 1;
+		} else if (i==bot.size()){
+			i1 = botp.size()-2; i2 = botp.size()-1;
+		} else {
+			i1 = i-1; i2 = i+1;
+		}
+		Point dksi_bot = (*botp[i2] - *botp[i1])/(ksi[i2]-ksi[i1]);
+		Point dksi_top = (*topp[i2] - *topp[i1])/(ksi[i2]-ksi[i1]);
+		deta_bot.push_back(Point(-dksi_bot.y, dksi_bot.x)*c[1]);
+		deta_top.push_back(Point(-dksi_top.y, dksi_top.x)*c[3]);
+		//aij
+		double k = ksi[i];
+		a01.push_back(2*k*k*k - 3*k*k + 1);
+		a02.push_back(-2*k*k*k + 3*k*k);
+		a11.push_back(k*k*k - 2*k*k + k);
+		a12.push_back(k*k*k - k*k);
+	}
+	for (int j=0; j<left.size()+1; ++j){
+		//dksi
+		int i2, i1;
+		if (j==0){
+			i1 = 0; i2 = 1;
+		} else if (j==left.size()){
+			i1 = leftp.size()-2; i2 = leftp.size()-1;
+		} else {
+			i1 = j-1; i2 = j+1;
+		}
+		Point deta_left = (*leftp[i2] - *leftp[i1])/(eta[i2]-eta[i1]);
+		Point deta_right = (*rightp[i2] - *rightp[i1])/(eta[i2]-eta[i1]);
+		dksi_left.push_back(Point(deta_left.y, -deta_left.x)*c[0]);
+		dksi_right.push_back(Point(deta_right.y, -deta_right.x)*c[2]);
+		//bij
+		double e = eta[j];
+		b01.push_back(2*e*e*e - 3*e*e + 1);
+		b02.push_back(-2*e*e*e + 3*e*e);
+		b11.push_back(e*e*e - 2*e*e + e);
+		b12.push_back(e*e*e - e*e);
+	}
+	Point detaksi_00 = (deta_bot[1]-deta_bot[0])/(ksi[1]-ksi[0]);
+	Point detaksi_01 = (deta_top[1]-deta_top[0])/(ksi[1]-ksi[0]);
+	Point detaksi_10 = (deta_bot.back() - deta_bot[deta_bot.size()-2])/(ksi.back()-ksi[ksi.size()-2]);
+	Point detaksi_11 = (deta_top.back() - deta_top[deta_top.size()-2])/(ksi.back()-ksi[ksi.size()-2]);
+
+	GridGeom U = GGeom::Constructor::RectGrid01(bot.size(), left.size());
+	GridGeom V = GGeom::Constructor::RectGrid01(bot.size(), left.size());
+	GridGeom UV = GGeom::Constructor::RectGrid01(bot.size(), left.size());
+
+	for (int j=0; j<left.size()+1; ++j){
+		for (int i=0; i<bot.size()+1; ++i){
+			int gi = i + j*(bot.size()+1);
+			U.get_point(gi)->set(
+				*leftp[j]*a01[i] + *rightp[j]*a02[i]+
+				dksi_left[j]*a11[i] + dksi_right[j]*a12[i]);
+			V.get_point(gi)->set(
+				*botp[i]*b01[j] + *topp[i]*b02[j]+
+				deta_bot[i]*b11[j] + deta_top[i]*b12[j]);
+		}
+	}
+	for (int j=0; j<left.size()+1; ++j){
+		for (int i=0; i<bot.size()+1; ++i){
+			int gi = i + j*(bot.size()+1);
+			UV.get_point(gi)->set(
+				*V.get_point(j*(bot.size()+1))*a01[i]+
+				*V.get_point(bot.size() + j*(bot.size()+1))*a02[i]+
+				(dksi_left[0]*b01[j] + dksi_left.back()*b02[j] + 
+					detaksi_00*b11[j]+detaksi_01*b12[j])*a11[i]+
+				(dksi_right[0]*b01[j] + dksi_right.back()*b02[j] +
+					detaksi_10*b11[j]+detaksi_11*b12[j])*a12[i]
+			);
+		}
+	}
+
+	for (int i=0; i<U.n_points(); ++i){
+		GridPoint*  p1 = U.get_point(i);
+		GridPoint*  p2 = V.get_point(i);
+		GridPoint*  p3 = UV.get_point(i);
+		p1->set(*p1 + *p2 - *p3);
+	}
+
+	check_direction(U);
+	return U;
 }

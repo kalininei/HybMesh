@@ -359,7 +359,7 @@ Furthermore, even if such transformation was obtained but all grid points stay
 outside ambiguous zones, then the result will still be fine.
 
 .. figure:: map_grid4.png
-   :width: 400 px
+   :width: 700 px
 
    fig.4. Mapping to and from a concave domain
 

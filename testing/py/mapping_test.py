@@ -2,7 +2,7 @@ from hybmeshpack import hmscript as hm
 from hybmeshpack.hmscript._dbg import check, check_ascii_file
 import math
 global hm, check, math
-hm.check_compatibility("0.4.2")
+hm.check_compatibility("0.4.3")
 
 g1 = hm.add_unf_rect_grid([0, 0], [5, 1], 10, 10)
 hm.set_boundary_type(g1, 1)
@@ -375,6 +375,8 @@ g4 = hm.map_grid(g1, c1, [[0, 1], [1, 1]], [[0, 1], [1, 1]],
 hm.remove_all()
 
 print "examples for custom rectangular grid documentation"
+
+
 def addline(c, p1, p2, a, k):
     vec = [p2[0] - p1[0], p2[1] - p1[1]]
     vlen = math.sqrt(vec[0]**2 + vec[1]**2)
@@ -497,6 +499,20 @@ bot = hm.partition_contour(
 fullc4 = hm.unite_contours([left, bot, right, top])
 g4 = hm.add_custom_rect_grid("orthogonal", left, bot, right, top)
 
+left = hm.partition_contour(
+    leftc, "ref_points",
+    [0.05, [0, 0], 0.05, [0.1, 1], 0.2, [0, 0.5]])
+right = hm.partition_contour(rightc, "const", 0.12)
+top = hm.partition_contour(topc, "const", 0.095)
+bot = hm.partition_contour(
+    botc, "ref_points",
+    [0.03, [0, 0], 0.14, [2, 0], 0.15, [1, 0]])
+
+fullc5 = hm.unite_contours([left, bot, right, top])
+g5 = hm.add_custom_rect_grid("linear_tfi", left, bot, right, top)
+g6 = hm.add_custom_rect_grid("hermite_tfi", left, bot, right, top,
+                             [0.4] * 4)
+
 # hm.export_contour_vtk(fullc1, "left1.vtk")
 # hm.export_grid_vtk(g1, "g1.vtk")
 # hm.export_contour_vtk(fullc2, "left2.vtk")
@@ -505,4 +521,32 @@ g4 = hm.add_custom_rect_grid("orthogonal", left, bot, right, top)
 # hm.export_grid_vtk(g3, "g3.vtk")
 # hm.export_contour_vtk(fullc4, "left4.vtk")
 # hm.export_grid_vtk(g4, "g4.vtk")
+# hm.export_contour_vtk(fullc5, "left1.vtk")
+# hm.export_grid_vtk(g5, "g5.vtk")
+# hm.export_grid_vtk(g6, "g6.vtk")
+hm.remove_all()
+
+left = hm.create_contour([[0, 0], [0, 1]])
+right = hm.create_contour([[1, 0], [1, 1]])
+top = hm.create_contour([[0, 1], [1, 1]])
+pnt = []
+addline(pnt, [0, 0], [1, 0], 0.16, 0.5)
+bot = hm.create_contour(pnt, 2)
+left = hm.partition_contour(
+    left, "ref_points",
+    [0.003, [0, 0], 0.1, [0, 1]], nedges=20)
+right = hm.partition_contour(
+    right, "ref_points",
+    [0.003, [1, 0], 0.1, [1, 1]], nedges=20)
+top = hm.partition_contour(top, "ref_points", [1, [0, 1], 1, [1, 1]],
+                           nedges=10)
+bot = hm.partition_contour(bot, "ref_points", [1, [0, 0], 1, [1, 0]],
+                           nedges=10)
+
+fullc = hm.unite_contours([left, bot, right, top])
+g1 = hm.add_custom_rect_grid("hermite_tfi", left, bot, right, top,
+                             [0.0, 3, 0.0, 0.0])
+
+# hm.export_grid_vtk(g1, "g1.vtk")
+# hm.export_contour_vtk(fullc, "c1.vtk")
 hm.remove_all()

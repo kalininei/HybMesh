@@ -33,10 +33,14 @@ int export_tecplot_grid(const Grid* grid, const char* fname,
 //  1) inverse-laplace connection
 //  2) direct-laplace connection
 //  3) orthogonal connection
+//  4) linear-tfi
+//  5) hermite-tfi
+//tfi_hermite_w: dx weights for left, bot, right, top.
+//   dx=1 => normal connection, dx=0 => linear connection
 //if input are not positioned correctly their vertices coordinates will be changed
 //returns pointer to GridGeom or NULL if failed
 void* custom_rectangular_grid(int algo, void* left, void* bot,
-		void* right, void* top, hmcport_callback cb_fun);
+		void* right, void* top, double* tfi_hermite_w, hmcport_callback cb_fun);
 
 //builds a grid with quadrangle cells in a circular area. it contains uniform square grid
 //in the center and ring-like grid at the outer boundary.

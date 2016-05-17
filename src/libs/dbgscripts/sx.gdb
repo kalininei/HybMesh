@@ -4,6 +4,6 @@ source ../../src/libs/dbgscripts/hmout.gdb
 file python
 set args ../../src/py/hybmesh.py -sx tmp.py -silent
 set breakpoint pending on
-b procgrid.cpp:470
+b cont_partition.cpp:480
 run
 

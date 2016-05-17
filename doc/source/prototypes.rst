@@ -103,7 +103,7 @@ in figure below.
 
 Boundary features of resulting grid are inherited from the boundary features of input contours.
 
-Four algorithms of building internal grid nodes are implemented. Examples of grids built
+Six algorithms of building internal grid nodes are implemented. Examples of grids built
 using different algorithms is shown in figure below.
 
 .. figure:: proto_custom_rect2.png
@@ -117,7 +117,28 @@ straight lines and grid cells are built on intersection points. This is
 the fastest algorithm although it doesn't provide smoothing near the curvilinear 
 edges, hence it should be used only if input contours are straight lines.
 
-**Direct/Inverse Laplace algorithm**. An algebraic mapping from
+**Linear transfinite interpolation (TFI).** An algebraic mapping which
+uses boolean sum of linear weighted transformations built between opposite contours.
+
+**Hermite transfinite interpolation.** The same as previous but
+weighted transformations between opposite contours are built
+using cubic polynomials providing perpendicular grid lines.
+For this algorithm user has to
+define perpendicularity coefficients for each given contour.
+The greater this coefficient the further the influence of
+corresponding contour propagates inward the domain. The effect
+of this coefficient is illustrated in figure below.
+Note that the resulting grid will not be orthogonal but
+only close to it.
+
+.. figure:: proto_custom_rect3.png
+   :width: 500 px
+   
+   Hermite interpolation with different perpendicularity coefficients *w*
+   for bottom boundary. Coefficients for left, right and top segments
+   were set to zero.
+
+**Direct/Inverse Laplace algorithm**. Mapping from
 unit square to input domain is built using the *direct* or *inverse laplace* algorithm.
 To build a grid line (horizontal or vertical) first its start points are defined
 in physical domain, then these points are translated into unit domain where they
@@ -136,7 +157,7 @@ line is built and mapped back into the physical area. Horizontal grid lines
 built in the similar way starting from vertices of the *left* contour.
 The resulting grid is guaranteed to be orthogonal disregarding the grid edges straightening.
 
-Linear and Laplace algorithms demand equal partition of opposite contours.
+Linear, tfi and Laplace algorithms demand equal partition of opposite contours.
 Orthogonal algorithm completely ignores partition of *right* and *top* contours.
 
 

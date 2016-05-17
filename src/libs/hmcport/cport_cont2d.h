@@ -15,9 +15,10 @@ extern "C"{
 // keepbnd: =true if all boundary type changing nodes should be preserved
 // n_outbnd - number of output contour edges
 // outbnd - boundary feature for each output contour edge
+// nedges - required number of edges or -1 if it should be computed from steps
 // returns new ECollection pointer or NULL if failed
 void* contour_partition(void* cont, int* btypes, int algo,
-		int n_steps, double* steps, double a0, int keepbnd,
+		int n_steps, double* steps, double a0, int keepbnd, int nedges,
 		int* n_outbnd, int** outbnd);
 
 

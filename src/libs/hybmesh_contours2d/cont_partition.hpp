@@ -45,6 +45,12 @@ Contour WeightedPartition(const std::map<double, double>& basis,
 Contour WeightedPartition(const std::map<double, double>& basis,
 		const Contour& contour, PCollection& pstore,
 		const std::vector<Point*>& keepit = {});
+Contour WeightedPartition(std::map<double, double> basis,
+		const Contour& contour, PCollection& pstore,
+		int nedges, const std::vector<Point*>& keepit = {});
+
+//rounds vector keeping constant vector sum
+vector<int> RoundVector(const vector<double>& vect, const vector<int>& minsize);
 
 }}
 #endif

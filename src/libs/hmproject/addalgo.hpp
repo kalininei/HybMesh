@@ -176,6 +176,7 @@ struct _MapComp{
 	_MapComp(double _e): e(_e){}
 	const double e;
 	bool operator()(double a, double b){ return a+e<b; }
+	bool operator()(double a, double b) const { return a+e<b; }
 };
 
 template <typename Arg>
@@ -183,6 +184,7 @@ class DoubleMap: public std::map<double, Arg, _MapComp>{
 public:
 	DoubleMap(double e): std::map<double, Arg, _MapComp>(_MapComp(e)){}
 };
+
 
 // ====================== no dublicates in vector preserving the order
 template<class C>

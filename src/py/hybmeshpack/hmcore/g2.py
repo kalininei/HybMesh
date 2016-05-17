@@ -133,7 +133,7 @@ def free_boundary_types(bt):
     libhmcport.free_grid2_boundary_types(bt)
 
 
-def custom_rectangular_grid(algo, c_left, c_bot, c_right, c_top, cb):
+def custom_rectangular_grid(algo, c_left, c_bot, c_right, c_top, c_herw, cb):
     """ algo: one of ['linear', 'inverse_laplace',
                       'direct_laplace', 'orthogonal']
         c_*: c allocated contours.
@@ -148,10 +148,14 @@ def custom_rectangular_grid(algo, c_left, c_bot, c_right, c_top, cb):
         c_algo = ct.c_int(2)
     elif algo == 'orthogonal':
         c_algo = ct.c_int(3)
+    elif algo == 'linear_tfi':
+        c_algo = ct.c_int(4)
+    elif algo == 'hermite_tfi':
+        c_algo = ct.c_int(5)
     else:
         raise ValueError("Invalid custom rectangular grid algo")
 
-    args = (c_algo, c_left, c_bot, c_right, c_top)
+    args = (c_algo, c_left, c_bot, c_right, c_top, c_herw)
     cb.initialize(libhmcport.custom_rectangular_grid, args)
     cb.execute_command()
     res = cb.get_result()

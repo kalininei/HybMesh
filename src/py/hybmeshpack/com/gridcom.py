@@ -65,6 +65,7 @@ class AddCustomRectGrid(NewGridCommand):
                 'bot': command.BasicOption(str),
                 'right': command.NoneOr(command.BasicOption(str)),
                 'top': command.NoneOr(command.BasicOption(str)),
+                'her_w': command.ListOfOptions(command.BasicOption(float))
                 }
 
     def _build_grid(self):
@@ -91,10 +92,12 @@ class AddCustomRectGrid(NewGridCommand):
             c_bot = c2core.cont2_to_c(bot)
             c_right = c2core.cont2_to_c(right)
             c_top = c2core.cont2_to_c(top)
+            # specific options
+            c_herw = g2core.list_to_c(so['her_w'], float)
 
             # call c procedure
             c_ret = g2core.custom_rectangular_grid(
-                so['algo'], c_left, c_bot, c_right, c_top, cb)
+                so['algo'], c_left, c_bot, c_right, c_top, c_herw, cb)
 
             # build grid
             ret = g2core.grid_from_c(c_ret)
@@ -778,7 +781,7 @@ class MapGrid(NewGridCommand):
             # mapping procedure
             c_ret = g2core.map_grid(c_grid, c_cont, p1, p2,
                                     self.options['snap'],
-                                    self.options['algo'], 
+                                    self.options['algo'],
                                     self.options['return_invalid'], cb)
 
             # copy from c
