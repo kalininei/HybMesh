@@ -84,3 +84,15 @@ Versions History
    * *return_invalid* for :func:`map_grid`,
    * *algo* = ``laplace``, ``orthogonal_circ``, ``orthogonal_rect`` for :func:`add_circ_rect_grid`,
    * *algo* = ``direct_laplace``, ``inverse_laplace``, ``orthogonal`` for :func:`add_custom_rect_grid`.
+
+* **0.4.3**:
+   New algorithms:
+
+   * linear and hermite transfinite interpolations
+   * fixed number of edges for contour partition
+
+   Python interface functions with new options:
+
+   * *algo* = ``linear_tfi``, ``hermite_tfi`` for :func:`add_custom_rect_grid`,
+   * *hermite_tfi_w* for :func:`add_custom_rect_grid`,
+   * *nedges* for :func:`partition_contour`.

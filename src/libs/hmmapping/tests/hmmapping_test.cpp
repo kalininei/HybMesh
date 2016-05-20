@@ -385,7 +385,7 @@ void test10(){
 	{
 		auto left = HMCont2D::Constructor::ContourFromPoints({0,0, 0,1});
 		auto bot = HMCont2D::Constructor::PerturbedContour(Point(0, 0), Point(1, 0), 100,
-			       [](double t){return 0.2*sin(2*M_PI*3*t);});
+			       [](double t){return 0.15*sin(2*M_PI*3*t);});
 		auto right = HMCont2D::Constructor::ContourFromPoints({1,0, 1,1});
 		auto top = HMCont2D::Constructor::ContourFromPoints({0,1, 1,1});
 		HMCont2D::PCollection pcol;
@@ -397,11 +397,11 @@ void test10(){
 		m.clear(); m[0] = 0.018; m[1] = 0.1;
 		auto top1 = HMCont2D::Algos::WeightedPartition(m, top, pcol);
 		m.clear(); m[0] = 0.16; m[1] = 0.1;
-		auto bot1 = HMCont2D::Algos::WeightedPartition(m, bot, pcol);
+		auto bot1 = HMCont2D::Algos::WeightedPartition(m, bot, pcol, 21);
 
 		GridGeom g1 = HMGMap::LinearTFIRectGrid(left1, bot1, right1, top1);
 		GGeom::Export::GridVTK(g1, "g1.vtk");
-		add_file_check(10970555095950643221U, "g1.vtk", "1.linear tfi");
+		add_file_check(8469727367193026329U, "g1.vtk", "1.linear tfi");
 	}
 	{
 		auto left = HMCont2D::Constructor::PerturbedContour(Point(0, 0), Point(0.05, 0.9), 10,
@@ -414,13 +414,13 @@ void test10(){
 				[](double t){return 0.2*sin(M_PI*t);});
 		GridGeom g1 = HMGMap::LinearTFIRectGrid(left, bot, right, top);
 		GridGeom g2 = HMGMap::CubicTFIRectGrid(left, bot, right, top, {1, 1, 1, 1});
-		GridGeom g3 = HMGMap::CubicTFIRectGrid(left, bot, right, top, {0, 0, 1, 0});
+		GridGeom g3 = HMGMap::CubicTFIRectGrid(left, bot, right, top, {1, 0, 1, 0});
 		GGeom::Export::GridVTK(g1, "g1.vtk");
 		GGeom::Export::GridVTK(g2, "g2.vtk");
 		GGeom::Export::GridVTK(g3, "g3.vtk");
-		add_file_check(4024734701779065047U, "g1.vtk", "2.linear tfi");
-		add_file_check(15957523624000942417U, "g2.vtk", "2.hermite tfi, 1");
-		add_file_check(6629034728505654449U, "g3.vtk", "2.hermite tfi, 0010");
+		add_file_check(16471099325635865985U, "g1.vtk", "2.linear tfi");
+		add_file_check(8146930717215035548U, "g2.vtk", "2.hermite tfi, 1");
+		add_file_check(960387211664608807U, "g3.vtk", "2.hermite tfi, 1010");
 	}
 }
 

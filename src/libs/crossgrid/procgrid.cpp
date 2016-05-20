@@ -1,4 +1,5 @@
 #include "procgrid.h"
+#include <stack>
 
 GridGeom GGeom::Constructor::EmptyGrid(){
 	return GridGeom();
@@ -316,10 +317,23 @@ HMCont2D::Contour GGeom::Info::Contour1(const GridGeom& grid){
 namespace{
 //recursive algorithm of connected cells traversal
 void subgrids_add_cell(int i, vector<int>& v, const vector<vector<int>>& cell_cell, vector<int>& cind){
+	/*
 	cind[i]=1;
 	v.push_back(i);
 	for (auto ci: cell_cell[i]){
 		if (cind[ci]==0) subgrids_add_cell(ci, v, cell_cell, cind);
+	}
+	*/
+	std::stack<int> cand; 
+	cand.push(i);
+	while (cand.size()>0){
+		int j = cand.top(); cand.pop();
+		if (cind[j] == 1) continue;
+		cind[j] = 1;
+		v.push_back(j);
+		for (auto ci: cell_cell[j]){
+			if (cind[ci] == 0) cand.push(ci);
+		}
 	}
 }
 }//namespace
@@ -340,7 +354,11 @@ vector<GridGeom> GGeom::Modify::SubGrids(const GridGeom& grid){
 
 	//assemble new grids
 	vector<GridGeom> ret;
-	for (auto& sc: sc_cells){
+	if (sc_cells.size() == 1){
+		ret.push_back(GridGeom());
+		auto& r = ret.back();
+		ShallowAdd(&grid, &r);
+	} else for (auto& sc: sc_cells){
 		ret.push_back(GridGeom());
 		auto& r = ret.back();
 		ShallowAdd(&grid, &r, sc, false);

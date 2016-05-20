@@ -427,7 +427,6 @@ GridGeom HMGMap::LinearTFIRectGrid(HMCont2D::Contour& left, HMCont2D::Contour& b
 			);
 		}
 	}
-
 	for (int i=0; i<U.n_points(); ++i){
 		GridPoint*  p1 = U.get_point(i);
 		GridPoint*  p2 = V.get_point(i);

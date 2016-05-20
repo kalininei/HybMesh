@@ -224,15 +224,18 @@ GridGeom formgrid(const vector<tgPoint>& P, const vector<tgHalfEdge>& HE,
 		cells_nodes.push_back(c2.front()); c2.pop_front();
 		int nextnode = c2.front(); c2.pop_front();
 		while (c2.size()>0){
+			bool noerror = false;
 			for (auto it=c2.begin(); it!=c2.end(); std::advance(it,2)){
 				if (*it==nextnode){
 					cells_nodes.push_back(*it);
 					auto it2 = it++;
 					nextnode = *(it);
 					c2.erase(it2, ++it);  //erases two entries
+					noerror = true;
 					break;
 				}
 			}
+			if (!noerror) throw std::runtime_error("Failed to form a grid from the wireframe");
 		}
 	}
 	vector<double> raw_pnt;

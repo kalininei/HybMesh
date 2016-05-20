@@ -240,7 +240,7 @@ class Grid2(bgeom.Point2SetStruct):
     def boundary_contours(self):
         """ -> [[e1, e2, e3, ....], [e1, e2, e3, ...], ... ]
             returns indicies of edges which form boundary contours.
-            All contours have anti-clockwise direction
+            All contours have counterclockwise direction
         """
         #basic implementation.
         ed_cl = self.edges_cells_connect()

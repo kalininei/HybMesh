@@ -125,19 +125,28 @@ void GridGeom::merge_congruent_points(){
 		auto pf = static_cast<const GridPoint*>(fnd.add(p));
 		if (pf!=p) cp.emplace(i, pf->get_ind());
 	}
+	if (cp.size() == 0) return;
 
-	if (cp.size()>0){
-		for (auto c: cells){
-			for (int j=0; j<c->dim(); ++j){
-				auto fnd = cp.find(c->get_point(j)->get_ind());
-				if (fnd!=cp.end()){
-					change_point_of_cell(c.get(), j, points[fnd->second].get());
-				}
+	for (auto c: cells){
+		bool changed = false;
+		for (int j=0; j<c->dim(); ++j){
+			auto fnd = cp.find(c->get_point(j)->get_ind());
+			if (fnd!=cp.end()){
+				change_point_of_cell(c.get(), j, points[fnd->second].get());
+				changed = true;
 			}
 		}
-		delete_unused_points();
-		set_indicies();
+		if (changed){
+			auto it = std::unique(c->points.begin(), c->points.end());
+			if (it != c->points.begin() && *c->points.begin() == *std::prev(it)) --it;
+			c->points.resize(it - c->points.begin());
+		}
 	}
+	std::set<int> degenerate_cells;
+	for (auto c: cells) if (c->dim() < 3) degenerate_cells.insert(c->get_ind());
+	if (degenerate_cells.size() > 0) aa::remove_entries(cells, degenerate_cells);
+	delete_unused_points();
+	set_indicies();
 }
 
 GridGeom::GridGeom(const GridGeom& g){
@@ -528,19 +537,22 @@ GridGeom* GridGeom::cross_grids(GridGeom* gmain_inp, GridGeom* gsec_inp,
 	//zero buffer requires no further actions
 	if (buffer_size>geps){
 		//loop over each single connected grid
-		auto sg = comb->subdivide();
+		//auto sg = comb->subdivide();
+		auto sg = GGeom::Modify::SubGrids(*comb);
+		for (auto& g: sg) GGeom::Modify::ReallocatePrimitives(g);
 
 		//callback percentages 
 		callback.silent_step_after(0.5, "Filling buffer", 4*sg.size()*csec.size());
 		int it = 0;
-		for (auto grid: sg){
+		for (auto& grid: sg){
+			//grid.set_indicies();
 			//loop over each secondary contour
 			for (auto c: csec){
 				callback.silent_subprocess_move_now(4 * it++);
 
 				//1. filter out a grid from buffer zone for the contour
 				callback.subprocess_step_after(1.0);
-				BufferGrid bg(*grid, c, buffer_size);
+				BufferGrid bg(grid, c, buffer_size);
 
 				//continue if buffergrid is empty
 				if (bg.num_orig_cells()==0) continue; 
@@ -565,7 +577,7 @@ GridGeom* GridGeom::cross_grids(GridGeom* gmain_inp, GridGeom* gsec_inp,
 		//connect single connected grids
 		comb->clear();
 		for (size_t i=0; i<sg.size(); ++i){
-			comb->add_data(*sg[i]);
+			comb->add_data(sg[i]);
 		}
 		if (sg.size()>0) comb->merge_congruent_points();
 	}

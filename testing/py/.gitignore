@@ -3,6 +3,7 @@
 !*.py
 tmp.py
 !fulltest
+!fulltest.bat
 
 !fromdoc
 fromdoc/*

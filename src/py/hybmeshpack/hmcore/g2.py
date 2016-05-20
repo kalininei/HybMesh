@@ -204,7 +204,7 @@ def unite_grids(c_g1, c_g2, buf, fix_bnd, empty_holes, an0, cb):
     ret = cb.get_result()
 
     #if result was obtained (no errors, no cancel)
-    if ret != 0:
+    if ret != 0 and ret is not None:
         return ret
     else:
         raise Exception("unite_grids failed")
