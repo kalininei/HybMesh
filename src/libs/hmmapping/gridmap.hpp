@@ -5,7 +5,7 @@
 #include "hybmesh_contours2d.hpp"
 #include "grid.h"
 
-namespace HMGMap{
+namespace HMMap{
 
 class MapException: public std::runtime_error{
 public:

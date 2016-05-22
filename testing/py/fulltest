@@ -3,8 +3,8 @@
 # args:
 #   -doc : do doc tests
 #   -unit: do unit tests     
-# HMCOM="python ../../src/py/hybmesh.py -silent -sx"
-HMCOM="hybmesh -silent -sx"
+HMCOM="python ../../src/py/hybmesh.py -silent -sx"
+# HMCOM="hybmesh -silent -sx"
 DO_UNIT_TESTS=0
 DO_DOC_TESTS=0
 if [ $# -eq 0 ]

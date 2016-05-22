@@ -15,7 +15,7 @@ LaplasProblem::LaplasProblem(shared_ptr<Grid43> g):
 		solution_mat(),
 		rhs(grid->n_points(), 0.0){}
 
-LaplasProblem::LaplasProblem(shared_ptr<Grid43> g, shared_ptr<Mat> lap):
+LaplasProblem::LaplasProblem(shared_ptr<Grid43> g, shared_ptr<HMMath::Mat> lap):
 		grid(g), laplas_mat(lap),
 		solution_mat(),
 		rhs(grid->n_points(), 0.0){}
@@ -69,7 +69,7 @@ void LaplasProblem::RebuildSolutionMatrix(){
 	}
 
 	//solver initialization
-	solver = MatSolve::Factory(solution_mat);
+	solver = HMMath::MatSolve::Factory(solution_mat);
 }
 
 //solve Ax=0

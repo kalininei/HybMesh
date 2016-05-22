@@ -54,7 +54,7 @@ void LaplasSolver::assemble_rhs(){
 }
 
 void LaplasSolver::initialize(){
-	HMFem::Mat m;
+	HMMath::Mat m;
 	m.data.resize(N());
 	//internal, left, right
 	for (int j=1; j<Ny()-1; ++j){
@@ -209,5 +209,5 @@ void LaplasSolver::initialize(){
 		row[v.first] = 1;
 	}
 
-	solver = HMFem::MatSolve::Factory(m);
+	solver = HMMath::MatSolve::Factory(m);
 }

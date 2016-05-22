@@ -3,10 +3,10 @@
 #include "hmconformal.hpp"
 #include "femgrid43.hpp"
 
-namespace HMMath{ namespace Conformal{ namespace Impl{
+namespace HMMap{ namespace Conformal{ namespace Impl{
 namespace ConfFem{
 
-class ToRect: public HMMath::Conformal::Rect{
+class ToRect: public HMMap::Conformal::Rect{
 	// ==== data filled by constructor
 	//fem grid in path area
 	shared_ptr<HMFem::Grid43> grid;
@@ -56,7 +56,7 @@ public:
 	vector<Point> RectPoints() const override;
 };
 
-class ToAnnulus: public HMMath::Conformal::Annulus{
+class ToAnnulus: public HMMap::Conformal::Annulus{
 	//data filled by constructor
 	double _module;
 	shared_ptr<HMFem::Grid43> grid;

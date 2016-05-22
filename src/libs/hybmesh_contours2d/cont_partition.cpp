@@ -488,7 +488,7 @@ Contour cns::WeightedPartition(std::map<double, double> basis,
 		}
 		lengths.push_back(contour.length());
 		//h(len) function
-		HMPW::LinearPiecewise pw;
+		HMMath::LinearPiecewise pw;
 		for (auto& v: basis){
 			double x = v.first*lengths.back();
 			double y = v.second;

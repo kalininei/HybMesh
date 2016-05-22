@@ -2,7 +2,7 @@
 #include "hmproject.h"
 #include "addalgo.hpp"
 
-namespace HMPW{
+namespace HMMath{
 
 struct Error: public std::runtime_error{
 	Error(): std::runtime_error("Piecewise operation error"){};

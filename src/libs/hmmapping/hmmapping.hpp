@@ -4,5 +4,6 @@
 #include "gridmap.hpp"
 #include "rectangle_grid_builder.hpp"
 #include "circrect.hpp"
+#include "hmconformal.hpp"
 
 #endif

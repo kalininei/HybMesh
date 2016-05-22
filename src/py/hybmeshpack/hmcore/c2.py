@@ -107,3 +107,25 @@ def contour_partition(c_cont, c_bt, c_step, algo, a0, keepbnd, nedges):
     if ret == 0:
         raise Exception("contour partition failed")
     return ret, c_bndret
+
+
+def spline(c_pnts, c_bt, nedges):
+    # algo treatment
+    c_bnd = ct.POINTER(ct.c_int)()
+    n_bnd = ct.c_int(0)
+    c_ne = ct.c_int(nedges)
+    npnt = len(c_pnts) / 2
+    nbt = len(c_bt)
+
+    ret = libhmcport.spline(npnt, c_pnts, nbt, c_bt, c_ne,
+                            ct.byref(n_bnd), ct.byref(c_bnd))
+    # copy c-side allocated bnd array to python side allocated
+    c_bndret = (ct.c_int * (n_bnd.value))()
+    for i in range(len(c_bndret)):
+        c_bndret[i] = c_bnd[i]
+    # clear c-side allocated array
+    libhmcport.free_int_array(c_bnd)
+
+    if ret == 0 or ret is None:
+        raise Exception("spline builder failed")
+    return ret, c_bndret

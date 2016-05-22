@@ -3,7 +3,7 @@
 
 #include "hmproject.h"
 #include "femgrid43.hpp"
-#include "femmat.hpp"
+#include "spmat.hpp"
 
 namespace HMFem{
 
@@ -36,10 +36,10 @@ class LaplasProblem{
 	//Grids
 	shared_ptr<HMFem::Grid43> grid;
 	//Matricies
-	shared_ptr<HMFem::Mat> laplas_mat;
+	shared_ptr<HMMath::Mat> laplas_mat;
 
-	HMFem::Mat solution_mat;
-	shared_ptr<HMFem::MatSolve> solver;
+	HMMath::Mat solution_mat;
+	shared_ptr<HMMath::MatSolve> solver;
 	vector<double> rhs;
 	//boundary condition data
 	std::list<TNeuFunc> _neufunc;
@@ -55,7 +55,7 @@ public:
 	//using prebuild grid
 	LaplasProblem(shared_ptr<Grid43> g);
 	//using prebuilt grid and laplas matrix
-	LaplasProblem(shared_ptr<Grid43> g, shared_ptr<Mat> lap);
+	LaplasProblem(shared_ptr<Grid43> g, shared_ptr<HMMath::Mat> lap);
 
 	//boundary conditions: using vector of grid points
 	void ClearBC();

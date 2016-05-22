@@ -1,3 +1,4 @@
+import numbers
 from hybmeshpack import com
 from hybmeshpack.basic.geom import Point2
 from hybmeshpack.hmscript import flow, data
@@ -133,14 +134,14 @@ def set_boundary_type(cont, btps=None, bfun=None):
 def create_contour(pnts, bnds=0):
     """ Create singly connected contour from sequence of points
 
-    Args:
-       pnts(list-of-list-of-floats): sequence of points.
+    :param list-of-list-of-floats pnts: sequence of points.
        If coordinates of first and last points are equal
        then contour is considered closed.
 
-    Kwargs:
-       bnds(single or list-of boundary identifiers): boundary type for
+    :param single-or-list-of-boundary-identifiers bnds: boundary type for
        each contour segment or single identifier for the whole contour.
+
+    :returns: contour identifier
 
     Example:
        >>> hmscript.create_contour([[0, 0], [1, 0], [1, 1], [0, 0]],
@@ -155,24 +156,73 @@ def create_contour(pnts, bnds=0):
     return c._get_added_names()[1][0]
 
 
+def create_spline_contour(pnts, bnds=0, nedges=100):
+    """ Creates singly connected contour as a parametric cubic spline.
+
+    :param list-of-list-of-floats pnts: sequence of points.
+         If coordinates of first and last points are equal
+         then resulting contour will be closed.
+
+    :param single-or-list-of-boundary-identifiers bnds: boundary type for
+         each contour segment or single identifier for the whole contour.
+
+    :param int nedges: number of line segments of resulting contour.
+         Should be equal or greater than the number of sections defined by
+         **pnts**.
+
+    :returns: contour identifier
+
+    :raises: hmscript.ExecError, ValueError
+    """
+    bad = False
+    if not isinstance(pnts, list) or len(pnts) < 2:
+        bad = True
+    elif not all([isinstance(x, list) and len(x) == 2 for x in pnts]):
+        bad = True
+    if bad:
+        raise ValueError("Invalid pnts data")
+    if not isinstance(nedges, numbers.Integral) or nedges < len(pnts):
+        raise ValueError("Invalid nedges")
+    if not isinstance(bnds, numbers.Integral):
+        if not isinstance(bnds, list):
+            bad = True
+        elif not all([isinstance(x, numbers.Integral) for x in bnds]):
+            bad = True
+    else:
+        bnds = [bnds]
+    if bad:
+        raise ValueError("Invalid bnds")
+    pt = []
+    for p in pnts:
+        pt.append(Point2(*p))
+    c = com.contcom.CreateSpline({"points": pt,
+                                  "bnds": bnds,
+                                  "nedges": nedges})
+    try:
+        flow.exec_command(c)
+        return c._get_added_names()[1][0]
+    except:
+        raise ExecError("create spline")
+
+
 def clip_domain(dom1, dom2, operation, simplify=True):
     """ Executes domain clipping procedure
 
-    Args:
-       dom1, dom2: contour identifiers
+    :param dom1:
 
-       operatrion (str): operation code
-          * ``"union"``
-          * ``"difference"``
-          * ``"intersection"``
-          * ``"xor"``
+    :param dom2: contour identifiers
 
-    Kwargs:
-       simplify (bool): whether to keep all source points (False) or
+    :param  str operatrion: operation code
+
+       * ``"union"``
+       * ``"difference"``
+       * ``"intersection"``
+       * ``"xor"``
+
+    :param bool simplify: whether to keep all source points (False) or
        return simplified contour
 
-    Returns:
-       created contour identifier or None if resulting domain is empty
+    :returns: created contour identifier or None if resulting domain is empty
     """
     if operation not in ['union', 'difference', 'intersection', 'xor']:
         raise ValueError("unknows operation: %s" % str(operation))
@@ -237,7 +287,6 @@ def partition_contour(cont, algo, step, angle0=30, keep_bnd=False,
           :start-after: vvvvvvvvvvvvvvvvvvvvvvvv
           :end-before: ^^^^^^^^^^^^^^^^^^^^^^^^
     """
-    import numbers
     # checks
     if algo == "const":
         if not isinstance(step, numbers.Real):

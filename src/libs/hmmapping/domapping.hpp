@@ -6,10 +6,10 @@
 #include "hmfem.hpp"
 #include "mapped_contour.hpp"
 
-namespace HMGMap{namespace Impl{
+namespace HMMap{namespace Impl{
 
 struct DoMapping{
-	DoMapping(const HMGMap::Options& _opt): opt(_opt), inpgrid(GGeom::Constructor::EmptyGrid()){}
+	DoMapping(const HMMap::Options& _opt): opt(_opt), inpgrid(GGeom::Constructor::EmptyGrid()){}
 	
 	// ====== set input
 	void set_grid(const GridGeom& ig);
@@ -21,7 +21,7 @@ struct DoMapping{
 	GridGeom run(HMCallback::Caller2& cb);
 protected:
 	// ====== main data
-	HMGMap::Options opt;
+	HMMap::Options opt;
 	GridGeom inpgrid;
 	HMCont2D::ECollection contdata;
 	vector<Point> gridpoints;
@@ -64,7 +64,7 @@ private:
 };
 
 struct DoMapping2{
-	DoMapping2(const HMGMap::Options& _opt): opt(_opt), inpgrid(GGeom::Constructor::EmptyGrid()){}
+	DoMapping2(const HMMap::Options& _opt): opt(_opt), inpgrid(GGeom::Constructor::EmptyGrid()){}
 	
 	// ====== set input
 	void set_grid(const GridGeom& ig);
@@ -75,7 +75,7 @@ struct DoMapping2{
 	GridGeom run();
 private:
 	// ====== main data
-	HMGMap::Options opt;
+	HMMap::Options opt;
 	GridGeom inpgrid;
 	HMCont2D::ECollection contdata;
 	vector<Point> gridpoints;

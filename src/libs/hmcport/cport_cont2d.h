@@ -21,6 +21,10 @@ void* contour_partition(void* cont, int* btypes, int algo,
 		int n_steps, double* steps, double a0, int keepbnd, int nedges,
 		int* n_outbnd, int** outbnd);
 
+//build a spline using basis points
+void* spline(int npnt, double* pnts, int nbtypes, int* btypes, int nedges,
+		int* n_outbnd, int** outbnd);
+
 
 }
 #endif

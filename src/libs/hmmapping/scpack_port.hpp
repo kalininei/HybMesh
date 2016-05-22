@@ -2,14 +2,14 @@
 #define HYBMESH_HMMATH_SCPACK_PORT_HPP
 #include "hmconformal.hpp"
 
-namespace HMMath{ namespace Conformal{ namespace Impl{
+namespace HMMap{ namespace Conformal{ namespace Impl{
 namespace SCPack{
 
 struct Pt{
 	double x, y;
 };
 
-class ToRect: public HMMath::Conformal::Rect{
+class ToRect: public HMMap::Conformal::Rect{
 	//input data
 	vector<Pt> wcoords;
 	Pt w0;

@@ -4,7 +4,7 @@
 #include "hybmesh_contours2d.hpp"
 #include "gridmap.hpp"
 
-namespace HMGMap{
+namespace HMMap{
 
 //Contours points will be moved to form a rectangle. No reverses.
 GridGeom LinearRectGrid(HMCont2D::Contour& left, HMCont2D::Contour& bot,

@@ -1,9 +1,8 @@
 #ifndef HYBMESH_HMFEM_FEMMAT_HPP
 #define HYBMESH_HMFEM_FEMMAT_HPP
 #include "hmproject.h"
-#include "femgrid43.hpp"
 
-namespace HMFem{
+namespace HMMath{
 
 //Sparce Matrix
 struct Mat{
@@ -28,6 +27,7 @@ struct Mat{
 	double RowMultVec(const vector<double>& u, int irow) const;
 	void MultVec(const vector<double>& u, vector<double>& res) const;
 };
+std::ostream& operator<<(std::ostream& os, const Mat&);
 
 
 //dense matrix of little dimension

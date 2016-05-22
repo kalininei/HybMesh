@@ -1,6 +1,6 @@
 #include "scpack_port.hpp"
 
-using namespace HMMath::Conformal::Impl::SCPack;
+using namespace HMMap::Conformal::Impl::SCPack;
 
 extern "C"{
 

@@ -1,7 +1,7 @@
 #ifndef HMMATH_HMFDM_HPP
 #define HMMATH_HMFDM_HPP
 #include "hmproject.h"
-#include "femmat.hpp"
+#include "spmat.hpp"
 
 namespace HMFdm{
 
@@ -11,7 +11,7 @@ class LaplasSolver{
 	vector<double> rhs;
 	std::map<int, double> predefined_values;
 	void set_predef_value(int i, int j, double val);
-	shared_ptr<HMFem::MatSolve> solver;
+	shared_ptr<HMMath::MatSolve> solver;
 	bool was_init(){ return solver != nullptr; }
 	void initialize(); 
 	void assemble_rhs();

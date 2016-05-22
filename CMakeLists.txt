@@ -84,7 +84,7 @@ if (WIN32)
 endif(WIN32)
 
 # ============================ Version
-set(APPVERSION 0.4.3)
+set(APPVERSION 0.4.4)
 
 # =========================== linking libraries flags
 #libGmsh: global definition of BUILD_GMSH, GMSH_TARGET, GMSH_INCLUDE
@@ -164,6 +164,9 @@ set(HMGRID3D_TARGET hmgrid3d)
 #libhmmath: global definition of HMMATH_INCLUDE, HMMATH_TARGET
 set(HMMATH_INCLUDE "${CMAKE_SOURCE_DIR}/src/libs/hmmath")
 set(HMMATH_TARGET hmmath)
+#libhmnumeric: global definition of HMNUMERIC_INCLUDE, HMNUMERIC_TARGET
+set(HMNUMERIC_INCLUDE "${CMAKE_SOURCE_DIR}/src/libs/hmnumeric")
+set(HMNUMERIC_TARGET hmnumeric)
 #libhmmapping: global definition of HMMAPPING_INCLUDE, HMMAPPING_TARGET
 set(HMMAPPING_INCLUDE "${CMAKE_SOURCE_DIR}/src/libs/hmmapping")
 set(HMMAPPING_TARGET hmmapping)

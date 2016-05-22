@@ -4,6 +4,6 @@ source ../../src/libs/dbgscripts/hmout.gdb
 file python
 set args ../../src/py/hybmesh.py -sx tmp.py -silent
 set breakpoint pending on
-b grid.cpp:143
+b cport_cont2d.cpp:198
 run
 

@@ -488,7 +488,7 @@ void test13(){
 	inp2.partition = {0, 0.03, 0.07, 0.12, 0.18, 0.24, 0.3, 0.36, 0.42, 0.48, 0.54, 0.6};
 	GridGeom g3 = HMBlay::BuildBLayerGrid({inp1, inp2});
 	//g4
-	auto conf = HMMath::Conformal::Rect::Factory(
+	auto conf = HMMap::Conformal::Rect::Factory(
 		{Point(10.38, 4.07), Point(15.33, 3), Point(15.33, 7), Point(10.38, 5.93)},
 		{0,1,2,3});
 	auto g4 = GGeom::Constructor::RectGrid(Point(0, 0), Point(conf->module(), 1), 30, 50);

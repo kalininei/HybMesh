@@ -5,7 +5,7 @@
 #include "hybmesh_contours2d.hpp"
 #include "hmcallback.hpp"
 
-namespace HMMath{ namespace Conformal{
+namespace HMMap{ namespace Conformal{
 
 struct Options{
 	//Options are used for both Rect and Annulus constructors

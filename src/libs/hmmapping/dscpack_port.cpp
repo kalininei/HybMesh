@@ -1,5 +1,5 @@
 #include "dscpack_port.hpp"
-using namespace HMMath::Conformal::Impl::DSCPack;
+using namespace HMMap::Conformal::Impl::DSCPack;
 
 extern "C"{
 

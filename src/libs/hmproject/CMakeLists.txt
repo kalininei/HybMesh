@@ -5,7 +5,6 @@ set (HEADERS
 	hmtimer.hpp
 	hmcallback.hpp
 	hmtesting.hpp
-	piecewise.hpp
 )
 
 set (SOURCES
@@ -21,7 +20,6 @@ source_group ("Source Files" FILES ${SOURCES} ${SOURCES})
 
 add_library(${HMPROJECT_TARGET} SHARED ${HEADERS} ${SOURCES})
 
-# =========== linkage
 install(TARGETS ${HMPROJECT_TARGET}
 	LIBRARY DESTINATION ${LIB_INSTALL_DIR}
 	RUNTIME DESTINATION ${LIB_INSTALL_DIR}

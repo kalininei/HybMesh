@@ -633,7 +633,7 @@ Grid* build_grid_mapping(void* base_grid, void* target_contour, int Npnt,
 		}
 		bscale.scale(p1.begin(), p1.end());
 		cscale.scale(p2.begin(), p2.end());
-		HMGMap::Options opt;
+		HMMap::Options opt;
 		switch (snap_method){
 			case 1: opt.snap = "NO"; break;
 			case 2: opt.snap = "ADD_VERTICES"; break;
@@ -643,10 +643,10 @@ Grid* build_grid_mapping(void* base_grid, void* target_contour, int Npnt,
 			case 1: opt.algo = "direct-laplace"; break;
 			case 2: opt.algo = "inverse-laplace"; break;
 		}
-		GridGeom ans = HMGMap::MapGrid.WithCallback(cb, *g, *col, p1, p2, opt);
+		GridGeom ans = HMMap::MapGrid.WithCallback(cb, *g, *col, p1, p2, opt);
 		ans.undo_scale(cscale);
 		ret = new GridGeom(std::move(ans));
-	} catch (HMGMap::EInvalidGrid &e){
+	} catch (HMMap::EInvalidGrid &e){
 		if (!return_invalid){
 			std::cout<<e.what()<<std::endl;
 			ret = 0;

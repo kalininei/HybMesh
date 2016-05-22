@@ -127,21 +127,21 @@ void* custom_rectangular_grid(int algo, void* left, void* bot,
 	try{
 		//assemble grid
 		if (algo == 0){
-			ret = new GridGeom(HMGMap::LinearRectGrid(*left1, *bot1, *right1, *top1));
+			ret = new GridGeom(HMMap::LinearRectGrid(*left1, *bot1, *right1, *top1));
 		} else if (algo == 1){
-			ret = new GridGeom(HMGMap::LaplaceRectGrid.WithCallback(
+			ret = new GridGeom(HMMap::LaplaceRectGrid.WithCallback(
 				cb, *left1, *bot1, *right1, *top1, "inverse-laplace"));
 		} else if (algo == 2){
-			ret = new GridGeom(HMGMap::LaplaceRectGrid.WithCallback(
+			ret = new GridGeom(HMMap::LaplaceRectGrid.WithCallback(
 				cb, *left1, *bot1, *right1, *top1, "direct-laplace"));
 		} else if (algo == 3){
-			ret = new GridGeom(HMGMap::OrthogonalRectGrid.WithCallback(
+			ret = new GridGeom(HMMap::OrthogonalRectGrid.WithCallback(
 				cb, *left1, *bot1, *right1, *top1));
 		} else if (algo == 4){
-			ret = new GridGeom(HMGMap::LinearTFIRectGrid(
+			ret = new GridGeom(HMMap::LinearTFIRectGrid(
 				*left1, *bot1, *right1, *top1));
 		} else if (algo == 5){
-			ret = new GridGeom(HMGMap::CubicTFIRectGrid(
+			ret = new GridGeom(HMMap::CubicTFIRectGrid(
 				*left1, *bot1, *right1, *top1, {her_w[0], her_w[1], her_w[2], her_w[3]}));
 		} else throw std::runtime_error("unknown algorithm");
 		ret->undo_scale(sc);
@@ -170,7 +170,7 @@ Grid* circ4grid(int algo, double* center, double rad, double step, double sqrsid
 			case 3: stralgo="orthogonal-rect"; break;
 			default: throw std::runtime_error("unknown algorithm");
 		};
-		ret = new GridGeom(HMGMap::Circ4Prototype(Point(0, 0), 1.0, 8*n1,
+		ret = new GridGeom(HMMap::Circ4Prototype(Point(0, 0), 1.0, 8*n1,
 			stralgo, sqrside, outer_refinement));
 		//unscale
 		ScaleBase sc(center[0], center[1], rad);

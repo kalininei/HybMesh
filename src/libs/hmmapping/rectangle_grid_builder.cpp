@@ -5,8 +5,8 @@
 #include "hmconformal.hpp"
 #include "debug_grid2d.h"
 
-HMCallback::FunctionWithCallback<HMGMap::TOrthogonalRectGrid> HMGMap::OrthogonalRectGrid;
-HMCallback::FunctionWithCallback<HMGMap::TLaplaceRectGrid> HMGMap::LaplaceRectGrid;
+HMCallback::FunctionWithCallback<HMMap::TOrthogonalRectGrid> HMMap::OrthogonalRectGrid;
+HMCallback::FunctionWithCallback<HMMap::TLaplaceRectGrid> HMMap::LaplaceRectGrid;
 
 namespace{
 
@@ -148,12 +148,12 @@ void check_direction(GridGeom& ret){
 		GGeom::Modify::CellModify(ret, [](Cell* c){
 			std::reverse(c->points.begin(), c->points.end());} );
 	}
-	if (!GGeom::Info::Check(ret)) throw HMGMap::EInvalidGrid(std::move(ret));
+	if (!GGeom::Info::Check(ret)) throw HMMap::EInvalidGrid(std::move(ret));
 }
 
 }
 
-GridGeom HMGMap::LinearRectGrid(HMCont2D::Contour& _left, HMCont2D::Contour& _bot,
+GridGeom HMMap::LinearRectGrid(HMCont2D::Contour& _left, HMCont2D::Contour& _bot,
 		HMCont2D::Contour& _right, HMCont2D::Contour& _top){
 	if (_left.size() != _right.size() || _bot.size() != _top.size())
 		throw std::runtime_error("right/top contours should have same number "
@@ -194,7 +194,7 @@ GridGeom HMGMap::LinearRectGrid(HMCont2D::Contour& _left, HMCont2D::Contour& _bo
 	return ret;
 }
 
-GridGeom HMGMap::TOrthogonalRectGrid::_run(HMCont2D::Contour& _left, HMCont2D::Contour& _bot,
+GridGeom HMMap::TOrthogonalRectGrid::_run(HMCont2D::Contour& _left, HMCont2D::Contour& _bot,
 		HMCont2D::Contour& _right, HMCont2D::Contour& _top){
 	callback->step_after(5, "Connect contours");
 	auto conres = connect_contours(_left, _bot, _right, _top);
@@ -209,11 +209,11 @@ GridGeom HMGMap::TOrthogonalRectGrid::_run(HMCont2D::Contour& _left, HMCont2D::C
 			   left.first() == _left.last());
 
 	auto subcaller = callback->bottom_line_subrange(80);
-	HMMath::Conformal::Options opt;
+	HMMap::Conformal::Options opt;
 	opt.use_scpack = false;
 	opt.use_rect_approx = false;
 	opt.fem_nrec = std::max(std::min(10000, left.size()*right.size()*2), 500);
-	auto cmap = HMMath::Conformal::BuildRect.UseCallback(subcaller,
+	auto cmap = HMMap::Conformal::BuildRect.UseCallback(subcaller,
 			left, right, bot, top, opt);
 	GridGeom ret = GGeom::Constructor::RectGrid01(bot.size(), left.size());
 
@@ -244,7 +244,7 @@ GridGeom HMGMap::TOrthogonalRectGrid::_run(HMCont2D::Contour& _left, HMCont2D::C
 	return ret;
 }
 
-GridGeom HMGMap::FDMLaplasRectGrid(HMCont2D::Contour& _left, HMCont2D::Contour& _bot,
+GridGeom HMMap::FDMLaplasRectGrid(HMCont2D::Contour& _left, HMCont2D::Contour& _bot,
 	HMCont2D::Contour& _right, HMCont2D::Contour& _top){
 	if (_left.size() != _right.size() || _bot.size() != _top.size())
 		throw std::runtime_error("right/top contours should have same number "
@@ -312,7 +312,7 @@ GridGeom HMGMap::FDMLaplasRectGrid(HMCont2D::Contour& _left, HMCont2D::Contour& 
 	return ret;
 }
 
-GridGeom HMGMap::TLaplaceRectGrid::_run(HMCont2D::Contour& left, HMCont2D::Contour& bot,
+GridGeom HMMap::TLaplaceRectGrid::_run(HMCont2D::Contour& left, HMCont2D::Contour& bot,
 		HMCont2D::Contour& right, HMCont2D::Contour& top, std::string algo){
 	if (left.size() != right.size() || bot.size() != top.size())
 		throw std::runtime_error("right/top contours should have same number "
@@ -345,7 +345,7 @@ GridGeom HMGMap::TLaplaceRectGrid::_run(HMCont2D::Contour& left, HMCont2D::Conto
 	auto rectright = weight_contour(right1, true, true);
 	auto rectbot = weight_contour(bot1, false, false);
 	auto recttop = weight_contour(top1, false, true);
-	GridGeom base = HMGMap::LinearRectGrid(rectleft, rectbot, rectright, recttop);
+	GridGeom base = HMMap::LinearRectGrid(rectleft, rectbot, rectright, recttop);
 
 	//map grid base and mapped points
 	callback->step_after(10, "Boundary mapping");
@@ -373,15 +373,15 @@ GridGeom HMGMap::TLaplaceRectGrid::_run(HMCont2D::Contour& left, HMCont2D::Conto
 	ecol.Unite(bot1);
 
 	//options
-	HMGMap::Options opt(algo);
+	HMMap::Options opt(algo);
 	opt.fem_nrec = 1.5*(left1.size()+1)*(bot1.size()+1);
 
 	//calculate
 	auto subcaller = callback->bottom_line_subrange(80);
-	return HMGMap::MapGrid.UseCallback(subcaller, base, ecol, base_pnt, mapped_pnt, opt);
+	return HMMap::MapGrid.UseCallback(subcaller, base, ecol, base_pnt, mapped_pnt, opt);
 }
 
-GridGeom HMGMap::LinearTFIRectGrid(HMCont2D::Contour& left, HMCont2D::Contour& bot,
+GridGeom HMMap::LinearTFIRectGrid(HMCont2D::Contour& left, HMCont2D::Contour& bot,
 		HMCont2D::Contour& right, HMCont2D::Contour& top){
 	if (left.size() != right.size() || bot.size() != top.size())
 		throw std::runtime_error("right/top contours should have same number "
@@ -437,7 +437,7 @@ GridGeom HMGMap::LinearTFIRectGrid(HMCont2D::Contour& left, HMCont2D::Contour& b
 	return U;
 }
 
-GridGeom HMGMap::CubicTFIRectGrid(HMCont2D::Contour& left, HMCont2D::Contour& bot,
+GridGeom HMMap::CubicTFIRectGrid(HMCont2D::Contour& left, HMCont2D::Contour& bot,
 		HMCont2D::Contour& right, HMCont2D::Contour& top, std::array<double, 4> c){
 	if (left.size() != right.size() || bot.size() != top.size())
 		throw std::runtime_error("right/top contours should have same number "

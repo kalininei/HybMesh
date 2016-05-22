@@ -462,6 +462,48 @@ class CreateContour(objcom.AbstractAddRemove):
         return [], [], [(self.options["name"], cont)], []
 
 
+class CreateSpline(objcom.AbstractAddRemove):
+    " Creates spline"
+
+    def __init__(self, argsdict):
+        if "name" not in argsdict:
+            argsdict["name"] = "Contour1"
+        if "bnds" not in argsdict:
+            argsdict["bnds"] = 0
+        super(CreateSpline, self).__init__(argsdict)
+
+    def doc(self):
+        return "Create spline from sequence of points"
+
+    @classmethod
+    def _arguments_types(cls):
+        return {'name': command.BasicOption(str),
+                'points': command.ListOfOptions(command.Point2Option()),
+                'bnds': command.ListOfOptions(command.BasicOption(int)),
+                'nedges': command.BasicOption(int),
+                }
+
+    def _addrem_objects(self):
+        so = self.options
+        # copy to c
+        plist = []
+        for p in so['points']:
+            plist.extend([p.x, p.y])
+        cplist = hmcore.list_to_c(plist, float)
+        c_bt = hmcore.list_to_c(so['bnds'], int)
+        # 4. call c procedure
+        c_ret = 0
+        try:
+            c_ret, c_bnd = c2core.spline(cplist, c_bt, so['nedges'])
+            ret = c2core.cont2_from_c(c_ret, c_bnd)
+            return [], [], [(so["name"], ret)], []
+        except Exception as e:
+            raise command.ExecutionError("Spline builder error", self, e)
+        finally:
+            if c_ret != 0:
+                c2core.free_cont2(c_ret)
+
+
 class ClipDomain(objcom.AbstractAddRemove):
     'Domain clipping operation'
 

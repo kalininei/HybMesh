@@ -6,13 +6,13 @@
 #define FEM_NMAX 1000000
 #define APPROX_PART 200
 
-using namespace HMMath::Conformal::Impl::ConfFem;
+using namespace HMMap::Conformal::Impl::ConfFem;
 namespace{
 
 double IntegralGrad2(shared_ptr<HMFem::Grid43> grid, const vector<double>& v){
 	using namespace HMFem;
-	shared_ptr<Mat> ddx = Assemble::DDx(*grid);
-	shared_ptr<Mat> ddy = Assemble::DDy(*grid);
+	shared_ptr<HMMath::Mat> ddx = Assemble::DDx(*grid);
+	shared_ptr<HMMath::Mat> ddy = Assemble::DDy(*grid);
 	vector<double> vdx(ddx->rows()), vdy(ddx->rows()), mass = Assemble::LumpMass(*grid);
 	ddx->MultVec(v, vdx); 
 	ddy->MultVec(v, vdy);
@@ -27,8 +27,8 @@ double IntegralGrad2(shared_ptr<HMFem::Grid43> grid, const vector<double>& v){
 void GradVectors(shared_ptr<HMFem::Grid43> grid, const vector<double>& v,
 		vector<double>& dx, vector<double>& dy){
 	using namespace HMFem;
-	shared_ptr<Mat> ddx = Assemble::DDx(*grid);
-	shared_ptr<Mat> ddy = Assemble::DDy(*grid);
+	shared_ptr<HMMath::Mat> ddx = Assemble::DDx(*grid);
+	shared_ptr<HMMath::Mat> ddy = Assemble::DDy(*grid);
 	vector<double> mass = Assemble::LumpMass(*grid);
 	dx.resize(grid->n_points()); dy.resize(grid->n_points());
 	ddx->MultVec(v, dx); 

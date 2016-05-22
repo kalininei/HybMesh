@@ -189,3 +189,50 @@ void* contour_partition(void* cont, int* btypes, int algo,
 	HMCont2D::ECollection::Unscale(*ecol, sc);
 	return ret;
 }
+
+void* spline(int npnt, double* pnts, int nbtypes, int* btypes, int nedges,
+		int* n_outbnd, int** outbnd){
+	HMCont2D::Container<HMCont2D::Contour>* ret = NULL;
+	try{
+		//build points
+		vector<Point> p;
+		for (int i=0; i<2*npnt; i+=2) p.push_back(Point(pnts[i], pnts[i+1]));
+		vector<Point*> pvec;
+		for (int i=0; i<p.size(); ++i) pvec.push_back(&p[i]);
+		ScaleBase sc = ScaleBase::p_doscale(pvec.begin(), pvec.end());
+		if (*pvec[0] == *pvec.back()) pvec.back() = pvec[0];
+		//create contour
+		HMCont2D::PCollection pcol;
+		HMCont2D::Contour spline = HMCont2D::Constructor::Spline(pvec, pcol, nedges);
+		//assign boundary types
+		vector<int> vbt(btypes, btypes + nbtypes);
+		vbt.resize(pvec.size()-1, vbt.back());
+		vector<Point*> op = spline.ordered_points();
+		vector<int> basis_index;
+		for (int i=0; i<pvec.size(); ++i){
+			for (int j=0; j<op.size(); ++j){
+				if (pvec[i] == op[j]){
+					basis_index.push_back(j);
+					break;
+				}
+			}
+		}
+		basis_index.back() = op.size()-1;
+		*n_outbnd = spline.size();
+		*outbnd = new int[spline.size()];
+		for (int i=0; i<basis_index.size() - 1; ++i){
+			int i1 = basis_index[i];
+			int i2 = basis_index[i+1];
+			for (int j=i1; j<i2; ++j) (*outbnd)[j] = vbt[i];
+		}
+		// Unscale and return
+		HMCont2D::ECollection::Unscale(spline, sc);
+		ret = new HMCont2D::Container<HMCont2D::Contour>();
+		HMCont2D::Container<HMCont2D::Contour>::DeepCopy(spline, *ret);
+	} catch (std::runtime_error &e){
+		if (ret != 0) delete ret; 
+		ret = NULL;
+		std::cout<<e.what()<<std::endl;
+	}
+	return ret;
+}

@@ -1,32 +1,13 @@
 #library file
 set (HEADERS
-	hmconformal.hpp
 	hmcompute.hpp
-	scpack_port.hpp
-	dscpack_port.hpp
-	hmfem.hpp
-	femgrid43.hpp
-	femmat.hpp
-	femassembly.hpp
-	confrect_fem.hpp
-	hmfdm.hpp
+	spmat.hpp
+	piecewise.hpp
 )
 
 set (SOURCES
-	hmconformal.cpp
 	hmcompute.cpp
-	scpack_port.cpp
-	scpack_port.f
-	dscpack_port.cpp
-	dscpack_port.f
-	confrect_fem.cpp
-	hmfem.cpp
-	femgrid43.cpp
-	femmat.cpp
-	femassembly.cpp
-	hmfdm.cpp
-	$<TARGET_OBJECTS:${SCPACK_TARGET}>
-	$<TARGET_OBJECTS:${DSCPACK_TARGET}>
+	spmat.cpp
 )
 
 source_group ("Header Files" FILES ${HEADERS} ${HEADERS})
@@ -36,15 +17,9 @@ add_library(${HMMATH_TARGET} SHARED ${HEADERS} ${SOURCES})
 
 # =========== linkage
 target_link_libraries(${HMMATH_TARGET} ${HMPROJECT_TARGET})
-target_link_libraries(${HMMATH_TARGET} ${BGEOM2D_TARGET})
-target_link_libraries(${HMMATH_TARGET} ${CROSSGRID_TARGET})
-target_link_libraries(${HMMATH_TARGET} ${HYBMESH_CONTOURS2D_TARGET})
 target_link_libraries(${HMMATH_TARGET} ${SUITESPARSE_LIBRARIES})
 
 include_directories(${HMPROJECT_INCLUDE})
-include_directories(${BGEOM2D_INCLUDE})
-include_directories(${CROSSGRID_INCLUDE})
-include_directories(${HYBMESH_CONTOURS2D_INCLUDE})
 include_directories(${SUITESPARSE_INCLUDE_DIRS})
 
 install(TARGETS ${HMMATH_TARGET}

@@ -10,6 +10,7 @@ add_subdirectory(hmmath)
 add_subdirectory(hmmapping)
 add_subdirectory(hmgrid3d)
 add_subdirectory(hmcport)
+add_subdirectory(hmnumeric)
 
 
 #copy mingw runtime libraries to binary directory

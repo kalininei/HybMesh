@@ -1,7 +1,7 @@
 #include "mapped_contour.hpp"
 #include "hmmapping.hpp"
 
-using namespace HMGMap::Impl;
+using namespace HMMap::Impl;
 
 double MappedContour::loc2ex_base(double w) const{
 	if (ww.size() == 1){
@@ -109,7 +109,7 @@ void MappedContour::check_ww() const{
 		double w2 = wit.second - w2start;
 		if (w2 > 1) w2-=1;
 		if (w2 < 0) w2+=1;
-		if (w2 <= w2prev) throw HMGMap::MapException("Invalid order of points in mapped contour");
+		if (w2 <= w2prev) throw HMMap::MapException("Invalid order of points in mapped contour");
 		w2prev = w2;
 	}
 }
@@ -148,7 +148,7 @@ MappedContour* MappedContourCollection::insert(HMCont2D::Contour* cbase, HMCont2
 		data.push_back(n);
 		return data.back().get();
 	} else{
-		throw HMGMap::MapException("Contour-to-contour links are ambiguous");
+		throw HMMap::MapException("Contour-to-contour links are ambiguous");
 	}
 }
 

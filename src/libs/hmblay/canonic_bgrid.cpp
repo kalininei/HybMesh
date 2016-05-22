@@ -1,6 +1,6 @@
 #include "canonic_bgrid.hpp"
-#include "hmfem.hpp"
 #include "hmtimer.hpp"
+#include "procgrid.h"
 
 #define USE_ANALYTICAL_MAPPINGS false
 
@@ -214,7 +214,7 @@ RectForOpenArea::RectForOpenArea(HMCont2D::Contour& left, HMCont2D::Contour& rig
 			int femn, bool use_rect_approx, bool force_rect_approx):
 			MappedRect(left, right, bottom, top, use_rect_approx){
 	if (force_rect_approx){
-		core = HMMath::Conformal::Impl::RectApprox::Build(left, right, bottom, top);
+		core = HMMap::Conformal::Impl::RectApprox::Build(left, right, bottom, top);
 		return;
 	}
 	//1. assemble polygon
@@ -235,13 +235,13 @@ RectForOpenArea::RectForOpenArea(HMCont2D::Contour& left, HMCont2D::Contour& rig
 	for (Point* p: tmp) path.push_back(*p);
 	path.pop_back();
 	//2. build conformal transformation into rectangle [0,m]x[0,1]
-	HMMath::Conformal::Options opt;
+	HMMap::Conformal::Options opt;
 	opt.use_rect_approx = use_rect_approx;
 	opt.right_angle_eps = M_PI/8.0;
 	opt.length_weight = 1.02;
 	opt.use_scpack = USE_ANALYTICAL_MAPPINGS;
 	opt.fem_nrec = std::min(10000, std::max(100, femn));
-	core = HMMath::Conformal::Rect::Factory(path, corners, opt);
+	core = HMMap::Conformal::Rect::Factory(path, corners, opt);
 };
 
 HMCont2D::PCollection RectForOpenArea::MapToReal(const vector<const Point*>& p) const{
@@ -331,9 +331,9 @@ RectForClosedArea::RectForClosedArea(const HMCont2D::Contour& side, const HMCont
 	if (fabs(a1)<fabs(a2)) std::swap(ptop, pbot);
 	top_is_outer = (fabs(a1)>fabs(a2));
 	//assemble conformal mappint to an annulus
-	HMMath::Conformal::Options opt;
+	HMMap::Conformal::Options opt;
 	opt.use_scpack = USE_ANALYTICAL_MAPPINGS;
-	core = HMMath::Conformal::Annulus::Factory(ptop, pbot, opt);
+	core = HMMap::Conformal::Annulus::Factory(ptop, pbot, opt);
 }
 
 shared_ptr<RectForClosedArea>

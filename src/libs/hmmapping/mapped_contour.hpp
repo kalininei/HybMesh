@@ -2,7 +2,7 @@
 #define MAPPED_CONTOUR_HPP
 #include "hybmesh_contours2d.hpp"
 
-namespace HMGMap{
+namespace HMMap{
 namespace Impl{
 
 class MappedContourCollection;

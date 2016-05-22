@@ -1,4 +1,4 @@
-set(HMMAPPING_EXNAME hmmaping_test)
+set(HMMAPPING_EXNAME hmmapping_test)
 
 set (HEADERS
 )

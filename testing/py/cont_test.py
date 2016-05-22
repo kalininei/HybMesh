@@ -200,3 +200,12 @@ check(hm.domain_area(cont2) == hm.domain_area(ccirc))
 hm.export_contour_vtk(ccirc, "c1.vtk")
 hm.export_contour_vtk(cont2, "c.vtk")
 hm.remove_all()
+
+print "spline tests"
+c1 = hm.create_spline_contour([[0, 0], [1, 0.2], [2.4, 0.5], [3, 1]],
+                              [0, 5, 0])
+check(hm.info_contour(c1)['btypes'] == {0: 56, 5: 44})
+
+c2 = hm.create_spline_contour([[0, 0], [1, 0.2], [2.4, 0.5], [3, 1], [0, 0]],
+                              [0, 5, 3, 1])
+check(hm.info_contour(c2)['btypes'] == {0: 16, 1: 50, 3: 12, 5: 22})

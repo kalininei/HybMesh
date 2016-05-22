@@ -1,5 +1,6 @@
 #include "constructor.hpp"
 #include "edges.hpp"
+#include "spmat.hpp"
 #include "contour.hpp"
 
 using namespace HMCont2D;
@@ -148,4 +149,124 @@ HMCont2D::Container<HMCont2D::Contour> cns::PerturbedContour(Point p1, Point p2,
 		pp[i] += perpvec;
 	}
 	return cns::ContourFromPoints(pp);
+}
+
+namespace {
+//A*k0 + B*k1 + C
+std::array<double, 3> second_der(double x0, double y0, double x1, double y1, double t){
+	double mult = 2.0/(x1 - x0)/(x1 - x0);
+	return {(3*t-2)*(x1-x0)*mult, (3*t-1)*(x1 - x0)*mult, (3-6*t)*(y1-y0)*mult};
+}
+
+//A*k0 + B*k1 + C*k2 + D
+std::array<double, 4> second_der(double x0, double y0, double x1, double y1, double x2, double y2){
+	auto p1 = second_der(x0, y0, x1, y1, 1.0);
+	auto p2 = second_der(x1, y1, x2, y2, 0.0);
+	return {p1[0], p1[1] - p2[0], -p2[1], p1[2]-p2[2]};
+}
+
+HMMath::Mat spline_k_internal(const vector<double>& x, const vector<double>& y, vector<double>& rhs){
+	HMMath::Mat mat;
+	for (int i=1; i<x.size()-1; ++i){
+		std::array<double, 4> p = second_der(x[i-1], y[i-1], x[i], y[i], x[i+1], y[i+1]);
+		mat.set(i, i-1, p[0]);
+		mat.set(i, i, p[1]);
+		mat.set(i, i+1, p[2]);
+		rhs[i] = -p[3];
+	}
+	return mat;
+}
+
+vector<double> spline_k_natural(const vector<double>& x, const vector<double>& y){
+	vector<double> rhs(x.size(), 0);
+	auto mat = spline_k_internal(x, y, rhs);
+	//boundary conditions
+	std::array<double, 3> p1 = second_der(x[0], y[0], x[1], y[1], 0.0);
+	mat.set(0, 0, p1[0]);
+	mat.set(0, 1, p1[1]);
+	rhs[0] = -p1[2];
+	std::array<double, 3> p2 = second_der(x[x.size()-2], y[y.size()-2], x.back(), y.back(), 1.0);
+	mat.set(x.size()-1, x.size()-2, p2[0]);
+	mat.set(x.size()-1, x.size()-1, p2[1]);
+	rhs.back() = -p2[2];
+	//solution
+	auto slv = HMMath::MatSolve::Factory(mat);
+	vector<double> ans(x.size(), 0);
+	slv->Solve(rhs, ans);
+	return ans;
+}
+
+vector<double> spline_k_periodic(const vector<double>& x, const vector<double>& y){
+	vector<double> rhs(x.size(), 0);
+	auto mat = spline_k_internal(x, y, rhs);
+	//boundary conditions
+	std::array<double, 4> p = second_der(x[0] - (x.back() - x[x.size()-2]), y.back(), x[0], y[0], x[1], y[1]);
+	mat.set(0, x.size()-2, p[0]);
+	mat.set(0, 0, p[1]);
+	mat.set(0, 1, p[2]);
+	rhs[0] = - p[3];
+	mat.set(x.size()-1, x.size()-1, 1.0);
+	mat.set(x.size()-1, 0, -1.0);
+	//solution
+	auto slv = HMMath::MatSolve::Factory(mat);
+	vector<double> ans(x.size(), 0);
+	slv->Solve(rhs, ans);
+	return ans;
+}
+
+std::array<double, 4> to_spline_segment(double x0, double x1, double y0, double y1, double k1, double k2){
+	double a = k1*(x1-x0) - (y1-y0);
+	double b = -k2*(x1-x0) + (y1-y0);
+	return {a-b, -2*a+b, -y0+y1+a, y0};
+}
+
+};
+HMCont2D::Contour cns::Spline(const vector<Point*>& pnt, HMCont2D::PCollection& pcol, int nedges, bool force_closed){
+	//force closed option
+	if (force_closed && pnt[0] != pnt.back()){
+		vector<Point*> pnew = pnt;
+		if (*pnt[0] != *pnt.back()) pnew.push_back(pnt[0]);
+		else pnew.back() = pnt[0];
+		return Spline(pnew, pcol, nedges, false);
+	}
+
+	int nseg = pnt.size() - 1;
+	vector<double> double_nsum;
+	vector<double> vlen(1, 0.0);
+	for (int i=0; i<nseg; ++i){
+		double len = Point::dist(*pnt[i+1], *pnt[i]);
+		vlen.push_back(vlen.back() + len);
+		double_nsum.push_back(len);
+	}
+	for (int i=0; i<nseg; ++i) double_nsum[i] *= (nedges/vlen.back());
+	vector<int> nsum = Algos::RoundVector(double_nsum, vector<int>(nseg, 1));
+
+	std::vector<double> xvec, yvec;
+	for (auto p: pnt) {xvec.push_back(p->x); yvec.push_back(p->y); }
+	std::vector<double> kx = (pnt[0] != pnt.back()) ? spline_k_natural(vlen, xvec)
+		                                        : spline_k_periodic(vlen, xvec);
+	std::vector<double> ky = (pnt[0] != pnt.back()) ? spline_k_natural(vlen, yvec)
+		                                        : spline_k_periodic(vlen, yvec);
+	std::vector<std::array<double, 4>> xcubic(nseg), ycubic(nseg);
+	for (int i=0; i<nseg; ++i){
+		xcubic[i] = to_spline_segment(vlen[i], vlen[i+1], xvec[i], xvec[i+1], kx[i], kx[i+1]);
+		ycubic[i] = to_spline_segment(vlen[i], vlen[i+1], yvec[i], yvec[i+1], ky[i], ky[i+1]);
+	}
+	vector<Point*> pp;
+	for (int i=0; i<nseg; ++i){
+		pp.push_back(pnt[i]);
+		auto& fx = xcubic[i];
+		auto& fy = ycubic[i];
+		for (int j=1; j<nsum[i]; ++j){
+			double t = (double)j/(nsum[i]);
+			double x = fx[0]*t*t*t + fx[1]*t*t + fx[2]*t + fx[3];
+			double y = fy[0]*t*t*t + fy[1]*t*t + fy[2]*t + fy[3];
+			shared_ptr<Point> p(new Point(x, y));
+			pcol.add_value(p);
+			pp.push_back(p.get());
+		}
+	}
+	pp.push_back(pnt.back());
+
+	return cns::ContourFromPoints(pp, false);
 }

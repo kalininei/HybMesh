@@ -3,7 +3,7 @@
 
 #include "grid.h"
 
-namespace HMGMap{
+namespace HMMap{
 
 //fills circle with rectangular cells: linear algorithm
 //8 should be a divisor of n

@@ -44,6 +44,8 @@ HMCont2D::Container<HMCont2D::ECollection> ECol(int npnt, int neds, double* pnt,
 HMCont2D::Container<HMCont2D::Contour> PerturbedContour(Point p1, Point p2, int npart,
 		std::function<double(double)> perturbation);
 
+HMCont2D::Contour Spline(const vector<Point*>& pnt, HMCont2D::PCollection& pcol, int nedges, bool force_closed=false);
+
 }};
 
 #endif

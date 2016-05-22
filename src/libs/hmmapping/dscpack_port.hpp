@@ -2,14 +2,14 @@
 #define HYBMESH_HMMATH_DSCPACK_PORT_HPP
 #include "hmconformal.hpp"
 
-namespace HMMath{ namespace Conformal{ namespace Impl{
+namespace HMMap{ namespace Conformal{ namespace Impl{
 namespace DSCPack{
 
 struct Pt{
 	double x, y;
 };
 
-class ToAnnulus: public HMMath::Conformal::Annulus{
+class ToAnnulus: public HMMap::Conformal::Annulus{
 //input. subscripts: 1 for outer, 2 for inner
 	const int n1, n2;
 	const int prec;

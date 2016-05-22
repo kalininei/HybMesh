@@ -1,9 +1,9 @@
 #include "gridmap.hpp"
 #include "domapping.hpp"
 
-HMCallback::FunctionWithCallback<HMGMap::TMapGrid> HMGMap::MapGrid;
+HMCallback::FunctionWithCallback<HMMap::TMapGrid> HMMap::MapGrid;
 
-GridGeom HMGMap::TMapGrid::_run(const GridGeom& base,
+GridGeom HMMap::TMapGrid::_run(const GridGeom& base,
 		const HMCont2D::ECollection& area,
 		vector<Point> base_points,
 		vector<Point> mapped_points,
@@ -11,11 +11,11 @@ GridGeom HMGMap::TMapGrid::_run(const GridGeom& base,
 	//1) scale
 	callback->step_after(5, "Initializing");
 	//2) set input data
-	shared_ptr<HMGMap::Impl::DoMapping> dm;
+	shared_ptr<HMMap::Impl::DoMapping> dm;
 	if (opt.algo == "inverse-laplace"){
-		dm.reset(new HMGMap::Impl::InverseMapping(opt));
+		dm.reset(new HMMap::Impl::InverseMapping(opt));
 	} else if (opt.algo == "direct-laplace"){
-		dm.reset(new HMGMap::Impl::DirectMapping(opt));
+		dm.reset(new HMMap::Impl::DirectMapping(opt));
 	} else {
 		assert(false);
 	}

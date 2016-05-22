@@ -1,9 +1,22 @@
-#include "femmat.hpp"
+#include "spmat.hpp"
 #include "cholmod.h"
 #include "umfpack.h"
 #include "SuiteSparseQR_C.h"
 
-using namespace HMFem;
+using namespace HMMath;
+
+std::ostream& HMMath::operator<<(std::ostream& os, const Mat& mat){
+	os<<"N = "<<mat.data.size()<<"; Nnz = "<<mat.nnz()<<std::endl;
+	int i = 0;
+	for (auto& d: mat.data){
+		os<<"row = "<<i<<std::endl;
+		for (auto kv: d){
+			os<<"\t"<<kv.first<<" -> "<<kv.second<<std::endl;
+		}
+		++i;
+	}
+	return os;
+}
 
 void Mat::set(int i, int j, double val) {
 	if (i >= data.size()) data.resize(i+1);

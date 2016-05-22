@@ -4,7 +4,7 @@
 #include "hmcompute.hpp"
 #include "confrect_fem.hpp"
 
-using namespace HMMath::Conformal;
+using namespace HMMap::Conformal;
 
 namespace{
 
@@ -189,7 +189,7 @@ Rect::FactoryInput(const HMCont2D::Contour& cont, const std::array<int,4>& a){
 	return ret;
 }
 
-HMCallback::FunctionWithCallback<HMMath::Conformal::TBuildRect> HMMath::Conformal::BuildRect;
+HMCallback::FunctionWithCallback<HMMap::Conformal::TBuildRect> HMMap::Conformal::BuildRect;
 shared_ptr<Rect> TBuildRect::_run(const HMCont2D::Contour& left,
 		const HMCont2D::Contour& right,
 		const HMCont2D::Contour& bot,

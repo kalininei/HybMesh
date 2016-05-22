@@ -3,7 +3,7 @@
 #include "hmtimer.hpp"
 #include "debug_grid2d.h"
 
-using namespace HMGMap::Impl;
+using namespace HMMap::Impl;
 
 // ========================== General DoMapping
 void DoMapping::set_grid(const GridGeom& ig){
@@ -54,7 +54,7 @@ GridGeom DoMapping::run(HMCallback::Caller2& cb){
 	}
 
 	cb.step_after(5, "Check grid");
-	if (!GGeom::Info::Check(ret)) throw HMGMap::EInvalidGrid(std::move(ret));
+	if (!GGeom::Info::Check(ret)) throw HMMap::EInvalidGrid(std::move(ret));
 
 	cb.step_after(5, "Snapping");
 	//snapping 
@@ -69,7 +69,7 @@ GridGeom DoMapping::run(HMCallback::Caller2& cb){
 		for (auto& n: mapped_outer.nodes)
 			GGeom::Modify::ShiftToContour(ret, *n, {});
 	} else if (opt.snap != "NO"){
-		throw HMGMap::MapException(std::string("Unknown snapping option - ") + opt.snap);
+		throw HMMap::MapException(std::string("Unknown snapping option - ") + opt.snap);
 	}
 	return ret;
 }
@@ -122,7 +122,7 @@ void DoMapping::build_mcc(){
 		cfnd->add_connection(p1, p2);
 	}
 	if (inpgrid_outer.cont_count() != used_gcontours.size())
-		throw HMGMap::MapException("All grid boundaries should contain at least one base point");
+		throw HMMap::MapException("All grid boundaries should contain at least one base point");
 }
 
 // =========================== DirectMapping

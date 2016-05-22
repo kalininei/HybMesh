@@ -23,7 +23,7 @@ void reflect_and_merge(GridGeom& g, Point p1, Point p2){
 
 GridGeom laplace_algo(HMCont2D::Contour& left, HMCont2D::Contour& bot,
 		HMCont2D::Contour& right, HMCont2D::Contour& top){
-	return HMGMap::FDMLaplasRectGrid(left, bot, right, top);
+	return HMMap::FDMLaplasRectGrid(left, bot, right, top);
 }
 
 GridGeom linear_algo(HMCont2D::Contour& left, HMCont2D::Contour& bot,
@@ -49,7 +49,7 @@ GridGeom linear_algo(HMCont2D::Contour& left, HMCont2D::Contour& bot,
 
 GridGeom ortho_algo(HMCont2D::Contour& left, HMCont2D::Contour& bot,
 		HMCont2D::Contour& right, HMCont2D::Contour& top){
-	GridGeom ret = HMGMap::OrthogonalRectGrid(left, bot, right, top);
+	GridGeom ret = HMMap::OrthogonalRectGrid(left, bot, right, top);
 	//modify top points so they lay on the circle
 	double rad = left.last()->y;
 	for (int i=0; i<bot.size()+1; ++i){
@@ -62,11 +62,11 @@ GridGeom ortho_algo(HMCont2D::Contour& left, HMCont2D::Contour& bot,
 
 GridGeom ortho_circ_algo(HMCont2D::Contour& left, HMCont2D::Contour& bot,
 		HMCont2D::Contour& right, HMCont2D::Contour& top){
-	return HMGMap::OrthogonalRectGrid(left, top, right, bot);
+	return HMMap::OrthogonalRectGrid(left, top, right, bot);
 }
 }
 
-GridGeom HMGMap::Circ4Prototype(Point center, double rad, int n, std::string algo,
+GridGeom HMMap::Circ4Prototype(Point center, double rad, int n, std::string algo,
 		double a, double hcoef){
 	if (a>1.4) throw std::runtime_error("square side is too big");
 
