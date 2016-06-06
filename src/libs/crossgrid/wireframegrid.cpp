@@ -235,7 +235,7 @@ GridGeom formgrid(const vector<tgPoint>& P, const vector<tgHalfEdge>& HE,
 					break;
 				}
 			}
-			if (!noerror) throw std::runtime_error("Failed to form a grid from the wireframe");
+			if (!noerror) throw std::runtime_error("Failed to assemble a grid from the wireframe");
 		}
 	}
 	vector<double> raw_pnt;
@@ -405,14 +405,6 @@ void SubGraph::lines_sort_out(int iline, std::vector<int>& lines_usage, std::lis
 	auto it = result.begin(); ++it;
 	while (it != result.end()) { add_siblings(*it); ++it; }
 }
-//void SubGraph::lines_sort_out(int iline, std::vector<int>& lines_usage, std::list<int>& result,
-//			const vector<std::vector<int>>& contab){
-//	lines_usage[iline] = 1;
-//	result.push_back(iline);
-//	for (auto adj: contab[iline])
-//		if (lines_usage[adj] != 1) 
-//			lines_sort_out(adj, lines_usage, result, contab);
-//}
 
 GridGeom SubGraph::togrid() const{
 	vector<tgPoint> P;
@@ -513,8 +505,10 @@ std::tuple<int, int>  PtsGraphAccel::add_point(const Point& p) noexcept{
 	//find equal edge
 	double ksi;
 	for (auto i: candidates_edges(p)){
-		if (isOnSection(p, G->ednode0(i), G->ednode1(i), ksi, eps))
+		if (isOnSection(p, G->ednode0(i), G->ednode1(i), ksi, eps)){
+			//return std::make_tuple(2, break_graph_line(i, p));
 			return std::make_tuple(2, break_graph_line(i, ksi));
+		}
 	}
 	//add new node to Graph
 	return std::make_tuple(0, add_graph_node(p));
@@ -528,6 +522,13 @@ int PtsGraphAccel::add_graph_node(const Point& p) noexcept{
 
 int PtsGraphAccel::break_graph_line(int iline, double ksi) noexcept{
 	int reti = add_graph_node(Point::Weigh(G->ednode0(iline), G->ednode1(iline), ksi));
+	add_graph_edge(reti, G->lines[iline].i1);
+	reset_graph_edge(G->lines[iline].i0, reti, iline);
+	return reti;
+}
+
+int PtsGraphAccel::break_graph_line(int iline, const Point& p) noexcept{
+	int reti = add_graph_node(p);
 	add_graph_edge(reti, G->lines[iline].i1);
 	reset_graph_edge(G->lines[iline].i0, reti, iline);
 	return reti;
@@ -644,10 +645,49 @@ PtsGraph PtsGraph::cut(const PtsGraph& wmain, const ContoursCollection& conts, i
 	PtsGraph& pg = std::get<0>(ires);
 	//filter lines which lie within bad region
 	//using the position of line center point
+	/* bad algorithm because of the short edges problem
 	std::vector<Point> line_cnt = pg.center_line_points();
 	auto flt = conts.filter_points_i(line_cnt);
 	std::vector<int>& badi = (dir==INSIDE) ? std::get<0>(flt) : std::get<2>(flt);
 	std::set<int> bad_lines(badi.begin(), badi.end());
+	*/
+
+	//TODO: need better algorithm
+	std::vector<bool> is_on_conts(pg.nodes.size(), false);
+	for (auto a: std::get<1>(ires)) is_on_conts[a] = true;
+	for (int i=0; i<pg.nodes.size(); ++i) if (std::get<2>(ires)[i] >= 0.0) is_on_conts[i] = true;
+
+	std::vector<Point> line_cnt = pg.center_line_points();
+	auto flt = conts.filter_points_i(line_cnt);
+	std::vector<int> ptypes(line_cnt.size(), 1); //1 - good, 2 - bad, 3 - bnd
+	for(auto a: std::get<1>(flt)) ptypes[a] = 3;
+	if (dir == INSIDE) for (auto a: std::get<0>(flt)) ptypes[a] = 2;
+	else for (auto a: std::get<2>(flt)) ptypes[a] = 2;
+	std::set<int> bad_lines;
+	for (int i=0; i<line_cnt.size(); ++i){
+		if (ptypes[i]==1) continue;
+		if (ptypes[i]==2) {bad_lines.insert(i); continue;}
+		int p1 = pg.lines[i].i0;
+		int p2 = pg.lines[i].i1;
+		int p1_type, p2_type;
+		if (is_on_conts[p1]) p1_type = 3;
+		else{
+			int r1 = conts.is_inside(pg.nodes[p1]);
+			if (r1 == INSIDE) p1_type =  (dir == INSIDE) ? 2 : 1;
+			else if (r1 == OUTSIDE) p1_type = (dir == INSIDE) ? 1 : 2;
+			else {p1_type = 3;}
+		}
+		if (is_on_conts[p2]) p2_type = 3;
+		else{
+			int r1 = conts.is_inside(pg.nodes[p2]);
+			if (r1 == INSIDE) p2_type =  (dir == INSIDE) ? 2 : 1;
+			else if (r1 == OUTSIDE) p2_type = (dir == INSIDE) ? 1 : 2;
+			else {p2_type = 3;}
+		}
+
+		if (p1_type == 2 || p2_type == 2) bad_lines.insert(i);
+	}
+	
 	aa::remove_entries(pg.lines, bad_lines);
 
 	pg.delete_unused_points();

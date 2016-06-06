@@ -221,8 +221,8 @@ void GridGeom::delete_unused_points(){
 	aa::remove_entries(points, unused_points);
 }
 
-ScaleBase GridGeom::do_scale(){
-	return ScaleBase::p_doscale(points.begin(), points.end());
+ScaleBase GridGeom::do_scale(double a){
+	return ScaleBase::p_doscale(points.begin(), points.end(), a);
 }
 void GridGeom::do_scale(const ScaleBase& sc){
 	sc.p_scale(points.begin(), points.end());
@@ -490,7 +490,10 @@ GridGeom* GridGeom::cross_grids(GridGeom* gmain_inp, GridGeom* gsec_inp,
 
 	//initial scaling before doing anything
 	callback.step_after(0.05, "Scaling", -1);
-	auto sc = gmain_inp->do_scale();
+	//using square with non obvious side to minimize the likelyhood of situations when distance
+	//between points equals geps.
+	auto sc = gmain_inp->do_scale(1.0 + sqrt(2.0)/100.0 + sqrt(3.0)/1000.0);
+	//auto sc = gmain_inp->do_scale(1);
 	gsec_inp->do_scale(sc);
 	buffer_size/=sc.L;
 

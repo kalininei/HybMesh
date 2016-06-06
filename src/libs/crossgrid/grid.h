@@ -139,7 +139,7 @@ public:
 	double area() const;
 
 	//scaling
-	ScaleBase do_scale();
+	ScaleBase do_scale(double a=1.0);
 	void do_scale(const ScaleBase& sc);
 	void undo_scale(const ScaleBase& sc);
 	//contours manipulation

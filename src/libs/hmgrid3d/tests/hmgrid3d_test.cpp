@@ -157,6 +157,8 @@ void test04(){
 		pd.add_condition(3, 4, HMGrid3D::Vertex(0, 0, 3), HMGrid3D::Vertex(10, 0, 3), true);
 		HMGrid3D::Export::GridMSH.Silent(g3d, "g2.msh", pd);
 		add_file_check(16533597872948878492U, "g2.msh", "multiple periodic");
+		//#####
+		throw;
 
 		delete g2d;
 	}

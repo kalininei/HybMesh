@@ -46,6 +46,9 @@ HMCont2D::Container<HMCont2D::Contour> PerturbedContour(Point p1, Point p2, int 
 
 HMCont2D::Contour Spline(const vector<Point*>& pnt, HMCont2D::PCollection& pcol, int nedges, bool force_closed=false);
 
+HMCont2D::Container<HMCont2D::Contour> Spline(const vector<Point>& pnt, int nedges, bool force_closed=false);
+HMCont2D::Container<HMCont2D::Contour> Spline(const vector<double>& pnt, int nedges, bool force_closed=false);
+
 }};
 
 #endif

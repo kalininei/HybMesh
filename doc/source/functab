@@ -13,7 +13,7 @@ Object       Contour      Grid         Operations   Info           Imp/Exp
 ..           |func-c10|   ..           ..           ..             |func-ie10|
 ..           |func-c11|   ..           ..           ..             |func-ie11|
 ..           |func-c12|   ..           ..           ..             |func-ie12|
-..           ..           ..           ..           ..             |func-ie13|
+..           |func-c13|   ..           ..           ..             |func-ie13|
 ..           ..           ..           ..           ..             |func-ie14|
 ..           ..           ..           ..           ..             |func-ie15|
 ============ ============ ============ ============ =============  =============
@@ -31,15 +31,16 @@ Object       Contour      Grid         Operations   Info           Imp/Exp
 .. |func-c01| replace:: :func:`add_boundary_type`   
 .. |func-c02| replace:: :func:`set_boundary_type`
 .. |func-c03| replace:: :func:`create_contour`      
-.. |func-c04| replace:: :func:`add_rect_contour`       
-.. |func-c05| replace:: :func:`add_circ_contour`       
-.. |func-c06| replace:: :func:`add_circ_contour2`       
-.. |func-c07| replace:: :func:`add_circ_contour3`       
-.. |func-c08| replace:: :func:`simplify_contour`    
-.. |func-c09| replace:: :func:`unite_contours`      
-.. |func-c10| replace:: :func:`clip_domain`      
-.. |func-c11| replace:: :func:`grid_bnd_to_contour`   
-.. |func-c12| replace:: :func:`partition_contour`   
+.. |func-c04| replace:: :func:`create_spline_contour`      
+.. |func-c05| replace:: :func:`add_rect_contour`       
+.. |func-c06| replace:: :func:`add_circ_contour`       
+.. |func-c07| replace:: :func:`add_circ_contour2`       
+.. |func-c08| replace:: :func:`add_circ_contour3`       
+.. |func-c09| replace:: :func:`simplify_contour`    
+.. |func-c10| replace:: :func:`unite_contours`      
+.. |func-c11| replace:: :func:`clip_domain`      
+.. |func-c12| replace:: :func:`grid_bnd_to_contour`   
+.. |func-c13| replace:: :func:`partition_contour`   
 
 .. |func-g01| replace:: :func:`add_unf_rect_grid`
 .. |func-g02| replace:: :func:`add_unf_circ_grid`

@@ -82,6 +82,8 @@ instead of contour identifier should be used.
 
 .. autofunction:: create_contour
 
+.. autofunction:: create_spline_contour
+
 .. autofunction:: add_rect_contour
 
 .. autofunction:: add_circ_contour

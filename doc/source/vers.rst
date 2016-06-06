@@ -96,3 +96,12 @@ Versions History
    * *algo* = ``linear_tfi``, ``hermite_tfi`` for :func:`add_custom_rect_grid`,
    * *hermite_tfi_w* for :func:`add_custom_rect_grid`,
    * *nedges* for :func:`partition_contour`.
+
+* **0.4.4**:
+   New algorithms:
+
+   * create contour using parametric splines
+
+   New python interface functions:
+
+   * :func:`create_spline_contour`

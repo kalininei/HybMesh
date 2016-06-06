@@ -270,3 +270,20 @@ HMCont2D::Contour cns::Spline(const vector<Point*>& pnt, HMCont2D::PCollection& 
 
 	return cns::ContourFromPoints(pp, false);
 }
+
+HMCont2D::Container<HMCont2D::Contour> cns::Spline(const vector<Point>& pnt, int nedges, bool force_closed){
+	vector<Point*> p2;
+	for (auto& p: pnt) p2.push_back(const_cast<Point*>(&p));
+	if (*p2[0] == *p2.back()) p2.back() = p2[0];
+	HMCont2D::PCollection pcol;
+	auto cont = Spline(p2, pcol, nedges, force_closed);
+	HMCont2D::Container<HMCont2D::Contour> ret;
+	HMCont2D::Container<HMCont2D::Contour>::DeepCopy(cont, ret);
+	return ret;
+}
+
+HMCont2D::Container<HMCont2D::Contour> cns::Spline(const vector<double>& pnt, int nedges, bool force_closed){
+	vector<Point> pv;
+	for (int i=0; i<pnt.size(); i+=2) pv.push_back(Point(pnt[i], pnt[i+1]));
+	return Spline(pv, nedges, force_closed);
+}

@@ -231,6 +231,7 @@ private:
 	//returns the index of newly added node
 	int add_graph_node(const Point& p) noexcept;
 	int break_graph_line(int iline, double ksi) noexcept;
+	int break_graph_line(int iline, const Point& p) noexcept;
 	//adds edge to data and graph which can intersect existing one
 	void add_clear_connection(int i1, int i2) noexcept;
 	//adds non-intersecting edge to data and graph
