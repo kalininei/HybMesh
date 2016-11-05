@@ -26,9 +26,12 @@ class TriGrid: public GridGeom{
 	//GModel* gmod
 	void FillFromGModel(void* gmod);
 
-	void FillFromTree(const HMCont2D::ContourTree& cont, 
-			const ShpVector<HMCont2D::Contour>& constraints,
-			const std::map<Point*, double>& w, double h);
+	static void CrossesProcessing(
+			HMCont2D::ContourTree& cont, 
+			ShpVector<HMCont2D::Contour>& constraints,
+			std::map<Point*, double>& w,
+			HMCont2D::PCollection& apnt,
+			double h);
 public:
 	TriGrid(){}
 	//constrcut from non-overlapping contours list and additional points
@@ -37,6 +40,10 @@ public:
 	explicit TriGrid(const HMCont2D::ContourTree& cont, 
 			const ShpVector<HMCont2D::Contour>& constraints,
 			double h);
+
+	explicit TriGrid(const HMCont2D::ContourTree& cont, 
+			const ShpVector<HMCont2D::Contour>& constraints,
+			const std::vector<double>& emb_points);
 
 	explicit TriGrid(const HMCont2D::ContourTree& cont, 
 			const ShpVector<HMCont2D::Contour>& constraints,
@@ -67,7 +74,22 @@ public:
 	TriangulateAreaConstrained(const vector<vector<Point>>& bnd,
 			const vector<vector<Point>>& cns, double h);
 
+	//if h<=0 then h is infinity
+	void FillFromTree(
+			const HMCont2D::ContourTree& cont, 
+			const ShpVector<HMCont2D::Contour>& constraints,
+			const vector<Point>& emb_points,
+			const std::map<Point*, double>& w,
+			double h,
+			bool recomb=false);
+
+	GridGeom ToPeBi() const;
+
 };
+
+GridGeom QuadGrid(const HMCont2D::ContourTree& cont, 
+		const ShpVector<HMCont2D::Contour>& constraints,
+		const std::vector<double>& emb_points);
 
 
 #endif

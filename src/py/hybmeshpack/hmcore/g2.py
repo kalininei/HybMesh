@@ -285,3 +285,32 @@ def map_grid(c_grid, c_cont, c_gpoints, c_cpoints, snap, algo,
         raise Exception("Grid mapping failed")
     else:
         return cret
+
+
+def unstructed_fill(c_dom, c_con, c_emb, tp):
+    """tp='3', '4', 'vor' for triangulation, quadrangulation, voronoi.
+       returns c grid
+    """
+    ret = 0
+    nemb = ct.c_int(len(c_emb) / 3) if c_emb is not None else ct.c_int(0)
+    if tp == '3':
+        algo = ct.c_int(0)
+        ret = libhmcport.triangulate_domain(c_dom, c_con, nemb, c_emb, algo)
+    elif tp == '4':
+        algo = ct.c_int(1)
+        ret = libhmcport.triangulate_domain(c_dom, c_con, nemb, c_emb, algo)
+    elif tp == 'pebi':
+        ret = libhmcport.pebi_fill(c_dom, c_con, nemb, c_emb)
+
+    if ret == 0:
+        raise Exception("Unstructured grid building failed")
+    else:
+        return ret
+
+
+def convex_cells(c_grid, an):
+    ret = libhmcport.convex_cells(c_grid, ct.c_double(an))
+    if ret == 0:
+        raise Exception("Removing concave cells failed")
+    else:
+        return ret

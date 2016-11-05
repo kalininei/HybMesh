@@ -52,6 +52,8 @@ struct ContourTree: public ECollection {
 	//should be called if nodes edges are added or deleted to make this->data actual
 	virtual void ReloadEdges();
 
+	virtual void Reallocate() override;
+
 	//Algos
 	static double Area(const ContourTree& c);
 	//build an extended tree with 0 open contours
@@ -117,6 +119,8 @@ struct ExtendedTree: public ContourTree {
 	void AddOpenContour(shared_ptr<Contour>& c);
 	void RemovePoints(const vector<const Point*>& p) override;
 	void ReloadEdges() override;
+
+	void Reallocate() override;
 
 	//Algos
 	static ContourTree ExtractTree(const ExtendedTree& et){ return ContourTree(et); }

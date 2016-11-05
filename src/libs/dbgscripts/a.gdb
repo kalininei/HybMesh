@@ -5,5 +5,5 @@ source ../../src/libs/dbgscripts/hmout.gdb
 
 file ./crossgrid_test
 set breakpoint pending on
-b grid.cpp:535
+b procgrid.cpp:384
 run 

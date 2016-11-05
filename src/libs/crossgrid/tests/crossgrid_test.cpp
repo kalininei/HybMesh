@@ -533,31 +533,50 @@ void test23(){
 
 }
 
+void test24(){
+	std::cout<<"24. Pebi grid building"<<std::endl;
+	{
+	auto trig = TriGrid::TriangulateArea({Point(0, 0), Point(1, 0), Point(1, 1), Point(0, 1)}, 0.1);
+	auto g1 = trig->ToPeBi();
+	GGeom::Export::GridVTK(*trig, "g1.vtk");
+	GGeom::Export::GridVTK(g1, "g2.vtk");
+	add_file_check(7274024674588850913U, "g2.vtk", "pebi for square domain");
+	}
+	{
+	auto trig = TriGrid::TriangulateArea({Point(0, 0), Point(1, 0), Point(1, 1), Point(0, 1), Point(0, 0.02)}, 0.1);
+	auto g1 = trig->ToPeBi();
+	GGeom::Export::GridVTK(*trig, "g1.vtk");
+	GGeom::Export::GridVTK(g1, "g2.vtk");
+	add_file_check(17100147952211891031U, "g2.vtk", "pebi points out of area");
+	}
+}
+
 int main(){
-	crossgrid_internal_tests();
-	test1();
-	test2();
-	test3();
-	test4();
-	test5();
-	test6();
-	test7();
-	test8();
-	test9();
-	test10();
-	test11();
-	test12();
-	test13();
-	test14();
-	test15();
-	test16();
-	test17();
-	test18();
-	test19();
-	test20();
-	test21();
-	test22();
-	test23();
+	//crossgrid_internal_tests();
+	//test1();
+	//test2();
+	//test3();
+	//test4();
+	//test5();
+	//test6();
+	//test7();
+	//test8();
+	//test9();
+	//test10();
+	//test11();
+	//test12();
+	//test13();
+	//test14();
+	//test15();
+	//test16();
+	//test17();
+	//test18();
+	//test19();
+	//test20();
+	//test21();
+	//test22();
+	//test23();
+	test24();
 
 	HMTesting::check_final_report();
 	std::cout<<"DONE"<<std::endl;

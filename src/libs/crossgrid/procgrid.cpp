@@ -106,6 +106,14 @@ GridGeom GGeom::Constructor::DeepCopy(const GridGeom& from){
 	return ret;
 }
 
+GridGeom GGeom::Constructor::FromData(const ShpVector<GridPoint>& points, const ShpVector<Cell>& cells){
+	GridGeom ret;
+	ret.points = points;
+	ret.cells = cells;
+	ret.set_indicies();
+	return ret;
+}
+
 GridGeom GGeom::Constructor::ExtractCells(const GridGeom& g, const std::vector<int>& cind, int policy){
 	GridGeom ret;
 	for (int i: cind) ret.cells.push_back(g.cells[i]);
@@ -223,6 +231,44 @@ void GGeom::Repair::Heal(GridGeom& grid){
 	grid.force_cells_ordering();
 }
 
+void GGeom::Repair::RemoveShortEdges(GridGeom& grid, double ref_len){
+	//1) calculate charachteristic cell sizes
+	vector<double> csz(grid.n_cells());
+	for (int i=0; i<grid.n_cells(); ++i){
+		auto bbox = grid.cells[i]->bbox();
+		csz[i] = ref_len*bbox.lendiag();
+	}
+	auto edges = grid.get_edges();
+	//2) boundary points indicies
+	std::set<int> bnd_points;
+	for (auto e: edges) if (e.is_boundary()){
+		bnd_points.insert(e.p1);
+		bnd_points.insert(e.p2);
+	}
+	//3) collapse short edges
+	for (auto e: edges){
+		GridPoint& p1 = *grid.get_point(e.p1);
+		GridPoint& p2 = *grid.get_point(e.p2);
+		double elen = Point::dist(p1, p2);
+		bool del = true;
+		if (e.cell_left >=0 && elen > csz[e.cell_left]) del = false;
+		if (e.cell_right >=0 && elen > csz[e.cell_right]) del = false;
+		if (del){
+			bool isbnd1 = bnd_points.find(p1.get_ind()) != bnd_points.end();
+			bool isbnd2 = bnd_points.find(p2.get_ind()) != bnd_points.end();
+			if (!isbnd1 && !isbnd2){
+				double x = (p1.x + p2.x)/2.0, y = (p1.y + p2.y)/2.0;
+				p1.set(x, y); p2.set(x, y);
+			}
+			else if (isbnd1 && !isbnd2) p2.set(p1);
+			else if (!isbnd1 && isbnd2) p1.set(p2);
+		}
+	}
+	
+	//4) merge points
+	Heal(grid);
+}
+
 bool GGeom::Repair::HasSelfIntersections(const GridGeom& grid){
 	int n = 100;
 	GGeom::Info::CellFinder cfinder(&grid, n, n);
@@ -266,6 +312,86 @@ bool GGeom::Repair::HasSelfIntersections(const GridGeom& grid){
 	return false;
 }
 
+void GGeom::Repair::NoConcaveCells(GridGeom& grid, double an){
+	if (ISZERO(an)) an = 0;
+	auto find_convex = [an](Cell& c)->int{
+		for (int i=0; i<c.dim(); ++i){
+			auto pm=c.get_point(i-1), p=c.get_point(i), pp=c.get_point(i+1);
+			if (triarea(*pm, *p, *pp)>0) continue;
+			double angle = Angle(*pm, *p, *pp) - M_PI;
+			if (angle>=an) return i;
+		}
+		return -1;
+	};
+	auto has_cross = [](Cell& c, int i1, int i2)->bool{
+		auto* p1 = c.get_point(i1);
+		auto* p2 = c.get_point(i2);
+		double ksi[2];
+		for (int i=0; i<c.dim(); ++i){
+			auto* p3 = c.get_point(i);
+			auto* p4 = c.get_point(i+1);
+			if (p3==p1 || p3==p2 || p4==p1 || p4==p2) continue;
+			if (SectCross(*p1, *p2, *p3, *p4, ksi)) return true;
+		}
+		return false;
+	};
+	auto find_second_vert = [&](Cell& c, int v1)->int{
+		int best = -1;
+		double nrm=1e6;
+		double ran = Angle(*c.get_point(v1-1), *c.get_point(v1), *c.get_point(v1+1))/2.0;
+		for (int i=v1+2; i<=c.dim()+v1-2; ++i){
+			if (has_cross(c, v1, i)) continue; //if edge doesn't cross cell
+			double ian = Angle(*c.get_point(v1-1), *c.get_point(v1), *c.get_point(i));
+			if (ian>=2*ran) continue;  //if edge is within the cell
+			double diff = fabs(ran-ian);
+			if (diff<nrm){nrm=diff; best=i;}
+		}
+		if (best<0) throw std::runtime_error("Failed to divide concave cell");
+		return best;
+	};
+	auto divide_cell = [&](Cell& c, ShpVector<Cell>& add)->bool{
+		int conv_vert = find_convex(c);
+		if (conv_vert == -1) return false;
+		int sec_vert = find_second_vert(c, conv_vert);
+		if (conv_vert>sec_vert) std::swap(conv_vert, sec_vert);
+		auto c1 = aa::add_shared(add, Cell());
+		auto c2 = aa::add_shared(add, Cell());
+		for (int i=conv_vert; i<=sec_vert; ++i){
+			c1->points.push_back(const_cast<GridPoint*>(c.get_point(i)));
+		}
+		for (int i=sec_vert; i<=conv_vert+c.dim(); ++i){
+			c2->points.push_back(const_cast<GridPoint*>(c.get_point(i)));
+		}
+		return true;
+	};
+
+	auto treat_cell = [&](Cell& c, ShpVector<Cell>& newc)->bool{
+		ShpVector<Cell> arch;
+		std::stack<Cell*> to_analyze;
+		to_analyze.push(&c);
+		while (to_analyze.size()>0){
+			Cell* cur = to_analyze.top(); to_analyze.pop();
+			bool divided=divide_cell(*cur, arch);
+			if (divided){
+				to_analyze.push(arch.end()[-1].get());
+				to_analyze.push(arch.end()[-2].get());
+			} else if (cur != &c) aa::add_shared(newc, Cell(*cur));
+			else return false;
+		}
+		return true;
+	};
+
+	std::set<int> cells_to_delete;
+	ShpVector<Cell> newcells;
+	for (int i=0; i<grid.n_cells(); ++i){
+		if (treat_cell(*grid.cells[i], newcells)) cells_to_delete.insert(i);
+	}
+	if (newcells.size() > 0){
+		aa::remove_entries(grid.cells, cells_to_delete);
+		std::copy(newcells.begin(), newcells.end(), std::back_inserter(grid.cells));
+		grid.set_indicies();
+	}
+}
 
 ShpVector<GridPoint> GGeom::Info::SharePoints(const GridGeom& grid){ return grid.points; }
 ShpVector<GridPoint> GGeom::Info::SharePoints(const GridGeom& grid, const vector<int>& indicies){

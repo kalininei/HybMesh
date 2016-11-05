@@ -238,6 +238,129 @@ def add_circ_rect_grid(p0, rad, step, sqrside=1.0, rcoef=1.0, algo="linear"):
         raise ExecError('circ_rect_grid')
 
 
+def _triquad(domain, constr, pts, tp):
+    if not isinstance(domain, list):
+        domain = [domain]
+    if constr is not None:
+        if not isinstance(constr, list):
+            constr = [constr]
+    else:
+        constr = []
+    if pts is None:
+        p2 = []
+    else:
+        p2 = []
+        for p1 in pts:
+            if len(p1) != 3:
+                raise ValueError("Invalid pts list")
+            for d in p1:
+                p2.append(d)
+    arg = {"domain": domain, "constr": constr, "pts": p2}
+    if (tp == '3'):
+        c = com.gridcom.TriangulateArea(arg)
+    elif (tp == '4'):
+        c = com.gridcom.QuadrangulateArea(arg)
+    elif (tp == 'pebi'):
+        c = com.gridcom.PebiFill(arg)
+    else:
+        raise ValueError
+    try:
+        flow.exec_command(c)
+        return c._get_added_names()[0][0]
+    except Exception:
+        raise ExecError('unstructured fill')
+
+
+def triangulate_area(domain, constr=None, pts=None):
+    """Builds constrained triangulation within given domain
+
+    :param domain: single or list of closed contours
+        representing bounding domain
+
+    :param constr: single or list of contours representing
+        triangulation constraints
+
+    :param list-of-list-of-double pts: set of points in ``[[x, y, len], ...]``
+        format where ``x, y`` are coordinates of internal verticies
+        which should be embedded into the resulting grid,
+        ``len`` - size of adjacent cells
+
+    :return: grid identifier
+
+    Triangulation procedure takes ``domain`` and ``constr`` verticies as
+    basic points to define grid cell sizes.
+    Use :func:`partition_contour` procedure to adopt partition of these
+    contours and control resulting cell sizes.
+
+    It is guaranteed that no grid edge will cross ``constr`` contours.
+
+    Crosses between constrain contours and domain are supported.
+    """
+    return _triquad(domain, constr, pts, '3')
+
+
+def quadrangulate_area(domain, constr=None, pts=None):
+    """Builds constrained quadrangulation within given domain
+
+    :param domain: single or list of closed contours
+        representing bounding domain
+
+    :param constr: single or list of contours representing
+        meshing constraints
+
+    :param list-of-list-of-double pts: set of points in ``[[x, y, len], ...]``
+        format where ``x, y`` are coordinates of internal verticies
+        which should be embedded into the resulting grid,
+        ``len`` - size of adjacent cells
+
+    :return: grid identifier
+
+    See :func:`triangulate_area` for parameters details.
+
+    .. note::
+
+       This procedure doesn't guarantee that all cells in the resulting
+       grid will be quadrangular. If input geometry is not good enough
+       some triangle cells may occur.
+
+    """
+    return _triquad(domain, constr, pts, '4')
+
+
+def pebi_fill(domain, constr=None, pts=None):
+    """Builds perpendicular bisector cells in given domain
+
+    :param domain: single or list of closed contours
+        representing bounding domain
+
+    :param constr: single or list of contours representing
+        meshing constraints
+
+    :param list-of-list-of-double pts: set of points in ``[[x, y, len], ...]``
+        format where ``x, y`` are coordinates of internal verticies
+        which should be embedded into the resulting grid,
+        ``len`` - size of adjacent cells
+
+    :return: grid identifier
+
+    Domain points as well as points of ``pts`` list and constrain contour
+    nodes will be treated as pebi cell centers.
+    Therefore boundary representation (but not domain area) of resulting grid
+    will be different from passed  as ``domain`` parameter.
+
+    Routine can produce concave cells (f.e. as a result of bad size
+    control or near the concave domain boundary vertices).
+    Use :func:`heal_grid` routine with ``convex_cells`` option to fix this.
+
+    .. note::
+
+       After the grid is build some optimisation procedures will be executed
+       in order to get rid of short edges and possible self intersections.
+       So the resulting grid will not be strictly of pebi type.
+    """
+    return _triquad(domain, constr, pts, 'pebi')
+
+
 # Contour prototypes
 def add_rect_contour(p0, p1, bnd=0):
     """Adds four point closed rectangular contour

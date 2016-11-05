@@ -114,6 +114,9 @@ Building uniform grids in a primitive areas.
 .. autofunction:: add_triangle_grid
 .. autofunction:: add_custom_rect_grid
 .. autofunction:: add_circ_rect_grid
+.. autofunction:: triangulate_area
+.. autofunction:: quadrangulate_area
+.. autofunction:: pebi_fill
 
 Transformations
 +++++++++++++++

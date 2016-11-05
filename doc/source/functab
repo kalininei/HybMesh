@@ -10,9 +10,9 @@ Object       Contour      Grid         Operations   Info           Imp/Exp
 |func-o07|   |func-c07|   |func-g07|   ..           |func-i07|     |func-ie07|
 |func-o08|   |func-c08|   |func-g08|   ..           |func-i08|     |func-ie08|
 ..           |func-c09|   |func-g09|   ..           ..             |func-ie09|
-..           |func-c10|   ..           ..           ..             |func-ie10|
-..           |func-c11|   ..           ..           ..             |func-ie11|
-..           |func-c12|   ..           ..           ..             |func-ie12|
+..           |func-c10|   |func-g10|   ..           ..             |func-ie10|
+..           |func-c11|   |func-g11|   ..           ..             |func-ie11|
+..           |func-c12|   |func-g12|   ..           ..             |func-ie12|
 ..           |func-c13|   ..           ..           ..             |func-ie13|
 ..           ..           ..           ..           ..             |func-ie14|
 ..           ..           ..           ..           ..             |func-ie15|
@@ -51,6 +51,9 @@ Object       Contour      Grid         Operations   Info           Imp/Exp
 .. |func-g07| replace:: :func:`heal_grid`
 .. |func-g08| replace:: :func:`extrude_grid`
 .. |func-g09| replace:: :func:`revolve_grid`
+.. |func-g10| replace:: :func:`triangulate_area`
+.. |func-g11| replace:: :func:`quadrangulate_area`
+.. |func-g12| replace:: :func:`pebi_fill`
 
 .. |func-op01| replace:: :func:`unite_grids`
 .. |func-op02| replace:: :func:`build_boundary_grid`

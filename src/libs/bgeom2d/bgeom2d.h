@@ -285,6 +285,7 @@ public:
 	double area() const;
 	double lenx() const { return xmax-xmin; }
 	double leny() const { return ymax-ymin; }
+	double lendiag() const { return sqrt(lenx()*lenx() + leny()*leny()); }
 	Point BottomLeft() const { return Point(xmin, ymin); }
 	Point TopRight() const { return Point(xmax, ymax); }
 	vector<Point> FourPoints() const;

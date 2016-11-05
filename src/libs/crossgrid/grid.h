@@ -46,6 +46,8 @@ public:
 	//returns true if cell edges has crosses or are tangent
 	bool has_self_crosses() const;
 
+	BoundingBox bbox() const;
+
 	friend class GridGeom;
 };
 
@@ -68,6 +70,9 @@ inline bool operator<(const Edge& e1, const Edge& e2){
 }
 inline bool operator==(const Edge& e1, const Edge& e2){
 	return (e1.p1 == e2.p1 && e1.p2 == e2.p2);
+}
+inline bool operator!=(const Edge& e1, const Edge& e2){
+	return !(e1==e2);
 }
 
 class GridGeom{

@@ -38,6 +38,7 @@ static GridGeom RectGrid01(int Nx, int Ny);
 static GridGeom Ring(Point p0, double rad1, double rad2, int narc, int nrad);
 static GridGeom Circle(Point p0, double rad, int narc, int nrad, bool tri_center);
 static GridGeom DeepCopy(const GridGeom& g);   //g should be indexed
+static GridGeom FromData(const ShpVector<GridPoint>& points, const ShpVector<Cell>& cells);
 //builds grid from given cells indicies.
 //policy:
 // 0 - make a deep copy of points and cells
@@ -157,7 +158,10 @@ struct Repair{
 //merges congruent, deletes unused, forces cells rotation
 //edge directing, merging points, no unused points
 static void Heal(GridGeom& grid);
+static void RemoveShortEdges(GridGeom& grid, double ref_len);
 static bool HasSelfIntersections(const GridGeom& grid);
+//an in [0, M_PI]. 0 - execute for all concave vertices; M_PI - only for degenerate
+static void NoConcaveCells(GridGeom& grid, double an);
 
 };
 

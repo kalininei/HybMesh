@@ -5,6 +5,7 @@ from hybmeshpack import gdata, basic
 import hybmeshpack.basic.geom as bgeom
 from unite_grids import (setbc_from_conts, add_bc_from_cont,
                          boundary_layer_grid)
+import hybmeshpack.gdata.contour2 as contour2
 from hybmeshpack.hmcore import g2 as g2core
 from hybmeshpack.hmcore import c2 as c2core
 from hybmeshpack.hmcore import libhmcport
@@ -625,14 +626,16 @@ class HealGrid(objcom.AbstractAddRemove):
             simp_bnd - angle (degree): is the maximum angles at which
                 two adjacent boundary edges of the same cell will be merged
                 (-1) ignores this procedure.
+            convex - angle (degree). 0 - removes all concave cell segments,
+                180 - only degenerate segments.
         """
         return {'name': command.BasicOption(str),
                 'simp_bnd': command.BasicOption(float),
+                'convex': command.BasicOption(float)
                 }
 
     def __simplify_bnd(self, og):
         import ctypes as ct
-        import unite_grids
         gc = g2core.grid_to_c(og)
         ret = libhmcport.simplify_grid_boundary(
             gc, ct.c_double(self.options['simp_bnd']))
@@ -644,7 +647,22 @@ class HealGrid(objcom.AbstractAddRemove):
         ret.build_contour()
         g2core.free_c_grid(gc)
         # write boundary types from og
-        unite_grids.add_bc_from_cont(ret.cont, og.cont, force=3)
+        add_bc_from_cont(ret.cont, og.cont, force=3)
+        return ret
+
+    def __convex_cells(self, og):
+        c_grid, c_ret = 0, 0
+        try:
+            c_grid = g2core.grid_to_c(og)
+            c_ret = g2core.convex_cells(c_grid, self.options['convex'])
+            ret = g2core.grid_from_c(c_ret)
+            ret.build_contour()
+            add_bc_from_cont(ret.cont, og.cont, force=3)
+        except Exception as e:
+            raise command.ExecutionError(str(e), self, e)
+        finally:
+            g2core.free_c_grid(c_ret) if c_ret != 0 else None
+            g2core.free_c_grid(c_grid) if c_grid != 0 else None
         return ret
 
     def _addrem_objects(self):
@@ -655,6 +673,8 @@ class HealGrid(objcom.AbstractAddRemove):
         g = orig
         if self.options['simp_bnd'] >= 0:
             g = self.__simplify_bnd(g)
+        if self.options['convex'] >= 0:
+            g = self.__convex_cells(g)
 
         if g != orig:
             return [(self.options['name'], g)], [self.options['name']], [], []
@@ -795,3 +815,87 @@ class MapGrid(NewGridCommand):
             g2core.free_c_grid(c_grid) if c_grid != 0 else None
             c2core.free_cont2(c_cont) if c_cont != 0 else None
             g2core.free_c_grid(c_ret) if c_ret != 0 else None
+
+
+class UnstructuredFillArea(NewGridCommand):
+    def __init__(self, argsdict):
+        super(UnstructuredFillArea, self).__init__(argsdict)
+
+    @classmethod
+    def _arguments_types(cls):
+        return {'name': command.BasicOption(str),
+                'domain': command.ListOfOptions(command.BasicOption(str)),
+                'constr': command.ListOfOptions(command.BasicOption(str)),
+                'pts': command.ListOfOptions(command.BasicOption(float)),
+                }
+
+    def call_c_proc(self, c_dom, c_con, c_pts):
+        raise NotImplementedError
+
+    def _build_grid(self):
+        dom = self.options['domain']
+        con = self.options['constr']
+        pts = self.options['pts']
+        c_dom, c_con, c_ret = 0, 0, 0
+        try:
+            #unite domain
+            c1 = self.any_cont_by_name(dom[0])
+            fulldom = contour2.Contour2.create_from_abstract(c1)
+            for c in dom[1:]:
+                c1 = self.any_cont_by_name(c)
+                fulldom.add_from_abstract(c1)
+
+            #unite constraints
+            if len(con) == 0:
+                fullcon = None
+            else:
+                c1 = self.any_cont_by_name(con[0])
+                fullcon = contour2.Contour2.create_from_abstract(c1)
+                for c in con[1:]:
+                    c1 = self.any_cont_by_name(c)
+                    fullcon.add_from_abstract(c1)
+
+            c_dom = c2core.cont2_to_c(fulldom)
+            if fullcon is not None:
+                c_con = c2core.cont2_to_c(fullcon)
+            else:
+                c_con = 0
+
+            c_pts = g2core.list_to_c(pts, float) if pts is not None else 0
+            c_ret = self.call_c_proc(c_dom, c_con, c_pts)
+            ret = g2core.grid_from_c(c_ret)
+
+            #boundary conditions
+            ret.build_contour()
+            add_bc_from_cont(ret.cont, fulldom, c_src=c_dom, force=3)
+            return ret
+        except Exception as e:
+            raise command.ExecutionError(str(e), self, e)
+        finally:
+            g2core.free_c_grid(c_ret) if c_ret != 0 else None
+            c2core.free_cont2(c_dom) if c_dom != 0 else None
+            c2core.free_cont2(c_con) if c_con != 0 else None
+
+
+class TriangulateArea(UnstructuredFillArea):
+    def __init__(self, argsdict):
+        super(TriangulateArea, self).__init__(argsdict)
+
+    def call_c_proc(self, c_dom, c_con, c_pts):
+        return g2core.unstructed_fill(c_dom, c_con, c_pts, '3')
+
+
+class QuadrangulateArea(UnstructuredFillArea):
+    def __init__(self, argsdict):
+        super(QuadrangulateArea, self).__init__(argsdict)
+
+    def call_c_proc(self, c_dom, c_con, c_pts):
+        return g2core.unstructed_fill(c_dom, c_con, c_pts, '4')
+
+
+class PebiFill(UnstructuredFillArea):
+    def __init__(self, argsdict):
+        super(PebiFill, self).__init__(argsdict)
+
+    def call_c_proc(self, c_dom, c_con, c_pts):
+        return g2core.unstructed_fill(c_dom, c_con, c_pts, 'pebi')

@@ -57,7 +57,21 @@ void* custom_rectangular_grid(int algo, void* left, void* bot,
 //returns: NULL if fails
 Grid* circ4grid(int algo, double* center, double rad, double step, double sqrside, double outer_refinement);
 
+//triangulate given contour using contour vertices as basic points
+// domain - domain to triangulate
+// constr - constraints or void
+// nemb - number of embedded points
+// emb - set of data in [x1, y2, size2, x2, y2, size2, ...] representing embedded points
+//algo = 0 -> triangulation
+//algo = 1 -> quadrangulation
+//returns pointer to GridGeom or NULL if failed
+void* triangulate_domain(void* domain, void* constr, int nemb, double* emb, int algo);
 
+void* pebi_fill(void* domain, void* constr, int nemb, double* emb);
+
+//an - angle (0, 180). If 0 - removes all concave cell segments. If 180 - only degenerate
+//return 0 on error
+void* convex_cells(void* input_grid, double an);
 
 
 }

@@ -6,6 +6,7 @@
 #include "tecplot_export_grid2d.hpp"
 #include "procgrid.h"
 #include "hmmapping.hpp"
+#include "trigrid.h"
 
 
 namespace{
@@ -174,6 +175,94 @@ Grid* circ4grid(int algo, double* center, double rad, double step, double sqrsid
 			stralgo, sqrside, outer_refinement));
 		//unscale
 		ScaleBase sc(center[0], center[1], rad);
+		ret->undo_scale(sc);
+		return ret;
+	} catch (std::runtime_error &e){
+		std::cout<<e.what()<<std::endl;
+		if (ret!=0) delete ret;
+		return NULL;
+	}
+}
+
+void* triangulate_domain(void* domain, void* constr, int nemb, double* emb, int algo){
+	GridGeom* ret = NULL;
+	HMCont2D::ECollection* dom = static_cast<HMCont2D::ECollection*>(domain);
+	HMCont2D::ECollection* con = (constr==0)?0:static_cast<HMCont2D::ECollection*>(constr);
+
+	ScaleBase sc = HMCont2D::ECollection::Scale01(*dom);
+	if (con!=0) HMCont2D::ECollection::Scale(*con, sc);
+	std::vector<double> ep;
+	for (int i=0; i<nemb; ++i){
+		ep.push_back((emb[3*i+0]-sc.p0.x)/sc.L);
+		ep.push_back((emb[3*i+1]-sc.p0.y)/sc.L);
+		ep.push_back(emb[3*i+2]/sc.L);
+	}
+	try{
+		auto etree = HMCont2D::Assembler::ETree(*dom);
+		auto tree = etree.ExtractTree(etree);
+
+		ShpVector<HMCont2D::Contour> cc;
+		vector<HMCont2D::Contour> cas;
+		if (con!=0) cas = HMCont2D::Assembler::AllContours(*con);
+		for (int i=0; i<cas.size(); ++i) aa::add_shared(cc, cas[i]);
+
+		if (algo == 0) ret = new TriGrid(TriGrid(tree, cc, ep));
+		else if (algo == 1) ret = new GridGeom(QuadGrid(tree, cc, ep));
+
+		ret->undo_scale(sc);
+	} catch (std::runtime_error &e){
+		std::cout<<e.what()<<std::endl;
+		if (ret!=0) delete ret;
+		ret = NULL;
+	}
+	HMCont2D::ECollection::Unscale(*dom, sc);
+	if (con!=0) HMCont2D::ECollection::Unscale(*con, sc);
+	return ret;
+}
+
+void* pebi_fill(void* domain, void* constr, int nemb, double* emb){
+	GridGeom* ret = NULL;
+	HMCont2D::ECollection* dom = static_cast<HMCont2D::ECollection*>(domain);
+	HMCont2D::ECollection* con = (constr==0)?0:static_cast<HMCont2D::ECollection*>(constr);
+
+	ScaleBase sc = HMCont2D::ECollection::Scale01(*dom);
+	if (con!=0) HMCont2D::ECollection::Scale(*con, sc);
+	std::vector<double> ep;
+	for (int i=0; i<nemb; ++i){
+		ep.push_back((emb[3*i+0]-sc.p0.x)/sc.L);
+		ep.push_back((emb[3*i+1]-sc.p0.y)/sc.L);
+		ep.push_back(emb[3*i+2]/sc.L);
+	}
+	try{
+		auto etree = HMCont2D::Assembler::ETree(*dom);
+		auto tree = etree.ExtractTree(etree);
+
+		ShpVector<HMCont2D::Contour> cc;
+		vector<HMCont2D::Contour> cas;
+		if (con!=0) cas = HMCont2D::Assembler::AllContours(*con);
+		for (int i=0; i<cas.size(); ++i) aa::add_shared(cc, cas[i]);
+
+		TriGrid g3 = TriGrid(tree, cc, ep);
+		ret = new GridGeom(g3.ToPeBi());
+
+		ret->undo_scale(sc);
+	} catch (std::runtime_error &e){
+		std::cout<<e.what()<<std::endl;
+		if (ret!=0) delete ret;
+		ret = NULL;
+	}
+	HMCont2D::ECollection::Unscale(*dom, sc);
+	if (con!=0) HMCont2D::ECollection::Unscale(*con, sc);
+	return ret;
+}
+
+void* convex_cells(void* input_grid, double an){
+	GridGeom* ret = NULL;
+	try{
+		GridGeom* inp = static_cast<GridGeom*>(input_grid);
+		ret = new GridGeom(GGeom::Constructor::DeepCopy(*inp));
+		ScaleBase sc = ret->do_scale();
+		GGeom::Repair::NoConcaveCells(*ret, an/180.0*M_PI);
 		ret->undo_scale(sc);
 		return ret;
 	} catch (std::runtime_error &e){

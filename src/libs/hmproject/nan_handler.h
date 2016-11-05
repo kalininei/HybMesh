@@ -20,6 +20,9 @@ class NanSignalHandler{
 		}
 	}
 
+	void start(){ feenableexcept(FE_DIVBYZERO|FE_INVALID|FE_OVERFLOW); }
+	void stop(){ fedisableexcept(FE_DIVBYZERO|FE_INVALID|FE_OVERFLOW); }
+
 	//exception which will be generated on floating point error
 	struct E_SignalException : public std::runtime_error{
 		E_SignalException() noexcept
@@ -74,14 +77,19 @@ public:
 	NanSignalHandler& operator=(const NanSignalHandler& ) = delete;
 
 	static void StartCheck(){
-		Instance();
+		Instance().start();
+	}
+
+	static void StopCheck(){
+		Instance().stop();
 	}
 };
 
 #else
 class NanSignalHandler{
 public:
-	void StartCheck(){};
+	static void StartCheck(){};
+	static void StopCheck(){};
 };  //empty class for windows platform
 #endif
 

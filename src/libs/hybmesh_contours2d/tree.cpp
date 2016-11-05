@@ -111,6 +111,10 @@ void ContourTree::ReloadEdges(){
 	data.clear();
 	for (auto& n: nodes) data.insert(data.end(), n->data.begin(), n->data.end());
 }
+void ContourTree::Reallocate(){
+	for (auto& n: nodes) n->Reallocate();
+	ReloadEdges();
+}
 
 void ExtendedTree::RemovePoints(const vector<const Point*>& p){
 	for (auto& n: nodes) n->RemovePoints(p);
@@ -122,6 +126,12 @@ void ExtendedTree::ReloadEdges(){
 	data.clear();
 	for (auto& n: nodes) data.insert(data.end(), n->data.begin(), n->data.end());
 	for (auto& n: open_contours) data.insert(data.end(), n->data.begin(), n->data.end());
+}
+
+void ExtendedTree::Reallocate(){
+	for (auto& n: nodes) n->Reallocate();
+	for (auto& n: open_contours) n->Reallocate();
+	ReloadEdges();
 }
 
 void ContourTree::UpdateTopology(){

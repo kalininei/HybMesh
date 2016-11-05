@@ -289,32 +289,41 @@ def revolve_grid(obj, p1, p2, n_phi=None,
         raise ExecError("planar grid revolution")
 
 
-def heal_grid(grid_id, simplify_boundary=30):
+def heal_grid(grid_id, simplify_boundary=30, convex_cells=-1):
     """ Set of procedures for simplification of grid geometry
 
-    Args:
-       grid_id: identifier or (list of identifiers) of the grid
+    :param grid_id: identifier or (list of identifiers) of the grid
 
-    Kwargs:
-       simplify_boundary: angle (deg) in [0, 180].
-          If this parameter is non-negative then edges which
+    :param float simplify_boundary: angle (deg) in [0, 180].
 
-          * are boundary,
-          * belong to the same grid cell,
-          * form an angle no more then ``simplify_boundary`` degree
-          * elimination of intermediate vertices will not lead
-            to cell degeneration
+    :param float convex_cells: angle (deg) in [0, 180]
 
-          will be merged. If ``simplify_boundary=0`` then only edges
-          lying on the same line are considered, ``simplify_boundary=180``
-          leads to merging of all doubled boundary edges,
-          ``simplify_boundary=-1`` ignores this simplification option.
+    :return: None
 
-    Returns:
-       None
+    :raises: ValueError, ExecError
 
-    Raises:
-       ValueError, hmscript.ExecError
+    If ``simplify_boundary`` parameter is non-negative then edges which
+
+    * are boundary,
+    * belong to the same grid cell,
+    * form an angle no more then ``simplify_boundary`` degree
+    * elimination of intermediate vertices will not lead
+      to cell degeneration
+
+    will be merged. If ``simplify_boundary=0`` then only edges
+    lying on the same line are considered, ``simplify_boundary=180``
+    leads to merging of all doubled boundary edges,
+    ``simplify_boundary=-1`` ignores this simplification option.
+
+    if ``convex_cells`` is non negative than all concave cells
+    will be turned into convex ones by their division. Paramter represents
+    concave angle at which procedure will be executed. ``0`` provides
+    elimination of all concave segments. ``180`` - only degenerate ones.
+
+    Subprocedures order is:
+
+    * boundary simplification
+    * remove concave cells
 
     """
     if isinstance(grid_id, list):
@@ -325,7 +334,11 @@ def heal_grid(grid_id, simplify_boundary=30):
     if not isinstance(sb, (int, float, long)) or sb > 180 or sb < -1:
         raise ValueError("Invalid simplify_boundaries option: %s" % str(sb))
 
-    c = com.gridcom.HealGrid({"name": grid_id, "simp_bnd": sb})
+    cs = convex_cells
+    if not isinstance(cs, (int, float, long)) or cs > 180 or cs < -1:
+        raise ValueError("Invalid convex_cells option: %s" % str(sb))
+
+    c = com.gridcom.HealGrid({"name": grid_id, "simp_bnd": sb, "convex": cs})
     try:
         flow.exec_command(c)
     except:

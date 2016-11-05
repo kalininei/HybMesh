@@ -157,6 +157,10 @@ struct Collection{
 		std::swap(data, cp);
 	}
 
+	virtual void Reallocate(){
+		for (auto& v: data) v = _generator.deepcopy(v.get());
+	}
+
 	//--------- static Methods
 	//create a shallow copy of object.
 	//If start/end are defined then only entries [start, end] (including) interval

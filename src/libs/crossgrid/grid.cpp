@@ -62,6 +62,10 @@ bool Cell::has_self_crosses() const{
 	return false;
 }
 
+BoundingBox Cell::bbox() const{
+	return BoundingBox::Build(points.begin(), points.end());
+}
+
 void GridGeom::add_data(const GridGeom& g){
 	int start_p_index = n_points();
 	for (auto p: g.points) aa::add_shared(points, GridPoint(*p));
@@ -819,3 +823,4 @@ double GridGeom::area() const{
 	for (int i=0; i<n_cells(); ++i) a+=get_cell(i)->area();
 	return a;
 }
+
