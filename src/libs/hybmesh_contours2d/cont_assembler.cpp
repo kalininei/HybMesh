@@ -308,6 +308,12 @@ HMCont2D::Contour cns::Contour1(const Contour& con, const Point* pnt_start, cons
 	}
 }
 
+HMCont2D::Contour cns::Contour1(const Contour& con, Point pnt_start, Point pnt_end){
+	const Point* p1 = HMCont2D::ECollection::FindClosestNode(con, pnt_start);
+	const Point* p2 = HMCont2D::ECollection::FindClosestNode(con, pnt_end);
+	return Contour1(con, p1, p2);
+}
+
 //assemles for pnt_start in the direction (+-1) til the length of contour
 //resulting contour will be longer or equal to givenn len
 HMCont2D::Contour cns::Contour1(const Contour& col, const Point* pnt_start, int direction, double len){

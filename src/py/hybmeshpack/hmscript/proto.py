@@ -238,6 +238,68 @@ def add_circ_rect_grid(p0, rad, step, sqrside=1.0, rcoef=1.0, algo="linear"):
         raise ExecError('circ_rect_grid')
 
 
+def stripe(cont, partition, tip='no', bnd=None):
+    """ Build a structured grid to the both sides of contour line
+
+    :param cont: closed or open contour identifier
+
+    :param ascending-list-of-double partition: partition perpendicular
+       to source contour
+
+    :param str tip: stripe endings meshing algorithm
+
+       * ``"no"`` - no grid at endings
+       * ``"radial"`` - radial grid at endings
+
+    :param float-or-list-of-floats bnd: boundary types for input grid.
+       List of four values provides respective values for bottom, left,
+       right, top sides of resulting grid with respect to contour direction.
+
+    :return: grid identifier
+
+    :raise: hmscript.ExecError, ValueError
+
+    Horizontal partition is taken from contour partition.
+    Vertical partition is given by user with ``partition`` list parameter.
+    If it starts with non zero value then grid will not contain
+    contour nodes as its vertices.
+
+    """
+    #checks
+    if tip not in ['no', 'radial']:
+        raise ValueError("Invalid tip option")
+    if not isinstance(partition, list):
+        raise ValueError("Bad vertical partition")
+    for p in partition:
+        if not isinstance(p, (int, float, long)) or p < 0:
+            raise ValueError("Bad vertical partition")
+    for i in range(1, len(partition)):
+        if partition[i] <= partition[i - 1]:
+            raise ValueError("Bad vertical partition")
+    if len(partition) < 2:
+        if len(partition) == 0 or partition[0] == 0:
+            raise ValueError("Bad vertical partition")
+
+    if bnd is None:
+        bnd = [0]
+    elif not isinstance(bnd, list):
+        bnd = [bnd]
+    if len(bnd) < 4:
+        for i in range(len(bnd), 4):
+            bnd.append(bnd[-1])
+    bnd = [bnd[0], bnd[1], bnd[2], bnd[3]]
+    for b in bnd:
+        if not isinstance(b, int):
+            raise ValueError("Bad bnd parameter")
+    arg = {"source": cont, "partition": partition, "tip": tip, "bnd": bnd}
+    c = com.gridcom.StripeGrid(arg)
+    try:
+        flow.exec_command(c)
+        return c._get_added_names()[0][0]
+    except Exception:
+        raise ExecError('stripe grid')
+
+
 def _triquad(domain, constr, pts, tp):
     if not isinstance(domain, list):
         domain = [domain]

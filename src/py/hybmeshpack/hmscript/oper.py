@@ -56,7 +56,7 @@ def exclude_contours(grid, conts, what):
 
 
 def unite_grids(base_grid, over_grids, empty_holes=False, fix_bnd=False,
-                zero_angle_approx=0):
+                zero_angle_approx=0, buffer_fill='3'):
     """Makes grids superpositions.
 
     :param base_grid: basic grid identifier
@@ -64,7 +64,7 @@ def unite_grids(base_grid, over_grids, empty_holes=False, fix_bnd=False,
     :param list-of-tuples over_grids: sequence of grids for superposition as
       ``[(grid_id, buffer), () ...]`` where
       ``grid_id`` is an superposed grid identifier,
-      ``buffer`` - size of the buffer for current imposition
+      ``buffer`` - size of the buffer for current union
 
     :param bool empty_holes: keep all empty zones
       (in case of multiple connectivity)
@@ -77,6 +77,11 @@ def unite_grids(base_grid, over_grids, empty_holes=False, fix_bnd=False,
       insignificant. Grid boundary vertices which provide insignificant
       contour turns could be moved in order to obtain better result.
       Makes sense only if ``fix_bnd = False``.
+
+    :param str buffer_fill: type of grid in a buffer.
+
+      * ``"3"`` - triangle grid
+      * ``"4"`` - quadrangle grid
 
     :return: identifier of the newly created grid
 
@@ -92,9 +97,12 @@ def unite_grids(base_grid, over_grids, empty_holes=False, fix_bnd=False,
     """
     args = {"base": base_grid, "empty_holes": empty_holes,
             "angle0": zero_angle_approx,
-            "fix_bnd": fix_bnd, "plus": []}
+            "fix_bnd": fix_bnd, "plus": [],
+            "filler": buffer_fill}
     for ig in over_grids:
         args["plus"].append({"name": ig[0], "buf": ig[1], "den": 7})
+    if buffer_fill not in ['3', '4']:
+        raise ValueError("Invalid buffer_fill option")
     c = com.gridcom.UniteGrids(args)
     try:
         flow.exec_command(c)
@@ -342,7 +350,7 @@ def map_grid(base_grid, target_contour, base_points, target_points,
     :param target_points: collection of points in ``[[x0, y0], [x1, y1], ...]``
       format which lie on the **target_contour**.
       The i-th point of **target_points** will be mapped into i-th point of
-      **contour_points**. 
+      **contour_points**.
 
     :param str snap:
       an option which defines post processing algorithm of snapping

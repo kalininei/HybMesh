@@ -7,6 +7,7 @@
 #include "procgrid.h"
 #include "hmmapping.hpp"
 #include "trigrid.h"
+#include "hmblay.hpp"
 
 
 namespace{
@@ -270,4 +271,55 @@ void* convex_cells(void* input_grid, double an){
 		if (ret!=0) delete ret;
 		return NULL;
 	}
+}
+
+void* stripe_grid(void* input_contour, int npart, double* part, int tip_algo, 
+		void** bot, void** left, void** top, void** right, hmcport_callback cb){
+	GridGeom* ret = NULL;
+	auto ecol = static_cast<HMCont2D::ECollection*>(input_contour);
+	ScaleBase sc = HMCont2D::ECollection::Scale01(*ecol);
+	HMCont2D::Contour cbot, cright, cleft, ctop;
+	try{
+		vector<double> spart(part, part+npart);
+		for (auto& x: spart) x/=sc.L;
+		Point bl, br, tr, tl;
+		HMCont2D::Contour ic = HMCont2D::Assembler::Contour1(*ecol, ecol->data[0]->pstart);
+		ret = new GridGeom(HMBlay::BuildStripeGrid.WithCallback(cb, ic, spart, tip_algo, bl, br, tr, tl));
+
+		if (bl != br){
+			//if open
+			auto gc = GGeom::Info::Contour1(*ret);
+			cbot = HMCont2D::Assembler::Contour1(gc, bl, br);
+			ctop = HMCont2D::Assembler::Contour1(gc, tr, tl);
+			cleft = HMCont2D::Assembler::Contour1(gc, tl, bl);
+			cright = HMCont2D::Assembler::Contour1(gc, br, tr);
+		} else {
+			auto gc = GGeom::Info::Contour(*ret);
+			auto gout = gc.roots()[0];
+			auto gin = gout->children[0];
+			cbot = HMCont2D::Assembler::Contour1(*gin, bl, br);
+			ctop = HMCont2D::Assembler::Contour1(*gout, tr, tl);
+		}
+	} catch (std::runtime_error &e){
+		std::cout<<e.what()<<std::endl;
+		if (ret!=0) delete ret;
+		return NULL;
+	}
+	ret->undo_scale(sc);
+
+	auto s1 = new HMCont2D::Container<HMCont2D::ECollection>();
+	HMCont2D::Container<HMCont2D::ECollection>::DeepCopy(cbot, *s1);
+	auto s2 = new HMCont2D::Container<HMCont2D::ECollection>();
+	HMCont2D::Container<HMCont2D::ECollection>::DeepCopy(cright, *s2);
+	auto s3 = new HMCont2D::Container<HMCont2D::ECollection>();
+	HMCont2D::Container<HMCont2D::ECollection>::DeepCopy(ctop, *s3);
+	auto s4 = new HMCont2D::Container<HMCont2D::ECollection>();
+	HMCont2D::Container<HMCont2D::ECollection>::DeepCopy(cleft, *s4);
+
+	*bot = s1;
+	*right =s2;
+	*top = s3;
+	*left = s4;
+		
+	return ret;
 }

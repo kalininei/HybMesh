@@ -223,6 +223,12 @@ void Contour::AddLastPoint(Point* p){
 	np->pend = p;
 	add_value(np);
 }
+void Contour::AddFirstPoint(Point* p){
+	auto np = _generator.allocate();
+	np->pstart = p;
+	np->pend = first();
+	data.insert(data.begin(), np);
+}
 
 void Contour::RemoveEdge(int i){
 	Point *p1 = data[i]->pstart, *p2 = data[i]->pend;

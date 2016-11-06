@@ -117,6 +117,7 @@ Building uniform grids in a primitive areas.
 .. autofunction:: triangulate_area
 .. autofunction:: quadrangulate_area
 .. autofunction:: pebi_fill
+.. autofunction:: stripe
 
 Transformations
 +++++++++++++++

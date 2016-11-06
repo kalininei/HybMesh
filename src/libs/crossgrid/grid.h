@@ -176,7 +176,7 @@ public:
 	//static builders
 	static GridGeom* cross_grids(GridGeom* gmain, GridGeom* gsec, double buffer_size, 
 			double density, bool preserve_bp, bool empty_holes, double angle0,
-			HMCallback::Fun2 cb=HMCallback::silent2);
+			int algo, HMCallback::Fun2 cb=HMCallback::silent2);
 	
 	//result = g - area(c). Area could be inner or outer. 
 	static GridGeom* grid_minus_cont(GridGeom* g, PointsContoursCollection* c,

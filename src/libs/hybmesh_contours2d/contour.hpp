@@ -32,6 +32,7 @@ struct Contour: public ECollection{
 	Point* prev_point(Point* p) const{ return std::get<0>(point_siblings(p));}
 	//properties
 	bool is_closed() const { return first() == last(); }
+	bool is_open() const { return first() != last(); }
 	bool is_straight() const { return (is_closed()) ? false : corner_points().size() == 2; }
 	bool correctly_directed_edge(int i) const;
 
@@ -69,8 +70,9 @@ struct Contour: public ECollection{
 	void DirectEdges();
 	//reverse edge order and internal points order within edges
 	void ReallyReverse();
-	//adds edge (last(), p) to the end
+	//adds edge (last(), p)/(p, first()) to the end/start
 	void AddLastPoint(Point* p);
+	void AddFirstPoint(Point* p);
 	//deletes edge[i] end point
 	void RemoveEdge(int i);
 

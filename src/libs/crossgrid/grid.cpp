@@ -489,7 +489,7 @@ vector<Point> intersection_points(const GridGeom& gmain, const GridGeom& gsec){
 
 GridGeom* GridGeom::cross_grids(GridGeom* gmain_inp, GridGeom* gsec_inp, 
 		double buffer_size, double density, bool preserve_bp, bool empty_holes,
-		double angle0, HMCallback::Fun2 cb){
+		double angle0, int algo, HMCallback::Fun2 cb){
 	HMCallback::Caller2 callback("Building grid cross", (buffer_size > geps) ? 1.1 : 0.5, cb);
 
 	//initial scaling before doing anything
@@ -567,7 +567,9 @@ GridGeom* GridGeom::cross_grids(GridGeom* gmain_inp, GridGeom* gsec_inp,
 				//2. perform triangulation of buffer grid area
 				callback.subprocess_step_after(1.0);
 				auto bgcont = bg.boundary_info(preserve_bp, angle0);
-				auto g3 = TriGrid::TriangulateArea(std::get<0>(bgcont), std::get<1>(bgcont), 1);
+				shared_ptr<GridGeom> g3;
+				if (algo == 0) g3 = TriGrid::TriangulateArea(std::get<0>(bgcont), std::get<1>(bgcont), 1);
+				else if (algo == 1) g3 = QuadrangulateArea(std::get<0>(bgcont), std::get<1>(bgcont), 1);
 
 				//3. change the internal of bg by g3ref grid
 				callback.subprocess_step_after(1.0);

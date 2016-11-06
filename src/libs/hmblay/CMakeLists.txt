@@ -20,6 +20,7 @@ set (SOURCES
 	canonic_bgrid.cpp
 	bgrid_impose.cpp
 	hmblay_debug.cpp
+	stripe_grid.cpp
 )
 
 source_group ("Header Files" FILES ${HEADERS} ${HEADERS})

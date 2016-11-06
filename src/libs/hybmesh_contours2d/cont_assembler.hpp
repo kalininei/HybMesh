@@ -24,6 +24,7 @@ HMCont2D::Contour Contour1(const ECollection& col, const Point* pnt_start);
 
 //Assemble from another contour
 HMCont2D::Contour Contour1(const Contour& col, const Point* pnt_start, const Point* pnt_end);
+HMCont2D::Contour Contour1(const Contour& col, Point pnt_start, Point pnt_end);
 
 //assemles for pnt_start in the direction (+-1) til the length of contour
 //resulting contour will be longer or equal to givenn len

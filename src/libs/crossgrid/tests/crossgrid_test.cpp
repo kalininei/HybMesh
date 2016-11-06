@@ -74,7 +74,7 @@ void test2(){
 	std::cout<<"2. merging two grids. Secondary grid lies within the main"<<std::endl;
 	GridGeom gmain = GGeom::Constructor::RectGrid(Point(0, 0), Point(1, 1), 10, 10);
 	GridGeom gsec = GGeom::Constructor::RectGrid(Point(0.3, 0.3), Point(0.6, 0.6), 30, 30);
-	Grid* res = cross_grids(&gmain, &gsec, 0.05, 1, 0, 0);
+	Grid* res = cross_grids(&gmain, &gsec, 0.05, 1, 0, 0, 0);
 	grid_free(res);
 }
 
@@ -82,7 +82,7 @@ void test3(){
 	std::cout<<"3. merging two grids. Secondary grid crosses area of the main"<<std::endl;
 	GridGeom gmain = GGeom::Constructor::RectGrid(Point(0, 0), Point(1, 1), 10, 10);
 	GridGeom gsec = GGeom::Constructor::RectGrid(Point(0.3, -0.1), Point(0.6, 0.2), 30, 30);
-	Grid* res = cross_grids(&gmain, &gsec, 0.15, 1, 0, 0);
+	Grid* res = cross_grids(&gmain, &gsec, 0.15, 1, 0, 0, 0);
 	grid_free(res);
 }
 
@@ -90,7 +90,7 @@ void test4(){
 	std::cout<<"4. Secondary grid covers the corner of main"<<std::endl;
 	GridGeom gmain = GGeom::Constructor::RectGrid(Point(0, 0), Point(1, 1), 10, 10);
 	GridGeom gsec = GGeom::Constructor::RectGrid(Point(-0.3, -0.3), Point(0.5, 0.5), 30, 30);
-	Grid* res = cross_grids(&gmain, &gsec, 0.2, 1, 0, 0);
+	Grid* res = cross_grids(&gmain, &gsec, 0.2, 1, 0, 0, 0);
 	grid_free(res);
 }
 
@@ -106,7 +106,7 @@ void test5(){
 	};
 	Grid* gsec  = grid_construct(9, 8, pnt2, cls2);
 
-	Grid* res = cross_grids(&gmain, gsec, 2.0, 1, 0, 0);
+	Grid* res = cross_grids(&gmain, gsec, 2.0, 1, 0, 0, 0);
 
 	grid_free(gsec);
 	grid_free(res);
@@ -117,13 +117,13 @@ void test6(){
 	GridGeom gmain = GGeom::Constructor::RectGrid(Point(0, 0), Point(1, 1), 10, 10);
 	GridGeom gsec = GGeom::Constructor::RectGrid(Point(0.5, 0.5), Point(0.6, 0.6), 30, 30);
 
-	Grid* res = cross_grids(&gmain, &gsec, 0.3, 1, 0, 0);
+	Grid* res = cross_grids(&gmain, &gsec, 0.3, 1, 0, 0, 0);
 	grid_free(res);
 
-	res = cross_grids(&gmain, &gsec, 0.3, 1, 0, 0);
+	res = cross_grids(&gmain, &gsec, 0.3, 1, 0, 0, 0);
 	grid_free(res);
 
-	res = cross_grids(&gmain, &gsec, 0.3, 1, 0, 0);
+	res = cross_grids(&gmain, &gsec, 0.3, 1, 0, 0, 0);
 	grid_free(res);
 
 }
@@ -135,9 +135,9 @@ void test7(){
 	GridGeom gsec2 = GGeom::Constructor::RectGrid(Point(1, 1), Point(2, 2), 10, 10);
 	GridGeom gsec3 = GGeom::Constructor::RectGrid(Point(2, 1.05), Point(3, 2.05), 10, 10);
 
-	Grid* res = cross_grids(&gmain, &gsec, 0.2, 1, 0, 0);
-	Grid* res2 = cross_grids(res, &gsec2, 0.2, 1, 0, 0);
-	Grid* res3 = cross_grids(res2, &gsec3, 0.2, 1, 0, 0);
+	Grid* res = cross_grids(&gmain, &gsec, 0.2, 1, 0, 0, 0);
+	Grid* res2 = cross_grids(res, &gsec2, 0.2, 1, 0, 0, 0);
+	Grid* res3 = cross_grids(res2, &gsec3, 0.2, 1, 0, 0, 0);
 	add_check(grid_npoints(res)==242 && grid_ncells(res)==200, "merge non crossing");
 	add_check(grid_npoints(res2)==361 && grid_ncells(res2)==300, "merge grids with congruent point");
 	add_check(grid_npoints(res3)>482 && grid_ncells(res3)>400, "merge grids with tangent edges");
@@ -152,8 +152,8 @@ void test8(){
 	GridGeom gsec = GGeom::Constructor::RectGrid(Point(4, 0), Point(5, 1), 10, 10);
 	GridGeom gsec2 = GGeom::Constructor::RectGrid(Point(-0.5, 0.3), Point(5.5, 0.6), 100, 10);
 
-	Grid* res = cross_grids(&gmain, &gsec, 0.2, 1, 0, 0);
-	Grid* res2 = cross_grids(res, &gsec2, 0.2, 1, 0, 0);
+	Grid* res = cross_grids(&gmain, &gsec, 0.2, 1, 0, 0, 0);
+	Grid* res2 = cross_grids(res, &gsec2, 0.2, 1, 0, 0, 0);
 	add_check(check_convexity(res2, 0, 4), "hanging nodes number");
 	grid_free(res);
 	grid_free(res2);
@@ -163,8 +163,8 @@ void test9(){
 	std::cout<<"9. Boundary points control"<<std::endl;
 	GridGeom gmain = GGeom::Constructor::RectGrid( Point(0, 0), Point(7, 7), 7, 7);
 	GridGeom gsec = GGeom::Constructor::RectGrid( Point(2.5, -1), Point(4.99, 1), 30, 30);
-	Grid* res = cross_grids(&gmain, &gsec, 0.2, 1, 0, 0);
-	Grid* res2 = cross_grids(&gmain, &gsec, 0.2, 0, 0, 0);
+	Grid* res = cross_grids(&gmain, &gsec, 0.2, 1, 0, 0, 0);
+	Grid* res2 = cross_grids(&gmain, &gsec, 0.2, 0, 0, 0, 0);
 	std::vector<double> pts(grid_npoints(res)*2), pts2(grid_npoints(res2)*2);
 	grid_get_points_cells(res, &pts[0], 0);
 	grid_get_points_cells(res2, &pts2[0], 0);
@@ -188,8 +188,8 @@ void test10(){
 	GridGeom gmain = GGeom::Constructor::RectGrid(Point(0,0), Point(1,1), 10, 10);
 	GridGeom gsec = GGeom::Constructor::RectGrid(Point(0.31,-0.3), Point(0.695,0.5), 10, 10);
 
-	Grid* res = cross_grids(&gmain, &gsec, 1.0, 1, 0, 0);
-	Grid* res2 = cross_grids(&gmain, &gsec, 1.0, 0, 0, 0);
+	Grid* res = cross_grids(&gmain, &gsec, 1.0, 1, 0, 0, 0);
+	Grid* res2 = cross_grids(&gmain, &gsec, 1.0, 0, 0, 0, 0);
 
 	grid_free(res);
 	grid_free(res2);
@@ -203,7 +203,7 @@ void test11(){
 		0.8, 0.2, 0.2, 0.2, 0.3, -0.1, 0.7, -0.1, 0.7, 0.1, 0.3, 0.1};
 	std::vector<int> cls_sec = {4,0,1,5,4, 4,1,2,6,5, 4,6,2,3,7, 4,3,0,4,7};
 	Grid* gsec = grid_construct(8, 4, &pts_sec[0], &cls_sec[0]);
-	Grid* res = cross_grids(&gmain, gsec, 0, 0, 0, 0);
+	Grid* res = cross_grids(&gmain, gsec, 0, 0, 0, 0, 0);
 	add_check(grid_npoints(res) == 125 && grid_ncells(res) == 96, "resulting topology");
 	grid_free(gsec);
 	grid_free(res);
@@ -218,7 +218,7 @@ void test12(){
 	for (size_t i=1; i<pts_sec.size(); i+=2) pts_sec[i]+=0.5;
 	std::vector<int> cls_sec = {4,0,1,5,4, 4,1,2,6,5, 4,6,2,3,7, 4,3,0,4,7};
 	Grid* gsec = grid_construct(8, 4, &pts_sec[0], &cls_sec[0]);
-	Grid* res = cross_grids(&gmain, gsec, 0.2, 1, 0, 0);
+	Grid* res = cross_grids(&gmain, gsec, 0.2, 1, 0, 0, 0);
 	//frontal
 	//add_check(grid_ncells(res) == 132 && grid_npoints(res) == 99, "resulting topology");
 	//Delaunay
@@ -232,7 +232,7 @@ void test13(){
 	std::cout<<"13. Big data processing"<<std::endl;
 	GridGeom gmain = GGeom::Constructor::RectGrid(Point(0,0), Point(1,1), 100, 100);
 	GridGeom gsec = GGeom::Constructor::RectGrid(Point(-2, 0), Point(-1, 1), 10, 10);
-	Grid* res = cross_grids(&gmain, &gsec, 0.2, 1, 0, 0);
+	Grid* res = cross_grids(&gmain, &gsec, 0.2, 1, 0, 0, 0);
 
 	grid_free(res);
 }
@@ -330,7 +330,7 @@ void test17(){
 	std::cout<<"17. Large scale differences"<<std::endl;
 	GridGeom bigg = GGeom::Constructor::RectGrid(Point(-20, -10), Point(100, 10), 12, 2);
 	GridGeom smallg = GGeom::Constructor::RectGrid(Point(0, 0), Point(0.1, 0.1), 10, 10);
-	Grid* unig = cross_grids(&bigg, &smallg, 0.2, 1, 0, 0);
+	Grid* unig = cross_grids(&bigg, &smallg, 0.2, 1, 0, 0, 0);
 
 	grid_free(unig);
 }
@@ -360,7 +360,7 @@ void test19(){
 	std::cout<<"19. No hanging nodes"<<std::endl;
 	auto g1 = GGeom::Constructor::RectGrid01(10, 10);
 	auto g2 = GGeom::Constructor::RectGrid(Point(0.5, 0.3), Point(1.5, 0.65), 13, 10);
-	auto g3 = cross_grids(&g1, &g2, 0.1, 0, 0, 0); 
+	auto g3 = cross_grids(&g1, &g2, 0.1, 0, 0, 0, 0); 
 	add_check(check_convexity(g3, 0, 0), "no hanging nodes check");
 	grid_free(g3);
 };
@@ -372,10 +372,10 @@ void test20(){
 	auto g2 = grid_exclude_cont(&g1, &c1, 1);
 
 	auto g3 = GGeom::Constructor::RectGrid(Point(0.45, 0.45), Point(0.55, 0.55), 3, 3);
-	auto g4 = cross_grids(g2, &g3, 0, 0, 0, 0);
+	auto g4 = cross_grids(g2, &g3, 0, 0, 0, 0, 0);
 
 	auto g5 = GGeom::Constructor::RectGrid(Point(-5, -5), Point(5, 5), 19, 21);
-	auto g6 = cross_grids(&g5, g4, 0.1, 0, 1, 0);
+	auto g6 = cross_grids(&g5, g4, 0.1, 0, 1, 0, 0);
 
 	double a = grid_area(&g5)-ecollection_area(&c1)+grid_area(&g3);
 	add_check( fabs(grid_area(g6) - a) < 1e-6, "resulting grid with a hole");
@@ -455,7 +455,7 @@ void test23(){
 	std::cout<<"23. Exporting"<<std::endl;
 	auto g1 = GGeom::Constructor::RectGrid01(20, 20);
 	auto g2 = GGeom::Constructor::Ring(Point{0.8,0.8}, 0.3, 0.1, 20, 10);
-	shared_ptr<GridGeom> g3(g1.cross_grids(&g1, &g2, 0, 0, false, true, 10));
+	shared_ptr<GridGeom> g3(g1.cross_grids(&g1, &g2, 0, 0, false, true, 10, 0));
 	auto bfun1 = [](double x, double y)->int{
 		if (x>1 || y>1) return 1;
 		else if (ISEQ(x, 1) || ISEQ(y, 1) || ISZERO(x) || ISZERO(y)) return 2;
@@ -490,7 +490,7 @@ void test23(){
 	}
 	add_check(hasfailed, "improper grid for fluent export");
 
-	g3.reset(g1.cross_grids(&g1, &g2, 0.1, 0, false, true, 30));
+	g3.reset(g1.cross_grids(&g1, &g2, 0.1, 0, false, true, 30, 0));
 	bcond = build_bcond(g3, bfun1);
 	GGeom::Export::GridMSH(*g3, "g1.msh", bcond);
 	add_file_check(15893027580021721711U, "g1.msh", "grid to fluent");
@@ -522,7 +522,7 @@ void test23(){
 	add_file_check(15517020726046557040U, "g1.msh", "fluent with 2 periodic boundaries");
 
 	GridGeom g4 = GGeom::Constructor::Circle(Point(0.5, 0.5), 0.1, 10, 3, true);
-	g3.reset(GridGeom::cross_grids(&g1, &g4, 0.1, 0, true, true, 30));
+	g3.reset(GridGeom::cross_grids(&g1, &g4, 0.1, 0, true, true, 30, 0));
 	bcond = build_bcond(g3, bfun2);
 	GGeom::Export::GridMSH(*g3, "g1.msh", bcond, [](int i)->std::string{
 				if (i==1 || i==2) return "periodic-short";
@@ -552,30 +552,30 @@ void test24(){
 }
 
 int main(){
-	//crossgrid_internal_tests();
-	//test1();
-	//test2();
-	//test3();
-	//test4();
-	//test5();
-	//test6();
-	//test7();
-	//test8();
-	//test9();
-	//test10();
-	//test11();
-	//test12();
-	//test13();
-	//test14();
-	//test15();
-	//test16();
-	//test17();
-	//test18();
-	//test19();
-	//test20();
-	//test21();
-	//test22();
-	//test23();
+	crossgrid_internal_tests();
+	test1();
+	test2();
+	test3();
+	test4();
+	test5();
+	test6();
+	test7();
+	test8();
+	test9();
+	test10();
+	test11();
+	test12();
+	test13();
+	test14();
+	test15();
+	test16();
+	test17();
+	test18();
+	test19();
+	test20();
+	test21();
+	test22();
+	test23();
 	test24();
 
 	HMTesting::check_final_report();

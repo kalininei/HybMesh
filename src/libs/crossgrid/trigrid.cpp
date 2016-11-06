@@ -17,6 +17,7 @@ void TriGrid::FillFromGModel(void* gmod){
 	GmshSetBoundingBox(bb.min()[0], bb.max()[0], bb.min()[1], bb.max()[1], 0, 0);
 	//GmshWriteFile("FF.opt");
 	//m->writeGEO("gmsh_geo.geo");
+	//shot down nan checks because gmsh has 1/0 operations in postprocessing
 	NanSignalHandler::StopCheck();
 	m->mesh(2);
 	NanSignalHandler::StartCheck();
@@ -348,6 +349,9 @@ void TriGrid::FillFromTree(
 	}
 
 	if (recomb){
+		//build 1d mesh explicitly without recombination because
+		//otherwise gmsh make boundaries twice as fine
+		m.mesh(1);
 		//usage of delaunay for quads gives worse results for non-regular areas
 		//hence using auto algorithm
 		GmshSetOption("Mesh", "Algorithm", 2.0);
@@ -531,7 +535,15 @@ GridGeom QuadGrid(const HMCont2D::ContourTree& cont,
 
 	TriGrid g;
 	g.FillFromTree(cont, constraints, ep, w, 0, true);
-	return GGeom::Constructor::DeepCopy(g);
+	return GridGeom(std::move(g));
+}
+
+shared_ptr<GridGeom> QuadrangulateArea(const HMCont2D::ContourTree& cont,
+		const std::map<Point*, double>& w, double h){
+	TriGrid g;
+	g.FillFromTree(cont, {}, {}, w, 2, true);
+	shared_ptr<GridGeom> ret(new GridGeom(std::move(g)));
+	return ret;
 }
 
 namespace{
@@ -723,3 +735,4 @@ GridGeom TriGrid::ToPeBi() const{
 	GGeom::Repair::RemoveShortEdges(ret, 0.1);
 	return ret;
 }
+

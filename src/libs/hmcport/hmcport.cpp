@@ -185,12 +185,12 @@ void grid_free(Grid* g){
 	if (g!=NULL) delete static_cast<GridGeom*>(g);
 }
 
-Grid* cross_grids(Grid* gbase, Grid* gsecondary, double buffer_size, int preserve_bp, int eh, double angle0){
-	return cross_grids_wcb(gbase, gsecondary, buffer_size, preserve_bp, eh, angle0, silent2_function);
+Grid* cross_grids(Grid* gbase, Grid* gsecondary, double buffer_size, int preserve_bp, int eh, double angle0, int algo){
+	return cross_grids_wcb(gbase, gsecondary, buffer_size, preserve_bp, eh, angle0, algo, silent2_function);
 }
 
 Grid* cross_grids_wcb(Grid* gbase, Grid* gsecondary, double buffer_size,
-		int preserve_bp, int empty_holes, double angle0, hmcport_callback cb_fun){
+		int preserve_bp, int empty_holes, double angle0, int algo, hmcport_callback cb_fun){
 	try{
 		if (gbase == NULL || gsecondary == NULL)
 			throw std::runtime_error("nullptr grid data");
@@ -198,7 +198,7 @@ Grid* cross_grids_wcb(Grid* gbase, Grid* gsecondary, double buffer_size,
 				static_cast<GridGeom*>(gbase),
 				static_cast<GridGeom*>(gsecondary),
 				buffer_size, 0.5, (preserve_bp==1),
-				(empty_holes==1), angle0, cb_fun);
+				(empty_holes==1), angle0, algo, cb_fun);
 		return ret;
 	} catch (const std::exception &e) {
 		std::cout<<"crossgrid error: "<<e.what()<<std::endl;

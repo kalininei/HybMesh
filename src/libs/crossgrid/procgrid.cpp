@@ -76,8 +76,17 @@ GridGeom GGeom::Constructor::Ring(Point p0, double rad1, double rad2, int narc, 
 }
 
 GridGeom GGeom::Constructor::Circle(Point p0, double rad, int narc, int nrad, bool tri_center){
-	double rad2 = rad*(1.0)/nrad;
-	GridGeom ret = GGeom::Constructor::Ring(p0, rad, rad2, narc, nrad-1);
+	GridGeom ret;
+	if (nrad > 1){
+		double rad2 = rad*(1.0)/nrad;
+		ret = GGeom::Constructor::Ring(p0, rad, rad2, narc, nrad-1);
+	} else {
+		for (int i=0; i<narc; ++i){
+			double phi = 2.0*M_PI/narc*i;
+			aa::add_shared(ret.points,
+				GridPoint(rad*cos(phi) + p0.x, rad*sin(phi) + p0.y, i));
+		}
+	}
 	if (!tri_center){
 		auto newcell = aa::add_shared(ret.cells, Cell());
 		for (int i=0; i<narc; ++i){

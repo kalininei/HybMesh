@@ -133,12 +133,15 @@ int set_ecollection_bc_force(void* src, void* tar, int* vsrc, int* vtar, int alg
 // empty_holes -- equals to 1 if all holes in secondary grid should present in
 //                resulting grid. Otherwise (=0) these holes will be filled with gbase mesh.
 // angle0 (degree) - insignificant deviation from the straight angle
+// algo - buffer filler algorithm
+//        0 - fill with triangles
+//        1 - fill with quadrangles
 //with callback defined globally
 Grid* cross_grids(Grid* gbase, Grid* gsecondary, double buffer_size, 
-		int preserve_bp, int empty_holes, double angle0);
+		int preserve_bp, int empty_holes, double angle0, int algo);
 //with specified callback function
 Grid* cross_grids_wcb(Grid* gbase, Grid* gsecondary, double buffer_size, 
-		int preserve_bp, int empty_holes, double angle0, hmcport_callback cb_fun);
+		int preserve_bp, int empty_holes, double angle0, int algo, hmcport_callback cb_fun);
 
 // === NewGrid = Grid exclude Contour Area
 // grd - GridGeom pointer,

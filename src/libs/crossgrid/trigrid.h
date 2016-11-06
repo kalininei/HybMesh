@@ -90,6 +90,8 @@ public:
 GridGeom QuadGrid(const HMCont2D::ContourTree& cont, 
 		const ShpVector<HMCont2D::Contour>& constraints,
 		const std::vector<double>& emb_points);
+shared_ptr<GridGeom> QuadrangulateArea(const HMCont2D::ContourTree& cont,
+		const std::map<Point*, double>& w, double h);
 
 
 #endif

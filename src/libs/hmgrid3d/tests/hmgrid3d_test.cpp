@@ -87,7 +87,7 @@ void test03(){
 	{
 		auto g1 = GGeom::Constructor::RectGrid01(20, 30);
 		auto g2 = GGeom::Constructor::Circle(Point(0.721, 0.682), 0.465, 24, 10, false);
-		auto g3 = GridGeom::cross_grids(&g1, &g2, 0.0, 0, false, false, 0);
+		auto g3 = GridGeom::cross_grids(&g1, &g2, 0.0, 0, false, false, 0, 0);
 		auto _g3ed = g3->get_edges();
 		vector<::Edge> g3ed(_g3ed.begin(), _g3ed.end());
 		auto g3d = HMGrid3D::Constructor::SweepGrid2D(*g3, {0, 0.1, 0.2, 0.3, 0.5},
@@ -138,7 +138,7 @@ void test04(){
 	{
 		auto g2d1 = GGeom::Constructor::RectGrid(Point(0, 0), Point(10, 1), 100, 10);
 		auto g2d2 = GGeom::Constructor::Ring(Point(3, 0.5), 0.3, 0.1, 20, 4);
-		auto g2d = GridGeom::cross_grids(&g2d1, &g2d2, 0.1, 0, false, true, 0);
+		auto g2d = GridGeom::cross_grids(&g2d1, &g2d2, 0.1, 0, false, true, 0, 0);
 		vector<double> zvec;
 		for (int i=0; i<100; i+=10)  zvec.push_back(3 + (double)i/99);
 		auto g3d = HMGrid3D::Constructor::SweepGrid2D(*g2d, zvec);
@@ -219,7 +219,7 @@ void test06(){
 	{
 		auto g1 = GGeom::Constructor::RectGrid(Point(0, 0), Point(10, 10), 10, 10);
 		auto g2 = GGeom::Constructor::RectGrid(Point(0, 5), Point(10, 6), 5, 1);
-		auto g3 = GridGeom::cross_grids(&g1, &g2, 0.0, 0, 0, 0, 0);
+		auto g3 = GridGeom::cross_grids(&g1, &g2, 0.0, 0, 0, 0, 0, 0);
 		auto g3d = RevolveGrid2D(*g3, {0, 10, 20, 30}, Point(0, 0), Point(0, 1), true);
 		HMGrid3D::Export::GridTecplot.Silent(g3d, "g1.dat");
 		add_file_check(12980710001405184230U, "g1.dat", "hanging nodes near axis to tecplot");

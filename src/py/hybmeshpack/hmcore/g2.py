@@ -186,7 +186,7 @@ def to_tecplot(c_g, fname, c_btypes, c_bnames):
         raise Exception("tecplot 2d grid export failed")
 
 
-def unite_grids(c_g1, c_g2, buf, fix_bnd, empty_holes, an0, cb):
+def unite_grids(c_g1, c_g2, buf, fix_bnd, empty_holes, an0, filler, cb):
     """ adds g2 to g1. Returns new c-grid.
         cb -- Callback.CB_CANCEL2 callback object
 
@@ -196,7 +196,11 @@ def unite_grids(c_g1, c_g2, buf, fix_bnd, empty_holes, an0, cb):
     c_an0 = ct.c_double(an0)
     c_fix = ct.c_int(1) if fix_bnd else ct.c_int(0)
     c_eh = ct.c_int(1) if empty_holes else ct.c_int(0)
-    args = (c_g1, c_g2, c_buf, c_fix, c_eh, c_an0)
+    if filler == '4':
+        c_algo = ct.c_int(1)
+    else:
+        c_algo = ct.c_int(0)
+    args = (c_g1, c_g2, c_buf, c_fix, c_eh, c_an0, c_algo)
 
     libhmcport.cross_grids_wcb.restype = ct.c_void_p
     cb.initialize(libhmcport.cross_grids_wcb, args)
@@ -288,7 +292,7 @@ def map_grid(c_grid, c_cont, c_gpoints, c_cpoints, snap, algo,
 
 
 def unstructed_fill(c_dom, c_con, c_emb, tp):
-    """tp='3', '4', 'vor' for triangulation, quadrangulation, voronoi.
+    """tp='3', '4', 'pebi' for triangulation, quadrangulation, voronoi.
        returns c grid
     """
     ret = 0
@@ -314,3 +318,22 @@ def convex_cells(c_grid, an):
         raise Exception("Removing concave cells failed")
     else:
         return ret
+
+
+def stripe_grid(c_cont, c_p, algo, cb):
+    if algo == 'no':
+        algo = ct.c_int(0)
+    elif algo == 'radial':
+        algo = ct.c_int(1)
+
+    bot, left = ct.c_void_p(), ct.c_void_p()
+    top, right = ct.c_void_p(), ct.c_void_p()
+    n_p = ct.c_int(len(c_p))
+    args = (c_cont, n_p, c_p, algo,
+            ct.byref(bot), ct.byref(left), ct.byref(top), ct.byref(right))
+    cb.initialize(libhmcport.stripe_grid, args)
+    cb.execute_command()
+    ret = cb.get_result()
+    if ret == 0:
+        raise Exception("Stripe grid building failed")
+    return ret, [bot, right, top, left]

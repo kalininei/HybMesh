@@ -391,7 +391,8 @@ class UniteGrids(objcom.AbstractAddRemove):
                 'keep_src': command.BoolOption(),
                 'base': command.BasicOption(str),
                 'plus': command.ListOfOptions(UniteGrids.Option()),
-                'angle0': command.BasicOption(float)
+                'angle0': command.BasicOption(float),
+                'filler': command.BasicOption(str)
                 }
 
     def _get_grid(self, ind):
@@ -428,7 +429,7 @@ class UniteGrids(objcom.AbstractAddRemove):
                 #execute
                 c_ret = g2core.unite_grids(
                     c_g1, c_g2, b, opt['fix_bnd'], opt['empty_holes'],
-                    opt['angle0'], cb)
+                    opt['angle0'], opt['filler'], cb)
                 ret = g2core.grid_from_c(c_ret)
             except Exception as e:
                 raise command.ExecutionError('Unition Error: %s' % str(e),
@@ -899,3 +900,58 @@ class PebiFill(UnstructuredFillArea):
 
     def call_c_proc(self, c_dom, c_con, c_pts):
         return g2core.unstructed_fill(c_dom, c_con, c_pts, 'pebi')
+
+
+class StripeGrid(NewGridCommand):
+    def __init__(self, kwargs):
+        if "name" not in kwargs:
+            kwargs["name"] = "Grid1"
+        super(StripeGrid, self).__init__(kwargs)
+
+    @classmethod
+    def _arguments_types(cls):
+        return {'name': command.BasicOption(str),
+                'source': command.BasicOption(str),
+                'target': command.BasicOption(str),
+                'partition': command.ListOfOptions(command.BasicOption(float)),
+                'tip': command.BasicOption(str),
+                'bnd': command.ListOfOptions(command.BasicOption(int))
+                }
+
+    def _build_grid(self):
+        '-> grid2.Grid2'
+        so = self.options
+        c = self.any_cont_by_name(so['source'])
+        cb = self.ask_for_callback()
+
+        c_ret, c_cont, c_cout = 0, 0, [0, 0, 0, 0]
+        try:
+            # build c grid, contour
+            c_cont = c2core.cont2_to_c(c)
+
+            c_p = g2core.list_to_c(self.options['partition'], float)
+
+            # mapping procedure
+            c_ret, c_cout = g2core.stripe_grid(c_cont, c_p, so['tip'], cb)
+
+            # copy from c
+            ret = g2core.grid_from_c(c_ret)
+
+            #boundary conditions
+            def bc_from_cont(c_cnt, b):
+                c = c2core.cont2_from_c(c_cnt)
+                c.bnds = {i: b for i in range(c.n_edges())}
+                add_bc_from_cont(ret.cont, c, c_src=c_cnt, force=1)
+
+            ret.build_contour()
+            for i in range(4):
+                bc_from_cont(c_cout[i], so['bnd'][i])
+
+            return ret
+        except Exception as e:
+            raise command.ExecutionError('StripGrid: %s' % str(e), self, e)
+        finally:
+            c2core.free_cont2(c_cont) if c_cont != 0 else None
+            g2core.free_c_grid(c_ret) if c_ret != 0 else None
+            for i in range(4):
+                c2core.free_cont2(c_cout[i]) if c_cout[i] != 0 else None

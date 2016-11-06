@@ -73,6 +73,11 @@ void* pebi_fill(void* domain, void* constr, int nemb, double* emb);
 //return 0 on error
 void* convex_cells(void* input_grid, double an);
 
+//tip_algo:
+//  0 - no tip grid
+//  1 - radial tip grid
+void* stripe_grid(void* input_contour, int npart, double* part, int tip_algo, 
+		void** bot, void** left, void** top, void** right, hmcport_callback cb);
 
 }
 #endif

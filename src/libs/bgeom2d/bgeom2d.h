@@ -156,6 +156,7 @@ struct ScaleBase{
 	}
 	template<class FirstIter, class LastIter>
 	static ScaleBase doscale(FirstIter start, LastIter end) noexcept{
+		if (start >= end) return ScaleBase();
 		auto p0 = Point::GetBot(start, end);
 		auto pdif = Point::GetTop(start, end) - p0;
 		double L = std::max(pdif.x, pdif.y);
@@ -165,6 +166,7 @@ struct ScaleBase{
 	}
 	template<class Iter>
 	static ScaleBase p_doscale(Iter start, Iter end, double a=1.0) noexcept{
+		if (start >= end) return ScaleBase();
 		vector<Point> p; p.reserve(end-start);
 		std::transform(start, end, std::back_inserter(p), 
 				[](const typename Iter::value_type& x){ return *x; });

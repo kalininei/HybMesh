@@ -3,6 +3,7 @@
 
 #include "grid.h"
 #include "options.hpp"
+#include "hmcallback.hpp"
 
 
 namespace HMBlay{
@@ -13,6 +14,17 @@ public:
 			std::string("Boundary Layer Build Error: ") + m){};
 };
 GridGeom BuildBLayerGrid(const vector<Input>& opt);
+
+struct TBuildStripeGrid: public HMCallback::ExecutorBase{
+	HMCB_SET_PROCNAME("Stripe grid building");
+	HMCB_SET_DEFAULT_DURATION(100);
+
+	GridGeom _run(const HMCont2D::Contour& cont,
+		const std::vector<double>& partition,
+		int tip_algo,
+		Point& bl, Point& br, Point& tr, Point& tl);
+};
+extern HMCallback::FunctionWithCallback<TBuildStripeGrid> BuildStripeGrid;
 
 }
 
