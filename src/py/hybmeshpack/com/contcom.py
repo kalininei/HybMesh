@@ -6,6 +6,7 @@ from hybmeshpack.basic.geom import Point2
 import hybmeshpack.gdata.contour2 as contour2
 from hybmeshpack.hmcore import c2 as c2core
 from hybmeshpack import hmcore
+from unite_grids import add_bc_from_cont
 import command
 import objcom
 
@@ -527,7 +528,6 @@ class ClipDomain(objcom.AbstractAddRemove):
                 }
 
     def _addrem_objects(self):
-        import unite_grids
         cont1 = self.receiver.get_any_contour(self.options['c1'])
         cont2 = self.receiver.get_any_contour(self.options['c2'])
         cc1 = c2core.cont2_to_c(cont1)
@@ -545,8 +545,8 @@ class ClipDomain(objcom.AbstractAddRemove):
         cres = c2core.clip_domain(cc1, cc2, op, self.options['simplify'])
         if cres is not None:
             res = c2core.cont2_from_c(cres)
-            unite_grids.add_bc_from_cont(res, cont1, cres, cc1)
-            unite_grids.add_bc_from_cont(res, cont2, cres, cc2)
+            add_bc_from_cont(res, cont1, cres, cc1)
+            add_bc_from_cont(res, cont2, cres, cc2)
             c2core.free_cont2(cres)
         else:
             res = None
@@ -607,3 +607,57 @@ class PartitionContour(objcom.AbstractAddRemove):
             raise command.ExecutionError("Contour partition error", self, e)
         finally:
             c2core.free_cont2(c_cont)
+
+
+class MatchedPartition(objcom.AbstractAddRemove):
+    'Partition contour operation with condtitions'
+
+    def __init__(self, argsdict):
+        if "name" not in argsdict:
+            argsdict["name"] = "Contour1"
+        super(MatchedPartition, self).__init__(argsdict)
+
+    def doc(self):
+        return "Matched contour partition"
+
+    @classmethod
+    def _arguments_types(cls):
+        return {'name': command.BasicOption(str),
+                'base': command.BasicOption(str),
+                'cconts': command.ListOfOptions(command.BasicOption(str)),
+                'step': command.BasicOption(float),
+                'angle0': command.BasicOption(float),
+                'infdist': command.BasicOption(str),
+                'cpts': command.ListOfOptions(command.BasicOption(float)),
+                'power': command.BasicOption(float)
+                }
+
+    def _addrem_objects(self):
+        so = self.options
+        # 1. find contour
+        cont = self.any_cont_by_name(so['base'])
+        conds = []
+        for s in so['cconts']:
+            conds.append(self.any_cont_by_name(s))
+        c_cont, c_ret, c_conds = 0, 0, []
+        try:
+            c_cont = c2core.cont2_to_c(cont)
+            for c in conds:
+                c_conds.append(c2core.cont2_to_c(c))
+            c_rp = c2core.list_to_c(so['cpts'], float)
+            c_ret = c2core.matched_partition(c_cont, c_conds, c_rp,
+                                             so['step'],
+                                             so['infdist'],
+                                             so['power'],
+                                             so['angle0'])
+            ret = c2core.cont2_from_c(c_ret)
+            add_bc_from_cont(ret, cont, c_ret, c_cont, force=3)
+
+            return [], [], [(so["name"], ret)], []
+        except Exception as e:
+            raise command.ExecutionError("Contour partition error", self, e)
+        finally:
+            c2core.free_cont2(c_ret) if c_ret != 0 else None
+            c2core.free_cont2(c_cont) if c_cont != 0 else None
+            for c in c_conds:
+                c2core.free_cont2(c)

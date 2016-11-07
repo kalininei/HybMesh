@@ -330,3 +330,43 @@ def partition_contour(cont, algo, step, angle0=30, keep_bnd=False,
         return c._get_added_names()[1][0]
     except Exception:
         raise ExecError('partition contour')
+
+
+def matched_partition(cont, step, influence, ref_conts=[], ref_pts=[],
+                      angle0=30, power=4):
+    """ Makes a contour partition with respect to other
+        contours partitions and given reference points
+    """
+    if not isinstance(ref_conts, list):
+        ref_conts = [ref_conts]
+
+    errs = "invalid ref_pts parameter"
+    if not isinstance(ref_pts, list) or len(ref_pts) % 2 != 0:
+        raise ValueError(errs)
+    for i in range(len(ref_pts) / 2):
+        if not isinstance(ref_pts[2 * i], numbers.Real):
+            raise ValueError(errs)
+        if not isinstance(ref_pts[2 * i + 1], list) or\
+                len(ref_pts[2 * i + 1]) != 2 or\
+                not isinstance(ref_pts[2 * i + 1][0], numbers.Real) or\
+                not isinstance(ref_pts[2 * i + 1][1], numbers.Real):
+            raise ValueError(errs)
+    rp = []
+    for i in range(len(ref_pts) / 2):
+        rp.append(ref_pts[2 * i])
+        rp.extend(ref_pts[2 * i + 1])
+
+    args = {"base": cont,
+            "cconts": ref_conts,
+            "cpts": rp,
+            "step": step,
+            "infdist": influence,
+            "angle0": angle0,
+            "power": power
+            }
+    c = com.contcom.MatchedPartition(args)
+    try:
+        flow.exec_command(c)
+        return c._get_added_names()[1][0]
+    except Exception:
+        raise ExecError('matched partition')

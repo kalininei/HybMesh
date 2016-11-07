@@ -83,8 +83,6 @@ public:
 			double h,
 			bool recomb=false);
 
-	GridGeom ToPeBi() const;
-
 };
 
 GridGeom QuadGrid(const HMCont2D::ContourTree& cont, 

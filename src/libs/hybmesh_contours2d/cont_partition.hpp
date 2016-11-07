@@ -49,6 +49,14 @@ Contour WeightedPartition(std::map<double, double> basis,
 		const Contour& contour, PCollection& pstore,
 		int nedges, const std::vector<Point*>& keepit = {});
 
+//partition with respect to other contour partitions
+Contour ConditionalPartition(const Contour& input, double step, double influence,
+		const vector<Contour>& condconts,
+		const vector<std::pair<Point, double>>& condpoints,
+		double pw,
+		PCollection& pstore,
+		const vector<Point*>& keepit = {});
+
 //rounds vector keeping constant vector sum
 vector<int> RoundVector(const vector<double>& vect, const vector<int>& minsize);
 

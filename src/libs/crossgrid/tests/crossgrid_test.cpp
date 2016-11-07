@@ -8,6 +8,7 @@
 #include "hmcport.h"
 #include "trigrid.h"
 #include "procgrid.h"
+#include "pebi.h"
 #include "vtk_export_grid2d.hpp"
 #include "fluent_export_grid2d.hpp"
 
@@ -537,14 +538,14 @@ void test24(){
 	std::cout<<"24. Pebi grid building"<<std::endl;
 	{
 	auto trig = TriGrid::TriangulateArea({Point(0, 0), Point(1, 0), Point(1, 1), Point(0, 1)}, 0.1);
-	auto g1 = trig->ToPeBi();
+	auto g1 = TriToPebi(*trig);
 	GGeom::Export::GridVTK(*trig, "g1.vtk");
 	GGeom::Export::GridVTK(g1, "g2.vtk");
 	add_file_check(7274024674588850913U, "g2.vtk", "pebi for square domain");
 	}
 	{
 	auto trig = TriGrid::TriangulateArea({Point(0, 0), Point(1, 0), Point(1, 1), Point(0, 1), Point(0, 0.02)}, 0.1);
-	auto g1 = trig->ToPeBi();
+	auto g1 = TriToPebi(*trig);
 	GGeom::Export::GridVTK(*trig, "g1.vtk");
 	GGeom::Export::GridVTK(g1, "g2.vtk");
 	add_file_check(17100147952211891031U, "g2.vtk", "pebi points out of area");

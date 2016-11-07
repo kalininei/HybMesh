@@ -9,6 +9,7 @@ set (HEADERS
 	intrusion.h
 	procgrid.h
 	debug_grid2d.h
+	pebi.h
 	vtk_export_grid2d.hpp
 	fluent_export_grid2d.hpp
 	tecplot_export_grid2d.hpp
@@ -24,6 +25,7 @@ set (SOURCES
 	intrusion.cpp
 	procgrid.cpp
 	debug_grid2d.cpp
+	pebi.cpp
 	vtk_export_grid2d.cpp
 	fluent_export_grid2d.cpp
 	tecplot_export_grid2d.cpp

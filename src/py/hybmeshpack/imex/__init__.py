@@ -7,6 +7,7 @@ import grid3export
 from hybmeshpack import com
 from hybmeshpack import gdata
 from hybmeshpack.basic.interf import Callback
+from hybmeshpack.gdata import contour2
 
 
 def write_flow_and_framework_to_file(comflow, filename):
@@ -96,10 +97,19 @@ def export_contour(fmt, fn, name, fw=None, flow=None):
     try:
         if fw is None:
             fw = flow.get_receiver()
-        try:
-            _, _, cont = fw.get_ucontour(name=name)
-        except KeyError:
-            cont = fw.get_grid(name=name)[2].cont
+        if isinstance(name, list):
+            cont = contour2.Contour2()
+            for nm in name:
+                try:
+                    _, _, c = fw.get_ucontour(name=nm)
+                except KeyError:
+                    c = fw.get_grid(name=nm)[2].cont
+                cont.add_from_abstract(c)
+        else:
+            try:
+                _, _, cont = fw.get_ucontour(name=name)
+            except KeyError:
+                cont = fw.get_grid(name=name)[2].cont
     except:
         raise Exception('Can not find contour for exporting')
     # 2. Export regarding to format

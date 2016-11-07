@@ -188,6 +188,33 @@ class AddUnfCircGrid(NewGridCommand):
             opt['coef'], opt['is_trian'])
 
 
+class AddUnfHexGrid(NewGridCommand):
+    "Add uniform circular ring"
+
+    def __init__(self, argsdict):
+        super(AddUnfHexGrid, self).__init__(argsdict)
+
+    @classmethod
+    def _arguments_types(cls):
+        return {'name': command.BasicOption(str),
+                'area': command.ListOfOptions(command.BasicOption(float)),
+                'crad': command.BasicOption(float),
+                }
+
+    def _build_grid(self):
+        c_ret = 0
+        try:
+            c_ret = g2core.regular_hex_grid(self.options['area'],
+                                            self.options['crad'])
+            ret = g2core.grid_from_c(c_ret)
+            ret.build_contour()
+            return ret
+        except Exception as e:
+            raise command.ExecutionError('AddUnfHexGrid: %s' % str(e), self, e)
+        finally:
+            g2core.free_c_grid(c_ret) if c_ret != 0 else None
+
+
 class AddUnfRingGrid(NewGridCommand):
     "Add uniform circular ring"
 

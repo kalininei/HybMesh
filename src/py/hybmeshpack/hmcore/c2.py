@@ -1,5 +1,5 @@
 import ctypes as ct
-from . import libhmcport
+from . import libhmcport, list_to_c
 from hybmeshpack.basic.geom import Point2
 from hybmeshpack.gdata.contour2 import Contour2
 
@@ -129,3 +129,19 @@ def spline(c_pnts, c_bt, nedges):
     if ret == 0 or ret is None:
         raise Exception("spline builder failed")
     return ret, c_bndret
+
+
+def matched_partition(c_cont, c_src, c_pts, step, dist, pw, a0):
+    c_step = ct.c_double(step)
+    c_a0 = ct.c_double(a0)
+    c_dist = ct.c_double(dist)
+    c_nc = ct.c_int(len(c_src))
+    c_src2 = list_to_c(c_src, 'void*')
+    c_pw = ct.c_double(pw)
+    c_np = ct.c_int(len(c_pts) / 3) if c_pts is not None else ct.c_int(0)
+
+    ret = libhmcport.matched_partition(c_cont, c_nc, c_src2, c_np, c_pts,
+                                       c_step, c_dist, c_pw, c_a0)
+    if ret == 0:
+        raise Exception("contour partition failed")
+    return ret

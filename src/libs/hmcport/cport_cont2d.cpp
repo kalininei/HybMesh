@@ -236,3 +236,78 @@ void* spline(int npnt, double* pnts, int nbtypes, int* btypes, int nedges,
 	}
 	return ret;
 }
+
+void* matched_partition(void* cont, int ncond, void** conds, int npts, double* pcond, double step,
+		double influence_dist, double pw, double a0){
+	typedef HMCont2D::Container<HMCont2D::ECollection> ContEC;
+	ContEC* ret = new ContEC();
+	vector<HMCont2D::Contour> input;
+	{
+		auto ac = HMCont2D::Assembler::AllContours(
+				*static_cast<ContEC*>(cont));
+		for (auto& c: ac) input.push_back(c);
+	}
+	vector<HMCont2D::Contour> conditions;
+	for (int i=0; i<ncond; ++i){
+		auto ac = HMCont2D::Assembler::AllContours(
+				*static_cast<ContEC*>(conds[i]));
+		for (auto& c: ac) conditions.push_back(c);
+	}
+	vector<std::pair<Point, double>> pconditions;
+	for (int i=0; i<npts; ++i){
+		Point p1(pcond[3*i+1], pcond[3*i+2]);
+		pconditions.emplace(pconditions.begin(), p1, pcond[3*i]);
+	}
+
+	ScaleBase sc = HMCont2D::ECollection::Scale01(*static_cast<ContEC*>(cont));
+	for (auto& c: conditions) HMCont2D::ECollection::Scale(c, sc);
+	step/=sc.L;
+	influence_dist/=sc.L;
+	for (auto& x: pconditions){ sc.scale(x.first); x.second/=sc.L; }
+
+	try{
+		HMCont2D::PCollection pcol;
+		for (auto& icont: input){
+			//set angle points
+			vector<Point*> fixpoints;
+			if (a0>0) for (auto& info: icont.ordered_info()){
+				//end points of open contour
+				if (info.pprev == NULL || info.pnext == NULL){
+					fixpoints.push_back(info.p);
+					continue;
+				}
+				//angle between edges
+				double angle = (Angle(*info.pprev, *info.p, *info.pnext)-M_PI)/M_PI*180.0;
+				if (ISGREATER(fabs(angle), a0)){
+					fixpoints.push_back(info.p);
+					continue;
+				}
+			} else {
+				fixpoints = icont.all_points();
+			}
+			//set cross points
+			for (auto& cond: conditions){
+				auto cr = HMCont2D::Algos::CrossAll(icont, cond);
+				for (auto& icr: cr){
+					Point p = std::get<1>(icr);
+					Point* p1 = std::get<1>(icont.GuaranteePoint(p, pcol));
+					fixpoints.push_back(p1);
+				}
+			}
+			//build partition
+			auto r = HMCont2D::Algos::ConditionalPartition(icont, step, influence_dist,
+					conditions, pconditions, pw, pcol, fixpoints);
+			//add to answer
+			ContEC::DeepCopy(r, *ret);
+		}
+	} catch (std::runtime_error &e){
+		if (ret!=0) delete ret;
+		ret = NULL;
+		std::cout<<e.what()<<std::endl;
+	}
+	HMCont2D::ECollection::Unscale(*static_cast<ContEC*>(cont), sc);
+	for (auto& c: conditions) HMCont2D::ECollection::Unscale(c, sc);
+	if (ret!=NULL) HMCont2D::ECollection::Unscale(*static_cast<ContEC*>(ret), sc);
+	return ret;
+
+}

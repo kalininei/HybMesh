@@ -241,6 +241,7 @@ public:
 	}
 };
 
+
 vector<double> partition_new_points_w(double step, const Contour& contour){
 	double len = contour.length();
 	if (len<1.5*step){
@@ -288,6 +289,98 @@ vector<double> partition_new_points_w(std::map<double, double> basis, const Cont
 }
 
 double build_substep(double step, const Contour&, Point*, Point*){ return step; }
+
+struct Conditions2D{
+	static const int LINEARIZE = 50;
+	vector<HMCont2D::Contour> contcond;
+	vector<std::pair<Point, double>> pointcond;
+	double default_step;
+	double influence_dist;
+	int Ncond() const {return contcond.size() + pointcond.size(); }
+	double pw;
+
+	std::vector<BoundingBox> boxes;
+	
+	bool is_out_of_box(int i, const Point& p){
+		if (boxes.size() == 0){
+			for (auto& cnt: contcond){
+				boxes.push_back(HMCont2D::ECollection::BBox(cnt, influence_dist));
+			}
+			for (auto& p: pointcond){
+				boxes.push_back(BoundingBox(p.first, influence_dist));
+			}
+		};
+		return boxes[i].whereis(p) == OUTSIDE;
+	}
+
+	std::pair<double, double> cond_for_point(int i, const Point& p){
+		double dist = Point::dist(pointcond[i].first, p);
+		if (dist > influence_dist) return std::make_pair(1.0, 0.0);
+		double h = pointcond[i].second;
+		double w = (influence_dist - dist)/influence_dist;
+		return std::make_pair(h, w);
+	}
+
+	std::pair<double, double> cond_for_contour(int i, const Point& p){
+		auto cle = ECollection::FindClosestEdge(contcond[i], p);
+		double dist = std::get<1>(cle);
+		if (dist > influence_dist) return std::make_pair(1.0, 0.0);
+		double h = std::get<0>(cle)->length();
+		double w = (influence_dist - dist)/influence_dist;
+		return std::make_pair(h, w);
+	}
+
+	double aver(double w1, double x1, double x2){
+		double w = pow(w1, 1.0/pw);
+		return w*x1 + (1-w)*x2;
+	}
+
+	double stepfrom(int i, const Point& p){
+		if (is_out_of_box(i, p)) return default_step;
+
+		std::pair<double, double> step_delta;
+		if (i < contcond.size()){
+			step_delta = cond_for_contour(i, p);
+		} else {
+			step_delta = cond_for_point(i-contcond.size(), p);
+		}
+		return aver(step_delta.second, step_delta.first, default_step);
+	}
+
+	double Value(const Point& p){
+		vector<double> hs;
+		for (int i=0; i<Ncond(); ++i) hs.push_back(stepfrom(i, p));
+		return *min_element(hs.begin(), hs.end());
+	}
+
+	std::map<double, double> linear_conditions(const HMCont2D::Contour& cont){
+		std::map<double, double> ret;
+		std::vector<double> ws(LINEARIZE);
+		for (int i=0; i<ws.size(); ++i) ws[i] = (double)i/(ws.size()-1);
+
+		PCollection wp = HMCont2D::Contour::WeightPoints(cont, ws);
+
+		for (int i=0; i<wp.size(); ++i){
+			double v = Value(*wp.data[i]);
+			if (ret.size()>1){
+				auto mit = std::prev(ret.end());
+				auto mmit = std::prev(std::prev(ret.end()));
+				if (ISEQ(mit->second, mmit->second) && ISEQ(mit->second, v)){
+					ret.erase(mit);
+				}
+			}
+			ret.emplace(ws[i], v);
+		}
+		return ret;
+	}
+};
+Conditions2D build_substep(Conditions2D step, const Contour&, Point*, Point*){ return step; }
+
+vector<double> partition_new_points_w(Conditions2D step, const Contour& cont){
+	auto basis = step.linear_conditions(cont);
+	return partition_new_points_w(basis, cont);
+}
+
 
 std::pair<
 	std::map<double, double>::iterator,
@@ -572,6 +665,21 @@ Contour cns::WeightedPartition(std::map<double, double> basis,
 	}
 }
 
+Contour cns::ConditionalPartition(const Contour& input, double step, double influence,
+		const vector<Contour>& condconts,
+		const vector<std::pair<Point, double>>& condpoints,
+		double pw, 
+		PCollection& pstore,
+		const vector<Point*>& keepit){
+	Conditions2D cond;
+	cond.contcond = condconts;
+	cond.pointcond = condpoints;
+	cond.default_step = step;
+	cond.influence_dist = influence;
+	cond.pw = pw;
+	return partition_with_keepit(cond, input, pstore, keepit);
+}
+
 vector<int> cns::RoundVector(const vector<double>& vect, const vector<int>& minsize){
 	int sum = (int)std::round(std::accumulate(vect.begin(), vect.end(), 0.0));
 	int minnum = std::accumulate(minsize.begin(), minsize.end(), 0);
@@ -606,3 +714,4 @@ vector<int> cns::RoundVector(const vector<double>& vect, const vector<int>& mins
 	}
 	return nums;
 }
+

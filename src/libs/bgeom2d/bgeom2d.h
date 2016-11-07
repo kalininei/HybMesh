@@ -291,6 +291,7 @@ public:
 	Point BottomLeft() const { return Point(xmin, ymin); }
 	Point TopRight() const { return Point(xmax, ymax); }
 	vector<Point> FourPoints() const;
+	ScaleBase to_scale() const { return ScaleBase(xmin, ymin, std::max(lenx(), leny())); }
 
 	//-> INSIDE, OUTSIDE, BOUND
 	int whereis(const Point& p) const;

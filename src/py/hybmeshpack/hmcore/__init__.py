@@ -34,7 +34,12 @@ def list_to_c(lst, tp):
             for i in range(d):
                 ret[i] = lst[i]
             return ret
-    raise ValueError
+        if tp == 'void*':
+            ret = (ct.c_void_p * len(lst))()
+            for i in range(d):
+                ret[i] = lst[i]
+            return ret
+    raise ValueError(str(tp))
 
 
 def boundary_names_to_c(bnames):

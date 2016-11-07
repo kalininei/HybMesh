@@ -8,6 +8,7 @@
 #include "hmmapping.hpp"
 #include "trigrid.h"
 #include "hmblay.hpp"
+#include "pebi.h"
 
 
 namespace{
@@ -244,7 +245,7 @@ void* pebi_fill(void* domain, void* constr, int nemb, double* emb){
 		for (int i=0; i<cas.size(); ++i) aa::add_shared(cc, cas[i]);
 
 		TriGrid g3 = TriGrid(tree, cc, ep);
-		ret = new GridGeom(g3.ToPeBi());
+		ret = new GridGeom(TriToPebi(g3));
 
 		ret->undo_scale(sc);
 	} catch (std::runtime_error &e){
@@ -322,4 +323,29 @@ void* stripe_grid(void* input_contour, int npart, double* part, int tip_algo,
 	*left = s4;
 		
 	return ret;
+}
+
+void* regular_hex_grid(double* area, int area_type, double cell_rad){
+	try{
+		ScaleBase sc;
+		GridGeom* ret = NULL;
+		if (area_type == 0){
+			sc = BoundingBox(area[0], area[1], area[2], area[3]).to_scale();
+			ret = new GridGeom(RegularHexagonal(
+				Point(0, 0),
+				Point((area[2]-area[0])/sc.L, (area[3]-area[1])/sc.L),
+				cell_rad/sc.L));
+		} else if (area_type == 1){
+			sc = ScaleBase(area[0], area[1], area[2]);
+			ret = new GridGeom(RegularHexagonal(
+				Point(0, 0),
+				area[2]/sc.L,
+				cell_rad/sc.L));
+		} else {throw std::runtime_error("unknown algo");}
+		ret->undo_scale(sc);
+		return ret;
+	} catch (std::runtime_error& e){
+		std::cout<<e.what()<<std::endl;
+		return NULL;
+	}
 }

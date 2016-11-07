@@ -25,6 +25,11 @@ void* contour_partition(void* cont, int* btypes, int algo,
 void* spline(int npnt, double* pnts, int nbtypes, int* btypes, int nedges,
 		int* n_outbnd, int** outbnd);
 
+// builds a partition of contour 'cont' using constant 'step'
+// and existing parititions of conds[i] contours.
+void* matched_partition(void* cont, int ncond, void** conds, int npts, double* pcond, double step,
+		double influence_dist, double pw, double a0);
+
 
 }
 #endif

@@ -92,6 +92,24 @@ def add_unf_ring_grid(p0, radinner, radouter,
     return c._get_added_names()[0][0]
 
 
+def add_unf_hex_grid(area, cell_radius):
+    """ Builds grid with regular hexagonal cells
+    """
+    simpar = [area[0][0], area[0][1]]
+    if isinstance(area[1], list):
+        simpar.append(area[1][0])
+        simpar.append(area[1][1])
+    else:
+        simpar.append(area[1])
+    args = {"area": simpar, "crad": cell_radius}
+    c = com.gridcom.AddUnfHexGrid(args)
+    try:
+        flow.exec_command(c)
+        return c._get_added_names()[0][0]
+    except Exception:
+        raise ExecError('build uniform hexagonal grid')
+
+
 def add_triangle_grid(p0, p1, p2, nedge):
     """Creates structured grid in triangle area
 
