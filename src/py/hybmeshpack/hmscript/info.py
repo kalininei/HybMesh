@@ -48,6 +48,7 @@ def info_contour(c1):
           'Nedges': int,
           'subcont': [list-of-int],    # edges number in each subcontour
           'btypes': {btype(int): int}  # boundary type: number of edges
+          'length': float
          }
 
     """
@@ -64,6 +65,7 @@ def info_contour(c1):
             ret['btypes'][s] = 1
         else:
             ret['btypes'][s] += 1
+    ret['length'] = cont.length()
     return ret
 
 

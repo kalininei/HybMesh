@@ -238,7 +238,7 @@ RectForOpenArea::RectForOpenArea(HMCont2D::Contour& left, HMCont2D::Contour& rig
 	HMMap::Conformal::Options opt;
 	opt.use_rect_approx = use_rect_approx;
 	opt.right_angle_eps = M_PI/8.0;
-	opt.length_weight = 1.02;
+	opt.length_weight = 1.01;
 	opt.use_scpack = USE_ANALYTICAL_MAPPINGS;
 	opt.fem_nrec = std::min(10000, std::max(100, femn));
 	core = HMMap::Conformal::Rect::Factory(path, corners, opt);

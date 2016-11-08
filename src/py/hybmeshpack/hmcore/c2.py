@@ -145,3 +145,28 @@ def matched_partition(c_cont, c_src, c_pts, step, dist, pw, a0):
     if ret == 0:
         raise Exception("contour partition failed")
     return ret
+
+
+def segment_part(start, end, hstart, hend, hinternal):
+    """ return list of double containing at least two entries """
+    c_start = ct.c_double(start)
+    c_end = ct.c_double(end)
+    c_h0 = ct.c_double(hstart)
+    c_h1 = ct.c_double(hend)
+    c_in = ct.c_int(len(hinternal) / 2)
+    c_ih = list_to_c(hinternal, float)
+    c_resn = ct.c_int(0)
+    c_resh = ct.POINTER(ct.c_double)()
+
+    isok = libhmcport.segment_part(c_start, c_end, c_h0, c_h1, c_in, c_ih,
+                                   ct.byref(c_resn), ct.byref(c_resh))
+    if isok == 0 or c_resn.value < 2:
+        raise Exception("segment partition failed")
+
+    ret = []
+    for i in range(c_resn.value):
+        ret.append(c_resh[i])
+
+    libhmcport.free_double_array(c_resh)
+
+    return ret

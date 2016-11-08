@@ -3,6 +3,7 @@ from hybmeshpack import com
 from hybmeshpack.basic.geom import Point2
 from hybmeshpack.hmscript import flow, data
 from hybmeshpack.hmscript import ExecError
+from hybmeshpack.hmcore import c2 as c2core
 
 
 def grid_bnd_to_contour(g1, simplify=True):
@@ -333,7 +334,7 @@ def partition_contour(cont, algo, step, angle0=30, keep_bnd=False,
 
 
 def matched_partition(cont, step, influence, ref_conts=[], ref_pts=[],
-                      angle0=30, power=4):
+                      angle0=30, power=3):
     """ Makes a contour partition with respect to other
         contours partitions and given reference points
     """
@@ -370,3 +371,14 @@ def matched_partition(cont, step, influence, ref_conts=[], ref_pts=[],
         return c._get_added_names()[1][0]
     except Exception:
         raise ExecError('matched partition')
+
+
+def segment_partition(start, end, hstart, hend, hinternal=[]):
+    """ Makes a partition of numeric segment by given
+        recommended step sizes at different locations.
+    """
+    try:
+        ret = c2core.segment_part(start, end, hstart, hend, hinternal)
+        return ret;
+    except Exception as e:
+        raise ExecError(str(e))

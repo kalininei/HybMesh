@@ -219,13 +219,23 @@ void build_regular_hex(Point cnt, double rad, ShpVector<GridPoint>& pts, ShpVect
 }
 }
 
-GridGeom RegularHexagonal(Point cnt, double area_rad, double cr){
+GridGeom RegularHexagonal(Point cnt, double area_rad, double cr, bool strict_area){
 	double hy = sqrt(3)/2*cr;
+	int nmax;
+	if (!strict_area){
+		double R = 2*hy;
+		nmax = 1;
+		while (R - hy < area_rad){ R += 2*hy; ++nmax; }
+	} else {
+		nmax = (int)std::round(area_rad/2/hy);
+		hy = area_rad/2/nmax;
+		cr = hy/sqrt(3)*2;
+		++nmax;
+	}
 	//calculate hexagon centers
 	vector<Point> cnts {cnt};
-	double R = 2*hy;
-	int n = 1;
-	while (R - hy < area_rad){
+	for (int n=1; n<nmax; ++n){
+		double R = 2*hy*n;
 		auto hx = build_regular_hex(cnt, R, false);
 		for (int k=0; k<6; ++k){
 			Point& pprev = hx[k];
@@ -234,8 +244,6 @@ GridGeom RegularHexagonal(Point cnt, double area_rad, double cr){
 				cnts.push_back(Point::Weigh(pprev, pnext, (double)i/n));
 			}
 		}
-		++n;
-		R += 2*hy;
 	}
 
 	//assemble grid
@@ -246,15 +254,17 @@ GridGeom RegularHexagonal(Point cnt, double area_rad, double cr){
 	GGeom::Repair::Heal(ret);
 	return ret;
 }
-GridGeom RegularHexagonal(Point cnt1, Point cnt2, double cr){
+GridGeom RegularHexagonal(Point cnt1, Point cnt2, double cr, bool strict_area){
 	double hy = sqrt(3)/2*cr;
 	ShpVector<GridPoint> pts;
 	ShpVector<Cell> cls;
 
-	Point curp = cnt1;
+	Point curp = cnt1, pmax = cnt1;
 	int mx = 1;
 	while(curp.y-hy<cnt2.y){
+		pmax.y = curp.y;
 		while(curp.x-cr<cnt2.x){
+			if (curp.x > pmax.x) pmax.x = curp.x;
 			build_regular_hex(curp, cr, pts, cls);
 			curp.x += 3*cr;
 		}
@@ -265,5 +275,13 @@ GridGeom RegularHexagonal(Point cnt1, Point cnt2, double cr){
 
 	GridGeom ret = GGeom::Constructor::FromData(pts, cls);
 	GGeom::Repair::Heal(ret);
+	if (strict_area){
+		double xcoef = (cnt2.x - cnt1.x)/(pmax.x - cnt1.x);
+		double ycoef = (cnt2.y - cnt1.y)/(pmax.y - cnt1.y);
+		GGeom::Modify::PointModify(ret, [&](GridPoint* p){
+					p->x = (p->x - cnt1.x)*xcoef + cnt1.x;
+					p->y = (p->y - cnt1.y)*ycoef + cnt1.y;
+				});
+	}
 	return ret;
 }

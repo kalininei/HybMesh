@@ -37,6 +37,13 @@ class AbstractContour2(bgeom.Point2SetStruct):
         """
         raise NotImplementedError
 
+    def length(self):
+        """ -> sum of lengths of all edges """
+        ret = 0
+        for e in self.edges_points():
+            ret += self.points[e[0]].dist(self.points[e[1]])
+        return ret
+
     def sorted_edges(self):
         """ -> [[e1, e2, e3, ...], []] - indicies of connected edges.
         direction is arbitrary

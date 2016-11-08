@@ -8,6 +8,7 @@ from hybmeshpack import com
 from hybmeshpack import gdata
 from hybmeshpack.basic.interf import Callback
 from hybmeshpack.gdata import contour2
+from hybmeshpack.gdata import grid2
 
 
 def write_flow_and_framework_to_file(comflow, filename):
@@ -55,35 +56,52 @@ def export_grid(fmt, fn, name, fw=None, flow=None, adata=None):
     try:
         if fw is None:
             fw = flow.get_receiver()
-        if (fmt[-2:] == '3d'):
-            _, _, grid = fw.get_grid3(name=name)
+        if not isinstance(name, list):
+            name = [name]
+        grid = []
+        for nm in name:
+            if (fmt[-2:] == '3d'):
+                _, _, g = fw.get_grid3(name=nm)
+            else:
+                _, _, g = fw.get_grid(name=nm)
+            grid.append(g)
+
+        if len(grid) == 1:
+            gsum = grid[0]
         else:
-            _, _, grid = fw.get_grid(name=name)
+            if fmt[-2:] == '3d':
+                raise Exception("exporting list of 3d grids is not"
+                                "implemented")
+            else:
+                gsum = grid2.Grid2()
+                for g in grid:
+                    gsum.add_from_grid(g)
+
         if flow is not None:
             callb = flow.get_interface().ask_for_callback(Callback.CB_CANCEL2)
         else:
             callb = None
     except:
-        raise Exception('Can not find grid for exporting')
+        raise 
     # 2. Export regarding to format
     if fmt == 'vtk':
-        gridexport.vtk(grid, fn)
+        gridexport.vtk(gsum, fn)
     elif fmt == 'hmg':
-        gridexport.hmg(grid, fn)
+        gridexport.hmg(gsum, fn)
     elif fmt == 'msh':
-        gridexport.msh(grid, fn, fw.boundary_types, adata)
+        gridexport.msh(gsum, fn, fw.boundary_types, adata)
     elif fmt == 'ggen':
-        gridexport.ggen(grid, fn)
+        gridexport.ggen(gsum, fn)
     elif fmt == "gmsh":
-        gridexport.gmsh(grid, fn, fw.boundary_types)
+        gridexport.gmsh(gsum, fn, fw.boundary_types)
     elif fmt == "tecplot":
-        gridexport.tecplot(grid, fn, fw.boundary_types)
+        gridexport.tecplot(gsum, fn, fw.boundary_types)
     elif fmt == "vtk3d":
-        grid3export.vtk(grid, fn, callb)
+        grid3export.vtk(gsum, fn, callb)
     elif fmt == "msh3d":
-        grid3export.msh(grid, fn, fw.boundary_types, callb, adata)
+        grid3export.msh(gsum, fn, fw.boundary_types, callb, adata)
     elif fmt == "tecplot3d":
-        grid3export.tecplot(grid, fn, fw.boundary_types, callb)
+        grid3export.tecplot(gsum, fn, fw.boundary_types, callb)
     else:
         raise Exception('Unknown grid format %s' % fmt)
 

@@ -30,6 +30,9 @@ void* spline(int npnt, double* pnts, int nbtypes, int* btypes, int nedges,
 void* matched_partition(void* cont, int ncond, void** conds, int npts, double* pcond, double step,
 		double influence_dist, double pw, double a0);
 
+//returns 0 if failed
+int segment_part(double start, double end, double h0, double h1,
+		int n_internals, double* h_internals, int* nout, double** hout);
 
 }
 #endif

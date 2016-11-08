@@ -193,6 +193,7 @@ Introductory Examples
   intro_example3
   intro_example4
   intro_example5
+  intro_example6
 
 .. toctree::
   :hidden:

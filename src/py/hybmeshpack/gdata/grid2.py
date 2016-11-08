@@ -58,6 +58,26 @@ class Grid2(bgeom.Point2SetStruct):
             contour2.GridContour2.copy_from_source(self, ret)
         return ret
 
+    def add_from_grid(self, gplus):
+        ne, np = self.n_edges(), self.n_points()
+        g2 = gplus.deepcopy()
+        # add points
+        self.points.extend(g2.points)
+        # add edges
+        for e in g2.edges:
+            e[0] += np
+            e[1] += np
+        self.edges.extend(g2.edges)
+        # add cells
+        for c in g2.cells:
+            for i in range(len(c)):
+                c[i] += ne
+        self.cells.extend(g2.cells)
+        # grid contours
+        for k, v in g2.bt.iteritems():
+            self.bt[k + ne] = v
+        self.build_contour()
+
     def reflect(self, p1, p2):
         """ overriden from Point2SetStruct """
         super(Grid2, self).reflect(p1, p2)

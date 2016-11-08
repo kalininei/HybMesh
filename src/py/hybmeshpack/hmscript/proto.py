@@ -8,7 +8,8 @@ from hybmeshpack.hmscript import ExecError
 
 
 # Prototype grids
-def add_unf_rect_grid(p0, p1, nx, ny):
+def add_unf_rect_grid(p0=[0, 0], p1=[1, 1], nx=3, ny=3,
+                      custom_x=None, custom_y=None):
     """Builds rectangular grid.
 
     :param list-of-floats p0:
@@ -22,15 +23,26 @@ def add_unf_rect_grid(p0, p1, nx, ny):
     :returns: created grid identifier
 
     """
+    if custom_x is None:
+        custom_x = []
+    elif not isinstance(custom_x, list):
+        custom_x = [custom_x]
+    if custom_y is None:
+        custom_y = []
+    elif not isinstance(custom_y, list):
+        custom_y = [custom_y]
     c = com.gridcom.AddUnfRectGrid({"p0": Point2(*p0),
                                     "p1": Point2(*p1),
                                     "nx": nx,
-                                    "ny": ny})
+                                    "ny": ny,
+                                    "custom_x": custom_x,
+                                    "custom_y": custom_y})
     flow.exec_command(c)
     return c._get_added_names()[0][0]
 
 
-def add_unf_circ_grid(p0, rad, na, nr, coef=1.0, is_trian=True):
+def add_unf_circ_grid(p0, rad=1.0, na=8, nr=4, coef=1.0, is_trian=True,
+                      custom_rads=None, custom_archs=None):
     """Builds circular grid.
 
     :param list-of-floats p0: center coordinate as [x, y]
@@ -51,12 +63,22 @@ def add_unf_circ_grid(p0, rad, na, nr, coef=1.0, is_trian=True):
     :returns: created grid identifier
 
     """
+    if custom_rads is None:
+        custom_rads = []
+    if custom_archs is None:
+        custom_archs = []
+    if not isinstance(custom_rads, list):
+        custom_rads = [custom_rads]
+    if not isinstance(custom_archs, list):
+        custom_archs = [custom_archs]
     c = com.gridcom.AddUnfCircGrid({
         "p0": Point2(*p0),
         "rad": rad,
         "na": na, "nr": nr,
         "coef": coef,
-        "is_trian": is_trian})
+        "is_trian": is_trian,
+        "custom_r": custom_rads,
+        "custom_a": custom_archs})
     flow.exec_command(c)
     return c._get_added_names()[0][0]
 
@@ -92,7 +114,7 @@ def add_unf_ring_grid(p0, radinner, radouter,
     return c._get_added_names()[0][0]
 
 
-def add_unf_hex_grid(area, cell_radius):
+def add_unf_hex_grid(area, cell_radius, strict=False):
     """ Builds grid with regular hexagonal cells
     """
     simpar = [area[0][0], area[0][1]]
@@ -101,7 +123,7 @@ def add_unf_hex_grid(area, cell_radius):
         simpar.append(area[1][1])
     else:
         simpar.append(area[1])
-    args = {"area": simpar, "crad": cell_radius}
+    args = {"area": simpar, "crad": cell_radius, "strict": strict}
     c = com.gridcom.AddUnfHexGrid(args)
     try:
         flow.exec_command(c)
@@ -330,11 +352,9 @@ def _triquad(domain, constr, pts, tp):
         p2 = []
     else:
         p2 = []
-        for p1 in pts:
-            if len(p1) != 3:
-                raise ValueError("Invalid pts list")
-            for d in p1:
-                p2.append(d)
+        for i in range(len(pts) / 2):
+            p2.extend(pts[2 * i + 1])
+            p2.append(pts[2 * i])
     arg = {"domain": domain, "constr": constr, "pts": p2}
     if (tp == '3'):
         c = com.gridcom.TriangulateArea(arg)
@@ -360,7 +380,7 @@ def triangulate_area(domain, constr=None, pts=None):
     :param constr: single or list of contours representing
         triangulation constraints
 
-    :param list-of-list-of-double pts: set of points in ``[[x, y, len], ...]``
+    :param pts: set of points in ``[len0, [x0, y0], ...]``
         format where ``x, y`` are coordinates of internal verticies
         which should be embedded into the resulting grid,
         ``len`` - size of adjacent cells
@@ -388,7 +408,7 @@ def quadrangulate_area(domain, constr=None, pts=None):
     :param constr: single or list of contours representing
         meshing constraints
 
-    :param list-of-list-of-double pts: set of points in ``[[x, y, len], ...]``
+    :param pts: set of points in ``[len0, [x0, y0], ...]``
         format where ``x, y`` are coordinates of internal verticies
         which should be embedded into the resulting grid,
         ``len`` - size of adjacent cells
@@ -416,7 +436,7 @@ def pebi_fill(domain, constr=None, pts=None):
     :param constr: single or list of contours representing
         meshing constraints
 
-    :param list-of-list-of-double pts: set of points in ``[[x, y, len], ...]``
+    :param pts: set of points in ``[len0, [x0, y0], ...]``
         format where ``x, y`` are coordinates of internal verticies
         which should be embedded into the resulting grid,
         ``len`` - size of adjacent cells

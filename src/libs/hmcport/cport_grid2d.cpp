@@ -325,7 +325,7 @@ void* stripe_grid(void* input_contour, int npart, double* part, int tip_algo,
 	return ret;
 }
 
-void* regular_hex_grid(double* area, int area_type, double cell_rad){
+void* regular_hex_grid(double* area, int area_type, double cell_rad, int strict_area){
 	try{
 		ScaleBase sc;
 		GridGeom* ret = NULL;
@@ -334,13 +334,14 @@ void* regular_hex_grid(double* area, int area_type, double cell_rad){
 			ret = new GridGeom(RegularHexagonal(
 				Point(0, 0),
 				Point((area[2]-area[0])/sc.L, (area[3]-area[1])/sc.L),
-				cell_rad/sc.L));
+				cell_rad/sc.L, (bool)strict_area));
 		} else if (area_type == 1){
 			sc = ScaleBase(area[0], area[1], area[2]);
 			ret = new GridGeom(RegularHexagonal(
 				Point(0, 0),
 				area[2]/sc.L,
-				cell_rad/sc.L));
+				cell_rad/sc.L,
+				(bool)strict_area));
 		} else {throw std::runtime_error("unknown algo");}
 		ret->undo_scale(sc);
 		return ret;

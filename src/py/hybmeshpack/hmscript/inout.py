@@ -12,8 +12,7 @@ def export_grid_vtk(g1, fname):
 
        fname: output filename
     """
-    g = data.get_grid(name=g1)[2]
-    imex.gridexport.vtk(g, fname)
+    imex.export_grid("vtk", fname, g1, flow=flow)
 
 
 def export_grid_hmg(g1, fname):

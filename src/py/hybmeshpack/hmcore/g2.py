@@ -339,11 +339,12 @@ def stripe_grid(c_cont, c_p, algo, cb):
     return ret, [bot, right, top, left]
 
 
-def regular_hex_grid(area, rad):
+def regular_hex_grid(area, rad, strict):
     c_area = list_to_c(area, float)
     c_rad = ct.c_double(rad)
     c_algo = ct.c_int(1) if len(area) == 3 else ct.c_int(0)
-    ret = libhmcport.regular_hex_grid(c_area, c_algo, c_rad)
+    c_strict = ct.c_int(1 if strict else 0)
+    ret = libhmcport.regular_hex_grid(c_area, c_algo, c_rad, c_strict)
     if ret == 0:
         raise Exception("Regular hexagonal grid")
     return ret

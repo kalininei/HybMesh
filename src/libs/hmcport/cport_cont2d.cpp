@@ -311,3 +311,37 @@ void* matched_partition(void* cont, int ncond, void** conds, int npts, double* p
 	return ret;
 
 }
+
+int segment_part(double start, double end, double h0, double h1,
+		int n_internals, double* h_internals, int* nout, double** hout){
+	try{
+		if (start>=end) throw std::runtime_error("start>end");
+		//scaling
+		double sc = end - start;
+	
+		//assembling conditions data
+		std::map<double, double> conds;
+		conds[0] = h0/sc;
+		conds[1] = h1/sc;
+		for (int i=0; i<n_internals; ++i){
+			if (h_internals[2*i]>start && h_internals[2*i]<end){
+				conds[(h_internals[2*i]-start)/sc] = h_internals[2*i+1]/sc;
+			}
+		}
+		//make partition
+		HMCont2D::PCollection pstore;
+		auto icont = HMCont2D::Constructor::ContourFromPoints({Point(0, 0), Point(1, 0)});
+		auto ocont = HMCont2D::Algos::WeightedPartition(conds, icont, pstore);
+		auto opoints = ocont.ordered_points();
+		if (opoints.size()<2) throw std::runtime_error("failed to build partition");
+
+		*nout = opoints.size();
+		*hout = new double[*nout];
+		for (int i=0; i<*nout; ++i) (*hout)[i] = sc*opoints[i]->x+start;
+
+		return 1;
+	} catch (std::runtime_error &e){
+		std::cout<<e.what()<<std::endl;
+		return 0;
+	}
+}

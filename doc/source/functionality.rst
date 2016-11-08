@@ -69,7 +69,7 @@ So, as you can see on the picture below, by swapping the grid roles we obtain di
 .. figure:: grid_imposition1.png
    :height: 600 px
 
-   fig1. Basic superposition example
+   fig. 1. Basic superposition example
 
 Hybmesh also supports superposition of grid chain. In this regime a sequence of
 superposition operations are performed over a list of grids. Each operation takes the result of previous one
@@ -80,7 +80,7 @@ On a picture below you can see the superposition result depending on given grids
 .. figure:: grid_imposition2.png
    :height: 800 px
 
-   fig2. Chain superposition example
+   fig. 2. Chain superposition example
 
 
 Superposition with building a buffer grid only takes place if parent grid has non-zero and non single point intersection area.

@@ -83,7 +83,7 @@ void* stripe_grid(void* input_contour, int npart, double* part, int tip_algo,
 //area_type:
 //  =0 -- rectangle given by two points
 //  =1 -- hexagon given by center point and radius
-void* regular_hex_grid(double* area, int area_type, double cell_rad);
+void* regular_hex_grid(double* area, int area_type, double cell_rad, int strict_area);
 }
 
 #endif

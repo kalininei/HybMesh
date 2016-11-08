@@ -6,6 +6,7 @@ import hybmeshpack.basic.geom as bgeom
 from unite_grids import (setbc_from_conts, add_bc_from_cont,
                          boundary_layer_grid)
 import hybmeshpack.gdata.contour2 as contour2
+import math
 from hybmeshpack.hmcore import g2 as g2core
 from hybmeshpack.hmcore import c2 as c2core
 from hybmeshpack.hmcore import libhmcport
@@ -44,13 +45,42 @@ class AddUnfRectGrid(NewGridCommand):
                 'p0': command.Point2Option(),
                 'p1': command.Point2Option(),
                 'nx': command.BasicOption(int),
-                'ny': command.BasicOption(int)
+                'ny': command.BasicOption(int),
+                'custom_x': command.ListOfOptions(command.BasicOption(float)),
+                'custom_y': command.ListOfOptions(command.BasicOption(float))
                 }
 
     def _build_grid(self):
         so = self.options
-        return gdata.grid2.UnfRectGrid(so['p0'], so['p1'],
-                                       so['nx'], so['ny'])
+        if len(so['custom_x']) == 0 and len(so['custom_y']) == 0:
+            return gdata.grid2.UnfRectGrid(so['p0'], so['p1'],
+                                           so['nx'], so['ny'])
+        else:
+            nx, ny, p0, p1 = so['nx'], so['ny'], so['p0'], so['p1']
+            x, y = [], []
+            if len(so['custom_x']) == 1:
+                nx = int((p1.x - p0.x) / so['custom_x'][0]) + 1
+            else:
+                x = so['custom_x']
+                nx = len(x) - 1
+            if len(so['custom_y']) == 1:
+                ny = int((p1.y - p0.y) / so['custom_x'][0]) + 1
+            else:
+                y = so['custom_y']
+                ny = len(y) - 1
+            ret = gdata.grid2.UnfRectGrid(p0, p1, nx, ny)
+
+            if len(x) > 0:
+                for j in range(ny + 1):
+                    for i in range(nx + 1):
+                        p = ret.points[j * (nx + 1) + i]
+                        p.x = x[i]
+            if len(y) > 0:
+                for j in range(ny + 1):
+                    for i in range(nx + 1):
+                        p = ret.points[j * (nx + 1) + i]
+                        p.y = y[i]
+            return ret
 
 
 class AddCustomRectGrid(NewGridCommand):
@@ -179,13 +209,63 @@ class AddUnfCircGrid(NewGridCommand):
                 'nr': command.BasicOption(int),
                 'coef': command.BasicOption(float),
                 'is_trian': command.BoolOption(),
+                'custom_r': command.ListOfOptions(command.BasicOption(float)),
+                'custom_a': command.ListOfOptions(command.BasicOption(float)),
                 }
 
     def _build_grid(self):
         opt = self.options
-        return gdata.grid2.UnfCircGrid(
-            opt['p0'], opt['rad'], opt['na'], opt['nr'],
-            opt['coef'], opt['is_trian'])
+        if len(opt['custom_r']) == 0 and len(opt['custom_a']) == 0:
+            return gdata.grid2.UnfCircGrid(
+                opt['p0'], opt['rad'], opt['na'], opt['nr'],
+                opt['coef'], opt['is_trian'])
+        else:
+            # custom data
+            rads, angles = [], []
+            radius, na, nr = opt['rad'], opt['na'], opt['nr']
+
+            # calculate rads
+            if len(opt['custom_r']) == 1:
+                nr = int(radius / opt['custom_r'][0]) + 1
+            elif len(opt['custom_r']) > 1:
+                rads = copy.deepcopy(opt['custom_r'])
+                rads = rads[1:] if rads[0] == 0 else rads
+                radius = rads[-1]
+                nr = len(rads)
+
+            # calculate angles
+            if len(opt['custom_a']) == 1:
+                arclen = 2 * math.pi * radius
+                na = max(3, int(arclen / opt['custom_a'][0]))
+            elif len(opt['custom_a']) > 1:
+                angles = copy.deepcopy(opt['custom_a'])
+                for i in range(len(angles)):
+                    angles[i] = angles[i] * 2 * math.pi / angles[-1]
+                angles.insert(-1, 0) if angles[0] != 0 else None
+                angles = angles[:-1]
+                na = len(angles)
+
+            # build grid
+            r = gdata.grid2.UnfCircGrid(
+                bgeom.Point2(0, 0), opt['rad'], na, nr,
+                opt['coef'], opt['is_trian'])
+
+            # modify arch and radii
+            for i in range(na):
+                if len(angles) > 0:
+                    sina, cosa = math.sin(angles[i]), math.cos(angles[i])
+                else:
+                    sina = r.points[i].y / opt['rad']
+                    cosa = r.points[i].x / opt['rad']
+
+                for j in range(nr):
+                    p = r.points[na * j + i]
+                    prad = rads[-1 - j] if len(rads) > 0 else p.dist0()
+                    p.x, p.y = prad * cosa, prad * sina
+
+            # move to pc
+            r.move(opt['p0'].x, opt['p0'].y)
+            return r
 
 
 class AddUnfHexGrid(NewGridCommand):
@@ -199,13 +279,15 @@ class AddUnfHexGrid(NewGridCommand):
         return {'name': command.BasicOption(str),
                 'area': command.ListOfOptions(command.BasicOption(float)),
                 'crad': command.BasicOption(float),
+                'strict': command.BoolOption(),
                 }
 
     def _build_grid(self):
         c_ret = 0
         try:
             c_ret = g2core.regular_hex_grid(self.options['area'],
-                                            self.options['crad'])
+                                            self.options['crad'],
+                                            self.options['strict'])
             ret = g2core.grid_from_c(c_ret)
             ret.build_contour()
             return ret
