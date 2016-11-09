@@ -8,16 +8,16 @@ The modeling area is a square which contains three well sites and a fracture con
 Flow patterns of such problems provide very large fluid velocity gradients near wells and fractures hence it
 is a common practice to build grids with substantial refinement towards well and fracture locations.
 
-Required grid depends on a numerical method. First lets assume we build a grid which
-will be used in a linear finite element solver. Hence we need a grid which contains
-only triangle/quadrangle cells, well locations are its vertices and fracture contour segments
-coincide with its edges.
-
 .. figure:: picintro_6_1.png
    :width: 400 px
    :figclass: align-center
 
    fig. 1
+
+Required grid depends on a numerical method. First lets assume we build a grid which
+will be used in a linear finite element solver. Hence we need a grid which contains
+only triangle/quadrangle cells, well locations are its vertices and fracture contour segments
+coincide with its edges.
 
 The simplest straightforward approach is to use unstructured conditional triangulation.
 Hybmesh script for that algorithm contains three lines (operations):

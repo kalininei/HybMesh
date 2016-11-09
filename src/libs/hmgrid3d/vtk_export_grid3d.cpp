@@ -108,6 +108,28 @@ struct vtkcell_expression{
 			dupper[0], dupper[1], dupper[2], dupper[3]};
 		return true;
 	}
+	bool try_pyramid(std::vector<std::vector<int>>& data){
+		celltype = 14;
+		if (data.size() != 5) return _false_return();
+		int f4 = -1;
+		for (int i=0; i<data.size(); ++i){
+			if (data[i].size() == 4){ f4 = i; break; }
+			if (data[i].size() != 3) return _false_return();
+		}
+		if (f4 == -1) return _false_return();
+		int cp = -1;
+		int itry = (f4 == 0)?1:0;
+		for (int j=0; j<data[itry].size(); ++j){
+			auto fnd = std::find(data[f4].begin(), data[f4].end(), data[itry][j]);
+			if (fnd == data[f4].end()){
+				cp = data[itry][j];
+				break;
+			}
+		}
+		if (cp == -1) return _false_return();
+		pts = {data[f4][0], data[f4][3], data[f4][2], data[f4][1], cp};
+		return true;
+	}
 	bool try_wedge(std::vector<std::vector<int>>& data){
 		celltype=13; 
 		if (data.size() != 5) return _false_return();
@@ -133,8 +155,8 @@ struct vtkcell_expression{
 		vtkcell_expression ret;
 		if (ret.try_tetrahedron(cint)) return ret;
 		if (ret.try_hexahedron(cint)) return ret;
-		if (ret.try_hexahedron(cint)) return ret;
 		if (ret.try_wedge(cint)) return ret;
+		if (ret.try_pyramid(cint)) return ret;
 		std::string s("Cannot write 3D cell with ");
 		s += std::to_string(cint.size());
 		s += " faces to vtk format";

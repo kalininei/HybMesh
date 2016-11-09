@@ -40,7 +40,7 @@ def info_contour(c1):
        c1: contour or grid identifier
 
     Returns:
-       dictionary representing total number of nodes, edges,
+       dictionary representing contour length, total number of nodes, edges,
        number of edges in each subcontour and number of edges
        of each boundary type::
 
