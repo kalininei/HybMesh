@@ -381,13 +381,13 @@ def triangulate_area(domain, constr=None, pts=None):
         triangulation constraints
 
     :param pts: set of points in ``[len0, [x0, y0], ...]``
-        format where ``x, y`` are coordinates of internal verticies
+        format where ``x, y`` are coordinates of internal vertices
         which should be embedded into the resulting grid,
         ``len`` - size of adjacent cells
 
     :return: grid identifier
 
-    Triangulation procedure takes ``domain`` and ``constr`` verticies as
+    Triangulation procedure takes ``domain`` and ``constr`` vertices as
     basic points to define grid cell sizes.
     Use :func:`partition_contour` procedure to adopt partition of these
     contours and control resulting cell sizes.
@@ -409,7 +409,7 @@ def quadrangulate_area(domain, constr=None, pts=None):
         meshing constraints
 
     :param pts: set of points in ``[len0, [x0, y0], ...]``
-        format where ``x, y`` are coordinates of internal verticies
+        format where ``x, y`` are coordinates of internal vertices
         which should be embedded into the resulting grid,
         ``len`` - size of adjacent cells
 
@@ -437,7 +437,7 @@ def pebi_fill(domain, constr=None, pts=None):
         meshing constraints
 
     :param pts: set of points in ``[len0, [x0, y0], ...]``
-        format where ``x, y`` are coordinates of internal verticies
+        format where ``x, y`` are coordinates of internal vertices
         which should be embedded into the resulting grid,
         ``len`` - size of adjacent cells
 

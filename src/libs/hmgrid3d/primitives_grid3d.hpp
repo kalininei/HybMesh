@@ -22,6 +22,10 @@ template<class C>
 void constant_ids_pvec(const C& inp, int val){
 	for (int i=0; i<inp.size(); ++i) inp[i]->id = val;
 }
+template<class C>
+void increase_ids_pvec(const C& inp){
+	for (int i=0; i<inp.size(); ++i) ++inp[i]->id;
+}
 
 struct Vertex{
 	//==== data

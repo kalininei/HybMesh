@@ -305,7 +305,7 @@ void TriGrid::FillFromTree(
 	}
 	
 
-	//add edges and faces: each gmsh face should be single connected
+	//add edges and faces: each gmsh face should be singly connected
 	auto add_contour_edges = [&m, &verticies](const HMCont2D::Contour& c,
 			vector<GEdge*>& e){
 		vector<Point*> op = c.ordered_points();
@@ -350,7 +350,7 @@ void TriGrid::FillFromTree(
 
 	if (recomb){
 		//build 1d mesh explicitly without recombination because
-		//otherwise gmsh make boundaries twice as fine
+		//otherwise gmsh makes boundaries twice as fine
 		m.mesh(1);
 		//usage of delaunay for quads gives worse results for non-regular areas
 		//hence using auto algorithm
@@ -361,7 +361,7 @@ void TriGrid::FillFromTree(
 
 	FillFromGModel(&m);
 
-	// if all nodes of quad grid are still trianlge than most likely builder
+	// if all nodes of quad grid are still trianlge then most likely builder
 	// has failed. So we use another algorithm
 	if (recomb){
 		bool has4=false;

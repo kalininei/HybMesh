@@ -5,6 +5,9 @@
 #include "debug_grid2d.h"
 #include "hmtesting.hpp"
 #include "hmtimer.hpp"
+#include "surface_grid3d.hpp"
+#include "tetrahedral.hpp"
+#include "unite_grid3d.hpp"
 using namespace HMTesting;
 
 void test01(){
@@ -278,14 +281,41 @@ void test07(){
 		add_file_check(2848618625331037303U, "g1.dat", "no tri, complex connections, complete");
 	}
 }
+
+void test08(){
+	using namespace HMGrid3D;
+	std::cout<<"8. 3D building"<<std::endl;
+	//{
+	//SGrid cube = Constructor::Cuboid(HMGrid3D::Vertex(0, 0, 0), 1, 1, 1, 5, 5, 5);
+	//Export::GridVTK(cube, "cube.vtk");
+
+	//auto map_srfs = Surface::FromBoundaryType(cube, 1);
+	//ShpVector<Surface> srfs;
+	//for (auto m: map_srfs) srfs.push_back(m.second);
+	//SGrid result = Mesher::UnstructedTetrahedral(srfs);
+	//Export::GridVTK(result, "g1.vtk");
+	//add_file_check(272709326110273554U, "g1.vtk", "building unstructured tetrahedral grid in a single volume");
+	//}
+	{
+	SGrid cube1 = Constructor::Cuboid(HMGrid3D::Vertex(0, 0, 0), 1, 1, 1, 20, 20, 20);
+	SGrid cube2 = Constructor::Cuboid(HMGrid3D::Vertex(0.4, 0.4, 0.4), 0.2, 0.2, 0.2, 3, 3, 3);
+	Export::GridVTK(cube1, "cube1.vtk");
+	Export::GridVTK(cube2, "cube2.vtk");
+	SGrid result = HMGrid3D::Unite::Superimpose(cube1, cube2, 0.2);
+	
+	}
+
+}
+
 int main(){
-	test01();
-	test02();
-	test03();
-	test04();
-	test05();
-	test06();
-	test07();
+	//test01();
+	//test02();
+	//test03();
+	//test04();
+	//test05();
+	//test06();
+	//test07();
+	test08();
 	
 	check_final_report();
 	std::cout<<"DONE"<<std::endl;

@@ -14,6 +14,13 @@ define gridvtk
 	end
 end
 
+define gmshmvtk
+	set $i = (std::string*)malloc(sizeof(std::string))
+	call $i->basic_string()
+	call $i->assign("a.vtk")
+	call $arg0.writeVTK(*$i, false, false, 1.0, false )
+end
+
 define ppvec
 	if ($argc==1)
 		set $i = 0
