@@ -4,7 +4,7 @@
 
 namespace HMGrid3D{ namespace Unite{
 
-SGrid Superimpose(const SGrid& base, const SGrid& imp, double buf);
+GridData Superimpose(GridData& base, GridData& imp, double buf);
 
 }}
 

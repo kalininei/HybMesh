@@ -8,6 +8,7 @@
 #include "surface_grid3d.hpp"
 #include "tetrahedral.hpp"
 #include "unite_grid3d.hpp"
+#include "circrect.hpp"
 using namespace HMTesting;
 
 void test01(){
@@ -296,13 +297,47 @@ void test08(){
 	//Export::GridVTK(result, "g1.vtk");
 	//add_file_check(272709326110273554U, "g1.vtk", "building unstructured tetrahedral grid in a single volume");
 	//}
+	//{
+	//SGrid cube1 = Constructor::Cuboid(HMGrid3D::Vertex(0, 0, 0), 1, 1, 1, 20, 20, 20);
+	//SGrid cube2 = Constructor::Cuboid(HMGrid3D::Vertex(0.4, 0.4, 0.4), 0.2, 0.2, 0.2, 20, 20, 20);
+	//Export::GridVTK(cube1, "cube1.vtk");
+	//Export::GridVTK(cube2, "cube2.vtk");
+	//GridData res = HMGrid3D::Unite::Superimpose(cube1, cube2, 0.11);
+	//SGrid result(std::move(res));
+	//Export::GridVTK(result, "g1.vtk"); //may fail beacause file name was incorrent in last check
+	////Debug::save_vtk(result, "g1.vtk");
+	//}
+	//{
+	//SGrid cube1 = Constructor::Cuboid(HMGrid3D::Vertex(0, 0, 0), 1, 1, 1, 30, 30, 30);
+	//SGrid shell2 = Constructor::SphericalShell(HMGrid3D::Vertex(0.5, 0.5, 0.5), 0.15, 0.2, 0.01, 0.02);
+	//Export::GridVTK(cube1, "cube1.vtk");
+	//Export::GridVTK(shell2, "shell2.vtk");
+	//GridData result = HMGrid3D::Unite::Superimpose(cube1, shell2, 0.099);
+	////Debug::save_vtk(result, "g1.vtk");
+	//Export::GridVTK(result, "g1.vtk");
+	//}
 	{
-	SGrid cube1 = Constructor::Cuboid(HMGrid3D::Vertex(0, 0, 0), 1, 1, 1, 20, 20, 20);
-	SGrid cube2 = Constructor::Cuboid(HMGrid3D::Vertex(0.4, 0.4, 0.4), 0.2, 0.2, 0.2, 3, 3, 3);
-	Export::GridVTK(cube1, "cube1.vtk");
-	Export::GridVTK(cube2, "cube2.vtk");
-	SGrid result = HMGrid3D::Unite::Superimpose(cube1, cube2, 0.2);
-	
+	GridGeom gcirc4 = HMMap::Circ4Prototype(Point(0, 0), 1.0, 32, "linear", 0.4);
+	std::vector<double> zc;
+	for (int i=0; i<20; ++i) zc.push_back(-i*0.4);
+	std::reverse(zc.begin(), zc.end());
+	SGrid cyl = Constructor::SweepGrid2D(gcirc4, zc);
+	GridData sph = Constructor::SphericalShell(Vertex(0, 0, 0), 0.5, 1.0, 0.05, 0.2);
+	GridData rec = Constructor::Cuboid(Vertex(-3, -3, -10), 6, 6, 13, 15, 25, 30);
+	Export::GridVTK(cyl, "cyl.vtk");
+	Export::GridVTK(sph, "sph.vtk");
+	Export::GridVTK(rec, "rec.vtk");
+
+	std::cout<<"oper1..."<<std::endl;
+	HMDebug::get().i = 1;
+	GridData result = HMGrid3D::Unite::Superimpose(rec, cyl, 0.12);
+	Debug::save_vtk(result, "res1.vtk");
+	std::cout<<"oper2..."<<std::endl;
+	HMDebug::get().i = 2;
+	GridData result2 = HMGrid3D::Unite::Superimpose(result, sph, 0.439);
+	std::cout<<"save..."<<std::endl;
+	Export::GridVTK(result2, "res2.vtk");
+
 	}
 
 }

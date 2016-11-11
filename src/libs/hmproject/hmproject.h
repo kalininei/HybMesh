@@ -14,13 +14,22 @@
 
 using std::vector;
 using std::shared_ptr;
+using std::weak_ptr;
 template<class T> using ShpVector = vector<shared_ptr<T>>;
+template<class T> using WpVector = vector<weak_ptr<T>>;
 
 
 //Macros
 #define _DUMMY_FUN_ \
 	{\
 	printf("DUMMY function:\n"); \
+	printf("\t%s\n", __PRETTY_FUNCTION__); \
+	printf("\tat %s: %i\n", __FILE__, __LINE__); \
+	}
+
+#define _UNCOMPLETE_FUN_(txt) \
+	{\
+	printf("uncomplete function: %s\n", (txt)); \
 	printf("\t%s\n", __PRETTY_FUNCTION__); \
 	printf("\tat %s: %i\n", __FILE__, __LINE__); \
 	}

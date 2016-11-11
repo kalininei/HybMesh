@@ -1,4 +1,5 @@
 #include "tetrahedral.hpp"
+#include "Gmsh.h"
 #include "GModel.h"
 #include "MQuadrangle.h"
 #include "MTriangle.h"
@@ -131,23 +132,38 @@ SGrid GridFromModel(GModel& m){
 	return ret;
 }
 
-SGrid Mesher::UnstructedTetrahedral(const ShpVector<HMGrid3D::Surface>& srfs){
-	vector<ShpVector<Edge>> f_alledges;
-	vector<ShpVector<Vertex>> f_allvertices;
+namespace{
+
+vector<GFace*> fill_model_with_2d(GModel& m, const ShpVector<HMGrid3D::Surface>& srfs){
+	vector<ShpVector<HMGrid3D::Edge>> f_alledges;
+	vector<ShpVector<HMGrid3D::Vertex>> f_allvertices;
 	
 	for (auto s: srfs){
 		f_alledges.push_back(s->alledges());
 		f_allvertices.push_back(s->allvertices());
 	}
 	
-	ShpVector<Edge> alledges = enumerate_unique(f_alledges);
-	ShpVector<Vertex> allvertices = enumerate_unique(f_allvertices);
+	ShpVector<HMGrid3D::Edge> alledges = enumerate_unique(f_alledges);
+	ShpVector<HMGrid3D::Vertex> allvertices = enumerate_unique(f_allvertices);
 
-	GModel m;
-	m.setFactory("Gmsh");
+	//calculate meshsizes for vertices
+	vector<double> dist(allvertices.size(), 1e32);
+	enumerate_ids_pvec(allvertices);
+	for (auto e: alledges){
+		double m = Vertex::measure(*e->first(), *e->last());
+		if (m < dist[e->first()->id]) dist[e->first()->id] = m;
+		if (m < dist[e->last()->id]) dist[e->last()->id] = m;
+	}
+	for (auto& x: dist) x = sqrt(x);
 
+	//build gmsh vertices
 	vector<GVertex*> g_vertex;
-	for (auto v: allvertices) g_vertex.push_back(m.addVertex(v->x, v->y, v->z, 0.2));
+	for (int i=0; i<allvertices.size(); ++i){
+		auto v = allvertices[i];
+		g_vertex.push_back(m.addVertex(v->x, v->y, v->z, dist[i]));
+	}
+	
+	//build gmsh edges
 	vector<GEdge*> g_edge;
 	for (auto e: alledges){
 		int p1 = e->first()->id;
@@ -155,6 +171,7 @@ SGrid Mesher::UnstructedTetrahedral(const ShpVector<HMGrid3D::Surface>& srfs){
 		g_edge.push_back(m.addLine(g_vertex[p1], g_vertex[p2]));
 	}
 
+	//build gmsh faces
 	vector<GFace*> g_face;
 	ShpVector<Face> allfaces;
 	for (auto s: srfs){
@@ -167,7 +184,6 @@ SGrid Mesher::UnstructedTetrahedral(const ShpVector<HMGrid3D::Surface>& srfs){
 			g_face.push_back(m.addPlanarFace({eds}));
 		}
 	}
-	auto volume = m.addVolume({g_face});
 
 	//Mesh0D
 	vector<MVertex*> mvertex;
@@ -188,21 +204,155 @@ SGrid Mesher::UnstructedTetrahedral(const ShpVector<HMGrid3D::Surface>& srfs){
 	vector<MQuadrangle*> mquads;
 	for (int i=0; i<allfaces.size(); ++i){
 		auto sv = allfaces[i]->sorted_vertices();
-		auto nq = new MQuadrangle(
-			mvertex[sv[0]->id],
-			mvertex[sv[1]->id],
-			mvertex[sv[2]->id],
-			mvertex[sv[3]->id]);
-		g_face[i]->addQuadrangle(nq);
+		if (sv.size() == 4){
+			auto nq = new MQuadrangle(
+				mvertex[sv[0]->id],
+				mvertex[sv[1]->id],
+				mvertex[sv[2]->id],
+				mvertex[sv[3]->id]);
+			g_face[i]->addQuadrangle(nq);
+		} else if (sv.size() == 3){
+			auto nq = new MTriangle(
+				mvertex[sv[0]->id],
+				mvertex[sv[1]->id],
+				mvertex[sv[2]->id]);
+			g_face[i]->addTriangle(nq);
+		} else assert(false);
+	}
+	return g_face;
+}
+
+void fill_model_with_3d(GModel& m, const vector<vector<GFace*>>& fc){
+	//Mesh3D
+	auto volume = m.addVolume(fc);
+	//m.writeGEO("gmsh_geo.geo");
+	//m.writeMSH("gmsh_geo.msh");
+	NanSignalHandler::StopCheck();
+	m.mesh(3);
+	NanSignalHandler::StartCheck();
+	//m.writeVTK("gmsh_geo.vtk");
+	//m.writeMSH("gmsh_geo.msh");
+}
+
+
+};
+
+SGrid Mesher::UnstructuredTetrahedral(const ShpVector<HMGrid3D::Surface>& srfs){
+	GModel m;
+	m.setFactory("Gmsh");
+	GmshSetOption("Mesh", "OptimizeNetgen", 1.0);
+
+	vector<ShpVector<Edge>> f_alledges;
+	vector<ShpVector<Vertex>> f_allvertices;
+	
+	for (auto s: srfs){
+		f_alledges.push_back(s->alledges());
+		f_allvertices.push_back(s->allvertices());
+	}
+	
+	ShpVector<Edge> alledges = enumerate_unique(f_alledges);
+	ShpVector<Vertex> allvertices = enumerate_unique(f_allvertices);
+
+	vector<GVertex*> g_vertex;
+	for (auto v: allvertices) g_vertex.push_back(m.addVertex(v->x, v->y, v->z, 0.2));
+	
+	vector<GEdge*> g_edge;
+	for (auto e: alledges){
+		int p1 = e->first()->id;
+		int p2 = e->last()->id;
+		g_edge.push_back(m.addLine(g_vertex[p1], g_vertex[p2]));
+	}
+
+	vector<GFace*> g_face;
+	ShpVector<Face> allfaces;
+	for (auto s: srfs){
+		for (auto f: s->faces){
+			allfaces.push_back(f);
+			vector<GEdge*> eds;
+			for (auto e: f->edges){
+				eds.push_back(g_edge[e->id]);
+			}
+			g_face.push_back(m.addPlanarFace({eds}));
+		}
+	}
+
+	//Mesh0D
+	vector<MVertex*> mvertex;
+	for (int i=0; i<g_vertex.size(); ++i){
+		GVertex *gv = g_vertex[i];
+		gv->mesh_vertices.push_back(new MVertex(gv->x(), gv->y(), gv->z(), gv));
+		mvertex.push_back(gv->mesh_vertices.back());
+		gv->points.push_back(new MPoint(gv->mesh_vertices.back()));
+	}
+        //Mesh1D
+	vector<MEdge*> medge;
+	for (int i=0; i<g_edge.size(); ++i){
+		int p1 = alledges[i]->first()->id;
+		int p2 = alledges[i]->last()->id;
+		g_edge[i]->addLine(new MLine(mvertex[p1], mvertex[p2]));
+	}
+	//Mesh2D
+	vector<MQuadrangle*> mquads;
+	for (int i=0; i<allfaces.size(); ++i){
+		auto sv = allfaces[i]->sorted_vertices();
+		if (sv.size() == 4){
+			auto nq = new MQuadrangle(
+				mvertex[sv[0]->id],
+				mvertex[sv[1]->id],
+				mvertex[sv[2]->id],
+				mvertex[sv[3]->id]);
+			g_face[i]->addQuadrangle(nq);
+		} else if (sv.size() == 3){
+			auto nq = new MTriangle(
+				mvertex[sv[0]->id],
+				mvertex[sv[1]->id],
+				mvertex[sv[2]->id]);
+			g_face[i]->addTriangle(nq);
+		} else {
+			assert(false);
+		}
 	}
 
 	//Mesh3D
+	auto volume = m.addVolume({g_face});
 	//m.writeGEO("gmsh_geo.geo");
 	NanSignalHandler::StopCheck();
 	m.mesh(3);
 	NanSignalHandler::StartCheck();
-	m.writeVTK("gmsh_geo.vtk");
-	m.writeMSH("gmsh_geo.msh");
+	//m.writeVTK("gmsh_geo.vtk");
+	//m.writeMSH("gmsh_geo.msh");
+
+	return GridFromModel(m);
+}
+
+GridData Mesher::UnstructuredTetrahedral(const SurfaceTree& srfs){
+	if (srfs.nodes.size() == 0) return GridData();
+
+	//if connection level > 1
+	vector<SurfaceTree> srfs1 = srfs.crop_level1();
+	if (srfs1.size() > 1){
+		GridData ret;
+		for (int i=0; i<srfs1.size(); ++i){
+			GridData d = UnstructuredTetrahedral(srfs1[i]);
+			ret.add_alldata(d);
+		}
+		return ret;
+	}
+
+	//now srfs is singly connected volume with possible holes
+	GModel m;
+	m.setFactory("Gmsh");
+	
+	vector<vector<GFace*>> g_faces(1);
+	for (auto n: srfs.nodes) if (n->level==0){
+		g_faces.emplace_back(fill_model_with_2d(m, {n}));
+	}
+	for (auto n: srfs.nodes) if (n->level==1){
+		g_faces.emplace_back(fill_model_with_2d(m, {n}));
+	}
+
+	//mesh3d
+	fill_model_with_3d(m, g_faces);
 
 	return GridFromModel(m);
 }

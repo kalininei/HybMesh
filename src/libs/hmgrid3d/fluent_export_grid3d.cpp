@@ -3,6 +3,7 @@
 #include <fstream>
 #include <sstream>
 #include "surface_grid3d.hpp"
+#include "construct_grid3d.hpp"
 #include "debug_grid3d.hpp"
 #include "serialize_grid3d.hpp"
 

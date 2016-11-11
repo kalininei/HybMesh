@@ -217,3 +217,10 @@ void SGrid::renumber_by_cells(){
 
 	actualize_serial_data();
 }
+
+SGrid::SGrid(GridData&& from): GridData(std::move(from)){
+	actualize_serial_data();
+}
+SGrid::SGrid(const GridData& from): GridData(from){
+	actualize_serial_data();
+}

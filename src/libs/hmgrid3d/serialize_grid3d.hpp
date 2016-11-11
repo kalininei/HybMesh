@@ -29,6 +29,9 @@ struct SimpleSerialize{
 
 //grid with serialized data
 struct SGrid: public SimpleSerialize, public GridData{
+	SGrid(){}
+	SGrid(GridData&& from);
+	SGrid(const GridData& from);
 
 	//====== constructing procedures
 	//fills SimpleSerialize on the basis of GridData

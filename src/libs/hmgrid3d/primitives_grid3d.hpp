@@ -14,6 +14,11 @@ typedef ShpVector<Edge> EdgeData;
 typedef ShpVector<Face> FaceData;
 typedef ShpVector<Cell> CellData;
 
+void ReallocateAll(EdgeData& ed);
+void ReallocateAll(FaceData& ed); //all except right/left cells
+void ReallocateAll(CellData& ed);
+void ReallocateAll(VertexData& ed);
+
 template<class C>
 void enumerate_ids_pvec(const C& inp){
 	for (int i=0; i<inp.size(); ++i) inp[i]->id = i;
@@ -104,6 +109,7 @@ struct Face{
 	int n_edges() const { return edges.size(); }
 
 	// ===== Data access
+	//first vertex is a common vertex between 1st and 2nd edge
 	ShpVector<Vertex> sorted_vertices() const;
 	ShpVector<Edge> alledges() const;
 	ShpVector<Vertex> allvertices() const;
@@ -158,6 +164,9 @@ struct GridData{
 	// ====== methods
 	//set id's of primitives to its actual indicies
 	void enumerate_all() const;
+
+	void fill_from_cells();
+	void add_alldata(const GridData& from);
 };
 
 

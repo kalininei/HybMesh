@@ -4,6 +4,7 @@
 #ifndef NDEBUG
 
 #include "serialize_grid3d.hpp"
+#include "surface_grid3d.hpp"
 #include "hmdebug.hpp"
 
 namespace HMGrid3D{
@@ -35,6 +36,13 @@ struct Debug: public HMDebug{
 	}
 
 	static void save_bnd_vtk(const SGrid& grid);
+	static void save_bnd_vtk(const GridData& grid);
+	static void save_vtk(const Surface& srf);
+	static void save_vtk(const Surface& srf, const char* fn);
+	static void save_vtk(const GridData& grid);
+	static void save_vtk(const GridData& grid, const char* fn);
+	static void save_vtk(const SGrid& grid);
+	static void save_vtk(const SGrid& grid, const char* fn);
 };
 
 }

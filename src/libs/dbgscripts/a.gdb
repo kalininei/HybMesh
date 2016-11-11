@@ -5,6 +5,5 @@ source ../../src/libs/dbgscripts/hmout.gdb
 
 file ./hmgrid3d_test
 set breakpoint pending on
-b tetrahedral.cpp:168
-#b hmgrid3d_test.cpp:295
+b unite_grid3d.cpp:217
 run 

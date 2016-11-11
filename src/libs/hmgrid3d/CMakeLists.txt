@@ -6,6 +6,7 @@ set (HEADERS
 	debug_grid3d.hpp
 	surface_grid3d.hpp
 	serialize_grid3d.hpp
+	hmgrid3dgeom.hpp
 	tetrahedral.hpp
 	unite_grid3d.hpp
 	fluent_export_grid3d.hpp
@@ -21,6 +22,7 @@ set (SOURCES
 	debug_grid3d.cpp
 	surface_grid3d.cpp
 	serialize_grid3d.cpp
+	hmgrid3dgeom.cpp
 	tetrahedral.cpp
 	unite_grid3d.cpp
 	fluent_export_grid3d.cpp

@@ -6,7 +6,9 @@
 
 namespace HMGrid3D{ namespace Mesher {
 
-SGrid UnstructedTetrahedral(const ShpVector<HMGrid3D::Surface>& srfs);
+SGrid UnstructuredTetrahedral(const ShpVector<HMGrid3D::Surface>& srfs);
+
+GridData UnstructuredTetrahedral(const SurfaceTree& srfs);
 
 
 

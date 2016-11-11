@@ -276,3 +276,95 @@ void GridData::enumerate_all() const{
 	enumerate_ids_pvec(vfaces);
 	enumerate_ids_pvec(vcells);
 }
+
+void GridData::fill_from_cells(){
+	vvert.clear();
+	vfaces.clear();
+	vedges.clear();
+
+	ShpVector<Face> af;
+	for (auto& c: vcells){
+		std::copy(c->faces.begin(), c->faces.end(), std::back_inserter(af));
+	}
+	ShpVector<Edge> ae;
+	for (auto& f: af){
+		std::copy(f->edges.begin(), f->edges.end(), std::back_inserter(ae));
+	}
+	ShpVector<Vertex> av;
+	for (auto& e: ae){
+		std::copy(e->vertices.begin(), e->vertices.end(), std::back_inserter(av));
+	}
+
+	constant_ids_pvec(af, -1);
+	constant_ids_pvec(ae, -1);
+	constant_ids_pvec(av, -1);
+
+	for (auto f: af) if (f->id == -1){
+		vfaces.push_back(f);
+		f->id = 0;
+	}
+	for (auto e: ae) if (e->id == -1){
+		vedges.push_back(e);
+		e->id = 0;
+	}
+	for (auto v: av) if (v->id == -1){
+		vvert.push_back(v);
+		v->id = 0;
+	}
+}
+
+void GridData::add_alldata(const GridData& from){
+	_DUMMY_FUN_;
+}
+
+//reallocation
+void HMGrid3D::ReallocateAll(VertexData& vd){
+	for (auto& v: vd) v.reset(new Vertex(*v));
+}
+
+void HMGrid3D::ReallocateAll(EdgeData& ed){
+	for (auto e: ed)
+	for (auto v: e->vertices) v->id = -2;
+	VertexData uvert;
+	for (auto e: ed)
+	for (auto v: e->vertices) if (v->id == -2){
+		uvert.push_back(v);
+		v->id = -1;
+	}
+	VertexData cpvert = uvert;
+	ReallocateAll(cpvert);
+
+	enumerate_ids_pvec(uvert);
+	for (auto& e: ed){
+		shared_ptr<HMGrid3D::Edge> ne(new Edge(*e));
+		for (int i=0; i<e->vertices.size(); ++i){
+			ne->vertices[i] = cpvert[ne->vertices[i]->id];
+		}
+		e = ne;
+	}
+}
+void HMGrid3D::ReallocateAll(FaceData& fd){
+	//unique edges and nodes
+	for (auto f: fd)
+	for (auto e: f->edges) e->id = -2;
+
+	EdgeData uedges;
+
+	for (auto f: fd)
+	for (auto e: f->edges) if (e->id == -2){
+		uedges.push_back(e);
+		e->id = -1;
+	}
+	
+	EdgeData cpedges = uedges;
+	ReallocateAll(cpedges);
+
+	enumerate_ids_pvec(uedges);
+	for (auto& f: fd){
+		shared_ptr<HMGrid3D::Face> nf(new Face(*f));
+		for (int i=0; i<nf->n_edges(); ++i){
+			nf->edges[i] = cpedges[nf->edges[i]->id];
+		}
+		f = nf;
+	}
+}

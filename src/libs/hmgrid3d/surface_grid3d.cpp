@@ -1,4 +1,5 @@
 #include "surface_grid3d.hpp"
+#include "hmgrid3dgeom.hpp"
 
 using namespace HMGrid3D;
 
@@ -23,7 +24,7 @@ ShpVector<Vertex> Surface::allvertices() const{
 	return aa::no_dublicates(ret);
 }
 
-Surface Surface::FromBoundaryType(HMGrid3D::SGrid& g, int btype, int reversetp){
+Surface Surface::FromBoundaryType(HMGrid3D::GridData& g, int btype, int reversetp){
 	Surface ret;
 	for (auto f: g.vfaces){
 		if (f->is_boundary() && f->boundary_type == btype)
@@ -39,7 +40,7 @@ Surface Surface::FromBoundaryType(HMGrid3D::SGrid& g, int btype, int reversetp){
 	return ret;
 }
 
-std::map<int, shared_ptr<Surface>> Surface::FromBoundaryType(HMGrid3D::SGrid& g, int reversetp){
+std::map<int, shared_ptr<Surface>> Surface::FromBoundaryType(HMGrid3D::GridData& g, int reversetp){
 	//get all boundary types
 	std::set<int> btypes;
 	for (auto f: g.vfaces) if (f->is_boundary()) btypes.insert(f->boundary_type);
@@ -53,6 +54,27 @@ std::map<int, shared_ptr<Surface>> Surface::FromBoundaryType(HMGrid3D::SGrid& g,
 		}
 	}
 	return ret;
+}
+
+SurfaceTree Surface::BuildTree(HMGrid3D::GridData& g, int reversetp){
+	auto as = FromBoundaryType(g, reversetp);
+	Surface full;
+	for (auto& m: as) 
+		std::copy(m.second->faces.begin(), m.second->faces.end(),
+			std::back_inserter(full.faces));
+
+	std::vector<Surface> closed_surfaces;
+	while (full.faces.size() > 0){
+		Vertex* v = full.faces[0]->edges[0]->first().get();
+		closed_surfaces.push_back(SubSurface(full, v));
+		assert(closed_surfaces.back().n_faces() > 0);
+		constant_ids_pvec(full.faces, -1);
+		constant_ids_pvec(closed_surfaces.back().faces, 0);
+		auto fin = std::remove_if(full.faces.begin(), full.faces.end(),
+			[](shared_ptr<Face>& f){ return f->id == 0; });
+		full.faces.resize(fin-full.faces.begin());
+	}
+	return SurfaceTree::Assemble(closed_surfaces);
 }
 
 Surface Surface::SubSurface(const Surface& s, Vertex* v){
@@ -286,4 +308,92 @@ ShpVector<HMGrid3D::Edge> Surface::ExtractBoundary(const Surface& a, Vertex v){
 		if (fe.second.size() == 1) bedges.push_back(fe.first);
 	}
 	return Edge::Connect(bedges, v);
+}
+
+SurfaceTree SurfaceTree::Substract(const SurfaceTree& from, const SurfaceTree& what){
+	if (from.nodes.size() == 0) return SurfaceTree();
+	if (what.nodes.size() == 0) return from.reallocate_nodes();
+
+	_UNCOMPLETE_FUN_("substruct only if from contans what");
+	auto ret = from.reallocate_nodes();
+	auto wc = what.reallocate_nodes();
+
+	ret.nodes.push_back(wc.nodes[0]);
+	ret.nodes[0]->children = {ret.nodes[1]};
+	ret.nodes[1]->level = 1;
+	ret.nodes[1]->parent = ret.nodes[0];
+
+	return ret;
+}
+
+SurfaceTree SurfaceTree::Assemble(const vector<Surface>& data){
+	_UNCOMPLETE_FUN_("assemble tree for single surface only");
+	SurfaceTree ret;
+	if (data.size() == 0){
+		return ret;
+	} else if (data.size() == 1){
+		ret.nodes.emplace_back();
+		ret.nodes[0].reset(new TNode(data[0]));
+	} else {
+		//try bounding box procedures
+		if (data.size() == 2){
+			BoundingBox3D bb0 = BoundingBox3D(data[0]);
+			BoundingBox3D bb1 = BoundingBox3D(data[1]);
+			int inner=-1, outer=-1;
+			if (bb0.position(bb1) == INSIDE){
+				inner = 1; outer = 0;
+			} else if (bb1.position(bb0) == INSIDE){
+				outer = 1; inner = 0;
+			}
+			if (inner != -1){
+				ret.nodes.emplace_back(new TNode(data[outer]));
+				ret.nodes.emplace_back(new TNode(data[inner]));
+				ret.nodes[0]->children.push_back(ret.nodes[1]);
+				ret.nodes[1]->parent = ret.nodes[0];
+				ret.nodes[1]->level = 1;
+				return ret;
+			}
+		}
+		_THROW_NOT_IMP_;
+	}
+	return ret;
+}
+
+SurfaceTree SurfaceTree::reallocate_nodes() const{
+	std::map<TNode*, shared_ptr<TNode>> copy_from_to;
+	SurfaceTree ret(*this);
+	for (int i=0; i<nodes.size(); ++i){
+		ret.nodes[i].reset(new TNode(*ret.nodes[i]));
+		copy_from_to.emplace(nodes[i].get(), ret.nodes[i]);
+	}
+	for (int i=0; i<nodes.size(); ++i){
+		if (ret.nodes[i]->level>0)
+			ret.nodes[i]->parent = copy_from_to[nodes[i]->parent.lock().get()];
+		for (int j=0; j<ret.nodes[i]->children.size(); ++j){
+			ret.nodes[i]->children[j] = copy_from_to[nodes[i]->children[j].lock().get()];
+		}
+	}
+	return ret;
+}
+
+vector<SurfaceTree> SurfaceTree::crop_level1() const{
+	vector<SurfaceTree> ret;
+	auto cp = reallocate_nodes();
+	for (auto n: cp.nodes){
+		if (n->level % 2 == 0){
+			n->level = 0;
+			n->parent.reset();
+		} else {
+			n->level = 1;
+			n->children.clear();
+		}
+	}
+	for (auto n: cp.nodes) if (n->level == 0){
+		ret.emplace_back();
+		ret.back().nodes.push_back(n);
+		for (auto c: n->children){
+			ret.back().nodes.push_back(c.lock());
+		}
+	}
+	return ret;
 }

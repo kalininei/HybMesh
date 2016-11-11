@@ -2,6 +2,7 @@
 #define  CONSTRUCT_GRID3D_HPP
 
 #include "serialize_grid3d.hpp"
+#include "surface_grid3d.hpp"
 #include "grid.h"
 
 namespace HMGrid3D{namespace Constructor{
@@ -15,6 +16,13 @@ namespace HMGrid3D{namespace Constructor{
 //    z = 0 -> bt = 5
 //    z = 1 -> bt = 6
 HMGrid3D::SGrid Cuboid(HMGrid3D::Vertex leftp, double lx, double ly, double lz, int nx, int ny, int nz);
+
+//spherical shell
+HMGrid3D::SGrid SphericalShell(HMGrid3D::Vertex center, double rinner, double router, double hr, double harc);
+
+//part starts with 0
+HMGrid3D::GridData NormalToSurface(HMGrid3D::Surface& src, const vector<double>& part,
+		std::function<HMGrid3D::Vertex(const HMGrid3D::Vertex&)> normal);
 
 //sweep xy grid along z vector.
 //zcoords represents vector with increasing z coordinate values.
