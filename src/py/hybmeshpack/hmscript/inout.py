@@ -1,6 +1,7 @@
 from hybmeshpack import imex, com
-from hybmeshpack.hmscript import flow, data
+from hybmeshpack.hmscript import flow
 from . import ExportError
+from . import ExecError
 
 
 # Exporting grids
@@ -15,7 +16,7 @@ def export_grid_vtk(g1, fname):
     imex.export_grid("vtk", fname, g1, flow=flow)
 
 
-def export_grid_hmg(g1, fname):
+def export_grid_hmg(g1, fname, fmt='ascii', afields=[]):
     """exports grid to hybmesh native format
 
     Args:
@@ -23,7 +24,8 @@ def export_grid_hmg(g1, fname):
 
       fname: output filename
     """
-    imex.export_grid("hmg", fname, g1, flow=flow)
+    imex.export_grid("hmg", fname, g1, flow=flow,
+                     adata={'fmt': fmt, 'afields': afields})
 
 
 def export_grid_msh(g1, fname, periodic_pairs=None):
@@ -230,7 +232,7 @@ def export_contour_tecplot(c1, fname):
 
 
 # Importing grids
-def import_grid_hmg(fname):
+def import_grid_hmg(fname, gridname=""):
     """Imports grid from native \*.hmg file
 
     Args:
@@ -239,9 +241,34 @@ def import_grid_hmg(fname):
     Returns:
        grid identifier
     """
-    c = com.imcom.ImportGridNative({"filename": fname})
-    flow.exec_command(c)
-    return c._get_added_names()[0][0]
+    name = "Grid1"
+    if gridname != "":
+        name = gridname
+    c = com.imcom.ImportGridNative({
+        "name": name,
+        "filename": fname,
+        "gridname": gridname})
+    try:
+        flow.exec_command(c)
+        return c._get_added_names()[0][0]
+    except Exception as e:
+        raise ExecError('import_grid_hmg')
+
+def import_grids_hmg(fname):
+    """Imports grid from native \*.hmg file
+
+    Args:
+       fname: file name
+
+    Returns:
+       grid identifier
+    """
+    c = com.imcom.ImportGridsNative({"filename": fname})
+    try:
+        flow.exec_command(c)
+        return c._get_added_names()[0]
+    except Exception as e:
+        raise ExecError('import_grids_hmg')
 
 
 def import_grid_msh(fname):

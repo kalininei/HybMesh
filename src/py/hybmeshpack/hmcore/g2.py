@@ -74,6 +74,36 @@ def grid_from_c(c_gr):
     return ret
 
 
+def grid_from_hmxml(reader, subnode):
+    """ returns (python side grid, its name in hmxml file)"""
+    greader, c_g = 0, 0
+    try:
+        name = ct.create_string_buffer(1000)
+        greader = libhmcport.greader_create(reader, subnode, name)
+        if greader == 0:
+            raise Exception("Failed to assemble a grid")
+        # read grid
+        c_g = libhmcport.greader_getresult(greader)
+        g = grid_from_c(c_g)
+        g.build_contour()
+
+        # read boundary types
+        libhmcport.greader_read_edge_field.restype = ct.POINTER(ct.c_int)
+        bnd = libhmcport.greader_read_edge_field(
+            greader, "__boundary_types__", "int")
+        if bnd:
+            for i in range(g.n_edges()):
+                if bnd[i] != 0:
+                    g.bt[i] = bnd[i]
+            libhmcport.free_int_array(bnd)
+        return g, str(name.value)
+    except:
+        raise
+    finally:
+        free_c_grid(c_g) if c_g != 0 else None
+        libhmcport.greader_free(greader) if greader != 0 else None
+
+
 def get_skewness(grid, threshold):
     """ reports skewness of the grid ->
            {'max_skew': float, 'max_skew_cell': int,
@@ -348,3 +378,47 @@ def regular_hex_grid(area, rad, strict):
     if ret == 0:
         raise Exception("Regular hexagonal grid")
     return ret
+
+
+def gwriter_create(gridname, c_g, c_writer, c_sub, fmt):
+    ret = libhmcport.gwriter_create(gridname, c_g, c_writer, c_sub, fmt)
+    if ret == 0:
+        raise Exception("Error writing grid to hmg")
+    else:
+        return ret
+
+
+def gwriter_add_edge_field(c_gwriter, fname, fieldtype, c_field):
+    ret = 0
+    if fieldtype == "int":
+        ret = libhmcport.gwriter_add_edge_field(
+            c_gwriter, fname, ct.cast(c_field, ct.c_void_p),
+            ct.c_int(len(c_field)), "int")
+    elif fieldtype == "char":
+        ret = libhmcport.gwriter_add_edge_field(
+            c_gwriter, fname, ct.cast(c_field, ct.c_void_p),
+            ct.c_int(len(c_field)), "char")
+    elif fieldtype == "double":
+        ret = libhmcport.gwriter_add_edge_field(
+            c_gwriter, fname, ct.cast(c_field, ct.c_void_p),
+            ct.c_int(len(c_field)), "double")
+    elif fieldtype == "float":
+        ret = libhmcport.gwriter_add_edge_field(
+            c_gwriter, fname, ct.cast(c_field, ct.c_void_p),
+            ct.c_int(len(c_field)), "float")
+    if ret == 0:
+        raise Exception("Error writing edge field to a grid")
+    else:
+        return ret
+
+
+def gwriter_add_field(c_gwriter, f):
+    ret = libhmcport.gwriter_add_defined_field(c_gwriter, f)
+    if ret == 0:
+        raise Exception("Error writing " + f + "field to a grid")
+    else:
+        return ret
+
+
+def free_gwriter(c_gwriter):
+    libhmcport.gwriter_free(c_gwriter)

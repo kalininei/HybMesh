@@ -135,3 +135,17 @@ void HMTesting::add_file_check(std::string f1, std::string f2, std::string info)
 	size_t h2 = calculate_file_hash(f2);
 	add_check(h1 == h2, info);
 }
+size_t HMTesting::calculate_file_size(std::string fn){
+	std::ifstream in(fn, std::ifstream::ate | std::ifstream::binary);
+	return in.tellg(); 
+}
+
+void HMTesting::add_filesize_check(size_t sz, std::string fn, std::string info){
+	size_t h1 = calculate_file_size(fn);
+	int fc = FAILED_CHECKS;
+	add_check(h1 == sz, info);
+	if (fc != FAILED_CHECKS){
+		std::cout<<"\t\tcurrent file size = "<<h1<<std::endl;
+		std::cout<<"\t\tinput file size   = "<<sz<<std::endl;
+	}
+}

@@ -5,6 +5,7 @@
 #include "debug_grid2d.h"
 #include "hmtesting.hpp"
 #include "hmtimer.hpp"
+#include "vtk_export_grid2d.hpp"
 using namespace HMTesting;
 
 void test01(){
@@ -156,9 +157,7 @@ void test04(){
 		pd.add_condition(1, 2, HMGrid3D::Vertex(0, 0, 3), HMGrid3D::Vertex(0, 0, 4), true);
 		pd.add_condition(3, 4, HMGrid3D::Vertex(0, 0, 3), HMGrid3D::Vertex(10, 0, 3), true);
 		HMGrid3D::Export::GridMSH.Silent(g3d, "g2.msh", pd);
-		add_file_check(16533597872948878492U, "g2.msh", "multiple periodic");
-		//#####
-		throw;
+		add_file_check(17765913577938368551U, "g2.msh", "multiple periodic");
 
 		delete g2d;
 	}

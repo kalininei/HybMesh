@@ -39,6 +39,10 @@ def list_to_c(lst, tp):
             for i in range(d):
                 ret[i] = lst[i]
             return ret
+        if tp == 'char':
+            s = ''.join([chr(x) for x in lst])
+            ret = s
+            return ret
     raise ValueError(str(tp))
 
 
@@ -64,3 +68,57 @@ def boundary_names_to_c(bnames):
 
 def free_boundary_names(c_bnames):
     libhmcport.free_boundary_names(c_bnames)
+
+
+def hmxml_new():
+    ret = libhmcport.new_writer()
+    if ret == 0:
+        raise Exception("Failed creating a xml document")
+    return ret
+
+
+def hmxml_read(fname):
+    ret = libhmcport.new_reader(fname)
+    if ret == 0:
+        raise Exception("Failed parsing file " + fname)
+    return ret
+
+
+def hmxml_finalize(writer, fname):
+    """ write to file and close"""
+    ret = libhmcport.finalize_writer(writer, fname)
+    if ret == 0:
+        raise Exception("Failed writing a xml document")
+
+
+def hmxml_free_node(node):
+    """ frees and deletes xml substructure if root """
+    libhmcport.free_hmxml_node(node)
+
+
+def hmxml_query(reader, query, required="no"):
+    """ required = "no", '>0', '=1', '=0'
+        returns hmxml nodes list
+    """
+    num = ct.c_int(0)
+    ans = (ct.c_void_p * 1000)()
+    ret = libhmcport.hmxml_query(reader, query, ct.byref(num), ans)
+    num = num.value
+    if ret == 0:
+        raise Exception("Query failed " + query)
+    try:
+        if required == '>0' and num == 0:
+            raise
+        if required == '=1' and num != 1:
+            raise
+        if required == '=0' and num != 0:
+            raise
+    except:
+        for i in range(num):
+            hmxml_free_node(ans[i])
+        raise Exception("Improper number of entries (=" + str(num) + ") for " +
+                        query)
+    ret = []
+    for i in range(num):
+        ret.append(ans[i])
+    return ret

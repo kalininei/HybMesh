@@ -9,6 +9,8 @@
 #include "trigrid.h"
 #include "hmblay.hpp"
 #include "pebi.h"
+#include "hmg_export_grid2d.hpp"
+#include "hmg_import_grid2d.hpp"
 
 
 namespace{
@@ -349,4 +351,124 @@ void* regular_hex_grid(double* area, int area_type, double cell_rad, int strict_
 		std::cout<<e.what()<<std::endl;
 		return NULL;
 	}
+}
+
+void* gwriter_create(const char* gname, void* grid, void* awriter, void* subnode, const char* fmt){
+	try{
+		HMXML::ReaderA* wr = static_cast<HMXML::ReaderA*>(awriter);
+		HMXML::Reader* sn = static_cast<HMXML::ReaderA*>(subnode);
+		GridGeom* g = static_cast<GridGeom*>(grid);
+		auto ret = new GGeom::Export::GridWriter(*g, wr, sn, gname, fmt);
+		return ret;
+	} catch (std::runtime_error& e){
+		std::cout<<e.what()<<std::endl;
+		return NULL;
+	}
+}
+
+void gwriter_free(void* gwriter){
+	delete static_cast<GGeom::Export::GridWriter*>(gwriter);
+}
+
+int gwriter_add_defined_field(void* gwriter, const char* field){
+	try{
+		auto gw = static_cast<GGeom::Export::GridWriter*>(gwriter);
+		std::string f(field);
+		if (f == "cell_edges") gw->AddCellEdgeConnectivity();
+		else if (f == "cell_vertices") gw->AddCellVertexConnectivity();
+		else throw std::runtime_error("unknown field "+f);
+		return 1;
+	} catch (std::runtime_error& e){
+		std::cout<<e.what()<<std::endl;
+		return 0;
+	}
+}
+int gwriter_add_edge_field(void* gwriter, const char* fieldname, void* field, int fsize, const char* type){
+	try{
+		auto gw = static_cast<GGeom::Export::GridWriter*>(gwriter);
+		std::string fn(fieldname);
+		std::string tpstr(type);
+		if (tpstr == "int"){
+			int* intfield = static_cast<int*>(field);
+			std::vector<int> data(intfield, intfield+fsize);
+			gw->AddEdgeData(fn, data, gw->is_binary<int>());
+		} else if (tpstr == "char"){
+			char* chrfield = static_cast<char*>(field);
+			std::vector<char> data(chrfield, chrfield+fsize);
+			gw->AddEdgeData(fn, data, gw->is_binary<char>());
+		} else if (tpstr == "double"){
+			double* chrfield = static_cast<double*>(field);
+			std::vector<double> data(chrfield, chrfield+fsize);
+			gw->AddEdgeData(fn, data, gw->is_binary<double>());
+		} else if (tpstr == "float"){
+			float* chrfield = static_cast<float*>(field);
+			std::vector<float> data(chrfield, chrfield+fsize);
+			gw->AddEdgeData(fn, data, gw->is_binary<float>());
+		} else {
+			throw std::runtime_error("unknown data type "+tpstr);
+		}
+		return 1;
+	} catch (std::runtime_error& e){
+		std::cout<<e.what()<<std::endl;
+		return 0;
+	}
+}
+
+void* greader_create(void* awriter, void* subnode, char* outname){
+	try{
+		auto wr = static_cast<HMXML::ReaderA*>(awriter);
+		auto sn = static_cast<HMXML::Reader*>(subnode);
+		//name
+		std::string nm = sn->attribute(".", "name");
+		if (nm.size()>1000) throw std::runtime_error("grid name is too long: " + nm);
+		strcpy(outname, nm.c_str());
+		//reader
+		GGeom::Import::GridReader* ret = new GGeom::Import::GridReader(wr, sn);
+		return ret;
+	} catch (std::runtime_error& e){
+		std::cout<<e.what()<<std::endl;
+		return 0;
+	}
+}
+
+void* greader_getresult(void* rd){
+	auto reader = static_cast<GGeom::Import::GridReader*>(rd);
+	return reader->result.release();
+}
+
+void* greader_read_edge_field(void* rd, const char* fieldname, const char* type){
+	try{
+		auto reader = static_cast<GGeom::Import::GridReader*>(rd);
+		std::string fname(fieldname);
+		std::string tpname(type);
+		void* ret = NULL;
+		if (tpname == "int"){
+			auto outv = reader->read_edges_field<int>(fieldname);
+			if (outv.size() != reader->Ne) throw std::runtime_error("field size doesn't match");
+			ret = new int[outv.size()];
+			std::copy(outv.begin(), outv.end(), (int*)ret);
+		} else if (tpname == "char"){
+			auto outv = reader->read_edges_field<char>(fieldname);
+			if (outv.size() != reader->Ne) throw std::runtime_error("field size doesn't match");
+			ret = new char[outv.size()];
+			std::copy(outv.begin(), outv.end(), (char*)ret);
+		} else if (tpname == "float"){
+			auto outv = reader->read_edges_field<float>(fieldname);
+			if (outv.size() != reader->Ne) throw std::runtime_error("field size doesn't match");
+			ret = new float[outv.size()];
+			std::copy(outv.begin(), outv.end(), (float*)ret);
+		} else if (tpname == "double"){
+			auto outv = reader->read_edges_field<double>(fieldname);
+			if (outv.size() != reader->Ne) throw std::runtime_error("field size doesn't match");
+			ret = new double[outv.size()];
+			std::copy(outv.begin(), outv.end(), (double*)ret);
+		}
+		return ret;
+	} catch (std::runtime_error& e){
+		return NULL;
+	}
+}
+
+void greader_free(void* greader){
+	delete (GGeom::Import::GridReader*)greader;
 }

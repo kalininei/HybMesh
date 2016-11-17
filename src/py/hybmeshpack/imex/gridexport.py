@@ -1,6 +1,4 @@
-import xml.etree.ElementTree as ET
 import itertools
-import writexml
 from hybmeshpack import hmcore as hmcore
 from hybmeshpack.hmcore import g2 as g2core
 
@@ -24,10 +22,42 @@ def _check_for_34_grid(grid):
     return c3, c4
 
 
-def hmg(grid, fname):
-    outp = ET.Element("GRID2")
-    grid.xml_save(outp)
-    writexml.writexml(outp, fname)
+def hmg(grid, gname, fname, fmt, afields):
+    c_g, c_writer, c_gwriter = 0, 0, 0
+    try:
+        c_writer = hmcore.hmxml_new()
+        for g, nm in zip(grid, gname):
+            # write
+            c_g = g2core.grid_to_c(g)
+            c_gwriter = g2core.gwriter_create(nm, c_g, c_writer, c_writer, fmt)
+            # boundary field
+            minb, maxb = 0, 0
+            if len(g.bt) > 0:
+                btypes = [0] * g.n_edges()
+                for k, v in g.bt.iteritems():
+                    btypes[k] = v
+                    maxb = max(maxb, v)
+                    minb = min(minb, v)
+                if (minb != 0 or maxb != 0):
+                    tp, tpstr = int, "int"
+                    if (minb >= -127 and maxb <= 127):
+                        tp, tpstr = "char", "char"
+                    c_btypes = hmcore.list_to_c(btypes, tp)
+                    g2core.gwriter_add_edge_field(
+                        c_gwriter, "__boundary_types__", tpstr, c_btypes)
+            # additional fields
+            for f in afields:
+                g2core.gwriter_add_field(c_gwriter, f)
+            # free data
+            g2core.free_gwriter(c_gwriter) if c_gwriter != 0 else None
+            g2core.free_c_grid(c_g) if c_g != 0 else None
+            c_g, c_gwriter = 0, 0
+    except:
+        raise
+    finally:
+        g2core.free_c_grid(c_g) if c_g != 0 else None
+        g2core.free_gwriter(c_gwriter) if c_gwriter != 0 else None
+        hmcore.hmxml_finalize(c_writer, fname) if c_writer != 0 else None
 
 
 def vtk(grid, fname):

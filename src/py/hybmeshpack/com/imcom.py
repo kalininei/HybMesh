@@ -1,12 +1,14 @@
 import os.path
 import itertools
+import re
 from hybmeshpack import gdata
 import hybmeshpack.basic.geom as bg
 from hybmeshpack.basic.geom import Point2
 import contcom
 import command
 import objcom
-import re
+from hybmeshpack import hmcore as hmcore
+from hybmeshpack.hmcore import g2 as g2core
 
 
 # ====================== Abstract Import Commands
@@ -14,7 +16,7 @@ class _AbstractImport(objcom.AbstractAddRemove):
     'Import basic class'
     def __init__(self, argsdict):
         if 'name' not in argsdict:
-            argsdict['name'] = 'Grid1'
+            argsdict['name'] = ""
         super(_AbstractImport, self).__init__(argsdict)
 
     def _addrem_objects(self):
@@ -23,10 +25,32 @@ class _AbstractImport(objcom.AbstractAddRemove):
             cont, grid = self._read_data()
         except Exception as e:
             raise command.ExecutionError("Import failure", self, e)
+        glist, clist = [], []
         if cont is not None:
-            return [], [], [(self.options['name'], cont)], []
+            if isinstance(cont, list):
+                for i in range(len(cont)):
+                    clist.append((self._get_cname(i), cont[i]))
+            else:
+                clist = [(self._get_cname(0), cont)]
         elif grid is not None:
-            return [(self.options['name'], grid)], [], [], []
+            if isinstance(grid, list):
+                for i in range(len(grid)):
+                    glist.append((self._get_gname(i), grid[i]))
+            else:
+                glist = [(self._get_gname(0), grid)]
+        return glist, [], clist, [], [], []
+
+    def _get_gname(self, i):
+        if self.options['name'] == '':
+            return "Grid1"
+        else:
+            return self.options['name']
+
+    def _get_cname(self, i):
+        if self.options['name'] == '':
+            return "Contour1"
+        else:
+            return self.options['name']
 
     def __check_file_existance(self):
         'checks self.filename existance and offers to enter new filename'
@@ -190,13 +214,74 @@ class ImportGridNative(_AbstractImportGrid):
         """
         return {'name': command.BasicOption(str),
                 'filename': command.BasicOption(str),
+                'gridname': command.BasicOption(str)
                 }
 
     #overriding
+    def _get_gname(self, i):
+        return self._gname
+
     def _read_grid(self):
-        import xml.etree.ElementTree as ET
-        xmlnode = ET.parse(self.options['filename']).getroot()
-        return gdata.grid2.Grid2.create_from_xml(xmlnode)
+        so = self.options
+        c_reader, c_greader = 0, []
+        try:
+            # find node
+            c_reader = hmcore.hmxml_read(so['filename'])
+            qline = "GRID2D" if so['gridname'] == '' else\
+                "GRID2D[@name='" + so['gridname'] + "']"
+            c_greader = hmcore.hmxml_query(c_reader, qline, required=">0")
+            # construct grid
+            g, self._gname = g2core.grid_from_hmxml(c_reader, c_greader[0])
+            return g
+        except Exception:
+            raise
+        finally:
+            for gr in c_greader:
+                hmcore.hmxml_free_node(gr)
+            hmcore.hmxml_free_node(c_reader) if c_reader != 0 else None
+
+
+class ImportGridsNative(_AbstractImport):
+    'Import all grids from a file'
+    def __init__(self, argsdict):
+        super(ImportGridsNative, self).__init__(argsdict)
+
+    def doc(self):
+        return "Import grids from %s" % os.path.basename(
+            self.options['filename'])
+
+    @classmethod
+    def _arguments_types(cls):
+        """ name - new grids name,
+            filename - filename
+        """
+        return {'name': command.BasicOption(str),
+                'filename': command.BasicOption(str),
+                }
+
+    def _get_gname(self, i):
+        return self._gnames[i]
+
+    def _read_data(self):
+        so = self.options
+        c_reader, c_greader = 0, []
+        try:
+            # find node
+            c_reader = hmcore.hmxml_read(so['filename'])
+            c_greader = hmcore.hmxml_query(c_reader, "GRID2D", required=">0")
+            # construct grid
+            grids = [None] * len(c_greader)
+            self._gnames = [None] * len(c_greader)
+            for i in range(len(c_greader)):
+                grids[i], self._gnames[i] =\
+                    g2core.grid_from_hmxml(c_reader, c_greader[i])
+            return None, grids
+        except Exception:
+            raise
+        finally:
+            for gr in c_greader:
+                hmcore.hmxml_free_node(gr)
+            hmcore.hmxml_free_node(c_reader) if c_reader != 0 else None
 
 
 class ImportGridMSH(_AbstractImportGrid):

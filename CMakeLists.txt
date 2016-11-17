@@ -143,6 +143,8 @@ if (WIN32)
 else(WIN32)
 	find_package(SuiteSparse REQUIRED)
 endif()
+#libxml2
+find_package(LibXML2 REQUIRED)
 #libhmproject: HMPROJECT_INCLUDE, HMPROJECT_TARGET
 set(HMPROJECT_INCLUDE "${CMAKE_SOURCE_DIR}/src/libs/hmproject")
 set(HMPROJECT_TARGET hmproject)

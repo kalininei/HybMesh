@@ -6,6 +6,7 @@
 #include "hmtesting.hpp"
 #include "hmcallback.hpp"
 #include "debug_grid2d.h"
+#include "hmxmlreader.hpp"
 namespace{
 int silent2_function(const char*, const char*, double, double){
 	return HMCallback::OK;
@@ -664,4 +665,54 @@ Grid* build_grid_mapping(void* base_grid, void* target_contour, int Npnt,
 	return ret;
 }
 
+void* new_writer(){
+	try{
+		HMXML::Reader* ret = HMXML::ReaderA::pcreate("HybMeshData");
+		return ret;
+	} catch (const std::exception &e){
+		std::cout<<e.what()<<std::endl;
+		return 0;
+	}
+}
+void* new_reader(const char* fn){
+	try{
+		HMXML::Reader* ret = new HMXML::ReaderA(fn, "</HybMeshData>");
+		return ret;
+	} catch (const std::exception &e){
+		std::cout<<e.what()<<std::endl;
+		return 0;
+	}
+}
+int finalize_writer(void* writer, const char* fn){
+	try{
+		HMXML::ReaderA* wr = static_cast<HMXML::ReaderA*>(writer);
+		if (fn!=NULL) wr->write(fn);
+		delete wr;
+		return 1;
+	} catch (const std::exception &e){
+		std::cout<<e.what()<<std::endl;
+		return 0;
+	}
+}
 
+void free_hmxml_node(void* node){
+	HMXML::Reader* n = static_cast<HMXML::Reader*>(node);
+	if (n->isroot) n->Free();
+	delete n;
+}
+
+int hmxml_query(void* node, const char* q, int* num, void** ans){
+	try{
+		HMXML::Reader* wr = static_cast<HMXML::Reader*>(node);
+		vector<HMXML::Reader> fnd = wr->findall_by_path(q);
+		*num = fnd.size();
+		if (*num > 1000) throw std::runtime_error("query result entries number of too big (>1000)");
+		for (int i=0; i<*num; ++i){
+			ans[i] = new HMXML::Reader(fnd[i]);
+		}
+		return 1;
+	} catch (const std::exception &e){
+		std::cout<<e.what()<<std::endl;
+		return 0;
+	}
+}

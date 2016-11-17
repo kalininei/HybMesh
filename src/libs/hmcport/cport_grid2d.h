@@ -84,6 +84,24 @@ void* stripe_grid(void* input_contour, int npart, double* part, int tip_algo,
 //  =0 -- rectangle given by two points
 //  =1 -- hexagon given by center point and radius
 void* regular_hex_grid(double* area, int area_type, double cell_rad, int strict_area);
+
+
+// =========================== writing procedures
+//awriter -- ReaderA instance
+//subnode -- Reader* instance which is a child node of ReaderA document
+//fmt -- "ascii", "bin", "fbin"
+//returns Reader* or 0 if error
+void* gwriter_create(const char* gname, void* grid, void* awriter, void* subnode, const char* fmt);
+void gwriter_free(void* gwriter);
+
+int gwriter_add_defined_field(void* gwriter, const char* field);
+int gwriter_add_edge_field(void* gwriter, const char* fieldname, void* field, int fsize, const char* type);
+
+void* greader_create(void* awriter, void* subnode, char* outname);
+void* greader_getresult(void* rd);
+void* greader_read_edge_field(void* rd, const char* fieldname, const char* type);
+void greader_free(void* greader);
+
 }
 
 #endif

@@ -5,5 +5,5 @@ source ../../src/libs/dbgscripts/hmout.gdb
 
 file ./crossgrid_test
 set breakpoint pending on
-b procgrid.cpp:384
+b hmg_import_grid2d.cpp:10
 run 

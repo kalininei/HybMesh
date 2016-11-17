@@ -11,9 +11,12 @@
 #include "pebi.h"
 #include "vtk_export_grid2d.hpp"
 #include "fluent_export_grid2d.hpp"
+#include "hmg_export_grid2d.hpp"
+#include "hmg_import_grid2d.hpp"
 
 using HMTesting::add_check;
 using HMTesting::add_file_check;
+using HMTesting::add_filesize_check;
 
 std::pair<int, int> number_of_nonconv_cells(Grid* g){
 	if (g==NULL) return std::make_pair(-1, -1);
@@ -494,10 +497,10 @@ void test23(){
 	g3.reset(g1.cross_grids(&g1, &g2, 0.1, 0, false, true, 30, 0));
 	bcond = build_bcond(g3, bfun1);
 	GGeom::Export::GridMSH(*g3, "g1.msh", bcond);
-	add_file_check(15893027580021721711U, "g1.msh", "grid to fluent");
+	add_file_check(8029457482738671822U, "g1.msh", "grid to fluent");
 
 	GGeom::Export::GridMSH(*g3, "g1.msh", bcond, [](int i){ return (i==2)?"sqr":"circ";});
-	add_file_check(13567052695965143606U, "g1.msh", "grid to fluent with bnd names");
+	add_file_check(4520008089953141941U, "g1.msh", "grid to fluent with bnd names");
 
 	g3.reset(new GridGeom(GGeom::Constructor::RectGrid01(4,4)));
 	auto bfun2 = [](double x, double y)->int{
@@ -530,7 +533,7 @@ void test23(){
 				if (i==3 || i==4) return "periodic-long";
 				return "no-periodic";
 			}, dt);
-	add_file_check(6293386343646303224U, "g1.msh", "periodic with complicated mesh");
+	add_file_check(17350801960821790081U, "g1.msh", "periodic with complicated mesh");
 
 }
 
@@ -551,8 +554,109 @@ void test24(){
 	add_file_check(17100147952211891031U, "g2.vtk", "pebi points out of area");
 	}
 }
+void test25(){
+	std::cout<<"25. Import/Export"<<std::endl;
+
+	auto g1 = GGeom::Constructor::RectGrid01(3, 3);
+	auto g2 = GGeom::Constructor::Circle(Point(0, 0), 10, 10, 4, false);
+
+	//mixed
+	auto writer = GGeom::Export::GridHMG(g1, "g1.hmg", "grid1", "ascii");
+	writer.AddCellVertexConnectivity();
+	writer.AddCellEdgeConnectivity();
+	std::vector<int> somedata1(g1.n_cells(), 2);
+	std::vector<int> somedata2(g1.n_cells(), 1);
+	writer.AddCellData("data1", somedata1, false);
+	writer.AddCellData("data1", somedata2, false);
+	writer.AddEdgeData("data3", vector<double>(24, 0.123), true);
+	writer.AddVertexData("data2", vector<char>(g1.n_points(), 12), true);
+	writer.AddEdgeData("vecdata", vector<vector<float>>(24, vector<float>(5, -1./6.)), false);
+	vector<vector<char>> cd(g1.n_cells(), vector<char>(2, 23));
+	cd[0].resize(3, 0);
+	writer.AddCellData("vecdata1", cd, false);
+	writer.AddCellData("vecdata2", cd, true);
+	writer.Flush();
+	add_filesize_check(3656, "g1.hmg", "mixed grid output");
+
+	//pure binary
+	auto writer2 = GGeom::Export::GridHMG(g1, "g2.hmg", "grid1", "bin");
+	writer2.AddCellEdgeConnectivity();
+	writer2.Flush();
+	add_filesize_check(1444, "g2.hmg", "binary grid output");
+
+	//multiple grids output
+	//ascii
+	auto writer3 = GGeom::Export::MultipleGridsHMG({&g1, &g2}, {"grid1", "grid2"}, "g3.hmg", "ascii");
+	writer3.sub(0)->AddCellEdgeConnectivity();
+	writer3.sub(1)->AddCellVertexConnectivity();
+	writer3.sub(1)->AddCellVertexConnectivity();
+	writer3.Flush();
+	add_filesize_check(4154, "g3.hmg", "multiple grid output ascii");
+
+	//binary
+	auto writer4 = GGeom::Export::MultipleGridsHMG({&g1, &g2}, {"grid1", "grid2"}, "g4.hmg", "bin");
+	writer4.sub(0)->AddCellEdgeConnectivity();
+	writer4.sub(1)->AddCellVertexConnectivity();
+	writer4.sub(0)->AddCellData("somedata", vector<vector<float>>(9, vector<float>(2, 1.)), false);
+	writer4.Flush();
+	add_filesize_check(4568, "g4.hmg", "multiple grid output binary");
+
+	//bin floats
+	auto writer5 = GGeom::Export::MultipleGridsHMG({&g1, &g2}, {"grid1", "grid2"}, "g5.hmg", "binfloat");
+	writer5.sub(0)->AddCellEdgeConnectivity();
+	writer5.sub(1)->AddCellVertexConnectivity();
+	writer5.sub(0)->AddCellData("somedata", vector<vector<float>>(9, vector<float>(2, 1.)), false);
+	writer5.Flush();
+	add_filesize_check(3580, "g5.hmg", "multiple grid output binary floats");
+
+	// ================================ READER
+	auto rd1 = GGeom::Import::GridHMG("g1.hmg");
+	auto& r1 = rd1.result;
+	GGeom::Export::GridVTK(g1, "g1.vtk");
+	GGeom::Export::GridVTK(*r1, "g2.vtk");
+	add_file_check("g1.vtk", "g2.vtk", "read ascii grid");
+
+	auto r2 = GGeom::Import::GridHMG("g2.hmg").result;
+	GGeom::Export::GridVTK(*r2, "g3.vtk");
+	add_file_check("g1.vtk", "g3.vtk", "read binary grid");
+
+	auto vf = rd1.vertices_fields();
+	auto ef = rd1.edges_fields();
+	auto cf = rd1.cells_fields();
+	add_check(vf.size()==1 && ef.size()==2 && cf.size()==5, "read field names");
+
+	add_check(
+		[&](){
+			vector<int> v = rd1.read_vertices_field<int>("data2"); 
+			for (auto it: v) if (it != 12) return false;
+			return true; }(),
+		"reading char binary field with converting to int");
+
+	add_check(
+		[&](){
+			vector<vector<long>> v = rd1.read_cells_vecfield<long>("__cell_vertices__");
+			for (auto it: v) if (it.size()!=4) return false;
+			if (v[3][1]!=5) return false;
+			if (v[1][3]!=5) return false;
+			return true; }(),
+		"reading int vector[4] field with converting to long");
+	add_check(
+		[&](){
+			vector<vector<double>> v = rd1.read_cells_vecfield<double>("vecdata2");
+			if (v.size() != 9) return false;
+			if (v[0].size() != 3) return false;
+			if (v[8].size() != 2) return false;
+			if (v[0][2] != 0) return false;
+			for (int i=0; i<v.size(); ++i)
+				if (v[i][0] != 23 || v[i][1] != 23) return false;
+			return true; }(),
+		"reading variable length vector");
+
+
+}
 
 int main(){
+	/*
 	crossgrid_internal_tests();
 	test1();
 	test2();
@@ -578,6 +682,8 @@ int main(){
 	test22();
 	test23();
 	test24();
+	*/
+	test25();
 
 	HMTesting::check_final_report();
 	std::cout<<"DONE"<<std::endl;

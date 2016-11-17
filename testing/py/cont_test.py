@@ -3,7 +3,6 @@ from hybmeshpack.hmscript._dbg import check, check_ascii_file
 global hm, check
 hm.check_compatibility("0.4.3")
 
-
 def check_cont(cont, nn, ne, scont, btypes):
     info = hm.info_contour(cont)
     check(info['Nnodes'] == nn)

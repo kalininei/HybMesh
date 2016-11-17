@@ -196,6 +196,13 @@ Grid* build_grid_mapping(void* base_grid, void* target_contour, int Npnt,
 		int return_invalid,
 		hmcport_callback cb);
 
+//0 on errors
+void* new_writer();
+int finalize_writer(void* writer, const char* fn);
+void* new_reader(const char* fn);
+void free_hmxml_node(void* node);
+int hmxml_query(void* node, const char* q, int* num, void** ans);
+
 
 }; //extern C
 

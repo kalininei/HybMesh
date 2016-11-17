@@ -11,9 +11,15 @@ def check(cond):
         traceback.print_stack()
 
 
+def checkdict(data, kv):
+    for k, v in kv.iteritems():
+        if k not in data or v != data[k]:
+            check(False)
+
+
 def check_ascii_file(test_hash, fname, opt=""):
     """ Checks ascii file for the hash value.
-        all float numbers are rounded, '\r' sybmols deleted before 
+        all float numbers are rounded, '\r' sybmols deleted before
         hash calculating.
         Possible opt values:
           "" - checks always

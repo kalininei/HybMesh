@@ -51,6 +51,8 @@ def export_grid(fmt, fn, name, fw=None, flow=None, adata=None):
                  .....]
         msh3d - [btype_per, btype_shadow, Point btype_per, Point btype_shadow,
                  .....]
+      * hmg: defines format and a list of additional fields to export:
+           {"fmt": format, "afields": [list of filds]}
     """
     # 1. Find grid
     try:
@@ -66,7 +68,9 @@ def export_grid(fmt, fn, name, fw=None, flow=None, adata=None):
                 _, _, g = fw.get_grid(name=nm)
             grid.append(g)
 
-        if len(grid) == 1:
+        if fmt[:3] == 'hmg':
+            gsum = grid
+        elif len(grid) == 1:
             gsum = grid[0]
         else:
             if fmt[-2:] == '3d':
@@ -82,12 +86,14 @@ def export_grid(fmt, fn, name, fw=None, flow=None, adata=None):
         else:
             callb = None
     except:
-        raise 
+        raise
     # 2. Export regarding to format
     if fmt == 'vtk':
         gridexport.vtk(gsum, fn)
     elif fmt == 'hmg':
-        gridexport.hmg(gsum, fn)
+        hmgfmt = adata['fmt'] if 'fmt' in adata else 'ascii'
+        hmgaf = adata['afields'] if 'afields' in adata else None
+        gridexport.hmg(gsum, name, fn, hmgfmt, hmgaf)
     elif fmt == 'msh':
         gridexport.msh(gsum, fn, fw.boundary_types, adata)
     elif fmt == 'ggen':

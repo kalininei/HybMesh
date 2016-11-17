@@ -12,6 +12,7 @@ add_executable (${CROSSGRID_EXNAME} ${HEADERS} ${SOURCES})
 
 target_link_libraries(${CROSSGRID_EXNAME} ${CROSSGRID_TARGET})
 target_link_libraries(${CROSSGRID_EXNAME} ${HMCPORT_TARGET})
+target_link_libraries(${CROSSGRID_EXNAME} ${HMPROJECT_TARGET})
 
 include_directories(${CommonInclude})
 include_directories(${CROSSGRID_INCLUDE})

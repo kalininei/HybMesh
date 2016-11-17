@@ -28,12 +28,19 @@ fi
 if [ $DO_UNIT_TESTS -eq 1 ]
 then
 	echo "============ doing unit tests"
+	echo "--- cont_test.py"
 	$HMCOM cont_test.py
+	echo "--- exclude_test.py"
 	$HMCOM exclude_test.py
+	echo "--- bgrid_test.py"
 	$HMCOM bgrid_test.py
+	echo "--- unite_test.py"
 	$HMCOM unite_test.py
+	echo "--- imex_test.py"
 	$HMCOM imex_test.py
+	echo "--- mapping_test.py"
 	$HMCOM mapping_test.py
+	echo "--- extrude_test.py"
 	$HMCOM extrude_test.py
 else
 	echo "============ ignoring unit tests"

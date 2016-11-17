@@ -1,7 +1,7 @@
 from hybmeshpack import hmscript as hm
-from hybmeshpack.hmscript._dbg import check, check_ascii_file
+from hybmeshpack.hmscript._dbg import check, check_ascii_file, checkdict
 import math
-global hm, check, math
+global hm, check, checkdict, math
 hm.check_compatibility("0.4.3")
 
 g1 = hm.add_unf_rect_grid([0, 0], [5, 1], 10, 10)
@@ -23,10 +23,12 @@ a1 = hm.map_grid(
     [[0, 0], [5, 0], [5, 1], [0, 1]],
     [[0, 0], [1, 0], [1, 1], [0, 1]],
     snap="no", btypes="from_contour")
-check(hm.info_grid(a1) ==
-      {'cell_types': {4: 100}, 'Nnodes': 121, 'Nedges': 220, 'Ncells': 100})
-check(hm.info_contour(a1) ==
-      {'btypes': {2: 40}, 'Nnodes': 40, 'subcont': [40], 'Nedges': 40})
+checkdict(
+    hm.info_grid(a1),
+    {'cell_types': {4: 100}, 'Nnodes': 121, 'Nedges': 220, 'Ncells': 100})
+checkdict(
+    hm.info_contour(a1),
+    {'btypes': {2: 40}, 'Nnodes': 40, 'subcont': [40], 'Nedges': 40})
 hm.export_grid_vtk(a1, "g1.vtk")
 
 print "rectangle to square with sine edges: no, from_grid"
@@ -36,10 +38,12 @@ a2 = hm.map_grid(
     [[0, 0], [1, 0], [1, 1], [0, 1]],
     algo="direct_laplace",
     snap="no", btypes="from_grid")
-check(hm.info_grid(a2) ==
-      {'cell_types': {4: 100}, 'Nnodes': 121, 'Nedges': 220, 'Ncells': 100})
-check(hm.info_contour(a2) ==
-      {'btypes': {1: 40}, 'Nnodes': 40, 'subcont': [40], 'Nedges': 40})
+checkdict(
+    hm.info_grid(a2),
+    {'cell_types': {4: 100}, 'Nnodes': 121, 'Nedges': 220, 'Ncells': 100})
+checkdict(
+    hm.info_contour(a2),
+    {'btypes': {1: 40}, 'Nnodes': 40, 'subcont': [40], 'Nedges': 40})
 
 
 print "rectangle to square with sine edges: add_vertices, from_contour"
@@ -48,11 +52,13 @@ a3 = hm.map_grid(
     [[0, 0], [5, 0], [5, 1], [0, 1]],
     [[0, 0], [1, 0], [1, 1], [0, 1]],
     snap="add_vertices", btypes="from_contour")
-check(hm.info_grid(a3) ==
-      {'cell_types': {11: 4, 4: 80, 13: 4, 14: 4, 15: 8},
-       'Nnodes': 313, 'Nedges': 412, 'Ncells': 100})
-check(hm.info_contour(a3) ==
-      {'btypes': {2: 232}, 'Nnodes': 232, 'subcont': [232], 'Nedges': 232})
+checkdict(
+    hm.info_grid(a3),
+    {'cell_types': {11: 4, 4: 80, 13: 4, 14: 4, 15: 8},
+     'Nnodes': 313, 'Nedges': 412, 'Ncells': 100})
+checkdict(
+    hm.info_contour(a3),
+    {'btypes': {2: 232}, 'Nnodes': 232, 'subcont': [232], 'Nedges': 232})
 
 print "rectangle to square with sine edges: add_vertices, from_grid"
 a4 = hm.map_grid(
@@ -60,11 +66,13 @@ a4 = hm.map_grid(
     [[0, 0], [5, 0], [5, 1], [0, 1]],
     [[0, 0], [1, 0], [1, 1], [0, 1]],
     snap="add_vertices", btypes="from_grid")
-check(hm.info_grid(a4) ==
-      {'cell_types': {11: 4, 4: 80, 13: 4, 14: 4, 15: 8},
-       'Nnodes': 313, 'Nedges': 412, 'Ncells': 100})
-check(hm.info_contour(a4) ==
-      {'btypes': {1: 232}, 'Nnodes': 232, 'subcont': [232], 'Nedges': 232})
+checkdict(
+    hm.info_grid(a4),
+    {'cell_types': {11: 4, 4: 80, 13: 4, 14: 4, 15: 8},
+     'Nnodes': 313, 'Nedges': 412, 'Ncells': 100})
+checkdict(
+    hm.info_contour(a4),
+    {'btypes': {1: 232}, 'Nnodes': 232, 'subcont': [232], 'Nedges': 232})
 
 print "rectangle to square with sine edges: shift_vertices, from_contour"
 a5 = hm.map_grid(
@@ -72,10 +80,12 @@ a5 = hm.map_grid(
     [[0, 0], [5, 0], [5, 1], [0, 1]],
     [[0, 0], [1, 0], [1, 1], [0, 1]],
     snap="shift_vertices", btypes="from_contour")
-check(hm.info_grid(a5) ==
-      {'cell_types': {4: 100}, 'Nnodes': 121, 'Nedges': 220, 'Ncells': 100})
-check(hm.info_contour(a5) ==
-      {'btypes': {2: 40}, 'Nnodes': 40, 'subcont': [40], 'Nedges': 40})
+checkdict(
+    hm.info_grid(a5),
+    {'cell_types': {4: 100}, 'Nnodes': 121, 'Nedges': 220, 'Ncells': 100})
+checkdict(
+    hm.info_contour(a5),
+    {'btypes': {2: 40}, 'Nnodes': 40, 'subcont': [40], 'Nedges': 40})
 
 print "rectangle to square with sine edges: shift_vertices, from_grid"
 a6 = hm.map_grid(
@@ -83,10 +93,12 @@ a6 = hm.map_grid(
     [[0, 0], [5, 0], [5, 1], [0, 1]],
     [[0, 0], [1, 0], [1, 1], [0, 1]],
     snap="shift_vertices", btypes="from_grid")
-check(hm.info_grid(a6) ==
-      {'cell_types': {4: 100}, 'Nnodes': 121, 'Nedges': 220, 'Ncells': 100})
-check(hm.info_contour(a6) ==
-      {'btypes': {1: 40}, 'Nnodes': 40, 'subcont': [40], 'Nedges': 40})
+checkdict(
+    hm.info_grid(a6),
+    {'cell_types': {4: 100}, 'Nnodes': 121, 'Nedges': 220, 'Ncells': 100})
+checkdict(
+    hm.info_contour(a6),
+    {'btypes': {1: 40}, 'Nnodes': 40, 'subcont': [40], 'Nedges': 40})
 
 print "rectangle grid from 2 straight contours: linear algo"
 left_line = hm.create_contour([[0, 0], [0, 1]], 1)

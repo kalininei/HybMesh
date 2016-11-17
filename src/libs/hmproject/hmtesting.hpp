@@ -16,8 +16,14 @@ namespace HMTesting{
 	//compares two files
 	void add_file_check(std::string fn1, std::string fn2, std::string info);
 
+	//compares file sizes
+	void add_filesize_check(size_t sz, std::string fn, std::string info);
+
 	//calculate ascii file content hash with float rounding
 	size_t calculate_file_hash(std::string fn);
+
+	//file size
+	size_t calculate_file_size(std::string fn);
 
 	//returns number of failed checks;
 	int failed_num();
