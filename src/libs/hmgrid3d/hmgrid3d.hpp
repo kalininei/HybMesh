@@ -8,6 +8,8 @@
 #include "fluent_export_grid3d.hpp"
 #include "vtk_export_grid3d.hpp"
 #include "tecplot_export_grid3d.hpp"
+#include "hmg_export_grid3d.hpp"
+#include "hmg_import_grid3d.hpp"
 
 
 #endif

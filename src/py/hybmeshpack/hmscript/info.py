@@ -81,6 +81,12 @@ def registered_grids():
     return data.get_grid_names()
 
 
+def registered_grids3d():
+    """ Returns list of all grids identifiers
+    """
+    return data.get_grid3_names()
+
+
 def registered_btypes():
     """ Returns list of all boundary types as (index, name) tuples
     """

@@ -3,6 +3,8 @@
 #include "grid.h"
 #include "hmgrid3d.hpp"
 
+using HMGrid3D::SGrid;
+
 namespace{
 HMGrid3D::SGrid& hmgrid(CPortGrid3D* g){
 	return *static_cast<HMGrid3D::SGrid*>(g);
@@ -75,7 +77,7 @@ CPortGrid3D* grid2_sweep_z(const Grid* g, const Grid2DBoundaryStruct* bc,
 				*gg, z, botfun, topfun, sidefun)
 			);
 		return ret;
-	} catch (const std::runtime_error &e) {
+	} catch (const std::exception &e) {
 		if (ret != NULL) delete ret;
 		std::cout<<e.what()<<std::endl;
 		return NULL;
@@ -99,7 +101,7 @@ CPortGrid3D* grid2_revolve(Grid* g, double* vec, int n_phi, double* phi,
 			[b1](int){ return b1; }, [b2](int){ return b2; });
 		HMGrid3D::Vertex::Unscale2D(ser.vvert, sc);
 		ret = new HMGrid3D::SGrid(std::move(ser));
-	} catch (const std::runtime_error &e){
+	} catch (const std::exception &e){
 		std::cout<<e.what()<<std::endl;
 		if (ret != NULL) {free_grid3d(ret); ret = NULL; }
 	}
@@ -113,7 +115,7 @@ int export_vtk_grid3(const CPortGrid3D* grid, const char* fname, hmcport_callbac
 	try{
 		HMGrid3D::Export::GridVTK.WithCallback(f2, hmgrid(grid), fname);
 		return 0;
-	} catch (const std::runtime_error &e) {
+	} catch (const std::exception &e) {
 		std::cout<<e.what()<<std::endl;
 		return 1;
 	}
@@ -123,7 +125,7 @@ int export_surface_vtk_grid3(const CPortGrid3D* grid, const char* fname, hmcport
 	try{
 		HMGrid3D::Export::BoundaryVTK.WithCallback(f2, hmgrid(grid), fname);
 		return 0;
-	} catch (const std::runtime_error &e) {
+	} catch (const std::exception &e) {
 		std::cout<<e.what()<<std::endl;
 		return 1;
 	}
@@ -172,7 +174,7 @@ int export_msh_grid3(const CPortGrid3D* grid, const char* fname, const BoundaryN
 			HMGrid3D::Export::GridMSH.WithCallback(f2, hmgrid(grid), fname, nmfunc, pd);
 		}
 		return 0;
-	} catch (const std::runtime_error &e){
+	} catch (const std::exception &e){
 		std::cout<<e.what()<<std::endl;
 		return 1;
 	}
@@ -184,8 +186,75 @@ int export_tecplot_grid3(const CPortGrid3D* grid, const char* fname, const Bound
 		auto nmfunc = construct_bnames(bnames);
 		HMGrid3D::Export::GridTecplot.WithCallback(f2, hmgrid(grid), fname, nmfunc);
 		return 0;
-	} catch (const std::runtime_error &e){
+	} catch (const std::exception &e){
 		std::cout<<e.what()<<std::endl;
 		return 1;
+	}
+}
+
+void* g3writer_create(const char* gname, void* grid, void* awriter, void* subnode,
+		const char* fmt){
+	try{
+		HMXML::ReaderA* wr = static_cast<HMXML::ReaderA*>(awriter);
+		HMXML::Reader* sn = static_cast<HMXML::Reader*>(subnode);
+		SGrid* g = static_cast<SGrid*>(grid);
+		auto ret = new HMGrid3D::Export::GridWriter(*g, wr, sn, gname, fmt);
+		return ret;
+	} catch (const std::exception &e){
+		std::cout<<e.what()<<std::endl;
+		return 0;
+	}
+}
+void g3writer_free(void* gwriter){
+	try{
+		delete static_cast<HMGrid3D::Export::GridWriter*>(gwriter);
+	} catch (const std::exception &e){
+		std::cout<<e.what()<<std::endl;
+	}
+}
+int g3writer_add_defined_field(void* gwriter, const char* field){
+	try{
+		auto gw = static_cast<HMGrid3D::Export::GridWriter*>(gwriter);
+		std::string f(field);
+		if (f == "face_vertices") gw->AddFaceVertexConnectivity();
+		else if (f == "cell_faces") gw->AddCellFaceConnectivity();
+		else if (f == "cell_vertices") gw->AddCellVertexConnectivity();
+		else throw std::runtime_error("unknown field "+f);
+		return 1;
+	} catch (const std::exception &e){
+		std::cout<<e.what()<<std::endl;
+		return 0;
+	}
+}
+void* g3reader_create(void* awriter, void* subnode, char* outname, hmcport_callback f2){
+	try{
+		auto wr = static_cast<HMXML::ReaderA*>(awriter);
+		auto sn = static_cast<HMXML::Reader*>(subnode);
+		//name
+		std::string nm = sn->attribute(".", "name");
+		if (nm.size()>1000) throw std::runtime_error("grid name is too long: " + nm);
+		strcpy(outname, nm.c_str());
+		//reader
+		auto ret = HMGrid3D::Import::ReadHMG.WithCallback(f2, wr, sn);
+		return ret.release();
+	} catch (const std::exception &e){
+		std::cout<<e.what()<<std::endl;
+		return 0;
+	}
+}
+void* g3reader_getresult(void* rd){
+	try{
+		auto reader = static_cast<HMGrid3D::Import::GridReader*>(rd);
+		return reader->result.release();
+	} catch (const std::exception &e){
+		std::cout<<e.what()<<std::endl;
+		return 0;
+	}
+}
+void g3reader_free(void* greader){
+	try{
+		delete (HMGrid3D::Import::GridReader*)greader;
+	} catch (const std::exception &e){
+		std::cout<<e.what()<<std::endl;
 	}
 }

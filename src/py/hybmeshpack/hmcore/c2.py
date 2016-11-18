@@ -51,6 +51,37 @@ def cont2_from_c(c_cont, c_bnd=None):
     return ret
 
 
+def contour_from_hmxml(reader, subnode):
+    """ returns (python side contour, its name in hmxml file)"""
+    creader, c_c = 0, 0
+    try:
+        name = ct.create_string_buffer(1000)
+        creader = libhmcport.creader_create(reader, subnode, name)
+        if creader == 0:
+            raise Exception("Failed to assemble a contour")
+        # read grid
+        c_c = libhmcport.creader_getresult(creader)
+        c = cont2_from_c(c_c)
+
+        # read boundary types
+        libhmcport.creader_read_edge_field.restype = ct.POINTER(ct.c_int)
+        bnd = libhmcport.creader_read_edge_field(
+            creader, "__boundary_types__", "int")
+        edgebt = {}
+        if bnd:
+            for i in range(c.n_edges()):
+                if bnd[i] != 0:
+                    edgebt[i] = bnd[i]
+            c.set_edge_bnd(edgebt)
+            libhmcport.free_int_array(bnd)
+        return c, str(name.value)
+    except:
+        raise
+    finally:
+        free_cont2(c_c) if c_c != 0 else None
+        libhmcport.creader_free(creader) if creader != 0 else None
+
+
 def free_cont2(cont):
     """ frees pointer to ecollection container"""
     libhmcport.free_ecollection_container(cont)
@@ -170,3 +201,39 @@ def segment_part(start, end, hstart, hend, hinternal):
     libhmcport.free_double_array(c_resh)
 
     return ret
+
+
+def cwriter_create(contname, c_c, c_writer, c_sub, fmt):
+    ret = libhmcport.cwriter_create(contname, c_c, c_writer, c_sub, fmt)
+    if ret == 0:
+        raise Exception("Error writing contour to hmc")
+    else:
+        return ret
+
+
+def cwriter_add_edge_field(c_cwriter, fname, fieldtype, c_field):
+    ret = 0
+    if fieldtype == "int":
+        ret = libhmcport.cwriter_add_edge_field(
+            c_cwriter, fname, ct.cast(c_field, ct.c_void_p),
+            ct.c_int(len(c_field)), "int")
+    elif fieldtype == "char":
+        ret = libhmcport.cwriter_add_edge_field(
+            c_cwriter, fname, ct.cast(c_field, ct.c_void_p),
+            ct.c_int(len(c_field)), "char")
+    elif fieldtype == "double":
+        ret = libhmcport.cwriter_add_edge_field(
+            c_cwriter, fname, ct.cast(c_field, ct.c_void_p),
+            ct.c_int(len(c_field)), "double")
+    elif fieldtype == "float":
+        ret = libhmcport.cwriter_add_edge_field(
+            c_cwriter, fname, ct.cast(c_field, ct.c_void_p),
+            ct.c_int(len(c_field)), "float")
+    if ret == 0:
+        raise Exception("Error writing edge field to a contour")
+    else:
+        return ret
+
+
+def free_cwriter(c_cwriter):
+    libhmcport.cwriter_free(c_cwriter)

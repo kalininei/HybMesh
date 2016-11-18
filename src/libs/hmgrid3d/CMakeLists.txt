@@ -9,6 +9,8 @@ set (HEADERS
 	fluent_export_grid3d.hpp
 	vtk_export_grid3d.hpp
 	tecplot_export_grid3d.hpp
+	hmg_export_grid3d.hpp
+	hmg_import_grid3d.hpp
 )
 
 set (SOURCES
@@ -22,6 +24,8 @@ set (SOURCES
 	fluent_export_grid3d.cpp
 	vtk_export_grid3d.cpp
 	tecplot_export_grid3d.cpp
+	hmg_export_grid3d.cpp
+	hmg_import_grid3d.cpp
 )
 
 source_group ("Header Files" FILES ${HEADERS} ${HEADERS})

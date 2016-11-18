@@ -166,6 +166,16 @@ def export3d_grid_tecplot(g1, fname):
         raise ExportError(str(e))
 
 
+def export3d_grid_hmg(g1, fname, fmt="ascii", afields=[]):
+    """ TODO
+    """
+    try:
+        imex.export_grid("hmg3d", fname, g1, flow=flow,
+                         adata={'fmt': fmt, 'afields': afields})
+    except Exception as e:
+        raise ExportError(str(e))
+
+
 def export_grid_tecplot(g1, fname):
     """exports grid to tecplot ascii \*.dat format
 
@@ -201,15 +211,15 @@ def export_contour_vtk(c1, fname):
         raise ExportError(str(e))
 
 
-def export_contour_hmc(c1, fname):
-    """exports contour to native format
+def export_contour_hmc(c1, fname, fmt="ascii"):
+    """exports contours to native format
 
     Args:
        c1: contour identifier
 
        fname: output filename
     """
-    imex.export_contour("hmc", fname, c1, flow=flow)
+    imex.export_contour("hmc", fname, c1, flow=flow, adata={'fmt': fmt})
 
 
 def export_contour_tecplot(c1, fname):
@@ -251,8 +261,9 @@ def import_grid_hmg(fname, gridname=""):
     try:
         flow.exec_command(c)
         return c._get_added_names()[0][0]
-    except Exception as e:
+    except Exception:
         raise ExecError('import_grid_hmg')
+
 
 def import_grids_hmg(fname):
     """Imports grid from native \*.hmg file
@@ -267,7 +278,7 @@ def import_grids_hmg(fname):
     try:
         flow.exec_command(c)
         return c._get_added_names()[0]
-    except Exception as e:
+    except Exception:
         raise ExecError('import_grids_hmg')
 
 
@@ -307,6 +318,46 @@ def import_grid_gmsh(fname):
     return c._get_added_names()[0][0]
 
 
+def import3d_grid_hmg(fname, gridname=""):
+    """Imports grid from native \*.hmg file
+
+    Args:
+       fname: file name
+
+    Returns:
+       grid identifier
+    """
+    name = "Grid1"
+    if gridname != "":
+        name = gridname
+    c = com.imcom.ImportGrid3Native({
+        "name": name,
+        "filename": fname,
+        "gridname": gridname})
+    try:
+        flow.exec_command(c)
+        return c._get_added_names()[2][0]
+    except Exception:
+        raise ExecError('import3d_grid_hmg')
+
+
+def import3d_grids_hmg(fname):
+    """Imports grid from native \*.hmg file
+
+    Args:
+       fname: file name
+
+    Returns:
+       grid identifier
+    """
+    c = com.imcom.ImportGrids3Native({"filename": fname})
+    try:
+        flow.exec_command(c)
+        return c._get_added_names()[2]
+    except Exception:
+        raise ExecError('import3d_grids_hmg')
+
+
 # Importing contours
 def import_contour_ascii(fname, wbtype=False, force_closed=False):
     """Imports singly connected contour as a sequence of points
@@ -331,7 +382,64 @@ def import_contour_ascii(fname, wbtype=False, force_closed=False):
     return c._get_added_names()[1][0]
 
 
-# save data
+def import_contour_hmc(fname, contname=""):
+    """exports contour to hybmesh native format
+
+    Args:
+      g1: grid identifier
+
+      fname: output filename
+    """
+    c = com.imcom.ImportContourNative(
+        {"filename": fname, "contname": contname})
+    try:
+        flow.exec_command(c)
+        return c._get_added_names()[1][0]
+    except Exception:
+        raise ExecError('import_contour_hmc')
+
+
+def import_contours_hmc(fname, fmt='ascii'):
+    """exports contour to hybmesh native format
+
+    Args:
+      g1: grid identifier
+
+      fname: output filename
+    """
+    c = com.imcom.ImportContoursNative({"filename": fname})
+    try:
+        flow.exec_command(c)
+        return c._get_added_names()[1]
+    except Exception:
+        raise ExecError('import_contours_hmc')
+
+
+# data
+def import_all_hmd(fname):
+    """TODO"""
+    c = com.imcom.ImportAllNative({"filename": fname})
+    try:
+        flow.exec_command(c)
+        return c._get_added_names()
+    except Exception:
+        raise ExecError("import hmd file")
+
+
+def export_all_hmd(fname, fmt="ascii"):
+    """exports contours to native format
+
+    Args:
+       c1: contour identifier
+
+       fname: output filename
+    """
+    try:
+        imex.export_all(fname, fmt, flow)
+    except Exception as e:
+        raise ExportError(str(e))
+
+
 def save_project(fname):
     """saves current command flow and data to
     HybMesh project file

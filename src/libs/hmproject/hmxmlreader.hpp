@@ -6,6 +6,11 @@ namespace HMXML{
 
 std::vector<std::string> split(const std::string& s, const std::string& delim);
 
+struct XmlElementNotFound:std::runtime_error{
+	XmlElementNotFound(const std::string& s) noexcept:
+			std::runtime_error(std::string("xml node was not found: ")+s){};
+};
+
 struct Reader{
 	Reader(std::string fn);
 	Reader(Reader& parent, void* node):isroot(false), _doc(parent._doc), _nd(node){};

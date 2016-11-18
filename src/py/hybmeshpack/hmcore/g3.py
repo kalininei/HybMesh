@@ -44,6 +44,30 @@ def free_g3(c_g3):
     libhmcport.free_grid3d(c_g3)
 
 
+def grid_from_hmxml(reader, subnode, cb):
+    greader, c_g = 0, 0
+    try:
+        name = ct.create_string_buffer(1000)
+
+        args = (reader, subnode, name)
+        cb.initialize(libhmcport.g3reader_create, args)
+        cb.execute_command()
+        greader = ct.c_void_p(cb.get_result())
+
+        if not greader:
+            raise Exception("Failed to assemble a grid")
+
+        # get grid
+        c_g = libhmcport.greader_getresult(greader)
+        g = grid3_from_c(c_g)
+
+        return g, str(name.value)
+    except:
+        raise
+    finally:
+        libhmcport.greader_free(greader) if greader != 0 else None
+
+
 def to_vtk(c_g, fname, cb):
     c_fname = fname.encode('utf-8')
     args = (c_g, c_fname)
@@ -114,3 +138,23 @@ def to_tecplot(c_g, fname, c_bnames, cb):
     res = cb.get_result()
     if res != 0:
         raise Exception("tecplot 3d grid export failed")
+
+
+def gwriter_create(gridname, c_g, c_writer, c_sub, fmt):
+    ret = libhmcport.g3writer_create(gridname, c_g, c_writer, c_sub, fmt)
+    if ret == 0:
+        raise Exception("Error writing grid3d to hmg")
+    else:
+        return ret
+
+
+def gwriter_add_field(c_gwriter, f):
+    ret = libhmcport.g3writer_add_defined_field(c_gwriter, f)
+    if ret == 0:
+        raise Exception("Error writing " + f + "field to a grid 3d")
+    else:
+        return ret
+
+
+def free_gwriter(c_gwriter):
+    libhmcport.g3writer_free(c_gwriter)

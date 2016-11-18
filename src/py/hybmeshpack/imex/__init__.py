@@ -51,8 +51,10 @@ def export_grid(fmt, fn, name, fw=None, flow=None, adata=None):
                  .....]
         msh3d - [btype_per, btype_shadow, Point btype_per, Point btype_shadow,
                  .....]
-      * hmg: defines format and a list of additional fields to export:
-           {"fmt": format, "afields": [list of filds]}
+      * hmg, hmg3d: defines format and a list of additional fields to export:
+           {"fmt": format,
+            "afields": [list of fields],
+            "writer": hmcore.writer if needed}
     """
     # 1. Find grid
     try:
@@ -74,7 +76,7 @@ def export_grid(fmt, fn, name, fw=None, flow=None, adata=None):
             gsum = grid[0]
         else:
             if fmt[-2:] == '3d':
-                raise Exception("exporting list of 3d grids is not"
+                raise Exception("exporting list of 3d grids is not "
                                 "implemented")
             else:
                 gsum = grid2.Grid2()
@@ -93,7 +95,8 @@ def export_grid(fmt, fn, name, fw=None, flow=None, adata=None):
     elif fmt == 'hmg':
         hmgfmt = adata['fmt'] if 'fmt' in adata else 'ascii'
         hmgaf = adata['afields'] if 'afields' in adata else None
-        gridexport.hmg(gsum, name, fn, hmgfmt, hmgaf)
+        wr = adata['writer'] if 'writer' in adata else None
+        gridexport.hmg(gsum, name, fn, hmgfmt, hmgaf, wr)
     elif fmt == 'msh':
         gridexport.msh(gsum, fn, fw.boundary_types, adata)
     elif fmt == 'ggen':
@@ -108,11 +111,16 @@ def export_grid(fmt, fn, name, fw=None, flow=None, adata=None):
         grid3export.msh(gsum, fn, fw.boundary_types, callb, adata)
     elif fmt == "tecplot3d":
         grid3export.tecplot(gsum, fn, fw.boundary_types, callb)
+    elif fmt == "hmg3d":
+        hmgfmt = adata['fmt'] if 'fmt' in adata else 'ascii'
+        hmgaf = adata['afields'] if 'afields' in adata else None
+        wr = adata['writer'] if 'writer' in adata else None
+        grid3export.hmg(gsum, name, fn, hmgfmt, hmgaf, callb, wr)
     else:
         raise Exception('Unknown grid format %s' % fmt)
 
 
-def export_contour(fmt, fn, name, fw=None, flow=None):
+def export_contour(fmt, fn, name, fw=None, flow=None, adata=None):
     """exports contour from framework 'fw' or 'flow' receiver to
     filename fn using format fmt. Possible formats:
         vtk, tecplot, hmc
@@ -121,26 +129,35 @@ def export_contour(fmt, fn, name, fw=None, flow=None):
     try:
         if fw is None:
             fw = flow.get_receiver()
+        contlist = []
+        names = []
         if isinstance(name, list):
             cont = contour2.Contour2()
             for nm in name:
                 try:
                     _, _, c = fw.get_ucontour(name=nm)
+                    names.append(nm)
                 except KeyError:
                     c = fw.get_grid(name=nm)[2].cont
+                    names.append("ContourOf" + nm)
+                contlist.append(c)
                 cont.add_from_abstract(c)
         else:
             try:
                 _, _, cont = fw.get_ucontour(name=name)
+                names = [name]
             except KeyError:
                 cont = fw.get_grid(name=name)[2].cont
+                names = ["ContourOf" + name]
+            contlist.append(cont)
     except:
         raise Exception('Can not find contour for exporting')
     # 2. Export regarding to format
     if fmt == 'vtk':
         contexport.vtk(cont, fn)
     elif fmt == 'hmc':
-        contexport.hmg(cont, fn)
+        wr = adata['writer'] if 'writer' in adata else None
+        contexport.hmc(contlist, names, fn, adata['fmt'], wr)
     elif fmt == 'tecplot':
         contexport.tecplot(cont, fn, fw.boundary_types)
     else:
@@ -164,3 +181,31 @@ def export_grid3_surface(fmt, fn, name, fw=None, flow=None):
         grid3export.vtk_surface(grid, fn, callb)
     else:
         raise Exception('Unknown format %s' % fmt)
+
+
+def export_all(fname, fmt, flow):
+    from hybmeshpack import hmcore as hmcore
+    c_writer = 0
+    try:
+        fw = flow.get_receiver()
+        allconts = fw.get_ucontour_names()
+        allgrids = fw.get_grid_names()
+        allgrids3 = fw.get_grid3_names()
+        cb = flow.get_interface().ask_for_callback(Callback.CB_CANCEL2)
+        c_writer = hmcore.hmxml_new()
+        adata = {"fmt": fmt, "afields": [], "writer": c_writer}
+        # contours
+        cb._callback("Write contours", "", 0, 0)
+        export_contour("hmc", fname, allconts, fw, None, adata)
+        # grids
+        cb._callback("Write grids", "", 0.1, 0)
+        export_grid("hmg", fname, allgrids, fw, None, adata)
+        # grids 3d
+        cb._callback("Write grids 3d", "", 0.3, 0)
+        export_grid("hmg3d", fname, allgrids3, fw, None, adata)
+    except:
+        raise
+    finally:
+        cb._callback("Save to file", "", 0.8, 0)
+        hmcore.hmxml_finalize(c_writer, fname) if c_writer != 0 else None
+        cb._callback("", "Done", 1, 1)

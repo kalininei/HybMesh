@@ -4,6 +4,47 @@
 
 using namespace HMGrid3D;
 
+//fills everything from: vert, edges, faces, bnd.
+void SimpleSerialize::supplement(){
+	//n_vert, n_edges
+	n_vert = vert.size()/3;
+	n_edges = edges.size()/2;
+	n_cells = 0, n_faces = 0;
+
+	auto it = faces.begin();
+	vector<vector<int>> tcells;
+	while (it<faces.end()){
+		//ifaces
+		ifaces.push_back(it-faces.begin());
+		int dim = *it++;
+		it += dim;
+		int c1 = *it++;
+		int c2 = *it++;
+		if (tcells.size()<c1+1) tcells.resize(c1+1);
+		if (tcells.size()<c2+1) tcells.resize(c2+1);
+		if (c1 >= 0) tcells[c1].push_back(n_faces);
+		if (c2 >= 0) tcells[c2].push_back(n_faces);
+
+		//n_faces
+		++n_faces;
+	}
+	//n_cells
+	n_cells = tcells.size();
+	size_t totdim=0;
+	for (auto& v: tcells) totdim+=v.size();
+	cells.resize(n_cells+totdim);
+	icells.resize(n_cells);
+	it = cells.begin();
+	for (size_t i=0; i<n_cells; ++i){
+		//icells
+		icells[i] = it-cells.begin();
+		//cells
+		*it++ = tcells[i].size();
+		std::copy(tcells[i].begin(), tcells[i].end(), it);
+		it += tcells[i].size();
+	}
+}
+
 vector<int> SimpleSerialize::face_vertex(int nface) const{
 	vector<int> ret;
 	int kf = ifaces[nface];

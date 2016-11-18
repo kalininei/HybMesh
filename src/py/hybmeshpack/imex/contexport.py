@@ -1,3 +1,5 @@
+from hybmeshpack import hmcore as hmcore
+from hybmeshpack.hmcore import c2 as c2core
 
 
 def _write_list_to_file(lst, fname):
@@ -71,3 +73,38 @@ def tecplot(cont, fname, bt=None):
             out.append('%i %i' % (e[0] + 1, e[1] + 1))
 
     _write_list_to_file(out, fname)
+
+
+def hmc(conts, names, fname, fmt, wr=None):
+    c_c, c_writer, c_cwriter = 0, 0, 0
+    try:
+        c_writer = hmcore.hmxml_new() if wr is None else wr
+        for c, nm in zip(conts, names):
+            # write
+            c_c = c2core.cont2_to_c(c)
+            c_cwriter = c2core.cwriter_create(nm, c_c, c_writer, c_writer, fmt)
+            # boundary field
+            minb, maxb = 0, 0
+            btypes = [0] * c.n_edges()
+            for i in range(c.n_edges()):
+                btypes[i] = c.edge_bnd(i)
+                minb = min(minb, btypes[i])
+                maxb = max(maxb, btypes[i])
+            if (minb != 0 or maxb != 0):
+                tp, tpstr = int, "int"
+                if (minb >= -127 and maxb <= 127):
+                    tp, tpstr = "char", "char"
+                c_btypes = hmcore.list_to_c(btypes, tp)
+                c2core.cwriter_add_edge_field(
+                    c_cwriter, "__boundary_types__", tpstr, c_btypes)
+            # free data
+            c2core.free_cwriter(c_cwriter) if c_cwriter != 0 else None
+            c2core.free_cont2(c_c) if c_c != 0 else None
+            c_c, c_cwriter = 0, 0
+    except:
+        raise
+    finally:
+        c2core.free_cont2(c_c) if c_c != 0 else None
+        c2core.free_cwriter(c_cwriter) if c_cwriter != 0 else None
+        if wr is None and c_writer != 0:
+            hmcore.hmxml_finalize(c_writer, fname)

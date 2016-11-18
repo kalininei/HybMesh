@@ -44,6 +44,14 @@ int export_tecplot_grid3(const CPortGrid3D* grid, const char* fname, const Bound
 		hmcport_callback f2);
 
 
+//returns not null on succes
+void* g3writer_create(const char* gname, CPortGrid3D* grid, void* awriter,
+		void* subnode, const char* fmt);
+void g3writer_free(void* gwriter);
+int g3writer_add_defined_field(void* gwriter, const char* field);
+CPortGrid3D* g3reader_create(void* awriter, void* subnode, char* outname, hmcport_callback f2);
+void* g3reader_getresult(void* rd);
+void g3reader_free(void* greader);
 
 }
 

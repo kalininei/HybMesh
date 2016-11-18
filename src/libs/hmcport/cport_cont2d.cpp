@@ -2,6 +2,7 @@
 #include "hmproject.h"
 #include "cport_cont2d.h"
 #include "hybmesh_contours2d.hpp"
+#include "hmc_imex.hpp"
 
 namespace{
 HMCont2D::ECollection* to_ecol(void* g){
@@ -343,5 +344,118 @@ int segment_part(double start, double end, double h0, double h1,
 	} catch (std::runtime_error &e){
 		std::cout<<e.what()<<std::endl;
 		return 0;
+	}
+}
+
+void* cwriter_create(const char* cname, void* cont, void* awriter, void* subnode, const char* fmt){
+	try{
+		HMXML::ReaderA* wr = static_cast<HMXML::ReaderA*>(awriter);
+		HMXML::Reader* sn = static_cast<HMXML::ReaderA*>(subnode);
+		HMCont2D::ECollection* c = static_cast<HMCont2D::ECollection*>(cont);
+		return new HMCont2D::Export::EColWriter(*c, wr, sn, cname, fmt);
+	} catch (std::runtime_error &e){
+		std::cout<<e.what()<<std::endl;
+		return 0;
+	}
+}
+void cwriter_free(void* cwriter){
+	try{
+		delete static_cast<HMCont2D::Export::EColWriter*>(cwriter);
+	} catch (std::runtime_error &e){
+		std::cout<<e.what()<<std::endl;
+	}
+}
+int cwriter_add_edge_field(void* cwriter, const char* fieldname, void* field, int fsize, const char* type){
+	try{
+		auto cw = static_cast<HMCont2D::Export::EColWriter*>(cwriter);
+		std::string fn(fieldname);
+		std::string tpstr(type);
+		if (tpstr == "int"){
+			int* intfield = static_cast<int*>(field);
+			std::vector<int> data(intfield, intfield+fsize);
+			cw->AddEdgeData(fn, data, cw->is_binary<int>());
+		} else if (tpstr == "char"){
+			char* chrfield = static_cast<char*>(field);
+			std::vector<char> data(chrfield, chrfield+fsize);
+			cw->AddEdgeData(fn, data, cw->is_binary<char>());
+		} else if (tpstr == "double"){
+			double* chrfield = static_cast<double*>(field);
+			std::vector<double> data(chrfield, chrfield+fsize);
+			cw->AddEdgeData(fn, data, cw->is_binary<double>());
+		} else if (tpstr == "float"){
+			float* chrfield = static_cast<float*>(field);
+			std::vector<float> data(chrfield, chrfield+fsize);
+			cw->AddEdgeData(fn, data, cw->is_binary<float>());
+		} else {
+			throw std::runtime_error("unknown data type "+tpstr);
+		}
+		return 1;
+	} catch (std::runtime_error &e){
+		std::cout<<e.what()<<std::endl;
+		return 0;
+	}
+}
+void* creader_create(void* awriter, void* subnode, char* outname){
+	try{
+		auto wr = static_cast<HMXML::ReaderA*>(awriter);
+		auto sn = static_cast<HMXML::Reader*>(subnode);
+		//name
+		std::string nm = sn->attribute(".", "name");
+		if (nm.size()>1000) throw std::runtime_error("grid name is too long: " + nm);
+		strcpy(outname, nm.c_str());
+		//reader
+		HMCont2D::Import::EColReader* ret = new HMCont2D::Import::EColReader(wr, sn);
+		return ret;
+	} catch (std::runtime_error &e){
+		std::cout<<e.what()<<std::endl;
+		return 0;
+	}
+}
+void* creader_getresult(void* rd){
+	try{
+		auto reader = static_cast<HMCont2D::Import::EColReader*>(rd);
+		return reader->result.release();
+	} catch (std::runtime_error &e){
+		std::cout<<e.what()<<std::endl;
+		return 0;
+	}
+}
+void* creader_read_edge_field(void* rd, const char* fieldname, const char* type){
+	try{
+		auto reader = static_cast<HMCont2D::Import::EColReader*>(rd);
+		std::string fname(fieldname);
+		std::string tpname(type);
+		void* ret = NULL;
+		if (tpname == "int"){
+			auto outv = reader->read_edges_field<int>(fieldname);
+			if (outv.size() != reader->Ne) throw std::runtime_error("field size doesn't match");
+			ret = new int[outv.size()];
+			std::copy(outv.begin(), outv.end(), (int*)ret);
+		} else if (tpname == "char"){
+			auto outv = reader->read_edges_field<char>(fieldname);
+			if (outv.size() != reader->Ne) throw std::runtime_error("field size doesn't match");
+			ret = new char[outv.size()];
+			std::copy(outv.begin(), outv.end(), (char*)ret);
+		} else if (tpname == "float"){
+			auto outv = reader->read_edges_field<float>(fieldname);
+			if (outv.size() != reader->Ne) throw std::runtime_error("field size doesn't match");
+			ret = new float[outv.size()];
+			std::copy(outv.begin(), outv.end(), (float*)ret);
+		} else if (tpname == "double"){
+			auto outv = reader->read_edges_field<double>(fieldname);
+			if (outv.size() != reader->Ne) throw std::runtime_error("field size doesn't match");
+			ret = new double[outv.size()];
+			std::copy(outv.begin(), outv.end(), (double*)ret);
+		}
+		return ret;
+	} catch (std::runtime_error &e){
+		return 0;
+	}
+}
+void creader_free(void* creader){
+	try{
+		delete (HMCont2D::Import::EColReader*)creader;
+	} catch (std::runtime_error &e){
+		std::cout<<e.what()<<std::endl;
 	}
 }

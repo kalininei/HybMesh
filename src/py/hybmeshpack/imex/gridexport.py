@@ -22,10 +22,10 @@ def _check_for_34_grid(grid):
     return c3, c4
 
 
-def hmg(grid, gname, fname, fmt, afields):
+def hmg(grid, gname, fname, fmt, afields, wr=None):
     c_g, c_writer, c_gwriter = 0, 0, 0
     try:
-        c_writer = hmcore.hmxml_new()
+        c_writer = hmcore.hmxml_new() if wr is None else wr
         for g, nm in zip(grid, gname):
             # write
             c_g = g2core.grid_to_c(g)
@@ -57,7 +57,8 @@ def hmg(grid, gname, fname, fmt, afields):
     finally:
         g2core.free_c_grid(c_g) if c_g != 0 else None
         g2core.free_gwriter(c_gwriter) if c_gwriter != 0 else None
-        hmcore.hmxml_finalize(c_writer, fname) if c_writer != 0 else None
+        if wr is None and c_writer != 0:
+            hmcore.hmxml_finalize(c_writer, fname)
 
 
 def vtk(grid, fname):

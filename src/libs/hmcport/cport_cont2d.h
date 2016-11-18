@@ -34,5 +34,14 @@ void* matched_partition(void* cont, int ncond, void** conds, int npts, double* p
 int segment_part(double start, double end, double h0, double h1,
 		int n_internals, double* h_internals, int* nout, double** hout);
 
+
+void* cwriter_create(const char* cname, void* cont, void* awriter, void* subnode, const char* fmt);
+void cwriter_free(void* cwriter);
+int cwriter_add_edge_field(void* cwriter, const char* fieldname, void* field, int fsize, const char* type);
+void* creader_create(void* awriter, void* subnode, char* outname);
+void* creader_getresult(void* rd);
+void* creader_read_edge_field(void* rd, const char* fieldname, const char* type);
+void creader_free(void* creader);
+
 }
 #endif

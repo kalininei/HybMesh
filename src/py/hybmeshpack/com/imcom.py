@@ -9,6 +9,8 @@ import command
 import objcom
 from hybmeshpack import hmcore as hmcore
 from hybmeshpack.hmcore import g2 as g2core
+from hybmeshpack.hmcore import c2 as c2core
+from hybmeshpack.hmcore import g3 as g3core
 
 
 # ====================== Abstract Import Commands
@@ -22,27 +24,39 @@ class _AbstractImport(objcom.AbstractAddRemove):
     def _addrem_objects(self):
         self.__check_file_existance()
         try:
-            cont, grid = self._read_data()
+            cont, grid, grid3 = self._read_data()
         except Exception as e:
             raise command.ExecutionError("Import failure", self, e)
-        glist, clist = [], []
+        glist, clist, g3list = [], [], []
         if cont is not None:
             if isinstance(cont, list):
                 for i in range(len(cont)):
                     clist.append((self._get_cname(i), cont[i]))
             else:
                 clist = [(self._get_cname(0), cont)]
-        elif grid is not None:
+        if grid is not None:
             if isinstance(grid, list):
                 for i in range(len(grid)):
                     glist.append((self._get_gname(i), grid[i]))
             else:
                 glist = [(self._get_gname(0), grid)]
-        return glist, [], clist, [], [], []
+        if grid3 is not None:
+            if isinstance(grid3, list):
+                for i in range(len(grid3)):
+                    g3list.append((self._get_g3name(i), grid3[i]))
+            else:
+                g3list = [(self._get_g3name(0), grid3)]
+        return glist, [], clist, [], g3list, []
 
     def _get_gname(self, i):
         if self.options['name'] == '':
             return "Grid1"
+        else:
+            return self.options['name']
+
+    def _get_g3name(self, i):
+        if self.options['name'] == '':
+            return "Grid3D_1"
         else:
             return self.options['name']
 
@@ -85,7 +99,7 @@ class _AbstractImportContour(_AbstractImport):
             c2 = cont.simplify(0)
             if c2 is not None:
                 cont = c2
-        return cont, None
+        return cont, None, None
 
     #functions for overriding
     def _read_contour(self):
@@ -106,11 +120,31 @@ class _AbstractImportGrid(_AbstractImport):
         #build
         grid = self._read_grid()
         grid.build_contour()
-        return None, grid
+        return None, grid, None
 
     #functions for overriding
     def _read_grid(self):
         "-> grid2.Grid2 or raise an Exception"
+        raise NotImplementedError
+
+
+class _AbstractImportGrid3(_AbstractImport):
+    'Import contour basic class'
+    def __init__(self, argsdict):
+        super(_AbstractImportGrid3, self).__init__(argsdict)
+
+    def doc(self):
+        return "Import grid3d from %s" % os.path.basename(
+            self.options['filename'])
+
+    def _read_data(self):
+        #build
+        grid = self._read_grid()
+        return None, None, grid
+
+    #functions for overriding
+    def _read_grid(self):
+        "-> grid3.Grid3 or raise an Exception"
         raise NotImplementedError
 
 
@@ -187,18 +221,79 @@ class ImportContourNative(_AbstractImportContour):
     def _arguments_types(cls):
         """ name - new contour name,
             filename - filename
-            simplify - bool
         """
         return {'name': command.BasicOption(str),
                 'filename': command.BasicOption(str),
-                'simplify': command.BoolOption(),
+                'contname': command.BasicOption(str),
+                'simplify': command.BasicOption(str)
                 }
 
     #overriding
+    def _get_cname(self, i):
+        return self._cname
+
     def _read_contour(self):
-        import xml.etree.ElementTree as ET
-        xmlnode = ET.parse(self.options['filename']).getroot()
-        return gdata.contour2.Contour2.create_from_xml(xmlnode)
+        so = self.options
+        c_reader, c_creader = 0, []
+        try:
+            # find node
+            c_reader = hmcore.hmxml_read(so['filename'])
+            qline = "CONTOUR2D" if so['contname'] == '' else\
+                "CONTOUR2D[@name='" + so['contname'] + "']"
+            c_creader = hmcore.hmxml_query(c_reader, qline, required=">0")
+            # construct grid
+            c, self._cname = c2core.contour_from_hmxml(c_reader, c_creader[0])
+            return c
+        except Exception:
+            raise
+        finally:
+            for cn in c_creader:
+                hmcore.hmxml_free_node(cn)
+            hmcore.hmxml_free_node(c_reader) if c_reader != 0 else None
+
+
+class ImportContoursNative(_AbstractImport):
+    'Import all 2d contours from a file'
+    def __init__(self, argsdict):
+        super(ImportContoursNative, self).__init__(argsdict)
+
+    def doc(self):
+        return "Import contours from %s" % os.path.basename(
+            self.options['filename'])
+
+    @classmethod
+    def _arguments_types(cls):
+        """ name - new grids name,
+            filename - filename
+        """
+        return {'name': command.BasicOption(str),
+                'filename': command.BasicOption(str),
+                }
+
+    def _get_cname(self, i):
+        return self._cnames[i]
+
+    def _read_data(self):
+        so = self.options
+        c_reader, c_creader = 0, []
+        try:
+            # find node
+            c_reader = hmcore.hmxml_read(so['filename'])
+            c_creader = hmcore.hmxml_query(c_reader, "CONTOUR2D",
+                                           required=">0")
+            # construct grid
+            conts = [None] * len(c_creader)
+            self._cnames = [None] * len(c_creader)
+            for i in range(len(c_creader)):
+                conts[i], self._cnames[i] =\
+                    c2core.contour_from_hmxml(c_reader, c_creader[i])
+            return conts, None, None
+        except Exception:
+            raise
+        finally:
+            for cn in c_creader:
+                hmcore.hmxml_free_node(cn)
+            hmcore.hmxml_free_node(c_reader) if c_reader != 0 else None
 
 
 #========================= Import grids
@@ -275,7 +370,7 @@ class ImportGridsNative(_AbstractImport):
             for i in range(len(c_greader)):
                 grids[i], self._gnames[i] =\
                     g2core.grid_from_hmxml(c_reader, c_greader[i])
-            return None, grids
+            return None, grids, None
         except Exception:
             raise
         finally:
@@ -681,3 +776,173 @@ class ImportGridSimple34(_AbstractImportGrid):
                 bset[eind] = pbnd[e[1]]
         g.set_edge_bnd(bset)
         return g
+
+
+class ImportGrid3Native(_AbstractImportGrid3):
+    "from native hmg format"
+    def __init__(self, arg):
+        super(ImportGrid3Native, self).__init__(arg)
+
+    @classmethod
+    def _arguments_types(cls):
+        """ name - new grid name,
+            filename - filename
+        """
+        return {'name': command.BasicOption(str),
+                'filename': command.BasicOption(str),
+                'gridname': command.BasicOption(str)
+                }
+
+    #overriding
+    def _get_g3name(self, i):
+        return self._g3name
+
+    def _read_grid(self):
+        so = self.options
+        c_reader, c_greader = 0, []
+        try:
+            cb = self.ask_for_callback()
+            cb._callback("Loading xml file", "", 0, 0)
+            # find node
+            c_reader = hmcore.hmxml_read(so['filename'])
+            qline = "GRID3D" if so['gridname'] == '' else\
+                "GRID3D[@name='" + so['gridname'] + "']"
+            c_greader = hmcore.hmxml_query(c_reader, qline, required=">0")
+            # construct grid
+            g, self._g3name = g3core.grid_from_hmxml(
+                c_reader, c_greader[0], cb)
+            return g
+        except Exception:
+            raise
+        finally:
+            for gr in c_greader:
+                hmcore.hmxml_free_node(gr)
+            hmcore.hmxml_free_node(c_reader) if c_reader != 0 else None
+
+
+class ImportGrids3Native(_AbstractImport):
+    'Import all grids from a file'
+    def __init__(self, argsdict):
+        super(ImportGrids3Native, self).__init__(argsdict)
+
+    def doc(self):
+        return "Import 3d grids from %s" % os.path.basename(
+            self.options['filename'])
+
+    @classmethod
+    def _arguments_types(cls):
+        """ name - new grids name,
+            filename - filename
+        """
+        return {'name': command.BasicOption(str),
+                'filename': command.BasicOption(str),
+                }
+
+    def _get_g3name(self, i):
+        return self._g3names[i]
+
+    def _read_data(self):
+        so = self.options
+        c_reader, c_greader = 0, []
+        try:
+            cb = self.ask_for_callback()
+            cb._callback("Loading xml file", "", 0, 0)
+            # find node
+            c_reader = hmcore.hmxml_read(so['filename'])
+            c_greader = hmcore.hmxml_query(c_reader, "GRID3D", required=">0")
+            # construct grid
+            grids = [None] * len(c_greader)
+            self._g3names = [None] * len(c_greader)
+            for i in range(len(c_greader)):
+                subcb = cb.subcallback(i, len(c_greader))
+                grids[i], self._g3names[i] =\
+                    g3core.grid_from_hmxml(c_reader, c_greader[i], subcb)
+            return None, None, grids
+        except Exception:
+            raise
+        finally:
+            for gr in c_greader:
+                hmcore.hmxml_free_node(gr)
+            hmcore.hmxml_free_node(c_reader) if c_reader != 0 else None
+
+
+class ImportAllNative(_AbstractImport):
+    'Import all data from a file'
+    def __init__(self, argsdict):
+        super(ImportAllNative, self).__init__(argsdict)
+
+    def doc(self):
+        return "Import all hybmesh objects from %s" % os.path.basename(
+            self.options['filename'])
+
+    @classmethod
+    def _arguments_types(cls):
+        """ name - new grids name,
+            filename - filename
+        """
+        return {'name': command.BasicOption(str),
+                'filename': command.BasicOption(str),
+                }
+
+    def _get_gname(self, i):
+        return self._gnames[i]
+
+    def _get_cname(self, i):
+        return self._cnames[i]
+
+    def _get_g3name(self, i):
+        return self._g3names[i]
+
+    def _read_data(self):
+        so = self.options
+        c_reader, c_greader, c_creader, c_g3reader = 0, [], [], []
+        try:
+            cb = self.ask_for_callback()
+            cb._callback("Loading xml file", "", 0, 0)
+            # find node
+            c_reader = hmcore.hmxml_read(so['filename'])
+            c_greader = hmcore.hmxml_query(c_reader, "GRID2D")
+            c_creader = hmcore.hmxml_query(c_reader, "CONTOUR2D")
+            c_g3reader = hmcore.hmxml_query(c_reader, "GRID3D")
+            # contours allocation
+            if len(c_creader) > 0:
+                conts = [None] * len(c_creader)
+                self._cnames = [None] * len(c_creader)
+            else:
+                conts = None
+            # grids allocation
+            if len(c_greader) > 0:
+                grids = [None] * len(c_greader)
+                self._gnames = [None] * len(c_greader)
+            else:
+                grids = None
+            # grids3d allocation
+            if len(c_g3reader) > 0:
+                grids3 = [None] * len(c_g3reader)
+                self._g3names = [None] * len(c_g3reader)
+            else:
+                grids3 = None
+
+            cbtotal = len(c_g3reader) + 2
+            # read contours
+            cb.subcallback(0, cbtotal)._callback("Reading contours", "", 0, 0)
+            for i in range(len(c_creader)):
+                conts[i], self._cnames[i] =\
+                    c2core.contour_from_hmxml(c_reader, c_creader[i])
+            # read grids
+            cb.subcallback(1, cbtotal)._callback("Reading grids", "", 0, 0)
+            for i in range(len(c_greader)):
+                grids[i], self._gnames[i] =\
+                    g2core.grid_from_hmxml(c_reader, c_greader[i])
+            # read 3d grids
+            for i in range(len(c_g3reader)):
+                subcb = cb.subcallback(i + 2, cbtotal)
+                grids3[i], self._g3names[i] =\
+                    g3core.grid_from_hmxml(c_reader, c_g3reader[i], subcb)
+            return conts, grids, grids3
+        except Exception:
+            raise
+        finally:
+            for gr in c_greader + c_creader + c_g3reader:
+                hmcore.hmxml_free_node(gr)
+            hmcore.hmxml_free_node(c_reader) if c_reader != 0 else None

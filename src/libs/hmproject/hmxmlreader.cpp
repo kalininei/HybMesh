@@ -75,7 +75,7 @@ Reader Reader::find_by_path(std::string path, bool required){
 	xmlXPathFreeContext(xpathCtx);
 
 	if (ret || !required) return ret;
-	else throw std::runtime_error("xml node "+path+" was not found");
+	else throw XmlElementNotFound(path);
 }
 
 vector<Reader> Reader::findall_by_path(std::string path){
@@ -96,7 +96,7 @@ vector<Reader> Reader::findall_by_path(std::string path){
 bool Reader::value_string(std::string path, std::string& val, bool required){
 	Reader fnd = find_by_path(path);
 	if (!fnd){
-		if (required) throw std::runtime_error(path+" was not found");
+		if (required) throw XmlElementNotFound(path);
 		else return false;
 	} else {
 		val="";
@@ -138,7 +138,7 @@ std::string Reader::tag_name(){
 bool Reader::value_float(std::string path, double& val, bool required){
 	std::string s;
 	if (!value_string(path, s)){
-		if (required) throw std::runtime_error(path+" was not found");
+		if (required) throw XmlElementNotFound(path);
 		else return false;
 	} else {
 		val = atof(s.c_str());
@@ -149,7 +149,7 @@ bool Reader::value_float(std::string path, double& val, bool required){
 bool Reader::value_float_vec(std::string path, vector<double>& val, bool required){
 	std::string s;
 	if (!value_string(path, s)){
-		if (required) throw std::runtime_error(path+" was not found");
+		if (required) throw XmlElementNotFound(path);
 		else return false;
 	}
 
@@ -168,7 +168,7 @@ bool Reader::value_float_vec(std::string path, vector<double>& val, bool require
 bool Reader::value_int(std::string path, int& val, bool required){
 	std::string s;
 	if (!value_string(path, s)){
-		if (required) throw std::runtime_error(path+" was not found");
+		if (required) throw XmlElementNotFound(path);
 		else return false;
 	} else {
 		val = atoi(s.c_str());
@@ -179,7 +179,7 @@ bool Reader::value_int(std::string path, int& val, bool required){
 bool Reader::value_ulong(std::string path, unsigned long& val, bool required){
 	std::string s;
 	if (!value_string(path, s)){
-		if (required) throw std::runtime_error(path+" was not found");
+		if (required) throw XmlElementNotFound(path);
 		else return false;
 	} else {
 		val = std::stoul(s.c_str());
@@ -482,12 +482,11 @@ void fill_vvector(const vector<std::string>& s, vector<vector<A>>& ret){
 	auto it=s.begin();
 	while (it!=s.end()){
 		int dim = atoi((*it++).c_str());
-		for (int i=0; i<dim; ++i){
-			if (it-s.begin()+dim>s.size()) throw std::runtime_error("corrupted variable vector data");
-			ret.emplace_back();
-			fill_vector<A>(ret.back(), it, it+dim);
-			it+=dim;
-		}
+		if (it-s.begin()+dim>s.size())
+			throw std::runtime_error("corrupted variable vector data");
+		ret.emplace_back();
+		fill_vector<A>(ret.back(), it, it+dim);
+		it+=dim;
 	}
 }
 template<class A>
@@ -504,6 +503,10 @@ void fill_vvector_bin(const char* start, size_t size, vector<vector<A>>& ret, in
 		unsigned int dim;
 		decrease_leftsize(sizeof(unsigned int));
 		memcpy(&dim, iter, sizeof(unsigned int));
+		if (dim !=4 && dim != 6){
+			//##############3
+			std::cout<<i<<": "<<dim<<" out of "<<vecn<<std::endl;
+		}
 		iter+=sizeof(unsigned int);
 		//data
 		fill_vector_bin(iter, leftsize, ret[i], dim);

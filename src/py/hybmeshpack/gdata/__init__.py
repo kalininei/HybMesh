@@ -95,6 +95,7 @@ class Framework(object):
         'deletes all grids and contours'
         self.grids2.clear()
         self.contours2.clear()
+        self.grids3.clear()
         self.boundary_types.clear()
 
     def deep_copy(self):

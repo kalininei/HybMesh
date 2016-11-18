@@ -70,3 +70,28 @@ def tecplot(grid, fname, btypes=None, cb=None):
         raise
     finally:
         hmcore.free_boundary_names(c_bnames) if c_bnames != 0 else None
+
+
+def hmg(grids, names, fname, fmt, afields, cb, wr=None):
+    # callback
+    if cb is None:
+        cb = interf.SilentCallbackCancel2()
+    c_writer, c_gwriter = 0, 0
+    try:
+        c_writer = hmcore.hmxml_new() if wr is None else wr
+        for g, nm in zip(grids, names):
+            # write
+            c_g = g.cdata
+            c_gwriter = g3core.gwriter_create(nm, c_g, c_writer, c_writer, fmt)
+            # additional fields
+            for f in afields:
+                g3core.gwriter_add_field(c_gwriter, f)
+            # free data
+            g3core.free_gwriter(c_gwriter) if c_gwriter != 0 else None
+            c_gwriter = 0
+    except:
+        raise
+    finally:
+        g3core.free_gwriter(c_gwriter) if c_gwriter != 0 else None
+        if c_writer != 0 and wr is None:
+            hmcore.hmxml_finalize(c_writer, fname)

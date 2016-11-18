@@ -16,6 +16,7 @@ set (HEADERS
 	algos.hpp
 	cont_partition.hpp
 	cont_repart.hpp
+	hmc_imex.hpp
 )
 
 set (SOURCES
@@ -32,6 +33,7 @@ set (SOURCES
 	algos.cpp
 	cont_partition.cpp
 	cont_repart.cpp
+	hmc_imex.cpp
 )
 
 source_group ("Header Files" FILES ${HEADERS} ${HEADERS})

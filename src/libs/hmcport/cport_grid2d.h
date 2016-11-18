@@ -93,10 +93,8 @@ void* regular_hex_grid(double* area, int area_type, double cell_rad, int strict_
 //returns Reader* or 0 if error
 void* gwriter_create(const char* gname, void* grid, void* awriter, void* subnode, const char* fmt);
 void gwriter_free(void* gwriter);
-
 int gwriter_add_defined_field(void* gwriter, const char* field);
 int gwriter_add_edge_field(void* gwriter, const char* fieldname, void* field, int fsize, const char* type);
-
 void* greader_create(void* awriter, void* subnode, char* outname);
 void* greader_getresult(void* rd);
 void* greader_read_edge_field(void* rd, const char* fieldname, const char* type);

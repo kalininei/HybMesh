@@ -21,6 +21,9 @@ struct SimpleSerialize{
 	//access to cells, faces in 'cells', 'faces' vectors
 	vector<int> icells, ifaces;
 
+	//fills everything from: vert, edges, faces, bnd.
+	void supplement();
+
 	//====== additional connectivity tables
 	vector<int> face_vertex(int num_face) const;
 	vector<vector<int>> face_vertex() const;

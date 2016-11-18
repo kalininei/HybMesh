@@ -60,10 +60,10 @@ private:
 	HMXML::Reader gwriter, vwriter, ewriter, cwriter;
 	std::string __tp;
 };
-template<> bool GridWriter::is_binary<int>(){return __tp == "bin";}
-template<> bool GridWriter::is_binary<char>(){return __tp == "bin";}
-template<> bool GridWriter::is_binary<double>(){return __tp != "ascii";}
-template<> bool GridWriter::is_binary<float>(){return __tp != "ascii";}
+template<> inline bool GridWriter::is_binary<int>(){return __tp == "bin";}
+template<> inline bool GridWriter::is_binary<char>(){return __tp == "bin";}
+template<> inline bool GridWriter::is_binary<double>(){return __tp != "ascii";}
+template<> inline bool GridWriter::is_binary<float>(){return __tp != "ascii";}
 
 struct WOwner{
 	WOwner(): writer(HMXML::ReaderA::pcreate("HybMeshData")){}
