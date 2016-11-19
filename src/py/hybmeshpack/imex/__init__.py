@@ -141,6 +141,8 @@ def export_grid(fmt, fn, name, fw=None, flow=None, adata=None):
         grid3export.vtk(gsum, fn, callb)
     elif fmt == "msh3d":
         grid3export.msh(gsum, fn, fw.boundary_types, callb, adata)
+    elif fmt == "gmsh3d":
+        grid3export.gmsh(gsum, fn, fw.boundary_types, callb)
     elif fmt == "tecplot3d":
         grid3export.tecplot(gsum, fn, fw.boundary_types, callb)
     elif fmt == "hmg3d":

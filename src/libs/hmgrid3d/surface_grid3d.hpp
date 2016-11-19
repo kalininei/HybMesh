@@ -22,6 +22,8 @@ struct Surface{
 	// -1: reverse faces so that all grid cells be on their left sides.
 	// makes a shallow copy of grid data, so reversing will alter grid structure
 	static Surface FromBoundaryType(HMGrid3D::SGrid& g, int btype, int reversetp);
+	static std::map<int, Surface> ByBoundaryTypes(HMGrid3D::SGrid& g, int reversetp);
+	static std::map<int, Surface> ByBoundaryTypes(const HMGrid3D::SGrid& g);
 
 	//extracts subsurface which contains v
 	static Surface SubSurface(const Surface& s, Vertex* v);

@@ -277,14 +277,34 @@ void test07(){
 		add_file_check(2848618625331037303U, "g1.dat", "no tri, complex connections, complete");
 	}
 }
+
+void test08(){
+	std::cout<<"8. export cuboid to gmsh"<<std::endl;
+	auto g1 = HMGrid3D::Constructor::Cuboid({0, 0, 0}, 1, 2, 5, 3, 3, 3);
+	auto bfun = [](int i)->std::string{
+		if (i==1) return "bottom";
+		if (i==2) return "top";
+		if (i==3) return "left";
+		if (i==4) return "right";
+		if (i==5) return "front";
+		return "back";
+	};
+	HMGrid3D::Export::GridGMSH(g1, "g1.msh", bfun);
+	add_check(g1.n_vert == 64 && g1.n_cells == 27 &&
+			g1.n_edges == 144 && g1.n_faces == 108,
+			"cuboid primitives number"); 
+	add_file_check(4596785021162173517U, "g1.msh", "3d gmsh export");
+}
+
 int main(){
-	test01();
-	test02();
-	test03();
-	test04();
-	test05();
-	test06();
-	test07();
+	//test01();
+	//test02();
+	//test03();
+	//test04();
+	//test05();
+	//test06();
+	//test07();
+	test08();
 	
 	check_final_report();
 	std::cout<<"DONE"<<std::endl;

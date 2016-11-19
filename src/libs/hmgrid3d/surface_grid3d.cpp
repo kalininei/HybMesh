@@ -38,6 +38,19 @@ Surface Surface::FromBoundaryType(HMGrid3D::SGrid& g, int btype, int reversetp){
 	}
 	return ret;
 }
+std::map<int, Surface> Surface::ByBoundaryTypes(HMGrid3D::SGrid& g, int reversetp){
+	std::map<int, Surface> ret;
+	for (auto f: g.vfaces){
+		if (f->is_boundary() && ret.find(f->boundary_type) == ret.end()){
+			ret.emplace(f->boundary_type, FromBoundaryType(g, f->boundary_type, reversetp));
+		}
+	}
+	return ret;
+}
+std::map<int, Surface> Surface::ByBoundaryTypes(const HMGrid3D::SGrid& g){
+	auto gp = const_cast<HMGrid3D::SGrid*>(&g);
+	return ByBoundaryTypes(*gp, 0);
+}
 
 Surface Surface::SubSurface(const Surface& s, Vertex* v){
 	//subdivide

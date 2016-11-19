@@ -8,6 +8,7 @@ set (HEADERS
 	serialize_grid3d.hpp
 	fluent_export_grid3d.hpp
 	vtk_export_grid3d.hpp
+	gmsh_export_grid3d.hpp
 	tecplot_export_grid3d.hpp
 	hmg_export_grid3d.hpp
 	hmg_import_grid3d.hpp
@@ -23,6 +24,7 @@ set (SOURCES
 	serialize_grid3d.cpp
 	fluent_export_grid3d.cpp
 	vtk_export_grid3d.cpp
+	gmsh_export_grid3d.cpp
 	tecplot_export_grid3d.cpp
 	hmg_export_grid3d.cpp
 	hmg_import_grid3d.cpp

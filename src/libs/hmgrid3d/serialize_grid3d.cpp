@@ -43,6 +43,8 @@ void SimpleSerialize::supplement(){
 		std::copy(tcells[i].begin(), tcells[i].end(), it);
 		it += tcells[i].size();
 	}
+	ifaces.push_back(faces.size());
+	icells.push_back(cells.size());
 }
 
 vector<int> SimpleSerialize::face_vertex(int nface) const{

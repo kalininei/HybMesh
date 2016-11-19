@@ -82,6 +82,25 @@ def export_grid_gmsh(g1, fname):
         raise ExportError(str(e))
 
 
+def export_grid_tecplot(g1, fname):
+    """exports grid to tecplot ascii \*.dat format
+
+    :param g1: grid identifier
+
+    :param fname: output filename
+
+    :raises: hmscript.ExportError
+
+    All cells will be saved as FEPolygon elements.
+    Boundary segments with same boundary type will be converted
+    to separate zones.
+    """
+    try:
+        imex.export_grid("tecplot", fname, g1, flow=flow)
+    except Exception as e:
+        raise ExportError(str(e))
+
+
 # 3d exports
 def export3d_grid_vtk(g1, fname_grid=None, fname_surface=None):
     """Exports 3D grid and its surface to vtk ascii format.
@@ -166,18 +185,8 @@ def export3d_grid_tecplot(g1, fname):
         raise ExportError(str(e))
 
 
-def export3d_grid_hmg(g1, fname, fmt="ascii", afields=[]):
-    """ TODO
-    """
-    try:
-        imex.export_grid("hmg3d", fname, g1, flow=flow,
-                         adata={'fmt': fmt, 'afields': afields})
-    except Exception as e:
-        raise ExportError(str(e))
-
-
-def export_grid_tecplot(g1, fname):
-    """exports grid to tecplot ascii \*.dat format
+def export3d_grid_gmsh(g1, fname):
+    """exports grid to gmsh ascii format
 
     :param g1: grid identifier
 
@@ -185,12 +194,26 @@ def export_grid_tecplot(g1, fname):
 
     :raises: hmscript.ExportError
 
-    All cells will be saved as FEPolygon elements.
-    Boundary segments with same boundary type will be converted
-    to separate zones.
+    Only grids with tetrahedral/hexahedral/prism/pyramid cells
+    could be exported.
+
+    Boundary edges will be exported as Elements of triangle/quadrangle type.
+    All boundary types which present in grid will be exported as
+    Physical Groups with an id identical to boundary index and
+    respective Physical Name.
     """
     try:
-        imex.export_grid("tecplot", fname, g1, flow=flow)
+        imex.export_grid("gmsh3d", fname, g1, flow=flow)
+    except Exception as e:
+        raise ExportError(str(e))
+
+
+def export3d_grid_hmg(g1, fname, fmt="ascii", afields=[]):
+    """ TODO
+    """
+    try:
+        imex.export_grid("hmg3d", fname, g1, flow=flow,
+                         adata={'fmt': fmt, 'afields': afields})
     except Exception as e:
         raise ExportError(str(e))
 

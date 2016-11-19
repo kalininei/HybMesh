@@ -504,6 +504,12 @@ class ImportGridMSH(_AbstractImportGrid):
         # read boundary names
         indshift = self._find_highest_bndindex() + 1
         ztps = {}
+        if 45 not in dtp and 39 not in dtp:
+            raise Exception("ZONE section (39, 45) was not found")
+        if 45 not in dtp:
+            dtp[45] = []
+        if 39 in dtp:
+            dtp[45] += dtp[39]
         for zline in dtp[45]:
             w = self._parse_parant(zline)[0].split()
             if w[1] != "interior":

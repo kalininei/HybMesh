@@ -18,7 +18,8 @@ struct SimpleSerialize{
 	std::vector<int> cells;    //cell0_num_faces, cell0_face0, cell0_face1, ....
 	std::vector<int> bnd;      //btype0 num_faces_in_btype0 btype0_face0, ....
 
-	//access to cells, faces in 'cells', 'faces' vectors
+	//access to cells, faces in 'cells', 'faces' vectors;
+	//size = n_cells/n_faces + 1  for loops writing
 	vector<int> icells, ifaces;
 
 	//fills everything from: vert, edges, faces, bnd.

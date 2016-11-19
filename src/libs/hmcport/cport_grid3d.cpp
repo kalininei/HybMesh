@@ -179,6 +179,19 @@ int export_msh_grid3(const CPortGrid3D* grid, const char* fname, const BoundaryN
 		return 1;
 	}
 }
+int export_gmsh_grid3(const CPortGrid3D* grid, const char* fname, const BoundaryNamesStruct* bnames,
+		hmcport_callback f2){
+	try{
+		// name function
+		auto nmfunc = construct_bnames(bnames);
+		//call function
+		HMGrid3D::Export::GridGMSH.WithCallback(f2, hmgrid(grid), fname, nmfunc);
+		return 0;
+	} catch (const std::exception &e){
+		std::cout<<e.what()<<std::endl;
+		return 1;
+	}
+}
 
 int export_tecplot_grid3(const CPortGrid3D* grid, const char* fname, const BoundaryNamesStruct* bnames,
 		hmcport_callback f2){

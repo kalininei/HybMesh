@@ -40,6 +40,8 @@ int export_vtk_grid3(const CPortGrid3D* grid, const char* fname, hmcport_callbac
 int export_surface_vtk_grid3(const CPortGrid3D* grid, const char* fname, hmcport_callback f2);
 int export_msh_grid3(const CPortGrid3D* grid, const char* fname, const BoundaryNamesStruct* bnames,
 		int n_periodic, double* data_periodic, hmcport_callback f2);
+int export_gmsh_grid3(const CPortGrid3D* grid, const char* fname, const BoundaryNamesStruct* bnames,
+		hmcport_callback f2);
 int export_tecplot_grid3(const CPortGrid3D* grid, const char* fname, const BoundaryNamesStruct* bnames,
 		hmcport_callback f2);
 

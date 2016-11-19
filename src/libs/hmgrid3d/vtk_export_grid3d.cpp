@@ -10,161 +10,163 @@ HMCallback::FunctionWithCallback<hme::TGridVTK> hme::GridVTK;
 HMCallback::FunctionWithCallback<hme::TBoundaryVTK> hme::BoundaryVTK;
 HMCallback::FunctionWithCallback<hme::TAllVTK> hme::AllVTK;
 
-namespace{
+//==================== cell expression implementation
+int hme::vtkcell_expression::wsize() const { return 1+pts.size(); }
+std::string hme::vtkcell_expression::to_string() const {
+	std::ostringstream out;
+	out<<pts.size();
+	for (auto i:pts) out<<" "<<i;
+	return out.str();
+}
+std::string hme::vtkcell_expression::stype() const { return std::to_string(celltype); }
 
-struct vtkcell_expression{
-	vector<int> pts;
-	int celltype;
+bool hme::vtkcell_expression::_false_return(){
+	pts.clear();
+	celltype = 0;
+	return false;
+}
 
-	int wsize() const { return 1+pts.size(); }
-	std::string to_string() const {
-		std::ostringstream out;
-		out<<pts.size();
-		for (auto i:pts) out<<" "<<i;
-		return out.str();
-	}
-	std::string stype() const { return std::to_string(celltype); }
-
-	bool _false_return(){
-		pts.clear();
-		celltype = 0;
-		return false;
-	}
-
-	static int find_opposite(std::vector<std::vector<int>>& data, int cind, int pind){
-		//find point opposite to data[cind][pind]
-		int p_oppose = -1;
-		for (int i=0; i<data.size(); ++i) if (i!=cind){
-			auto fnd = std::find(data[i].begin(), data[i].end(), data[cind][pind]);
-			if (fnd == data[i].end()) continue;
-			auto fndnext = std::next(fnd);
-			if (fndnext == data[i].end()) fndnext = data[i].begin();
-			if (std::find(data[cind].begin(), data[cind].end(), *fndnext) ==
-					data[cind].end()){
-				p_oppose = *fndnext;
-				break;
-			}
-			auto fndprev = (fnd == data[i].begin()) ? --data[i].end() : std::prev(fnd);
-			if (std::find(data[cind].begin(), data[cind].end(), *fndprev) ==
-					data[cind].end()){
-				p_oppose = *fndprev;
-				break;
-			}
+int hme::vtkcell_expression::find_opposite(std::vector<std::vector<int>>& data, int cind, int pind){
+	//find point opposite to data[cind][pind]
+	int p_oppose = -1;
+	for (int i=0; i<data.size(); ++i) if (i!=cind){
+		auto fnd = std::find(data[i].begin(), data[i].end(), data[cind][pind]);
+		if (fnd == data[i].end()) continue;
+		auto fndnext = std::next(fnd);
+		if (fndnext == data[i].end()) fndnext = data[i].begin();
+		if (std::find(data[cind].begin(), data[cind].end(), *fndnext) ==
+				data[cind].end()){
+			p_oppose = *fndnext;
+			break;
 		}
-		return p_oppose;
-	}
-	static int is_opposite(std::vector<std::vector<int>>& data, int i1, int i2){
-		//returns -1 or index of data[i2] which matches data[i1][0]
-		int p_oppose = find_opposite(data, i1, 0);
-		if (p_oppose < 0) return -1;
-		auto fnd = std::find(data[i2].begin(), data[i2].end(), p_oppose);
-		if (fnd != data[i2].end()) return fnd - data[i2].begin();
-		else return -1;
-	}
-	static std::pair<int, int> get_opposite(std::vector<std::vector<int>>& data, int ic){
-		// returns index of opposite face, number of edge within data[first]
-		// array which mathces data[ic][0] vertex. (-1, -1) if no oppsite was found
-		std::pair<int, int> bad_ret(-1, -1);
-		//find vertex opposite to data[ic][0] as one that is connected to data[ic][0]
-		//but not lieing in data[ic]
-		int p_oppose = find_opposite(data, ic, 0);
-		if (p_oppose<0) return bad_ret;
-		//find opposite face as face not containing any data[ic] nodes
-		//but containing p_oppose
-		for (auto i=0; i<data.size(); ++i) if (i != ic){
-			//same number of points
-			if (data[i].size() != data[ic].size()) continue;
-			//no dublicate points
-			std::unordered_set<int> dub(data[i].begin(), data[i].end());
-			dub.insert(data[ic].begin(), data[ic].end());
-			if (dub.size() != data[i].size() + data[ic].size()) continue;
-			//find p_oppose
-			auto fnd = std::find(data[i].begin(), data[i].end(), p_oppose);
-			if (fnd == data[i].end()) continue;
-			return std::make_pair(i, fnd-data[i].begin());
+		auto fndprev = (fnd == data[i].begin()) ? --data[i].end() : std::prev(fnd);
+		if (std::find(data[cind].begin(), data[cind].end(), *fndprev) ==
+				data[cind].end()){
+			p_oppose = *fndprev;
+			break;
 		}
-		return bad_ret;
 	}
-	bool try_tetrahedron(std::vector<std::vector<int>>& data){
-		celltype = 10;
-		if (data.size() != 4) return _false_return();
-		for (auto& d: data) if (d.size() != 3) return _false_return();
-		for (auto& d: data) pts.insert(pts.end(), d.begin(), d.end()); 
-		pts = aa::no_dublicates(pts);
-		if (pts.size() == 4) return true;
+	return p_oppose;
+}
+int hme::vtkcell_expression::is_opposite(std::vector<std::vector<int>>& data, int i1, int i2){
+	//returns -1 or index of data[i2] which matches data[i1][0]
+	int p_oppose = find_opposite(data, i1, 0);
+	if (p_oppose < 0) return -1;
+	auto fnd = std::find(data[i2].begin(), data[i2].end(), p_oppose);
+	if (fnd != data[i2].end()) return fnd - data[i2].begin();
+	else return -1;
+}
+std::pair<int, int> hme::vtkcell_expression::get_opposite(std::vector<std::vector<int>>& data, int ic){
+	// returns index of opposite face, number of edge within data[first]
+	// array which mathces data[ic][0] vertex. (-1, -1) if no oppsite was found
+	std::pair<int, int> bad_ret(-1, -1);
+	//find vertex opposite to data[ic][0] as one that is connected to data[ic][0]
+	//but not lieing in data[ic]
+	int p_oppose = find_opposite(data, ic, 0);
+	if (p_oppose<0) return bad_ret;
+	//find opposite face as face not containing any data[ic] nodes
+	//but containing p_oppose
+	for (auto i=0; i<data.size(); ++i) if (i != ic){
+		//same number of points
+		if (data[i].size() != data[ic].size()) continue;
+		//no dublicate points
+		std::unordered_set<int> dub(data[i].begin(), data[i].end());
+		dub.insert(data[ic].begin(), data[ic].end());
+		if (dub.size() != data[i].size() + data[ic].size()) continue;
+		//find p_oppose
+		auto fnd = std::find(data[i].begin(), data[i].end(), p_oppose);
+		if (fnd == data[i].end()) continue;
+		return std::make_pair(i, fnd-data[i].begin());
+	}
+	return bad_ret;
+}
+bool hme::vtkcell_expression::try_tetrahedron(std::vector<std::vector<int>>& data){
+	celltype = 10;
+	if (data.size() != 4) return _false_return();
+	for (auto& d: data) if (d.size() != 3) return _false_return();
+	//for (auto& d: data) pts.insert(pts.end(), d.begin(), d.end()); 
+	//pts = aa::no_dublicates(pts);
+	//if (pts.size() == 4) return true;
+	//else return _false_return();
+	pts = {data[0][0], data[0][2], data[0][1], -1};
+	for (int i=0; i<3; ++i){
+		int p3 = data[1][i];
+		if (p3!=pts[0] && p3!=pts[1] && p3!=pts[2]){
+			pts[3] = p3;
+			break;
+		}
+	}
+	if (pts.back() == -1) return _false_return();
+	else return true;
+}
+bool hme::vtkcell_expression::try_hexahedron(std::vector<std::vector<int>>& data){
+	celltype = 12;
+	if (data.size() != 6) return _false_return();
+	for (auto& d: data) if (d.size() != 4) return _false_return();
+	//find opposite face
+	std::pair<int, int> opcell = get_opposite(data, 0);
+	if (opcell.first < 0) return _false_return();
+	std::vector<int> dlower = data[0];
+	std::vector<int> dupper = data[opcell.first];
+	std::rotate(dupper.begin(), dupper.begin()+opcell.second, dupper.end());
+	pts = {dlower[0], dlower[3], dlower[2], dlower[1],
+		dupper[0], dupper[1], dupper[2], dupper[3]};
+	return true;
+}
+bool hme::vtkcell_expression::try_pyramid(std::vector<std::vector<int>>& data){
+	celltype = 14;
+	if (data.size() != 5) return _false_return();
+	int f4 = -1;
+	for (int i=0; i<data.size(); ++i){
+		if (data[i].size() == 4){ f4 = i; break; }
+		if (data[i].size() != 3) return _false_return();
+	}
+	if (f4 == -1) return _false_return();
+	int cp = -1;
+	int itry = (f4 == 0)?1:0;
+	for (int j=0; j<data[itry].size(); ++j){
+		auto fnd = std::find(data[f4].begin(), data[f4].end(), data[itry][j]);
+		if (fnd == data[f4].end()){
+			cp = data[itry][j];
+			break;
+		}
+	}
+	if (cp == -1) return _false_return();
+	pts = {data[f4][0], data[f4][3], data[f4][2], data[f4][1], cp};
+	return true;
+}
+bool hme::vtkcell_expression::try_wedge(std::vector<std::vector<int>>& data){
+	celltype=13; 
+	if (data.size() != 5) return _false_return();
+	int f1=-1, f2=-1;
+	for (int i=0; i<data.size(); ++i){
+		auto& c = data[i];
+		if (c.size() <3 || c.size() > 4) return _false_return();
+		if (c.size() == 4) continue;
+		if (f1<0) f1 = i;
+		else if (f2<0) f2 = i;
 		else return _false_return();
 	}
-	bool try_hexahedron(std::vector<std::vector<int>>& data){
-		celltype = 12;
-		if (data.size() != 6) return _false_return();
-		for (auto& d: data) if (d.size() != 4) return _false_return();
-		//find opposite face
-		std::pair<int, int> opcell = get_opposite(data, 0);
-		if (opcell.first < 0) return _false_return();
-		std::vector<int> dlower = data[0];
-		std::vector<int> dupper = data[opcell.first];
-		std::rotate(dupper.begin(), dupper.begin()+opcell.second, dupper.end());
-		pts = {dlower[0], dlower[3], dlower[2], dlower[1],
-			dupper[0], dupper[1], dupper[2], dupper[3]};
-		return true;
-	}
-	bool try_pyramid(std::vector<std::vector<int>>& data){
-		celltype = 14;
-		if (data.size() != 5) return _false_return();
-		int f4 = -1;
-		for (int i=0; i<data.size(); ++i){
-			if (data[i].size() == 4){ f4 = i; break; }
-			if (data[i].size() != 3) return _false_return();
-		}
-		if (f4 == -1) return _false_return();
-		int cp = -1;
-		int itry = (f4 == 0)?1:0;
-		for (int j=0; j<data[itry].size(); ++j){
-			auto fnd = std::find(data[f4].begin(), data[f4].end(), data[itry][j]);
-			if (fnd == data[f4].end()){
-				cp = data[itry][j];
-				break;
-			}
-		}
-		if (cp == -1) return _false_return();
-		pts = {data[f4][0], data[f4][3], data[f4][2], data[f4][1], cp};
-		return true;
-	}
-	bool try_wedge(std::vector<std::vector<int>>& data){
-		celltype=13; 
-		if (data.size() != 5) return _false_return();
-		int f1=-1, f2=-1;
-		for (int i=0; i<data.size(); ++i){
-			auto& c = data[i];
-			if (c.size() <3 || c.size() > 4) return _false_return();
-			if (c.size() == 4) continue;
-			if (f1<0) f1 = i;
-			else if (f2<0) f2 = i;
-			else return _false_return();
-		}
-		if (f2<0) return _false_return();
-		auto oi = is_opposite(data, f1, f2);
-		if (oi < 0) return _false_return();
-		auto dlower = data[f1], dupper = data[f2];
-		std::rotate(dupper.begin(), dupper.begin() + oi, dupper.end());
-		pts = {dlower[0], dlower[1], dlower[2], dupper[0], dupper[2], dupper[1]};
-		return true;
-	}
-
-	static vtkcell_expression build(std::vector<std::vector<int>>& cint){
-		vtkcell_expression ret;
-		if (ret.try_tetrahedron(cint)) return ret;
-		if (ret.try_hexahedron(cint)) return ret;
-		if (ret.try_wedge(cint)) return ret;
-		if (ret.try_pyramid(cint)) return ret;
-		std::string s("Cannot write 3D cell with ");
-		s += std::to_string(cint.size());
-		s += " faces to vtk format";
-		throw std::runtime_error(s.c_str());
-	}
-};
-
-vector< vtkcell_expression > cell_assembler(const SGrid& ser,
+	if (f2<0) return _false_return();
+	auto oi = is_opposite(data, f1, f2);
+	if (oi < 0) return _false_return();
+	auto dlower = data[f1], dupper = data[f2];
+	std::rotate(dupper.begin(), dupper.begin() + oi, dupper.end());
+	pts = {dlower[0], dlower[1], dlower[2], dupper[0], dupper[2], dupper[1]};
+	return true;
+}
+hme::vtkcell_expression hme::vtkcell_expression::build(std::vector<std::vector<int>>& cint){
+	vtkcell_expression ret;
+	if (ret.try_tetrahedron(cint)) return ret;
+	if (ret.try_hexahedron(cint)) return ret;
+	if (ret.try_wedge(cint)) return ret;
+	if (ret.try_pyramid(cint)) return ret;
+	std::string s("Cannot treat 3D cell with ");
+	s += std::to_string(cint.size());
+	s += " faces as valid tetrahedron/hexahedron/prism/pyramid";
+	throw std::runtime_error(s.c_str());
+}
+vector<hme::vtkcell_expression> hme::vtkcell_expression::cell_assembler(const SGrid& ser,
 		const vector<vector<int>>& aface){
 	vector<vtkcell_expression> ret; ret.reserve(ser.n_cells);
 
@@ -188,18 +190,16 @@ vector< vtkcell_expression > cell_assembler(const SGrid& ser,
 		//match vtk data format. throws if impossible
 		ret.push_back(vtkcell_expression::build(cell_points));
 	}
-
 	return ret;
 }
 
-}
 
 void hme::TGridVTK::_run(const SGrid& ser, std::string fn){
 	callback->step_after(20, "Assembling faces");
 	vector<vector<int>> aface = ser.face_vertex();
 
 	callback->step_after(20, "Assembling cells");
-	vector< vtkcell_expression > vtkcell = cell_assembler(ser, aface);
+	vector< vtkcell_expression > vtkcell = hme::vtkcell_expression::cell_assembler(ser, aface);
 	int nffull = std::accumulate(vtkcell.begin(), vtkcell.end(), 0, 
 			[](int s, const vtkcell_expression& v){ return s + v.wsize(); });
 

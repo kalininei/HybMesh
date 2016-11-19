@@ -274,11 +274,11 @@ void gridmsh(HMCallback::Caller2& callback, const HMGrid3D::SGrid& g, std::strin
 	}
 
 	//Boundary features
-	fs<<"(45 (2 fluid fluid)())\n";
-	fs<<"(45 (3 interior default-interior)())\n";
+	fs<<"(45 (2 fluid fluid 1)())\n";
+	fs<<"(45 (3 interior default-interior 1)())\n";
 	zonetype = 4;
 	for (auto it = std::next(facezones.begin()); it!=facezones.end(); ++it){
-		fs<<"(45 ("<<zonetype<<" "<<facezones_bname[zonetype]<<" "<<btype_name(it->first)<<")())\n";
+		fs<<"(45 ("<<zonetype<<" "<<facezones_bname[zonetype]<<" "<<btype_name(it->first)<<" 1)())\n";
 		++zonetype;
 	}
 }

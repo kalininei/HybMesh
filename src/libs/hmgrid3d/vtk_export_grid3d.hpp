@@ -42,6 +42,36 @@ struct TAllVTK: public HMCallback::ExecutorBase{
 };
 extern HMCallback::FunctionWithCallback<TAllVTK> AllVTK;
 
+
+//structure which tries to treat 3D cell
+//as a tetrahedron/hexahedron/prism/wedge.
+//Used in vtk and gmsh exporting routines
+class vtkcell_expression{
+	bool _false_return();
+
+	static int find_opposite(std::vector<std::vector<int>>& data, int cind, int pind);
+	static int is_opposite(std::vector<std::vector<int>>& data, int i1, int i2);
+	static std::pair<int, int> get_opposite(std::vector<std::vector<int>>& data, int ic);
+	bool try_tetrahedron(std::vector<std::vector<int>>& data);
+	bool try_hexahedron(std::vector<std::vector<int>>& data);
+	bool try_pyramid(std::vector<std::vector<int>>& data);
+	bool try_wedge(std::vector<std::vector<int>>& data);
+	static vtkcell_expression build(std::vector<std::vector<int>>& cint);
+public:
+	//holds points indicies in vtk type orders
+	vector<int> pts;
+	int celltype; //10 - tetrahedron; 12 - hexahedron; 14 - pyramid; 13 - wedge
+
+	//tries to build expressions for all cells in ser.
+	//aface is face_vertex connectivity table
+	static vector<vtkcell_expression> cell_assembler(const SGrid& ser,
+			const vector<vector<int>>& aface);
+	virtual std::string to_string() const;
+
+	int wsize() const;  //number of points + 1
+	std::string stype() const; //string(celltype)
+};
+
 }}
 
 #endif

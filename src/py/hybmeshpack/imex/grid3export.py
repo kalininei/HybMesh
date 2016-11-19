@@ -56,6 +56,23 @@ def msh(grid, fname, btypes=None, cb=None, per_data=None):
             hmcore.free_boundary_names(c_bnames)
 
 
+def gmsh(grid, fname, btypes=None, cb=None):
+    # callback
+    if cb is None:
+        cb = interf.SilentCallbackCancel2()
+
+    # boundary names
+    if btypes is not None:
+        c_bnames = hmcore.boundary_names_to_c(btypes)
+    else:
+        c_bnames = None
+    try:
+        g3core.to_gmsh(grid.cdata, fname, c_bnames, cb)
+    finally:
+        if c_bnames is not None:
+            hmcore.free_boundary_names(c_bnames)
+
+
 def tecplot(grid, fname, btypes=None, cb=None):
     # callback
     if cb is None:

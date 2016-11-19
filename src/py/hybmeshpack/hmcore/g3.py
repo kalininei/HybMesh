@@ -130,6 +130,19 @@ def to_msh(c_g, fname, c_bnames, c_periodic, cb):
         raise Exception("msh 3d grid export failed")
 
 
+def to_gmsh(c_g, fname, c_bnames, cb):
+    c_fname = fname.encode('utf-8')
+
+    args = (c_g, c_fname, c_bnames)
+    cb.initialize(libhmcport.export_gmsh_grid3, args)
+    cb.execute_command()
+
+    res = cb.get_result()
+
+    if res != 0:
+        raise Exception("msh 3d grid export failed")
+
+
 def to_tecplot(c_g, fname, c_bnames, cb):
     c_fname = fname.encode('utf-8')
     args = (c_g, c_fname, c_bnames)
