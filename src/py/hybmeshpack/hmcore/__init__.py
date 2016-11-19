@@ -46,6 +46,18 @@ def list_to_c(lst, tp):
     raise ValueError(str(tp))
 
 
+def free_cside_array(a, tp):
+    if tp == int or tp == "int":
+        libhmcport.free_int_array(a)
+    elif tp == float or tp == "double":
+        libhmcport.free_double_array(a)
+    elif tp == "char":
+        libhmcport.free_char_array(a)
+    else:
+        raise ValueError(str(tp))
+    a = None
+
+
 def boundary_names_to_c(bnames):
     nameslist = []
     valslist = []
@@ -96,6 +108,12 @@ def hmxml_free_node(node):
     libhmcport.free_hmxml_node(node)
 
 
+def hmxml_change_basenode(node, query):
+    ret = libhmcport.hmxml_change_basenode(node, query)
+    if ret == 0:
+        raise Exception("Failed to find xml node " + query)
+
+
 def hmxml_query(reader, query, required="no"):
     """ required = "no", '>0', '=1', '=0'
         returns hmxml nodes list
@@ -122,3 +140,16 @@ def hmxml_query(reader, query, required="no"):
     for i in range(num):
         ret.append(ans[i])
     return ret
+
+
+def hmxml_purged_string(reader):
+    """ returns string representing reader xml document
+        without CONTOUR2D, GRID2D, GRID3D elements
+    """
+    ret = libhmcport.hmxml_purged_string(reader)
+    if ret == 0:
+        raise Exception("hmxml purge procedure failed")
+    ret = ct.cast(ret, ct.c_char_p)
+    out = str(ret.value)
+    free_cside_array(ret, "char")
+    return out

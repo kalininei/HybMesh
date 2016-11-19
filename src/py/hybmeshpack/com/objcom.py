@@ -1,5 +1,6 @@
 'commands for geometric objects'
 import command
+import copy
 
 
 class RenameGeom(command.Command):
@@ -219,6 +220,53 @@ class RemoveGeom(AbstractAddRemove):
     @classmethod
     def _arguments_types(cls):
         return {'names': command.ListOfOptions(command.BasicOption(str))}
+
+
+class RemoveAll(AbstractAddRemove):
+    'remove grids, contours, grids3d, boundary types list'
+    def __init__(self, argsdict):
+        super(RemoveAll, self).__init__(argsdict)
+        self._btypes_backup = None
+
+    def doc(self):
+        return "Remove all objects"
+
+    @classmethod
+    def _arguments_types(cls):
+        return {}
+
+    def _addrem_objects(self):
+        gridnames = self.receiver.get_grid_names()
+        contnames = self.receiver.get_ucontour_names()
+        g3names = self.receiver.get_grid3_names()
+        return [], gridnames, [], contnames, [], g3names
+
+    def __remove_btypes(self):
+        self._btypes_backup = []
+        srbt = self.receiver.boundary_types
+        for bt in srbt._data:
+            self._btypes_backup.append(copy.deepcopy(bt))
+        srbt.clear()
+
+    def _exec(self):
+        self.__remove_btypes()
+        return super(RemoveAll, self)._exec()
+
+    def _clear(self):
+        self._btypes_backup = None
+        super(RemoveAll, self)._clear()
+
+    def _undo(self):
+        if self._btypes_backup is not None:
+            for bt in self._btypes_backup:
+                self.receiver.boundary_types.set_bnd(
+                    bt.index, bt.name, bt.color)
+        self._btypes_backup = None
+        super(RemoveAll, self)._undo()
+
+    def _redo(self):
+        self.__remove_btypes()
+        super(RemoveAll, self)._redo()
 
 
 class MoveGeom(command.Command):

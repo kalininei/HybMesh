@@ -17,26 +17,10 @@ class BndTypesList(object):
                 (150, 150, 150),
                 (10, 255, 0)
                 ]
-    # _st_cols = [c.getRgb()[:3] for c in [
-    #         (0, 0, 0),
-    #         (50, 50, 50)
-    #         QtGui.QColor("chartreuse"),
-    #         QtGui.QColor("blue"),
-    #         QtGui.QColor("magenta"),
-    #         QtGui.QColor("cyan"),
-    #         QtGui.QColor("yellow"),
-    #         QtGui.QColor("green"),
-    #         QtGui.QColor("orange"),
-    #         QtGui.QColor("red"),
-    #         QtGui.QColor("pink"),
-    #         QtGui.QColor("black"),
-    #     ]]
 
     'list of (index, name, color) entries'
     def __init__(self):
-        self._data = [
-                BndType(0, "None", (255, 255, 255))
-        ]
+        self._data = [BndType(0, "None", (255, 255, 255))]
 
     def add_data(self, bt):
         'adds values from another BndTypesList object'
@@ -136,18 +120,18 @@ class BndTypesList(object):
     def xml_save(self, xmlnode):
         'save data to xml node'
         for v in self._data:
-            n = ET.SubElement(xmlnode, "ENTRY", {'ind': str(v.index)})
-            ET.SubElement(n, "NAME").text = v.name
-            ET.SubElement(n, "COLOR").text = ' '.join(map(str, v.color))
+            nd = ET.SubElement(xmlnode, "BTYPE")
+            ET.SubElement(nd, "INDEX").text = str(v.index)
+            ET.SubElement(nd, "NAME").text = str(v.name)
 
     def xml_load(self, xmlnode):
         'creates BoundaryTypesList from xml node'
         del self._data[:]
-        nds = xmlnode.findall("ENTRY")
+        nds = xmlnode.findall("BTYPE")
         for n in nds:
-            ind = int(n.attrib['ind'])
+            ind = int(n.find("INDEX").text)
             nm = n.find("NAME").text
-            color = tuple(map(int, n.find("COLOR").text.split()))
+            color = (255, 255, 255)
             self.set_bnd(ind, nm, color)
 
 

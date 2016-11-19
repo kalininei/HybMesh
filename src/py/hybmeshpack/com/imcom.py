@@ -894,55 +894,15 @@ class ImportAllNative(_AbstractImport):
         return self._g3names[i]
 
     def _read_data(self):
+        import imex
         so = self.options
-        c_reader, c_greader, c_creader, c_g3reader = 0, [], [], []
+        c_reader = 0
         try:
             cb = self.ask_for_callback()
-            cb._callback("Loading xml file", "", 0, 0)
-            # find node
             c_reader = hmcore.hmxml_read(so['filename'])
-            c_greader = hmcore.hmxml_query(c_reader, "GRID2D")
-            c_creader = hmcore.hmxml_query(c_reader, "CONTOUR2D")
-            c_g3reader = hmcore.hmxml_query(c_reader, "GRID3D")
-            # contours allocation
-            if len(c_creader) > 0:
-                conts = [None] * len(c_creader)
-                self._cnames = [None] * len(c_creader)
-            else:
-                conts = None
-            # grids allocation
-            if len(c_greader) > 0:
-                grids = [None] * len(c_greader)
-                self._gnames = [None] * len(c_greader)
-            else:
-                grids = None
-            # grids3d allocation
-            if len(c_g3reader) > 0:
-                grids3 = [None] * len(c_g3reader)
-                self._g3names = [None] * len(c_g3reader)
-            else:
-                grids3 = None
-
-            cbtotal = len(c_g3reader) + 2
-            # read contours
-            cb.subcallback(0, cbtotal)._callback("Reading contours", "", 0, 0)
-            for i in range(len(c_creader)):
-                conts[i], self._cnames[i] =\
-                    c2core.contour_from_hmxml(c_reader, c_creader[i])
-            # read grids
-            cb.subcallback(1, cbtotal)._callback("Reading grids", "", 0, 0)
-            for i in range(len(c_greader)):
-                grids[i], self._gnames[i] =\
-                    g2core.grid_from_hmxml(c_reader, c_greader[i])
-            # read 3d grids
-            for i in range(len(c_g3reader)):
-                subcb = cb.subcallback(i + 2, cbtotal)
-                grids3[i], self._g3names[i] =\
-                    g3core.grid_from_hmxml(c_reader, c_g3reader[i], subcb)
-            return conts, grids, grids3
+            conts, grids, grids3d, self._cnames, self._gnames, self._g3names =\
+                imex.import_all(cb, c_reader)
         except Exception:
             raise
         finally:
-            for gr in c_greader + c_creader + c_g3reader:
-                hmcore.hmxml_free_node(gr)
             hmcore.hmxml_free_node(c_reader) if c_reader != 0 else None

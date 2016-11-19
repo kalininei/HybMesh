@@ -13,9 +13,10 @@ typedef int (*hmcport_callback)(const char*, const char*, double, double);
 //so file with content "0.711 23.00000001" would have same hash as "0.71 23"
 size_t get_ascii_file_hash(const char* fn);
 
-//frees array allocated on c-side
+//frees array allocated on c-side by new[] commands
 void free_int_array(int* a);
 void free_double_array(double* a);
+void free_char_array(char* a);
 
 struct BoundaryNamesStruct{
 	int n;
@@ -202,7 +203,8 @@ int finalize_writer(void* writer, const char* fn);
 void* new_reader(const char* fn);
 void free_hmxml_node(void* node);
 int hmxml_query(void* node, const char* q, int* num, void** ans);
-
+int hmxml_change_basenode(void* node, const char* q);
+char* hmxml_purged_string(void* node);
 
 }; //extern C
 

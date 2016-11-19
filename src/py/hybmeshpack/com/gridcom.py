@@ -12,6 +12,15 @@ from hybmeshpack.hmcore import c2 as c2core
 from hybmeshpack.hmcore import libhmcport
 
 
+def print_classes():
+    import sys
+    import inspect
+    print __name__
+    for name, obj in inspect.getmembers(sys.modules[__name__]):
+        if inspect.isclass(obj):
+            print(obj)
+
+
 class NewGridCommand(objcom.AbstractAddRemove):
     "Command with a new grid addition"
     def __init__(self, argsdict):

@@ -15,6 +15,9 @@ int silent2_function(const char*, const char*, double, double){
 
 void free_int_array(int* a){ if (a != NULL) delete[] a; }
 void free_double_array(double* a){ if (a!= NULL) delete[] a; }
+void free_char_array(char* a){
+	if (a!=NULL) delete[] a;
+}
 
 size_t get_ascii_file_hash(const char* fn){
 	return HMTesting::calculate_file_hash(fn);
@@ -711,6 +714,39 @@ int hmxml_query(void* node, const char* q, int* num, void** ans){
 			ans[i] = new HMXML::Reader(fnd[i]);
 		}
 		return 1;
+	} catch (const std::exception &e){
+		std::cout<<e.what()<<std::endl;
+		return 0;
+	}
+}
+
+int hmxml_change_basenode(void* node, const char* q){
+	try{
+		HMXML::Reader* wr = static_cast<HMXML::Reader*>(node);
+		HMXML::Reader fnd = wr->find_by_path(q, true);
+		wr->_nd = fnd._nd;
+		return 1;
+	} catch (const std::exception &e){
+		std::cout<<e.what()<<std::endl;
+		return 0;
+	}
+}
+
+char* hmxml_purged_string(void* node){
+	try{
+		HMXML::Reader* wr = static_cast<HMXML::Reader*>(node);
+		HMXML::Reader copy = HMXML::Reader::copy_to_root(*wr);
+		auto unused1 = copy.findall_by_path(".//GRID2D");
+		auto unused2 = copy.findall_by_path(".//GRID3D");
+		auto unused3 = copy.findall_by_path(".//CONTOUR2D");
+		auto unused = unused1;
+		std::copy(unused2.begin(), unused2.end(), std::back_inserter(unused));
+		std::copy(unused3.begin(), unused3.end(), std::back_inserter(unused));
+		for (auto& n: unused) n.unlink_node();
+		std::string s = copy.tostring();
+		char* out = new char[s.size()+10];
+		strcpy(out, s.c_str());
+		return out;
 	} catch (const std::exception &e){
 		std::cout<<e.what()<<std::endl;
 		return 0;

@@ -5,7 +5,7 @@ from hybmeshpack import progdata
 
 def _root_xml():
     'returns root xml node tagged HybMeshProject'
-    ret = ET.Element('HybMeshProject')
+    ret = ET.Element('HybMeshData')
     ret.attrib['ver'] = str(progdata.HybMeshVersion.current())
     return ret
 
@@ -15,7 +15,7 @@ def xmlindent(elem, level=0):
         It basically walks your tree and adds spaces and newlines so the tree i
         printed in a nice way
     """
-    tabsym = "    "
+    tabsym = "  "
     i = "\n" + level * tabsym
     if len(elem):
         if not elem.text or not elem.text.strip():
@@ -31,8 +31,9 @@ def xmlindent(elem, level=0):
             elem.tail = i
 
 
-def writexml(r, filename):
-    xmlindent(r)
+def writexml(r, filename, formating=True):
+    if formating:
+        xmlindent(r)
     tree = ET.ElementTree(r)
     tree.write(filename, xml_declaration=True, encoding='utf-8')
 
@@ -46,10 +47,10 @@ def write_command_flow(comflow, xmlnode, flowname=None):
     #Commands list
     cl = ET.SubElement(rt, "COMMANDS")
     for c in comflow._commands:
-        nd = ET.SubElement(cl, "ENTRY")
+        nd = ET.SubElement(cl, "COM")
+        nd.attrib['name'] = c.method_code()
         if c is comflow._commands[comflow._curpos]:
             nd.attrib['current'] = '1'
-        ET.SubElement(nd, "TITLE").text = c.method_code()
         ET.SubElement(nd, "LINE").text = c.opt_line()
         if c.get_comment() != "":
             ET.SubElement(nd, "COMMENT").text = c.get_comment()
@@ -58,18 +59,4 @@ def write_command_flow(comflow, xmlnode, flowname=None):
 # ---------------------- Framework
 def write_framework(fw, xmlnode):
     ' writes framework data to xmlnode/STATE'
-    #Grids
-    gnode = ET.SubElement(xmlnode, "GRIDS")
-    for k, v in fw.grids2.items():
-        nd = ET.SubElement(gnode, "GRID2")
-        nd.attrib["name"] = k
-        v.xml_save(nd)
-    #User contours
-    cnode = ET.SubElement(xmlnode, "CONTOURS")
-    for k, v in fw.contours2.items():
-        nd = ET.SubElement(cnode, "CONTOUR2")
-        nd.attrib["name"] = k
-        v.xml_save(nd)
-    #boundary types
-    bnode = ET.SubElement(xmlnode, "BTYPES")
-    fw.boundary_types.xml_save(bnode)
+    fw.boundary_types.xml_save(xmlnode)

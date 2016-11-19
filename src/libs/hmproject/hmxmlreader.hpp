@@ -47,6 +47,7 @@ struct Reader{
 
 	operator bool() const {return _nd != nullptr;}
 	static Reader create(std::string tag);
+	static Reader copy_to_root(Reader& rd);
 
 	bool isroot;
 	void *_doc, *_nd;

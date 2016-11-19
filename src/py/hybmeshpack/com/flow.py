@@ -1,7 +1,6 @@
 import command
-from hybmeshpack import basic, gdata
+from hybmeshpack import basic
 import hybmeshpack.basic.proc as bp
-import hybmeshpack.basic.interf
 from hybmeshpack.gdata import Framework
 
 
@@ -53,13 +52,15 @@ class CommandFlow(bp.AbstractSender):
         return self._curpos > self._startpos
 
     def can_redo(self):
-        return len(self._commands) > self._curpos + 1
+        return len(self._commands) - 1 > self._curpos
 
     #removes all commands after curpos, adds the command to list
     #and executes it
     def exec_command(self, c):
-        #remove all commands from current position to last command
+        # remove all commands from current position to last command
         if (self.can_redo()):
+            for c in self._commands[self._curpos + 1:]:
+                c.reset()
             self._commands = self._commands[:self._curpos + 1]
         #addition
         self.append_command(c)
@@ -69,7 +70,9 @@ class CommandFlow(bp.AbstractSender):
     #Adds the command to the end of the commands list.
     #Doesn't execute it
     def append_command(self, c):
+        # append a command
         self._commands.append(c)
+        # link current flow to the command
         c.set_flow(self)
         self._send_message(self.APPEND_COMMAND)
 
@@ -114,6 +117,15 @@ class CommandFlow(bp.AbstractSender):
     def undo_all(self):
         while (self.can_undo()):
             self.undo_prev()
+
+    def purge_flow(self):
+        """ resets all commands, deletes commands after current one,
+            start position = current position.
+        """
+        for c in self._commands:
+            c.reset()
+        self._commands = self._commands[:self._curpos + 1]
+        self._startpos = self._curpos
 
     #sets command receiver to its ZeroState. Commands are preserved
     def to_zero_state(self):
@@ -188,7 +200,7 @@ class FlowCollection(object):
         ' removes the flow with specified name '
         if len(self._flows) < 2:
                 self._send_message(self.WARNING,
-                        text="Can not remove the last flow")
+                                   text="Can not remove the last flow")
                 return
 
         #if deleted flow is actual one change actual flow

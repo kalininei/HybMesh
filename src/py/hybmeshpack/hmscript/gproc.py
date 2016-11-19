@@ -20,7 +20,11 @@ def remove_geom(objs):
 def remove_all():
     """ Completely removes all grids, contours and boundary types
     """
-    flow.to_zero_state()
+    try:
+        c = com.objcom.RemoveAll({})
+        flow.exec_command(c)
+    except:
+        raise ExecError("remove_all")
 
 
 def remove_all_but(objs):

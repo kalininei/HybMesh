@@ -6,37 +6,20 @@ import contcom
 import imcom
 
 
+def _get_classes(module):
+    import inspect
+    ret = []
+    for name, obj in inspect.getmembers(module):
+        if inspect.isclass(obj) and obj.__name__[0] != '_':
+            ret.append(obj)
+    return ret
+
+
 class _Factory(object):
     ' Command class Factory '
-    command_list = [
-        command.Start,
-        gridcom.AddUnfRectGrid,
-        gridcom.AddUnfCircGrid,
-        gridcom.AddUnfRingGrid,
-        gridcom.UniteGrids,
-        gridcom.ExcludeContours,
-        gridcom.BuildBoundaryGrid,
-        gridcom.HealGrid,
-        objcom.RenameGeom,
-        objcom.RemoveGeom,
-        objcom.MoveGeom,
-        objcom.RotateGeom,
-        objcom.ScaleGeom,
-        objcom.CopyGeom,
-        contcom.AddRectCont,
-        contcom.AddCircCont,
-        contcom.UniteContours,
-        contcom.EditBoundaryType,
-        contcom.GridBndToContour,
-        contcom.SimplifyContours,
-        contcom.SetBTypeToContour,
-        contcom.ClipDomain,
-        imcom.ImportContourNative,
-        imcom.ImportContourASCII,
-        imcom.ImportGridNative,
-        imcom.ImportGridSimple34,
-        grid3dcom.ExtrudeZ,
-    ]
+    command_list = [command.Start] + _get_classes(objcom) +\
+        _get_classes(gridcom) + _get_classes(grid3dcom) +\
+        _get_classes(contcom) + _get_classes(imcom)
 
     def __init__(self):
         """ Initializes the commands building factory.
@@ -63,6 +46,9 @@ class _Factory(object):
         return cls(*args)
 
     def __register(self, comcls):
-        self._coms[comcls.method_code()] = comcls
+        try:
+            self._coms[comcls.method_code()] = comcls
+        except:
+            pass
 
 factory = _Factory()

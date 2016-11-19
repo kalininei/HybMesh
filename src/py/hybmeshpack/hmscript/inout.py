@@ -440,11 +440,28 @@ def export_all_hmd(fname, fmt="ascii"):
         raise ExportError(str(e))
 
 
-def save_project(fname):
+def save_project(fname, fmt="ascii"):
     """saves current command flow and data to
     HybMesh project file
 
     Args:
        fname: file name
     """
-    imex.write_flow_and_framework_to_file(flow, fname)
+    try:
+        imex.write_flow_and_framework_to_file(flow, fname, fmt)
+    except Exception as e:
+        raise ExportError(str(e))
+
+
+def load_project(fname):
+    """saves current command flow and data to
+    HybMesh project file
+
+    Args:
+       fname: file name
+    """
+    try:
+        flow.to_zero_state()
+        imex.read_flow_and_framework_from_file(fname, flow)
+    except:
+        raise

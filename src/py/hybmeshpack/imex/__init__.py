@@ -4,38 +4,70 @@ import readxml
 import gridexport
 import contexport
 import grid3export
-from hybmeshpack import com
 from hybmeshpack import gdata
 from hybmeshpack.basic.interf import Callback
 from hybmeshpack.gdata import contour2
 from hybmeshpack.gdata import grid2
+from hybmeshpack import hmcore as hmcore
+from hybmeshpack.hmcore import g2 as g2core
+from hybmeshpack.hmcore import c2 as c2core
+from hybmeshpack.hmcore import g3 as g3core
 
 
-def write_flow_and_framework_to_file(comflow, filename):
+def write_flow_and_framework_to_file(comflow, filename, fmt="ascii"):
     'writes flow.CommandFlow comflow to xml file'
+    # write everithing except geometry data data
     r = writexml._root_xml()
     writexml.write_command_flow(comflow, r)
-    writexml.write_framework(comflow.get_receiver(), r.find('FLOW'))
-    writexml.writexml(r, filename)
+    st = ET.SubElement(r.find('FLOW'), "STATE")
+    writexml.write_framework(comflow.get_receiver(), st)
+    writexml.writexml(r, filename, False)
+    # add geometry data and write to file
+    c_writer = 0
+    try:
+        c_writer = hmcore.hmxml_read(filename)
+        hmcore.hmxml_change_basenode(c_writer, "FLOW/STATE")
+        export_all(filename, fmt, comflow, c_writer)
+    except:
+        raise
+    finally:
+        cb = comflow.get_interface().ask_for_callback(Callback.CB_CANCEL2)
+        cb._callback("Save to file", "", 0.8, 0)
+        hmcore.hmxml_finalize(c_writer, filename) if c_writer != 0 else None
+        cb._callback("", "Done", 1, 1)
 
 
-def read_flow_and_framework_from_file(filename):
+def read_flow_and_framework_from_file(filename, flow):
     '-> CommandFlow'
-    root = ET.parse(filename).getroot()
-    flow_nodes = root.findall('.//FLOW')
-    if len(flow_nodes) == 0:
-        raise Exception('No proper data in %s' % filename)
-    flow_node = flow_nodes[0]
-    f = com.flow.CommandFlow()
-    readxml.load_command_flow(f, flow_node)
-    state_node = flow_node.find('STATE')
-    if state_node is not None:
+    c_reader = 0
+    try:
+        flow.to_zero_state()
+        c_reader = hmcore.hmxml_read(filename)
+        pstring = hmcore.hmxml_purged_string(c_reader)
+        root = ET.fromstring(pstring)
+        flow_nodes = root.findall('FLOW')
+        if len(flow_nodes) == 0:
+            raise Exception('No proper data in %s' % filename)
+        flow_node = flow_nodes[0]
+        readxml.load_command_flow(flow, flow_node)
+        state_node = flow_node.find('STATE')
         data = gdata.Framework()
-        readxml.load_framework_state(data, state_node)
-    else:
-        data = gdata.Framework()
-    f.set_receiver(data)
-    return f
+        if state_node is not None:
+            readxml.load_framework_state(data, state_node)
+            hmcore.hmxml_change_basenode(c_reader, "FLOW/STATE")
+            cb = flow.get_interface().ask_for_callback(Callback.CB_CANCEL2)
+            c, g, g3, cn, gn, g3n = import_all(c_reader, cb)
+            for k, v in zip(cn, c):
+                data.add_ucontour(k, v)
+            for k, v in zip(gn, g):
+                data.add_grid(k, v)
+            for k, v in zip(g3n, g3):
+                data.add_grid3(k, v)
+        flow.set_receiver(data)
+    except:
+        raise
+    finally:
+        hmcore.hmxml_free_node(c_reader) if c_reader != 0 else None
 
 
 def export_grid(fmt, fn, name, fw=None, flow=None, adata=None):
@@ -180,19 +212,18 @@ def export_grid3_surface(fmt, fn, name, fw=None, flow=None):
     if fmt == 'vtk':
         grid3export.vtk_surface(grid, fn, callb)
     else:
-        raise Exception('Unknown format %s' % fmt)
+        raise Exception('Unsupported format %s' % fmt)
 
 
-def export_all(fname, fmt, flow):
-    from hybmeshpack import hmcore as hmcore
+def export_all(fname, fmt, flow, wr=None):
     c_writer = 0
     try:
+        c_writer = hmcore.hmxml_new() if wr is None else wr
         fw = flow.get_receiver()
         allconts = fw.get_ucontour_names()
         allgrids = fw.get_grid_names()
         allgrids3 = fw.get_grid3_names()
         cb = flow.get_interface().ask_for_callback(Callback.CB_CANCEL2)
-        c_writer = hmcore.hmxml_new()
         adata = {"fmt": fmt, "afields": [], "writer": c_writer}
         # contours
         cb._callback("Write contours", "", 0, 0)
@@ -206,6 +237,49 @@ def export_all(fname, fmt, flow):
     except:
         raise
     finally:
-        cb._callback("Save to file", "", 0.8, 0)
-        hmcore.hmxml_finalize(c_writer, fname) if c_writer != 0 else None
-        cb._callback("", "Done", 1, 1)
+        if wr is None:
+            cb._callback("Save to file", "", 0.8, 0)
+            hmcore.hmxml_finalize(c_writer, fname) if c_writer != 0 else None
+            cb._callback("", "Done", 1, 1)
+
+
+def import_all(reader, cb):
+    """ -> [contours], [grids], [grids3d], [contour names], [grids names],
+           [grids3d names]
+    """
+    c_greader, c_creader, c_g3reader = [], [], []
+    try:
+        cb._callback("Loading xml file", "", 0, 0)
+        # find node
+        c_greader = hmcore.hmxml_query(reader, "GRID2D")
+        c_creader = hmcore.hmxml_query(reader, "CONTOUR2D")
+        c_g3reader = hmcore.hmxml_query(reader, "GRID3D")
+        # contours allocation
+        conts, cnames = [None] * len(c_creader), [None] * len(c_creader)
+        # grids allocation
+        grids, gnames = [None] * len(c_greader), [None] * len(c_greader)
+        # grids3d allocation
+        grids3, g3names = [None] * len(c_g3reader), [None] * len(c_g3reader)
+
+        cbtotal = len(c_g3reader) + 2
+        # read contours
+        cb.subcallback(0, cbtotal)._callback("Reading contours", "", 0, 0)
+        for i in range(len(c_creader)):
+            conts[i], cnames[i] =\
+                c2core.contour_from_hmxml(reader, c_creader[i])
+        # read grids
+        cb.subcallback(1, cbtotal)._callback("Reading grids", "", 0, 0)
+        for i in range(len(c_greader)):
+            grids[i], gnames[i] =\
+                g2core.grid_from_hmxml(reader, c_greader[i])
+        # read 3d grids
+        for i in range(len(c_g3reader)):
+            subcb = cb.subcallback(i + 2, cbtotal)
+            grids3[i], g3names[i] =\
+                g3core.grid_from_hmxml(reader, c_g3reader[i], subcb)
+        return conts, grids, grids3, cnames, gnames, g3names
+    except:
+        raise
+    finally:
+        for gr in c_greader + c_creader + c_g3reader:
+            hmcore.hmxml_free_node(gr)

@@ -47,6 +47,16 @@ Reader Reader::create(std::string tag){
 	ret.isroot=true;
 	return ret;
 }
+
+Reader Reader::copy_to_root(Reader& rd){
+	Reader ret;
+	ret._doc = xmlNewDoc((xmlChar*)"1.0");
+	ret._nd = xmlCopyNode((xmlNode*)rd._nd, 1);
+	xmlDocSetRootElement((xmlDoc*)ret._doc, (xmlNode*)ret._nd);
+	ret.isroot=true;
+	return ret;
+}
+
 std::string Reader::tostring(){
 	xmlChar* s;
 	int size;
@@ -54,6 +64,9 @@ std::string Reader::tostring(){
 	if (s==0) throw std::runtime_error("failed to write xml document");
 	std::string ret((char*)s);
 	xmlFree(s);
+	size_t p1 = ret.find_first_not_of("\n\r\t\v ");
+	size_t p2 = ret.find_last_not_of("\n\r\t\v ")+1;
+	ret = ret.substr(p1, p2-p1);
 	return ret;
 }
 void Reader::write(std::string filename){
@@ -203,9 +216,11 @@ void Reader::delete_content(){
 }
 	
 void Reader::unlink_node(){
-	xmlUnlinkNode((xmlNode*)_nd);
-	xmlFreeNode((xmlNode*)_nd);
-	_nd = nullptr; _doc = nullptr;
+	if (_nd != nullptr){
+		xmlUnlinkNode((xmlNode*)_nd);
+		xmlFreeNode((xmlNode*)_nd);
+		_nd = nullptr; _doc = nullptr;
+	}
 }
 
 void Reader::set_content(const std::string& data){
@@ -503,10 +518,6 @@ void fill_vvector_bin(const char* start, size_t size, vector<vector<A>>& ret, in
 		unsigned int dim;
 		decrease_leftsize(sizeof(unsigned int));
 		memcpy(&dim, iter, sizeof(unsigned int));
-		if (dim !=4 && dim != 6){
-			//##############3
-			std::cout<<i<<": "<<dim<<" out of "<<vecn<<std::endl;
-		}
 		iter+=sizeof(unsigned int);
 		//data
 		fill_vector_bin(iter, leftsize, ret[i], dim);
