@@ -121,7 +121,7 @@ class BndTypesList(object):
         'save data to xml node'
         for v in self._data:
             nd = ET.SubElement(xmlnode, "BTYPE")
-            ET.SubElement(nd, "INDEX").text = str(v.index)
+            nd.attrib["index"] = str(v.index)
             ET.SubElement(nd, "NAME").text = str(v.name)
 
     def xml_load(self, xmlnode):
@@ -129,7 +129,7 @@ class BndTypesList(object):
         del self._data[:]
         nds = xmlnode.findall("BTYPE")
         for n in nds:
-            ind = int(n.find("INDEX").text)
+            ind = int(n.attrib["index"].text)
             nm = n.find("NAME").text
             color = (255, 255, 255)
             self.set_bnd(ind, nm, color)

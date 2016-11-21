@@ -1,6 +1,6 @@
 import command
-from hybmeshpack import basic
 import hybmeshpack.basic.proc as bp
+import hybmeshpack.basic.interf as interf
 from hybmeshpack.gdata import Framework
 
 
@@ -24,7 +24,7 @@ class CommandFlow(bp.AbstractSender):
         #receiver: gdata.Framework.framework
         self.set_receiver(Framework())
         #default communication with user
-        self.set_interface(basic.interf.BasicInterface())
+        self.set_interface(interf.BasicInterface())
 
     def set_interface(self, interface):
         self._interface = interface

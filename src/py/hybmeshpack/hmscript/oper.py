@@ -81,7 +81,7 @@ def unite_grids(base_grid, over_grids, empty_holes=False, fix_bnd=False,
     :param str buffer_fill: type of grid in a buffer.
 
       * ``"3"`` - triangle grid
-      * ``"4"`` - quadrangle grid
+      * ``"4"`` - mostly quadrangle grid
 
     :return: identifier of the newly created grid
 

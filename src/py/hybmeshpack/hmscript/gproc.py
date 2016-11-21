@@ -1,6 +1,6 @@
 import copy
 from hybmeshpack import com
-from hybmeshpack.hmscript import flow, data
+from hybmeshpack.hmscript.__init__ import flow, data
 from hybmeshpack.basic.geom import Point2
 from . import ExecError
 

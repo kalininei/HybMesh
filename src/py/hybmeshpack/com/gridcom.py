@@ -88,7 +88,7 @@ class AddUnfRectGrid(NewGridCommand):
                 for j in range(ny + 1):
                     for i in range(nx + 1):
                         p = ret.points[j * (nx + 1) + i]
-                        p.y = y[i]
+                        p.y = y[j]
             return ret
 
 
