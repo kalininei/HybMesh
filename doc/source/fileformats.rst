@@ -213,8 +213,8 @@ which could be written.
 
    fig. 4
 
-Structure of xml part of a file containing set of 2d grid is shown in figure 4.
-Each grid is stored in an element called **GRID2D**. It should have
+Structure of xml part of a file containing set of 2d grids is shown in figure 4.
+Each grid is stored in the element called **GRID2D**. It should have
 a name unique to all grids stored in the file.
 Elements **N_VERTICES**, **N_EDGES**, **N_CELLS** contain
 number of vertices, edges and cells of the grid respectively.

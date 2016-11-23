@@ -84,7 +84,7 @@ if (WIN32)
 endif(WIN32)
 
 # ============================ Version
-set(APPVERSION 0.4.4)
+set(APPVERSION 0.4.5)
 
 # =========================== linking libraries flags
 #libGmsh: global definition of BUILD_GMSH, GMSH_TARGET, GMSH_INCLUDE
@@ -144,7 +144,15 @@ else(WIN32)
 	find_package(SuiteSparse REQUIRED)
 endif()
 #libxml2
-find_package(LibXML2 REQUIRED)
+if (WIN32)
+	set(LibXML2_WINDIR ${CMAKE_SOURCE_DIR}/src/libs/external/winlib/)
+	set(LibXML2_INCLUDE_DIRS ${LibXML2_WINDIR}include)
+	set(LibXML2_LIBRARIES "${LibXML2_WINDIR}libxml2-2.dll;${LibXML2_WINDIR}libiconv-2.dll")
+	set(LibXML2_FOUND TRUE)
+else(WIN32)
+	find_package(LibXML2 REQUIRED)
+endif()
+
 #libhmproject: HMPROJECT_INCLUDE, HMPROJECT_TARGET
 set(HMPROJECT_INCLUDE "${CMAKE_SOURCE_DIR}/src/libs/hmproject")
 set(HMPROJECT_TARGET hmproject)

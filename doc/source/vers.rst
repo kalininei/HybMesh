@@ -105,3 +105,49 @@ Versions History
    New python interface functions:
 
    * :func:`create_spline_contour`
+
+* **0.4.5**:
+   New features:
+
+   * unite grids with buffer filled with recombined mostly quadrangular mesh
+   * constrained unstructured meshing with triangle, recombined and pebi grids
+   * rectangle and radial grid prototypes with custom segmentation
+   * procedure for concave cells removing
+   * matched contour partition with 2D size conditions
+   * numeric segment partition
+   * native file formats introduced and described
+   * export 3d grid to gmsh format
+   * exporting list of 2d grids or contours to one file of any supported format
+   * importing data from native files
+
+   New geometry constructors:
+
+   * stripe grid prototype
+   * regular hexagonal grid prototype
+   
+
+   New python interface functions:
+
+   * :func:`triangulate_domain`
+   * :func:`pebi_fill` 
+   * :func:`stripe`
+   * :func:`add_unf_hex_grid`
+   * :func:`partition_segment`
+   * :func:`matched_partition`
+   * :func:`export_all_hmd`
+   * :func:`export3d_grid_gmsh`
+   * :func:`export3d_grid_hmg`
+   * :func:`import_grid_hmg`
+   * :func:`import_contour_hmc`
+   * :func:`import_all_hmd`
+   * :func:`load_project`
+   * :func:`registered_grids3d`
+
+
+   Python interface functions with new options:
+
+   * *buffer_fill* for :func:`unite_grids`
+   * *custom_x, custom_y* for :func:`add_unf_rect_grid`
+   * *custom_rads, custom_archs* for :func:`add_unf_circ_grid`
+   * *crosses* for :func:`partition_contour`
+   * *convex_cells* for :func:`heal_grid`

@@ -26,6 +26,8 @@ if sys.platform.startswith('win'):
         'libgfortran-3.dll',
         'libgomp-1.dll',
         'libstdc++-6.dll',
+        'libiconv-2.dll',
+        'libxml2-2.dll',
         'libblas.dll',
         'liblapack.dll',
         'libmetis.dll',

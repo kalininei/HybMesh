@@ -1,14 +1,23 @@
 @echo off
 set HMCOM="C:\Program Files\HybMesh\bin\hybmesh.exe" -silent -sx
+REM set HMCOM="C:\dev\HybMesh\bin\hybmesh.exe" -silent -sx
 
 echo "============ doing unit tests"
+echo "--- cont_test.py"
 %HMCOM% cont_test.py
+echo "--- exclude_test.py"
 %HMCOM% exclude_test.py
+echo "--- bgrid_test.py"
 %HMCOM% bgrid_test.py
+echo "--- unite_test.py"
 %HMCOM% unite_test.py
+echo "--- imex_test.py"
 %HMCOM% imex_test.py
+echo "--- mapping_test.py"
 %HMCOM% mapping_test.py
+echo "--- extrude_test.py"
 %HMCOM% extrude_test.py
+echo "--- proto_test.py"
 %HMCOM% proto_test.py
 
 echo "============ doing doc tests"

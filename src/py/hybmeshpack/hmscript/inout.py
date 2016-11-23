@@ -45,10 +45,10 @@ def export_grid_hmg(g1, fname, fmt='ascii', afields=[]):
 
       * ``'cell-vertices'`` -- cell vertex connectivity. All vertices will
         be written in counterclockwise direction;
-      * ``'cell-edges'`` -- cell edge connectivity. All edges will be wriiten
+      * ``'cell-edges'`` -- cell edge connectivity. All edges will be written
         in counterclockwise direction.
 
-      See :ref:`grid2d-file` for format desctiption.
+      See :ref:`grid2d-file` for format description.
     """
     try:
         imex.export_grid("hmg", fname, g1, flow=flow,
@@ -274,7 +274,7 @@ def export3d_grid_hmg(g1, fname, fmt="ascii", afields=[]):
         .. figure:: vtk_cells3d.png
            :width: 500 px
 
-      See :ref:`grid3d-file` for format desctiption.
+      See :ref:`grid3d-file` for format description.
     """
     try:
         imex.export_grid("hmg3d", fname, g1, flow=flow,
