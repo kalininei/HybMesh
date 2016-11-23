@@ -1,7 +1,7 @@
 from hybmeshpack import hmscript as hm
-from hybmeshpack.hmscript._dbg import check, check_ascii_file
+from hybmeshpack.hmscript._dbg import check, check_ascii_file, checkdict
 global hm, check
-hm.check_compatibility("0.4.3")
+hm.check_compatibility("0.4.5")
 
 def check_cont(cont, nn, ne, scont, btypes):
     info = hm.info_contour(cont)
@@ -208,3 +208,66 @@ check(hm.info_contour(c1)['btypes'] == {0: 56, 5: 44})
 c2 = hm.create_spline_contour([[0, 0], [1, 0.2], [2.4, 0.5], [3, 1], [0, 0]],
                               [0, 5, 3, 1])
 check(hm.info_contour(c2)['btypes'] == {0: 16, 1: 50, 3: 12, 5: 22})
+
+print "unstructured fill tests"
+csqr = hm.add_rect_contour([0, 0], [1, 1], 1)
+c1 = hm.partition_contour(csqr, 'ref_points', [0.05, [0, 0], 0.3, [1, 1]])
+g1 = hm.triangulate_domain(c1)
+checkdict(hm.info_grid(g1), {'cell_types': {3: 124}})
+
+c1 = hm.partition_contour(csqr, 'const', 0.1)
+c2 = hm.create_contour([[0.1, 0.2], [0.9, 0.2]])
+c2 = hm.partition_contour(c2, 'const', 0.03)
+c3 = hm.add_circ_contour([0.3, 0.7], 0.15, 16)
+c4 = hm.add_circ_contour([0.7, 0.7], 0.15, 24)
+g1 = hm.triangulate_domain(c1, [c2, c3, c4])
+checkdict(hm.info_grid(g1), {'cell_types': {3: 1004}})
+
+g1 = hm.triangulate_domain([c1, c3, c4], c2)
+checkdict(hm.info_grid(g1), {'cell_types': {3: 822}})
+
+c1 = hm.create_spline_contour([[-0.2, 0.35], [0.5, 0.1], [1.2, 0.35]])
+c1 = hm.partition_contour(c1, "const", 0.05, crosses=[csqr])
+c2 = hm.create_contour([[0.3, 0.5], [0.7, 0.5]])
+c3 = hm.create_contour([[0.35, 0.4], [0.65, 0.6]])
+c4 = hm.create_contour([[0.35, 0.6], [0.65, 0.4]])
+c2 = hm.partition_contour(c2, "const", 0.02, crosses=[c3, c4])
+c3 = hm.partition_contour(c3, "const", 0.02, crosses=[c2, c4])
+c4 = hm.partition_contour(c4, "const", 0.02, crosses=[c2, c3])
+c5 = hm.partition_contour(csqr, "const", 0.1, crosses=[c1])
+g1 = hm.triangulate_domain(c5, [c1, c2, c3, c4])
+checkdict(hm.info_grid(g1), {'cell_types': {3: 1404}})
+
+c1 = hm.partition_contour(csqr, "const", 0.05)
+g1 = hm.triangulate_domain(c1, pts=[0.3, [0.3, 0.7], 
+                                    0.3, [0.7, 0.7],
+                                    0.005, [0.5, 0.1]])
+checkdict(hm.info_grid(g1), {'cell_types': {3: 524}})
+
+c1 = hm.create_spline_contour([[-0.2, 0.35], [0.5, 0.1], [1.2, 0.35]])
+c1 = hm.partition_contour(c1, "const", 0.05, crosses=[csqr])
+c2 = hm.partition_contour(csqr, "const", 0.05, crosses=[c1])
+g1 = hm.triangulate_domain(c2, c1, pts=[0.3, [0.5, 0.7]])
+g2 = hm.triangulate_domain(c2, c1, pts=[0.3, [0.5, 0.7]], fill='4')
+checkdict(hm.info_grid(g1), {'cell_types': {3: 496}})
+checkdict(hm.info_grid(g2), {'cell_types': {3: 4, 4: 225}})
+
+c1 = hm.partition_contour(csqr, "const", 0.05)
+c2 = hm.add_circ_contour([0.5, 0.5], 0.3, 120)
+g1 = hm.pebi_fill(c1, c2, pts=[0.1, [0.5, 0.5]])
+hm.export_grid_vtk(g1, "g1.vtk")
+hm.export_contour_vtk([c1, c2], "c1.vtk")
+hm.export_contour_vtk(g1, "c2.vtk")
+checkdict(hm.info_grid(g1), {'cell_types': {8: 25, 4: 32, 5: 449,
+                                            6: 747, 7: 233}})
+
+
+# matched partition
+c = hm.add_circ_contour([0, 0], 1, 64)
+c1 = hm.create_contour([[-0.65, -0.65], [0.65, 0.65]])
+c1 = hm.partition_contour(c1, "const", 0.03)
+res = hm.matched_partition(c, 0.1, 1.0, [c1], [0.5, [-0.65, 0.65]], power=1)
+checkdict(hm.info_contour(res), {'Nedges': 79})
+
+
+

@@ -177,6 +177,12 @@ class BoundaryGridOptions(object):
       * ``"line"`` - projects point to source contour line,
       * ``"vertex"`` - projects to closest source contour vertex,
       * ``"corner"`` - projects point to closest corner vertex.
+
+    Class contains functions to define uniform and increasing
+    vertical partitions. However user could give his own custom partition by
+    explicit assigning of **partition** attribute.
+    Use :func:`partition_segment` for advanced control of vertical
+    partition.
     """
 
     def __init__(self, contour_id=None,

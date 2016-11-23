@@ -293,6 +293,10 @@ void hme::GridMSH(const GridGeom& g, std::string fn, vector<int> bndindex, hme::
 	}
 
 	//Boundary features
+	//fs<<"(45 (2 fluid fluid)())\n";
+	//for (auto& fd: face_data){
+		//fs<<"(45 ("<<fd.zone_index<<" "<<fd.zone_name<<" "<<fd.boundary_name<<")())\n";
+	//}
 	fs<<"(45 (2 fluid fluid 1)())\n";
 	for (auto& fd: face_data){
 		fs<<"(45 ("<<fd.zone_index<<" "<<fd.zone_name<<" "<<fd.boundary_name<<" 1)())\n";

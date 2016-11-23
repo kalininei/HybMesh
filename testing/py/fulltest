@@ -42,6 +42,8 @@ then
 	$HMCOM mapping_test.py
 	echo "--- extrude_test.py"
 	$HMCOM extrude_test.py
+	echo "--- proto_test.py"
+	$HMCOM proto_test.py
 else
 	echo "============ ignoring unit tests"
 fi
@@ -65,6 +67,8 @@ then
 	$HMCOM fromdoc/intro_shark.py
 	echo "--- intro_naca4415"
 	$HMCOM fromdoc/intro_naca4415.py
+	echo "--- intro_filtration"
+	$HMCOM fromdoc/filtration.py
 else
 	echo "============ ignoring doc tests"
 fi

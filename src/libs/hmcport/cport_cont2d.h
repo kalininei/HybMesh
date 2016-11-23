@@ -19,6 +19,7 @@ extern "C"{
 // returns new ECollection pointer or NULL if failed
 void* contour_partition(void* cont, int* btypes, int algo,
 		int n_steps, double* steps, double a0, int keepbnd, int nedges,
+		int n_crosses, void** crosses,
 		int* n_outbnd, int** outbnd);
 
 //build a spline using basis points

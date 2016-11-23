@@ -65,7 +65,7 @@ public:
 	//tries to build expressions for all cells in ser.
 	//aface is face_vertex connectivity table
 	static vector<vtkcell_expression> cell_assembler(const SGrid& ser,
-			const vector<vector<int>>& aface);
+			const vector<vector<int>>& aface, bool ignore_errors=false);
 	virtual std::string to_string() const;
 
 	int wsize() const;  //number of points + 1

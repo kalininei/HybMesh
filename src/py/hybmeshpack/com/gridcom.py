@@ -68,15 +68,16 @@ class AddUnfRectGrid(NewGridCommand):
             nx, ny, p0, p1 = so['nx'], so['ny'], so['p0'], so['p1']
             x, y = [], []
             if len(so['custom_x']) == 1:
-                nx = int((p1.x - p0.x) / so['custom_x'][0]) + 1
-            else:
+                nx = max(1, round((p1.x - p0.x) / so['custom_x'][0]))
+            elif len(so['custom_x']) != 0:
                 x = so['custom_x']
                 nx = len(x) - 1
             if len(so['custom_y']) == 1:
-                ny = int((p1.y - p0.y) / so['custom_x'][0]) + 1
-            else:
+                ny = max(1, round((p1.y - p0.y) / so['custom_y'][0]))
+            elif len(so['custom_y']) != 0:
                 y = so['custom_y']
                 ny = len(y) - 1
+            nx, ny = int(nx), int(ny)
             ret = gdata.grid2.UnfRectGrid(p0, p1, nx, ny)
 
             if len(x) > 0:
@@ -235,7 +236,7 @@ class AddUnfCircGrid(NewGridCommand):
 
             # calculate rads
             if len(opt['custom_r']) == 1:
-                nr = int(radius / opt['custom_r'][0]) + 1
+                nr = max(1, round(radius / opt['custom_r'][0]))
             elif len(opt['custom_r']) > 1:
                 rads = copy.deepcopy(opt['custom_r'])
                 rads = rads[1:] if rads[0] == 0 else rads
@@ -245,14 +246,19 @@ class AddUnfCircGrid(NewGridCommand):
             # calculate angles
             if len(opt['custom_a']) == 1:
                 arclen = 2 * math.pi * radius
-                na = max(3, int(arclen / opt['custom_a'][0]))
-            elif len(opt['custom_a']) > 1:
+                na = max(3, round(arclen / opt['custom_a'][0]))
+            elif len(opt['custom_a']) > 2:
                 angles = copy.deepcopy(opt['custom_a'])
+                diff = angles[-1] - angles[0]
                 for i in range(len(angles)):
-                    angles[i] = angles[i] * 2 * math.pi / angles[-1]
-                angles.insert(-1, 0) if angles[0] != 0 else None
+                    angles[i] = angles[i] * 2 * math.pi / diff
+                for i in range(len(angles) - 1):
+                    if angles[i + 1] >= angles[i] + math.pi:
+                        raise command.ExecutionError("angles difference is "
+                                                     "too big", self)
                 angles = angles[:-1]
                 na = len(angles)
+            na, nr = int(na), int(nr)
 
             # build grid
             r = gdata.grid2.UnfCircGrid(

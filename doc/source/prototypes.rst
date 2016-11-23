@@ -7,15 +7,75 @@ Grid Prototypes
 
 Rectangle Grid
 --------------
+Builds a rectangular structured grid with given partition along x and y axis.
+User can define partition as number of equidistant segments,
+as a constant step or explicitly define partition by passing
+increasing array of respective coordinates.
+
+Python interface function: :func:`add_unf_rect_grid`.
 
 Radial Grid
 -----------
+Builds structured radial grid. Central element could be triangulated or left
+as a regular n-side polygon. Radial and arch partition could be
+defined by number of steps, step size or explicitly. Refinement
+of radius partition could also be applied.
+
+Python interface function: :func:`add_unf_circ_grid`.
 
 Ring Grid
 ---------
+Builds structured radial grid in a ring area. 
+Refinement of radius partition could also be applied.
+
+Python interface function: :func:`add_unf_ring_grid`.
 
 Triangle Grid
 -------------
+Builds structured grid in a triangle domain given
+by three points.
+Resulting grid will contain quadrangle cells everywhere except              
+area near one of the edges where triangle cells will be built.
+
+Python interface function: :func:`add_triangle_grid`.
+
+.. _hexgrid:
+
+Hexagonal grid
+--------------
+Builds a structured regular hexagonal mesh in hexagonal or rectangular area (see figure below).
+
+.. figure:: proto_hex1.png
+   :width: 500 px
+
+   Regular hexagonal mesh in hexagonal and rectangle areas
+
+User defines hexagonal cell radius and area size.
+In case of hexagonal area user passes center of the area and its radius.
+In case of rectangular area two corner points of rectangle should be assigned.
+The algorithm of sizes treatment is shown in the figure below.
+
+.. figure:: proto_hex2.png
+   :width: 700 px
+
+   Regular hexagonal mesh area sizes
+
+A special **strict** option defines whether program should
+stretch a grid to inscribe it into a user area.
+Using nomenclature given in the above picture this would guarantee
+:math:`R^r = R^u` for hexagonal area and :math:`H_x^r = H_x^u`,
+:math:`H_y^r = H_y^u` for rectangular area. In the latter case
+this would most likely make grid cells non-regular (slightly stretched in x or y direction).
+But this procedure could be a handy tool to prepare this grid
+for clipping with user rectangle. With such stretch all boundary cells
+will be cut through their middle axis (see figure below).
+
+.. figure:: proto_hex3.png
+   :width: 500 px
+
+   Clipped hexagonal mesh built in rectangle area with different **strict** settings.
+
+Python interface function: :func:`add_unf_hex_grid`.
 
 .. _circrect_grid:
 

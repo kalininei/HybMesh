@@ -25,6 +25,7 @@ struct GridWriter{
 	void AddFaceVertexConnectivity();
 	void AddCellFaceConnectivity();
 	void AddCellVertexConnectivity();
+	void AddLinFemConnectivity();
 
 	template<class A> bool is_binary(){return false;}
 private:

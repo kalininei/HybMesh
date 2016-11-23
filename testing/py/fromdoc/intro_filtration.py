@@ -35,7 +35,7 @@ parea = hm.partition_contour(area, 'const', dom_size)
 # that all well points and fracture edges be preserved as grid entities
 # and cell sizes near well be equal to w_size
 # (see fig.2)
-fin2 = hm.triangulate_area(parea, [pcrack],
+fin2 = hm.triangulate_domain(parea, [pcrack],
                            [w_size, w1, w_size, w2, w_size, w3])
 
 # 2. Quadrangulation with boundaries refinement
@@ -56,9 +56,9 @@ p_size = 0.4 * dom_size
 
 # build triangle/quadrangle mesh with respect to wells and fracture positions
 # see fig.3
-fin3 = hm.quadrangulate_area(
+fin3 = hm.triangulate_domain(
     parea, [pcrack],
-    [w_size, w1, w_size, w2, w_size, w3, p_size, psup])
+    [w_size, w1, w_size, w2, w_size, w3, p_size, psup], fill="4")
 
 # 3. Partly structured approach
 # Build radial grids around well sites. We want them to provide refinement
@@ -66,7 +66,7 @@ fin3 = hm.quadrangulate_area(
 # Hence first we build a numeric list from 0 to 30 representing
 # partition of radii of radial grids, where 30 is a grid radius providing
 # its steps increasing from w_size to dom_size.
-seg_part = hm.segment_partition(0, 30, w_size, dom_size)
+seg_part = hm.partition_segment(0, 30, w_size, dom_size)
 # Then we build those grids passing arch size (=dom_size) and explicitly
 # defining radius partition
 gw1 = hm.add_unf_circ_grid(w1, custom_rads=seg_part, custom_archs=dom_size)
@@ -80,7 +80,7 @@ pcrack = hm.matched_partition(crack, crack_size, 80, [gw1, gw2, gw3])
 # Build a stripe grid prototype around fracture contour.
 # Again we build numeric list for partition in a perpendicular direction and
 # then explicitly pass it to building routine.
-seg_part = hm.segment_partition(0, 10, w_size, crack_size)
+seg_part = hm.partition_segment(0, 10, w_size, crack_size)
 gcrack = hm.stripe(pcrack, seg_part, 'radial')
 
 # Build regular quadrangle grid prototype for outer area
@@ -107,7 +107,7 @@ fin5 = hm.pebi_fill(parea, [pcrack],
 
 # 2. Partly structured pebi
 # Build radial grids without triangulation of center cell
-seg_part = hm.segment_partition(0, 30, w_size, dom_size)
+seg_part = hm.partition_segment(0, 30, w_size, dom_size)
 gw1 = hm.add_unf_circ_grid(w1, is_trian=False,
                            custom_rads=seg_part, custom_archs=dom_size)
 gw2 = hm.add_unf_circ_grid(w2, is_trian=False,
@@ -122,7 +122,7 @@ pcrack = hm.matched_partition(
 # Build stripe prototype near fracture contour. Note that we
 # use perpendicular partition list (seg_part) starting from positive
 # number so that fracture coordinates stay in the centers of cells.
-seg_part = hm.segment_partition(0, 10, w_size, crack_size)[1:]
+seg_part = hm.partition_segment(0, 10, w_size, crack_size)[1:]
 gcrack = hm.stripe(pcrack, seg_part, 'radial')
 
 # Build a regular hexagonal mesh a substrate grid and then cut it
@@ -152,3 +152,5 @@ hm.export_grid_vtk(fin4, "g4.vtk")
 hm.export_grid_vtk(fin5, "g5.vtk")
 hm.export_grid_vtk(fin6, "g6.vtk")
 hm.export3d_grid_tecplot(fin7, "g7.dat")
+if hm.info_grid(fin4)['cell_types'][4] != 1567:
+    print "!!!!!!! result has changed"

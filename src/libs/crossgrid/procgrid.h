@@ -142,7 +142,7 @@ public:
 
 	//squares management
 	std::set<int> IndSet(const BoundingBox& bbox) const;
-	int NumSquares() const { return Nx*Nx; }
+	int NumSquares() const { return Nx*Ny; }
 	int GetSquare(const Point& p) const;
 	//vector of cells which can contain given point
 	const vector<const Cell*>& CellCandidates(const Point& p) const;

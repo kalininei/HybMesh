@@ -102,7 +102,8 @@ def clip_domain(cc1, cc2, op, simplify):
         return res
 
 
-def contour_partition(c_cont, c_bt, c_step, algo, a0, keepbnd, nedges):
+def contour_partition(c_cont, c_bt, c_step, algo, a0,
+                      keepbnd, nedges, crosses):
     """ c_step: ct.c_double() * n, where n dependes on algo:
     algo = "const" => n = 1,
     algo = "ref_points" => n = 3*k
@@ -121,11 +122,14 @@ def contour_partition(c_cont, c_bt, c_step, algo, a0, keepbnd, nedges):
     c_bnd = ct.POINTER(ct.c_int)()
     n_bnd = ct.c_int(0)
     c_ne = ct.c_int(-1 if nedges is None else nedges)
+    num_crosses = ct.c_int(len(crosses))
+    c_crosses = list_to_c(crosses, "void*")
 
     ret = libhmcport.contour_partition(c_cont, c_bt, c_algo,
                                        c_n, c_step,
                                        ct.c_double(a0),
                                        ct.c_int(1 if keepbnd else 0), c_ne,
+                                       num_crosses, c_crosses,
                                        ct.byref(n_bnd), ct.byref(c_bnd)
                                        )
     # copy c-side allocated bnd array to python side allocated

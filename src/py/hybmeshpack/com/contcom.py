@@ -578,7 +578,8 @@ class PartitionContour(objcom.AbstractAddRemove):
                 'angle0': command.BasicOption(float),
                 'base': command.BasicOption(str),
                 'keepbnd': command.BoolOption(),
-                'nedges': command.NoneOr(command.BasicOption(int))
+                'nedges': command.NoneOr(command.BasicOption(int)),
+                'crosses': command.ListOfOptions(command.BasicOption(str)),
                 }
 
     def _addrem_objects(self):
@@ -593,13 +594,19 @@ class PartitionContour(objcom.AbstractAddRemove):
         c_cont = c2core.cont2_to_c(cont)
         c_bt = hmcore.list_to_c(bt, int)
         c_step = hmcore.list_to_c(so['step'], float)
-        # 4. call c procedure
+        # 4. copy crosses conditions
+        c_crosses = []
+        for nm in so['crosses']:
+            c = self.any_cont_by_name(nm)
+            c_crosses.append(c2core.cont2_to_c(c))
+        # 5. call c procedure
         try:
             c_ret, c_bnd = c2core.contour_partition(c_cont, c_bt, c_step,
                                                     so['algo'],
                                                     so['angle0'],
                                                     so['keepbnd'],
-                                                    so['nedges'])
+                                                    so['nedges'],
+                                                    c_crosses)
             ret = c2core.cont2_from_c(c_ret, c_bnd)
             c2core.free_cont2(c_ret)
             return [], [], [(so["name"], ret)], []
@@ -607,6 +614,8 @@ class PartitionContour(objcom.AbstractAddRemove):
             raise command.ExecutionError("Contour partition error", self, e)
         finally:
             c2core.free_cont2(c_cont)
+            for c in c_crosses:
+                c2core.free_cont2(c)
 
 
 class MatchedPartition(objcom.AbstractAddRemove):

@@ -313,6 +313,7 @@ struct Conditions2D{
 		return boxes[i].whereis(p) == OUTSIDE;
 	}
 
+	//returns step size and weight
 	std::pair<double, double> cond_for_point(int i, const Point& p){
 		double dist = Point::dist(pointcond[i].first, p);
 		if (dist > influence_dist) return std::make_pair(1.0, 0.0);
@@ -321,6 +322,7 @@ struct Conditions2D{
 		return std::make_pair(h, w);
 	}
 
+	//returns step size and weight
 	std::pair<double, double> cond_for_contour(int i, const Point& p){
 		auto cle = ECollection::FindClosestEdge(contcond[i], p);
 		double dist = std::get<1>(cle);
@@ -333,6 +335,15 @@ struct Conditions2D{
 	double aver(double w1, double x1, double x2){
 		double w = pow(w1, 1.0/pw);
 		return w*x1 + (1-w)*x2;
+	}
+
+	//ws - weight-step pair
+	double aver(std::vector<std::pair<double, double>>& ws){
+		vector<double> w;
+		for (auto& it: ws) w.push_back(pow(it.first, 1.0/pw));
+		double ret = 0;
+		for (int i=0; i<w.size(); ++i) ret += ws[i].second*w[i];
+		return ret/std::accumulate(w.begin(), w.end(), 0.0);
 	}
 
 	double stepfrom(int i, const Point& p){
@@ -348,9 +359,27 @@ struct Conditions2D{
 	}
 
 	double Value(const Point& p){
-		vector<double> hs;
-		for (int i=0; i<Ncond(); ++i) hs.push_back(stepfrom(i, p));
-		return *min_element(hs.begin(), hs.end());
+		//vector<double> hs;
+		//for (int i=0; i<Ncond(); ++i) hs.push_back(stepfrom(i, p));
+		//return *min_element(hs.begin(), hs.end());
+		std::vector<std::pair<double, double>> ws;  //weight-step
+		for (int i=0; i<Ncond(); ++i){
+			std::pair<double, double> step_delta;
+			if (i < contcond.size()){
+				step_delta = cond_for_contour(i, p);
+			} else {
+				step_delta = cond_for_point(i-contcond.size(), p);
+			}
+			if (step_delta.second > geps){
+				ws.emplace_back(
+					step_delta.second,
+					aver(step_delta.second, step_delta.first, default_step));
+			}
+		}
+
+		if (ws.size()==0) return default_step;
+		if (ws.size()==1) return ws.begin()->second;
+		return aver(ws);
 	}
 
 	std::map<double, double> linear_conditions(const HMCont2D::Contour& cont){

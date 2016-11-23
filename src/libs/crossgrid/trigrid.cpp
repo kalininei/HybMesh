@@ -265,6 +265,8 @@ void TriGrid::FillFromTree(
 		const std::map<Point*, double>& w_,
 		double h,
 		bool recomb){
+	if (cont_.nodes.size() == 0) return; 
+
 	//treat default size
 	if (h<=0) h = 2*HMCont2D::ECollection::BBox(cont_).lendiag();
 
@@ -361,9 +363,9 @@ void TriGrid::FillFromTree(
 
 	FillFromGModel(&m);
 
-	// if all nodes of quad grid are still trianlge than most likely builder
-	// has failed. So we use another algorithm
 	if (recomb){
+		// if all nodes of quad grid are still trianlge than most likely builder
+		// has failed. So we use another algorithm
 		bool has4=false;
 		for (auto c: cells) if (c->dim() == 4) {has4=true; break; }
 		if (!has4){
@@ -373,6 +375,56 @@ void TriGrid::FillFromTree(
 			for (auto& f: fc) f->meshAttributes.recombine = 1.0;
 			FillFromGModel(&m);
 		}
+	
+		//now we should check constraints lay on grid edges
+		//since this feature can be not satisfied after recombination.
+		if (constraints.size() > 0){
+			ShpVector<HMCont2D::Edge> alledges;
+			for (auto& ev: constraints) alledges.insert(alledges.end(), ev->begin(), ev->end());
+			vector<Point> midpoints; midpoints.reserve(alledges.size());
+			for (auto& ev: alledges) midpoints.push_back(ev->center());
+			auto cf = GGeom::Info::CellFinder(this, 30, 30);
+			std::map<const Cell*, int> divide_cells;
+			for (size_t i=0; i<midpoints.size(); ++i){
+				auto candcells = cf.CellCandidates(midpoints[i]);
+				Point* pstart = alledges[i]->pstart;
+				Point* pend = alledges[i]->pend;
+				for (auto cand: candcells) if (cand->dim() == 4){
+					auto cc = GGeom::Info::CellContour(*this, cand->get_ind());
+					if (cc.IsWithin(midpoints[i])){
+						int ep1=-1, ep2=-1;
+						for (int j=0; j<cand->dim(); ++j){
+							auto p1 = cand->get_point(j);
+							if (*p1 == *pstart) ep1 = j;
+							if (*p1 == *pend) ep2 = j;
+						}
+						if (ep1>=0 && ep2>=0){
+							if (ep2 < ep1) std::swap(ep1, ep2);
+							if ((ep2-ep1) % 2 == 0){
+								auto fnd = divide_cells.find(cand);
+								if (fnd != divide_cells.end()){
+									fnd->second = -1;
+								} else {
+									divide_cells.emplace(cand, ep1);
+								}
+							}
+						}
+						break;
+					}
+				}
+			}
+			for (auto kv: divide_cells) if (kv.second>=0){
+				GridPoint* p0 = kv.first->points[(kv.second) % 4];
+				GridPoint* p1 = kv.first->points[(kv.second+1) % 4];
+				GridPoint* p2 = kv.first->points[(kv.second+2) % 4];
+				GridPoint* p3 = kv.first->points[(kv.second+3) % 4];
+				cells[kv.first->get_ind()]->points = {p0, p1, p2};
+				auto newcell = aa::add_shared(cells, Cell());
+				newcell->points = {p0, p2, p3};
+			}
+			set_cell_indicies();
+		}
+
 	}
 }
 

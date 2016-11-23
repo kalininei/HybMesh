@@ -166,6 +166,9 @@ def extrude_grid(obj, zcoords, bottombc=0, topbc=0, sidebc=None):
 
     :raises: ValueError, hmscript.ExecError
 
+    Use :func:`partition_segment` to define non-equidistant
+    **zcoords** with any desired refinement.
+
     Example:
 
       .. literalinclude:: ../../testing/py/fromdoc/ex_extrude.py
@@ -253,6 +256,9 @@ def revolve_grid(obj, p1, p2, n_phi=None,
     All points of input grid should lie to the one side of rotation
     vector.
 
+    Use :func:`partition_segment` to define non-equidistant
+    **phi** with any desired refinement if needed.
+
     """
     #check input
     if not isinstance(p1, list) or len(p1) != 2 or\
@@ -310,7 +316,7 @@ def heal_grid(grid_id, simplify_boundary=30, convex_cells=-1):
 
     * are boundary,
     * belong to the same grid cell,
-    * form an angle no more then ``simplify_boundary`` degree
+    * form an angle no more then ``simplify_boundary`` degree,
     * elimination of intermediate vertices will not lead
       to cell degeneration
 

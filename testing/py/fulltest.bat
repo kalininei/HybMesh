@@ -9,6 +9,7 @@ echo "============ doing unit tests"
 %HMCOM% imex_test.py
 %HMCOM% mapping_test.py
 %HMCOM% extrude_test.py
+%HMCOM% proto_test.py
 
 echo "============ doing doc tests"
 %HMCOM% fromdoc/ex_setbtype.py
@@ -27,6 +28,8 @@ echo "--- intro_shark"
 %HMCOM% fromdoc/intro_shark.py
 echo "--- intro_naca4415"
 %HMCOM% fromdoc/intro_naca4415.py
+echo "--- intro_filtration"
+%HMCOM% fromdoc/intro_filtration.py
 
 
 pause

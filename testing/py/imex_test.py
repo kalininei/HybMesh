@@ -69,7 +69,7 @@ hmdbg.check(hm.info_grid(g1) ==
              'Nnodes': 1196, 'Nedges': 2382, 'Ncells': 1186})
 hmdbg.check(len(hm.registered_btypes()) == 6)
 hm.export_grid_msh(g1, "g1.msh")
-hmdbg.check_ascii_file(11097986397215261008, "g1.msh")
+hmdbg.check_ascii_file(612863133040571191, "g1.msh")
 hm.remove_all()
 
 print "export 3d to fluent"
@@ -122,3 +122,17 @@ g1 = hm.exclude_contours(g1, c1, "inner")
 g2 = hm.extrude_grid(g1, [0, 0.2, 0.5, 0.9, 1.0], 1, 2, 3)
 hm.export3d_grid_tecplot(g2, "c2.dat")
 hmdbg.check_ascii_file(9823534259060690640, "c2.dat")
+
+hm.remove_all()
+g1 = hm.add_unf_rect_grid([0, 0], [10, 10], 10, 10)
+c1 = hm.create_contour([[-1, -1], [12, 12], [12, -1], [-1, -1]])
+g1 = hm.exclude_contours(g1, c1, "inner")
+g2 = hm.extrude_grid(g1, [0, 0.2, 0.5, 0.9, 1.0], 1, 2, 3)
+hm.export_grid_hmg(g1, "g1.hmg", afields=['cell-vertices',
+                                         'cell-edges'])
+hm.export3d_grid_hmg(g2, "g2.hmg", afields=['cell-vertices',
+                                           'cell-faces',
+                                           'face-vertices',
+                                           'linfem'])
+hmdbg.check_ascii_file(8700456673301720132, "g1.hmg")
+hmdbg.check_ascii_file(5039114778377738832, "g2.hmg")

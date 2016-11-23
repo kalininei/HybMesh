@@ -229,9 +229,10 @@ int g3writer_add_defined_field(void* gwriter, const char* field){
 	try{
 		auto gw = static_cast<HMGrid3D::Export::GridWriter*>(gwriter);
 		std::string f(field);
-		if (f == "face_vertices") gw->AddFaceVertexConnectivity();
-		else if (f == "cell_faces") gw->AddCellFaceConnectivity();
-		else if (f == "cell_vertices") gw->AddCellVertexConnectivity();
+		if (f == "face_vertices" || f == "face-vertices") gw->AddFaceVertexConnectivity();
+		else if (f == "cell_faces" || f == "cell-faces") gw->AddCellFaceConnectivity();
+		else if (f == "cell_vertices" || f == "cell-vertices") gw->AddCellVertexConnectivity();
+		else if (f == "linfem") gw->AddLinFemConnectivity();
 		else throw std::runtime_error("unknown field "+f);
 		return 1;
 	} catch (const std::exception &e){

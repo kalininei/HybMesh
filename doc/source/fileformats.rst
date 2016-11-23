@@ -1,3 +1,5 @@
+.. _nativeformat:
+
 Native File Formats
 ===================
 Native hybmesh files are separated into two sections. The first section

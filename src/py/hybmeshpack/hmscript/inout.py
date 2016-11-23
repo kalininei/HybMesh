@@ -8,30 +8,59 @@ from . import ExecError
 def export_grid_vtk(g1, fname):
     """exports grid to vtk format
 
-    Args:
-       g1: grid identifier
+       :param g1: single or list of grid identifiers
 
-       fname: output filename
+       :param str fname: output filename
+
+       :raises: ExportError
     """
-    imex.export_grid("vtk", fname, g1, flow=flow)
+    try:
+        imex.export_grid("vtk", fname, g1, flow=flow)
+    except Exception as e:
+        raise ExportError(str(e))
 
 
 def export_grid_hmg(g1, fname, fmt='ascii', afields=[]):
-    """exports grid to hybmesh native format
+    """Exports grid to hybmesh native format.
 
-    Args:
-      g1: grid identifier
+      :param g1: single or list of grid identifiers
 
-      fname: output filename
+      :param str fname: output filename
+
+      :param str fmt: output data format:
+
+         * ``'ascii'`` - all fields will be saved as text fields,
+         * ``'bin'`` - all fields will be saved in binary section,
+         * ``'fbin'`` - only floating point fields will be saved
+           in binary section.
+
+      :param list-of-str afields: additional data which should be placed
+          to output file.
+
+      :raises: hmscript.ExportError
+
+      To save additional data into grid file
+      :ref:`user defined fields <udef-fields>`
+      place any of these strings into **afields** list:
+
+      * ``'cell-vertices'`` -- cell vertex connectivity. All vertices will
+        be written in counterclockwise direction;
+      * ``'cell-edges'`` -- cell edge connectivity. All edges will be wriiten
+        in counterclockwise direction.
+
+      See :ref:`grid2d-file` for format desctiption.
     """
-    imex.export_grid("hmg", fname, g1, flow=flow,
-                     adata={'fmt': fmt, 'afields': afields})
+    try:
+        imex.export_grid("hmg", fname, g1, flow=flow,
+                         adata={'fmt': fmt, 'afields': afields})
+    except Exception as e:
+        raise ExportError(str(e))
 
 
 def export_grid_msh(g1, fname, periodic_pairs=None):
     """Exports grid to fluent msh format
 
-    :param g1: 2d grid file identifier
+    :param g1: 2d grid file identifier or list of identifiers.
 
     :param str fname: output filename
 
@@ -63,7 +92,7 @@ def export_grid_msh(g1, fname, periodic_pairs=None):
 def export_grid_gmsh(g1, fname):
     """exports grid to gmsh ascii format
 
-    :param g1: grid identifier
+    :param g1: single or list of grid identifiers
 
     :param fname: output filename
 
@@ -85,7 +114,7 @@ def export_grid_gmsh(g1, fname):
 def export_grid_tecplot(g1, fname):
     """exports grid to tecplot ascii \*.dat format
 
-    :param g1: grid identifier
+    :param g1: grid identifier or list of identifiers
 
     :param fname: output filename
 
@@ -105,16 +134,16 @@ def export_grid_tecplot(g1, fname):
 def export3d_grid_vtk(g1, fname_grid=None, fname_surface=None):
     """Exports 3D grid and its surface to vtk ascii format.
 
-    :param g1: 3D grid file identifier
+    :param g1: 3D grid file identifier.
 
-    :param str-or-None fname_grid: filename for grid output
+    :param str-or-None fname_grid: filename for grid output.
 
-    :param str-or-None fname_surface: filename for surface output
+    :param str-or-None fname_surface: filename for surface output.
 
     :raises: hmscript.ExportError
 
-    Only quadrilateral, wedge and tetrahedron cells could be exported
-    as grid. Surface export takes arbitrary grid.
+    Only hexahedron, prism, wedge and tetrahedron cells could be exported
+    as a grid. Surface export takes arbitrary grid.
 
     If a filename is *None* then respective export will be omitted.
 
@@ -186,11 +215,11 @@ def export3d_grid_tecplot(g1, fname):
 
 
 def export3d_grid_gmsh(g1, fname):
-    """exports grid to gmsh ascii format
+    """Exports grid to gmsh ascii format.
 
-    :param g1: grid identifier
+    :param g1: grid identifier.
 
-    :param fname: output filename
+    :param str fname: output filename.
 
     :raises: hmscript.ExportError
 
@@ -209,7 +238,43 @@ def export3d_grid_gmsh(g1, fname):
 
 
 def export3d_grid_hmg(g1, fname, fmt="ascii", afields=[]):
-    """ TODO
+    """Exports 3d grid to hybmesh native format.
+
+      :param g1: single or list of grid identifiers
+
+      :param str fname: output filename
+
+      :param str fmt: output data format:
+
+         * ``'ascii'`` - all fields will be saved as text fields,
+         * ``'bin'`` - all fields will be saved in binary section,
+         * ``'fbin'`` - only floating point fields will be saved
+           in binary section.
+
+      :param list-of-str afields: additional data which should be placed
+          to output file.
+
+      :raises: hmscript.ExportError
+
+      To save additional data into grid file
+      :ref:`user defined fields <udef-fields>`
+      place any of these strings into **afields** list:
+
+      * ``'face-vertices'`` - face vertex ordered connectivity,
+      * ``'cell-faces'`` - cell face connectivity,
+      * ``'cell-vertices'`` - cell vertex connectivity,
+      * ``'linfem'`` - tries to write cells-vertex connectivity
+        for cell types most widely used in linear fem solvers.
+        Supported cell types are: tetrahedron (4 nodes), hexahedron (8),
+        prism(6), pyramid(5).
+        Record for each of those cells contains points in order prescribed
+        by vtk file format. If a cell is not of one of those types
+        then a zero length connectivity list will be written for it.
+
+        .. figure:: vtk_cells3d.png
+           :width: 500 px
+
+      See :ref:`grid3d-file` for format desctiption.
     """
     try:
         imex.export_grid("hmg3d", fname, g1, flow=flow,
@@ -220,13 +285,13 @@ def export3d_grid_hmg(g1, fname, fmt="ascii", afields=[]):
 
 # Exporting contours
 def export_contour_vtk(c1, fname):
-    """exports contour to vtk format
+    """Exports contour to vtk format.
 
-    :param c1: contour identifier
+    :param c1: contour identifier or list of identifiers,
 
-    :param fname: output filename
+    :param str fname: output filename.
 
-    :raises: hmscript.ExportError
+    :raises: ExportError
     """
     try:
         imex.export_contour("vtk", fname, c1, flow=flow)
@@ -235,24 +300,37 @@ def export_contour_vtk(c1, fname):
 
 
 def export_contour_hmc(c1, fname, fmt="ascii"):
-    """exports contours to native format
+    """Exports contours to native format.
 
-    Args:
-       c1: contour identifier
+      :param c1: contour identifier or list of identifiers,
 
-       fname: output filename
+      :param str fname: output filename
+
+      :param str fmt: output data format:
+
+         * ``'ascii'`` - all fields will be saved as text fields,
+         * ``'bin'`` - all fields will be saved in binary section,
+         * ``'fbin'`` - only floating point fields will be saved
+           in binary section.
+
+      :raises: ExportError
+
+      See :ref:`contour2d-file` for format description.
     """
-    imex.export_contour("hmc", fname, c1, flow=flow, adata={'fmt': fmt})
+    try:
+        imex.export_contour("hmc", fname, c1, flow=flow, adata={'fmt': fmt})
+    except Exception as e:
+        raise ExportError(str(e))
 
 
 def export_contour_tecplot(c1, fname):
-    """exports contour to tecplot ascii \*.dat format
+    """Exports contour to tecplot ascii \*.dat format.
 
-    :param c1: contour identifier
+    :param c1: contour identifier or list of identifiers,
 
-    :param fname: output filename
+    :param str fname: output filename.
 
-    :raises: hmscript.ExportError
+    :raises: ExportError
 
     All contour segments will be saved to a zone called "Contour".
     Additional zones will be created for all segments with same
@@ -265,58 +343,59 @@ def export_contour_tecplot(c1, fname):
 
 
 # Importing grids
-def import_grid_hmg(fname, gridname=""):
-    """Imports grid from native \*.hmg file
+def import_grid_hmg(fname, gridname="", allgrids=False):
+    """Imports grid from native hmg file.
 
-    Args:
-       fname: file name
+    :param str fname: file name.
 
-    Returns:
-       grid identifier
+    :param str gridname: name of a grid to find in the file.
+      If **gridname** is not specified then the first grid will be taken.
+
+    :param bool allgrids: if True then all grids from the file
+      will be imported.
+
+    :returns: grid identifier/list of identifiers if **allgrids** is set.
+
+    :raises: ValueError, ExecError.
+
     """
-    name = "Grid1"
-    if gridname != "":
-        name = gridname
-    c = com.imcom.ImportGridNative({
-        "name": name,
-        "filename": fname,
-        "gridname": gridname})
-    try:
-        flow.exec_command(c)
-        return c._get_added_names()[0][0]
-    except Exception:
-        raise ExecError('import_grid_hmg')
-
-
-def import_grids_hmg(fname):
-    """Imports grid from native \*.hmg file
-
-    Args:
-       fname: file name
-
-    Returns:
-       grid identifier
-    """
-    c = com.imcom.ImportGridsNative({"filename": fname})
-    try:
-        flow.exec_command(c)
-        return c._get_added_names()[0]
-    except Exception:
-        raise ExecError('import_grids_hmg')
+    if not allgrids:
+        name = "Grid1"
+        if gridname != "":
+            name = gridname
+        c = com.imcom.ImportGridNative({
+            "name": name,
+            "filename": fname,
+            "gridname": gridname})
+        try:
+            flow.exec_command(c)
+            return c._get_added_names()[0][0]
+        except Exception:
+            raise ExecError('import_grid_hmg')
+    else:
+        c = com.imcom.ImportGridsNative({"filename": fname})
+        try:
+            flow.exec_command(c)
+            return c._get_added_names()[0]
+        except Exception:
+            raise ExecError('import_grids_hmg')
 
 
 def import_grid_msh(fname):
-    """Imports grid from fluent \*.msh file
+    """Imports grid from fluent msh file
 
-    Args:
-       fname: file name
+       :param str fname: file name
 
-    Returns:
-       grid identifier
+       :returns: grid identifier
+
+       :raises: ExecError
     """
     c = com.imcom.ImportGridMSH({"filename": fname})
-    flow.exec_command(c)
-    return c._get_added_names()[0][0]
+    try:
+        flow.exec_command(c)
+        return c._get_added_names()[0][0]
+    except Exception as e:
+        raise ExecError(str(e))
 
 
 def import_grid_gmsh(fname):
@@ -341,44 +420,39 @@ def import_grid_gmsh(fname):
     return c._get_added_names()[0][0]
 
 
-def import3d_grid_hmg(fname, gridname=""):
-    """Imports grid from native \*.hmg file
+def import3d_grid_hmg(fname, gridname="", allgrids=False):
+    """Imports grid from native hmg file.
 
-    Args:
-       fname: file name
+    :param str fname: file name.
 
-    Returns:
-       grid identifier
+    :param str gridname: name of the grid to import. If not specified
+      then the first grid will be loaded.
+
+    :param bool allgrids: if True then all grids from the file
+      will be imported.
+
+    :returns: grid identifier/list of identifiers if **allgrids** is set.
     """
-    name = "Grid1"
-    if gridname != "":
-        name = gridname
-    c = com.imcom.ImportGrid3Native({
-        "name": name,
-        "filename": fname,
-        "gridname": gridname})
-    try:
-        flow.exec_command(c)
-        return c._get_added_names()[2][0]
-    except Exception:
-        raise ExecError('import3d_grid_hmg')
-
-
-def import3d_grids_hmg(fname):
-    """Imports grid from native \*.hmg file
-
-    Args:
-       fname: file name
-
-    Returns:
-       grid identifier
-    """
-    c = com.imcom.ImportGrids3Native({"filename": fname})
-    try:
-        flow.exec_command(c)
-        return c._get_added_names()[2]
-    except Exception:
-        raise ExecError('import3d_grids_hmg')
+    if not allgrids:
+        name = "Grid1"
+        if gridname != "":
+            name = gridname
+        c = com.imcom.ImportGrid3Native({
+            "name": name,
+            "filename": fname,
+            "gridname": gridname})
+        try:
+            flow.exec_command(c)
+            return c._get_added_names()[2][0]
+        except Exception:
+            raise ExecError('import3d_grid_hmg')
+    else:
+        c = com.imcom.ImportGrids3Native({"filename": fname})
+        try:
+            flow.exec_command(c)
+            return c._get_added_names()[2]
+        except Exception:
+            raise ExecError('import3d_grids_hmg')
 
 
 # Importing contours
@@ -405,42 +479,51 @@ def import_contour_ascii(fname, wbtype=False, force_closed=False):
     return c._get_added_names()[1][0]
 
 
-def import_contour_hmc(fname, contname=""):
-    """exports contour to hybmesh native format
+def import_contour_hmc(fname, contname="", allconts=False):
+    """Imports contour from hybmesh native format
 
-    Args:
-      g1: grid identifier
+      :param g1: grid identifier
 
-      fname: output filename
+      :param str fname: output filename
+
+      :param str contname: name of the contour to import. If **contname**
+         is not specified then the first one will be taken.
+
+      :param bool allconts: if True then all contours from the file
+         will be imported. **contname** will be ignored.
+
+      :returns: contour identifier/list of identifiers if **allconts** is set.
+
+      :raises: ExecError
     """
-    c = com.imcom.ImportContourNative(
-        {"filename": fname, "contname": contname})
-    try:
-        flow.exec_command(c)
-        return c._get_added_names()[1][0]
-    except Exception:
-        raise ExecError('import_contour_hmc')
-
-
-def import_contours_hmc(fname, fmt='ascii'):
-    """exports contour to hybmesh native format
-
-    Args:
-      g1: grid identifier
-
-      fname: output filename
-    """
-    c = com.imcom.ImportContoursNative({"filename": fname})
-    try:
-        flow.exec_command(c)
-        return c._get_added_names()[1]
-    except Exception:
-        raise ExecError('import_contours_hmc')
+    if not allconts:
+        c = com.imcom.ImportContourNative(
+            {"filename": fname, "contname": contname})
+        try:
+            flow.exec_command(c)
+            return c._get_added_names()[1][0]
+        except Exception:
+            raise ExecError('import_contour_hmc')
+    else:
+        c = com.imcom.ImportContoursNative({"filename": fname})
+        try:
+            flow.exec_command(c)
+            return c._get_added_names()[1]
+        except Exception:
+            raise ExecError('import_contours_hmc')
 
 
 # data
 def import_all_hmd(fname):
-    """TODO"""
+    """ Imports all geometry objects found in a file of native format.
+
+    :param str fname: filename
+
+    :returns: list of loaded objects as
+      ``[[grid2d identifiers], [contour2d identifiers], [grid3d identifiers]]``
+
+    :raises: ExecError
+    """
     c = com.imcom.ImportAllNative({"filename": fname})
     try:
         flow.exec_command(c)
@@ -450,12 +533,18 @@ def import_all_hmd(fname):
 
 
 def export_all_hmd(fname, fmt="ascii"):
-    """exports contours to native format
+    """Exports all geometrical data to native format.
 
-    Args:
-       c1: contour identifier
+       :param str fname: output filename
 
-       fname: output filename
+       :param str fmt: output data format:
+
+         * ``'ascii'`` - all fields will be saved as text fields,
+         * ``'bin'`` - all fields will be saved in binary section,
+         * ``'fbin'`` - only floating point fields will be saved
+           in binary section.
+
+       See :ref:`nativeformat` for description.
     """
     try:
         imex.export_all(fname, fmt, flow)
@@ -464,11 +553,20 @@ def export_all_hmd(fname, fmt="ascii"):
 
 
 def save_project(fname, fmt="ascii"):
-    """saves current command flow and data to
-    HybMesh project file
+    """Saves current command flow and data to HybMesh project file.
 
-    Args:
-       fname: file name
+       :param str fname: file name
+
+       :param str fmt: output data format:
+
+         * ``'ascii'`` - all fields will be saved as text fields,
+         * ``'bin'`` - all fields will be saved in binary section,
+         * ``'fbin'`` - only floating point fields will be saved
+           in binary section.
+
+       :raises: ExportError
+
+       See :ref:`hmp-file` for description.
     """
     try:
         imex.write_flow_and_framework_to_file(flow, fname, fmt)
@@ -477,11 +575,13 @@ def save_project(fname, fmt="ascii"):
 
 
 def load_project(fname):
-    """saves current command flow and data to
-    HybMesh project file
+    """Loads command flow and data from HybMesh project file.
 
-    Args:
-       fname: file name
+       :param str fname: file name
+
+       All existing data will be lost.
+
+       See :ref:`hmp-file` for description.
     """
     try:
         flow.to_zero_state()

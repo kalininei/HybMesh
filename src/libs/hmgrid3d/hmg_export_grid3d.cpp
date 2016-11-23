@@ -1,4 +1,5 @@
 #include "hmg_export_grid3d.hpp"
+#include "vtk_export_grid3d.hpp"
 
 using namespace HMGrid3D;
 
@@ -109,4 +110,14 @@ void Export::GridWriter::AddCellVertexConnectivity(){
 		std::copy(tmp.begin(), itback, std::back_inserter(cell_vertex[i++]));
 	}
 	AddCellData("__cell_vertices__", cell_vertex, is_binary<int>());
+}
+
+void Export::GridWriter::AddLinFemConnectivity(){
+	vector<vector<int>> af = (*grid).face_vertex();
+	auto vtkex = vtkcell_expression::cell_assembler(*grid, af, true);
+	vector<vector<int>> linfem(vtkex.size());
+	for (size_t i=0; i<linfem.size(); ++i){
+		std::swap(linfem[i], vtkex[i].pts);
+	}
+	AddCellData("__linfem__", linfem, is_binary<int>());
 }

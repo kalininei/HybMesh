@@ -82,7 +82,7 @@ def registered_grids():
 
 
 def registered_grids3d():
-    """ Returns list of all grids identifiers
+    """ Returns list of all 3d grids identifiers
     """
     return data.get_grid3_names()
 

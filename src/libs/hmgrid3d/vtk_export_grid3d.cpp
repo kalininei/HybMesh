@@ -167,7 +167,7 @@ hme::vtkcell_expression hme::vtkcell_expression::build(std::vector<std::vector<i
 	throw std::runtime_error(s.c_str());
 }
 vector<hme::vtkcell_expression> hme::vtkcell_expression::cell_assembler(const SGrid& ser,
-		const vector<vector<int>>& aface){
+		const vector<vector<int>>& aface, bool ignore_errors){
 	vector<vtkcell_expression> ret; ret.reserve(ser.n_cells);
 
 	for (int icell=0; icell<ser.n_cells; ++icell){
@@ -188,7 +188,12 @@ vector<hme::vtkcell_expression> hme::vtkcell_expression::cell_assembler(const SG
 			}
 		}
 		//match vtk data format. throws if impossible
-		ret.push_back(vtkcell_expression::build(cell_points));
+		try{
+			ret.push_back(vtkcell_expression::build(cell_points));
+		} catch (std::runtime_error& e){
+			if (!ignore_errors) throw;
+			else ret.push_back(vtkcell_expression());
+		}
 	}
 	return ret;
 }

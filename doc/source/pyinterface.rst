@@ -77,28 +77,20 @@ grid contours. In the latter case grid identifier
 instead of contour identifier should be used.
 
 .. autofunction:: add_boundary_type
-
 .. autofunction:: set_boundary_type
-
 .. autofunction:: create_contour
-
 .. autofunction:: create_spline_contour
-
 .. autofunction:: add_rect_contour
-
 .. autofunction:: add_circ_contour
 .. autofunction:: add_circ_contour2
 .. autofunction:: add_circ_contour3
-
 .. autofunction:: grid_bnd_to_contour
-
 .. autofunction:: simplify_contour
-
 .. autofunction:: unite_contours
-
 .. autofunction:: clip_domain
-
 .. autofunction:: partition_contour
+.. autofunction:: matched_partition
+.. autofunction:: partition_segment
 
 Grid Procedures
 ---------------
@@ -111,11 +103,11 @@ Building uniform grids in a primitive areas.
 .. autofunction:: add_unf_rect_grid
 .. autofunction:: add_unf_circ_grid
 .. autofunction:: add_unf_ring_grid
+.. autofunction:: add_unf_hex_grid
 .. autofunction:: add_triangle_grid
 .. autofunction:: add_custom_rect_grid
 .. autofunction:: add_circ_rect_grid
-.. autofunction:: triangulate_area
-.. autofunction:: quadrangulate_area
+.. autofunction:: triangulate_domain
 .. autofunction:: pebi_fill
 .. autofunction:: stripe
 
@@ -147,6 +139,7 @@ set of special commands.
 .. autofunction:: info_contour
 .. autofunction:: registered_contours
 .. autofunction:: registered_grids
+.. autofunction:: registered_grids3d
 .. autofunction:: registered_btypes
 .. autofunction:: domain_area
 .. autofunction:: skewness
@@ -154,35 +147,32 @@ set of special commands.
 
 Exports
 -------
-Possible Grid export formats are
 
-* Vtk file format could be used to open a grid in `Paraview`.
-  No boundary types are saved for this format.
-  To see boundary types use separate vtk contour export command.
-* :ref:`hmg-file`
-* Fluent mesh format 
-* GMsh file format
-* Tecplot file format
-
-.. autofunction:: export_grid_vtk
 .. autofunction:: export_grid_hmg
+.. autofunction:: export_grid_vtk
 .. autofunction:: export_grid_msh
 .. autofunction:: export_grid_gmsh
 .. autofunction:: export_grid_tecplot
-.. autofunction:: export_contour_vtk
 .. autofunction:: export_contour_hmc
+.. autofunction:: export_contour_vtk
 .. autofunction:: export_contour_tecplot
+.. autofunction:: export3d_grid_hmg
 .. autofunction:: export3d_grid_vtk
+.. autofunction:: export3d_grid_gmsh
 .. autofunction:: export3d_grid_msh
 .. autofunction:: export3d_grid_tecplot
+.. autofunction:: export_all_hmd
 .. autofunction:: save_project
 
 Imports
 -------
 
+.. autofunction:: import_grid_hmg
 .. autofunction:: import_grid_msh
 .. autofunction:: import_grid_gmsh
-.. autofunction:: import_contour_ascii
+.. autofunction:: import_contour_hmc
+.. autofunction:: import_all_hmd
+.. autofunction:: load_project
 
 Introductory Examples
 ---------------------

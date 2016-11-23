@@ -108,6 +108,7 @@ refp_partition(const HMCont2D::Contour& cont,
 // returns new ECollection pointer or NULL if failed
 void* contour_partition(void* cont, int* btypes, int algo,
 		int n_steps, double* steps, double a0, int keepbnd, int nedges,
+		int n_crosses, void** crosses,
 		int* n_outbnd, int** outbnd){
 	typedef HMCont2D::ECollection TCol;
 	typedef HMCont2D::Container<TCol> TCont;
@@ -124,10 +125,13 @@ void* contour_partition(void* cont, int* btypes, int algo,
 	} else {
 		basic_steps.push_back(steps[0]);
 	}
+	vector<TCol*> vcrosses(n_crosses);
+	for (int i=0; i<n_crosses; ++i) vcrosses[i] = static_cast<TCol*>(crosses[i]);
 	//scaling
 	ScaleBase sc = HMCont2D::ECollection::Scale01(*ecol);
 	sc.scale(basic_points.begin(), basic_points.end());
 	for (auto& v: basic_steps) v/=sc.L;
+	for (auto& c: vcrosses) HMCont2D::ECollection::Scale(*c, sc);
 	//main procedure
 	try{
 		//assemble tree from input data
@@ -165,6 +169,20 @@ void* contour_partition(void* cont, int* btypes, int algo,
 				}
 			}
 		}
+		//cross points
+		HMCont2D::PCollection pcol;
+		for (auto& c: vcrosses){
+			auto cconts = HMCont2D::Assembler::AllContours(*c);
+			for (auto& cond: cconts)
+			for (int i=0; i<ext.cont_count(); ++i){
+				HMCont2D::Contour& cont = *ext.get_contour(i);
+				auto cres = HMCont2D::Algos::CrossAll(cont, cond);
+				for (auto cross: cres){
+					auto gp = cont.GuaranteePoint(std::get<1>(cross), pcol);
+					keep_points.push_back(std::get<1>(gp));
+				}
+			}
+		}
 		//call partition algorithm
 		TCont out;
 		if (algo == 0){
@@ -188,6 +206,7 @@ void* contour_partition(void* cont, int* btypes, int algo,
 		std::cout<<e.what()<<std::endl;
 	}
 	HMCont2D::ECollection::Unscale(*ecol, sc);
+	for (auto& c: vcrosses) HMCont2D::ECollection::Unscale(*c, sc);
 	return ret;
 }
 

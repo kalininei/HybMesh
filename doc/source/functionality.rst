@@ -189,15 +189,118 @@ input grid intersection domain.
 
 Empty holes
 +++++++++++
-If this option of grid superposition is set to true than all hulls presented at *overlaid grid* will be
+If this option of grid superposition is set to true then all hulls presented at *overlaid grid* will be
 preserved as hulls in the result grid. Otherwise these hulls will be filled according to
-general algorithm. The effect of this option is shown at picture below.
+general algorithm. The effect of this option is shown int picture below.
 
 .. figure:: grid_imposition6.png
    :width: 600 px
 
-   fig8. Superposition with/without *Empty holes* option
+   fig. 8. Superposition with/without *Empty holes* option
 
+Buffer fill
++++++++++++
+By default buffer is filled by triangular cells. But if *buffer fill* option
+is set to *'4'*  then a recombination algorithm will
+be used to make a grid mostly quadrangular.
+However even with this option a buffer may still contain few triangular cells
+in areas where recombination failed.
+The effect of this options is shown in picture below.
+
+.. figure:: grid_imposition9.png
+   :width: 600 px
+
+   fig. 9. Superposition with buffer fill = '3' (default) and '4'
+
+
+Python interface function: :func:`unite_grids`.
+
+.. _unstructured-meshing:
+
+Unstructured domain meshing
+---------------------------
+
+HybMesh can be used to build constrained triangulation
+of any multiply connected domain using libgmsh algorithms.
+
+Input domain and contour-type constraints should be
+already discretized with desired segment lengths since
+all input contours vertices will be present in the
+resulting grid. Moreover boundary and constrain segment
+lengths will be treated as internal cell size function sources
+to provide smooth size transitions.
+Use :ref:`contmeshing` to obtain desired contour decomposition
+and to control resulting cell sizes.
+
+It is guaranteed that no grid edge will cross constraint contours.
+Boundary types of the resulting grid will reflect boundary
+types of input bounding domain.
+
+The figure below presents results of constraint meshing of domains
+with different segmentations:
+
+.. figure:: domain_triangulation1.png
+   :width: 500 px
+
+   fig. 1. Triangulation with contour constraints
+
+Constraint contours could intersect one another and bounding contours.
+However, to guarantee stability of program execution, points
+of intersections should present in both intersected contours vertices list.
+Use :ref:`simplecontmeshing` with `crosses` option or
+:ref:`matchedcontmeshing` procedures to provide this.
+An example of triangulation with crossed constraints is shown in figure below.
+
+.. figure:: domain_triangulation2.png
+   :width: 500 px
+
+   fig. 2. Crossed contour constraints.
+
+As an additional instrument of internal cell size control
+user can define a set of point-type constraints: geometrical point
+with referenced adjacent cell size. All such
+points will form grid nodes. See example below to see how this option works.
+
+.. figure:: domain_triangulation3.png
+   :width: 500 px
+
+   fig. 3. Point-type constraints.
+
+Triangulation procedure could be followed by recombination routine
+which will try to transform the resulting grid cells to provide
+mostly quadrangular grid. Use option `fill = '4'` to execute this
+algorithm. All given constraints will still be actual.
+
+.. figure:: domain_triangulation4.png
+   :width: 500 px
+
+   fig. 4. Recombination algorithm effect.
+
+It is also possible to build pebi-like finite volume grids
+on the basis of triangulation procedure. Pebi grid builder
+procedure also accepts contour and point-type constraints.
+The difference is that in this case all
+vertices presented in constraint contours and point-type
+conditions will be located at the center of resulting grid cells.
+Therefore boundary representation (but not domain area) of resulting grid   
+will be different from passed as a bounding domain contour.
+
+This routine can produce concave cells (i.e. as a result of bad size             
+control or near the concave domain boundary vertices).                      
+Use hybmesh `heal grid` routine with ``convex_cells`` option to fix this.     
+After the grid is built some optimization procedures will be executed    
+in order to get rid of short edges and possible self intersections.      
+So the resulting grid will not be strictly of pebi type.                 
+
+.. figure:: domain_triangulation5.png
+   :width: 500 px
+
+   fig. 5. Constrained pebi grid building.
+
+
+Python interface function: :func:`triangulate_domain`, :func:`pebi_fill`
+
+See also :ref:`example6`.
 
 .. _gridclip:
 
@@ -255,7 +358,7 @@ affect the area near the boundaries only. To get smooth internal grid with refin
 one of the edges base domain grid should be changed accordingly.
 
 If not all corner points are defined in reference point set then this could lead to situations
-when a corner point is mapped into a lateral segment. 
+when a corner point is mapped into a lateral segment.
 If this happens resulting grid would have poor quality (fig.1d).
 
 
@@ -266,7 +369,7 @@ If this happens resulting grid would have poor quality (fig.1d).
 
 In the figure above the example of mapping of a grid in the doubly connected domain is shown.
 Since base grid has no corner points acceptable result could be obtained using single
-reference point for each bounding contour (fig.2a), however definition of additional points in order 
+reference point for each bounding contour (fig.2a), however definition of additional points in order
 to adopt boundary points distribution increases grid quality (fig.2b).
 
 The order of points in reference points set doesn't matter. However this set should
@@ -298,7 +401,7 @@ grid vertices.
 
 Hybmesh provides two methods of building such transformation. Both are based on a solution
 of the Laplace equations system supplemented by boundary conditions of the first kind.
-Problem formulation for the first one (later referenced as the *direct Laplace algorithm*) is 
+Problem formulation for the first one (later referenced as the *direct Laplace algorithm*) is
 given in terms of functions :math:`\xi(x, y)`, :math:`\eta(x, y)` defined in the *base domain*:
 
 .. math::
@@ -316,7 +419,7 @@ given in terms of functions :math:`\xi(x, y)`, :math:`\eta(x, y)` defined in the
   \end{cases}
   \text{for } (x, y) \in \gamma,
 
-where :math:`\xi_b`, :math:`\eta_b` are known boundary mapping functions. After the solution of 
+where :math:`\xi_b`, :math:`\eta_b` are known boundary mapping functions. After the solution of
 :eq:`direct_laplace` is obtained further grid mapping is straightforward.
 
 Second algorithm (later referenced as the *inverse Laplace algorithm*) is based on a formulation in terms of functions :math:`x(\xi, \eta)`,
@@ -373,7 +476,7 @@ M-shaped grid into a rectangle, then, on the contrary, only the *direct Laplace 
 will provide a single-valued transformation (fig.4c). The *inverse* method gives improper
 mapping, i.e. some points of the *target domain* are mapped outside the *base domain*,
 however, as soon as all inner base grid points have single-valued images at *target domain*,
-the program is able to assemble valid, although not qualitative grid (fig.4d). 
+the program is able to assemble valid, although not qualitative grid (fig.4d).
 
 The proper method for grid mapping depends on a shape of input domains.
 Since in practical applications *base domains* are often chosen to be smooth and regular
@@ -414,7 +517,98 @@ See also: :ref:`custom_rect_grid`, :ref:`circrect_grid`.
 
 Contour Operations
 ------------------
-TODO
+
+.. _contmeshing:
+
+Contour 1D meshing
+++++++++++++++++++
+
+.. _simplecontmeshing:
+
+Simple contour meshing
+......................
+The most simple way to perform contour 1D meshing is to
+define desired step and pass it along with the contour to hybmesh.
+If input contour is smooth enough then equidistant meshing will be done. 
+Sometimes it is necessary to define some refinement to contour discretization.
+This could be done by setting reference points conditions. Reference points
+should lie on the contour. They act as a size function source to their left and right side
+along the contour until another reference point or contour end.
+These points will not be a part of resulting segmentation. Results of
+contour meshing with different conditions could be seen below.
+
+.. figure:: cont_meshing1.png
+   :width: 500 px
+
+   fig. 1. Contour meshing with constant step and reference points options.
+
+User can also define a desired number of resulting contour segments.
+If that was done then for constant step method given step plays no role at all.
+If reference point method was applied then refinement given through these points
+will be preserved but scaled in order to match fixed segment number condition.
+
+.. figure:: cont_meshing2.png
+   :width: 500 px
+
+   fig. 2. Contour meshing with fixed segments number, relative refinement.
+
+Sometimes contour contains points which must be kept in a 1D discretization.
+This procedure provides three mechanisms of keeping such points:
+
+* definition of :math:`\alpha_0` tells program to keep all input contour vertices
+  which provide turns outside of :math:`[180 - \alpha_0, 180 + \alpha_0]` degrees range.      
+  So by setting :math:`\alpha_0 = 0` algorithm will keep all original target contour vertices
+  except those lying on the straight line
+  and :math:`\alpha_0=180` will disable that option. If :math:`\alpha_0 = -1` then
+  all original vertices will be preserved.
+
+* with option **keep boundary = True** algorithm will not throw away original vertices
+  which provide boundary contour types changes;
+
+* along with target contour user can define a set of other contours with **crosses** 
+  option. Algorithm will calculate all intersection points between them and the original
+  contour and put all those points into resulting segmentation.
+
+.. figure:: cont_meshing3.png
+   :width: 700 px
+
+   fig. 3. Contour meshing with different :math:`\alpha_0`, meshing with cross contour given.
+
+Python interface function: :func:`partition_contour`.
+
+.. _matchedcontmeshing:
+
+Matched contour meshing
+.......................
+
+.. figure:: cont_meshing4.png
+   :width: 400 px
+
+   fig. 4. Matched contour meshing with reference point and contour condition
+
+As the previous contour meshing algorithm, matched meshing
+provides routine to build 1D grid using given size function conditions.
+In simple meshing method those conditions were defined on the contour and act along the contour line only.
+Here conditions work in a 2D area with given **influence radius** and **power**.
+As a size function source a set of standalone points 
+with referenced sizes or another contours could be used.
+In the latter case conditional contour partition by itself is
+treated as a size source.
+
+To apply this method user has to define constant **step size**, which
+will be used in areas where no conditions are acting and as a
+term to define weighted size in areas under the influence of conditions.
+User also defines a **zero angle** to tell algorithm to keep corner points.
+The default value is 30 degrees.
+If conditional contour intersects target contour, then intersection point
+will be calculated and preserved in the resulting mesh.
+
+This procedure could be useful for building 1D meshes prior to
+:ref:`unstructured constraint triangulation <unstructured-meshing>` of areas.
+See example of usage in :ref:`example6`.
+
+Python interface function: :func:`matched_partition`.
+
 
 3D Grid Building
 ----------------

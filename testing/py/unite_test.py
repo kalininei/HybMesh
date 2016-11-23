@@ -1,5 +1,6 @@
 from hybmeshpack import hmscript as hm
-hm.check_compatibility("0.2.1", 2)
+from hybmeshpack.hmscript._dbg import checkdict
+hm.check_compatibility("0.4.5", 2)
 
 
 def check(cond):
@@ -327,3 +328,10 @@ check(hm.info_contour(g3)['Nedges'] == 286)
 check(hm.info_contour(g4)['Nedges'] == 259)
 check(hm.info_contour(g5)['Nedges'] == 94)
 check(hm.info_contour(g6)['Nedges'] == 47)
+
+g1 = hm.add_unf_rect_grid([0, 0], [1, 1], 20, 20)
+g2 = hm.add_unf_rect_grid([0.3, 0.3], [0.6, 0.6], 7, 7)
+g3 = hm.unite_grids(g1, [(g2, 0.1)], buffer_fill="3")
+g4 = hm.unite_grids(g1, [(g2, 0.1)], buffer_fill="4")
+checkdict(hm.info_grid(g3), {'cell_types': {3: 196, 4: 349}})
+checkdict(hm.info_grid(g4), {'cell_types': {4: 435}})

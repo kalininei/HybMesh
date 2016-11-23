@@ -225,16 +225,17 @@ GridGeom RegularHexagonal(Point cnt, double area_rad, double cr, bool strict_are
 	if (!strict_area){
 		double R = 2*hy;
 		nmax = 1;
-		while (R - hy < area_rad){ R += 2*hy; ++nmax; }
+		while (R < area_rad){ R += 2*hy; ++nmax; }
 	} else {
-		nmax = (int)std::round(area_rad/2/hy);
-		hy = area_rad/2/nmax;
+		nmax = (int)std::round(area_rad/2/hy)-1;
+		if (nmax < 0) nmax = 0;
+		hy = area_rad/2/(nmax+1);
 		cr = hy/sqrt(3)*2;
 		++nmax;
 	}
 	//calculate hexagon centers
 	vector<Point> cnts {cnt};
-	for (int n=1; n<nmax; ++n){
+	for (int n=1; n<=nmax; ++n){
 		double R = 2*hy*n;
 		auto hx = build_regular_hex(cnt, R, false);
 		for (int k=0; k<6; ++k){
@@ -260,10 +261,21 @@ GridGeom RegularHexagonal(Point cnt1, Point cnt2, double cr, bool strict_area){
 	ShpVector<Cell> cls;
 
 	Point curp = cnt1, pmax = cnt1;
+	int nx, ny;
+	if (!strict_area){
+		nx = (int)std::ceil( (cnt2.x - cnt1.x)/(1.5*cr) );
+		ny = (int)std::ceil( (cnt2.y - cnt1.y)/(hy) );
+	} else {
+		nx = (int)std::round( (cnt2.x - cnt1.x)/(1.5*cr) );
+		ny = (int)std::round( (cnt2.y - cnt1.y)/(hy) );
+		nx = std::max(1, nx);
+		ny = std::max(1, ny);
+	}
+
 	int mx = 1;
-	while(curp.y-hy<cnt2.y){
+	for (int j=0; j<=ny; ++j){
 		pmax.y = curp.y;
-		while(curp.x-cr<cnt2.x){
+		for (int i=(mx==1)?0:1; i<=nx; i+=2){
 			if (curp.x > pmax.x) pmax.x = curp.x;
 			build_regular_hex(curp, cr, pts, cls);
 			curp.x += 3*cr;

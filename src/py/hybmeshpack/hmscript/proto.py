@@ -5,11 +5,12 @@ from hybmeshpack import com
 from hybmeshpack.basic.geom import Point2, angle_3pnt
 from hybmeshpack.hmscript import flow
 from hybmeshpack.hmscript import ExecError
+from hybmeshpack.hmscript import datachecks as dch
 
 
 # Prototype grids
 def add_unf_rect_grid(p0=[0, 0], p1=[1, 1], nx=3, ny=3,
-                      custom_x=None, custom_y=None):
+                      custom_x=[], custom_y=[]):
     """Builds rectangular grid.
 
     :param list-of-floats p0:
@@ -20,29 +21,54 @@ def add_unf_rect_grid(p0=[0, 0], p1=[1, 1], nx=3, ny=3,
 
     :param int ny: partition in x and y directions.
 
+    :param float-or-list-of-floats custom_x:
+
+    :param float-or-list-of-floats custom_y: custom x and y coordinates
+
     :returns: created grid identifier
 
+    :raises: ValueError, hmscript.ExecError
+
+    Builds a grid in a rectangular area formed by points **p0** and **p1**.
+    **nx** and **ny** provide grid partition in x and y direction.
+
+    If **custom_x**/**custom_y** is given by a single float value
+    than it shows a step size in respective direction,
+    hence values given by **nx**/**ny** parameters will be omitted.
+
+    If **custom_x**/**custom_y** is given by a list of increasing floats
+    it explicitly shows the partition in respective direction.
+    In the latter case the respective **p0**, **p1** coordinates
+    will also be ignored.
+
+    Use :func:`partition_segment` to conveniently define **custom\_** fields
+    if needed.
     """
-    if custom_x is None:
-        custom_x = []
-    elif not isinstance(custom_x, list):
-        custom_x = [custom_x]
-    if custom_y is None:
-        custom_y = []
-    elif not isinstance(custom_y, list):
-        custom_y = [custom_y]
+    custom_x = [custom_x] if not isinstance(custom_x, list) else custom_x
+    custom_y = [custom_y] if not isinstance(custom_y, list) else custom_y
+    dch.ifintlist([nx, ny])
+    dch.ifnumericlist(custom_x + custom_y)
+    dch.ifincreasing(custom_x)
+    dch.ifincreasing(custom_y)
+    dch.ifpointlist([p0, p1])
+    if p0[0] >= p1[0] or p0[1] >= p1[1]:
+        raise ValueError("invalid point order or zero side square")
+
     c = com.gridcom.AddUnfRectGrid({"p0": Point2(*p0),
                                     "p1": Point2(*p1),
                                     "nx": nx,
                                     "ny": ny,
                                     "custom_x": custom_x,
                                     "custom_y": custom_y})
-    flow.exec_command(c)
-    return c._get_added_names()[0][0]
+    try:
+        flow.exec_command(c)
+        return c._get_added_names()[0][0]
+    except:
+        raise ExecError("add_unf_rect_grid")
 
 
 def add_unf_circ_grid(p0, rad=1.0, na=8, nr=4, coef=1.0, is_trian=True,
-                      custom_rads=None, custom_archs=None):
+                      custom_rads=[], custom_archs=[]):
     """Builds circular grid.
 
     :param list-of-floats p0: center coordinate as [x, y]
@@ -60,17 +86,52 @@ def add_unf_circ_grid(p0, rad=1.0, na=8, nr=4, coef=1.0, is_trian=True,
 
     :param bool is_trian: True if center cell should be triangulated
 
+    :param float-or-list-of-floats custom_rads:
+
+    :param float-or-list-of-floats custom_archs:
+
     :returns: created grid identifier
 
+    :raises: ValueError, hmscript.ExecError
+
+    Creates a radial grid with the center in **p0**.
+
+    If **custom_rads** is given as a single value it will be used
+    as a constant step along radial axis hence **nr** and **coef** arguments
+    will be ignored. If it is given as a list of increasing values
+    then it is parsed as explicit radius partition. Hence the
+    last entry of this list will be the radius of the resulting grid
+    and **rad** parameter will also be ignored.
+
+    If **custom_archs** is given as a single value it shows the
+    constant step along outer arch and **na** will be ignored.
+    If it is an increasing list of floats, it shows partition of
+    outer arch. It can be given in degrees or radians or any other
+    relative units. Program treats **custom_archs[-1]**-**custom_archs[0]**
+    difference as a full circle length and normalizes all other entries
+    to this length. First and last entries of this array provides
+    the same arch segment (last = first + 2*pi) hence to
+    get partition of n segments you should define n+1 entries.
+
+    Use :func:`partition_segment` to conveniently define **custom\_** fields
+    if needed.
     """
-    if custom_rads is None:
-        custom_rads = []
-    if custom_archs is None:
-        custom_archs = []
-    if not isinstance(custom_rads, list):
-        custom_rads = [custom_rads]
-    if not isinstance(custom_archs, list):
-        custom_archs = [custom_archs]
+    custom_rads = [custom_rads] if not isinstance(custom_rads, list)\
+        else custom_rads
+    custom_archs = [custom_archs] if not isinstance(custom_archs, list)\
+        else custom_archs
+    dch.ifintlist([na, nr])
+    dch.ifnumericlist(custom_rads + custom_archs)
+    dch.ifincreasing(custom_rads)
+    dch.ifincreasing(custom_archs)
+    dch.ifpointlist([p0])
+    if len(custom_archs) > 1 and len(custom_archs) < 4:
+        raise ValueError("custom_archs list should contain a single or "
+                         "more than three values")
+    if coef <= 0:
+        raise ValueError("invalid 'coef' argument")
+    if not isinstance(is_trian, bool):
+        raise ValueError("invalid 'is_trian' argument")
     c = com.gridcom.AddUnfCircGrid({
         "p0": Point2(*p0),
         "rad": rad,
@@ -79,8 +140,11 @@ def add_unf_circ_grid(p0, rad=1.0, na=8, nr=4, coef=1.0, is_trian=True,
         "is_trian": is_trian,
         "custom_r": custom_rads,
         "custom_a": custom_archs})
-    flow.exec_command(c)
-    return c._get_added_names()[0][0]
+    try:
+        flow.exec_command(c)
+        return c._get_added_names()[0][0]
+    except:
+        raise ExecError("add_unf_circ_grid")
 
 
 def add_unf_ring_grid(p0, radinner, radouter,
@@ -116,6 +180,18 @@ def add_unf_ring_grid(p0, radinner, radouter,
 
 def add_unf_hex_grid(area, cell_radius, strict=False):
     """ Builds grid with regular hexagonal cells
+
+        :param area: defines meshing area. If given as ``[[x, y], radius]``
+           then represents hexagonal area; if ``[[x0, y0], [x1, y1]]`` then
+           it is a rectangle defined by bottom-left and top-right points.
+
+        :param float cell_radius: radius of hexagonal cell.
+
+        :param bool strict: forces grid stretch
+          to guarantee that all outer rectangle corners lie in the
+          centers of cells.
+
+        See details in :ref:`hexgrid`
     """
     simpar = [area[0][0], area[0][1]]
     if isinstance(area[1], list):
@@ -123,6 +199,14 @@ def add_unf_hex_grid(area, cell_radius, strict=False):
         simpar.append(area[1][1])
     else:
         simpar.append(area[1])
+    dch.ifnumericlist(simpar + [cell_radius])
+    if len(simpar) == 4:
+        if simpar[0] >= simpar[2] or simpar[1] >= simpar[3]:
+            raise ValueError("Invalid data representing rectangle")
+    elif simpar[2] <= 0 or cell_radius <= 0:
+        raise ValueError("Radius should be grater than zero")
+    if not isinstance(strict, bool):
+        raise ValueError("Invalid 'strict' option")
     args = {"area": simpar, "crad": cell_radius, "strict": strict}
     c = com.gridcom.AddUnfHexGrid(args)
     try:
@@ -304,6 +388,8 @@ def stripe(cont, partition, tip='no', bnd=None):
     If it starts with non zero value then grid will not contain
     contour nodes as its vertices.
 
+    Use :func:`partition_segment` to define non-equidistant
+    **partition** with any desired refinement if needed.
     """
     #checks
     if tip not in ['no', 'radial']:
@@ -371,7 +457,7 @@ def _triquad(domain, constr, pts, tp):
         raise ExecError('unstructured fill')
 
 
-def triangulate_area(domain, constr=None, pts=None):
+def triangulate_domain(domain, constr=None, pts=None, fill='3'):
     """Builds constrained triangulation within given domain
 
     :param domain: single or list of closed contours
@@ -384,51 +470,30 @@ def triangulate_area(domain, constr=None, pts=None):
         format where ``x, y`` are coordinates of internal vertices
         which should be embedded into the resulting grid,
         ``len`` - size of adjacent cells
+    :param str fill: if '3' then triangulates area; '4' runs
+        recombination algorithm to make mostly quadrangular mesh
 
     :return: grid identifier
 
-    Triangulation procedure takes ``domain`` and ``constr`` vertices as
-    basic points to define grid cell sizes.
-    Use :func:`partition_contour` procedure to adopt partition of these
-    contours and control resulting cell sizes.
+    A contour tree will be built using all closed contours
+    passed as **domain** parameter. Only the interior parts
+    of this tree will be meshed. Contours passed by **domain**
+    should not intersect each other, but could intersect **constr**
+    contours.
+    **const** could contain any set of closed and open contours.
 
-    It is guaranteed that no grid edge will cross ``constr`` contours.
-
-    Crosses between constrain contours and domain are supported.
+    See details in :ref:`unstructured-meshing`.
     """
-    return _triquad(domain, constr, pts, '3')
-
-
-def quadrangulate_area(domain, constr=None, pts=None):
-    """Builds constrained quadrangulation within given domain
-
-    :param domain: single or list of closed contours
-        representing bounding domain
-
-    :param constr: single or list of contours representing
-        meshing constraints
-
-    :param pts: set of points in ``[len0, [x0, y0], ...]``
-        format where ``x, y`` are coordinates of internal vertices
-        which should be embedded into the resulting grid,
-        ``len`` - size of adjacent cells
-
-    :return: grid identifier
-
-    See :func:`triangulate_area` for parameters details.
-
-    .. note::
-
-       This procedure doesn't guarantee that all cells in the resulting
-       grid will be quadrangular. If input geometry is not good enough
-       some triangle cells may occur.
-
-    """
-    return _triquad(domain, constr, pts, '4')
+    if fill == '3':
+        return _triquad(domain, constr, pts, '3')
+    elif fill == '4':
+        return _triquad(domain, constr, pts, '4')
+    else:
+        raise ValueError("unknown `fill` option")
 
 
 def pebi_fill(domain, constr=None, pts=None):
-    """Builds perpendicular bisector cells in given domain
+    """Builds perpendicular bisector cells in given domain.
 
     :param domain: single or list of closed contours
         representing bounding domain
@@ -443,20 +508,17 @@ def pebi_fill(domain, constr=None, pts=None):
 
     :return: grid identifier
 
-    Domain points as well as points of ``pts`` list and constrain contour
-    nodes will be treated as pebi cell centers.
-    Therefore boundary representation (but not domain area) of resulting grid
-    will be different from passed  as ``domain`` parameter.
+    A contour tree will be built using all closed contours
+    passed as **domain** parameter. Only the interior parts
+    of this tree will be meshed. Contours passed by **domain**
+    should not intersect each other, but could intersect **constr**
+    contours.
 
     Routine can produce concave cells (f.e. as a result of bad size
     control or near the concave domain boundary vertices).
     Use :func:`heal_grid` routine with ``convex_cells`` option to fix this.
 
-    .. note::
-
-       After the grid is build some optimisation procedures will be executed
-       in order to get rid of short edges and possible self intersections.
-       So the resulting grid will not be strictly of pebi type.
+    See details in :ref:`unstructured-meshing`.
     """
     return _triquad(domain, constr, pts, 'pebi')
 

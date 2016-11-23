@@ -497,10 +497,10 @@ void test23(){
 	g3.reset(g1.cross_grids(&g1, &g2, 0.1, 0, false, true, 30, 0));
 	bcond = build_bcond(g3, bfun1);
 	GGeom::Export::GridMSH(*g3, "g1.msh", bcond);
-	add_file_check(8029457482738671822U, "g1.msh", "grid to fluent");
+	add_file_check(2399964422661251155U, "g1.msh", "grid to fluent");
 
 	GGeom::Export::GridMSH(*g3, "g1.msh", bcond, [](int i){ return (i==2)?"sqr":"circ";});
-	add_file_check(4520008089953141941U, "g1.msh", "grid to fluent with bnd names");
+	add_file_check(18165961952074798656U, "g1.msh", "grid to fluent with bnd names");
 
 	g3.reset(new GridGeom(GGeom::Constructor::RectGrid01(4,4)));
 	auto bfun2 = [](double x, double y)->int{
@@ -515,15 +515,15 @@ void test23(){
 
 	dt.clear(); dt.add_data(1, 2, false);
 	GGeom::Export::GridMSH(*g3, "g1.msh", bcond, dt);
-	add_file_check(13188935353709075816U, "g1.msh", "fluent simple direct periodic");
+	add_file_check(18390524185577815092U, "g1.msh", "fluent simple direct periodic");
 
 	dt.clear(); dt.add_data(1, 2, true);
 	GGeom::Export::GridMSH(*g3, "g1.msh", bcond, dt);
-	add_file_check(9795699895875725114U, "g1.msh", "fluent simple reversed periodic");
+	add_file_check(17438864871281700822U, "g1.msh", "fluent simple reversed periodic");
 
 	dt.add_data(3, 4, true);
 	GGeom::Export::GridMSH(*g3, "g1.msh", bcond, dt);
-	add_file_check(15517020726046557040U, "g1.msh", "fluent with 2 periodic boundaries");
+	add_file_check(820787542334954232U, "g1.msh", "fluent with 2 periodic boundaries");
 
 	GridGeom g4 = GGeom::Constructor::Circle(Point(0.5, 0.5), 0.1, 10, 3, true);
 	g3.reset(GridGeom::cross_grids(&g1, &g4, 0.1, 0, true, true, 30, 0));
@@ -533,7 +533,7 @@ void test23(){
 				if (i==3 || i==4) return "periodic-long";
 				return "no-periodic";
 			}, dt);
-	add_file_check(17350801960821790081U, "g1.msh", "periodic with complicated mesh");
+	add_file_check(5953965741798004647U, "g1.msh", "periodic with complicated mesh");
 
 }
 
@@ -591,7 +591,7 @@ void test25(){
 	writer3.sub(1)->AddCellVertexConnectivity();
 	writer3.sub(1)->AddCellVertexConnectivity();
 	writer3.Flush();
-	add_filesize_check(4154, "g3.hmg", "multiple grid output ascii");
+	add_file_check(12208118701975579719U, "g3.hmg", "multiple grid output ascii");
 
 	//binary
 	auto writer4 = GGeom::Export::MultipleGridsHMG({&g1, &g2}, {"grid1", "grid2"}, "g4.hmg", "bin");
@@ -656,7 +656,6 @@ void test25(){
 }
 
 int main(){
-	/*
 	crossgrid_internal_tests();
 	test1();
 	test2();
@@ -682,7 +681,6 @@ int main(){
 	test22();
 	test23();
 	test24();
-	*/
 	test25();
 
 	HMTesting::check_final_report();

@@ -204,6 +204,8 @@ void* triangulate_domain(void* domain, void* constr, int nemb, double* emb, int 
 	try{
 		auto etree = HMCont2D::Assembler::ETree(*dom);
 		auto tree = etree.ExtractTree(etree);
+		if (tree.nodes.size() == 0)
+			throw std::runtime_error("Failed to find bounding contour");
 
 		ShpVector<HMCont2D::Contour> cc;
 		vector<HMCont2D::Contour> cas;
@@ -240,6 +242,9 @@ void* pebi_fill(void* domain, void* constr, int nemb, double* emb){
 	try{
 		auto etree = HMCont2D::Assembler::ETree(*dom);
 		auto tree = etree.ExtractTree(etree);
+
+		if (tree.nodes.size() == 0)
+			throw std::runtime_error("Failed to find bounding contour");
 
 		ShpVector<HMCont2D::Contour> cc;
 		vector<HMCont2D::Contour> cas;
@@ -374,8 +379,8 @@ int gwriter_add_defined_field(void* gwriter, const char* field){
 	try{
 		auto gw = static_cast<GGeom::Export::GridWriter*>(gwriter);
 		std::string f(field);
-		if (f == "cell_edges") gw->AddCellEdgeConnectivity();
-		else if (f == "cell_vertices") gw->AddCellVertexConnectivity();
+		if (f == "cell_edges" || f == "cell-edges") gw->AddCellEdgeConnectivity();
+		else if (f == "cell_vertices" || f == "cell-vertices") gw->AddCellVertexConnectivity();
 		else throw std::runtime_error("unknown field "+f);
 		return 1;
 	} catch (std::runtime_error& e){

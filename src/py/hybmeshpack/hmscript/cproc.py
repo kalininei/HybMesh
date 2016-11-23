@@ -4,6 +4,7 @@ from hybmeshpack.basic.geom import Point2
 from hybmeshpack.hmscript import flow, data
 from hybmeshpack.hmscript import ExecError
 from hybmeshpack.hmcore import c2 as c2core
+from hybmeshpack.hmscript import datachecks as dch
 
 
 def grid_bnd_to_contour(g1, simplify=True):
@@ -237,7 +238,7 @@ def clip_domain(dom1, dom2, operation, simplify=True):
 
 
 def partition_contour(cont, algo, step, angle0=30, keep_bnd=False,
-                      nedges=None):
+                      nedges=None, crosses=[]):
     """ Makes connected contour partition
 
     :param cont: Contour or grid identifier
@@ -268,6 +269,9 @@ def partition_contour(cont, algo, step, angle0=30, keep_bnd=False,
        If it can not be satisfied (due to
        angle or boundary restrictions) then an exception will be raised.
 
+    :param crosses: represents set of contour which cross points with
+       target contour will be present in resulting contour.
+
     :returns: new contour identifier
 
     :raises: hmscript.ExecError, ValueError
@@ -287,6 +291,8 @@ def partition_contour(cont, algo, step, angle0=30, keep_bnd=False,
       .. literalinclude:: ../../testing/py/fromdoc/ex_partcontour.py
           :start-after: vvvvvvvvvvvvvvvvvvvvvvvv
           :end-before: ^^^^^^^^^^^^^^^^^^^^^^^^
+
+    See also: :ref:`simplecontmeshing`
     """
     # checks
     if algo == "const":
@@ -309,6 +315,13 @@ def partition_contour(cont, algo, step, angle0=30, keep_bnd=False,
     if nedges is not None:
         if not isinstance(nedges, numbers.Integral):
             raise ValueError("invalid nedges value")
+    if not isinstance(crosses, list):
+        crosses = [crosses]
+    for c in crosses:
+        if not isinstance(c, str):
+            raise ValueError("invalid crosses value")
+        if c == cont:
+            raise ValueError("Crossed contour equals target contour")
     # prepare arguments for command
     if algo == "const":
         plain_step = [step]
@@ -323,7 +336,8 @@ def partition_contour(cont, algo, step, angle0=30, keep_bnd=False,
             "angle0": angle0,
             "keepbnd": keep_bnd,
             "base": cont,
-            "nedges": nedges}
+            "nedges": nedges,
+            "crosses": crosses}
     # call
     c = com.contcom.PartitionContour(args)
     try:
@@ -337,6 +351,29 @@ def matched_partition(cont, step, influence, ref_conts=[], ref_pts=[],
                       angle0=30, power=3):
     """ Makes a contour partition with respect to other
         contours partitions and given reference points
+
+        :param cont: target contour.
+
+        :param float step: default contour step size.
+
+        :param float influence: influence radius of size conditions.
+
+        :param ref_conts: list of contours which segmentation will
+          be treated as target segmentation conditions.
+
+        :param ref_pts: reference points given as
+           ``[step0, [x0, y0], step1, [x1, y1], ...]`` list.
+
+        :param float angle0: existing contour vertices which provide
+           turns outside of ``[180 - angle0, 180 + angle0]`` degrees range
+           will be preserved regardless of other options
+
+        :param positive-float power: shows power of weight
+           calculation function. As this parameter increases
+           size transitions along contour become less smooth and more
+           sensible to size conditions.
+
+        See :ref:`matchedcontmeshing` for details.
     """
     if not isinstance(ref_conts, list):
         ref_conts = [ref_conts]
@@ -373,12 +410,64 @@ def matched_partition(cont, step, influence, ref_conts=[], ref_pts=[],
         raise ExecError('matched partition')
 
 
-def segment_partition(start, end, hstart, hend, hinternal=[]):
+def partition_segment(start, end, hstart, hend, hinternal=[]):
     """ Makes a partition of numeric segment by given
         recommended step sizes at different locations.
+
+        :param float start:
+
+        :param float end: start and end points of numeric segment.
+
+        :param float hstart:
+
+        :param float hend: recommended step at the beginning and at the
+           end of numeric segments
+
+        :param list-of-floats hinternal: possible internal recommended steps
+           given as [segment value0, step0, segment value1, step1, ...]
+
+        :returns: increasing float list representing
+           partitioned segment [start, ..(internal steps).., end]
+
+        :raises: ValueError, ExecError
+
+        This is a helper function which runs iterative procedure
+        to adopt partition of the segment to user defined step size
+        recommendations. It could be used for example to
+        explicitly define partition in :func:`add_unf_rect_grid`,
+        :func:`add_unf_circ_grid` with given `custom\_\*` options or
+        vertical partition of boundary grid in :func:`build_boundary_grid`.
+
+        Example:
+          Shows division of [1, 2] segment from approximately 0.1
+          step size at the beginning to approximately 0.5 step size at
+          the end
+
+          .. code-block:: python
+
+             hybmesh.partition_segment(1, 2, 0.1, 0.5)
+             >>> [1.0, 1.1238348, 1.309012, 1.585923, 2.0]
+
+          Shows division of [1, 2] segment with approximate 0.1
+          step sizes at its end points and 0.4 step size at the center.
+
+          .. code-block:: python
+
+             hybmesh.partition_segment(1, 2, 0.1, 0.1, [1.5, 0.4])
+             >>> [1.0, 1.1082238, 1.3278488, 1.672151, 1.891776, 2.0]
+
+
     """
+    dch.ifnumericlist([start, end, hstart, hend] + hinternal)
+    if len(hinternal) % 2 != 0:
+        raise ValueError("hinternal should contain even number of entries")
+    if (start >= end):
+        raise ValueError("start number should be less then end number")
+    for i in range(len(hinternal) / 2):
+        if end <= hinternal[2 * i] or start >= hinternal[2 * i]:
+            raise ValueError("inner point lies outside segment")
     try:
         ret = c2core.segment_part(start, end, hstart, hend, hinternal)
-        return ret;
+        return ret
     except Exception as e:
         raise ExecError(str(e))
