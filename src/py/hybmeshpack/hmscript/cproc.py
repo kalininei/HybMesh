@@ -471,3 +471,36 @@ def partition_segment(start, end, hstart, hend, hinternal=[]):
         return ret
     except Exception as e:
         raise ExecError(str(e))
+
+
+def extract_subcontour(source, pstart, pend, project_to="vertex"):
+    """ Extracts singly connected subcontour from given contour
+
+        :param source: source contour identifier
+
+        :param list-of-float pstart:
+
+        :param list-of-float pend: points bounding subcontour
+
+        :param str project_to: defines projection rule for **pstart**, **pend**
+
+           * ``"line"`` projects to closest contour points
+           * ``"vertex"`` projects to closest contour vertices
+           * ``"corner"`` projects to closest contour corner vertices
+
+        :returns: new contour identifier
+
+        :raises: ValueError, ExecError
+
+    """
+    dch.ifpointlist([pstart, pend])
+    args = {}
+    args['src'] = source
+    [args['p0'], args['p1']] = [Point2(x[0], x[1]) for x in [pstart, pend]]
+    args['project_to'] = project_to
+    c = com.contcom.ExtractContour(args)
+    try:
+        flow.exec_command(c)
+        return c._get_added_names()[1][0]
+    except Exception:
+        raise ExecError('extract contour')

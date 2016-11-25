@@ -48,20 +48,20 @@ in most cases is known from the context and this attribute could be omitted.
 
 There are no restrictions on data type and format depending on the context.
 Any data could be stored in any supported format. For example you could store points coordinates
-with ``'char'`` or cell-face connectivity table using ``'float'`` type. It'd still be a
+with ``'char'`` or face-cell connectivity table using ``'float'`` type. It'd still be a
 valid hybmesh format numeric array
 (of course it would be automatically converted into doubles and integers respectively while loading into hybmesh).
 
-Elements with ``format=ascii`` storage contain its data string in a text field of the element.
-Numeric values in this string are separated using any number of any whitespaces.
+Elements with ``format="ascii"`` storage contain its data string in a text field.
+Numeric values in this string are separated using any amount of any whitespaces.
 ``char`` values are represented as integers in ``[-127, 127]`` interval.
 
-For binary data ``format=binary`` numeric array elements contain a subnode called ``START`` which stores
+For binary data ``format="binary"`` numeric array elements contain a subnode called ``START`` which stores
 a byte position in a binary section where data of this record starts.
 ``char`` arrays use 1 byte per value; ``integer`` and ``float`` arrays -- 4 bytes per value;
 ``double`` arrays -- 8 bytes per value.
 For ``dim="variable"`` cases each number representing dimension of an entry is written using 4 bytes as an
-**unsigned integer**.
+unsigned integer.
 
 .. figure:: g1_for_hmxml.png
    :width: 400 px
@@ -161,7 +161,7 @@ Buffer length will be equal to
 | ``size of unsigned interger(=4) + dimension of the first entry(=4) * size of integer(=4) +``
 | ``size of unsigned interger(=4) + dimension of the second entry(=4) * size of integer(=4) = 40 bytes``
 
-and binary buffer will be
+and look like
 
 .. figure:: byte_scheme2.png
    :width: 700 px
@@ -176,12 +176,12 @@ User defined fields
 Along with mandatory geometric specific fields each set of geometric primitives
 could be supplied with arbitrary number of user defined fields.
 All of those fields are ignored by hybmesh reader
-(except for fields called "__boundary_types__") but could be
-useful for external solvers.
+(except for fields called ``"__boundary_types__"``) but could be
+useful for external solver readers.
 
 Those fields are written into a hybmesh file as an
 ordinary :ref:`numeric arrays <numeric-storage>` called **FIELD** with
-one supplemented attribute *name* which defined the name of user defined field:
+one supplemented attribute *name* which defines the name of user defined field:
 
 .. code-block:: xml
 
@@ -190,17 +190,17 @@ one supplemented attribute *name* which defined the name of user defined field:
 If attribute `dim` is omitted then the array is treated as a scalar data with `dim=1`.
 
 If grid or contour has non-zero boundary types, then a field
-named "__boundary_type__" will be automatically added to elements representing
-**EDGE** (for 2d data) or **FACE** (for 3d data) structure.
+named ``"__boundary_type__"`` will be automatically added to elements representing
+**EDGES** (for 2D data) or **FACES** (for 3D data) structure.
 
 Hybmesh could also save grids providing some additional grid information
 which is stored in those fields.
-For example for 2d grids additional `cell-vertex` or `cell-edges`
+For example for 2D grids additional `cell-vertices` or `cell-edges`
 connectivity table could be calculated and saved into `__cell_vertices__`
-and `__cell_edges__` fields.
+and `__cell_edges__` fields. Note that all of those fields
+created by HybMesh are conventionally dubbed using leading and ending double underscores.
 See specific grid export functions to see other possible data
 which could be written.
-
 
 
 .. _grid2d-file:
@@ -213,8 +213,8 @@ which could be written.
 
    fig. 4
 
-Structure of xml part of a file containing set of 2d grids is shown in figure 4.
-Each grid is stored in the element called **GRID2D**. It should have
+Structure of xml part of a file containing set of 2D grids is shown in figure 4.
+Each grid is stored in an element called **GRID2D**. It should have
 a name unique to all grids stored in the file.
 Elements **N_VERTICES**, **N_EDGES**, **N_CELLS** contain
 number of vertices, edges and cells of the grid respectively.
@@ -237,7 +237,7 @@ So the right cell is located to the right hand side if one looks from the start 
 If this is a boundary edge and there is no right or left adjacent cell than `-1` should be placed
 on its place.
 
-**EDGES** node could also provide special :ref:`user field <udef-fields>` named ``__boundary_types__``
+**EDGES** node could also provide special :ref:`user field <udef-fields>` named ``"__boundary_types__"``
 which will be interpreted by hybmesh as edges boundary types. Note that
 user field for edges set should contain data for all edges including inner and boundary ones.
 For inner edges a boundary type could be safely set to zero.
@@ -600,7 +600,7 @@ Its xml structure is depicted in figure 12.
 Each workflow is stored in **FLOW** nodes.
 One project file could possibly contain multiple work flows
 with its own set of data and commands.
-Command sequence for a flow is stored in element called **COMMAND**.
+Command sequence for a flow is stored in element called **COMMANDS**.
 Each command is represented by xml element
 
 .. code-block:: xml

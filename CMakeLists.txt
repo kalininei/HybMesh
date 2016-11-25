@@ -84,7 +84,7 @@ if (WIN32)
 endif(WIN32)
 
 # ============================ Version
-set(APPVERSION 0.4.5)
+set(APPVERSION 0.4.6)
 
 # =========================== linking libraries flags
 #libGmsh: global definition of BUILD_GMSH, GMSH_TARGET, GMSH_INCLUDE
@@ -108,6 +108,11 @@ if (NOT FIND_LIBGMSH OR USE_INTERNAL_LIBGMSH)
 		"${CMAKE_SOURCE_DIR}/${_GPATH}/Solver"
 		"${CMAKE_BINARY_DIR}/${_GPATH}/Common"
 		)
+	if (WIN32)
+		set(GMSH_PAPACK_PATH "${CMAKE_SOURCE_DIR}/src/libs/external/winlib/")
+	else()
+		set(GMSH_PAPACK_PATH "")
+	endif()
 else()
 	message(STATUS "Using system libGmsh")
 	set(BUILD_GMSH OFF)

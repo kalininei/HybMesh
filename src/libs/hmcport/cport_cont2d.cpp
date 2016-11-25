@@ -366,6 +366,50 @@ int segment_part(double start, double end, double h0, double h1,
 	}
 }
 
+void* extract_contour(void* source, double* pnts, const char* method){
+	Point p0(pnts[0], pnts[1]), p1(pnts[2], pnts[3]);
+	std::string m(method);
+	HMCont2D::ECollection* ss = static_cast<HMCont2D::ECollection*>(source);
+	ScaleBase sc = HMCont2D::ECollection::Scale01(*ss);
+	sc.scale(p0);
+	sc.scale(p1);
+	HMCont2D::Container<HMCont2D::Contour>* ret = 0;
+	try{
+		auto ce1 = HMCont2D::ECollection::FindClosestEdge(*ss, p0);
+		if (std::get<0>(ce1) == nullptr) throw std::runtime_error("source contour was not found");
+		auto et = HMCont2D::Assembler::ETree(*ss);
+		HMCont2D::Contour& ac = *et.get_contour(std::get<0>(ce1));
+		HMCont2D::Contour res;
+		HMCont2D::PCollection pcol;
+		if (m=="vertex"){
+			res = HMCont2D::Assembler::Contour1(ac, p0, p1);
+		} else if (m=="corner"){
+			auto cp = ac.corner_points1();
+			Point *pc1=cp[0], *pc2=cp[0];
+			double d0 = Point::meas(*pc1, p0);
+			double d1 = Point::meas(*pc2, p1);
+			for (size_t i=1; i<cp.size(); ++i){
+				double d00 = Point::meas(*cp[i], p0);
+				double d10 = Point::meas(*cp[i], p1);
+				if (d00<d0) {d0=d00; pc1=cp[i];}
+				if (d10<d1) {d1=d10; pc2=cp[i];}
+			}
+			res = HMCont2D::Assembler::Contour1(ac, pc1, pc2);
+		} else if (m =="line"){
+			auto gp0 = ac.GuaranteePoint(p0, pcol);
+			auto gp1 = ac.GuaranteePoint(p1, pcol);
+			res = HMCont2D::Assembler::Contour1(ac, std::get<1>(gp0), std::get<1>(gp1));
+		} else throw std::runtime_error("unknown method " + m);
+		ret = new HMCont2D::Container<HMCont2D::Contour>();
+		HMCont2D::Container<HMCont2D::Contour>::DeepCopy(res, *ret);
+		HMCont2D::ECollection::Unscale(*ret, sc);
+	} catch (std::runtime_error &e){
+		std::cout<<e.what()<<std::endl;
+	}
+	HMCont2D::ECollection::Unscale(*ss, sc);
+	return ret;
+}
+
 void* cwriter_create(const char* cname, void* cont, void* awriter, void* subnode, const char* fmt){
 	try{
 		HMXML::ReaderA* wr = static_cast<HMXML::ReaderA*>(awriter);

@@ -36,6 +36,9 @@ int segment_part(double start, double end, double h0, double h1,
 		int n_internals, double* h_internals, int* nout, double** hout);
 
 
+//projection methods: line, vertex, corner
+void* extract_contour(void* source, double* pnts, const char* method);
+
 void* cwriter_create(const char* cname, void* cont, void* awriter, void* subnode, const char* fmt);
 void cwriter_free(void* cwriter);
 int cwriter_add_edge_field(void* cwriter, const char* fieldname, void* field, int fsize, const char* type);

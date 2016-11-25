@@ -480,7 +480,7 @@ def triangulate_domain(domain, constr=None, pts=None, fill='3'):
     of this tree will be meshed. Contours passed by **domain**
     should not intersect each other, but could intersect **constr**
     contours.
-    **const** could contain any set of closed and open contours.
+    **constr** could contain any set of closed and open contours.
 
     See details in :ref:`unstructured-meshing`.
     """
@@ -533,7 +533,7 @@ def add_rect_contour(p0, p1, bnd=0):
        the contour
 
     :param bnd: single or list of 4 boundary
-       identifiers (bottom, left, top, right) for contour segments.
+       identifiers (bottom, right, top, left) for contour segments.
        With the default value no boundary types will be set.
 
     :return: Contour identifier

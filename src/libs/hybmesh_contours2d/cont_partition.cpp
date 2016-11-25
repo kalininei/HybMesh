@@ -446,7 +446,11 @@ std::map<double, double> build_substep(std::map<double, double> step,
 	int i0 = cont.pinfo(p0).index, i1 = cont.pinfo(p1).index;
 	if (!cont.is_closed()){
 		assert(i1 > i0);
-		if (i0 == 0 && i1 == cont.size()) return step;
+		if (i0 == 0 && i1 == cont.size()){
+			insert_into_basismap(step, 0);
+			insert_into_basismap(step, 1);
+			return step;
+		}
 	} else {
 		if (i0 == 0 && i1 == 0) return step;
 	}

@@ -22,6 +22,7 @@ Object       Contour      Grid         Operations   Info           Imp/Exp
 ..           ..           ..           ..           ..             |func-ie19|
 ..           ..           ..           ..           ..             |func-ie20|
 ..           ..           ..           ..           ..             |func-ie21|
+..           ..           ..           ..           ..             |func-ie22|
 ============ ============ ============ ============ =============  =============
 
 
@@ -97,6 +98,7 @@ Object       Contour      Grid         Operations   Info           Imp/Exp
 .. |func-ie16| replace:: :func:`import_grid_msh`
 .. |func-ie17| replace:: :func:`import_grid_gmsh`
 .. |func-ie18| replace:: :func:`import_contour_hmc`
-.. |func-ie19| replace:: :func:`import_all_hmd`
-.. |func-ie20| replace:: :func:`save_project`
-.. |func-ie21| replace:: :func:`load_project`
+.. |func-ie19| replace:: :func:`import3d_grid_hmg`
+.. |func-ie20| replace:: :func:`import_all_hmd`
+.. |func-ie21| replace:: :func:`save_project`
+.. |func-ie22| replace:: :func:`load_project`

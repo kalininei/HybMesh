@@ -164,7 +164,7 @@ GridGeom HMMap::LinearRectGrid(HMCont2D::Contour& _left, HMCont2D::Contour& _bot
 	auto& bot = newcont[1]; auto pbot = bot.ordered_points();
 	auto& right = newcont[2]; auto pright = right.ordered_points();
 	auto& top = newcont[3]; auto ptop = top.ordered_points();
-
+	
 	//build grid main grid connectivity
 	GridGeom ret = GGeom::Constructor::RectGrid01(bot.size(), left.size());
 	//shift nodes
@@ -215,7 +215,8 @@ GridGeom HMMap::TOrthogonalRectGrid::_run(HMCont2D::Contour& _left, HMCont2D::Co
 	opt.fem_nrec = std::max(std::min(10000, left.size()*right.size()*2), 500);
 	auto cmap = HMMap::Conformal::BuildRect.UseCallback(subcaller,
 			left, right, bot, top, opt);
-	GridGeom ret = GGeom::Constructor::RectGrid01(bot.size(), left.size());
+	int lsz = left_basic ? left.size() : right.size();
+	GridGeom ret = GGeom::Constructor::RectGrid01(bot.size(), lsz);
 
 	//grid to conformal rectangle
 	callback->step_after(10, "Map grid", 2, 1);

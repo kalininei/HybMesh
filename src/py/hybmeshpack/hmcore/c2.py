@@ -207,6 +207,16 @@ def segment_part(start, end, hstart, hend, hinternal):
     return ret
 
 
+def extract_contour(c_src, p0, p1, project_to):
+    pnts = [p0.x, p0.y, p1.x, p1.y]
+    c_pnts = list_to_c(pnts, float)
+    ret = libhmcport.extract_contour(c_src, c_pnts, project_to)
+    if ret != 0:
+        return ret
+    else:
+        raise Exception("contour extraction failed")
+
+
 def cwriter_create(contname, c_c, c_writer, c_sub, fmt):
     ret = libhmcport.cwriter_create(contname, c_c, c_writer, c_sub, fmt)
     if ret == 0:

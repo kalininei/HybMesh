@@ -670,3 +670,42 @@ class MatchedPartition(objcom.AbstractAddRemove):
             c2core.free_cont2(c_cont) if c_cont != 0 else None
             for c in c_conds:
                 c2core.free_cont2(c)
+
+
+class ExtractContour(objcom.AbstractAddRemove):
+    def __init__(self, arg):
+        if "name" not in arg:
+            arg["name"] = "Contour1"
+        super(ExtractContour, self).__init__(arg)
+
+    def doc(self):
+        return "Extract contour from source"
+
+    @classmethod
+    def _arguments_types(cls):
+        return {'name': command.BasicOption(str),
+                'src': command.BasicOption(str),
+                'p0': command.Point2Option(),
+                'p1': command.Point2Option(),
+                'project_to': command.BasicOption(str)
+                }
+
+    def _addrem_objects(self):
+        so = self.options
+        cont = self.any_cont_by_name(so['src'])
+
+        c_cont, c_ret = 0, 0
+        try:
+            c_cont = c2core.cont2_to_c(cont)
+            c_ret = c2core.extract_contour(c_cont,
+                                           so['p0'], so['p1'],
+                                           so['project_to'])
+            ret = c2core.cont2_from_c(c_ret)
+            add_bc_from_cont(ret, cont, c_ret, c_cont, force=3)
+
+            return [], [], [(so["name"], ret)], []
+        except Exception as e:
+            raise command.ExecutionError("ExtractContour error", self, e)
+        finally:
+            c2core.free_cont2(c_ret) if c_ret != 0 else None
+            c2core.free_cont2(c_cont) if c_cont != 0 else None

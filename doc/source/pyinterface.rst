@@ -171,6 +171,7 @@ Imports
 .. autofunction:: import_grid_msh
 .. autofunction:: import_grid_gmsh
 .. autofunction:: import_contour_hmc
+.. autofunction:: import3d_grid_hmg
 .. autofunction:: import_all_hmd
 .. autofunction:: load_project
 
