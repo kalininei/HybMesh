@@ -17,6 +17,7 @@ size_t get_ascii_file_hash(const char* fn);
 void free_int_array(int* a);
 void free_double_array(double* a);
 void free_char_array(char* a);
+void free_voidp_array(void** a);
 
 struct BoundaryNamesStruct{
 	int n;

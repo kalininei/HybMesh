@@ -1,5 +1,5 @@
 from hybmeshpack import com
-from hybmeshpack.hmscript import flow, data
+from hybmeshpack.hmscript import flow
 from hybmeshpack.gdata.contour2 import Contour2
 from hybmeshpack.basic.geom import Point2
 from . import ExecError
@@ -308,7 +308,7 @@ def build_boundary_grid(opts):
             if op.project_to == "line":
                 pass
             elif op.project_to == "vertex" or op.project_to == "corner":
-                c1 = data.get_any_contour(op.contour_id)
+                c1 = flow.get_receiver().get_any_contour(op.contour_id)
                 if op.project_to == "corner":
                     c2 = Contour2.create_from_abstract(c1).simplify(0)
                     if c2 is not None:
@@ -409,8 +409,8 @@ def map_grid(base_grid, target_contour, base_points, target_points,
     if project_to == "line":
         pass
     elif project_to == "vertex" or project_to == "corner":
-        cbase = data.get_any_contour(base_grid)
-        ctar = data.get_any_contour(target_contour)
+        cbase = flow.get_receiver().get_any_contour(base_grid)
+        ctar = flow.get_receiver().get_any_contour(target_contour)
         if project_to == "corner":
             cbase2 = Contour2.create_from_abstract(cbase).simplify(0)
             ctar2 = Contour2.create_from_abstract(ctar).simplify(0)

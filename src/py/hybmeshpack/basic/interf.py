@@ -54,6 +54,7 @@ class Callback(object):
     def __init__(self, cb_res_type, cb_args_types):
         self.cb_res_type = cb_res_type
         self.cb_args_types = cb_args_types
+        self._proceed = True
 
     @staticmethod
     def __pytype_to_c_type(tp):
@@ -276,7 +277,7 @@ class ConsoleCallbackCancel2(SilentCallbackCancel2):
         progress2 = ['['] + progress2 + [']']
 
         print ''.join(progress1) + ' ' * s + ''.join(progress2)
-        return 0
+        return super(ConsoleCallbackCancel2, self)._callback(n1, n2, p1, p2)
 
 
 class ConsoleInterface(BasicInterface):

@@ -107,3 +107,51 @@ void Export::GridWriter::AddLinFemConnectivity(){
 	}
 	AddCellData("__linfem__", linfem, is_binary<int>());
 }
+
+
+
+// ========================= SurfaceWriter
+Export::SurfaceWriter::SurfaceWriter(const SSurface& s,
+		HMXML::ReaderA* writer,
+		HMXML::Reader* subnode,
+		std::string surfname, std::string tp){
+	__tp = tp;
+	surf=&s;
+	pwriter=writer;
+
+	//create xml structure
+	swriter = subnode->new_child("SURFACE3D");
+	swriter.new_attribute("name", surfname);
+
+	//inforamtion
+	swriter.new_child("N_VERTICES").set_content(std::to_string(surf->n_vert));
+	swriter.new_child("N_EDGES").set_content(std::to_string(surf->n_edges));
+	swriter.new_child("N_FACES").set_content(std::to_string(surf->n_faces));
+
+	//vertices
+	vwriter = swriter.new_child("VERTICES");
+	auto coordswriter = vwriter.new_child("COORDS");
+	writer->set_num_content(surf->vert, coordswriter, is_binary<double>());
+
+	//edges
+	ewriter = swriter.new_child("EDGES");
+	auto vconnectwriter = ewriter.new_child("VERT_CONNECT");
+	writer->set_num_content(surf->edges, vconnectwriter, is_binary<int>());
+
+	//faces
+	fwriter = swriter.new_child("FACES");
+	auto econnectwriter = fwriter.new_child("EDGE_CONNECT");
+	writer->set_num_content(surf->face_edge, econnectwriter, is_binary<int>());
+
+	//boundary types
+	std::vector<int> bt = s.btypes;
+	int minv = *std::min_element(bt.begin(), bt.end());
+	int maxv = *std::max_element(bt.begin(), bt.end());
+	if (minv == maxv && minv == 0) return;
+	if (minv >-128 && maxv < 128){
+		std::vector<char> btchar(bt.begin(), bt.end());
+		AddFaceData("__boundary_types__", btchar, is_binary<char>());
+	} else {
+		AddFaceData("__boundary_types__", bt, is_binary<int>());
+	}
+}

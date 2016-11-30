@@ -14,7 +14,14 @@ void free_grid3d(CPortGrid3D*);
 
 //====== information
 //n_vert, n_edges, n_faces, n_cells
-void grid3_dims(CPortGrid3D*, int*);
+void grid3_dims(const CPortGrid3D*, int*);
+
+//n_vert, n_edges, n_faces
+void grid3_surface_dims(const CPortGrid3D*, int* dims);
+
+//returns 0 on fail and 1 on success
+//fills ret array with 'number of boundary faces' values
+int grid3_surface_btypes(const CPortGrid3D* s3, int* ret);
 
 //====== sweep constructors
 //construct by sweep in z direction
@@ -55,8 +62,8 @@ void* g3writer_create(const char* gname, CPortGrid3D* grid, void* awriter,
 		void* subnode, const char* fmt);
 void g3writer_free(void* gwriter);
 int g3writer_add_defined_field(void* gwriter, const char* field);
-CPortGrid3D* g3reader_create(void* awriter, void* subnode, char* outname, hmcport_callback f2);
-void* g3reader_getresult(void* rd);
+void* g3reader_create(void* awriter, void* subnode, char* outname, hmcport_callback f2);
+CPortGrid3D* g3reader_getresult(void* rd);
 void g3reader_free(void* greader);
 
 }

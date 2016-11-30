@@ -807,7 +807,7 @@ class ImportAllNative(_AbstractImport):
         return self._s3names[i]
 
     def _read_data(self):
-        import imex
+        import hybmeshpack.imex
         so = self.options
         c_reader = 0
         try:
@@ -815,7 +815,7 @@ class ImportAllNative(_AbstractImport):
             c_reader = hmcore.hmxml_read(so['filename'])
             conts, grids, grids3d, srfs3d,\
                 self._cnames, self._gnames, self._g3names, self._s3names =\
-                imex.import_all(cb, c_reader)
+                hybmeshpack.imex.import_all(c_reader, cb)
             return {"c2": conts, "g2": grids, "g3": grids3d, "s3": srfs3d}
         except Exception:
             raise

@@ -1,4 +1,4 @@
-from hybmeshpack.hmscript import data
+from hybmeshpack.hmscript import flow
 from hybmeshpack import hmcore as hmcore
 from hybmeshpack.hmcore import libhmcport
 from hybmeshpack.hmcore import c2 as c2core
@@ -24,7 +24,7 @@ def info_grid(g1):
           }
 
     """
-    grid = data.get_grid(name=g1)[2]
+    grid = flow.get_receiver().get_grid(name=g1)[2]
     ret = {}
     ret['Nnodes'] = grid.n_points()
     ret['Ncells'] = grid.n_cells()
@@ -52,7 +52,7 @@ def info_contour(c1):
          }
 
     """
-    cont = data.get_any_contour(c1)
+    cont = flow.get_receiver().get_any_contour(c1)
     ret = {}
     ret['Nnodes'] = cont.n_points()
     ret['Nedges'] = cont.n_edges()
@@ -72,7 +72,7 @@ def info_contour(c1):
 def info_grid3d(g1):
     """ TODO
     """
-    g = data.get_grid3(name=g1)[2]
+    g = flow.get_receiver().get_grid3(name=g1)[2]
     ret = {}
     ret['Nnodes'] = g.n_points()
     ret['Nedges'] = g.n_edges()
@@ -84,7 +84,7 @@ def info_grid3d(g1):
 def info_surface(s1):
     """ TODO
     """
-    s = data.get_any_surface(s1)
+    s = flow.get_receiver().get_any_surface(s1)
     ret = {}
     ret['Nnodes'] = s.n_points()
     ret['Nedges'] = s.n_edges()
@@ -100,25 +100,32 @@ def info_surface(s1):
 def registered_contours():
     """Returns list of all contours identifiers
     """
-    return data.get_ucontour_names()
+    return flow.get_receiver().get_ucontour_names()
 
 
 def registered_grids():
     """ Returns list of all grids identifiers
     """
-    return data.get_grid_names()
+    return flow.get_receiver().get_grid_names()
 
 
 def registered_grids3d():
     """ Returns list of all 3d grids identifiers
     """
-    return data.get_grid3_names()
+    return flow.get_receiver().get_grid3_names()
+
+
+def registered_surfaces():
+    """Returns list of all surfaces identifiers
+    """
+    return flow.get_receiver().get_usurface_names()
 
 
 def registered_btypes():
     """ Returns list of all boundary types as (index, name) tuples
     """
-    return [(x.index, x.name) for x in data.get_bnd_types()._data]
+    d = flow.get_receiver().get_bnd_types()._data
+    return [(x.index, x.name) for x in d]
 
 
 def domain_area(c):
@@ -133,9 +140,9 @@ def domain_area(c):
     import ctypes as ct
     # get contour by name
     try:
-        cont = data.get_ucontour(name=c)[2]
+        cont = flow.get_receiver().get_ucontour(name=c)[2]
     except KeyError:
-        cont = data.get_grid(name=c)[2].cont
+        cont = flow.get_receiver().get_grid(name=c)[2].cont
 
     # get c object
     ccont = c2core.cont2_to_c(cont)
@@ -208,7 +215,7 @@ def skewness(g, threshold=0.7):
        `bad_cells` and `bad_skew` lists entries correspond to same bad cells
 
     """
-    grid = data.get_grid(name=g)[2]
+    grid = flow.get_receiver().get_grid(name=g)[2]
     skew = g2core.get_skewness(grid, threshold)
     if (len(skew) == 0):
         raise Exception("Can not calculate skewness")

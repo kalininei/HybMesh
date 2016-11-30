@@ -4,8 +4,6 @@ import hybmeshpack.com.flow  # NOQA
 
 # global flow and data
 flow = com.flow.CommandFlow()
-data = gdata.Framework()
-flow.set_receiver(data)
 
 
 class ExecError(Exception):

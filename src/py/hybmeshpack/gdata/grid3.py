@@ -7,7 +7,7 @@ class Grid3(object):
         self.cdata = cdata
 
     def __del__(self):
-        if self.cpnt:
+        if self.cdata:
             g3core.free_g3(self.cdata)
 
     def n_points(self):

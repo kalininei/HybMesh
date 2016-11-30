@@ -4,6 +4,7 @@
 
 using namespace HMGrid3D;
 
+//================================================= Surfaces
 void SimpleSerializeSurface::supplement(){
 	//n_*
 	n_vert = vert.size()/3;
@@ -11,6 +12,112 @@ void SimpleSerializeSurface::supplement(){
 	n_faces = face_edge.size();
 }
 
+
+SSurface::SSurface(SimpleSerializeSurface&& ss):SimpleSerializeSurface(std::move(ss)){
+	actualize_data();
+}
+SSurface::SSurface(HMGrid3D::Surface&& srf):HMGrid3D::Surface(std::move(srf)){
+	actualize_serial_data();
+}
+
+void SSurface::actualize_data(){
+	ShpVector<Vertex> vvert;
+	ShpVector<Edge> vedges;
+	//vertices
+	vvert.resize(n_vert);
+	auto vit = vert.begin();
+	for (int i=0; i<n_vert; ++i){
+		vvert[i].reset(new Vertex(*vit, *(vit+1), *(vit+2)));
+		vit+=3;
+	}
+	//edges
+	vedges.resize(n_edges);
+	auto eit = edges.begin();
+	for (int i=0; i<n_edges; ++i){
+		int p1 = *eit++;
+		int p2 = *eit++;
+		vedges[i].reset(new Edge(vvert[p1], vvert[p2]));
+	}
+	//faces
+	faces.resize(n_faces);
+	for (int i=0; i<n_faces; ++i){
+		faces[i].reset(new Face());
+		faces[i]->boundary_type = btypes[i];
+		faces[i]->edges.resize(face_edge[i].size());
+		for (size_t j=0; j<face_edge[i].size(); ++j){
+			faces[i]->edges[j]=vedges[face_edge[i][j]];
+		}
+	}
+}
+
+void SSurface::actualize_serial_data(){
+	//enumeration
+	int kf=0;
+	for (auto f: faces){
+		f->id = kf++;
+		for (auto e: f->edges){
+			e->id = -1;
+			for (auto v: e->vertices){
+				v->id = -1;
+			}
+		}
+	}
+	//assembling
+	ShpVector<Vertex> vvert;
+	ShpVector<Edge> vedges;
+	int kv = 0, ke = 0;
+	for (int i=0; i<kf; ++i){
+		auto f = faces[i];
+		for (auto e: f->edges) if (e->id < 0){
+			e->id = ke++;
+			vedges.push_back(e);
+			if (e->first()->id < 0){
+				e->first()->id = kv++;
+				vvert.push_back(e->first());
+			}
+			if (e->last()->id < 0){
+				e->last()->id = kv++;
+				vvert.push_back(e->last());
+			}
+		}
+	}
+
+	//vertices
+	n_vert = vvert.size();
+	vert.resize(3*n_vert);
+	auto vit = vert.begin();
+	for (int i=0; i<n_vert; ++i){
+		*vit++ = vvert[i]->x;
+		*vit++ = vvert[i]->y;
+		*vit++ = vvert[i]->z;
+	}
+	//edges
+	n_edges = vedges.size();
+	edges.resize(2*n_edges);
+	auto eit = edges.begin();
+	for (int i=0; i<n_edges; ++i){
+		*eit++ = vedges[i]->first()->id;
+		*eit++ = vedges[i]->last()->id;
+	}
+	//faces
+	n_faces = faces.size();
+	face_edge.resize(n_faces);
+	for (size_t i=0; i<n_faces; ++i){
+		face_edge[i].resize(faces[i]->n_edges());
+		for (size_t j=0; j<faces[i]->n_edges(); ++j){
+			face_edge[i][j] = faces[i]->edges[j]->id;
+		}
+	}
+	//boundary types
+	btypes.resize(n_faces);
+	for (size_t i=0; i<n_faces; ++i){
+		btypes[i] = faces[i]->boundary_type;
+	}
+	//all other
+	supplement();
+}
+
+//================================================= Grids
 //fills everything from: vert, edges, faces, bnd.
 void SimpleSerialize::supplement(){
 	//n_*
@@ -245,7 +352,7 @@ void SGrid::actualize_data(){
 		}
 		if (rcell >= 0){
 			vcells[rcell]->faces.push_back(vfaces[i]);
-			vfaces[i]->right = vcells[lcell];
+			vfaces[i]->right = vcells[rcell];
 		}
 	}
 }

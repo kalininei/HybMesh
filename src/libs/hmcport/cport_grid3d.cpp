@@ -20,11 +20,31 @@ void free_grid3d(CPortGrid3D* g){
 	}
 }
 
-void grid3_dims(CPortGrid3D* g, int* nums){
+void grid3_dims(const CPortGrid3D* g, int* nums){
 	nums[0] = hmgrid(g).n_vert;
 	nums[1] = hmgrid(g).n_edges;
 	nums[2] = hmgrid(g).n_faces;
 	nums[3] = hmgrid(g).n_cells;
+}
+
+void grid3_surface_dims(const CPortGrid3D* g, int* dims){
+	dims[0] = hmgrid(g).bvert().size();
+	dims[1] = hmgrid(g).bedges().size();
+	dims[2] = hmgrid(g).bfaces().size();
+}
+
+int grid3_surface_btypes(const CPortGrid3D* g3, int* ret){
+	try{
+		auto g = hmgrid(g3);
+		const auto& bf = g.bfaces();
+		for (size_t i=0; i<bf.size(); ++i){
+			ret[i] = g.btypes[bf[i]];
+		}
+	} catch (std::exception& e){
+		std::cout<<e.what()<<std::endl;
+		return 0;
+	}
+	return 1;
 }
 
 namespace{
@@ -263,7 +283,7 @@ void* g3reader_create(void* awriter, void* subnode, char* outname, hmcport_callb
 		return 0;
 	}
 }
-void* g3reader_getresult(void* rd){
+CPortGrid3D* g3reader_getresult(void* rd){
 	try{
 		auto reader = static_cast<HMGrid3D::Import::GridReader*>(rd);
 		return reader->result.release();

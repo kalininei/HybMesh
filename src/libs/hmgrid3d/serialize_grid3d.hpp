@@ -22,11 +22,12 @@ struct SimpleSerializeSurface{
 struct SSurface: public SimpleSerializeSurface, public Surface{
 	SSurface(){};
 	SSurface(SimpleSerializeSurface&& ss);
+	SSurface(HMGrid3D::Surface&& srf);
 
 	//====== constructing procedures
-	//fills SimpleSerialize on the basis of GridData
+	//fills SimpleSerialize on the basis of Surface
 	void actualize_serial_data();
-	//fills GridData vectors from SimpleSerialize Data
+	//fills Surface vectors from SimpleSerialize Data
 	void actualize_data();
 };
 

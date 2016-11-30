@@ -20,7 +20,8 @@ class _Factory(object):
     ' Command class Factory '
     command_list = [command.Start] + _get_classes(objcom) +\
         _get_classes(gridcom) + _get_classes(grid3dcom) +\
-        _get_classes(contcom) + _get_classes(imcom)
+        _get_classes(contcom) + _get_classes(imcom) +\
+        _get_classes(surfcom)
 
     def __init__(self):
         """ Initializes the commands building factory.

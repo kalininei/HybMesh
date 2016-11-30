@@ -250,6 +250,8 @@ class Command(object):
             slist -- string representation of
             constuctor arguments dictionary
         """
+        if slist is None:
+            slist = ""
         a = ast.literal_eval('{' + slist + '}')
         tps = cls._arguments_types()
         for (k, v) in tps.items():

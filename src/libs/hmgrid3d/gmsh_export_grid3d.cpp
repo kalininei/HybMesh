@@ -20,11 +20,11 @@ void hme::TGridGMSH::_run(const SGrid& ser, std::string fn, BFun bfun){
 	int totfaces = 0;
 	enumerate_ids_pvec(ser.vfaces);
 	for (auto& s: srfs){
-		auto er = psrfs.emplace(s.first, vector<vector<int>>(s.second.n_faces()));
+		auto er = psrfs.emplace(s.first, vector<vector<int>>(s.second.faces.size()));
 		auto& vv = er.first->second;
-		totfaces+=s.second.n_faces();
+		totfaces+=s.second.faces.size();
 		//enumerate nodes so that all cells be on their left side
-		for (int i=0; i<s.second.n_faces(); ++i){
+		for (int i=0; i<s.second.faces.size(); ++i){
 			auto fc = s.second.faces[i];
 			int iface = fc->id;
 			vv[i] = fv[iface];

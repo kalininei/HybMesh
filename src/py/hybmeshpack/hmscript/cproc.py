@@ -1,7 +1,7 @@
 import numbers
 from hybmeshpack import com
 from hybmeshpack.basic.geom import Point2
-from hybmeshpack.hmscript import flow, data
+from hybmeshpack.hmscript import flow
 from hybmeshpack.hmscript import ExecError
 from hybmeshpack.hmcore import c2 as c2core
 from hybmeshpack.hmscript import datachecks as dch
@@ -31,10 +31,10 @@ def grid3_bnd_to_surface(g1, separate=False):
     try:
         flow.exec_command(c)
         if separate:
-            return c._get_added_names()[3][0]
-        else:
             return c._get_added_names()[3]
-    except Exception as e:
+        else:
+            return c._get_added_names()[3][0]
+    except Exception:
         raise ExecError("grid3_bnd_to_surface")
 
 
@@ -122,7 +122,7 @@ def set_boundary_type(cont, btps=None, bfun=None):
 
     Only one of **btps**, **bfun** arguments should be defined.
     """
-    cdata = data.get_any_contour(cont)
+    cdata = flow.get_receiver().get_any_contour(cont)
     args = {"name": cont}
     if btps is not None:
         if not isinstance(btps, list):

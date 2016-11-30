@@ -129,7 +129,7 @@ class BndTypesList(object):
         del self._data[:]
         nds = xmlnode.findall("BTYPE")
         for n in nds:
-            ind = int(n.attrib["index"].text)
+            ind = int(n.attrib["index"])
             nm = n.find("NAME").text
             color = (255, 255, 255)
             self.set_bnd(ind, nm, color)

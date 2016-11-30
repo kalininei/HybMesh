@@ -53,6 +53,8 @@ def free_cside_array(a, tp):
         libhmcport.free_double_array(a)
     elif tp == "char":
         libhmcport.free_char_array(a)
+    elif tp == "void*":
+        libhmcport.free_voidp_array(a)
     else:
         raise ValueError(str(tp))
     a = None

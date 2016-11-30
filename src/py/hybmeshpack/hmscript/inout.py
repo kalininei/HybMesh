@@ -342,6 +342,15 @@ def export_contour_tecplot(c1, fname):
         raise ExportError(str(e))
 
 
+def export3d_surface_hmc(s1, fname, fmt="ascii"):
+    """TODO
+    """
+    try:
+        imex.export_surface("hmc", fname, s1, flow=flow, adata={'fmt': fmt})
+    except Exception as e:
+        raise ExportError(str(e))
+
+
 # Importing grids
 def import_grid_hmg(fname, gridname="", allgrids=False):
     """Imports grid from native hmg file.
@@ -490,17 +499,17 @@ def import_contour_hmc(fname, contname="", allconts=False):
         raise ExecError('import_contour_hmc')
 
 
-def import3d_surface_hmc(fname, srfname="", allsrfs=False):
+def import3d_surface_hmc(fname, srfname="", allsurfs=False):
     """TODO"""
     c = com.imcom.ImportSurfacesNative(
-        {"filename": fname, "srfname": srfname, "all": allsrfs})
+        {"filename": fname, "srfname": srfname, "all": allsurfs})
     try:
         flow.exec_command(c)
         ret = c._get_added_names()[3]
-        if allsrfs:
-            return ret[0]
-        else:
+        if allsurfs:
             return ret
+        else:
+            return ret[0]
     except Exception:
         raise ExecError('import_contours_hmc')
 

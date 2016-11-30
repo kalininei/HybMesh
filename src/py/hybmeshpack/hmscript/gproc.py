@@ -1,6 +1,6 @@
 import copy
 from hybmeshpack import com
-from hybmeshpack.hmscript import flow, data
+from hybmeshpack.hmscript import flow
 from hybmeshpack.basic.geom import Point2
 from . import ExecError
 
@@ -38,9 +38,9 @@ def remove_all_but(objs):
     if not isinstance(objs, list):
         objs = [objs]
 
-    all_obj = data.get_grid_names()
-    all_obj.extend(data.get_ucontour_names())
-    all_obj.extend(data.get_grid3_names())
+    all_obj = flow.get_receiver().get_grid_names()
+    all_obj.extend(flow.get_receiver().get_ucontour_names())
+    all_obj.extend(flow.get_receiver().get_grid3_names())
     all_obj = [x for x in all_obj if x not in objs]
     remove_geom(all_obj)
 
@@ -183,7 +183,7 @@ def extrude_grid(obj, zcoords, bottombc=0, topbc=0, sidebc=None):
                 raise ValueError("Invalid zcoords vector")
     # calculate boundary types
     if not isinstance(bottombc, int) or not isinstance(topbc, int):
-        _, _, g = data.get_grid(name=obj)
+        _, _, g = flow.get_receiver().get_grid(name=obj)
         cc_pnt = g.central_points()
         central_coord = [[p.x, p.y, ind] for (ind, p) in enumerate(cc_pnt)]
     if isinstance(bottombc, int):

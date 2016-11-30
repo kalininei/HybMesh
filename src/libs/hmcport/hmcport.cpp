@@ -15,9 +15,8 @@ int silent2_function(const char*, const char*, double, double){
 
 void free_int_array(int* a){ if (a != NULL) delete[] a; }
 void free_double_array(double* a){ if (a!= NULL) delete[] a; }
-void free_char_array(char* a){
-	if (a!=NULL) delete[] a;
-}
+void free_char_array(char* a){ if (a!=NULL) delete[] a; }
+void free_voidp_array(void** a){ if (a!=NULL) delete[] a; }
 
 size_t get_ascii_file_hash(const char* fn){
 	return HMTesting::calculate_file_hash(fn);

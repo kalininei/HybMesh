@@ -4,6 +4,7 @@ import readxml
 import gridexport
 import contexport
 import grid3export
+import surfexport
 from hybmeshpack import gdata
 from hybmeshpack.basic.interf import Callback
 from hybmeshpack.gdata import contour2
@@ -220,6 +221,39 @@ def export_grid3_surface(fmt, fn, name, fw=None, flow=None):
         raise Exception('Unsupported format %s' % fmt)
 
 
+def export_surface(fmt, fn, name, fw=None, flow=None, adata=None):
+    """exports surface to file fn using format fmt.
+        Possible formats:
+           hmc -> adata['writer'], adata['fmt']
+    """
+    #Find surface
+    surflist = []
+    names = []
+    try:
+        if fw is None:
+            fw = flow.get_receiver()
+        if not isinstance(name, list):
+            names = [name]
+        else:
+            names = name
+        for i, nm in enumerate(names):
+            try:
+                _, _, s = fw.get_usurface(name=nm)
+                surflist.append(s)
+            except KeyError:
+                s = fw.get_grid3(name=nm)[2].surface().deepcopy()
+                names[i] = "SurfaceOf" + nm
+                surflist.append(s)
+    except:
+        raise Exception('Can not find surface for exporting')
+    # 2. Export regarding to format
+    if fmt == 'hmc':
+        wr = adata['writer'] if 'writer' in adata else None
+        surfexport.hmc(surflist, names, fn, adata['fmt'], wr)
+    else:
+        raise Exception('Unknown contour format %s' % fmt)
+
+
 def export_all(fname, fmt, flow, wr=None):
     c_writer = 0
     try:
@@ -228,6 +262,7 @@ def export_all(fname, fmt, flow, wr=None):
         allconts = fw.get_ucontour_names()
         allgrids = fw.get_grid_names()
         allgrids3 = fw.get_grid3_names()
+        allsurfaces = fw.get_usurface_names()
         cb = flow.get_interface().ask_for_callback(Callback.CB_CANCEL2)
         adata = {"fmt": fmt, "afields": [], "writer": c_writer}
         # contours
@@ -239,6 +274,9 @@ def export_all(fname, fmt, flow, wr=None):
         # grids 3d
         cb._callback("Write grids 3d", "", 0.3, 0)
         export_grid("hmg3d", fname, allgrids3, fw, None, adata)
+        # surfaces 3d
+        cb._callback("Write surfaces", "", 0.9, 0)
+        export_surface("hmc", fname, allsurfaces, fw, None, adata)
     except:
         raise
     finally:

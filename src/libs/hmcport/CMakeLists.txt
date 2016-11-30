@@ -4,6 +4,7 @@ set (HEADERS
 	cport_grid2d.h
 	cport_grid3d.h
 	cport_cont2d.h
+	cport_surface3d.h
 )
 
 set (SOURCES
@@ -11,6 +12,7 @@ set (SOURCES
 	cport_grid2d.cpp
 	cport_grid3d.cpp
 	cport_cont2d.cpp
+	cport_surface3d.cpp
 )
 
 source_group ("Header Files" FILES ${HEADERS} ${HEADERS})

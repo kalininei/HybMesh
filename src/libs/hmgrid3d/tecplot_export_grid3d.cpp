@@ -12,7 +12,7 @@ typedef aa::PtrContainerIndexer<const ShpVector<HMGrid3D::Vertex>> TVertIndexer;
 
 struct SurfSerial{
 	SurfSerial(HMGrid3D::Surface& srf, TVertIndexer& vrt){
-		n_faces = srf.n_faces();
+		n_faces = srf.faces.size();
 		//edge->nodes
 		auto ae = srf.alledges();
 		n_edges = ae.size();

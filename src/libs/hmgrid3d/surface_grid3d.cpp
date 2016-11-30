@@ -65,10 +65,21 @@ Surface Surface::SubSurface(const Surface& s, Vertex* v){
 	return Surface();
 }
 
+vector<Surface> Surface::AllSubSurfaces(const Surface& s){
+	//subdivide
+	vector<ShpVector<Face>> subd = Face::SubDivide(s.allfaces());
+	//assemble surfaces
+	vector<Surface> ret(subd.size());
+	for (size_t i=0; i<subd.size(); ++i){
+		ret[i].faces = std::move(subd[i]);
+	}
+	return ret;
+}
+
 namespace{
 //build table and finds edge
 vector<vector<int>> face_edge_to_int(const Surface& s, const HMGrid3D::Edge* ed0, int& edcount, int& ied0){
-	vector<vector<int>> ret(s.n_faces());
+	vector<vector<int>> ret(s.faces.size());
 	auto edges = s.alledges();
 	auto _indexer = aa::ptr_container_indexer(edges);
 	_indexer.convert();
@@ -211,7 +222,7 @@ class RearrangeS{
 		}
 	}
 	void PermuteFaces(Surface& s){
-		ShpVector<Face> newf; newf.reserve(s.n_faces());
+		ShpVector<Face> newf; newf.reserve(s.faces.size());
 		for (int i: face_order) newf.push_back(s.faces[i]);
 		std::swap(s.faces, newf);
 	}

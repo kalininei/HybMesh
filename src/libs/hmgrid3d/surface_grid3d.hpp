@@ -13,7 +13,6 @@ struct Surface{
 	ShpVector<Face> allfaces() const;
 	ShpVector<Edge> alledges() const;
 	ShpVector<Vertex> allvertices() const;
-	int n_faces() const { return faces.size(); }
 
 	// ================= Builders
 	//reversetp = 
@@ -27,6 +26,7 @@ struct Surface{
 
 	//extracts subsurface which contains v
 	static Surface SubSurface(const Surface& s, Vertex* v);
+	static vector<Surface> AllSubSurfaces(const Surface& s);
 
 	//topologically unique rearrange with respect to given edge
 	//edges and faces data would be reordered, face vector will be permuted.

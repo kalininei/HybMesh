@@ -6,8 +6,6 @@
 namespace HMGrid3D{ namespace Export{
 
 struct GridWriter{
-	//holds data
-
 	GridWriter(const SGrid& g,
 		HMXML::ReaderA* writer,
 		HMXML::Reader* subnode,
@@ -74,6 +72,66 @@ template<class A>
 void GridWriter::AddFaceData(std::string fieldname, const A& data, bool binary){
 	data_changed();
 	GridWriter::add_field<typename A::value_type>(fwriter, fieldname, data, binary, *pwriter);
+}
+
+
+struct SurfaceWriter{
+	SurfaceWriter(const SSurface& s,
+		HMXML::ReaderA* writer,
+		HMXML::Reader* subnode,
+		std::string surfname, std::string tp);
+
+	template<class A>
+	void AddVertexData(std::string fieldname, const A& data, bool binary);
+	template<class A>
+	void AddEdgeData(std::string fieldname, const A& data, bool binary);
+	template<class A>
+	void AddFaceData(std::string fieldname, const A& data, bool binary);
+	template<class A>
+	void AddCellData(std::string fieldname, const A& data, bool binary);
+
+	template<class A> bool is_binary(){return false;}
+private:
+	virtual void data_changed(){}
+	template<class A>
+	static void add_field(HMXML::Reader& subnode, std::string fieldname, const vector<A>& data,
+			bool binary, HMXML::ReaderA& writer);
+
+	HMXML::ReaderA* pwriter;
+	const SSurface* surf;
+	HMXML::Reader swriter, vwriter, ewriter, fwriter;
+	std::string __tp;
+};
+
+template<> inline bool SurfaceWriter::is_binary<int>(){return __tp == "bin";}
+template<> inline bool SurfaceWriter::is_binary<char>(){return __tp == "bin";}
+template<> inline bool SurfaceWriter::is_binary<double>(){return __tp != "ascii";}
+template<> inline bool SurfaceWriter::is_binary<float>(){return __tp != "ascii";}
+
+template<class A>
+void SurfaceWriter::add_field(HMXML::Reader& subnode, std::string fieldname, const vector<A>& data,
+		bool binary, HMXML::ReaderA& writer){
+	HMXML::Reader wr = subnode.find_by_path("FIELD[@name='"+fieldname+"']");
+	if (wr) wr.unlink_node();
+	wr = subnode.new_child("FIELD");
+	wr.new_attribute("name", fieldname);
+	writer.set_num_content(data, wr, binary);
+}
+
+template<class A>
+void SurfaceWriter::AddVertexData(std::string fieldname, const A& data, bool binary){
+	data_changed();
+	SurfaceWriter::add_field<typename A::value_type>(vwriter, fieldname, data, binary, *pwriter);
+}
+template<class A>
+void SurfaceWriter::AddEdgeData(std::string fieldname, const A& data, bool binary){
+	data_changed();
+	SurfaceWriter::add_field<typename A::value_type>(ewriter, fieldname, data, binary, *pwriter);
+}
+template<class A>
+void SurfaceWriter::AddFaceData(std::string fieldname, const A& data, bool binary){
+	data_changed();
+	SurfaceWriter::add_field<typename A::value_type>(fwriter, fieldname, data, binary, *pwriter);
 }
 
 }}

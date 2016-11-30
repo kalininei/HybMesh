@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<HybMeshData>
+  <FLOW>
+    <COMMANDS>
+      <COM name="Start">
+        <LINE/>
+      </COM>
+    </COMMANDS>
+    <STATE>
+      <BTYPE index="0">
+        <NAME>None</NAME>
+      </BTYPE>
+    </STATE>
+  </FLOW>
+</HybMeshData>

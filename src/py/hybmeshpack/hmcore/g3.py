@@ -37,7 +37,7 @@ def extrude_call(c_grid, c_btypes, c_zvals, c_bbot, c_btop, bsides):
 
 def grid3_from_c(cdata):
     from hybmeshpack.gdata.grid3 import Grid3
-    return Grid3.from_cdata(cdata)
+    return Grid3(cdata)
 
 
 def free_g3(c_g3):
@@ -65,14 +65,14 @@ def grid_from_hmxml(reader, subnode, cb):
             raise Exception("Failed to assemble a grid")
 
         # get grid
-        c_g = libhmcport.greader_getresult(greader)
+        c_g = libhmcport.g3reader_getresult(greader)
         g = grid3_from_c(c_g)
 
         return g, str(name.value)
     except:
         raise
     finally:
-        libhmcport.greader_free(greader) if greader != 0 else None
+        libhmcport.g3reader_free(greader) if greader != 0 else None
 
 
 def to_vtk(c_g, fname, cb):

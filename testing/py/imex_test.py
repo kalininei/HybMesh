@@ -3,6 +3,110 @@ from hybmeshpack import hmscript as hm
 from hybmeshpack.hmscript import _dbg as hmdbg
 hm.check_compatibility("0.4.6")
 
+print "export to natives"
+# export/import grids 2d to native
+g1 = hm.add_unf_rect_grid([0, 0], [1, 1], 3, 4)
+g2 = hm.add_unf_rect_grid([0, 0], [1, 1], 2, 3)
+g3 = hm.add_unf_rect_grid([0, 0], [1, 1], 5, 6)
+hm.export_grid_hmg(g1, "g1.hmg")
+hm.export_grid_hmg(g1, "g2.hmg", "bin")
+hm.export_grid_hmg(g1, "g3.hmg", "fbin")
+hm.export_grid_hmg([g1, g2, g3], "g4.hmg")
+g4 = hm.import_grid_hmg("g2.hmg")
+hmdbg.check(hm.info_grid(g4)['Ncells'] == 12)
+g6 = hm.import_grid_hmg("g4.hmg", allgrids=True)
+hmdbg.check(len(g6) == 3 and hm.info_grid(g6[1])['Ncells'] == 6)
+for i, z in enumerate(hm.registered_grids()):
+    hmdbg.check(int(z[-1]) == i + 1)
+hm.remove_all()
+g7 = hm.import_grid_hmg("g4.hmg", "Grid3")
+hmdbg.check(g7 == "Grid3" and len(hm.registered_grids()) == 1)
+hmdbg.check(hm.info_grid(g7)['Ncells'] == 30)
+
+# export/import contours 2d to native
+c1 = hm.add_rect_contour([0, 0], [1, 1], 1)
+c2 = hm.add_rect_contour([0, 0], [2, 2], 2)
+hm.export_contour_hmc(c1, "c1.hmc")
+hm.export_contour_hmc(c2, "c2.hmc", "bin")
+hm.export_contour_hmc([c1, c2], "c3.hmc", "bin")
+c3 = hm.import_contour_hmc("c1.hmc", "Contour1")
+[c4, c5] = hm.import_contour_hmc("c3.hmc", allconts=True)
+c6 = hm.import_contour_hmc("c3.hmc")
+hmdbg.check(len(hm.registered_contours()) == 6)
+hmdbg.check(1 in hm.info_contour(c3)['btypes'])
+hmdbg.check(1 in hm.info_contour(c4)['btypes'])
+hmdbg.check(2 in hm.info_contour(c5)['btypes'])
+hmdbg.check(1 in hm.info_contour(c6)['btypes'])
+
+# export/import grids 3d to native
+gg1 = hm.extrude_grid(g7, [0, 1])
+gg2 = hm.extrude_grid(g7, [0, 1, 2])
+hm.export3d_grid_hmg(gg1, "gg1.hmg", "ascii")
+hm.export3d_grid_hmg([gg1, gg2], "gg2.hmg", "bin")
+[gg3] = hm.import3d_grid_hmg("gg1.hmg", allgrids=True)
+[gg4, gg5] = hm.import3d_grid_hmg("gg2.hmg", allgrids=True)
+gg6 = hm.import3d_grid_hmg("gg2.hmg", "Grid3D_2")
+hmdbg.check(len(hm.registered_grids3d()) == 6)
+hmdbg.check(hm.info_grid3d(gg3)['Ncells'] == 30)
+hmdbg.check(hm.info_grid3d(gg4)['Ncells'] == 30)
+hmdbg.check(hm.info_grid3d(gg5)['Ncells'] == 60)
+hmdbg.check(hm.info_grid3d(gg6)['Ncells'] == 60)
+
+# export/import surfaces 3d to native
+[ss1] = hm.grid3_bnd_to_surface(gg1, separate=True)
+ss2 = hm.grid3_bnd_to_surface(gg2)
+hm.export3d_surface_hmc(ss1, "ss1.hmc", "ascii")
+hm.export3d_surface_hmc([ss2, ss1], "ss2.hmc", "bin")
+hm.export3d_surface_hmc([ss1, gg1, ss2], "ss3.hmc", "fbin")
+[ss3, ss4] = hm.import3d_surface_hmc("ss2.hmc", allsurfs=True)
+ss5 = hm.import3d_surface_hmc("ss2.hmc")
+ss6 = hm.import3d_surface_hmc("ss3.hmc", "SurfaceOfGrid3D_1")
+hmdbg.check(len(hm.registered_surfaces()) == 6)
+hmdbg.check(hm.info_surface(ss1)['Nfaces'] == hm.info_surface(gg1)['Nfaces'])
+hmdbg.check(hm.info_surface(ss2)['Nnodes'] == hm.info_surface(gg2)['Nnodes'])
+hmdbg.check(hm.info_surface(ss3)['Nfaces'] == hm.info_surface(gg2)['Nfaces'])
+hmdbg.check(hm.info_surface(ss4)['Nedges'] == hm.info_surface(gg1)['Nedges'])
+hmdbg.check(hm.info_surface(ss5)['Nfaces'] == hm.info_surface(gg2)['Nfaces'])
+hmdbg.check(hm.info_surface(ss6)['Nedges'] == hm.info_surface(gg1)['Nedges'])
+
+# export/import all to native
+zc2 = hm.registered_contours()
+zg2 = hm.registered_grids()
+zg3 = hm.registered_grids3d()
+zs3 = hm.registered_surfaces()
+hm.export_all_hmd("all.hmd", fmt="bin")
+hm.remove_all()
+hmdbg.check(not hm.registered_contours())
+hmdbg.check(not hm.registered_grids())
+hmdbg.check(not hm.registered_grids3d())
+hmdbg.check(not hm.registered_surfaces())
+a = hm.import_all_hmd("all.hmd")
+hmdbg.check(len(a[0] + a[1] + a[3] + a[3]) == len(zc2 + zg2 + zg3 + zs3))
+hmdbg.check(all(a == b for a, b in zip(zc2, hm.registered_contours())))
+hmdbg.check(all(a == b for a, b in zip(zg2, hm.registered_grids())))
+hmdbg.check(all(a == b for a, b in zip(zs3, hm.registered_surfaces())))
+hmdbg.check(all(a == b for a, b in zip(zg3, hm.registered_grids3d())))
+
+# save/load project
+hm.add_boundary_type(15, "boundary15")
+numcom = hm.flow.com_count()
+hm.save_project("p.hmp", "bin")
+hm.load_project("../external_files/empty.hmp")
+hmdbg.check(not hm.registered_contours())
+hmdbg.check(not hm.registered_grids())
+hmdbg.check(not hm.registered_grids3d())
+hmdbg.check(not hm.registered_surfaces())
+hmdbg.check(hm.registered_btypes() == [(0, 'None')])
+
+hm.load_project("p.hmp")
+hmdbg.check(numcom == hm.flow.com_count())
+hmdbg.check(all(a == b for a, b in zip(zc2, hm.registered_contours())))
+hmdbg.check(all(a == b for a, b in zip(zg2, hm.registered_grids())))
+hmdbg.check(all(a == b for a, b in zip(zs3, hm.registered_surfaces())))
+hmdbg.check(all(a == b for a, b in zip(zg3, hm.registered_grids3d())))
+hmdbg.check(hm.registered_btypes() == [(0, 'None'), (15, 'boundary15')])
+hm.load_project("../external_files/empty.hmp")
+
 print "export 2d to fluent"
 bleft = hm.add_boundary_type(1, "bleft")
 bright = hm.add_boundary_type(2, "bright")
@@ -130,10 +234,10 @@ c1 = hm.create_contour([[-1, -1], [12, 12], [12, -1], [-1, -1]])
 g1 = hm.exclude_contours(g1, c1, "inner")
 g2 = hm.extrude_grid(g1, [0, 0.2, 0.5, 0.9, 1.0], 1, 2, 3)
 hm.export_grid_hmg(g1, "g1.hmg", afields=['cell-vertices',
-                                         'cell-edges'])
+                                          'cell-edges'])
 hm.export3d_grid_hmg(g2, "g2.hmg", afields=['cell-vertices',
-                                           'cell-faces',
-                                           'face-vertices',
-                                           'linfem'])
+                                            'cell-faces',
+                                            'face-vertices',
+                                            'linfem'])
 hmdbg.check_ascii_file(8700456673301720132, "g1.hmg")
 hmdbg.check_ascii_file(5039114778377738832, "g2.hmg")
