@@ -6,17 +6,20 @@ https://github.com/kalininei/HybMesh/releases/latest
 System requirements:
     python 2.7
     gcc-c++
+    gcc-fortran
     cmake 3.2
     suitesparse devel package
+    libxml2 devel
+    python-sphinx for documentation building
     libGmsh (optionally). If libGmsh does not present in the system a local copy of libGmsh will be built. For the latter blas and lapack development packages are required.
-    pyQt4 (python-qt4)
-    python-vtk (Python bindings for VTK)
 
 Procedure:
     mkdir build && cd build
     cmake .. -DCMAKE_BUILD_TYPE=Release
     make -j4
     sudo make install
+    cd ../doc
+    make
 
 Installation results
     hybmeshpack package will be installed as a standard python package (-> /usr/lib/python2.7/site-packages)
@@ -25,15 +28,11 @@ Installation results
     basic configuration directory /etc/hybmesh
     home directory ~/.hybmesh
 
-Troubleshooting:
-    ImportError: libmpi.so.1 (for vtk 6.2)
-        add directory with libmpi.so.1 to /etc/ld.conf.d (smth like /usr/lib64/mpi/gcc/openmpi/lib64/libmpi.so.1)
-
 2.2) --- Windows (mingw)
 System requirments:
     mingw-w64 (dwarf or seh exceptions version)
     msys
-    python2.7 with PyQt4 and vtk support
+    python2.7
     cmake 3.2
     PyInstaller (if exe is needed)
     NSIS with AccessControl Plugin (if installer is needed)
@@ -63,13 +62,6 @@ all installed packages should match target architecture (32/64 bit)
 
 1) install python2.7 and add path/to/python.exe to system paths
 2) install PyInstaller using pip with pywin32
-3) install PyQt4 from the official binaries
-4) install vtk for python.
--- from http://www.vtk.org/download/ download windows python installer
-of required architecture and install it
--- copy directory {VTKDIR}/bin/Lib/site-packages/vtk to {Python27}/Lib/site-packages
--- copy all files from {VTKDIR}/bin/ (except for vtkpython.exe and python27.dll) to {Python27}/Lib/site-packages/vtk
--- now python supports vtk module and vtk can be safely uninstalled
 5) install cmake. Do not add cmake path to system path as it can lead to problems on 64bit architecture.
 6) install NSIS (3.0)
 7) download AccessControl plugin from http://nsis.sourceforge.net/AccessControl_plug-in.

@@ -308,7 +308,7 @@ A grid depicted in figure 5 will be written to ascii hmg file as
 
    fig. 6
 
-Hybmesh treat contours as a set of connected edges.
+Hybmesh treats contours as a set of connected edges.
 There is no restriction on whether this connection provides closed or open contour 
 or even a set of not connected edges. So this information is not stored in a file.
 Structure of xml part of a file containing set of 2d contour is shown in figure 6.
@@ -501,7 +501,7 @@ A grid depicted in figure 9 will be written to ascii hmg file as
 
    fig. 10
 
-Hybmesh treat surfaces as a set of connected faces.
+Hybmesh treats surfaces as a set of connected faces.
 There is no restriction on whether this connection provides closed or open surface
 or even a set of not connected faces. So this information is not stored in a file.
 Structure of xml part of a file containing set of surfaces is shown in figure 8.

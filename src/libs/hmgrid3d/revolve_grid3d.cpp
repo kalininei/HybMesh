@@ -73,25 +73,12 @@ struct revolve_builder{
 		ret.n_edges = edges.size()/2;
 		ret.n_cells = icell.size()-1;
 		fill_primitives(ret);
-		std::swap(cells, ret.cells);
-		std::swap(faces, ret.faces);
-		std::swap(edges, ret.edges);
-		std::swap(vertices, ret.vert);
-		std::swap(icell, ret.icells);
-		std::swap(iface, ret.ifaces);
-		//boundaries
-		int sz = 0;
-		for (auto& v: boundary_types) sz+=(2+v.second.size());
-		ret.bnd.resize(sz);
-		auto bit = ret.bnd.begin();
 		for (auto& v: boundary_types){
-			*bit++ = v.first;
-			*bit++ = v.second.size();
 			for (auto& find: v.second){
-				*bit++ = find;
 				ret.vfaces[find]->boundary_type = v.first;
 			}
 		}
+		ret.actualize_serial_data();
 		return ret;
 	}
 	void side_boundary(std::function<int(int)>& f){

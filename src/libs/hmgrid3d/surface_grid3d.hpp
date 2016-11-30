@@ -1,7 +1,7 @@
-#ifndef  SURFACE_GRID3D_HPP
-#define  SURFACE_GRID3D_HPP
+#ifndef SURFACE_GRID3D_HPP
+#define SURFACE_GRID3D_HPP
 
-#include "hmgrid3d.hpp"
+#include "primitives_grid3d.hpp"
 
 namespace HMGrid3D{
 
@@ -21,9 +21,9 @@ struct Surface{
 	//  0: do not reverse
 	// -1: reverse faces so that all grid cells be on their left sides.
 	// makes a shallow copy of grid data, so reversing will alter grid structure
-	static Surface FromBoundaryType(HMGrid3D::SGrid& g, int btype, int reversetp);
-	static std::map<int, Surface> ByBoundaryTypes(HMGrid3D::SGrid& g, int reversetp);
-	static std::map<int, Surface> ByBoundaryTypes(const HMGrid3D::SGrid& g);
+	static Surface FromBoundaryType(HMGrid3D::GridData& g, int btype, int reversetp);
+	static std::map<int, Surface> ByBoundaryTypes(HMGrid3D::GridData& g, int reversetp);
+	static std::map<int, Surface> ByBoundaryTypes(const HMGrid3D::GridData& g);
 
 	//extracts subsurface which contains v
 	static Surface SubSurface(const Surface& s, Vertex* v);

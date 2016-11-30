@@ -60,21 +60,25 @@ class _AddRemoveObjects(command.Command):
         Could be used only as the internal command for other user commands
 
         Order of execution:
-            remove grids, remove contours, add grids, add contours
+            remove grids, remove contours, ..., add grids, add contours, ...
     """
-    def __init__(self, addgrids=[], remgrids=[],
-                 addconts=[], remconts=[],
-                 addg3=[], remg3=[]):
-        """ addgrids -- [ (string name, Grid2 grid), ... ]
-            remgrids -- [ string name, ... ]
-            addconts -- [ (string name, Contour2 conts), ...]
-            remconts -- [ string name, ...]
+    def __init__(self, addg2=[], remg2=[],
+                 addc2=[], remc2=[],
+                 addg3=[], remg3=[],
+                 adds3=[], rems3=[]):
+        """ addg2 -- [ (string name, Grid2 grid), ... ]
+            remg2 -- [ string name, ... ]
+            addc2 -- [ (string name, Contour2 conts), ...]
+            remc2 -- [ string name, ...]
             addg3    -- [ (string name, Grid3 grid), ... ]
             remg3    -- [ string name, ...]
+            adds3    -- [ (string name, Surface srf), ... ]
+            rems3    -- [ string name, ...]
         """
-        self.addgrids, self.addconts = addgrids, addconts
-        self.remgrids, self.remconts = remgrids, remconts
+        self.addg2, self.addc2 = addg2, addc2
+        self.remg2, self.remc2 = remg2, remc2
         self.addg3, self.remg3 = addg3, remg3
+        self.adds3, self.rems3 = adds3, rems3
         super(_AddRemoveObjects, self).__init__({})
         self._clear()
 
@@ -88,63 +92,80 @@ class _AddRemoveObjects(command.Command):
     def do(self, receiver):
         self.receiver = receiver
         self._clear()
-        if len(self.remgrids) + len(self.remconts) +\
-                len(self.addgrids) + len(self.addconts) +\
-                len(self.addg3) + len(self.remg3) == 0:
+        if len(self.addg2) + len(self.remg2) +\
+                len(self.addc2) + len(self.remc2) +\
+                len(self.addg3) + len(self.remg3) +\
+                len(self.adds3) + len(self.rems3) == 0:
             return False
+
         #remove grids
-        for n in self.remgrids:
-            self._bu_remgrids.append(receiver.get_grid(name=n))
+        for n in self.remg2:
+            self._bu_remg2.append(receiver.get_grid(name=n))
             receiver.remove_grid(n)
         #remove contours
-        for n in self.remconts:
-            self._bu_remconts.append(receiver.get_ucontour(name=n))
+        for n in self.remc2:
+            self._bu_remc2.append(receiver.get_ucontour(name=n))
             receiver.remove_ucontour(n)
         #remove g3
         for n in self.remg3:
             self._bu_remg3.append(receiver.get_grid3(name=n))
             receiver.remove_grid3(n)
+        #remove s3
+        for n in self.rems3:
+            self._bu_rems3.append(receiver.get_usurface(name=n))
+            receiver.remove_usurface(n)
         #add grids
-        for v in self.addgrids:
-            self._bu_addgrids.append(receiver.add_grid(*v))
+        for v in self.addg2:
+            self._bu_addg2.append(receiver.add_grid(*v))
         #add contours
-        for v in self.addconts:
-            self._bu_addconts.append(receiver.add_ucontour(*v))
+        for v in self.addc2:
+            self._bu_addc2.append(receiver.add_ucontour(*v))
         #add grid3
         for v in self.addg3:
             self._bu_addg3.append(receiver.add_grid3(*v))
+        #add surfacee3
+        for v in self.adds3:
+            self._bu_adds3.append(receiver.add_usurface(*v))
         return True
 
     def _exec(self):
         return self.do(self.receiver)
 
     def _clear(self):
-        self._bu_remgrids = []
-        self._bu_remconts = []
-        self._bu_addgrids = []
-        self._bu_addconts = []
+        self._bu_addg2 = []
+        self._bu_remg2 = []
+        self._bu_addc2 = []
+        self._bu_remc2 = []
         self._bu_addg3 = []
         self._bu_remg3 = []
+        self._bu_adds3 = []
+        self._bu_rems3 = []
 
     def _undo(self):
         #everything in the reversed order
+        #undo add s3
+        for v in self._bu_adds3[::-1]:
+            self.receiver.remove_usurface(v[1])
         #undo add g3
         for v in self._bu_addg3[::-1]:
             self.receiver.remove_grid3(v[1])
         #undo add contours
-        for v in self._bu_addconts[::-1]:
+        for v in self._bu_addc2[::-1]:
             self.receiver.remove_ucontour(v[1])
         #undo add grids
-        for v in self._bu_addgrids[::-1]:
+        for v in self._bu_add2[::-1]:
             self.receiver.remove_grid(v[1])
+        #undo remove surface
+        for v in self._bu_rems3[::-1]:
+            self.receiver.surfaces3.insert(*v)
         #undo remove grid3
         for v in self._bu_remg3[::-1]:
             self.receiver.grids3.insert(*v)
         #undo remove contours
-        for v in self._bu_remconts[::-1]:
+        for v in self._bu_remc2[::-1]:
             self.receiver.contours2.insert(*v)
         #undo remove grids
-        for v in self._bu_remgrids[::-1]:
+        for v in self._bu_remg2[::-1]:
             self.receiver.grids2.insert(*v)
 
     def _redo(self):
@@ -172,25 +193,30 @@ class AbstractAddRemove(command.Command):
         self.__addrem._redo()
 
     def _get_added_names(self):
-        gnms, cnms, g3nms = [], [], []
+        "[[g2 names], [c2 names], [g3 names], [s3 names]]"
+        gnms, cnms, g3nms, s3nms = [], [], [], []
         if self.__addrem is not None:
-            for g in self.__addrem._bu_addgrids:
+            for g in self.__addrem._bu_addg2:
                 gnms.append(g[1])
-            for c in self.__addrem._bu_addconts:
+            for c in self.__addrem._bu_addc2:
                 cnms.append(c[1])
             for g in self.__addrem._bu_addg3:
                 g3nms.append(g[1])
-        return gnms, cnms, g3nms
+            for s in self.__addrem._bu_adds3:
+                s3nms.append(s[1])
+        return gnms, cnms, g3nms, s3nms
 
     #function for overriding
     def _addrem_objects(self):
-        """ -> addgrids, remgrids, addconts, remconts, addgrid3, remgrid3
-            addgrids -- [ (string name, Grid2 grid), ... ]
-            remgrids -- [ string name, ... ]
-            addconts -- [ (string name, Contour2 conts), ...]
-            remconts -- [ string name, ...]
-            addgrids3-- [ (string name, Grid3 grid), ... ]
-            remgrids3-- [ string name, ...]
+        """ -> addg2, remg2, addc2, remc2, addg3, remg3, adds3, rems3
+            addg2 -- [ (string name, Grid2 grid), ... ]
+            remg2 -- [ string name, ... ]
+            addc2 -- [ (string name, Contour2 conts), ...]
+            remc2 -- [ string name, ...]
+            addg3 -- [ (string name, Grid3 grid), ... ]
+            remg3 -- [ string name, ...]
+            adds3 --
+            rems3 --
         """
         raise NotImplementedError
 
@@ -204,7 +230,7 @@ class RemoveGeom(AbstractAddRemove):
         return "Remove objects: %s" % (', '.join(self.options['names']))
 
     def _addrem_objects(self):
-        gridnames, contnames, g3names = [], [], []
+        gridnames, contnames, g3names, s3names = [], [], [], []
         for n in self.options['names']:
             if n in self.receiver.get_grid_names():
                 gridnames.append(n)
@@ -212,10 +238,12 @@ class RemoveGeom(AbstractAddRemove):
                 contnames.append(n)
             elif n in self.receiver.get_grid3_names():
                 g3names.append(n)
+            elif n in self.receiver.get_usurface_names():
+                s3names.append(n)
             else:
                 raise command.ExecutionError('Object %s not found' % n, self)
 
-        return [], gridnames, [], contnames, [], g3names
+        return [], gridnames, [], contnames, [], g3names, [], s3names
 
     @classmethod
     def _arguments_types(cls):
@@ -239,7 +267,8 @@ class RemoveAll(AbstractAddRemove):
         gridnames = self.receiver.get_grid_names()
         contnames = self.receiver.get_ucontour_names()
         g3names = self.receiver.get_grid3_names()
-        return [], gridnames, [], contnames, [], g3names
+        s3names = self.receiver.get_usurface_names()
+        return [], gridnames, [], contnames, [], g3names, [], s3names
 
     def __remove_btypes(self):
         self._btypes_backup = []
@@ -270,7 +299,7 @@ class RemoveAll(AbstractAddRemove):
 
 
 class MoveGeom(command.Command):
-    "Move objects"
+    "Move 2d objects"
 
     def __init__(self, argsdict):
         super(MoveGeom, self).__init__(argsdict)
@@ -311,7 +340,7 @@ class MoveGeom(command.Command):
 
 
 class RotateGeom(command.Command):
-    "Rotate objects"
+    "Rotate 2d objects"
 
     def __init__(self, argsdict):
         super(RotateGeom, self).__init__(argsdict)
@@ -355,7 +384,7 @@ class RotateGeom(command.Command):
 
 
 class ScaleGeom(command.Command):
-    "Scale objects"
+    "Scale 2d objects"
 
     def __init__(self, argsdict):
         if 'xpc' not in argsdict:
@@ -407,7 +436,7 @@ class ScaleGeom(command.Command):
 
 
 class ReflectGeom(command.Command):
-    "Reflect objects"
+    "Reflect 2d objects"
 
     def __init__(self, argsdict):
         if (argsdict['p1'].x == argsdict['p2'].x and
@@ -448,7 +477,7 @@ class ReflectGeom(command.Command):
 
 
 class CopyGeom(AbstractAddRemove):
-    "Copy objects"
+    "Copy 2d objects"
 
     def __init__(self, argsdict):
         if 'dx' not in argsdict:
@@ -500,4 +529,4 @@ class CopyGeom(AbstractAddRemove):
                 g[1].move(self.options['dx'], self.options['dy'])
             for c in newc:
                 c[1].move(self.options['dx'], self.options['dy'])
-        return newg, [], newc, []
+        return newg, [], newc, [], [], [], [], []

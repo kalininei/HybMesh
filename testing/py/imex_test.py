@@ -1,7 +1,7 @@
 # import os.path
 from hybmeshpack import hmscript as hm
 from hybmeshpack.hmscript import _dbg as hmdbg
-hm.check_compatibility("0.4.1")
+hm.check_compatibility("0.4.6")
 
 print "export 2d to fluent"
 bleft = hm.add_boundary_type(1, "bleft")
@@ -123,6 +123,7 @@ g2 = hm.extrude_grid(g1, [0, 0.2, 0.5, 0.9, 1.0], 1, 2, 3)
 hm.export3d_grid_tecplot(g2, "c2.dat")
 hmdbg.check_ascii_file(9823534259060690640, "c2.dat")
 
+print "export with additional fields"
 hm.remove_all()
 g1 = hm.add_unf_rect_grid([0, 0], [10, 10], 10, 10)
 c1 = hm.create_contour([[-1, -1], [12, 12], [12, -1], [-1, -1]])

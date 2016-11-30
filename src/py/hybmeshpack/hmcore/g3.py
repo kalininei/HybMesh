@@ -1,6 +1,5 @@
 import ctypes as ct
 from . import libhmcport
-from hybmeshpack.gdata.grid3 import Grid3
 
 
 def extrude_call(c_grid, c_btypes, c_zvals, c_bbot, c_btop, bsides):
@@ -37,11 +36,19 @@ def extrude_call(c_grid, c_btypes, c_zvals, c_bbot, c_btop, bsides):
 
 
 def grid3_from_c(cdata):
+    from hybmeshpack.gdata.grid3 import Grid3
     return Grid3.from_cdata(cdata)
 
 
 def free_g3(c_g3):
     libhmcport.free_grid3d(c_g3)
+
+
+def dims(c_g3):
+    " -> [nvertices, nedges, nfaces, ncells] "
+    ret = (ct.c_int * 4)()
+    libhmcport.grid3_dims(c_g3, ret)
+    return [ret[0], ret[1], ret[2], ret[3]]
 
 
 def grid_from_hmxml(reader, subnode, cb):

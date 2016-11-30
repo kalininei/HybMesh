@@ -169,19 +169,18 @@ hme::vtkcell_expression hme::vtkcell_expression::build(std::vector<std::vector<i
 vector<hme::vtkcell_expression> hme::vtkcell_expression::cell_assembler(const SGrid& ser,
 		const vector<vector<int>>& aface, bool ignore_errors){
 	vector<vtkcell_expression> ret; ret.reserve(ser.n_cells);
+	ser.enumerate_all();
 
 	for (int icell=0; icell<ser.n_cells; ++icell){
-		int kc = ser.icells[icell];
-		int len = ser.cells[kc];
+		int len = ser.vcells[icell]->n_faces();
 		//assemble cell->points
 		vector<vector<int>> cell_points; cell_points.reserve(len);
 		for (int j=0; j<len; ++j){
 			//insert face data
-			int iface = ser.cells[kc+1+j];
+			int iface = ser.vcells[icell]->faces[j]->id;
 			cell_points.push_back(aface[iface]);
 			//reverse to guarantee left cell
-			int kfp = ser.ifaces[iface + 1];
-			int leftcell = ser.faces[ kfp - 2 ];
+			int leftcell = ser.vfaces[iface]->left.lock()->id;
 			if (leftcell != icell) {
 				auto& vertv = cell_points.back();
 				std::reverse(vertv.begin(), vertv.end());
@@ -240,21 +239,14 @@ struct bnd_face_data{
 	//--- assembling steps
 	void n1_extract_bfaces(){     //fills findices
 		for (int i=0; i<ser->n_faces; ++i){
-			int kfp = ser->ifaces[i+1];
-			if (ser->faces[kfp-1]<0 || ser->faces[kfp-2]<0){
+			if (ser->vfaces[i]->is_boundary()){
 				findices.push_back(i);
 			}
 		}
 	} 
 	void n11_extract_boundaries(){ //fills fbtypes
 		//fill non zero types
-		std::vector<int> btvec(ser->n_faces, 0);
-		auto it = ser->bnd.begin();
-		while (it!=ser->bnd.end()){
-			int b = *it++;
-			int len = *it++;
-			for (int i=0; i<len; ++i) btvec[*it++] = b;
-		}
+		const std::vector<int>& btvec = ser->btypes;
 		
 		//fill fbtypes
 		fbtypes.reserve(n_faces());
@@ -283,9 +275,9 @@ struct bnd_face_data{
 	void n3_extract_bcells(){     //fills cindices
 		cindices.reserve(n_faces());
 		for (int i=0; i<n_faces(); ++i){
-			int kf = ser->ifaces[findices[i]+1];
-			int c1 = ser->faces[kf-1];
-			if (c1 < 0) c1 = ser->faces[kf-2];
+			int kf = findices[i];
+			int c1 = ser->face_cell[2*kf];
+			if (c1 < 0) c1 = ser->face_cell[2*kf+1];
 			cindices.push_back(c1);
 		}
 	}
@@ -307,15 +299,14 @@ struct bnd_face_data{
 		int sz = n_faces();
 		for (int i=0; i<n_faces(); ++i){
 			int gi = findices[i];
-			sz += (ser->faces[ser->ifaces[gi]]);
+			sz += (ser->face_edge[gi].size());
 		}
 
 		//raw outpout
 		faces_raw.reserve(sz);
 		for (int i=0; i<n_faces(); ++i){
 			int gi = findices[i];
-			int kf = ser->ifaces[gi];
-			int len = ser->faces[kf];
+			int len = ser->face_edge[gi].size();
 			faces_raw.push_back(len);
 			auto start = global_face_vertices[i].begin();
 			for (int j=0; j<len; ++j) {

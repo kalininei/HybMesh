@@ -12,6 +12,7 @@ from hybmeshpack import hmcore as hmcore
 from hybmeshpack.hmcore import g2 as g2core
 from hybmeshpack.hmcore import c2 as c2core
 from hybmeshpack.hmcore import g3 as g3core
+from hybmeshpack.hmcore import s3 as s3core
 
 
 def write_flow_and_framework_to_file(comflow, filename, fmt="ascii"):
@@ -56,13 +57,15 @@ def read_flow_and_framework_from_file(filename, flow):
             readxml.load_framework_state(data, state_node)
             hmcore.hmxml_change_basenode(c_reader, "FLOW/STATE")
             cb = flow.get_interface().ask_for_callback(Callback.CB_CANCEL2)
-            c, g, g3, cn, gn, g3n = import_all(c_reader, cb)
+            c, g, g3, s3, cn, gn, g3n, s3n = import_all(c_reader, cb)
             for k, v in zip(cn, c):
                 data.add_ucontour(k, v)
             for k, v in zip(gn, g):
                 data.add_grid(k, v)
             for k, v in zip(g3n, g3):
                 data.add_grid3(k, v)
+            for k, v in zip(s3n, s3):
+                data.add_usurface(k, v)
         flow.set_receiver(data)
     except:
         raise
@@ -246,24 +249,26 @@ def export_all(fname, fmt, flow, wr=None):
 
 
 def import_all(reader, cb):
-    """ -> [contours], [grids], [grids3d], [contour names], [grids names],
-           [grids3d names]
-    """
-    c_greader, c_creader, c_g3reader = [], [], []
+    """ -> [contours], [grids], [grids3d], [surfaces3d]
+            [contour names], [grids names], [grids3d names], [srf names] """
+    c_greader, c_creader, c_g3reader, c_s3reader = [], [], [], []
     try:
         cb._callback("Loading xml file", "", 0, 0)
         # find node
         c_greader = hmcore.hmxml_query(reader, "GRID2D")
         c_creader = hmcore.hmxml_query(reader, "CONTOUR2D")
         c_g3reader = hmcore.hmxml_query(reader, "GRID3D")
+        c_s3reader = hmcore.hmxml_query(reader, "SURFACE3D")
         # contours allocation
         conts, cnames = [None] * len(c_creader), [None] * len(c_creader)
         # grids allocation
         grids, gnames = [None] * len(c_greader), [None] * len(c_greader)
         # grids3d allocation
         grids3, g3names = [None] * len(c_g3reader), [None] * len(c_g3reader)
+        # surfaces3d allocation
+        srf3, s3names = [None] * len(c_s3reader), [None] * len(c_s3reader)
 
-        cbtotal = len(c_g3reader) + 2
+        cbtotal = len(c_g3reader) + 3
         # read contours
         cb.subcallback(0, cbtotal)._callback("Reading contours", "", 0, 0)
         for i in range(len(c_creader)):
@@ -279,9 +284,15 @@ def import_all(reader, cb):
             subcb = cb.subcallback(i + 2, cbtotal)
             grids3[i], g3names[i] =\
                 g3core.grid_from_hmxml(reader, c_g3reader[i], subcb)
-        return conts, grids, grids3, cnames, gnames, g3names
+        # read surfaces
+        cb.subcallback(cbtotal - 1, cbtotal)._callback(
+            "Reading surfaces", "", 0, 0)
+        for i in range(len(c_s3reader)):
+            srf3[i], s3names[i] =\
+                s3core.surface_from_hmxml(reader, c_s3reader[i])
+        return conts, grids, grids3, srf3, cnames, gnames, g3names, s3names
     except:
         raise
     finally:
-        for gr in c_greader + c_creader + c_g3reader:
+        for gr in c_greader + c_creader + c_g3reader + c_s3reader:
             hmcore.hmxml_free_node(gr)

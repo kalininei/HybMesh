@@ -11,20 +11,6 @@ Export::GridWriter::GridWriter(const SGrid& g,
 	grid=&g;
 	pwriter=writer;
 
-	//supplementary data
-	vector<vector<int>> face_edge(g.n_faces);
-	vector<int> face_cell(g.n_faces*2);
-	auto it = g.faces.begin();
-	auto it2 = face_cell.begin();
-	for (int i=0; i<g.n_faces; ++i){
-		int d = *it++;
-		face_edge[i].resize(d);
-		std::copy(it, it+d, face_edge[i].begin());
-		it+=d;
-		*it2++ = *it++;
-		*it2++ = *it++;
-	}
-	
 	//create xml structure
 	gwriter = subnode->new_child("GRID3D");
 	gwriter.new_attribute("name", gridname);
@@ -48,10 +34,10 @@ Export::GridWriter::GridWriter(const SGrid& g,
 	//faces
 	fwriter = gwriter.new_child("FACES");
 	auto econnectwriter = fwriter.new_child("EDGE_CONNECT");
-	writer->set_num_content(face_edge, econnectwriter, is_binary<int>());
+	writer->set_num_content(grid->face_edge, econnectwriter, is_binary<int>());
 
 	auto cconnectwriter = fwriter.new_child("CELL_CONNECT");
-	writer->set_num_content(face_cell, cconnectwriter, is_binary<int>());
+	writer->set_num_content(grid->face_cell, cconnectwriter, is_binary<int>());
 
 	//cells
 	cwriter = gwriter.new_child("CELLS");

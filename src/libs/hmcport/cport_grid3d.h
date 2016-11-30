@@ -7,10 +7,14 @@
 
 extern "C"{
 
-typedef void CPortGrid3D;
+typedef void CPortGrid3D;  //SGrid*
 
 //====== destructor
 void free_grid3d(CPortGrid3D*);
+
+//====== information
+//n_vert, n_edges, n_faces, n_cells
+void grid3_dims(CPortGrid3D*, int*);
 
 //====== sweep constructors
 //construct by sweep in z direction

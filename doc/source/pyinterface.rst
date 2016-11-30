@@ -55,6 +55,8 @@ returned by object constructors.
 
 .. autofunction:: remove_geom
 
+.. autofunction:: remove_geom
+
 .. autofunction:: remove_all
 
 .. autofunction:: remove_all_but

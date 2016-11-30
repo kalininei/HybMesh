@@ -106,11 +106,9 @@ void hme::TGridTecplot::_run(const SGrid& ser, std::string fn, BFun bnames){
 	vector<int> left_cells, right_cells;
 	{
 		left_cells.reserve(ser.n_faces); right_cells.reserve(ser.n_faces);
-		auto it=ser.faces.begin();
-		while (it != ser.faces.end()){
-			int n = *it++; it+=n;
-			left_cells.push_back(*it++);
-			right_cells.push_back(*it++);
+		for (int i=0; i<ser.n_faces; ++i){
+			left_cells.push_back(ser.face_cell[2*i]);
+			right_cells.push_back(ser.face_cell[2*i+1]);
 		}
 	}
 	//assembling surfaces

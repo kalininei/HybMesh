@@ -23,7 +23,7 @@ ShpVector<Vertex> Surface::allvertices() const{
 	return aa::no_dublicates(ret);
 }
 
-Surface Surface::FromBoundaryType(HMGrid3D::SGrid& g, int btype, int reversetp){
+Surface Surface::FromBoundaryType(HMGrid3D::GridData& g, int btype, int reversetp){
 	Surface ret;
 	for (auto f: g.vfaces){
 		if (f->is_boundary() && f->boundary_type == btype)
@@ -38,7 +38,7 @@ Surface Surface::FromBoundaryType(HMGrid3D::SGrid& g, int btype, int reversetp){
 	}
 	return ret;
 }
-std::map<int, Surface> Surface::ByBoundaryTypes(HMGrid3D::SGrid& g, int reversetp){
+std::map<int, Surface> Surface::ByBoundaryTypes(HMGrid3D::GridData& g, int reversetp){
 	std::map<int, Surface> ret;
 	for (auto f: g.vfaces){
 		if (f->is_boundary() && ret.find(f->boundary_type) == ret.end()){
@@ -47,8 +47,8 @@ std::map<int, Surface> Surface::ByBoundaryTypes(HMGrid3D::SGrid& g, int reverset
 	}
 	return ret;
 }
-std::map<int, Surface> Surface::ByBoundaryTypes(const HMGrid3D::SGrid& g){
-	auto gp = const_cast<HMGrid3D::SGrid*>(&g);
+std::map<int, Surface> Surface::ByBoundaryTypes(const HMGrid3D::GridData& g){
+	auto gp = const_cast<HMGrid3D::GridData*>(&g);
 	return ByBoundaryTypes(*gp, 0);
 }
 

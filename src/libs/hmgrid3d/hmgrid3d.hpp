@@ -1,7 +1,6 @@
 #ifndef HYBMESH_HMGRID3D_HPP
 #define HYBMESH_HMGRID3D_HPP
 
-#include "primitives_grid3d.hpp"
 #include "serialize_grid3d.hpp"
 #include "construct_grid3d.hpp"
 #include "revolve_grid3d.hpp"

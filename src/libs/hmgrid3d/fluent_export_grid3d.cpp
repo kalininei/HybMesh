@@ -5,6 +5,7 @@
 #include "surface_grid3d.hpp"
 #include "debug_grid3d.hpp"
 #include "serialize_grid3d.hpp"
+#include "construct_grid3d.hpp"
 
 using namespace HMGrid3D;
 namespace hme = HMGrid3D::Export;

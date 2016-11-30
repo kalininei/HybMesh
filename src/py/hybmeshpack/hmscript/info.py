@@ -69,6 +69,34 @@ def info_contour(c1):
     return ret
 
 
+def info_grid3d(g1):
+    """ TODO
+    """
+    g = data.get_grid3(name=g1)[2]
+    ret = {}
+    ret['Nnodes'] = g.n_points()
+    ret['Nedges'] = g.n_edges()
+    ret['Nfaces'] = g.n_faces()
+    ret['Ncells'] = g.n_cells()
+    return ret
+
+
+def info_surface(s1):
+    """ TODO
+    """
+    s = data.get_any_surface(s1)
+    ret = {}
+    ret['Nnodes'] = s.n_points()
+    ret['Nedges'] = s.n_edges()
+    ret['Nfaces'] = s.n_faces()
+    ret['btypes'] = {}
+    for b in s.btypes():
+        if b not in ret['btypes']:
+            ret['btypes'][b] = 0
+        ret['btypes'][b] += 1
+    return ret
+
+
 def registered_contours():
     """Returns list of all contours identifiers
     """

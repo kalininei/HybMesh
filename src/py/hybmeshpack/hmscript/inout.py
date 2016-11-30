@@ -359,26 +359,16 @@ def import_grid_hmg(fname, gridname="", allgrids=False):
     :raises: ValueError, ExecError.
 
     """
-    if not allgrids:
-        name = "Grid1"
-        if gridname != "":
-            name = gridname
-        c = com.imcom.ImportGridNative({
-            "name": name,
-            "filename": fname,
-            "gridname": gridname})
-        try:
-            flow.exec_command(c)
+    c = com.imcom.ImportGridsNative({
+        "filename": fname, "gridname": gridname, "all": allgrids})
+    try:
+        flow.exec_command(c)
+        if not allgrids:
             return c._get_added_names()[0][0]
-        except Exception:
-            raise ExecError('import_grid_hmg')
-    else:
-        c = com.imcom.ImportGridsNative({"filename": fname})
-        try:
-            flow.exec_command(c)
+        else:
             return c._get_added_names()[0]
-        except Exception:
-            raise ExecError('import_grids_hmg')
+    except Exception:
+        raise ExecError('import_grid_hmg')
 
 
 def import_grid_msh(fname):
@@ -433,26 +423,18 @@ def import3d_grid_hmg(fname, gridname="", allgrids=False):
 
     :returns: grid identifier/list of identifiers if **allgrids** is set.
     """
-    if not allgrids:
-        name = "Grid1"
-        if gridname != "":
-            name = gridname
-        c = com.imcom.ImportGrid3Native({
-            "name": name,
-            "filename": fname,
-            "gridname": gridname})
-        try:
-            flow.exec_command(c)
-            return c._get_added_names()[2][0]
-        except Exception:
-            raise ExecError('import3d_grid_hmg')
-    else:
-        c = com.imcom.ImportGrids3Native({"filename": fname})
-        try:
-            flow.exec_command(c)
+    c = com.imcom.ImportGrids3Native({
+        "filename": fname,
+        "gridname": gridname,
+        "all": allgrids})
+    try:
+        flow.exec_command(c)
+        if allgrids:
             return c._get_added_names()[2]
-        except Exception:
-            raise ExecError('import3d_grids_hmg')
+        else:
+            return c._get_added_names()[2][0]
+    except Exception:
+        raise ExecError('import3d_grid_hmg')
 
 
 # Importing contours
@@ -496,21 +478,31 @@ def import_contour_hmc(fname, contname="", allconts=False):
 
       :raises: ExecError
     """
-    if not allconts:
-        c = com.imcom.ImportContourNative(
-            {"filename": fname, "contname": contname})
-        try:
-            flow.exec_command(c)
-            return c._get_added_names()[1][0]
-        except Exception:
-            raise ExecError('import_contour_hmc')
-    else:
-        c = com.imcom.ImportContoursNative({"filename": fname})
-        try:
-            flow.exec_command(c)
+    c = com.imcom.ImportContoursNative(
+        {"filename": fname, "contname": contname, "all": allconts})
+    try:
+        flow.exec_command(c)
+        if allconts:
             return c._get_added_names()[1]
-        except Exception:
-            raise ExecError('import_contours_hmc')
+        else:
+            return c._get_added_names()[1][0]
+    except Exception:
+        raise ExecError('import_contour_hmc')
+
+
+def import3d_surface_hmc(fname, srfname="", allsrfs=False):
+    """TODO"""
+    c = com.imcom.ImportSurfacesNative(
+        {"filename": fname, "srfname": srfname, "all": allsrfs})
+    try:
+        flow.exec_command(c)
+        ret = c._get_added_names()[3]
+        if allsrfs:
+            return ret[0]
+        else:
+            return ret
+    except Exception:
+        raise ExecError('import_contours_hmc')
 
 
 # data
@@ -520,7 +512,7 @@ def import_all_hmd(fname):
     :param str fname: filename
 
     :returns: list of loaded objects as
-      ``[[grid2d identifiers], [contour2d identifiers], [grid3d identifiers]]``
+      ``[[grid2d ids], [contour2d ids], [grid3d ids], [surface3d ids]]``
 
     :raises: ExecError
     """

@@ -20,6 +20,13 @@ void free_grid3d(CPortGrid3D* g){
 	}
 }
 
+void grid3_dims(CPortGrid3D* g, int* nums){
+	nums[0] = hmgrid(g).n_vert;
+	nums[1] = hmgrid(g).n_edges;
+	nums[2] = hmgrid(g).n_faces;
+	nums[3] = hmgrid(g).n_cells;
+}
+
 namespace{
 struct SideBndFunctor{
 	std::vector<int> edge_bc;

@@ -3,6 +3,7 @@ import objcom
 import gridcom
 import grid3dcom
 import contcom
+import surfcom
 import imcom
 
 

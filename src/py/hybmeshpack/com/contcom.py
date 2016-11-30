@@ -42,7 +42,7 @@ class AddRectCont(objcom.AbstractAddRemove):
         p0, p1 = op0, Point2(op1.x, op0.y)
         p2, p3 = op1, Point2(op0.x, op1.y)
         c.append_points([p0, p1, p2, p3], b)
-        return [], [], [(self.options['name'], c)], []
+        return [], [], [(self.options['name'], c)]
 
 
 class AddCircCont(objcom.AbstractAddRemove):

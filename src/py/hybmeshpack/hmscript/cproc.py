@@ -23,6 +23,21 @@ def grid_bnd_to_contour(g1, simplify=True):
     return c._get_added_names()[1][0]
 
 
+def grid3_bnd_to_surface(g1, separate=False):
+    """ TODO
+    """
+    c = com.surfcom.Grid3BndToSurface({"grid_name": g1,
+                                      "separate": separate})
+    try:
+        flow.exec_command(c)
+        if separate:
+            return c._get_added_names()[3][0]
+        else:
+            return c._get_added_names()[3]
+    except Exception as e:
+        raise ExecError("grid3_bnd_to_surface")
+
+
 def simplify_contour(cont, simplify=True, angle=0, separate=False):
     """ Separates and simplify user contour
 

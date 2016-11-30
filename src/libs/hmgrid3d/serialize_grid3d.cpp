@@ -4,110 +4,161 @@
 
 using namespace HMGrid3D;
 
-//fills everything from: vert, edges, faces, bnd.
-void SimpleSerialize::supplement(){
-	//n_vert, n_edges
+void SimpleSerializeSurface::supplement(){
+	//n_*
 	n_vert = vert.size()/3;
 	n_edges = edges.size()/2;
-	n_cells = 0, n_faces = 0;
-
-	auto it = faces.begin();
-	vector<vector<int>> tcells;
-	while (it<faces.end()){
-		//ifaces
-		ifaces.push_back(it-faces.begin());
-		int dim = *it++;
-		it += dim;
-		int c1 = *it++;
-		int c2 = *it++;
-		if (tcells.size()<c1+1) tcells.resize(c1+1);
-		if (tcells.size()<c2+1) tcells.resize(c2+1);
-		if (c1 >= 0) tcells[c1].push_back(n_faces);
-		if (c2 >= 0) tcells[c2].push_back(n_faces);
-
-		//n_faces
-		++n_faces;
-	}
-	//n_cells
-	n_cells = tcells.size();
-	size_t totdim=0;
-	for (auto& v: tcells) totdim+=v.size();
-	cells.resize(n_cells+totdim);
-	icells.resize(n_cells);
-	it = cells.begin();
-	for (size_t i=0; i<n_cells; ++i){
-		//icells
-		icells[i] = it-cells.begin();
-		//cells
-		*it++ = tcells[i].size();
-		std::copy(tcells[i].begin(), tcells[i].end(), it);
-		it += tcells[i].size();
-	}
-	ifaces.push_back(faces.size());
-	icells.push_back(cells.size());
+	n_faces = face_edge.size();
 }
 
-vector<int> SimpleSerialize::face_vertex(int nface) const{
+//fills everything from: vert, edges, faces, bnd.
+void SimpleSerialize::supplement(){
+	//n_*
+	n_vert = vert.size()/3;
+	n_edges = edges.size()/2;
+	n_faces = face_edge.size();
+	n_cells = *std::max_element(face_cell.begin(), face_cell.end())+1;
+	cache.clear();
+}
+
+SimpleSerializeSurface SimpleSerialize::serialized_surface() const{
+	SimpleSerializeSurface ret;
+	//vertices
+	vector<int> vindices(n_vert, -1);
+	auto& bv = bvert();
+	ret.vert.resize(bv.size()*3);
+	int vit = 0;
+	for (int i: bv){
+		vindices[i] = vit;
+		ret.vert[3*vit] = vert[3*i];
+		ret.vert[3*vit+1] = vert[3*i+1];
+		ret.vert[3*vit+2] = vert[3*i+2];
+		++vit;
+	}
+	//edges
+	vector<int> eindices(n_edges, -1);
+	auto& be = bedges();
+	ret.edges.resize(2*be.size());
+	int eit = 0;
+	for (int i: be){
+		eindices[i] = eit;
+		ret.edges[2*eit] = vindices[edges[2*i]];
+		ret.edges[2*eit+1] = vindices[edges[2*i+1]];
+		++eit;
+	}
+	//faces
+	auto& bf = bfaces();
+	ret.face_edge.resize(bf.size());
+	ret.btypes.resize(bf.size());
+	int fit = 0;
+	for (int i: bf){
+		ret.face_edge[fit].resize(face_edge[i].size());
+		for (size_t j=0; j<ret.face_edge[fit].size(); ++j){
+			ret.face_edge[fit][j] = eindices[face_edge[i][j]];
+		}
+		ret.btypes[fit] = btypes[i];
+		++fit;
+	}
+
+	ret.supplement();
+	return ret;
+};
+
+namespace{
+vector<int> fvtab(const SimpleSerialize& s, int nface){
 	vector<int> ret;
-	int kf = ifaces[nface];
-	int lenf = faces[kf];
+	const auto& fe = s.face_edge[nface];
+	size_t lenf = fe.size();
 	ret.reserve(lenf);
 
 	//first vertex
-	int e1 = faces[kf+1], e2 = faces[kf+2];
-	int p1 = edges[2*e1], p2 = edges[2*e1+1];
-	int p3 = edges[2*e2], p4 = edges[2*e2+1];
+	int e1 = fe[0], e2 = fe[1];
+	int p1 = s.edges[2*e1], p2 = s.edges[2*e1+1];
+	int p3 = s.edges[2*e2], p4 = s.edges[2*e2+1];
 	if (p1 == p3 || p1 == p4) std::swap(p1, p2);
 	ret.push_back(p1); ret.push_back(p2);
 	//other vertices
-	for (int k=1; k<lenf-1; ++k){
-		e1 = faces[kf + k];
-		e2 = faces[kf + 1 + k];
-		int p1 = edges[2*e1], p2 = edges[2*e1+1];
-		int p3 = edges[2*e2], p4 = edges[2*e2+1];
+	for (size_t k=1; k<lenf-1; ++k){
+		e1 = fe[k];
+		e2 = fe[k+1];
+		int p1 = s.edges[2*e1], p2 = s.edges[2*e1+1];
+		int p3 = s.edges[2*e2], p4 = s.edges[2*e2+1];
 		ret.push_back( (p3 == ret.back()) ? p4 : p3 );
 	}
 	return ret;
 }
-
-vector<vector<int>> SimpleSerialize::face_vertex() const{
-	vector<vector<int>> ret; ret.reserve(n_faces);
-	for (int iface=0; iface<n_faces; ++iface){
-		ret.push_back(face_vertex(iface));
-	}
-	return ret;
 }
 
-namespace{
-
-void btype_1to2(ShpVector<Face>& vdata, vector<int>& sdata){
-	int n_faces = vdata.size();
-	std::map<int, vector<int>> btmap;
-	for (int i=0; i<n_faces; ++i) if (vdata[i]->is_boundary()){
-		int bt = vdata[i]->boundary_type;
-		auto fnd = btmap.find(bt);
-		if (fnd == btmap.end()){
-			auto emp = btmap.emplace(bt, vector<int>());
-			fnd = emp.first;
+vector<vector<int>>& SimpleSerialize::Cache::face_vertex(){
+	if (!_face_vertex){
+		_face_vertex.reset(new vector<vector<int>>(parent->n_faces));
+		for (size_t i=0; i<parent->n_faces; ++i){
+			(*_face_vertex)[i] = fvtab(*parent, i);
 		}
-		fnd->second.push_back(i);
 	}
-	int bsz = 0;
-	for (auto& it: btmap) bsz+=(2+it.second.size());
-	sdata.resize(bsz);
-	auto bit = sdata.begin();
-	for (auto& v: btmap){
-		*bit++ = v.first;
-		*bit++ = v.second.size();
-		bit=std::copy(v.second.begin(), v.second.end(), bit);
+	return *_face_vertex;
+}
+vector<int>& SimpleSerialize::Cache::bfaces(){
+	if (!_bfaces){
+		_bfaces.reset(new vector<int>());
+		for (size_t i=0; i<parent->n_faces; ++i){
+			if (parent->face_cell[2*i]<0 || parent->face_cell[2*i+1]<0){
+				_bfaces->push_back((int)i);
+			}
+		}
 	}
+	return *_bfaces;
 }
-
+vector<int>& SimpleSerialize::Cache::bedges(){
+	if (!_bedges){
+		_bedges.reset(new vector<int>());
+		vector<bool> used(parent->n_edges, false);
+		for (auto bf: bfaces())
+		for (auto e: parent->face_edge[bf])
+			used[e]=true;
+		for (size_t i=0; i<used.size(); ++i)
+		if (used[i])
+			_bedges->push_back(i);
+	}
+	return *_bedges;
 }
-
+vector<int>& SimpleSerialize::Cache::bvert(){
+	if (!_bvert){
+		_bvert.reset(new vector<int>());
+		vector<bool> used(parent->n_vert, false);
+		for (auto be: bedges()){
+			used[parent->edges[2*be]]=true;
+			used[parent->edges[2*be+1]]=true;
+		}
+		for (size_t i=0; i<used.size(); ++i)
+		if (used[i])
+			_bvert->push_back(i);
+	}
+	return *_bvert;
+}
+vector<vector<int>>& SimpleSerialize::Cache::cell_face(){
+	if (!_cell_face){
+		_cell_face.reset(new vector<vector<int>>(parent->n_cells));
+		for (size_t i=0; i<parent->n_faces; ++i){
+			int c1 = parent->face_cell[2*i];
+			int c2 = parent->face_cell[2*i+1];
+			if (c1>=0) (*_cell_face)[c1].push_back(i);
+			if (c2>=0) (*_cell_face)[c2].push_back(i);
+		}
+	}
+	return *_cell_face;
+}
+vector<vector<int>>& SimpleSerialize::Cache::cell_vertex(){
+	if (!_cell_vertex){
+		_cell_vertex.reset(new vector<vector<int>>(parent->n_cells));
+		_THROW_NOT_IMP_;
+	}
+	return *_cell_vertex;
+}
 
 //fills SimpleSerialize on the basis of GridData
 void SGrid::actualize_serial_data(){
+	cache.clear();
 	enumerate_all();
 	//vertices
 	n_vert = vvert.size();
@@ -128,37 +179,31 @@ void SGrid::actualize_serial_data(){
 	}
 	//faces
 	n_faces = vfaces.size();
-	int fsz = 0;
-	for (int i=0; i<n_faces; ++i) fsz+=(3 + vfaces[i]->edges.size());
-	faces.resize(fsz);
-	ifaces.resize(n_faces+1);
-	auto fit = faces.begin();
-	for (int i=0; i<n_faces; ++i){
-		ifaces[i] = fit - faces.begin();
-		auto f = vfaces[i];
-		*fit++ = f->edges.size();
-		for (int j=0; j<f->edges.size(); ++j) *fit++ = f->edges[j]->id;
-		*fit++ = (f->has_left_cell()) ? f->left.lock()->id : -1;
-		*fit++ = (f->has_right_cell()) ? f->right.lock()->id : -1;
+	face_edge.resize(n_faces);
+	for (size_t i=0; i<n_faces; ++i){
+		face_edge[i].resize(vfaces[i]->n_edges());
+		for (size_t j=0; j<vfaces[i]->n_edges(); ++j){
+			face_edge[i][j] = vfaces[i]->edges[j]->id;
+		}
 	}
-	ifaces[n_faces] = fit - faces.begin();
-	//cells
-	n_cells = vcells.size();
-	int csz = 0;
-	for (int i=0; i<n_cells; ++i) csz+=(2+vcells[i]->faces.size());
-	cells.resize(csz);
-	icells.resize(n_cells+1);
-	auto cit = cells.begin();
-	for (int i=0; i<n_cells; ++i){
-		icells[i] = cit - cells.begin();
-		auto c = vcells[i];
-		int n = c->faces.size();
-		*cit++ = n;
-		for (int j=0; j<n; ++j) *cit++ = c->faces[j]->id;
+	face_cell.resize(2*n_faces);
+	for (size_t i=0; i<n_faces; ++i){
+		if (vfaces[i]->has_left_cell())
+			face_cell[2*i] = vfaces[i]->left.lock()->id;
+		else
+			face_cell[2*i] = -1;
+		if (vfaces[i]->has_right_cell())
+			face_cell[2*i+1] = vfaces[i]->right.lock()->id;
+		else
+			face_cell[2*i+1] = -1;
 	}
-	icells[n_cells] = cit-cells.begin();
 	//boundary types
-	btype_1to2(vfaces, bnd);
+	btypes.resize(n_faces);
+	for (size_t i=0; i<n_faces; ++i){
+		btypes[i] = vfaces[i]->boundary_type;
+	}
+	//all other
+	supplement();
 }
 
 //fills GridData vectors from SimpleSerialize Data
@@ -180,51 +225,37 @@ void SGrid::actualize_data(){
 	}
 	//faces
 	vfaces.resize(n_faces);
-	auto fit = faces.begin();
 	for (int i=0; i<n_faces; ++i){
 		vfaces[i].reset(new Face());
-		int nf = *fit++;
-		vfaces[i]->edges.resize(nf);
-		for (int j=0; j<nf; ++j){
-			vfaces[i]->edges[j] = vedges[*fit++];
+		vfaces[i]->boundary_type = btypes[i];
+		vfaces[i]->edges.resize(face_edge[i].size());
+		for (size_t j=0; j<face_edge[i].size(); ++j){
+			vfaces[i]->edges[j]=vedges[face_edge[i][j]];
 		}
-		fit+=2;
 	}
 	//cells
 	vcells.resize(n_cells);
-	auto cit = cells.begin();
-	for (int i=0; i<n_cells; ++i){
-		vcells[i].reset(new Cell());
-		int nf = *cit++;
-		vcells[i]->faces.resize(nf);
-		for (int j=0; j<nf; ++j){
-			vcells[i]->faces[j] = vfaces[*cit++];
-		}
-	}
-	//face->cell connectivity
-	fit = faces.begin();
+	for (int i=0; i<n_cells; ++i){ vcells[i].reset(new Cell()); }
 	for (int i=0; i<n_faces; ++i){
-		int n = *fit++;
-		fit+=n;
-		int cleft = *fit++;
-		int cright = *fit++;
-		if (cleft >= 0) vfaces[i]->left = vcells[cleft];
-		if (cright >= 0) vfaces[i]->right = vcells[cright];
-	}
-	//boundary conditions
-	auto bit = bnd.begin();
-	while (bit != bnd.end()){
-		int b = *bit++;
-		int n = *bit++;
-		for (int i=0; i<n; ++i){
-			vfaces[*bit++]->boundary_type = b;
+		int lcell = face_cell[2*i];
+		int rcell = face_cell[2*i+1];
+		if (lcell >= 0){
+			vcells[lcell]->faces.push_back(vfaces[i]);
+			vfaces[i]->left = vcells[lcell];
+		}
+		if (rcell >= 0){
+			vcells[rcell]->faces.push_back(vfaces[i]);
+			vfaces[i]->right = vcells[lcell];
 		}
 	}
 }
 
 void SGrid::set_btype(std::function<int(Vertex, int)> func){
 	Face::SetBoundaryTypes(vfaces, func);
-	btype_1to2(vfaces, bnd);
+	btypes.resize(n_faces);
+	for (size_t i=0; i<n_faces; ++i){
+		btypes[i] = vfaces[i]->boundary_type;
+	}
 }
 
 void SGrid::renumber_by_cells(){

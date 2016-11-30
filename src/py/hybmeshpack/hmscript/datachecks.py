@@ -2,6 +2,7 @@ import numbers
 
 
 def ifpointlist(pp):
+    """ some comments"""
     for p in pp:
         if not isinstance(p, list) or len(p) < 2 or\
                 not isinstance(p[0], numbers.Real) or\
