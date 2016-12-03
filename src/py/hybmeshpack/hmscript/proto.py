@@ -514,13 +514,41 @@ def pebi_fill(domain, constr=None, pts=None):
     should not intersect each other, but could intersect **constr**
     contours.
 
-    Routine can produce concave cells (f.e. as a result of bad size
+    Routine can produce concave cells (as a result of bad size
     control or near the concave domain boundary vertices).
     Use :func:`heal_grid` routine with ``convex_cells`` option to fix this.
 
     See details in :ref:`unstructured-meshing`.
     """
     return _triquad(domain, constr, pts, 'pebi')
+
+
+def tetrahedral_fill(domain, constr=None, pts=None):
+    """ TODO
+    """
+    if not isinstance(domain, list):
+        domain = [domain]
+    dch.ifstrlist(domain)
+    if constr is not None:
+        if not isinstance(constr, list):
+            constr = [constr]
+        dch.ifstrlist(constr)
+    else:
+        constr = []
+    p, psize = [], []
+    if pts is not None:
+        for i in range(len(pts) / 2):
+            dch.ifnumeric(pts[2 * i])
+            dch.ifnumericlist(pts[2 * i + 1])
+            p.extend(pts[2 * i + 1])
+            psize.append(pts[2 * i])
+    arg = {"source": domain, "constr": constr, "pts": p, "pts_size": psize}
+    c = com.grid3dcom.TetrahedralFill(arg)
+    try:
+        flow.exec_command(c)
+        return c._get_added_names()[2][0]
+    except Exception:
+        raise ExecError('tetrahedral fill')
 
 
 # Contour prototypes

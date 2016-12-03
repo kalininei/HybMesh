@@ -8,7 +8,7 @@
 namespace HMGrid3D{
 
 struct SimpleSerializeSurface{
-	SimpleSerializeSurface(){}
+	SimpleSerializeSurface():cache(this){}
 	void supplement();
 
 	size_t n_vert, n_edges, n_faces;
@@ -16,19 +16,37 @@ struct SimpleSerializeSurface{
 	std::vector<int> edges;    //edge0_start, edge0_end, edge1_start, edge1_end, ...
 	std::vector<std::vector<int>> face_edge;     //face-edge connectivity
 	std::vector<int> btypes;                     //boundary type for each face
+
+	//====== additional connectivity tables
+	const vector<int>& face_vertex(int num_face) const { return cache.face_vertex()[num_face]; }
+	const vector<vector<int>>& face_vertex() const { return cache.face_vertex(); }
+
+	//cached data
+	struct Cache{
+		Cache(const SimpleSerializeSurface* parent): parent(parent){};
+		const SimpleSerializeSurface* parent;
+
+		shared_ptr<vector<vector<int>>> _face_vertex;
+		vector<vector<int>>& face_vertex();
+
+		void clear(){
+			_face_vertex.reset();
+		};
+	};
+	mutable Cache cache;
 };
 
 //surface with serialized data
 struct SSurface: public SimpleSerializeSurface, public Surface{
 	SSurface(){};
-	SSurface(SimpleSerializeSurface&& ss);
-	SSurface(HMGrid3D::Surface&& srf);
+	SSurface(SimpleSerializeSurface&& ss) noexcept;
+	SSurface(HMGrid3D::Surface&& srf) noexcept;
 
 	//====== constructing procedures
 	//fills SimpleSerialize on the basis of Surface
-	void actualize_serial_data();
+	void actualize_serial_data() noexcept;
 	//fills Surface vectors from SimpleSerialize Data
-	void actualize_data();
+	void actualize_data() noexcept;
 };
 
 struct SimpleSerialize{
@@ -38,7 +56,6 @@ struct SimpleSerialize{
 
 	//primitives sizes
 	size_t n_vert, n_faces, n_edges, n_cells;
-	size_t n_bvert, n_bfaces, n_bedges;
 
 	//data
 	std::vector<double> vert;                 //x0, y0, z0, x1, y1, z1, ...
@@ -95,12 +112,19 @@ struct SimpleSerialize{
 
 //grid with serialized data
 struct SGrid: public SimpleSerialize, public GridData{
+	SGrid(){}
+	SGrid(GridData&& gd) noexcept: GridData(std::move(gd)){
+		actualize_serial_data();
+	}
+	explicit SGrid(const GridData& gd): GridData(gd){
+		actualize_serial_data();
+	}
 
 	//====== constructing procedures
 	//fills SimpleSerialize on the basis of GridData
-	void actualize_serial_data();
+	void actualize_serial_data() noexcept;
 	//fills GridData vectors from SimpleSerialize Data
-	void actualize_data();
+	void actualize_data() noexcept;
 
 	//====== methods
 	void set_btype(std::function<int(Vertex, int)> func);

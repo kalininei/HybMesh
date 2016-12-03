@@ -2,6 +2,7 @@
 #include "cport_grid3d.h"
 #include "grid.h"
 #include "hmgrid3d.hpp"
+#include "bgeom3d.h"
 
 using HMGrid3D::SGrid;
 
@@ -298,4 +299,52 @@ void g3reader_free(void* greader){
 	} catch (const std::exception &e){
 		std::cout<<e.what()<<std::endl;
 	}
+}
+
+CPortGrid3D* tetrahedral_fill(int nsurf, void** surf, int nconstr, void** constr,
+		int npts, double* pcoords, double* psizes){
+	//copy constraint points
+	HMGrid3D::VertexData cp;
+	for (int i=0; i<npts; ++i){
+		cp.emplace_back(new HMGrid3D::Vertex(pcoords[3*i], pcoords[3*i+1],
+					pcoords[3*i+2]));
+	}
+	//shallow copy source surfaces
+	HMGrid3D::Surface source;
+	for (int i=0; i<nsurf; ++i){
+		auto s = static_cast<HMGrid3D::SSurface*>(surf[i]);
+		std::copy(s->faces.begin(), s->faces.end(),
+				std::back_inserter(source.faces));
+	}
+	//shallow copy constraint surfaces
+	HMGrid3D::Surface cs;
+	for (int i=0; i<nconstr; ++i){
+		auto s = static_cast<HMGrid3D::Surface*>(constr[i]);
+		std::copy(s->faces.begin(), s->faces.end(),
+				std::back_inserter(cs.faces));
+	}
+	
+	//scaling
+	HMGrid3D::VertexData srcpoints = source.allvertices();
+	HMGrid3D::VertexData cspoints = cs.allvertices();
+	ScaleBase3 sc = ScaleBase3::doscale(srcpoints);
+	sc.scale(cspoints.begin(), cspoints.end());
+	sc.scale(cp.begin(), cp.end());
+	vector<double> ps(npts);
+	for (int i=0; i<npts; ++i) ps[i] = psizes[i] / sc.L;
+	//
+	HMGrid3D::SGrid* ret=NULL;
+	try{
+		HMGrid3D::GridData ans = HMGrid3D::Mesher::UnstructuredTetrahedral.WTimer(source, cs, cp, ps);
+		sc.unscale(ans.vvert.begin(), ans.vvert.end());
+		ret = new HMGrid3D::SGrid(std::move(ans));
+	} catch (const std::exception &e){
+		std::cout<<e.what()<<std::endl;
+		if (ret != NULL) delete ret;
+		ret=NULL;
+	}
+	//unscale input and return
+	sc.unscale(srcpoints.begin(), srcpoints.end());
+	sc.unscale(cspoints.begin(), cspoints.end());
+	return ret;
 }

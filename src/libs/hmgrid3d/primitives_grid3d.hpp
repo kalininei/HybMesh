@@ -2,6 +2,7 @@
 #define PRIMITIVES_GRID3D_HPP
 #include "hmproject.h"
 #include "bgeom2d.h"
+#include "bgeom3d.h"
 
 namespace HMGrid3D{
 
@@ -23,13 +24,12 @@ void constant_ids_pvec(const C& inp, int val){
 	for (int i=0; i<inp.size(); ++i) inp[i]->id = val;
 }
 
-struct Vertex{
+struct Vertex: public Point3{
 	//==== data
-	double x, y, z;
 	mutable int id;
 
 	//==== constructor
-	Vertex(double _x=0, double _y=0, double _z=0): x(_x), y(_y), z(_z){}
+	Vertex(double x=0, double y=0, double z=0): Point3(x, y, z){}
 
 	//==== features
 	static double measure(const Vertex& a, const Vertex& b);
@@ -110,6 +110,9 @@ struct Face{
 	// ===== funcs
 	void reverse();
 	void correct_edge_directions();
+	bool is_positive_edge(int eindex);
+	std::array<Point3, 3> mean_points() const;
+	Vect3 left_normal() const;
 
 	// ===== Algos
 	static std::vector<ShpVector<Face>> SubDivide(const ShpVector<Face>& fvec);
@@ -120,6 +123,13 @@ struct Face{
 	struct Connectivity{
 		static std::map<shared_ptr<Edge>, vector<int>>
 		EdgeFace(const ShpVector<Face>& data);
+
+		//for each edge- > <0> face index,
+		//                 <1> local edge index within the face,
+		//                 <2> is edge directed according to face
+		static std::map<shared_ptr<Edge>, vector<std::tuple<int, int, bool>>>
+		EdgeFaceExtended(const FaceData& data);
+
 		static vector<vector<int>>
 		FaceFace(const ShpVector<Face>& data);
 		static vector<vector<int>>
@@ -152,8 +162,10 @@ struct GridData{
 	CellData vcells;
 
 	// ====== methods
+	void clear(){ vvert.clear(); vedges.clear(); vfaces.clear(); vcells.clear(); }
 	//set id's of primitives to its actual indicies
 	void enumerate_all() const;
+
 };
 
 

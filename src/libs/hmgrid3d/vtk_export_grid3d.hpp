@@ -12,9 +12,10 @@ namespace HMGrid3D{namespace Export{
 //signature void GridVTK(const HMGrid3D::Grid& g, std::string fn);
 struct TGridVTK: public HMCallback::ExecutorBase{
 	HMCB_SET_PROCNAME("Exporting 3d grid to *.vtk");
+	HMCB_SET_DEFAULT_DURATION(80);
 
-	HMCB_SET_DURATION(80, const SGrid&, std::string);
 	void _run(const SGrid& g, std::string fn);
+	void _run(const GridData& g, std::string fn);
 
 };
 extern HMCallback::FunctionWithCallback<TGridVTK> GridVTK;
@@ -22,25 +23,39 @@ extern HMCallback::FunctionWithCallback<TGridVTK> GridVTK;
 
 //signature void BoundaryVTK(const HMGrid3D::Grid& g, std::string* fn);
 struct TBoundaryVTK: public HMCallback::ExecutorBase{
-	HMCB_SET_PROCNAME("Exporting 3d grid surface to *.vtk");
+	HMCB_SET_PROCNAME("Exporting 3d grid surface to vtk");
+	HMCB_SET_DEFAULT_DURATION(50);
 
-	HMCB_SET_DURATION(50, SGrid, std::string);
 	void _run(const SGrid&, std::string);
+	void _run(const GridData& g, std::string fn);
 
 };
 extern HMCallback::FunctionWithCallback<TBoundaryVTK> BoundaryVTK;
 
 //boundary + grid to 2 separate files
 struct TAllVTK: public HMCallback::ExecutorBase{
-	HMCB_SET_PROCNAME("Exporting 3d data to *.vtk");
+	HMCB_SET_PROCNAME("Exporting 3d data to vtk");
 	HMCB_SET_DEFAULT_DURATION(
 		HMCB_DURATION(TBoundaryVTK, SGrid, std::string)+ 
 		HMCB_DURATION(TGridVTK, SGrid, std::string)
 	);
 
 	void _run(const SGrid& g, std::string fngrid, std::string fnbnd);
+	void _run(const GridData& g, std::string, std::string fnbnd);
 };
 extern HMCallback::FunctionWithCallback<TAllVTK> AllVTK;
+
+struct TSurfaceVTK: public HMCallback::ExecutorBase{
+	HMCB_SET_PROCNAME("Exporting surface to vtk");
+	HMCB_SET_DURATION(80, const SSurface&, std::string);
+	HMCB_SET_DURATION(100, const Surface&, std::string);
+	HMCB_SET_DURATION(100, const FaceData&, std::string);
+
+	void _run(const SSurface& s, std::string fn);
+	void _run(const Surface& s, std::string fn);
+	void _run(const FaceData& s, std::string fn);
+};
+extern HMCallback::FunctionWithCallback<TSurfaceVTK> SurfaceVTK;
 
 
 //structure which tries to treat 3D cell

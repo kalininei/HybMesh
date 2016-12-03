@@ -46,10 +46,28 @@ struct default_wtimer{
 	}
 };
 
+struct default_wverbtimer{
+	HMTimer::TicToc tm;
+	HMTimer::TicToc localtm;
+	default_wverbtimer(): tm("Callback timer", false){}
+	int operator()(const char* proc, const char* subproc, double percent, double subpercent){
+		if (percent <= 0.0 && subpercent <= 0.0) { tm.init(); tm.tic(); localtm.init(); localtm.tic();}
+		std::ostringstream s1, s2;
+		s1<<std::fixed<<std::setprecision(3)<<tm.elapsed();
+		s2<<std::fixed<<std::setprecision(3)<<localtm.elapsed();
+		std::cout<<"[+"<<s2.str()<<" = "<<s1.str()<<" sec.] ";
+		std::cout<<default_string(proc, subproc, percent, subpercent);
+		std::cout<<std::endl;
+		localtm.init(); localtm.tic();
+		return OK;
+	}
+};
+
 }
 
 Fun2 HMCallback::to_cout2 = default_callback2;
 Fun2 HMCallback::to_cout2_timer = default_wtimer();
+Fun2 HMCallback::to_cout2_verbtimer = default_wverbtimer();
 Fun2 HMCallback::silent2 = silent_callback2;
 
 Caller2::Caller2(std::string proc_name, double proc_duration, Fun2 func){
@@ -181,15 +199,19 @@ void Caller2::subprocess_fin(){
 	flush();
 }
 
-Caller2 Caller2::subrange(double parent_duration, double child_duration){
+shared_ptr<Caller2> Caller2::subrange(double parent_duration, double child_duration){
 	before1(true);
 	double parent_start = prog1;
 	prog1 += parent_duration;
+
+	parent_duration/=dur1;
+	parent_start/=dur1;
 	Fun2& f=call;
 	auto sf = [&f, parent_start, parent_duration](const char* s1, const char* s2, double p1, double p2)->int{
 		return f(s1, s2, parent_start + parent_duration*p1, p2);
 	};
-	return Caller2(name1, child_duration, sf);
+
+	return shared_ptr<Caller2>(new Caller2(name1, child_duration, sf));
 }
 
 shared_ptr<Caller2> Caller2::bottom_line_subrange(double parent_duration){
@@ -204,6 +226,36 @@ shared_ptr<Caller2> Caller2::bottom_line_subrange(double parent_duration){
 		return call(name1.c_str(), s1, w1, w2);
 	};
 	ret->setfun(sf);
+	return ret;
+}
+shared_ptr<Caller2> Caller2::bottom_line_subrange(double parent_bottom_duration, double child_duration){
+	assert(dur2>0);
+	silent_subprocess_step_after(parent_bottom_duration);
+
+	shared_ptr<Caller2> ret(new Caller2(name2, child_duration));
+
+	Fun2& f=call;
+	double toppos = prog1/dur1;
+	double bottom_start = prog2/dur2;
+	double bottom_dur = parent_bottom_duration/dur2;
+	std::string caption = name1;
+
+	auto sf = [&f, &ret, toppos, bottom_start, bottom_dur, caption]
+			(const char* s1, const char* s2, double p1, double p2)->int{
+		if (p2 == 1.0 && p1 != 1.0) return OK; //ignore subprocess finish
+
+		double w2 = bottom_start + p1*bottom_dur;
+		if (p2 >0) w2 += p2*ret->step_before1/ret->dur1;
+
+		if (p1 == 1.0 && w2 != 1.0) return OK; //ignore intermediate process finish (DONE message)
+
+		std::string line2(s1);
+		line2+=", ";
+		line2+=s2;
+		return f(caption.c_str(), line2.c_str(), toppos, w2);
+	};
+	ret->setfun(sf);
+
 	return ret;
 }
 

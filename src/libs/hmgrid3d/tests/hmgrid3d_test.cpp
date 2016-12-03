@@ -296,15 +296,147 @@ void test08(){
 	add_file_check(4596785021162173517U, "g1.msh", "3d gmsh export");
 }
 
+void test09(){
+	std::cout<<"9. Surface tree assembling, reverting, volumes"<<std::endl;
+	{
+		auto g1 = HMGrid3D::Constructor::Cuboid({0, 0, 0}, 1, 1, 2, 2, 3, 2);
+		std::swap(g1.vfaces[0], g1.vfaces[5]);
+		g1.actualize_serial_data();
+		auto s1 = HMGrid3D::Surface::GridSurface(g1);
+		double v1, v2, v3, v4, v5, v6;
+		v1 = HMGrid3D::Surface::Volume(s1);
+		{
+			auto rr = HMGrid3D::SurfTReverter(s1);
+			v2 = HMGrid3D::Surface::Volume(s1);
+			rr.reverse_all();
+			v3 = HMGrid3D::Surface::Volume(s1);
+			rr.revert_back();
+			v4 = HMGrid3D::Surface::Volume(s1);
+			rr.revert();
+			v5 = HMGrid3D::Surface::Volume(s1);
+			//now rr is deleted
+		}
+		v6 = HMGrid3D::Surface::Volume(s1);
+		add_check(!ISEQ(v1, v2) && ISEQ(v2, -2) && ISEQ(v3, 2) &&
+		          ISEQ(v4, v1) && ISEQ(v5, v3) && ISEQ(v6, v1),
+		          "cuboid surface temporal reverse procedure");
+	}
+	{
+		auto gcyl2 = GGeom::Constructor::Circle(Point{0, 0}, 1, 64, 3, false);
+		auto gcyl = HMGrid3D::Constructor::SweepGrid2D(gcyl2, {0, 1, 2, 3});
+		auto gtmp1 = GGeom::Constructor::Circle(Point(0, 0), 0.3, 64, 3, true);
+		vector<int> inpcells;
+		vector<int> badpoints;
+		for (int i=0; i<gtmp1.n_points(); ++i){
+			if (ISLOWER(gtmp1.get_point(i)->x, 0)) badpoints.push_back(i);
+		}
+		for (int i=0; i<gtmp1.n_cells(); ++i){
+			auto c = gtmp1.get_cell(i);
+			bool good = true;
+			for (int j=0; j<c->dim(); ++j){
+				int pind = c->get_point(j)->get_ind();
+				if (std::find(badpoints.begin(), badpoints.end(), pind) !=
+						badpoints.end()){
+					good = false;
+					break;
+				}
+			}
+			if (good) inpcells.push_back(i);
+		}
+		auto ghsphere2 = GGeom::Constructor::ExtractCells(gtmp1, inpcells, 1);
+		vector<double> degs = {0};
+		for (int i=0; i<32; ++i) degs.push_back(degs.back() + 180./32.);
+		auto ghsphere = HMGrid3D::Constructor::RevolveGrid2D(ghsphere2, degs,
+				Point(0, 0), Point(0, 1), false);
+		for (auto p: ghsphere.vvert) p->z += 2.5;
+
+		auto gcube1 = HMGrid3D::Constructor::Cuboid({0, 0, 2.3}, 0.05, 0.05, 0.05, 2, 3, 4);
+		auto gcube2 = HMGrid3D::Constructor::Cuboid({20, 20, -2.5}, 6, 3, 1, 3, 1, 2);
+		auto gcube3 = HMGrid3D::Constructor::Cuboid({20, 20, -2.5}, 1, 1, 1, 3, 1, 2);
+
+		gcyl.actualize_serial_data();
+		ghsphere.actualize_serial_data();
+		gcube1.actualize_serial_data();
+		gcube2.actualize_serial_data();
+		gcube3.actualize_serial_data();
+
+		HMGrid3D::Surface totalsurface;
+		auto surf1 = HMGrid3D::Surface::GridSurface(ghsphere);
+		auto surf2 = HMGrid3D::Surface::GridSurface(gcyl);
+		auto surf3 = HMGrid3D::Surface::GridSurface(gcube1);
+		auto surf4 = HMGrid3D::Surface::GridSurface(gcube2);
+		auto surf5 = HMGrid3D::Surface::GridSurface(gcube3);
+		totalsurface.faces.insert(totalsurface.faces.end(), surf1.faces.begin(), surf1.faces.end());
+		totalsurface.faces.insert(totalsurface.faces.end(), surf2.faces.begin(), surf2.faces.end());
+		totalsurface.faces.insert(totalsurface.faces.end(), surf3.faces.begin(), surf3.faces.end());
+		totalsurface.faces.insert(totalsurface.faces.end(), surf4.faces.begin(), surf4.faces.end());
+		totalsurface.faces.insert(totalsurface.faces.end(), surf5.faces.begin(), surf5.faces.end());
+		std::random_shuffle(totalsurface.faces.begin(), totalsurface.faces.end());
+
+		auto tree = HMGrid3D::SurfaceTree::Assemble(totalsurface);
+		double v1 = HMGrid3D::Surface::Volume(totalsurface);
+		auto* rr = new HMGrid3D::SurfTreeTReverter(tree);
+		double v2 = HMGrid3D::Surface::Volume(totalsurface);
+		delete rr;
+		double v3 = HMGrid3D::Surface::Volume(totalsurface);
+		add_check(fabs(v2 - 26.3534)<1e-4 && ISEQ(v1, v3), "complicated tree structure volume");
+	}
+}
+
+void test10(){
+	std::cout<<"10. 3d domain unstructured meshing"<<std::endl;
+	{
+		//auto g1 = HMGrid3D::Constructor::Cuboid({0, 0, 0}, 1, 1, 1, 5, 5, 5);
+		auto g1 = HMGrid3D::Constructor::Cuboid({0, 0, 0}, 1, 1, 1, 2, 2, 2);
+		auto s1 = HMGrid3D::Surface::GridSurface(g1);
+		auto g2 = HMGrid3D::Mesher::UnstructuredTetrahedral(s1); 
+		std::cout<<g2.vvert.size()<<std::endl;
+		HMGrid3D::Export::BoundaryVTK(g2, "g2b.vtk");
+		add_file_check(18250642950022685541U, "g2b.vtk", "grid in cubic domain");
+	}
+	//{
+	//        auto g1 = HMGrid3D::Constructor::Cuboid({1, 1, 1}, 2, 3, 1, 7, 8, 4);
+	//        auto g2 = HMGrid3D::Constructor::Cuboid({10, 10, 10}, 5, 5, 5, 10, 10, 10);
+	//        auto gcyl2 = GGeom::Constructor::Circle(Point{1, 1}, 5, 64, 10, true);
+	//        vector<double> zsweep;
+	//        for (int i=0; i<11; ++i) zsweep.push_back( (double)i / 10 * 4);
+	//        auto gcyl = HMGrid3D::Constructor::SweepGrid2D(gcyl2, zsweep);
+
+	//        HMGrid3D::Surface srf;
+	//        for (auto f: gcyl.vfaces) if (f->is_boundary()) srf.faces.push_back(f);
+	//        //for (auto f: g1.vfaces) if (f->is_boundary()) srf.faces.push_back(f);
+	//        //for (auto f: g2.vfaces) if (f->is_boundary()) srf.faces.push_back(f);
+
+	//        auto tree = HMGrid3D::SurfaceTree::Assemble(srf);
+	//        auto rr = HMGrid3D::SurfTreeTReverter(tree);
+
+	//        //auto rr = HMGrid3D::SurfTReverter(srf);
+	//        vector<HMGrid3D::Surface> smoothsrf = HMGrid3D::Surface::ExtractSmooth(srf, 30.);
+	//        std::cout<<smoothsrf.size()<<std::endl;
+	//        for (int i=0; i<smoothsrf.size(); ++i){
+	//                std::string nm("gb");
+	//                nm+=std::to_string(i);
+	//                nm+=".vtk";
+	//                HMGrid3D::Export::SurfaceVTK(smoothsrf[i], nm);
+	//        }
+
+	//        //auto res = HMGrid3D::Mesher::UnstructuredTetrahedral.WVerbTimer(srf);
+	//        //HMGrid3D::Export::BoundaryVTK(res, "g1b.vtk");
+	//        //add_file_check(9197203944393887302U, "g1b.vtk", "domain with multiple nesting");
+	//}
+}
+
 int main(){
-	test01();
-	test02();
-	test03();
-	test04();
-	test05();
-	test06();
-	test07();
-	test08();
+	//test01();
+	//test02();
+	//test03();
+	//test04();
+	//test05();
+	//test06();
+	//test07();
+	//test08();
+	//test09();
+	test10();
 	
 	check_final_report();
 	std::cout<<"DONE"<<std::endl;

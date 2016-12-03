@@ -160,6 +160,42 @@ void Face::correct_edge_directions(){
 		if (e2->first() != e1->last()) e2->reverse();
 	}
 }
+bool Face::is_positive_edge(int eindex){
+	int enext = eindex + 1;
+	if (enext == n_edges()) enext = 0;
+	if (edges[eindex]->last() == edges[enext]->first()) return true;
+	if (edges[eindex]->last() == edges[enext]->last()) return true;
+	return false;
+}
+std::array<Point3, 3> Face::mean_points() const{
+	//quick procedure
+	assert(n_edges() > 2);
+	auto op = sorted_vertices();
+	if (n_edges() == 3){
+		return {*op[0], *op[1], *op[2]};
+	} else if (n_edges() == 4){
+		return {*op[0], *op[1], (*op[2] + *op[3])/2};
+	} else {
+		for (int i=2; i<op.size(); ++i){
+			double cp = vecLen(vecCross(*op[1]-*op[0], *op[i]-*op[0]));
+			if (!ISZERO(cp)){
+				double sin = cp/vecLen(*op[1]-*op[0])/vecLen(*op[i]-*op[0]);
+				if (sin > 0){
+					return {*op[0], *op[1], *op[i]};
+				} else if (sin<0){
+					return {*op[0], *op[i], *op[1]};
+				}
+			}
+		}
+	}
+	throw std::runtime_error("Can not compute mean plane of the face");
+}
+Vect3 Face::left_normal() const{
+	std::array<Point3, 3> mp = mean_points();
+	auto ret = vecCross(mp[2]-mp[0], mp[1]-mp[0]);
+	vecNormalize(ret);
+	return ret;
+}
 
 std::map<shared_ptr<Edge>, vector<int>>
 Face::Connectivity::EdgeFace(const ShpVector<Face>& data){
@@ -169,6 +205,20 @@ Face::Connectivity::EdgeFace(const ShpVector<Face>& data){
 			auto emp = ret.emplace(e, vector<int>());
 			emp.first->second.push_back(i);
 		}
+	}
+	return ret;
+}
+std::map<shared_ptr<Edge>, vector<std::tuple<int, int, bool>>>
+Face::Connectivity::EdgeFaceExtended(const FaceData& data){
+	std::map<shared_ptr<Edge>, vector<std::tuple<int, int, bool>>> ret;
+	for (int i=0; i<data.size(); ++i)
+	for (int j=0; j<data[i]->edges.size(); ++j){
+		auto e = data[i]->edges[j];
+		bool dir = data[i]->is_positive_edge(j);
+		auto emp = ret.emplace(e, vector<std::tuple<int, int, bool>>());
+		emp.first->second.push_back(
+			std::make_tuple(i, j, dir)
+		);
 	}
 	return ret;
 }

@@ -12,6 +12,7 @@ set (HEADERS
 	tecplot_export_grid3d.hpp
 	hmg_export_grid3d.hpp
 	hmg_import_grid3d.hpp
+	tetrahedral.hpp
 )
 
 set (SOURCES
@@ -28,6 +29,7 @@ set (SOURCES
 	tecplot_export_grid3d.cpp
 	hmg_export_grid3d.cpp
 	hmg_import_grid3d.cpp
+	tetrahedral.cpp
 )
 
 source_group ("Header Files" FILES ${HEADERS} ${HEADERS})
@@ -40,11 +42,13 @@ target_link_libraries(${HMGRID3D_TARGET} ${HMPROJECT_TARGET})
 target_link_libraries(${HMGRID3D_TARGET} ${BGEOM2D_TARGET})
 target_link_libraries(${HMGRID3D_TARGET} ${HYBMESH_CONTOURS2D_TARGET})
 target_link_libraries(${HMGRID3D_TARGET} ${CROSSGRID_TARGET})
+target_link_libraries(${HMGRID3D_TARGET} ${GMSH_TARGET})
 
 include_directories(${HMPROJECT_INCLUDE})
 include_directories(${BGEOM2D_INCLUDE})
 include_directories(${HYBMESH_CONTOURS2D_INCLUDE})
 include_directories(${CROSSGRID_INCLUDE})
+include_directories(${GMSH_INCLUDE})
 
 install(TARGETS ${HMGRID3D_TARGET}
 	RUNTIME DESTINATION ${LIB_INSTALL_DIR}

@@ -1,5 +1,5 @@
 import ctypes as ct
-from . import libhmcport
+from . import libhmcport, list_to_c
 
 
 def extrude_call(c_grid, c_btypes, c_zvals, c_bbot, c_btop, bsides):
@@ -178,3 +178,22 @@ def gwriter_add_field(c_gwriter, f):
 
 def free_gwriter(c_gwriter):
     libhmcport.g3writer_free(c_gwriter)
+
+
+def tetrahedral_fill(slist, constrlist, p, psize):
+    plen = max(len(p) / 3, len(psize))
+    c_p = list_to_c(p, float)
+    c_ps = list_to_c(psize, float)
+    c_slist = list_to_c(slist, "void*")
+    c_constrlist = list_to_c(constrlist, "void*")
+
+    libhmcport.tetrahedral_fill.restype = ct.c_void_p
+    r = libhmcport.tetrahedral_fill(
+        ct.c_int(len(slist)), c_slist,
+        ct.c_int(len(constrlist)), c_constrlist,
+        ct.c_int(plen), c_p, c_ps)
+
+    if not r:
+        raise Exception("Tetrahedral fill failed")
+    else:
+        return r

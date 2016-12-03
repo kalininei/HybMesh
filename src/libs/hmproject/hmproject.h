@@ -14,7 +14,9 @@
 
 using std::vector;
 using std::shared_ptr;
+using std::weak_ptr;
 template<class T> using ShpVector = vector<shared_ptr<T>>;
+template<class T> using WpVector = vector<weak_ptr<T>>;
 
 
 //Macros

@@ -4,23 +4,61 @@
 
 using namespace HMGrid3D;
 
+namespace{
+template<class SerClass>
+vector<int> fvtab(const SerClass& s, int nface){
+	vector<int> ret;
+	const auto& fe = s.face_edge[nface];
+	size_t lenf = fe.size();
+	ret.reserve(lenf);
+
+	//first vertex
+	{
+		int e1 = fe[0], e2 = fe[1];
+		int p1 = s.edges[2*e1], p2 = s.edges[2*e1+1];
+		int p3 = s.edges[2*e2], p4 = s.edges[2*e2+1];
+		if (p1 == p3 || p1 == p4) std::swap(p1, p2);
+		ret.push_back(p1); ret.push_back(p2);
+	}
+	//other vertices
+	for (size_t k=1; k<lenf-1; ++k){
+		int e1 = fe[k];
+		int p1 = s.edges[2*e1], p2 = s.edges[2*e1+1];
+		ret.push_back( (p1 == ret.back()) ? p2 : p1 );
+	}
+	return ret;
+}
+}
+
+
 //================================================= Surfaces
 void SimpleSerializeSurface::supplement(){
 	//n_*
 	n_vert = vert.size()/3;
 	n_edges = edges.size()/2;
 	n_faces = face_edge.size();
+	cache.clear();
+}
+
+vector<vector<int>>& SimpleSerializeSurface::Cache::face_vertex(){
+	if (!_face_vertex){
+		_face_vertex.reset(new vector<vector<int>>(parent->n_faces));
+		for (size_t i=0; i<parent->n_faces; ++i){
+			(*_face_vertex)[i] = fvtab(*parent, i);
+		}
+	}
+	return *_face_vertex;
 }
 
 
-SSurface::SSurface(SimpleSerializeSurface&& ss):SimpleSerializeSurface(std::move(ss)){
+SSurface::SSurface(SimpleSerializeSurface&& ss) noexcept:SimpleSerializeSurface(std::move(ss)), Surface(){
 	actualize_data();
 }
-SSurface::SSurface(HMGrid3D::Surface&& srf):HMGrid3D::Surface(std::move(srf)){
+SSurface::SSurface(HMGrid3D::Surface&& srf) noexcept:SimpleSerializeSurface(), HMGrid3D::Surface(std::move(srf)){
 	actualize_serial_data();
 }
 
-void SSurface::actualize_data(){
+void SSurface::actualize_data() noexcept{
 	ShpVector<Vertex> vvert;
 	ShpVector<Edge> vedges;
 	//vertices
@@ -50,7 +88,8 @@ void SSurface::actualize_data(){
 	}
 }
 
-void SSurface::actualize_serial_data(){
+void SSurface::actualize_serial_data() noexcept{
+	cache.clear();
 	//enumeration
 	int kf=0;
 	for (auto f: faces){
@@ -171,31 +210,6 @@ SimpleSerializeSurface SimpleSerialize::serialized_surface() const{
 	return ret;
 };
 
-namespace{
-vector<int> fvtab(const SimpleSerialize& s, int nface){
-	vector<int> ret;
-	const auto& fe = s.face_edge[nface];
-	size_t lenf = fe.size();
-	ret.reserve(lenf);
-
-	//first vertex
-	int e1 = fe[0], e2 = fe[1];
-	int p1 = s.edges[2*e1], p2 = s.edges[2*e1+1];
-	int p3 = s.edges[2*e2], p4 = s.edges[2*e2+1];
-	if (p1 == p3 || p1 == p4) std::swap(p1, p2);
-	ret.push_back(p1); ret.push_back(p2);
-	//other vertices
-	for (size_t k=1; k<lenf-1; ++k){
-		e1 = fe[k];
-		e2 = fe[k+1];
-		int p1 = s.edges[2*e1], p2 = s.edges[2*e1+1];
-		int p3 = s.edges[2*e2], p4 = s.edges[2*e2+1];
-		ret.push_back( (p3 == ret.back()) ? p4 : p3 );
-	}
-	return ret;
-}
-}
-
 vector<vector<int>>& SimpleSerialize::Cache::face_vertex(){
 	if (!_face_vertex){
 		_face_vertex.reset(new vector<vector<int>>(parent->n_faces));
@@ -264,7 +278,7 @@ vector<vector<int>>& SimpleSerialize::Cache::cell_vertex(){
 }
 
 //fills SimpleSerialize on the basis of GridData
-void SGrid::actualize_serial_data(){
+void SGrid::actualize_serial_data() noexcept{
 	cache.clear();
 	enumerate_all();
 	//vertices
@@ -314,7 +328,7 @@ void SGrid::actualize_serial_data(){
 }
 
 //fills GridData vectors from SimpleSerialize Data
-void SGrid::actualize_data(){
+void SGrid::actualize_data() noexcept{
 	//vertices
 	vvert.resize(n_vert);
 	auto vit = vert.begin();

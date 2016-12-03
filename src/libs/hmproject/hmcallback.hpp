@@ -26,6 +26,7 @@ typedef std::function<int(const char*, const char*, double, double)> Fun2;
 
 extern Fun2 to_cout2;         //callback to std::cout
 extern Fun2 to_cout2_timer;  //callback to std::cout with timer
+extern Fun2 to_cout2_verbtimer;  //callback to std::cout with timer
 extern Fun2 silent2;          //no callback at all
 
 struct Caller2{
@@ -54,8 +55,10 @@ struct Caller2{
 	void subprocess_move_after(double progress);
 	void subprocess_step_after(double progress);
 
-	Caller2 subrange(double parent_duration, double child_duration);
+	std::shared_ptr<Caller2> subrange(double parent_duration, double child_duration);
 	std::shared_ptr<Caller2> bottom_line_subrange(double parent_duration);
+	std::shared_ptr<Caller2> bottom_line_subrange(double parent_bottom_duration, double child_duration);
+
 	LoopCaller2 looper(double parent_duration, double nloops, std::string caption);
 
 	//output 100%
@@ -64,9 +67,9 @@ struct Caller2{
 protected:
 	//currant state data
 	std::string name1, name2;
-	double prog1, prog2;
+	double prog1, prog2;  //current progress position in [0, dur] range
 	double dur1, dur2;
-	double step_before1, step_before2;
+	double step_before1, step_before2; //positions which should be added
 
 	//construct data
 	Fun2 call; 
@@ -229,6 +232,13 @@ public:
 	template<class... Args>
 	TRet<Args...> WTimer(Args&&... arg){
 		exe.set_callback(to_cout2_timer);
+		return invoke(std::forward<Args>(arg)...);
+	}
+	
+	//call with callback with timer including bottom lines
+	template<class... Args>
+	TRet<Args...> WVerbTimer(Args&&... arg){
+		exe.set_callback(to_cout2_verbtimer);
 		return invoke(std::forward<Args>(arg)...);
 	}
 

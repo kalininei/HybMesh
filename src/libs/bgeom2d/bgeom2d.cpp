@@ -1,6 +1,7 @@
 #include "bgeom2d.h"
 #include "addalgo.hpp"
 #include "assert.h"
+#include "hmcompute.hpp"
 
 std::array<double, 3> Point::line_eq(const Point& L1, const Point& L2) noexcept{
 	if (L1 == L2) return {0, 0, 0};
@@ -71,25 +72,11 @@ bool isOnSection(const Point& p, const Point& start, const Point& end, double& k
 	return (ksi>-geps && ksi<1+geps);
 }
 
-double determinant_2x2(double* A){
-	return A[0]*A[3]-A[1]*A[2];
-}
-
-bool mat_inverse_2x2(double* A, double* B){
-	double det=determinant_2x2(A);
-	if (ISZERO(det)) return false;
-	B[0]= A[3]/det;
-	B[1]=-A[1]/det;
-	B[2]=-A[2]/det;
-	B[3]= A[0]/det;
-	return true;
-}
-
 bool SectCross(const Point& p1S, const Point& p1E, const Point& p2S, const Point& p2E, double* ksieta) noexcept{
 	double A[4]={p1E.x-p1S.x,  p2S.x-p2E.x,
-		  p1E.y-p1S.y,  p2S.y-p2E.y};
+	             p1E.y-p1S.y,  p2S.y-p2E.y};
 	double B[4];
-	if (!mat_inverse_2x2(A,B)){ 
+	if (!HMMath::Compute::mat_inverse_2x2(A, B)){ 
 		ksieta[0]=gbig; 
 		ksieta[1]=gbig;
 	} else {

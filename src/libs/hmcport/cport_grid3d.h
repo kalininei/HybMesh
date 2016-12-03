@@ -45,6 +45,11 @@ CPortGrid3D* grid2_revolve(Grid* g, double* vec, int n_phi, double* phi,
 		int b1, int b2, int is_trian);
 
 
+//======= unstructured fill
+CPortGrid3D* tetrahedral_fill(int nsurf, void** surf, int nconstr, void** constr,
+		int npts, double* pcoords, double* psizes);
+
+
 //====== exporters
 //returns 0 on success
 int export_vtk_grid3(const CPortGrid3D* grid, const char* fname, hmcport_callback f2);

@@ -119,3 +119,39 @@ class Revolve(NewGrid3DCommand):
         finally:
             g2core.free_c_grid(c_grid) if c_grid != 0 else None
             g2core.free_boundary_types(c_btypes) if c_btypes != 0 else None
+
+
+class TetrahedralFill(NewGrid3DCommand):
+    def __init__(self, argsdict):
+        super(TetrahedralFill, self).__init__(argsdict)
+
+    @classmethod
+    def _arguments_types(cls):
+        return {'name': command.BasicOption(str),
+                'source': command.ListOfOptions(command.BasicOption(str)),
+                'pts': command.ListOfOptions(command.BasicOption(float)),
+                'pts_size': command.ListOfOptions(command.BasicOption(float)),
+                'constr': command.ListOfOptions(command.BasicOption(str))
+                }
+
+    def _build_grid(self):
+        so = self.options
+        try:
+            # 0) get source surfaces
+            surf = []
+            for s in so['source']:
+                surf.append(self.any_surface_by_name(s).surface3())
+            # 1) get constraint surfaces
+            constr = []
+            for s in so['constr']:
+                constr.append(self.any_surface_by_name(s).surface3())
+            # 2) call main function
+            c_return = g3core.tetrahedral_fill(
+                [x.cdata for x in surf],
+                [x.cdata for x in constr],
+                so['pts'], so['pts_size'])
+            return g3core.grid3_from_c(c_return)
+        except Exception as e:
+            raise command.ExecutionError("Tetrahedral meshing failed", self, e)
+        finally:
+            pass

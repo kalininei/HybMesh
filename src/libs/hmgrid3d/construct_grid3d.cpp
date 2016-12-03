@@ -14,40 +14,36 @@ HMGrid3D::SGrid cns::Cuboid(HMGrid3D::Vertex leftp, double lx, double ly, double
 	for (int i=0; i<nx+1; ++i) x[i] = leftp.x + i*hx;
 	for (int j=0; j<ny+1; ++j) y[j] = leftp.y + j*hy;
 	for (int k=0; k<nz+1; ++k) z[k] = leftp.z + k*hz;
-	for (int k=0; k<nz+1; ++k){
-		for (int j=0; j<ny+1; ++j){
-			for (int i=0; i<nx+1; ++i){
-				vert.emplace_back(new Vertex(x[i], y[j], z[k]));
-			}
-		}
+	for (int k=0; k<nz+1; ++k)
+	for (int j=0; j<ny+1; ++j)
+	for (int i=0; i<nx+1; ++i){
+		vert.emplace_back(new Vertex(x[i], y[j], z[k]));
 	}
 	int sx=1, sy=nx+1, sz=(nx+1)*(ny+1), N=(nx+1)*(ny+1)*(nz+1);
 	ret.vvert = vert;
 	//Edges
 	ShpVector<Edge> xedges(N), yedges(N), zedges(N);
 	int gi=0;
-	for (int k=0; k<nz+1; ++k){
-		for (int j=0; j<ny+1; ++j){
-			for (int i=0; i<nx+1; ++i){
-				auto p1 = vert[gi];
-				//x edge
-				if (i<nx){
-					auto p2 = vert[gi+sx];
-					xedges[gi].reset(new Edge(p1, p2));
-				}
-				//y edge
-				if (j<ny){
-					auto p2 = vert[gi+sy];
-					yedges[gi].reset(new Edge(p1, p2));
-				}
-				//z edge
-				if (k<nz){
-					auto p2 = vert[gi+sz];
-					zedges[gi].reset(new Edge(p1, p2));
-				}
-				++gi;
-			}
+	for (int k=0; k<nz+1; ++k)
+	for (int j=0; j<ny+1; ++j)
+	for (int i=0; i<nx+1; ++i){
+		auto p1 = vert[gi];
+		//x edge
+		if (i<nx){
+			auto p2 = vert[gi+sx];
+			xedges[gi].reset(new Edge(p1, p2));
 		}
+		//y edge
+		if (j<ny){
+			auto p2 = vert[gi+sy];
+			yedges[gi].reset(new Edge(p1, p2));
+		}
+		//z edge
+		if (k<nz){
+			auto p2 = vert[gi+sz];
+			zedges[gi].reset(new Edge(p1, p2));
+		}
+		++gi;
 	}
 	std::copy_if(xedges.begin(), xedges.end(), std::back_inserter(ret.vedges),
 			[](shared_ptr<Edge>& e)->bool{ return e != nullptr; });
@@ -58,27 +54,25 @@ HMGrid3D::SGrid cns::Cuboid(HMGrid3D::Vertex leftp, double lx, double ly, double
 	//Faces
 	ShpVector<Face> xfaces(N), yfaces(N), zfaces(N);
 	gi=0;
-	for (int k=0; k<nz+1; ++k){
-		for (int j=0; j<ny+1; ++j){
-			for (int i=0; i<nx+1; ++i){
-				//z face
-				if (i<nx && j<ny){
-					auto e1=yedges[gi], e2=xedges[gi+sy], e3=yedges[gi+sx], e4=xedges[gi];
-					zfaces[gi].reset(new Face({e1, e2, e3, e4}));
-				}
-				//y face
-				if (i<nx && k<nz){
-					auto e1=xedges[gi], e2=zedges[gi+sx], e3=xedges[gi+sz], e4=zedges[gi];
-					yfaces[gi].reset(new Face({e1, e2, e3, e4}));
-				};
-				//x face
-				if (j<ny && k<nz){
-					auto e1=zedges[gi], e2=yedges[gi+sz], e3=zedges[gi+sy], e4=yedges[gi];
-					xfaces[gi].reset(new Face({e1, e2, e3, e4}));
-				}
-				++gi;
-			}
+	for (int k=0; k<nz+1; ++k)
+	for (int j=0; j<ny+1; ++j)
+	for (int i=0; i<nx+1; ++i){
+		//z face
+		if (i<nx && j<ny){
+			auto e1=yedges[gi], e2=xedges[gi+sy], e3=yedges[gi+sx], e4=xedges[gi];
+			zfaces[gi].reset(new Face({e1, e2, e3, e4}));
 		}
+		//y face
+		if (i<nx && k<nz){
+			auto e1=xedges[gi], e2=zedges[gi+sx], e3=xedges[gi+sz], e4=zedges[gi];
+			yfaces[gi].reset(new Face({e1, e2, e3, e4}));
+		};
+		//x face
+		if (j<ny && k<nz){
+			auto e1=zedges[gi], e2=yedges[gi+sz], e3=zedges[gi+sy], e4=yedges[gi];
+			xfaces[gi].reset(new Face({e1, e2, e3, e4}));
+		}
+		++gi;
 	}
 	std::copy_if(xfaces.begin(), xfaces.end(), std::back_inserter(ret.vfaces),
 			[](shared_ptr<Face>& f){ return f != nullptr; });
@@ -88,21 +82,19 @@ HMGrid3D::SGrid cns::Cuboid(HMGrid3D::Vertex leftp, double lx, double ly, double
 			[](shared_ptr<Face>& f){ return f != nullptr; });
 	//Cells
 	ret.vcells.reserve(nx*ny*nz);
-	for (int k=0; k<nz; ++k){
-		for (int j=0; j<ny; ++j){
-			for (int i=0; i<nx; ++i){
-				gi = i*sx + j*sy + k*sz;
-				ret.vcells.emplace_back(new Cell);
-				auto c = ret.vcells.back();
-				auto xleft = xfaces[gi]; xleft->left = c;
-				auto xright = xfaces[gi+sx]; xright->right = c;
-				auto yleft =  yfaces[gi]; yleft->left = c;
-				auto yright = yfaces[gi+sy]; yright->right = c;
-				auto zleft = zfaces[gi]; zleft->left = c;
-				auto zright = zfaces[gi+sz]; zright->right = c;
-				c->faces = {xleft, xright, yleft, yright, zleft, zright};
-			}
-		}
+	for (int k=0; k<nz; ++k)
+	for (int j=0; j<ny; ++j)
+	for (int i=0; i<nx; ++i){
+		gi = i*sx + j*sy + k*sz;
+		ret.vcells.emplace_back(new Cell);
+		auto c = ret.vcells.back();
+		auto xleft = xfaces[gi]; xleft->left = c;
+		auto xright = xfaces[gi+sx]; xright->right = c;
+		auto yleft =  yfaces[gi]; yleft->left = c;
+		auto yright = yfaces[gi+sy]; yright->right = c;
+		auto zleft = zfaces[gi]; zleft->left = c;
+		auto zright = zfaces[gi+sz]; zright->right = c;
+		c->faces = {xleft, xright, yleft, yright, zleft, zright};
 	}
 	//Boundary Types
 	auto setbt = [](shared_ptr<Face> f, int nor, int nol){
@@ -256,7 +248,6 @@ HMGrid3D::SGrid cns::SweepGrid2D(const GridGeom& g, const vector<double>& zcoord
 			}
 		}
 	}
-
 	ret.actualize_serial_data();
 	return ret;
 }

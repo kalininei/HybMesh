@@ -9,6 +9,7 @@ namespace hme = HMGrid3D::Export;
 HMCallback::FunctionWithCallback<hme::TGridVTK> hme::GridVTK;
 HMCallback::FunctionWithCallback<hme::TBoundaryVTK> hme::BoundaryVTK;
 HMCallback::FunctionWithCallback<hme::TAllVTK> hme::AllVTK;
+HMCallback::FunctionWithCallback<hme::TSurfaceVTK> hme::SurfaceVTK;
 
 //==================== cell expression implementation
 int hme::vtkcell_expression::wsize() const { return 1+pts.size(); }
@@ -161,7 +162,7 @@ hme::vtkcell_expression hme::vtkcell_expression::build(std::vector<std::vector<i
 	if (ret.try_hexahedron(cint)) return ret;
 	if (ret.try_wedge(cint)) return ret;
 	if (ret.try_pyramid(cint)) return ret;
-	std::string s("Cannot treat 3D cell with ");
+	std::string s("Can not treat 3D cell with ");
 	s += std::to_string(cint.size());
 	s += " faces as valid tetrahedron/hexahedron/prism/pyramid";
 	throw std::runtime_error(s.c_str());
@@ -180,7 +181,7 @@ vector<hme::vtkcell_expression> hme::vtkcell_expression::cell_assembler(const SG
 			int iface = ser.vcells[icell]->faces[j]->id;
 			cell_points.push_back(aface[iface]);
 			//reverse to guarantee left cell
-			int leftcell = ser.vfaces[iface]->left.lock()->id;
+			int leftcell = ser.face_cell[2*iface];
 			if (leftcell != icell) {
 				auto& vertv = cell_points.back();
 				std::reverse(vertv.begin(), vertv.end());
@@ -230,6 +231,10 @@ void hme::TGridVTK::_run(const SGrid& ser, std::string fn){
 	for (auto& f: vtkcell) fs<<f.stype()<<std::endl;
 
 	fs.close();
+}
+
+void hme::TGridVTK::_run(const GridData& ser, std::string fn){
+	return _run(SGrid(ser), fn);
 }
 
 namespace {
@@ -322,9 +327,9 @@ struct bnd_face_data{
 		fs<<"DATASET UNSTRUCTURED_GRID"<<std::endl;
 		fs<<"POINTS "<<n_vert()<< " float"<<std::endl;
 		for (int i=0; i<3*n_vert(); i+=3){
-			fs<<vertices_raw[i]<<" ";
-			fs<<vertices_raw[i+1]<<" ";
-			fs<<vertices_raw[i+2]<<"\n";
+			fs<<(float)vertices_raw[i]<<" ";
+			fs<<(float)vertices_raw[i+1]<<" ";
+			fs<<(float)vertices_raw[i+2]<<"\n";
 		}
 	}
 	void write_faces(std::ostream& fs){
@@ -407,8 +412,64 @@ void hme::TBoundaryVTK::_run(const SGrid& ser, std::string fn){
 
 	fs.close();
 }
-
+void hme::TBoundaryVTK::_run(const GridData& ser, std::string fn){
+	return _run(SGrid(ser), fn);
+}
 void hme::TAllVTK::_run(const SGrid& g, std::string fngrid, std::string fnbnd){
 	GridVTK.MoveCallback(*callback, g, fngrid);
 	BoundaryVTK.MoveCallback(*callback, g, fnbnd);
+}
+void hme::TAllVTK::_run(const GridData& g, std::string fngrid, std::string fnbnd){
+	return _run(SGrid(g), fngrid, fnbnd);
+}
+void hme::TSurfaceVTK::_run(const SSurface& s, std::string fn){
+	//header
+	std::ofstream fs(fn);
+	fs<<"# vtk DataFile Version 3.0"<<std::endl;
+	fs<<"3D Surface"<<std::endl;
+	fs<<"ASCII"<<std::endl;
+
+	callback->step_after(40, "Writing vertices");
+	//points
+	fs<<"DATASET UNSTRUCTURED_GRID"<<std::endl;
+	fs<<"POINTS "<<s.n_vert<< " float"<<std::endl;
+	for (int i=0; i<3*s.n_vert; i+=3){
+		fs<<(float)s.vert[i+0]<<" ";
+		fs<<(float)s.vert[i+1]<<" ";
+		fs<<(float)s.vert[i+2]<<"\n";
+	}
+
+	//faces
+	callback->step_after(30, "Writing faces");
+	int raw_dim = s.n_faces;
+	for (int i=0; i<s.n_faces; ++i) raw_dim += s.face_edge[i].size();
+	fs<<"CELLS  "<<s.n_faces<<"   "<<raw_dim<<std::endl;
+	for (int i=0; i<s.n_faces; ++i){
+		auto& fv = s.face_vertex(i);
+		fs<<fv.size();
+		for (int j=0; j<fv.size(); ++j) fs<<" "<<fv[j]; fs<<"\n";
+	}
+	fs<<"CELL_TYPES  "<<s.n_faces<<std::endl;
+	for (int i=0; i<s.n_faces;++i) fs<<7<<" "; fs<<std::endl;
+
+	//additional info
+	callback->step_after(10, "Boundary types");
+	fs<<"CELL_DATA"<<" "<<s.n_faces<<std::endl;
+	fs<<"SCALARS boundary_type int 1"<<std::endl;
+	fs<<"LOOKUP_TABLE default"<<std::endl;
+	for (int i=0; i<s.n_faces; ++i){
+		fs<<s.btypes[i]<<std::endl;
+	}
+
+	fs.close();
+}
+void hme::TSurfaceVTK::_run(const FaceData& s, std::string fn){
+	callback->step_after(20, "Serializing data");
+	SSurface ss;
+	ss.faces = s;
+	ss.actualize_serial_data();
+	SurfaceVTK.MoveCallback(*callback, ss, fn);
+}
+void hme::TSurfaceVTK::_run(const Surface& s, std::string fn){
+	return _run(s.faces, fn);
 }

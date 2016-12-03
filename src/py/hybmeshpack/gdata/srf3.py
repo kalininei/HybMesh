@@ -20,6 +20,10 @@ class _AbstractSurface3(object):
     def deepcopy(self):
         raise NotImplementedError
 
+    def surface3(self):
+        "returns Surface3 object"
+        raise NotImplementedError
+
 
 class Surface3(_AbstractSurface3):
     def __init__(self, cdata):
@@ -50,6 +54,9 @@ class Surface3(_AbstractSurface3):
             ret.append(Surface3(s))
         return ret
 
+    def surface3(self):
+        return self
+
 
 class GridSurface(_AbstractSurface3):
     def __init__(self, g):
@@ -75,3 +82,6 @@ class GridSurface(_AbstractSurface3):
     def deepcopy(self):
         cp = s3core.extract_grid3_surface(self.cgrid)
         return Surface3(cp)
+
+    def surface3(self):
+        return self.deepcopy()
