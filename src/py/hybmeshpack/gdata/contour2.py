@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 "2D contours"
 import copy
-import xml.etree.ElementTree as ET
 import hybmeshpack.basic.geom as bgeom
 import hybmeshpack.basic.proc as bp
+from hybmeshpack.hmcore import c2 as c2core
 
 
 class AbstractContour2(bgeom.Point2SetStruct):
@@ -49,16 +49,6 @@ class AbstractContour2(bgeom.Point2SetStruct):
         direction is arbitrary
         """
         raise NotImplementedError
-
-    def xml_save(self, xmlnode):
-        'save to xml Node'
-        xmlnode.attrib["tp"] = self.__class__.__name__
-
-    @classmethod
-    def create_from_xml(cls, xmlnode):
-        'create from xml Node'
-        tp = globals()[xmlnode.attrib['tp']]
-        return tp.create_from_xml(xmlnode)
 
 
 class Contour2(AbstractContour2):
@@ -158,18 +148,34 @@ class Contour2(AbstractContour2):
     def separate(self):
         """ ->[Contour2]
             build set of single connected contours.
-            Returns None if self is single connected by itself
+            Returns None if self is singly connected by itself
         """
-        srt_eds = self.sorted_edges()
-        if len(srt_eds) == 1:
-            return None
-        ret = []
-        for srt in srt_eds:
-            c = Contour2()
-            edg = [self.edges[i] for i in srt]
-            bnd = [self.edge_bnd(i) for i in srt]
-            c.append_edges(copy.deepcopy(edg), bnd)
-            ret.append(c)
+        cret, cself = [], 0
+        try:
+            cself = c2core.cont2_to_c(self)
+            btypes = [0 for i in range(self.n_edges())]
+            for k, v in self.bnds.iteritems():
+                btypes[k] = v
+            cret, newbtypes = c2core.quick_separate_contour(cself, btypes)
+            if len(cret) == 1:
+                return None
+            ret = []
+            k = 0
+            for c in cret:
+                ret.append(c2core.cont2_from_c(c))
+                for i in range(ret[-1].n_edges()):
+                    b = newbtypes[k]
+                    k += 1
+                    if b > 0:
+                        ret[-1].bnds[i] = b
+        except:
+            raise
+        finally:
+            for c in cret:
+                c2core.free_cont2(c)
+            if cself != 0:
+                c2core.free_cont2(cself)
+
         return ret
 
     def simplify(self, angle):
@@ -183,73 +189,31 @@ class Contour2(AbstractContour2):
         """
         if angle == 0:
             angle = 1e-6
-        angle = angle / 180.0 * bgeom.math.pi
-        epts = self.edges_points()
-        ret = Contour2()
+        cret, cself = 0, 0
+        ret = None
+        try:
+            cself = c2core.cont2_to_c(self)
+            btypes = [0 for i in range(self.n_edges())]
+            for k, v in self.bnds.iteritems():
+                btypes[k] = v
+            cret, newbtypes = c2core.simplify_contour(cself, btypes, angle)
+            ret = []
+            k = 0
+            ret = c2core.cont2_from_c(cret)
+            if ret.n_edges() == self.n_edges():
+                return None
+            for i in range(ret.n_edges()):
+                b = newbtypes[i]
+                if b > 0:
+                    ret[-1].bnds[i] = b
+        except:
+            raise
+        finally:
+            if cret != 0:
+                c2core.free_cont2(cret)
+            if cself != 0:
+                c2core.free_cont2(cself)
 
-        def check_angle(i, ed):
-            """ checks angle for first point of i-th edge of ed and
-                concatenates this edge with the previous one if necessary.
-                Returns True if edge was concatenated.
-            """
-            if ed[i][2] != ed[i - 1][2]:
-                return False
-            p1 = self.points[ed[i - 1][0]]
-            p2 = self.points[ed[i][0]]
-            p3 = self.points[ed[i][1]]
-            a = bgeom.angle_3pnt(p1, p2, p3)
-            if abs(a - bgeom.math.pi) >= angle:
-                return False
-            else:
-                ed[i - 1][1] = ed[i][1]
-                ed.pop(i)
-                return True
-
-        for srt in self.sorted_edges():
-            #sort points
-            septs = [epts[i] for i in srt]
-            for i in range(1, len(septs)):
-                if septs[i][0] != septs[i - 1][1]:
-                    septs[i] = [septs[i][1], septs[i][0], septs[i][2]]
-            #build simplified contour
-            closed = len(srt) > 2 and septs[0][0] == septs[-1][1]
-            i = 0 if closed else 1
-            while i < len(septs):
-                if not check_angle(i, septs):
-                    i += 1
-            #add to returning contour
-            bnds = [k[2] for k in septs]
-            septs = [[self.points[k[0]], self.points[k[1]]] for k in septs]
-            ret.append_edges(copy.deepcopy(septs), bnds)
-
-        return ret if ret.n_edges() != self.n_edges() else None
-
-    def xml_save(self, xmlnode):
-        super(Contour2, self).xml_save(xmlnode)
-        #nodes
-        ET.SubElement(xmlnode, "COORDS").text = self.points_to_str()
-
-        #edges
-        a = []
-        [a.extend(x[0:2]) for x in self.edges_points()]
-        ET.SubElement(xmlnode, "EDGES").text = ' '.join(map(str, a))
-
-        #boundaries
-        a = map(self.edge_bnd, range(self.n_edges()))
-        ET.SubElement(xmlnode, "BOUNDARY").text = ' '.join(map(str, a))
-
-    @classmethod
-    def create_from_xml(cls, xmlnode):
-        ret = cls()
-        ret.append_points_from_str(xmlnode.find("COORDS").text)
-        ret._pnts_ind = {p: i for i, p in enumerate(ret.points)}
-        it = iter(map(int, xmlnode.find("EDGES").text.split()))
-        ret.edges = [[ret.points[i], ret.points[j]] for i, j in zip(it, it)]
-        bnode = xmlnode.find("BOUNDARY")
-        if bnode is not None and bnode.text is not None:
-            bs = map(int, bnode.text.split())
-            d = {k: v for k, v in enumerate(bs) if v != 0}
-            ret.set_edge_bnd(d)
         return ret
 
     @classmethod
@@ -324,28 +288,6 @@ class ClosedContour2(AbstractContour2):
             direction is arbitrary
         """
         return [range(self.n_edges())]
-
-    def xml_save(self, xmlnode):
-        super(ClosedContour2, self).xml_save(xmlnode)
-        #nodes
-        ET.SubElement(xmlnode, "COORDS").text = self.points_to_str()
-
-        #boundaries
-        a = map(self.edge_bnd, range(self.n_edges()))
-        ET.SubElement(xmlnode, "BOUNDARY").text = ' '.join(map(str, a))
-
-    @classmethod
-    def create_from_xml(cls, xmlnode):
-        ret = cls()
-        #points
-        ret.fill_points_from_str(xmlnode.find('COORDS').text)
-        #boundaries
-        bnode = xmlnode.find("BOUNDARY")
-        if bnode is not None and bnode.text is not None:
-            bs = map(int, bnode.text.split())
-            d = {k: v for k, v in enumerate(bs) if v != 0}
-            ret.set_edge_bnd(d)
-        return ret
 
 
 class ContourFromGrid2(AbstractContour2):

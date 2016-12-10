@@ -43,6 +43,10 @@ inline bool ISEQLOWER(double x, double y){ return x<y+geps; }
 inline bool ISEQGREATER(double x, double y){ return x>y-geps; }
 inline bool ISLOWER(double x, double y){ return x<y-geps; }
 inline bool ISGREATER(double x, double y){ return x>y+geps; }
+inline bool ISIN_EE(double x, double start, double end){ return x>start-geps && x<end+geps; }
+inline bool ISIN_SS(double x, double start, double end){ return x>start+geps && x<end-geps; }
+inline bool ISIN_SE(double x, double start, double end){ return x>start+geps && x<end+geps; }
+inline bool ISIN_ES(double x, double start, double end){ return x>start-geps && x<end-geps; }
 inline int SIGN(double x){ if (ISZERO(x)) return 0; else return (x<0) ? -1 : 1; }
 inline double sqr(double x){ return x*x; }
 

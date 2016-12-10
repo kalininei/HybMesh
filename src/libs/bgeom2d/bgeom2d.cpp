@@ -89,7 +89,7 @@ bool SectCross(const Point& p1S, const Point& p1E, const Point& p2S, const Point
 }
 
 bool SectCrossWRenorm(const Point& p1S, const Point& p1E, const Point& p2S, const Point& p2E, double* ksieta) noexcept{
-	vector<Point> p {p1S, p1E, p2S, p2E};
+	std::array<Point, 4> p {p1S, p1E, p2S, p2E};
 	ScaleBase s = ScaleBase::doscale(p);
 	bool ret = SectCross(p[0], p[1], p[2], p[3], ksieta);
 	return ret;
@@ -274,4 +274,82 @@ bool BoundingBox::contains(const Point& p1, const Point& p2) const{
 vector<Point> BoundingBox::FourPoints() const{
 	return { Point(xmin, ymin), Point(xmax, ymin),
 		Point(xmax, ymax), Point(xmin, ymax) };
+}
+
+BoundingBoxFinder::BoundingBoxFinder(const BoundingBox& area, double L){
+	totaldata = 0;
+	x0 = area.xmin;
+	y0 = area.ymin;
+	mx = std::ceil(area.lenx()/L)+1;
+	my = std::ceil(area.leny()/L)+1;
+	hx = area.lenx()/(mx-1);
+	hy = area.leny()/(my-1);
+	data.resize((mx+1)*(my+1));
+}
+void BoundingBoxFinder::addentry(const BoundingBox& e){
+	int x0 = get_xstart(e.xmin);
+	int x1 = get_xend(e.xmax);
+	int y0 = get_ystart(e.ymin);
+	int y1 = get_yend(e.ymax);
+	for (int i=x0; i<=x1; ++i)
+	for (int j=y0; j<=y1; ++j){
+		int gi = j*(mx+1)+i;
+		data[gi].push_back(totaldata);
+	}
+	++totaldata;
+}
+int BoundingBoxFinder::get_xstart(double x) const{
+	int ret = (x - x0) / hx;
+	if (ISEQ(ret*hx, x-x0)) --ret;
+	if (ret<0) ret = 0;
+	return ret;
+}
+int BoundingBoxFinder::get_ystart(double y) const{
+	int ret = (y - y0) / hy;
+	if (ISEQ(ret*hy, y-y0)) --ret;
+	if (ret<0) ret = 0;
+	return ret;
+}
+int BoundingBoxFinder::get_xend(double x) const{
+	int ret = (x - x0) / hx;
+	if (ISEQ((ret+1)*hx, x-x0)) ++ret;
+	if (ret>mx) ret = mx;
+	return ret;
+}
+int BoundingBoxFinder::get_yend(double y) const{
+	int ret = (y - y0) / hy;
+	if (ISEQ((ret+1)*hy, y-y0)) ++ret;
+	if (ret>my) ret = my;
+	return ret;
+}
+
+vector<int> BoundingBoxFinder::suspects(const BoundingBox& bb) const{
+	return allsuspects(
+		get_xstart(bb.xmin), get_xend(bb.xmax),
+		get_ystart(bb.ymin), get_yend(bb.ymax));
+}
+vector<int> BoundingBoxFinder::suspects(const Point& bb) const{
+	return allsuspects(
+		get_xstart(bb.x), get_xend(bb.x),
+		get_ystart(bb.y), get_yend(bb.y));
+}
+
+vector<int> BoundingBoxFinder::allsuspects(int x0, int x1, int y0, int y1) const{
+	vector<int> ret;
+	for (int ix=x0; ix<=x1; ++ix)
+	for (int iy=y0; iy<=y1; ++iy){
+		addsuspects(ix, iy, ret);
+	}
+	//no dublicates
+	std::sort(ret.begin(), ret.end());
+	auto iend = std::unique(ret.begin(), ret.end());
+	ret.resize(iend - ret.begin());
+	return ret;
+}
+
+void BoundingBoxFinder::addsuspects(int ix, int iy, vector<int>& ret) const{
+	int gi = iy*(mx+1)+ix;
+	int sz = data[gi].size();
+	ret.resize(ret.size()+sz);
+	std::copy(data[gi].begin(), data[gi].end(), ret.end()-sz);
 }

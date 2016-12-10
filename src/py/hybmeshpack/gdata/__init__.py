@@ -127,6 +127,15 @@ class Framework(object):
         else:
             return None
 
+    def get_any(self, name):
+        '-> any 2d object by name'
+        if name in self.contours2:
+            return self.contours2[name]
+        elif name in self.grids2:
+            return self.grids2[name]
+        else:
+            return None
+
     #overriden from CommandReceiver
     def to_zero_state(self):
         'deletes all grids and contours'

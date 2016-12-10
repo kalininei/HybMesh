@@ -57,7 +57,7 @@ struct Surface{
 struct SurfaceTree{
 	struct TNode: public Surface{
 		TNode():level(0){}
-		TNode(const Surface& s, int level=0): Surface(s), level(0){}
+		TNode(const Surface& s, int level=0): Surface(s), level(level){}
 		weak_ptr<TNode> parent;
 		WpVector<TNode> children;
 		int level;

@@ -23,6 +23,28 @@ template<class C>
 void constant_ids_pvec(const C& inp, int val){
 	for (int i=0; i<inp.size(); ++i) inp[i]->id = val;
 }
+//class which keeps enumeration of *Data
+//and places it back on delete
+template<class C>
+struct RestoreIds{
+	vector<int> ids;
+	vector<typename C::value_type> _deepdata;
+	const C* _shallowdata;
+	RestoreIds(const C& pvec, bool deepcopy=false): _shallowdata(&pvec){
+		ids.resize(pvec.size());
+		for (int i=0; i<pvec.size(); ++i) ids[i] = pvec[i]->id;
+		if (deepcopy){
+			_deepdata.resize(pvec.size());
+			for (int i=0; i<pvec.size(); ++i) _deepdata[i] = pvec[i];
+		}
+	}
+	~RestoreIds(){
+		if (_deepdata.size() == 0)
+			for (int i=0; i<ids.size(); ++i) (*_shallowdata)[i]->id = ids[i];
+		else
+			for (int i=0; i<ids.size(); ++i) _deepdata[i]->id = ids[i];
+	}
+};
 
 struct Vertex: public Point3{
 	//==== data
@@ -147,7 +169,9 @@ struct Cell{
 	int n_edges() const;
 	int n_vertices() const;
 	std::tuple<int, int, int> n_fev() const; //number of faces, edges, vertices
-
+	
+	double volume() const;
+	
 	// ===== Data access
 	ShpVector<Vertex> allvertices() const;
 	ShpVector<Face> allfaces() const;
@@ -166,6 +190,8 @@ struct GridData{
 	//set id's of primitives to its actual indicies
 	void enumerate_all() const;
 
+	//sum of grid cells volume
+	double volume() const;
 };
 
 

@@ -1,6 +1,7 @@
 #include "algos.hpp"
 #include "constructor.hpp"
 #include "clipper_core.hpp"
+#include <unordered_map>
 
 using namespace HMCont2D;
 namespace cns = Algos;
@@ -70,6 +71,171 @@ ExtendedTree cns::Simplified(const ExtendedTree& t1){
 Contour cns::Simplified(const Contour& cont){
 	auto p = cont.corner_points();
 	return HMCont2D::Constructor::ContourFromPoints(p, cont.is_closed());
+}
+
+ECollection cns::Simplified(const ECollection& ecol, double degree_angle, bool id_nobreak){
+	double maxcos = cos(degree_angle/180.*M_PI);
+	auto domerge = [&maxcos](Point* p0, Point* p1, Point* p2)->bool{
+		double cos = vecDot(*p1-*p0, *p2-*p1) / vecLen(*p1-*p0) / vecLen(*p2-*p1);
+		return cos>=maxcos;
+	};
+	ECollection ret;
+	vector<Contour> sc = Assembler::SimpleContours(ecol);
+	for (auto& c: sc){
+		auto op = c.ordered_points();
+		vector<Point*> newp(1, op[0]);
+		Point* p0 = op[0];
+		for (int i=1; i<op.size()-1; ++i){
+			if ( (id_nobreak && c.value(i-1).id != c.value(i).id) ||
+			     !domerge(p0, op[i], op[i+1]) ){
+				newp.push_back(p0 = op[i]);
+			}
+		}
+		newp.push_back(op.back());
+		ret.Unite(Constructor::ContourFromPoints(op));
+	}
+	return ret;
+}
+
+namespace{
+struct _TEdgeCrossAnalyser{
+	vector<TCoordSet> ecross_set;
+	_TEdgeCrossAnalyser(int nedges): ecross_set(nedges) {}
+	void add_crosses(Edge* e1, Edge* e2, int i1, int i2){
+		double ksieta[2];
+		SectCross(*e1->pstart, *e1->pend, *e2->pstart, *e2->pend, ksieta);
+		if (ksieta[0] == gbig && ksieta[1] == gbig){
+			//if edges are parrallel
+			isOnSection(*e1->pstart, *e2->pstart, *e2->pend, ksieta[0]);
+			if (ISIN_SS(ksieta[0], 0, 1)) ecross_set[i2].insert(ksieta[0]);
+			isOnSection(*e1->pend, *e2->pstart, *e2->pend, ksieta[0]);
+			if (ISIN_SS(ksieta[0], 0, 1)) ecross_set[i2].insert(ksieta[0]);
+			isOnSection(*e2->pstart, *e1->pstart, *e1->pend, ksieta[0]);
+			if (ISIN_SS(ksieta[0], 0, 1)) ecross_set[i1].insert(ksieta[0]);
+			isOnSection(*e2->pend, *e1->pstart, *e1->pend, ksieta[0]);
+			if (ISIN_SS(ksieta[0], 0, 1)) ecross_set[i1].insert(ksieta[0]);
+		} else if (!Edge::AreConnected(*e1, *e2)){
+			if (ISEQGREATER(ksieta[0], 0) && ISEQLOWER(ksieta[0], 1) &&
+			    ISEQGREATER(ksieta[1], 0) && ISEQLOWER(ksieta[1], 1)){
+				//if not connected edges cross
+				ecross_set[i1].insert(ksieta[0]);
+				ecross_set[i2].insert(ksieta[1]);
+			}
+		}
+	}
+	void divide_edges(ShpVector<Edge>& ecol, ShpVector<Point>& pcol){
+		for (int i=0; i<ecross_set.size(); ++i) if (ecross_set[i].size()>0){
+			auto& st = ecross_set[i];
+			auto& edge = *ecol[i];
+			if (ISEQ(*st.begin(), 0)) st.erase(st.begin());
+			if (st.size() == 0) continue;
+			if (ISEQ(*st.rbegin(), 1)) st.erase(std::prev(st.end()));
+			if (st.size() == 0) continue;
+			Point* p1 = edge.pstart;
+			Point* p2 = edge.pend;
+			vector<Point*> pa(1, p1);
+			for (auto ksi: st){
+				pcol.emplace_back(new Point(Point::Weigh(*p1, *p2, ksi)));
+				pa.push_back(pcol.back().get());
+			}
+			pa.push_back(p2);
+			for (int i=0; i<pa.size()-1; ++i){
+				ecol.emplace_back(new Edge(edge));
+				ecol.back()->pstart = pa[i];
+				ecol.back()->pend = pa[i+1];
+				//edge with equal bounds will be removed in 
+				//MergePoints procedure
+				edge.pstart = edge.pend = pa[0];
+			}
+		}
+	}
+};
+}
+
+Container<ECollection> cns::NoCrosses(const ECollection& ecol){
+	Container<ECollection> ret;
+	Container<ECollection>::DeepCopy(ecol, ret);
+	//Find crosses
+	BoundingBox area = ECollection::BBox(ret, geps);
+	BoundingBoxFinder finder(area, area.maxlen()/20);
+	for (auto e: ret) finder.addentry(e->bbox());
+	_TEdgeCrossAnalyser ec(ret.size());
+	for (int i=0; i<ecol.size(); ++i){
+		auto s = finder.suspects(ret.value(i).bbox());
+		for (auto ei: s) if (ei!=i){
+			ec.add_crosses(ret.pvalue(i), ret.pvalue(ei), i, ei);
+		}
+	}
+	//Part edges
+	ec.divide_edges(ret.data, ret.pdata.data);
+	//Merge points
+	MergePoints(ret);
+	DeleteUnusedPoints(ret);
+	return ret;
+}
+
+// =================================== merge
+namespace{
+struct _TEdgeSet{
+	std::set<std::pair<Point*, Point*>> data;
+	vector<bool> added;
+	void add_edge(Edge* ed){
+		added.resize(added.size() + 1);
+		Point* p1 = ed->pstart;
+		Point* p2 = ed->pend;
+		added.back() = false;
+		if (p1 != p2){
+			if (p1>p2) std::swap(p1, p2);
+			auto er = data.emplace(p1, p2);
+			added.back() = er.second;
+		}
+	}
+	bool was_used(int i){ return added[i]; }
+};
+}
+void cns::MergePoints(ECollection& ecol){
+	auto ap = ecol.all_points();
+	auto pe = ecol.tab_points_edges();
+	vector<std::vector<int>> shadows(ap.size());
+	vector<bool> isactive(ap.size(), true);
+	for (int i=0; i<ap.size(); ++i)
+	for (int j=0; j<i; ++j) if (isactive[j]){
+		if (Point::meas(*ap[i], *ap[j]) < geps*geps){
+			shadows[j].push_back(i);
+			isactive[i] = false;
+			break;
+		}
+	}
+	for (int i=0; i<ap.size(); ++i)
+	for (auto psh: shadows[i]){
+		for (auto e: pe[psh]){
+			auto edge = ecol.pvalue(e);
+			if (edge->pstart == ap[psh])
+				edge->pstart = ap[i];
+			else
+				edge->pend = ap[i];
+		}
+	}
+	_TEdgeSet es;
+	for (auto e: ecol) es.add_edge(e.get());
+	ShpVector<Edge> newedge;
+	for (int i=0; i<ecol.size(); ++i) if (es.was_used(i))
+		newedge.push_back(ecol.data[i]);
+	std::swap(newedge, ecol.data);
+}
+
+void cns::DeleteUnusedPoints(Container<ECollection>& econt){
+	auto ap1 = econt.all_points();
+	auto& ap2 = econt.pdata.data;
+	std::unordered_set<Point*> ap1set(ap1.begin(), ap1.end());
+	vector<int> used_points;
+	for (int i=0; i<ap2.size(); ++i){
+		if (ap1set.find(ap2[i].get()) != ap1set.end()) used_points.push_back(i);
+	}
+	if (used_points.size() == ap2.size()) return;
+	ShpVector<Point> newap2;
+	for (int i: used_points) newap2.push_back(ap2[i]);
+	std::swap(econt.pdata.data, newap2);
 }
 
 
@@ -276,7 +442,7 @@ Point smoothed_direction_step(const HMCont2D::Contour& c, double w0, double w_st
 Vect cns::SmoothedDirection2(const Contour& c, const Point *p, int direction, double len_forward, double len_backward){
 	//preliminary simplification
 	auto cont = HMCont2D::Algos::Simplified(c);
-	//descrease lens to half of contour lengths
+	//decrease lens to half of contour lengths
 	double full_len = cont.length();
 	if (len_forward > full_len/2) len_forward = full_len/2;
 	if (len_backward > full_len/2) len_backward = full_len/2;

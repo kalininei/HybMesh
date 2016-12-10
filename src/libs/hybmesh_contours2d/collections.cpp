@@ -56,6 +56,42 @@ vector<Point*> ECollection::all_points() const{
 	});
 	return ret;
 }
+vector<std::array<int, 2>> ECollection::tab_edges_points() const{
+	vector<Point*> ap = all_points();
+	auto& ae = data;
+	vector<std::array<int, 2>> edges_points(ae.size());
+	auto _indexer = aa::ptr_container_indexer(ap);
+	_indexer.convert();
+	for (int i=0; i<ae.size(); ++i){
+		edges_points[i][0] = _indexer.index(ae[i]->pstart);
+		edges_points[i][1] = _indexer.index(ae[i]->pend);
+	}
+	_indexer.restore();
+	return edges_points;
+}
+vector<vector<int>> ECollection::tab_points_edges() const{
+	auto ep = tab_edges_points();
+	int maxp = -1;
+	for (auto& it: ep) maxp = std::max(std::max(maxp, it[0]), it[1]);
+	vector<vector<int>> ret(maxp+1);
+	for (int i=0; i<ep.size(); ++i){
+		ret[ep[i][0]].push_back(i);
+		ret[ep[i][1]].push_back(i);
+	}
+	return ret;
+}
+vector<vector<int>> ECollection::tab_edges_edges() const{
+	auto pe = tab_points_edges();
+	vector<vector<int>> ret(size());
+	for (auto& it: pe)
+	for (int i=1; i<it.size(); ++i)
+	for (int j=0; j<i; ++j){
+		ret[it[i]].push_back(it[j]);
+		ret[it[j]].push_back(it[i]);
+	}
+
+	return ret;
+}
 
 Point* ECollection::FindClosestNode(const ECollection& dt, const Point& p){
 	assert(dt.size() > 0);

@@ -5,5 +5,5 @@ source ../../src/libs/dbgscripts/hmout.gdb
 
 file ./hmgrid3d_test
 set breakpoint pending on
-b surface_grid3d.cpp:336
+b tetrahedral.cpp:355
 run 

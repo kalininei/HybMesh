@@ -287,6 +287,7 @@ public:
 	double area() const;
 	double lenx() const { return xmax-xmin; }
 	double leny() const { return ymax-ymin; }
+	double maxlen() const { return std::max(lenx(), leny()); }
 	double lendiag() const { return sqrt(lenx()*lenx() + leny()*leny()); }
 	Point BottomLeft() const { return Point(xmin, ymin); }
 	Point TopRight() const { return Point(xmax, ymax); }
@@ -313,6 +314,25 @@ public:
 		}
 		return out;
 	}
+};
+
+struct BoundingBoxFinder{
+	BoundingBoxFinder(const BoundingBox& area, double L);
+
+	void addentry(const BoundingBox& e);
+	vector<int> suspects(const BoundingBox& bb) const;
+	vector<int> suspects(const Point& bb) const;
+private:
+	double x0, y0, hx, hy;
+	int mx, my;
+	int totaldata;
+	vector<vector<int>> data;
+	vector<int> allsuspects(int x0, int x1, int y0, int y1) const;
+	void addsuspects(int ix, int iy, vector<int>& ret) const;
+	int get_xstart(double x) const;
+	int get_ystart(double y) const;
+	int get_xend(double x) const;
+	int get_yend(double y) const;
 };
 
 #endif

@@ -522,3 +522,124 @@ void creader_free(void* creader){
 		std::cout<<e.what()<<std::endl;
 	}
 }
+
+int unite_contours(int ncont, void** conts, void** retcont, int* Nlinks, int** links){
+	typedef HMCont2D::ECollection TECol;
+	typedef HMCont2D::Container<HMCont2D::ECollection> TECont;
+	TECol inpall;
+	TECont ret;
+	for (int i=0; i<ncont; ++i){
+		auto c = static_cast<TECol*>(conts[i]);
+		inpall.Unite(*c);
+	}
+	ScaleBase sc = HMCont2D::ECollection::Scale01(inpall);
+	int r = 0;
+	try{
+		TECont::DeepCopy(inpall, ret);
+		for (int i=0; i<ret.size(); ++i) ret.data[i]->id = i;
+		HMCont2D::Algos::MergePoints(ret);
+		HMCont2D::Algos::DeleteUnusedPoints(ret);
+		*Nlinks = ret.size();
+		*links = new int[*Nlinks];
+		for (int i=0; i<ret.size(); ++i){
+			(*links)[i] = ret.data[i]->id;
+		}
+		HMCont2D::ECollection::Unscale(ret, sc);
+		(*retcont) = new TECont(std::move(ret));
+		r = 1;
+	} catch (std::exception &e){
+		std::cout<<e.what()<<std::endl;
+	}
+	HMCont2D::ECollection::Unscale(inpall, sc);
+	return r;
+}
+int simplify_contour(void* cont, double angle, int* btypes, void** ret_cont, int* Nretb, int** retb){
+	typedef HMCont2D::ECollection TECol;
+	typedef HMCont2D::Container<HMCont2D::ECollection> TECont;
+	TECol* inp = static_cast<TECol*>(cont);
+	ScaleBase sc = TECol::Scale01(*inp);
+	int r=0;
+	try{
+		for (int i=0; i<inp->size(); ++i) inp->data[i]->id = btypes[i];
+		TECol ret1 = HMCont2D::Algos::Simplified(*inp, angle, true);
+		TECont ret_cont1;
+		TECont::DeepCopy(ret1, ret_cont1);
+		*Nretb = ret_cont1.size();
+		*retb = new int[*Nretb];
+		for (int i=0; i<*Nretb; ++i) (*retb)[i] = ret_cont1.data[i]->id;
+		TECol::Unscale(ret_cont1, sc);
+		*ret_cont = new TECont(std::move(ret_cont1));
+		r = 1;
+	} catch (std::exception &e){
+		std::cout<<e.what()<<std::endl;
+	}
+	TECol::Unscale(*inp, sc);
+	return r;
+}
+int separate_contour(void* cont, int* btypes, int* Nretc, void*** retc, int* Nretb, int** retb){
+	typedef HMCont2D::ECollection TECol;
+	typedef HMCont2D::Container<HMCont2D::ECollection> TECont;
+	TECol* inp = static_cast<TECol*>(cont);
+	ScaleBase sc = TECol::Scale01(*inp);
+	int r = 0;
+	try{
+		for (int i=0; i<inp->size(); ++i) inp->data[i]->id = btypes[i];
+		HMCont2D::PCollection pcol;
+		vector<TECol> sep = HMCont2D::Assembler::ExtendedSeparate(*inp, pcol);
+		vector<TECont> sepr(sep.size());
+		for (int i=0; i<sep.size(); ++i){
+			TECont::DeepCopy(sep[i], sepr[i]);
+		}
+		*Nretc = sep.size();
+		*Nretb = 0;
+		for (auto& s: sep) *Nretb += s.size();
+		*retb = new int[*Nretb];
+		int k=0;
+		for (auto& s: sep)
+		for (int i=0; i<s.size(); ++i){
+			(*retb)[k++] = s.data[i]->id;
+		}
+		(*retc) = new void*[sepr.size()];
+		for (int i=0; i<sepr.size(); ++i){
+			TECol::Unscale(sepr[i], sc);
+			(*retc)[i] = new TECont(std::move(sepr[i]));
+		}
+		r = 1;
+	} catch (std::exception &e){
+		std::cout<<e.what()<<std::endl;
+	}
+	TECol::Unscale(*inp, sc);
+	return r;
+}
+
+int quick_separate_contour(void* cont, int* btypes, int* Nretc, void*** retc, int* Nretb, int** retb){
+	typedef HMCont2D::ECollection TECol;
+	typedef HMCont2D::Container<HMCont2D::ECollection> TECont;
+	TECol* inp = static_cast<TECol*>(cont);
+	int r = 0;
+	try{
+		for (int i=0; i<inp->size(); ++i) inp->data[i]->id = btypes[i];
+		vector<TECol> sep = HMCont2D::Assembler::QuickSeparate(*inp);
+		vector<TECont> sepr(sep.size());
+		for (int i=0; i<sep.size(); ++i){
+			TECont::DeepCopy(sep[i], sepr[i]);
+		}
+		*Nretc = sep.size();
+		*Nretb = 0;
+		for (auto& s: sep) *Nretb += s.size();
+		*retb = new int[*Nretb];
+		int k=0;
+		for (auto& s: sep)
+		for (int i=0; i<s.size(); ++i){
+			(*retb)[k++] = s.data[i]->id;
+		}
+		(*retc) = new void*[sepr.size()];
+		for (int i=0; i<sepr.size(); ++i){
+			(*retc)[i] = new TECont(std::move(sepr[i]));
+		}
+		r = 1;
+	} catch (std::exception &e){
+		std::cout<<e.what()<<std::endl;
+	}
+	return r;
+}

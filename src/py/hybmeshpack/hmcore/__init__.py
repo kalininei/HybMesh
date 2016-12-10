@@ -19,17 +19,17 @@ def list_to_c(lst, tp):
         d = len(lst)
         if d == 0:
             return None
-        if tp == int:
+        if tp == int or tp == 'int':
             ret = (ct.c_int * len(lst))()
             for i in range(d):
                 ret[i] = lst[i]
             return ret
-        if tp == float:
+        if tp == float or tp == 'float' or tp == 'double':
             ret = (ct.c_double * len(lst))()
             for i in range(d):
                 ret[i] = lst[i]
             return ret
-        if tp == str:
+        if tp == str or tp == 'str':
             ret = (ct.c_char_p * len(lst))()
             for i in range(d):
                 ret[i] = lst[i]

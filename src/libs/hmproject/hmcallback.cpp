@@ -208,6 +208,7 @@ shared_ptr<Caller2> Caller2::subrange(double parent_duration, double child_durat
 	parent_start/=dur1;
 	Fun2& f=call;
 	auto sf = [&f, parent_start, parent_duration](const char* s1, const char* s2, double p1, double p2)->int{
+		if (p2 == 1.0 && p1 == 1.0) return OK; //ignore final Done message
 		return f(s1, s2, parent_start + parent_duration*p1, p2);
 	};
 

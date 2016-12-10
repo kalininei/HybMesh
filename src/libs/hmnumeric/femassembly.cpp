@@ -180,8 +180,8 @@ double stiff4(const vector<const GridPoint*>& pts, int i, int j, double k, doubl
 	const double &x0 = pts[0]->x, &x1 = pts[1]->x, &x2 = pts[2]->x, &x3 = pts[3]->x;
 	const double &y0 = pts[0]->y, &y1 = pts[1]->y, &y2 = pts[2]->y, &y3 = pts[3]->y;
 	double j11 = ((1-e)*(x1-x0)+(1+e)*(x2-x3))/4.0;
-	double j12 = ((1-k)*(x3-x0)+(1+k)*(x2-x1))/4.0;
-	double j21 = ((1-e)*(y1-x0)+(1+e)*(y2-y3))/4.0;
+	double j21 = ((1-k)*(x3-x0)+(1+k)*(x2-x1))/4.0;
+	double j12 = ((1-e)*(y1-y0)+(1+e)*(y2-y3))/4.0;
 	double j22 = ((1-k)*(y3-y0)+(1+k)*(y2-y1))/4.0;
 	double modj = j11*j22-j12*j21;
 

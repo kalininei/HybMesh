@@ -1,7 +1,6 @@
 import ctypes as ct
-from . import libhmcport, list_to_c
+from . import libhmcport, list_to_c, free_cside_array
 from hybmeshpack.basic.geom import Point2
-from hybmeshpack.gdata.contour2 import Contour2
 
 
 def cont2_to_c(cont):
@@ -25,6 +24,7 @@ def cont2_to_c(cont):
 
 
 def cont2_from_c(c_cont, c_bnd=None):
+    from hybmeshpack.gdata.contour2 import Contour2
     """ returns contours2.Contour2 from c pointer to ecollection """
     if c_cont == 0:
         return None
@@ -215,6 +215,102 @@ def extract_contour(c_src, p0, p1, project_to):
         return ret
     else:
         raise Exception("contour extraction failed")
+
+
+def unite_contours(conts):
+    "-> (c_return, new-edge -> old-edge linking list)"
+    c_nconts = ct.c_int(len(conts))
+    c_conts = list_to_c(conts, 'void*')
+    ret_cont = ct.c_void_p(0)
+    ret_nlinks = ct.c_int(0)
+    ret_links = ct.POINTER(ct.c_int)()
+    a = libhmcport.unite_contours(
+        c_nconts, c_conts,
+        ct.byref(ret_cont),
+        ct.byref(ret_nlinks), ct.byref(ret_links))
+
+    if a == 0:
+        raise Exception("unite_contours failed")
+
+    links = []
+    for i in range(ret_nlinks.value):
+        links.append(ret_links[i])
+    free_cside_array(ret_links, 'int')
+    return ret_cont, links
+
+
+def simplify_contour(cont, btypes, angle):
+    """ cont - c-side contour
+        btypes - boundary types of cont (python side list)
+        angle - minimum allowed angle
+        -> (c_return, btypes of c_return) or raise
+    """
+    c_a = ct.c_double(angle)
+    c_btypes = list_to_c(btypes, 'int')
+    ret_nbtypes = ct.c_int(0)
+    ret_btypes = ct.POINTER(ct.c_int)()
+    ret_cont = ct.c_void_p()
+    a = libhmcport.simplify_contour(
+        cont, c_a, c_btypes,
+        ct.byref(ret_cont),
+        ct.byref(ret_nbtypes), ct.byref(ret_btypes))
+    if a == 0:
+        raise Exception("simplify contour failed")
+    bt = [ret_btypes[i] for i in range(ret_nbtypes.value)]
+    free_cside_array(ret_btypes, 'int')
+    return ret_cont, bt
+
+
+def full_separate_contour(cont, btypes):
+    """ cont - c-side contour
+        btypes - python list of boundary types of cont
+        -> ([ret], [btypes of ret])  or raise
+    """
+    c_btypes = list_to_c(btypes, 'int')
+    ret_nconts = ct.c_int(0)
+    ret_conts = ct.POINTER(ct.c_void_p)()
+    ret_nbtypes = ct.c_int(0)
+    ret_btypes = ct.POINTER(ct.c_int)()
+    ans = libhmcport.separate_contour(
+        cont, c_btypes,
+        ct.byref(ret_nconts), ct.byref(ret_conts),
+        ct.byref(ret_nbtypes), ct.byref(ret_btypes))
+    if ans == 0:
+        raise Exception("full_separate_contour failed")
+    ret, btypes = [], []
+    for i in range(ret_nconts.value):
+        ret.append(ret_conts[i])
+    for i in range(ret_nbtypes.value):
+        btypes.append(ret_btypes[i])
+    free_cside_array(ret_btypes, 'int')
+    free_cside_array(ret_conts, 'void*')
+    return ret, btypes
+
+
+def quick_separate_contour(cont, btypes):
+    """ cont - c-side contour
+        btypes - python list of boundary types of cont
+        -> ([ret], [btypes of ret])  or raise
+    """
+    c_btypes = list_to_c(btypes, 'int')
+    ret_nconts = ct.c_int(0)
+    ret_conts = ct.POINTER(ct.c_void_p)()
+    ret_nbtypes = ct.c_int(0)
+    ret_btypes = ct.POINTER(ct.c_int)()
+    ans = libhmcport.quick_separate_contour(
+        cont, c_btypes,
+        ct.byref(ret_nconts), ct.byref(ret_conts),
+        ct.byref(ret_nbtypes), ct.byref(ret_btypes))
+    if ans == 0:
+        raise Exception("quick_separate_contour failed")
+    ret, btypes = [], []
+    for i in range(ret_nconts.value):
+        ret.append(ret_conts[i])
+    for i in range(ret_nbtypes.value):
+        btypes.append(ret_btypes[i])
+    free_cside_array(ret_btypes, 'int')
+    free_cside_array(ret_conts, 'void*')
+    return ret, btypes
 
 
 def cwriter_create(contname, c_c, c_writer, c_sub, fmt):

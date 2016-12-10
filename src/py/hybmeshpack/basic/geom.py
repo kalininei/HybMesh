@@ -167,6 +167,36 @@ class Point2SetStruct(GeomStruct):
         min_index, _ = min(enumerate(d2), key=lambda x: x[1])
         return min_index
 
+    def closest_edge_point(self, p, eds):
+        """ -> projection of p on edge set """
+        if len(self.points) == 0 or len(eds) == 0:
+            return None
+        d2 = map(lambda x: x.dist2(p), self.points)
+        minindex, mindist = min(enumerate(d2), key=lambda x: x[1])
+        ret = copy.deepcopy(self.points[minindex])
+        if (mindist == 0):
+            return ret
+        for e in eds:
+            p1, p2 = self.points[e[0]], self.points[e[1]]
+            ax, ay = p2.x - p1.x, p2.y - p1.y
+            bx, by = p.x - p1.x, p.y - p1.y
+            anrm = ax * ax + ay * ay
+            ksi = (ax * bx + ay * by) / anrm
+            if (ksi <= 0):
+                if d2[e[0]] < mindist:
+                    mindist, ret = d2[e[0]], copy.deepcopy(p1)
+            elif (ksi >= 1):
+                if d2[e[1]] < mindist:
+                    mindist, ret = d2[e[1]], copy.deepcopy(p2)
+            else:
+                cz = p1.x * p2.y - p1.y * p2.x
+                d0 = -ay * p.x + ax * p.y + cz
+                dst = (d0 * d0 / anrm)
+                if (dst < mindist):
+                    ret = Point2((1 - ksi) * p1.x + ksi * p2.x,
+                                 (1 - ksi) * p1.y + ksi * p2.y)
+        return ret
+
     # ---- Transformations
     def move(self, dx, dy):
         for p in self.points:

@@ -386,44 +386,29 @@ void test09(){
 void test10(){
 	std::cout<<"10. 3d domain unstructured meshing"<<std::endl;
 	{
-		//auto g1 = HMGrid3D::Constructor::Cuboid({0, 0, 0}, 1, 1, 1, 5, 5, 5);
-		auto g1 = HMGrid3D::Constructor::Cuboid({0, 0, 0}, 1, 1, 1, 2, 2, 2);
+		auto g1 = HMGrid3D::Constructor::Cuboid({0, 0, 0}, 1, 1, 1, 5, 5, 5);
 		auto s1 = HMGrid3D::Surface::GridSurface(g1);
 		auto g2 = HMGrid3D::Mesher::UnstructuredTetrahedral(s1); 
-		std::cout<<g2.vvert.size()<<std::endl;
-		HMGrid3D::Export::BoundaryVTK(g2, "g2b.vtk");
-		add_file_check(18250642950022685541U, "g2b.vtk", "grid in cubic domain");
+		//add_check(ISEQ(g2.volume(), 1), "grid in cubic domain");
 	}
-	//{
-	//        auto g1 = HMGrid3D::Constructor::Cuboid({1, 1, 1}, 2, 3, 1, 7, 8, 4);
-	//        auto g2 = HMGrid3D::Constructor::Cuboid({10, 10, 10}, 5, 5, 5, 10, 10, 10);
-	//        auto gcyl2 = GGeom::Constructor::Circle(Point{1, 1}, 5, 64, 10, true);
-	//        vector<double> zsweep;
-	//        for (int i=0; i<11; ++i) zsweep.push_back( (double)i / 10 * 4);
-	//        auto gcyl = HMGrid3D::Constructor::SweepGrid2D(gcyl2, zsweep);
+	{
+		auto g1 = HMGrid3D::Constructor::Cuboid({1, 1, 1}, 2, 3, 1, 7, 8, 4);
+		auto g2 = HMGrid3D::Constructor::Cuboid({10, 10, 10}, 5, 5, 5, 10, 10, 10);
+		auto gcyl2 = GGeom::Constructor::Circle(Point{1, 1}, 5, 64, 10, true);
+		vector<double> zsweep;
+		for (int i=0; i<11; ++i) zsweep.push_back( (double)i / 10 * 4);
+		auto gcyl = HMGrid3D::Constructor::SweepGrid2D(gcyl2, zsweep);
 
-	//        HMGrid3D::Surface srf;
-	//        for (auto f: gcyl.vfaces) if (f->is_boundary()) srf.faces.push_back(f);
-	//        //for (auto f: g1.vfaces) if (f->is_boundary()) srf.faces.push_back(f);
-	//        //for (auto f: g2.vfaces) if (f->is_boundary()) srf.faces.push_back(f);
+		HMGrid3D::Surface srf;
+		for (auto f: gcyl.vfaces) if (f->is_boundary()) srf.faces.push_back(f);
+		for (auto f: g1.vfaces) if (f->is_boundary()) srf.faces.push_back(f);
+		for (auto f: g2.vfaces) if (f->is_boundary()) srf.faces.push_back(f);
 
-	//        auto tree = HMGrid3D::SurfaceTree::Assemble(srf);
-	//        auto rr = HMGrid3D::SurfTreeTReverter(tree);
-
-	//        //auto rr = HMGrid3D::SurfTReverter(srf);
-	//        vector<HMGrid3D::Surface> smoothsrf = HMGrid3D::Surface::ExtractSmooth(srf, 30.);
-	//        std::cout<<smoothsrf.size()<<std::endl;
-	//        for (int i=0; i<smoothsrf.size(); ++i){
-	//                std::string nm("gb");
-	//                nm+=std::to_string(i);
-	//                nm+=".vtk";
-	//                HMGrid3D::Export::SurfaceVTK(smoothsrf[i], nm);
-	//        }
-
-	//        //auto res = HMGrid3D::Mesher::UnstructuredTetrahedral.WVerbTimer(srf);
-	//        //HMGrid3D::Export::BoundaryVTK(res, "g1b.vtk");
-	//        //add_file_check(9197203944393887302U, "g1b.vtk", "domain with multiple nesting");
-	//}
+		//............... Different volume results w/without timer calls
+		auto res = HMGrid3D::Mesher::UnstructuredTetrahedral.WTimer(srf);
+		add_check(fabs(res.volume()-431.422)<1e-2, "domain with multiple nesting");
+		std::cout<<(fabs(res.volume()))<<std::endl;
+	}
 }
 
 int main(){

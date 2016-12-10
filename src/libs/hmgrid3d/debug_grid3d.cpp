@@ -48,5 +48,25 @@ void Debug::save_bnd_vtk(const SGrid& grid){
 	HMGrid3D::Export::BoundaryVTK(grid, "_dbgout.vtk");
 }
 
+void Debug::save_grid_vtk(const GridData& grid){
+	//save current enumeration
+	RestoreIds<VertexData> s1(grid.vvert);
+	RestoreIds<EdgeData> s2(grid.vedges);
+	RestoreIds<FaceData> s3(grid.vfaces);
+	RestoreIds<CellData> s4(grid.vcells);
+
+	HMGrid3D::Export::GridVTK(grid, "_dbgout.vtk");
+}
+void Debug::save_surf_vtk(const Surface& srf){
+	auto ae = srf.alledges();
+	auto av = srf.allvertices();
+
+	RestoreIds<VertexData> s1(av);
+	RestoreIds<EdgeData> s2(ae);
+	RestoreIds<FaceData> s3(srf.faces);
+
+	HMGrid3D::Export::SurfaceVTK(srf, "_dbgout.vtk");
+}
+
 
 #endif

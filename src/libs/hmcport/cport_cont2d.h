@@ -39,6 +39,12 @@ int segment_part(double start, double end, double h0, double h1,
 //projection methods: line, vertex, corner
 void* extract_contour(void* source, double* pnts, const char* method);
 
+//return 0 on fail
+int unite_contours(int ncont, void** conts, void** retcont, int* Nlinks, int** links);
+int simplify_contour(void* cont, double degree_angle, int* btypes, void** ret_cont, int* Nretb, int** retb);
+int separate_contour(void* cont, int* btypes, int* Nretc, void*** retc, int* Nretb, int** retb);
+int quick_separate_contour(void* cont, int* btypes, int* Nretc, void*** retc, int* Nretb, int** retb);
+
 void* cwriter_create(const char* cname, void* cont, void* awriter, void* subnode, const char* fmt);
 void cwriter_free(void* cwriter);
 int cwriter_add_edge_field(void* cwriter, const char* fieldname, void* field, int fsize, const char* type);

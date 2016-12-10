@@ -200,8 +200,8 @@ class SimplifyContours(objcom.AbstractAddRemove):
             except KeyError:
                 cont = self.receiver.get_grid(name=nm)[2].cont
 
-            added.append((nnames[i],
-                          contour2.Contour2.create_from_abstract(cont)))
+            added.append(
+                (nnames[i], contour2.Contour2.create_from_abstract(cont)))
 
         #simplify
         if simp:
@@ -252,22 +252,88 @@ class UniteContours(objcom.AbstractAddRemove):
     def _addrem_objects(self):
         conts = []
         for n in self.options['sources']:
-            try:
-                conts.append(self.receiver.contours2[n])
-            except KeyError:
-                conts.append(self.receiver.grids2[n].cont)
+            conts.append(self.any_cont_by_name(n))
+        c_conts, ret = [], 0
+        try:
+            for c in conts:
+                c_conts.append(c2core.cont2_to_c(c))
+            ret, rparents = c2core.unite_contours(c_conts)
+            newcont = c2core.cont2_from_c(ret)
 
-        #operate
-        newcont = contour2.Contour2.create_from_abstract(conts[0])
-        for c in conts[1:]:
-            newcont.add_from_abstract(c)
+            bcmap = [[0, r] for r in rparents]
+            for b in bcmap:
+                for c in conts[1:]:
+                    if b[1] > c.n_edges():
+                        b[0] += 1
+                        b[1] -= c.n_edges()
+
+            ebnd = {}
+            for i in range(newcont.n_edges()):
+                b = conts[bcmap[i][0]].edge_bnd(bcmap[i][1])
+                if b != 0:
+                    ebnd[i] = b
+            newcont.set_edge_bnd(ebnd)
+        except Exception as e:
+            raise command.ExecutionError("Contour union failed", self, e)
+        finally:
+            for c in c_conts:
+                c2core.free_cont2(c)
+            if ret != 0:
+                c2core.free_cont2(ret)
         ac = [(self.options['name'], newcont)]
+
+        #remove
         rc = []
         if not self.options['keep_src']:
             for c in self.options['sources']:
                 if c in self.receiver.contours2:
                     rc.append(c)
         return [], [], ac, rc
+
+
+class DecomposeContour(objcom.AbstractAddRemove):
+    'Separate and simplify user contour'
+    def __init__(self, arg):
+        if "name" not in arg:
+            arg["name"] = "Contour1"
+        super(DecomposeContour, self).__init__(arg)
+
+    @classmethod
+    def _arguments_types(cls):
+        """ name - new contours name prefix
+            source - source contour
+        """
+        return {'name': command.BasicOption(str),
+                'source': command.BasicOption(str),
+                }
+
+    def _addrem_objects(self):
+        src = self.options['source']
+        cret, cself = [], 0
+        try:
+            cont = self.any_cont_by_name(src)
+            cself = c2core.cont2_to_c(cont)
+            btypes = [cont.edge_bnd(i) for i in range(cont.n_edges())]
+            cret, newbtypes = c2core.full_separate_contour(cself, btypes)
+            ret = []
+            k = 0
+            for c in cret:
+                ret.append(c2core.cont2_from_c(c))
+                for i in range(ret[-1].n_edges()):
+                    b = newbtypes[k]
+                    k += 1
+                    if b > 0:
+                        ret[-1].bnds[i] = b
+        except:
+            raise
+        finally:
+            for c in cret:
+                c2core.free_cont2(c)
+            if cself != 0:
+                c2core.free_cont2(cself)
+
+        ret = [(self.options['name'], r) for r in ret]
+        return [], [], ret, []
 
 
 class EditBoundaryType(command.Command):

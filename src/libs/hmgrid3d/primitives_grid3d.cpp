@@ -1,5 +1,6 @@
 #include "primitives_grid3d.hpp"
 #include "addalgo.hpp"
+#include "surface_grid3d.hpp"
 
 using namespace HMGrid3D;
 
@@ -320,9 +321,38 @@ ShpVector<Edge> Cell::alledges() const{
 	return aa::no_dublicates(ret);
 }
 
+double Cell::volume() const{
+	double ret;
+
+	std::vector<bool> reverted(n_faces(), false);
+	for (int i=0; i<n_faces(); ++i)
+	if (faces[i]->left.lock().get() != this) reverted[i] = true;
+	auto facerev = [&](){
+		for (int i=0; i<faces.size(); ++i)
+		if (reverted[i]) faces[i]->reverse();
+	};
+
+	facerev();
+	try{
+		ret = HMGrid3D::Surface::Volume(faces);
+	} catch (...){
+		facerev();
+		throw;
+	}
+
+	facerev;
+	return ret;
+}
+
 void GridData::enumerate_all() const{
 	enumerate_ids_pvec(vvert);
 	enumerate_ids_pvec(vedges);
 	enumerate_ids_pvec(vfaces);
 	enumerate_ids_pvec(vcells);
+}
+
+double GridData::volume() const{
+	double ret=0;
+	for (auto c: vcells) ret += c->volume();
+	return ret;
 }

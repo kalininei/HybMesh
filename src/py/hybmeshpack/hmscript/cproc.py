@@ -65,6 +65,17 @@ def simplify_contour(cont, simplify=True, angle=0, separate=False):
     return c._get_added_names()[1]
 
 
+def decompose_contour(cont):
+    """TODO
+    """
+    c = com.contcom.DecomposeContour({"source": cont})
+    try:
+        flow.exec_command(c)
+        return c._get_added_names()[1]
+    except:
+        raise ExecError("decompose_contour")
+
+
 def unite_contours(conts):
     """ Unites contours to single multiply connected contour
 

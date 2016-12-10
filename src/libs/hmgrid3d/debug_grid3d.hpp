@@ -35,6 +35,8 @@ struct Debug: public HMDebug{
 	}
 
 	static void save_bnd_vtk(const SGrid& grid);
+	static void save_grid_vtk(const GridData& grid);
+	static void save_surf_vtk(const Surface& grid);
 };
 
 }

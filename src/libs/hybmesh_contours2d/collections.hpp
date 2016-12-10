@@ -196,6 +196,13 @@ struct Collection{
 	static TDeepCopyResult DeepCopy(const Collection& from, TTarget& to){
 		return DeepCopy(from, to, to._generator);
 	}
+
+	template<class TTarget>
+	static TTarget DeepCopy(const TTarget& from){
+		TTarget ret;
+		DeepCopy(from, ret);
+		return ret;
+	}
 };
 
 
@@ -242,6 +249,9 @@ struct ECollection: public Tpp::Collection<Edge>{
 	}
 
 	vector<Point*> all_points() const;
+	vector<std::array<int, 2>> tab_edges_points() const;
+	vector<vector<int>> tab_points_edges() const;
+	vector<vector<int>> tab_edges_edges() const;
 
 	void ReallocatePoints(PCollection& pcol);
 

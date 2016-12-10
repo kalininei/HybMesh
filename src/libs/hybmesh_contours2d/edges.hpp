@@ -10,6 +10,7 @@ namespace HMCont2D{
 struct Edge{
 	Point* pstart;
 	Point* pend;
+	mutable int id;
 
 	Edge(Point* p1=0, Point* p2=0): pstart(p1), pend(p2){}
 
@@ -17,6 +18,7 @@ struct Edge{
 	double meas() const { return Point::meas(*pstart, *pend); }
 	double length() const { return sqrt(meas()); }
 	Point center() const { return Point::Weigh(*pstart, *pend, 0.5); }
+	BoundingBox bbox() const { return BoundingBox(*pstart, *pend, 0); }
 
 	Point* sibling(const Point* p) const {
 		if (p == pstart) return pend;

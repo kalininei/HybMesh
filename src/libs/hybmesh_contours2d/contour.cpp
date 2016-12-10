@@ -460,6 +460,7 @@ Contour::GuaranteePoint(const Point& p, PCollection& pcol){
 }
 
 double Contour::Area(const Contour& c){
+	if (c.size() == 0) return 0;
 	assert(c.is_closed());
 	auto order = c.ordered_points();
 	double ret = 0;

@@ -1,4 +1,7 @@
 #include "cont_assembler.hpp"
+#include "algos.hpp"
+#include "debug_cont2d.hpp"
+#include <stack>
 
 using namespace HMCont2D;
 namespace cns = Assembler;
@@ -224,6 +227,54 @@ std::vector<Contour> cns::AllContours(const HMCont2D::ECollection& input){
 	return ret;
 }
 
+namespace{
+struct _DoubleNodePoints{
+	typedef std::tuple<int, int, Point*> TBup;
+	HMCont2D::ECollection* inp;
+	ShpVector<Point> pheap;
+	vector<TBup> tempp;
+
+	_DoubleNodePoints(const HMCont2D::ECollection& input){
+		inp = const_cast<HMCont2D::ECollection*>(&input);
+		vector<Point*> ap = inp->all_points();
+		auto pe = inp->tab_points_edges();
+		for (int i=0; i<pe.size(); ++i) if (pe[i].size() > 2){
+			Point* p = ap[i];
+			for (int j=0; j<pe[i].size(); ++j){
+				pheap.emplace_back(new Point(*p));
+				auto edge = inp->data[pe[i][j]];
+				if (edge->pstart == p){
+					edge->pstart = pheap.back().get();
+					tempp.emplace_back(pe[i][j], 0, p);
+				} else {
+					assert(edge->pend == p);
+					edge->pend = pheap.back().get();
+					tempp.emplace_back(pe[i][j], 1, p);
+				}
+			}
+		}
+	}
+	~_DoubleNodePoints(){
+		for (auto& it: tempp){
+			auto edge = inp->data[std::get<0>(it)];
+			if (std::get<1>(it) == 0)
+				edge->pstart = std::get<2>(it);
+			else
+				edge->pend = std::get<2>(it);
+		}
+	}
+};
+}
+
+vector<HMCont2D::Contour> cns::SimpleContours(const HMCont2D::ECollection& input){
+	//temporary double all multiply (> 2) connected points
+	//changes will be reversed at 'tmp' destruction
+	auto tmp = _DoubleNodePoints(input);
+	//build contours
+	vector<HMCont2D::Contour> ret = AllContours(input);
+	//return
+	return ret;
+}
 
 HMCont2D::ExtendedTree cns::ETree(const HMCont2D::ECollection& input){
 	HMCont2D::ExtendedTree ret;
@@ -345,4 +396,146 @@ HMCont2D::Contour cns::Contour1(const Contour& col, const Point* pnt_start, int 
 	} while (index<op.size());
 
 	return Contour1(col, pnt_start, pnt_end);
+}
+
+namespace{
+struct SepAssembler{
+	std::list<Contour*> itset;
+	std::map<Point*, vector<Point*>> ppmap;
+	bool has_conts(){ return itset.size() > 0; }
+
+	SepAssembler(std::list<Contour>& clist){
+		for (auto it=clist.begin(); it!=clist.end(); ++it){
+			itset.push_back(&(*it));
+			auto er = ppmap.emplace(it->first(), vector<Point*>());
+			er.first->second.push_back(it->value(0).pend);
+		}
+		//sort ppmap by angle
+		for (auto& it: ppmap){
+			std::map<Point*, double> anmap;
+			for (auto& it2: it.second){
+				Vect v = *it2 - *it.first;
+				anmap[it2] = atan2(v.y, v.x);
+			}
+			std::sort(it.second.begin(), it.second.end(),
+					[&anmap](Point* p1, Point* p2){ return anmap[p1]<anmap[p2];} );
+		}
+	}
+	Contour* take_this(Contour* it){
+		itset.remove(it);
+		return it;
+	}
+	Contour* take_any(){
+		return take_this(*itset.begin());
+	}
+	Contour* take_next(Contour* it){
+		auto fnd = ppmap.find(it->last());
+		assert(fnd != ppmap.end());
+		Point* pprev= it->data.back()->pstart;
+		auto fnd2 = std::find(fnd->second.begin(), fnd->second.end(), pprev);
+		assert(fnd2 != fnd->second.end());
+		int ind2 = fnd2 - fnd->second.begin();
+		if (ind2 == 0) ind2 = fnd->second.size()-1;
+		else --ind2;
+		Point* p2 = fnd->second[ind2];
+		//find contour which has p2 as its second point
+		for (auto it: itset){
+			if (it->value(0).pend == p2) return take_this(it);
+		}
+		throw std::runtime_error("failed to assemble closed contour");
+	}
+};
+}
+vector<ECollection> cns::ExtendedSeparate(const ECollection& ecol, PCollection& pcol){
+	//assembling subcontours
+	Container<ECollection> ecol2 = Algos::NoCrosses(ecol);
+	pcol = ecol2.pdata;
+	vector<Point*> ap = ecol2.all_points();
+	std::vector<Contour> vconts = SimpleContours(ecol2);
+	std::list<Contour> conts;
+	for (auto& c: vconts) conts.push_back(std::move(c));
+	//nodes building
+	std::map<Point*, int> nmap;
+	for (auto it: conts) if (it.is_open()){
+		auto er1 = nmap.emplace(it.first(), 0);
+		auto er2 = nmap.emplace(it.last(), 0);
+		er1.first->second += 1;
+		er2.first->second += 1;
+	}
+	vector<Point*> nodes;
+	for (auto& it: nmap) if (it.second > 2) nodes.push_back(it.first);
+	//get rid of open contours and fully closed contours
+	vector<ECollection> ret;
+	for (auto it=conts.begin(); it!=conts.end();){
+		if (it->is_closed() ||
+		    std::find(nodes.begin(), nodes.end(), it->first()) == nodes.end() ||
+		    std::find(nodes.begin(), nodes.end(), it->last()) == nodes.end()){
+			ret.push_back(ECollection(std::move(*it)));
+			it = conts.erase(it);
+		} else ++it;
+	}
+	//double conts
+	{
+		int isz = conts.size();
+		auto it = conts.begin();
+		for (int i=0; i<isz; ++i, ++it){
+			it->DirectEdges();
+			conts.push_back(Contour::DeepCopy(*it));
+			conts.back().ReallyReverse();
+		}
+	}
+	//initialize builder
+	SepAssembler sep_builder(conts);
+	//start assembling contours
+	while (sep_builder.has_conts()){
+		Contour bf;
+		auto it = sep_builder.take_any();
+		Point* p0 = it->first();
+		while (1){
+			bf.Unite(*it);
+			if (it->last() == p0) break;
+			else it = sep_builder.take_next(it);
+		};
+		if (Contour::Area(bf) > 0){
+			ret.push_back(ECollection(std::move(bf)));
+		}
+	}
+
+	return ret;
+}
+
+vector<ECollection> cns::QuickSeparate(const ECollection& ecol){
+	auto ee = ecol.tab_edges_edges();
+	vector<bool> used(ecol.size(), false);
+	auto use = [&used, &ee](int ind, vector<int>& lst, std::stack<int>& s){
+		if (used[ind] != true){
+			used[ind] = true;
+			lst.push_back(ind);
+			for (int eadj: ee[ind])
+				if (used[eadj] == false) s.push(eadj);
+		}
+	};
+
+	vector<vector<int>> edgeslist;
+	while (1){
+		int ifnd = std::find(used.begin(), used.end(), false) - used.begin();
+		if (ifnd == used.size()) break;
+		edgeslist.emplace_back();
+		auto& lst =edgeslist.back();
+		std::stack<int> su; su.push(ifnd);
+		while (su.size() > 0){
+			int t = su.top(); su.pop();
+			use(t, lst, su);
+		}
+	}
+	if (edgeslist.size() == 1) return {ecol};
+
+	vector<ECollection> ret(edgeslist.size());
+	for (int i=0; i<edgeslist.size(); ++i){
+		ret[i].data.resize(edgeslist[i].size());
+		for (int j=0; j<edgeslist[i].size(); ++j){
+			ret[i].data[j] = ecol.data[edgeslist[i][j]];
+		}
+	}
+	return ret;
 }

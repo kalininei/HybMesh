@@ -37,7 +37,6 @@ bool operator<(const TransitionalFace& f1, const TransitionalFace& f2){
 	};
 	return false;
 }
-
 struct TransitionalEdge{
 	TransitionalEdge(MVertex* a, MVertex* b, int num): p1(a), p2(b), ind(num){
 		if (p1->getIndex()>p2->getIndex()) std::swap(p1, p2);
@@ -74,7 +73,7 @@ std::set<TransitionalFace> GridFromModel(GModel& m, HMGrid3D::GridData& ret){
 				assert(index<ret.vvert.size());
 				if (!ret.vvert[index]) ret.vvert[index].reset(new HMGrid3D::Vertex(v->x(), v->y(), v->z()));
 			}
-			//faces to transitional status
+			//faces to transitional status:: Takes 70% of exec time
 			if (e->getType() == TYPE_TET){
 				add_face({elvert[0], elvert[2], elvert[1]}, en);
 				add_face({elvert[0], elvert[3], elvert[2]}, en);
@@ -92,7 +91,7 @@ std::set<TransitionalFace> GridFromModel(GModel& m, HMGrid3D::GridData& ret){
 			aa::add_shared(ret.vcells, HMGrid3D::Cell());
 		}
 	}
-	//faces && edges
+	//faces && edges: Takes 40% of exec time;
 	int numed = 0;
 	for (auto& f: transface){
 		auto nf = aa::add_shared(ret.vfaces, HMGrid3D::Face());
@@ -136,7 +135,7 @@ GFace* fill_model_with_2d(GModel& m, const HMGrid3D::Surface& surf, vector<vecto
 		auto sv = surf.faces[i]->sorted_vertices();
 		vector<MVertex*> mv(sv.size());
 
-		for (int j=0; j<sv.size(); ++j) mv[j] = place_mvertex(*sv[i]);
+		for (int j=0; j<sv.size(); ++j) mv[j] = place_mvertex(*sv[j]);
 
 		if (sv.size()==4){
 			auto nq = new MQuadrangle(mv[0], mv[1], mv[2], mv[3]);
@@ -193,98 +192,6 @@ vector<vector<GEdge*>> fill_model_with_1d(
 	}
 	return ret;
 }
-//vector<GFace*> fill_model_with_2d(GModel& m, const HMGrid3D::Surface& surf, HMCallback::Caller2& cb){
-	//cb.step_after(10, "Assembling");
-	//ShpVector<HMGrid3D::Edge> alledges = surf.alledges();
-	//ShpVector<HMGrid3D::Vertex> allvertices = surf.allvertices();
-	
-	////calculate meshsizes for vertices
-	//cb.step_after(20, "Mesh step calculation");
-	//vector<double> dist(allvertices.size(), 1e32);
-	//enumerate_ids_pvec(allvertices);
-	//for (auto e: alledges){
-		//double m = Point3::meas(*e->first(), *e->last());
-		//if (m < dist[e->first()->id]) dist[e->first()->id] = m;
-		//if (m < dist[e->last()->id]) dist[e->last()->id] = m;
-	//}
-	//for (auto& x: dist) x = sqrt(x);
-
-	////build gmsh vertices
-	//cb.step_after(10, "Building primitives", 3);
-	//cb.subprocess_step_after(1);
-	//vector<GVertex*> g_vertex;
-	//for (int i=0; i<allvertices.size(); ++i){
-		//auto v = allvertices[i];
-		//g_vertex.push_back(m.addVertex(v->x, v->y, v->z, dist[i]));
-	//}
-	
-	//cb.subprocess_step_after(1);
-	////build gmsh edges
-	//vector<GEdge*> g_edge;
-	//for (auto e: alledges){
-		//int p1 = e->first()->id;
-		//int p2 = e->last()->id;
-		//g_edge.push_back(m.addLine(g_vertex[p1], g_vertex[p2]));
-	//}
-
-	//cb.subprocess_step_after(1);
-	////build gmsh faces
-	//vector<GFace*> g_face; g_face.reserve(surf.faces.size());
-	//vector<vector<GEdge*>> eds(1);
-	////#####################3
-	//HMTimer::TicToc tm("face assembling", false);
-	//for (auto f: surf.faces){
-		//eds[0].clear();
-		//for (auto e: f->edges){
-			////eds[0].push_back(g_edge[e->id]);
-		//}
-		//tm.tic();
-		//g_face.push_back(m.addPlanarFace(eds));
-		//tm.toc();
-	//}
-	//tm.fintoc();
-	//cb.subprocess_fin();
-
-	////Mesh0D
-	//cb.step_after(10, "Mesh 1D");
-	//vector<MVertex*> mvertex;
-	//for (int i=0; i<g_vertex.size(); ++i){
-		//GVertex *gv = g_vertex[i];
-		//gv->mesh_vertices.push_back(new MVertex(gv->x(), gv->y(), gv->z(), gv));
-		//mvertex.push_back(gv->mesh_vertices.back());
-		//gv->points.push_back(new MPoint(gv->mesh_vertices.back()));
-	//}
-        ////Mesh1D
-	//vector<MEdge*> medge;
-	//for (int i=0; i<g_edge.size(); ++i){
-		//int p1 = alledges[i]->first()->id;
-		//int p2 = alledges[i]->last()->id;
-		//g_edge[i]->addLine(new MLine(mvertex[p1], mvertex[p2]));
-	//}
-	////Mesh2D
-	//cb.step_after(50, "Mesh 2D");
-	//for (int i=0; i<surf.faces.size(); ++i){
-		//auto sv = surf.faces[i]->sorted_vertices();
-		//if (sv.size() == 4){
-			//auto nq = new MQuadrangle(
-				//mvertex[sv[0]->id],
-				//mvertex[sv[1]->id],
-				//mvertex[sv[2]->id],
-				//mvertex[sv[3]->id]);
-			//g_face[i]->addQuadrangle(nq);
-		//} else if (sv.size() == 3){
-			//auto nq = new MTriangle(
-				//mvertex[sv[0]->id],
-				//mvertex[sv[1]->id],
-				//mvertex[sv[2]->id]);
-			//g_face[i]->addTriangle(nq);
-		//} else {
-			//throw std::runtime_error("Only triangle and quadrangle surface faces are allowed");
-		//};
-	//}
-	//cb.fin();
-	//return g_face;
-//}
 
 void fill_model_with_3d(GModel& m, const vector<vector<GFace*>>& fc){
 	//Mesh3D
@@ -298,8 +205,7 @@ void fill_model_with_3d(GModel& m, const vector<vector<GFace*>>& fc){
 	//m.writeMSH("gmsh_geo.msh");
 }
 
-void restore_btypes(const vector<GFace*>& gfvec, const vector<int>& gfbnd, std::set<TransitionalFace>& fcset){
-
+void restore_btypes(GFace* gf, std::set<TransitionalFace>& fcset, const HMGrid3D::Surface& surf){
 	auto analyze_melement = [&fcset](MElement* el, int bt){
 		TransitionalFace fndface;
 		for (int i=0; i<el->getNumVertices(); ++i){
@@ -314,12 +220,28 @@ void restore_btypes(const vector<GFace*>& gfvec, const vector<int>& gfbnd, std::
 		} else {assert(false);}
 	};
 
-	for (int i=0; i<gfvec.size(); ++i){
-		auto& gf = gfvec[i];
-		int b = gfbnd[i];
-		if (b==0) continue;
-		for (auto q: gf->triangles){ analyze_melement(q, b); }
-		for (auto q: gf->quadrangles){ analyze_melement(q, b); }
+	//keeping the same order at which 2d grid for this surface was created
+	//add mesh
+	int itris=-1, iquads=-1;
+	for (int i=0; i<surf.faces.size(); ++i){
+		auto& f = surf.faces[i];
+		if (f->n_edges() == 3) ++itris;
+		else if (f->n_edges() == 4) ++iquads;
+		else assert(false);
+
+		int btype = f->boundary_type;
+		if (btype==0) continue;
+		
+		auto sv = surf.faces[i]->sorted_vertices();
+		vector<MVertex*> mv(sv.size());
+
+		MElement* nq;
+		if (sv.size()==4) nq = gf->quadrangles[iquads];
+		else if (sv.size()==3) nq = gf->triangles[itris];
+		else throw std::runtime_error("Only triangle and quadrangle surface faces are allowed");
+
+		for (int j=0; j<sv.size(); ++j) mv[j] = nq->getVertex(j);
+		analyze_melement(nq, btype);
 	}
 }
 
@@ -341,6 +263,7 @@ HMGrid3D::GridData gmsh_fill(const HMGrid3D::SurfaceTree& tree, const HMGrid3D::
 	//GmshSetOption("Mesh", "OptimizeNetgen", 1.0);
 	
 	//decomposition
+	cb.silent_step_after(10, "Surfaces decomposition");
 	HMGrid3D::EdgeData ae=tree.alledges();
 	HMGrid3D::VertexData av=tree.allvertices();
 	vector<vector<HMGrid3D::Surface>> decomposed_surfs;
@@ -364,7 +287,7 @@ HMGrid3D::GridData gmsh_fill(const HMGrid3D::SurfaceTree& tree, const HMGrid3D::
 
 
 	//mesh1d
-	cb.silent_step_after(5, "Fill 1D mesh");
+	cb.step_after(5, "Fill 1D mesh");
 	enumerate_ids_pvec(ae);
 	enumerate_ids_pvec(av);
 	vector<GEdge*> g_edges_heap(ae.size(), 0);
@@ -378,7 +301,7 @@ HMGrid3D::GridData gmsh_fill(const HMGrid3D::SurfaceTree& tree, const HMGrid3D::
 	}
 
 	//mesh2d
-	cb.silent_step_after(10, "Fill 2D mesh");
+	cb.step_after(10, "Fill 2D mesh");
 	vector<vector<GFace*>> g_faces;
 	int k=0;
 	for (auto& ds: decomposed_surfs){
@@ -391,29 +314,33 @@ HMGrid3D::GridData gmsh_fill(const HMGrid3D::SurfaceTree& tree, const HMGrid3D::
 	}
 
 	//mesh3d
-	cb.step_after(75, "Build 3D mesh");
+	cb.step_after(35, "Build 3D mesh");
 	fill_model_with_3d(m, g_faces);
 
 	HMGrid3D::GridData ret;
+	cb.step_after(30, "Assemble mesh");
 	auto tfaces = GridFromModel(m, ret);
 
 	//restore boundary types from tree
-	//cb.step_after(10, "Restore boundary types");
-	//auto fit = tfaces.begin();
-	//while (fit!=tfaces.end()){
-	//        if (fit->left_cell>=0 && fit->right_cell>=0){
-	//                fit = tfaces.erase(fit);
-	//        } else ++fit;
-	//}
-	//ret.enumerate_all();
-	//int k=0;
-	//for (auto n: tree.nodes) if (n->level == 0){
-	//        std::vector<GFace*>& gfvec = g_faces[k++];
-	//        std::vector<int> bt(gfvec.size());
-	//        for (int i=0; i<bt.size(); ++i) bt[i] = n->faces[i]->boundary_type;
-	//        restore_btypes(gfvec, bt, tfaces);
-	//}
+	cb.step_after(10, "Restore boundary types");
+	auto fit = tfaces.begin();
+	while (fit!=tfaces.end()){
+		if (fit->left_cell>=0 && fit->right_cell>=0){
+			fit = tfaces.erase(fit);
+		} else ++fit;
+	}
+	ret.enumerate_all();
+	int k1=0;
+	for (auto& ds: decomposed_surfs){
+		vector<GFace*>& g_faces_1 = g_faces[k1++];
+		int k2=0;
+		for (auto& s: ds){
+			GFace* gf = g_faces_1[k2++];
+			restore_btypes(gf, tfaces, s);
+		}
+	}
 
+	cb.fin();
 	return ret;
 }
 };
@@ -423,7 +350,7 @@ HMCallback::FunctionWithCallback<TUnstructuredTetrahedral> HMGrid3D::Mesher::Uns
 HMGrid3D::GridData TUnstructuredTetrahedral::_run(const HMGrid3D::Surface& source,
 		const HMGrid3D::Surface& sinner,
 		const VertexData& pinner, const vector<double>& psizes){
-	callback->step_after(20, "Surface nesting");
+	callback->step_after(20, "Surfaces nesting");
 	//main tree
 	HMGrid3D::SurfaceTree stree = HMGrid3D::SurfaceTree::Assemble(source);
 	if (stree.roots().size() == 0) throw std::runtime_error("No closed surfaces found");
@@ -440,7 +367,6 @@ HMGrid3D::GridData TUnstructuredTetrahedral::_run(const HMGrid3D::Surface& sourc
 	revs.emplace_back(new HMGrid3D::SurfTReverter(cond));
 	for (auto tree: trees) revs.emplace_back(new HMGrid3D::SurfTreeTReverter(tree));
 
-	//callback->step_after(75, "Meshing");
 	HMGrid3D::GridData ret;
 	for (int i=0; i<trees.size(); ++i){
 		auto cb = callback->subrange(75./trees.size(), 100.);

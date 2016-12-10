@@ -3,7 +3,9 @@ from hybmeshpack import hmcore as hmcore
 from hybmeshpack.hmcore import libhmcport
 from hybmeshpack.hmcore import c2 as c2core
 from hybmeshpack.hmcore import g2 as g2core
+from hybmeshpack.gdata import grid2
 from hybmeshpack import progdata
+from hybmeshpack.basic import geom as bg
 
 
 def info_grid(g1):
@@ -95,6 +97,32 @@ def info_surface(s1):
             ret['btypes'][b] = 0
         ret['btypes'][b] += 1
     return ret
+
+
+def info_getpoint(obj, ind=None, vclosest=None, eclosest=None, cclosest=None):
+    """TODO
+    """
+    g = flow.get_receiver().get_any(obj)
+    ret = None
+    if ind is not None:
+        ret = g.points[ind]
+    if vclosest is not None:
+        p = bg.Point2(vclosest[0], vclosest[1])
+        ret = g.points[g.closest_point_index(p)]
+    if eclosest is not None:
+        p = bg.Point2(eclosest[0], eclosest[1])
+        eds = g.edges if isinstance(g, grid2.Grid2) else g.edges_points()
+        ret = g.closest_edge_point(p, eds)
+    if cclosest is not None:
+        p = bg.Point2(cclosest[0], cclosest[1])
+        if isinstance(g, grid2.Grid2):
+            g = g.cont
+        g = g.simplify(0)
+        ret = g.closest_edge_point(p, g.edges_points())
+    if ret is not None:
+        return [ret.x, ret.y]
+    else:
+        raise ValueError
 
 
 def registered_contours():
