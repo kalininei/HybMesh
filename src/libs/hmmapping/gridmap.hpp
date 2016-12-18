@@ -42,6 +42,7 @@ struct TMapGrid: public HMCallback::ExecutorBase{
 			const HMCont2D::ECollection& area,
 			vector<Point> base_points,
 			vector<Point> mapped_points,
+			bool reversed,
 			Options opt);
 };
 extern HMCallback::FunctionWithCallback<TMapGrid> MapGrid;

@@ -341,7 +341,9 @@ def build_boundary_grid(opts):
 
 def map_grid(base_grid, target_contour, base_points, target_points,
              snap="no", project_to="line", btypes="from_grid",
-             algo="inverse_laplace", return_invalid=False):
+             algo="inverse_laplace",
+             is_reversed=False,
+             return_invalid=False):
     """Performs mapping of base grid on another contour.
     See detailed options description in :ref:`gridmappings`.
 
@@ -385,6 +387,9 @@ def map_grid(base_grid, target_contour, base_points, target_points,
 
        * ``"direct_laplace"`` solves Laplace problem in base domain,
        * ``"inverse_laplace"`` solves Laplace problem in target domain.
+
+    :param bool is_reversed: shows whether target contour
+       should be treated in reversed order while builging boundary mapping.
 
     :param bool return_invalid: if this flag is on
        then the procedure will return a grid even if it is not valid
@@ -435,6 +440,7 @@ def map_grid(base_grid, target_contour, base_points, target_points,
                              "snap": snap,
                              "algo": algo,
                              "btypes": btypes,
+                             "is_reversed": is_reversed,
                              "return_invalid": return_invalid})
     try:
         flow.exec_command(c)

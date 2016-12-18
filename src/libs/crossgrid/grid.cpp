@@ -405,10 +405,14 @@ void GridGeom::no_excessive_bnodes(){
 		auto r = used_points_of_cells[ci].emplace(locp, loca);
 		if (!r.second){
 			int locb = r.first->second;
+			/*
 			if (ISZERO(triarea(*c->points[loca],
 					*c->points[locb], *c->points[locp]))){
 				hangnodes[ci].insert(locp);
 			}
+			*/
+			double ksi = Point::meas_line(*c->points[locp], *c->points[loca], *c->points[locb]);
+			if (ksi < geps*geps) hangnodes[ci].insert(locp);
 		}
 	};
 	for (auto& e: get_edges()) if (e.is_boundary()){
@@ -443,8 +447,16 @@ GridGeom* GridGeom::combine(GridGeom* gmain, GridGeom* gsec){
 	auto t1 = GGeom::Info::Contour(*gmain);
 	auto t2 = GGeom::Info::Contour(*gsec);
 	auto intersect = HMCont2D::Clip::Union(t1, t2);
-	//if (maincont.n_cont()>1 || seccont.n_cont()>1){
-	if (intersect.nodes.size() != intersect.roots().size()){
+	bool issimple = true;
+	if (intersect.nodes.size() != intersect.roots().size()){ issimple = false; }
+	else {
+		auto ap = intersect.all_points();
+		for (int i=0; i<ap.size(); ++i)
+		for (int j=i+1; j<ap.size(); ++j){
+			if (*ap[i] == *ap[j]) {issimple = false; break; }
+		}
+	}
+	if (!issimple){
 		vector<Point> pts = ret->cells_internal_points();
 		auto mainfilt = std::get<2>(maincont.filter_points_i(pts));
 		auto secfilt = std::get<2>(seccont.filter_points_i(pts));

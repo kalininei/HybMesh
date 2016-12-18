@@ -6,6 +6,5 @@ tmp.py
 !fulltest.bat
 
 !fromdoc
-fromdoc/*
-!fromdoc/*.py
-
+!others
+!others/*.svg

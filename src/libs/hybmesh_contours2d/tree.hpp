@@ -10,6 +10,7 @@ struct ExtendedTree;
 
 // ============== Tree: set of non-overlapping contours
 struct ContourTree: public ECollection {
+	virtual ~ContourTree() = default;
 	//All contours should be closed
 	//edges are shared between inherited this->data and
 	//contours[i].data;

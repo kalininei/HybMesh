@@ -195,6 +195,7 @@ class Point2SetStruct(GeomStruct):
                 if (dst < mindist):
                     ret = Point2((1 - ksi) * p1.x + ksi * p2.x,
                                  (1 - ksi) * p1.y + ksi * p2.y)
+                    mindist = dst
         return ret
 
     # ---- Transformations

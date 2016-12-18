@@ -130,6 +130,7 @@ struct tgPoint: public Point{
 		return ret;
 	}
 	tgHalfEdge* popnext(double angle){
+		assert(he.size() > 0);
 		angle=AngleAdd(angle, M_PI, geps); //revert angle of incoming edge
 		auto it=he.lower_bound(angle);
 		if (it==he.begin()) it=he.end();

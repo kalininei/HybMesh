@@ -2,6 +2,16 @@
 #include "hmmapping.hpp"
 
 using namespace HMMap::Impl;
+MappedContour::MappedContour(const HMCont2D::Contour* c1, const HMCont2D::Contour* c2, bool reversed):
+		base(c1), orig_mapped(c2){
+	if (reversed){
+		rev_mapped = *c2;
+		rev_mapped.Reverse();
+		mapped = &rev_mapped;
+	} else {
+		mapped = orig_mapped;
+	}
+};
 
 double MappedContour::loc2ex_base(double w) const{
 	if (ww.size() == 1){
@@ -109,7 +119,9 @@ void MappedContour::check_ww() const{
 		double w2 = wit.second - w2start;
 		if (w2 > 1) w2-=1;
 		if (w2 < 0) w2+=1;
-		if (w2 <= w2prev) throw HMMap::MapException("Invalid order of points in mapped contour");
+		if (w2 <= w2prev){
+			throw HMMap::MapException("Invalid order of points in mapped contour");
+		}
 		w2prev = w2;
 	}
 }
@@ -133,7 +145,7 @@ MappedContour* MappedContourCollection::find_by_base(HMCont2D::Contour* bc){
 MappedContour* MappedContourCollection::find_by_mapped(HMCont2D::Contour* bc){
 	MappedContour* ret = NULL;
 	for (auto s: data){
-		if (s->mapped == bc){ ret = s.get(); break; }
+		if (s->orig_mapped == bc){ ret = s.get(); break; }
 	}
 	return ret;
 }
@@ -144,7 +156,7 @@ MappedContour* MappedContourCollection::insert(HMCont2D::Contour* cbase, HMCont2
 	if (fnd1 != 0 && fnd1 == fnd2){
 		return fnd1;
 	} else if (fnd1 == 0 && fnd2 == 0){
-		shared_ptr<MappedContour> n(new MappedContour(cbase, cmapped));
+		shared_ptr<MappedContour> n(new MappedContour(cbase, cmapped, reversed));
 		data.push_back(n);
 		return data.back().get();
 	} else{

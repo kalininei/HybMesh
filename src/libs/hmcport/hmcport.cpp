@@ -621,6 +621,7 @@ Grid* boundary_layer_grid_wcb(int N, BoundaryLayerGridOption* popt,
 
 Grid* build_grid_mapping(void* base_grid, void* target_contour, int Npnt,
 		double* pbase, double* ptarget, int snap_method, int algo,
+		int reversed,
 		int return_invalid, hmcport_callback cb){
 	GridGeom* g = static_cast<GridGeom*>(base_grid);
 	HMCont2D::ECollection* col = static_cast<HMCont2D::ECollection*>(target_contour);
@@ -646,7 +647,7 @@ Grid* build_grid_mapping(void* base_grid, void* target_contour, int Npnt,
 			case 1: opt.algo = "direct-laplace"; break;
 			case 2: opt.algo = "inverse-laplace"; break;
 		}
-		GridGeom ans = HMMap::MapGrid.WithCallback(cb, *g, *col, p1, p2, opt);
+		GridGeom ans = HMMap::MapGrid.WithCallback(cb, *g, *col, p1, p2, (reversed==1), opt);
 		ans.undo_scale(cscale);
 		ret = new GridGeom(std::move(ans));
 	} catch (HMMap::EInvalidGrid &e){
@@ -655,6 +656,7 @@ Grid* build_grid_mapping(void* base_grid, void* target_contour, int Npnt,
 			ret = 0;
 		} else{
 			std::cout<<"Ignored error: "<<e.what()<<std::endl;
+			e.invalid_grid.undo_scale(cscale);
 			ret = new GridGeom(std::move(e.invalid_grid));
 		}
 	} catch (const std::exception &e){

@@ -34,7 +34,7 @@ GridGeom DoMapping::run(HMCallback::Caller2& cb){
 	cb.step_after(20, "SLAE solution");
 	solve_uv_problems(u, v);
 
-	//draw a resulting grid
+	//construct a resulting grid
 	cb.step_after(5, "Grid building");
 	GridGeom ret = GGeom::Constructor::DeepCopy(inpgrid);
 	//receive boundary points
@@ -54,6 +54,11 @@ GridGeom DoMapping::run(HMCallback::Caller2& cb){
 	}
 
 	cb.step_after(5, "Check grid");
+	if (mcol.is_reversed()){
+		GGeom::Modify::CellModify(ret, [](Cell* c){
+				std::reverse(c->points.begin(), c->points.end());
+		});
+	}
 	if (!GGeom::Info::Check(ret)) throw HMMap::EInvalidGrid(std::move(ret));
 
 	cb.step_after(5, "Snapping");
@@ -197,7 +202,7 @@ void InverseMapping::build_grid3(){
 	for (int i=0; i<mcol.entry_num(); ++i){
 		//find mapped contour
 		auto cmapping = mcol.get(i);
-		auto mapped_contour = cmapping->get_mapped();
+		auto mapped_contour = cmapping->get_orig_mapped();
 		HMCont2D::Contour* copied_mapped_contour=0;
 		for (int j=0; j<mapped_outer.nodes.size(); ++j){
 			if (mapped_outer.nodes[j].get() == mapped_contour){
@@ -205,6 +210,7 @@ void InverseMapping::build_grid3(){
 				break;
 			}
 		}
+		assert(copied_mapped_contour != 0);
 		//for each point in contour
 		for (auto p: cmapping->get_base()->all_points()){
 			//find mapped point

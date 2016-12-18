@@ -40,7 +40,7 @@ int export_tecplot_grid(const Grid* grid, const char* fname,
 //if input are not positioned correctly their vertices coordinates will be changed
 //returns pointer to GridGeom or NULL if failed
 void* custom_rectangular_grid(int algo, void* left, void* bot,
-		void* right, void* top, double* tfi_hermite_w, hmcport_callback cb_fun);
+		void* right, void* top, double* tfi_hermite_w, int return_invalid, hmcport_callback cb_fun);
 
 //builds a grid with quadrangle cells in a circular area. it contains uniform square grid
 //in the center and ring-like grid at the outer boundary.

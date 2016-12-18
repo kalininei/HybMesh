@@ -117,48 +117,61 @@ int export_tecplot_grid(const Grid* grid, const char* fname,
 }
 
 void* custom_rectangular_grid(int algo, void* left, void* bot,
-		void* right, void* top, double* her_w, hmcport_callback cb){
+		void* right, void* top, double* her_w, int return_invalid, hmcport_callback cb){
 	//gather data
-	HMCont2D::Contour* left1 = static_cast<HMCont2D::Contour*>(left);
-	HMCont2D::Contour* bot1 = static_cast<HMCont2D::Contour*>(bot);
-	HMCont2D::Contour* right1 = static_cast<HMCont2D::Contour*>(right);
-	HMCont2D::Contour* top1 = static_cast<HMCont2D::Contour*>(top);
+	HMCont2D::ECollection* _left1 = static_cast<HMCont2D::ECollection*>(left);
+	HMCont2D::ECollection* _bot1 = static_cast<HMCont2D::ECollection*>(bot);
+	HMCont2D::ECollection* _right1 = static_cast<HMCont2D::ECollection*>(right);
+	HMCont2D::ECollection* _top1 = static_cast<HMCont2D::ECollection*>(top);
 	GridGeom* ret = 0;
 	//scale
-	ScaleBase sc = HMCont2D::ECollection::Scale01(*left1);
-	HMCont2D::ECollection::Scale(*bot1, sc);
-	HMCont2D::ECollection::Scale(*right1, sc);
-	HMCont2D::ECollection::Scale(*top1, sc);
+	ScaleBase sc = HMCont2D::ECollection::Scale01(*_left1);
+	HMCont2D::ECollection::Scale(*_bot1, sc);
+	HMCont2D::ECollection::Scale(*_right1, sc);
+	HMCont2D::ECollection::Scale(*_top1, sc);
 	try{
+		HMCont2D::Contour left1 = HMCont2D::Assembler::Contour1(*_left1, _left1->data[0]->pstart);
+		HMCont2D::Contour bot1 = HMCont2D::Assembler::Contour1(*_bot1, _bot1->data[0]->pstart);
+		HMCont2D::Contour right1 = HMCont2D::Assembler::Contour1(*_right1, _right1->data[0]->pstart);
+		HMCont2D::Contour top1 = HMCont2D::Assembler::Contour1(*_top1, _top1->data[0]->pstart);
 		//assemble grid
 		if (algo == 0){
-			ret = new GridGeom(HMMap::LinearRectGrid(*left1, *bot1, *right1, *top1));
+			ret = new GridGeom(HMMap::LinearRectGrid(left1, bot1, right1, top1));
 		} else if (algo == 1){
 			ret = new GridGeom(HMMap::LaplaceRectGrid.WithCallback(
-				cb, *left1, *bot1, *right1, *top1, "inverse-laplace"));
+				cb, left1, bot1, right1, top1, "inverse-laplace"));
 		} else if (algo == 2){
 			ret = new GridGeom(HMMap::LaplaceRectGrid.WithCallback(
-				cb, *left1, *bot1, *right1, *top1, "direct-laplace"));
+				cb, left1, bot1, right1, top1, "direct-laplace"));
 		} else if (algo == 3){
 			ret = new GridGeom(HMMap::OrthogonalRectGrid.WithCallback(
-				cb, *left1, *bot1, *right1, *top1));
+				cb, left1, bot1, right1, top1));
 		} else if (algo == 4){
 			ret = new GridGeom(HMMap::LinearTFIRectGrid(
-				*left1, *bot1, *right1, *top1));
+				left1, bot1, right1, top1));
 		} else if (algo == 5){
 			ret = new GridGeom(HMMap::CubicTFIRectGrid(
-				*left1, *bot1, *right1, *top1, {her_w[0], her_w[1], her_w[2], her_w[3]}));
+				left1, bot1, right1, top1, {her_w[0], her_w[1], her_w[2], her_w[3]}));
 		} else throw std::runtime_error("unknown algorithm");
 		ret->undo_scale(sc);
+	} catch (HMMap::EInvalidGrid &e){
+		if (!return_invalid){
+			std::cout<<e.what()<<std::endl;
+			ret = 0;
+		} else{
+			std::cout<<"Ignored error: "<<e.what()<<std::endl;
+			e.invalid_grid.undo_scale(sc);
+			ret = new GridGeom(std::move(e.invalid_grid));
+		}
 	} catch (std::runtime_error &e){
 		std::cout<<e.what()<<std::endl;
 		ret = 0;
 	}
 	//unscale
-	HMCont2D::ECollection::Unscale(*left1, sc);
-	HMCont2D::ECollection::Unscale(*bot1, sc);
-	HMCont2D::ECollection::Unscale(*right1, sc);
-	HMCont2D::ECollection::Unscale(*top1, sc);
+	HMCont2D::ECollection::Unscale(*_left1, sc);
+	HMCont2D::ECollection::Unscale(*_bot1, sc);
+	HMCont2D::ECollection::Unscale(*_right1, sc);
+	HMCont2D::ECollection::Unscale(*_top1, sc);
 	return ret;
 }
 

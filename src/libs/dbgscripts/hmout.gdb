@@ -117,5 +117,3 @@ skip file /usr/include/c++/4.8/bits/stl_vector.h
 skip file /usr/include/c++/4.8/tuple
 skip file /usr/include/c++/4.8/array
 #skip file /usr/include/c++/4.8/bits/shared_ptr.h
-
-

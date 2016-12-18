@@ -416,7 +416,7 @@ Point Impl::RectApprox::MapToRectangle_xksi(const Point& p) const{
 		return Point::meas_section(p, start, end);
 	};
 	double eta = HMMath::Compute::GoldenRatioMin(0.0, 1.0, func2, 100, 1e-16);
-	assert(eta>-geps && eta<1+geps);
+	assert(ISIN_EE(eta, 0, 1));
 
 	double ksi;
 	Point start, end;
@@ -424,6 +424,7 @@ Point Impl::RectApprox::MapToRectangle_xksi(const Point& p) const{
 	start = HMCont2D::Contour::WeightPoint(left, eta);
 	end = HMCont2D::Contour::WeightPoint(right, eta);
 	isOnSection(p, start, end, ksi);
+	assert(ISIN_EE(ksi, 0, 1));
 	return Point(ksi*_module, eta);
 }
 

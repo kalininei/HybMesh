@@ -132,8 +132,10 @@ MappedRect::Factory(HMCont2D::Contour& left, HMCont2D::Contour& right,
 		top = HMCont2D::Constructor::CutContour(ellipse, *right2.last(), *left2.last());
 		top.ReallyReverse();
 		//getting rid of numerical errors
-		*left2.last() = *top.first();
-		*right2.last() = *top.last();
+		//*left2.last() = *top.first();
+		//*right2.last() = *top.last();
+		*top.first() = *left2.last();
+		*top.last() = *right2.last();
 		goto GEOMETRY_RESULT_CHECK;
 	}
 
@@ -178,8 +180,10 @@ MappedRect::Factory(HMCont2D::Contour& left, HMCont2D::Contour& right,
 		for (auto p = _tp2.begin() + 1; p!=_tp2.end(); ++p) topp.push_back(**p);
 		top = HMCont2D::Constructor::ContourFromPoints(topp);
 		//getting rid of numerical errors
-		*left2.last() = *top.first();
-		*right2.last() = *top.last();
+		//*left2.last() = *top.first();
+		//*right2.last() = *top.last();
+		*top.first() = *left2.last();
+		*top.last() = *right2.last();
 		goto GEOMETRY_RESULT_CHECK;
 	}
 
@@ -221,17 +225,17 @@ RectForOpenArea::RectForOpenArea(HMCont2D::Contour& left, HMCont2D::Contour& rig
 	std::vector<Point> path;
 	std::array<int, 4> corners;
 	corners[0] = 0;
-	auto tmp = left.corner_points(); std::reverse(tmp.begin(), tmp.end());
+	auto tmp = left.ordered_points(); std::reverse(tmp.begin(), tmp.end());
 	for (Point* p: tmp) path.push_back(*p);
 	path.pop_back();
 	corners[1] = path.size();
-	for (Point* p: bottom.corner_points()) path.push_back(*p);
+	for (Point* p: bottom.ordered_points()) path.push_back(*p);
 	path.pop_back();
 	corners[2] = path.size();
-	for (Point* p: right.corner_points()) path.push_back(*p);
+	for (Point* p: right.ordered_points()) path.push_back(*p);
 	path.pop_back();
 	corners[3] = path.size();
-	tmp = top.corner_points(); std::reverse(tmp.begin(), tmp.end());
+	tmp = top.ordered_points(); std::reverse(tmp.begin(), tmp.end());
 	for (Point* p: tmp) path.push_back(*p);
 	path.pop_back();
 	//2. build conformal transformation into rectangle [0,m]x[0,1]

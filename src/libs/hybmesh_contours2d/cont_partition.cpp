@@ -500,6 +500,10 @@ template<class A>
 Contour partition_section(A& step, const Contour& cont, PCollection& pstore, Point* pstart, Point* pend){
 	Contour sub = Assembler::Contour1(cont, pstart, pend);
 	A substep = build_substep(step, cont, pstart, pend);
+	//temporary reverse contour with single edge if needed
+	shared_ptr<ContourTReverter> trev;
+	if (sub.first() != pstart) trev.reset(new ContourTReverter(sub));
+	assert(sub.first() == pstart);
 	return partition_core(substep, sub, pstore);
 }
 //returns repartitioned copy of a contour

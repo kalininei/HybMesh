@@ -9,7 +9,8 @@
 namespace HMMap{namespace Impl{
 
 struct DoMapping{
-	DoMapping(const HMMap::Options& _opt): opt(_opt), inpgrid(GGeom::Constructor::EmptyGrid()){}
+	DoMapping(const HMMap::Options& _opt, bool reversed):
+		opt(_opt), inpgrid(GGeom::Constructor::EmptyGrid()), mcol(reversed){}
 	
 	// ====== set input
 	void set_grid(const GridGeom& ig);
@@ -48,7 +49,7 @@ protected:
 };
 
 struct DirectMapping: public DoMapping{
-	DirectMapping(Options opt): DoMapping(opt){}
+	DirectMapping(Options opt, bool reversed): DoMapping(opt, reversed){}
 private:
 	void solve_uv_problems(vector<double>& u, vector<double>& v) override;
 	//prepare_grid subroutines
@@ -56,7 +57,7 @@ private:
 };
 
 struct InverseMapping: public DoMapping{
-	InverseMapping(Options opt): DoMapping(opt){}
+	InverseMapping(Options opt, bool reversed): DoMapping(opt, reversed){}
 private:
 	void solve_uv_problems(vector<double>& u, vector<double>& v) override;
 	//prepare_grid subroutines
@@ -64,7 +65,8 @@ private:
 };
 
 struct DoMapping2{
-	DoMapping2(const HMMap::Options& _opt): opt(_opt), inpgrid(GGeom::Constructor::EmptyGrid()){}
+	DoMapping2(const HMMap::Options& _opt, bool reversed):
+		opt(_opt), inpgrid(GGeom::Constructor::EmptyGrid()), mcol(reversed){}
 	
 	// ====== set input
 	void set_grid(const GridGeom& ig);

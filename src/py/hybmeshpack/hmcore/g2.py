@@ -163,7 +163,8 @@ def free_boundary_types(bt):
     libhmcport.free_grid2_boundary_types(bt)
 
 
-def custom_rectangular_grid(algo, c_left, c_bot, c_right, c_top, c_herw, cb):
+def custom_rectangular_grid(algo, c_left, c_bot, c_right, c_top, c_herw,
+                            invalid, cb):
     """ algo: one of ['linear', 'inverse_laplace',
                       'direct_laplace', 'orthogonal']
         c_*: c allocated contours.
@@ -185,7 +186,8 @@ def custom_rectangular_grid(algo, c_left, c_bot, c_right, c_top, c_herw, cb):
     else:
         raise ValueError("Invalid custom rectangular grid algo")
 
-    args = (c_algo, c_left, c_bot, c_right, c_top, c_herw)
+    args = (c_algo, c_left, c_bot, c_right, c_top, c_herw,
+            ct.c_int(1 if invalid else 0))
     cb.initialize(libhmcport.custom_rectangular_grid, args)
     cb.execute_command()
     res = cb.get_result()
@@ -287,7 +289,7 @@ def circ4grid(algo, c_p0, rad, step, sqrside, rcoef):
 
 
 def map_grid(c_grid, c_cont, c_gpoints, c_cpoints, snap, algo,
-             return_invalid, cb):
+             is_reversed, return_invalid, cb):
     """maps grid on cont using gpoints, cpoints as basis.
        snap = "no", "add_vertices", "shift_vertices"
        algo = "inverse_laplace", "direct_laplace"
@@ -308,10 +310,12 @@ def map_grid(c_grid, c_cont, c_gpoints, c_cpoints, snap, algo,
         a = ct.c_int(1)
     elif algo == "inverse_laplace":
         a = ct.c_int(2)
+    #reversed
+    isrev = ct.c_int(1 if is_reversed else 0)
     #invalid
     inv = ct.c_int(1 if return_invalid else 0)
 
-    args = (c_grid, c_cont, n, c_gpoints, c_cpoints, s, a, inv)
+    args = (c_grid, c_cont, n, c_gpoints, c_cpoints, s, a, isrev, inv)
     cb.initialize(libhmcport.build_grid_mapping, args)
     cb.execute_command()
     cret = cb.get_result()

@@ -1,3 +1,5 @@
+import traceback
+import os
 import proc
 
 
@@ -289,7 +291,13 @@ class ConsoleInterface(BasicInterface):
     def flow_messages(self, tp, sender, **kwargs):
         'self.cur_flow messages receiver'
         if tp == sender.BEFORE_EXECUTION:
-            print kwargs['com'].method_code()
+            line = kwargs['com'].method_code()
+            for s in traceback.extract_stack()[::-1]:
+                if "hybmeshpack" not in s[0]:
+                    fn = os.path.basename(s[0])
+                    line = "%s (%s:%s)" % (line, fn, s[1])
+                    break
+            print line
         if tp == sender.SUCCESS_EXECUTION:
             print '--- OK'
         if tp == sender.FAILED_EXECUTION:

@@ -240,7 +240,8 @@ def add_triangle_grid(p0, p1, p2, nedge):
 
 
 def add_custom_rect_grid(algo, left, bottom, right=None, top=None,
-                         hermite_tfi_w=[1.0, 1.0, 1.0, 1.0]):
+                         hermite_tfi_w=[1.0, 1.0, 1.0, 1.0],
+                         return_invalid=False):
     """ Creates rectangular grid on the basis of four curvilinear contours
     using contour vertices for partition.
     See details in :ref:`custom_rect_grid`.
@@ -273,6 +274,15 @@ def add_custom_rect_grid(algo, left, bottom, right=None, top=None,
        for **left**, **bottom**, **right**, **top** contours respectively
        for **algo** = ``'hermite_tfi'``
 
+    :param bool return_invalid: if this flag is on
+       then the procedure will return a grid even if it is not valid
+       (has self-intersections). Such grids could be exported to
+       simple formats (like vtk or tecplot) in order to detect
+       bad regions and give user a hint of how to adopt
+       input data to gain an acceptable result.
+
+       .. warning:: Never use invalid grids for further operations.
+
     :return: new grid identifier
 
     :raise: hmscript.ExecError, ValueError
@@ -289,7 +299,8 @@ def add_custom_rect_grid(algo, left, bottom, right=None, top=None,
             'right': right,
             'bot': bottom,
             'top': top,
-            'her_w': copy.deepcopy(hermite_tfi_w)}
+            'her_w': copy.deepcopy(hermite_tfi_w),
+            'return_invalid': return_invalid}
     c = com.gridcom.AddCustomRectGrid(args)
     try:
         flow.exec_command(c)

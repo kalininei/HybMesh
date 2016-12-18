@@ -62,6 +62,7 @@ ECollection Simplified(const ECollection& ecol, double degree_angle, bool no_bre
 Container<ECollection> NoCrosses(const ECollection& ecol);
 void MergePoints(ECollection& ecol);
 void DeleteUnusedPoints(Container<ECollection>& econt);
+void DeleteUnusedPoints(const ECollection& ecol, PCollection& pdata);
 
 // =========================== Smoothing
 //calculates vector representing direction of contour at point p smoother by lengh len

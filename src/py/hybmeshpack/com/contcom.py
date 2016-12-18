@@ -261,9 +261,9 @@ class UniteContours(objcom.AbstractAddRemove):
             newcont = c2core.cont2_from_c(ret)
 
             bcmap = [[0, r] for r in rparents]
-            for b in bcmap:
-                for c in conts[1:]:
-                    if b[1] > c.n_edges():
+            for ic, c in enumerate(conts[:-1]):
+                for b in bcmap:
+                    if b[0] == ic and b[1] >= c.n_edges():
                         b[0] += 1
                         b[1] -= c.n_edges()
 
@@ -639,13 +639,15 @@ class PartitionContour(objcom.AbstractAddRemove):
     @classmethod
     def _arguments_types(cls):
         return {'name': command.BasicOption(str),
-                'algo': command.BasicOption(str),  # 'const'/'ref_points'
+                'algo': command.BasicOption(str),
                 'step': command.ListOfOptions(command.BasicOption(float)),
                 'angle0': command.BasicOption(float),
                 'base': command.BasicOption(str),
                 'keepbnd': command.BoolOption(),
                 'nedges': command.NoneOr(command.BasicOption(int)),
                 'crosses': command.ListOfOptions(command.BasicOption(str)),
+                'start': command.Point2Option(),
+                'keep_pts': command.ListOfOptions(command.Point2Option())
                 }
 
     def _addrem_objects(self):
@@ -672,7 +674,9 @@ class PartitionContour(objcom.AbstractAddRemove):
                                                     so['angle0'],
                                                     so['keepbnd'],
                                                     so['nedges'],
-                                                    c_crosses)
+                                                    c_crosses,
+                                                    so['keep_pts'],
+                                                    so['start'])
             ret = c2core.cont2_from_c(c_ret, c_bnd)
             c2core.free_cont2(c_ret)
             return [], [], [(so["name"], ret)], []
@@ -751,8 +755,7 @@ class ExtractContour(objcom.AbstractAddRemove):
     def _arguments_types(cls):
         return {'name': command.BasicOption(str),
                 'src': command.BasicOption(str),
-                'p0': command.Point2Option(),
-                'p1': command.Point2Option(),
+                'plist': command.ListOfOptions(command.Point2Option()),
                 'project_to': command.BasicOption(str)
                 }
 
@@ -760,18 +763,68 @@ class ExtractContour(objcom.AbstractAddRemove):
         so = self.options
         cont = self.any_cont_by_name(so['src'])
 
-        c_cont, c_ret = 0, 0
+        c_cont, c_ret = 0, []
         try:
             c_cont = c2core.cont2_to_c(cont)
             c_ret = c2core.extract_contour(c_cont,
-                                           so['p0'], so['p1'],
+                                           so['plist'],
                                            so['project_to'])
-            ret = c2core.cont2_from_c(c_ret)
-            add_bc_from_cont(ret, cont, c_ret, c_cont, force=3)
+            ret = []
+            for r in c_ret:
+                tret = c2core.cont2_from_c(r)
+                add_bc_from_cont(tret, cont, r, c_cont, force=3)
+                ret.append(tret)
 
+            return [], [], [(so["name"], r) for r in ret], []
+        except Exception as e:
+            raise command.ExecutionError("ExtractContour error", self, e)
+        finally:
+            for r in c_ret:
+                c2core.free_cont2(r)
+            c2core.free_cont2(c_cont) if c_cont != 0 else None
+
+
+class ConnectSubcontours(objcom.AbstractAddRemove):
+    def __init__(self, arg):
+        if "name" not in arg:
+            arg["name"] = "Contour1"
+        super(ConnectSubcontours, self).__init__(arg)
+
+    @classmethod
+    def _arguments_types(cls):
+        return {'name': command.BasicOption(str),
+                'src': command.ListOfOptions(command.BasicOption(str)),
+                'fix': command.ListOfOptions(command.BasicOption(int)),
+                'close': command.BasicOption(str),
+                'shiftnext': command.BoolOption()
+                }
+
+    def _addrem_objects(self):
+        so = self.options
+        conts = []
+        for c in so['src']:
+            conts.append(self.any_cont_by_name(c))
+
+        c_cont, c_ret = [], 0
+        try:
+            for c in conts:
+                c_cont.append(c2core.cont2_to_c(c))
+            c_ret = c2core.connect_subcontours(
+                c_cont, so['fix'], so['close'], so['shiftnext'])
+            ret = c2core.cont2_from_c(c_ret)
+            k = 0
+            ebnd = {}
+            for c in conts:
+                for i in range(c.n_edges()):
+                    b = c.edge_bnd(i)
+                    if b != 0:
+                        ebnd[k] = b
+                    k += 1
+            ret.set_edge_bnd(ebnd)
             return [], [], [(so["name"], ret)], []
         except Exception as e:
             raise command.ExecutionError("ExtractContour error", self, e)
         finally:
+            for r in c_cont:
+                c2core.free_cont2(r)
             c2core.free_cont2(c_ret) if c_ret != 0 else None
-            c2core.free_cont2(c_cont) if c_cont != 0 else None

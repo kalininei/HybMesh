@@ -103,10 +103,11 @@ def clip_domain(cc1, cc2, op, simplify):
 
 
 def contour_partition(c_cont, c_bt, c_step, algo, a0,
-                      keepbnd, nedges, crosses):
+                      keepbnd, nedges, crosses, keep_pts, sp):
     """ c_step: ct.c_double() * n, where n dependes on algo:
     algo = "const" => n = 1,
     algo = "ref_points" => n = 3*k
+    algo = "ref_weights" => n = 2*k
     """
     # algo treatment
     if algo == "const":
@@ -115,8 +116,13 @@ def contour_partition(c_cont, c_bt, c_step, algo, a0,
     elif algo == "ref_points":
         c_algo = ct.c_int(1)
         c_n = ct.c_int(len(c_step) / 3)
+    elif algo == "ref_weights":
+        c_algo = ct.c_int(2)
+        c_n = ct.c_int(len(c_step) / 2)
     else:
         raise ValueError("invalid partition algo")
+    # start point
+    c_sp = list_to_c([sp.x, sp.y], "float")
 
     # prepare arrays for boundary output
     c_bnd = ct.POINTER(ct.c_int)()
@@ -124,12 +130,19 @@ def contour_partition(c_cont, c_bt, c_step, algo, a0,
     c_ne = ct.c_int(-1 if nedges is None else nedges)
     num_crosses = ct.c_int(len(crosses))
     c_crosses = list_to_c(crosses, "void*")
+    num_keep_pts = ct.c_int(len(keep_pts))
+    kp = []
+    for p in keep_pts:
+        kp.extend([p.x, p.y])
+    c_keep_pts = list_to_c(kp, "float")
 
     ret = libhmcport.contour_partition(c_cont, c_bt, c_algo,
                                        c_n, c_step,
                                        ct.c_double(a0),
                                        ct.c_int(1 if keepbnd else 0), c_ne,
                                        num_crosses, c_crosses,
+                                       num_keep_pts, c_keep_pts,
+                                       c_sp,
                                        ct.byref(n_bnd), ct.byref(c_bnd)
                                        )
     # copy c-side allocated bnd array to python side allocated
@@ -207,11 +220,19 @@ def segment_part(start, end, hstart, hend, hinternal):
     return ret
 
 
-def extract_contour(c_src, p0, p1, project_to):
-    pnts = [p0.x, p0.y, p1.x, p1.y]
+def extract_contour(c_src, plist, project_to):
+    pnts = []
+    for p in plist:
+        pnts.extend([p.x, p.y])
     c_pnts = list_to_c(pnts, float)
-    ret = libhmcport.extract_contour(c_src, c_pnts, project_to)
-    if ret != 0:
+    c_npnts = ct.c_int(len(plist))
+    ret_conts = ct.POINTER(ct.c_void_p)()
+    ok = libhmcport.extract_contour(c_src, c_npnts, c_pnts, project_to,
+                                    ct.byref(ret_conts))
+    if ok != 0:
+        ret = []
+        for i in range(len(plist) - 1):
+            ret.append(ret_conts[i])
         return ret
     else:
         raise Exception("contour extraction failed")
@@ -311,6 +332,23 @@ def quick_separate_contour(cont, btypes):
     free_cside_array(ret_btypes, 'int')
     free_cside_array(ret_conts, 'void*')
     return ret, btypes
+
+
+def connect_subcontours(conts, fix, close, shiftnext):
+    c_nconts = ct.c_int(len(conts))
+    c_conts = list_to_c(conts, "void*")
+    c_nfix = ct.c_int(len(fix))
+    c_fix = list_to_c(fix, "int")
+    c_close = close
+    cret = ct.c_void_p()
+    c_shiftnext = ct.c_int(1 if shiftnext else 0)
+    ok = libhmcport.connect_subcontours(c_nconts, c_conts, c_nfix, c_fix,
+                                        c_close, c_shiftnext,
+                                        ct.byref(cret))
+    if ok == 1:
+        return cret
+    else:
+        raise Exception("connect subcontours failed")
 
 
 def cwriter_create(contname, c_c, c_writer, c_sub, fmt):

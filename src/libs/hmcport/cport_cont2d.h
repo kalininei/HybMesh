@@ -8,9 +8,13 @@ extern "C"{
 // ==================== Contour Partition algorithm
 // cont: ECOllection pointer
 // btypes: size = cont.size(). Boundary feature for each contour edge
-// algo: 0 - const step; 1 - refference point step
+// algo: 0 - const step;
+//       1 - reference point step
+//       2 - reference weights step
 // n_steps: number of reference points in case of algo=1
-// steps: if algo = 0 => [const_step], if algo = 1 => [step0, x0, y0, step1, x1, y1, ...]
+// steps: if algo = 0 => [const_step],
+//        if algo = 1 => [step0, x0, y0, step1, x1, y1, ...]
+//        if algo = 2 => [step0, s0, step1, s1, ...]
 // a0: insignificant angle [180-a0, 180 + a0]
 // keepbnd: =true if all boundary type changing nodes should be preserved
 // n_outbnd - number of output contour edges
@@ -20,6 +24,8 @@ extern "C"{
 void* contour_partition(void* cont, int* btypes, int algo,
 		int n_steps, double* steps, double a0, int keepbnd, int nedges,
 		int n_crosses, void** crosses,
+		int n_keep_pts, double* keep_pts,
+		double* start_point,
 		int* n_outbnd, int** outbnd);
 
 //build a spline using basis points
@@ -37,13 +43,15 @@ int segment_part(double start, double end, double h0, double h1,
 
 
 //projection methods: line, vertex, corner
-void* extract_contour(void* source, double* pnts, const char* method);
+int extract_contour(void* source, int npnts, double* pnts, const char* method, void*** ret);
 
 //return 0 on fail
 int unite_contours(int ncont, void** conts, void** retcont, int* Nlinks, int** links);
 int simplify_contour(void* cont, double degree_angle, int* btypes, void** ret_cont, int* Nretb, int** retb);
 int separate_contour(void* cont, int* btypes, int* Nretc, void*** retc, int* Nretb, int** retb);
 int quick_separate_contour(void* cont, int* btypes, int* Nretc, void*** retc, int* Nretb, int** retb);
+int connect_subcontours(int nconts, void** conts, int nfix, int* fix,  const char* close, int shiftnext,                   
+                        void** cret);
 
 void* cwriter_create(const char* cname, void* cont, void* awriter, void* subnode, const char* fmt);
 void cwriter_free(void* cwriter);

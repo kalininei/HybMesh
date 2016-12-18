@@ -22,17 +22,6 @@ struct Container: public ECol{
 
 	PCol pdata;
 
-	Container():ECol(){}
-	explicit Container(const Container& c): ECol(c), pdata(c.pdata){}
-	Container(Container&& c) noexcept: ECol(c), pdata(c.pdata){}
-	Container& operator=(const Container& c){
-		if (&c != this){
-			ECol::operator=(c);
-			pdata = c.pdata;
-		}
-		return *this;
-	}
-
 	//get/set
 	Point* point(int i){return pdata.pvalue(i);}
 	void clear(){ pdata.clear(); ECol::clear(); }
@@ -48,8 +37,8 @@ struct Container: public ECol{
 
 	//Scaling
 	static ScaleBase Scale01(Container& c){ return PCol::Scale01(c.pdata); }
-	static void Scale(Container& c, const ScaleBase& sc) { PCol::Scale(c, sc); }
-	static void Unscale(Container& c, const ScaleBase& sc) { PCol::Unscale(c, sc); }
+	static void Scale(Container& c, const ScaleBase& sc) { PCol::Scale(c.pdata, sc); }
+	static void Unscale(Container& c, const ScaleBase& sc) { PCol::Unscale(c.pdata, sc); }
 
 
 	//DeepCopy: From another container/from another ECollection.

@@ -39,6 +39,8 @@ echo "--- intro_naca4415"
 %HMCOM% fromdoc/intro_naca4415.py
 echo "--- intro_filtration"
 %HMCOM% fromdoc/intro_filtration.py
+echo "--- rrj2"
+%HMCOM% others/rrj2.py
 
 :final
 pause

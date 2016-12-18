@@ -33,14 +33,35 @@ bool has_self_cross(const HMCont2D::Contour& cont){
 	}
 	return false;
 }
+bool no_cross_except_touch(const HMCont2D::Contour& c1, const HMCont2D::Contour& c2){
+	//return (HMCont2D::Algos::CrossAll(c1, c2).size() != 1);
+	int n_touches = 0;
+	Point p11 = *c1.first(), p12 = *c1.last();
+	if (p11 == *c2.first() || p11 == *c2.last()){
+		++n_touches;
+		c1.first()->set(c1.data[0]->center());
+	}
+	if (p12 == *c2.first() || p12 == *c2.last()){
+		++n_touches;
+		c1.last()->set(c1.data.back()->center());
+	}
+	bool ret;
+	if (n_touches != 1) ret = false;
+	else{
+		ret = !std::get<0>(HMCont2D::Algos::Cross(c1, c2));
+	}
+	c1.first()->set(p11);
+	c1.last()->set(p12);
+	return ret;
+}
 bool check_for_no_cross(const HMCont2D::Contour& left, const HMCont2D::Contour& bot,
 		const HMCont2D::Contour& right, const HMCont2D::Contour& top){
-	if (HMCont2D::Algos::CrossAll(left, bot).size() != 1) return false;
-	if (HMCont2D::Algos::CrossAll(left, top).size() != 1) return false;
+	if (!no_cross_except_touch(left, bot)) return false;
+	if (!no_cross_except_touch(left, top)) return false;
 	if (std::get<0>(HMCont2D::Algos::Cross(left, right))) return false;
 	if (std::get<0>(HMCont2D::Algos::Cross(bot, top))) return false;
-	if (HMCont2D::Algos::CrossAll(bot, right).size() != 1) return false;
-	if (HMCont2D::Algos::CrossAll(top, right).size() != 1) return false;
+	if (!no_cross_except_touch(bot, right)) return false;
+	if (!no_cross_except_touch(top, right)) return false;
 	if (has_self_cross(right)) return false;  //only right was modified pointwisely
 	return true;
 }
@@ -242,6 +263,23 @@ GridGeom HMMap::TOrthogonalRectGrid::_run(HMCont2D::Contour& _left, HMCont2D::Co
 
 	callback->step_after(5, "Grid check");
 	check_direction(ret);
+	//move boundary nodes to their exact places
+	{
+		//bottom
+		auto pp = bot.ordered_points();
+		for (int i=0; i<pp.size(); ++i){
+			ret.get_point(i)->set(*pp[i]);
+		}
+	}
+	{
+		//side
+		auto pp = (left_basic) ? left.ordered_points() : right.ordered_points();
+		int i0 = (left_basic) ? 0 : bot.size();
+		for (int i=0; i<pp.size(); ++i){
+			ret.get_point(i0)->set(*pp[i]);
+			i0 += bot.size()+1;
+		}
+	}
 	return ret;
 }
 
@@ -379,7 +417,7 @@ GridGeom HMMap::TLaplaceRectGrid::_run(HMCont2D::Contour& left, HMCont2D::Contou
 
 	//calculate
 	auto subcaller = callback->bottom_line_subrange(80);
-	return HMMap::MapGrid.UseCallback(subcaller, base, ecol, base_pnt, mapped_pnt, opt);
+	return HMMap::MapGrid.UseCallback(subcaller, base, ecol, base_pnt, mapped_pnt, false, opt);
 }
 
 GridGeom HMMap::LinearTFIRectGrid(HMCont2D::Contour& left, HMCont2D::Contour& bot,

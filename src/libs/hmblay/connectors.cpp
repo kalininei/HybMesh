@@ -116,6 +116,11 @@ void RightConnector::BuildInternals() {
 	bot = HMCont2D::Constructor::CutContour(_bot, *_bot.first(), realpoint2); 
 	HMCont2D::Contour right = next->LeftContour();
 	HMCont2D::Contour top = prev->RightContour();
+	//get rid of numerical errors
+	Point pc = (*right.last() + *top.last())/2.0;
+	right.last()->set(pc);
+	top.last()->set(pc);
+
 
 	//2) assemble connector
 	connection_area = MappedRect::Factory(left, right, bot, top,

@@ -19,6 +19,7 @@ public:
 	static int tabs;
 	static void Print(const char* fmt, ...);
 	static std::ostream& Cout();
+	static void print_trace(int depth=10);
 
 	//ptr, i are free data which can be assign during debugging
 	void* ptr;

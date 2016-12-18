@@ -3,6 +3,12 @@
 #include "hmdebug.hpp"
 #include "stdarg.h"
 #include "nan_handler.h"
+#include <stdio.h>
+#include <execinfo.h>
+#include <signal.h>
+#include <stdlib.h>
+#include <unistd.h>
+
 
 namespace{
 struct _D{ _D(){HMDebug::get();} };
@@ -32,5 +38,11 @@ std::ostream& HMDebug::Cout(){
 	return std::cout;
 }
 
-
+void HMDebug::print_trace(int d){
+	void *array[d];
+	size_t size;
+	//get void*'s for all entries on the stack
+	size = backtrace(array, d);
+	backtrace_symbols_fd(array, size, STDOUT_FILENO);
+}
 #endif

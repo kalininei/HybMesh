@@ -1,4 +1,5 @@
 import numbers
+import copy
 from hybmeshpack import com
 from hybmeshpack.basic.geom import Point2
 from hybmeshpack.hmscript import flow
@@ -263,8 +264,8 @@ def clip_domain(dom1, dom2, operation, simplify=True):
         return None
 
 
-def partition_contour(cont, algo, step, angle0=30, keep_bnd=False,
-                      nedges=None, crosses=[]):
+def partition_contour(cont, algo, step=1, angle0=30, keep_bnd=False,
+                      nedges=None, crosses=[], keep_pts=[], start=None):
     """ Makes connected contour partition
 
     :param cont: Contour or grid identifier
@@ -274,6 +275,8 @@ def partition_contour(cont, algo, step, angle0=30, keep_bnd=False,
        * ``'const'``: partition with defined constant step
        * ``'ref_points'``: partition with step function given by a
          set of values refered to basic points
+       * ``'ref_weights'``: partition with step function given by a
+         set of values refered to local contour [0, 1] coordinate
 
     :param step: For ``algo='const'`` a float number defining
        partition step;
@@ -281,6 +284,11 @@ def partition_contour(cont, algo, step, angle0=30, keep_bnd=False,
        For ``algo='ref_points'`` - list of step values and point coordinates
        given as
        ``[ step_0, [x_0, y_0], step_1, [x_1, y_1], ....]``.
+
+       For ``algo='ref_weights'`` - list of step values and point coordinates
+       given as
+       ``[ step_0, w_0, step_1, w_1, ....]``.
+
 
     :param float angle0: existing contour vertices which provide
        turns outside of ``[180 - angle0, 180 + angle0]`` degrees range
@@ -336,6 +344,27 @@ def partition_contour(cont, algo, step, angle0=30, keep_bnd=False,
                     not isinstance(step[2 * i + 1][0], numbers.Real) or\
                     not isinstance(step[2 * i + 1][1], numbers.Real):
                 raise ValueError(errs)
+    elif algo in ["ref_weights", "ref_lengths"]:
+        errs = "invalid step for ref_* partition"
+        if not isinstance(step, list) or len(step) % 2 != 0:
+            raise ValueError(errs)
+        if start is None:
+            raise ValueError("Define start point for ref_* partition")
+        for i in range(len(step) / 2):
+            if not isinstance(step[2 * i], numbers.Real):
+                raise ValueError(errs)
+            if not isinstance(step[2 * i + 1], numbers.Real):
+                raise ValueError(errs)
+        if algo == "ref_weights":
+            for i in range(len(step) / 2):
+                if 0 < step[2 * i + 1] > 1:
+                    raise ValueError("Weight coordinate is out of [0, 1]")
+        if algo == "ref_lengths":
+            from hybmeshpack.hmscript.info import info_contour
+            contlen = info_contour(cont)['Length']
+            for i in range(len(step) / 2):
+                if 0 < abs(step[2 * i + 1]) > contlen:
+                    raise ValueError("Length coordinate is out of [-L, L]")
     else:
         raise ValueError("unknown partition angorithm")
     if nedges is not None:
@@ -351,11 +380,27 @@ def partition_contour(cont, algo, step, angle0=30, keep_bnd=False,
     # prepare arguments for command
     if algo == "const":
         plain_step = [step]
+        sp = Point2(0, 0)
     elif algo == "ref_points":
         plain_step = []
         for i in range(len(step) / 2):
             plain_step.append(step[2 * i])
             plain_step.extend(step[2 * i + 1])
+        sp = Point2(0, 0)
+    elif algo in ["ref_weights", "ref_lengths"]:
+        plain_step = copy.deepcopy(step)
+        sp = Point2(start[0], start[1])
+        if algo == "ref_lengths":
+            for i in range(len(plain_step) / 2):
+                plain_step[2 * i + 1] /= contlen
+                if plain_step[2 * i + 1] < 0:
+                    plain_step[2 * i + 1] += 1
+    else:
+        raise ValueError
+    kp = []
+    if keep_pts is not None:
+        for p in keep_pts:
+            kp.append(Point2(p[0], p[1]))
 
     args = {"algo": algo,
             "step": plain_step,
@@ -363,7 +408,9 @@ def partition_contour(cont, algo, step, angle0=30, keep_bnd=False,
             "keepbnd": keep_bnd,
             "base": cont,
             "nedges": nedges,
-            "crosses": crosses}
+            "crosses": crosses,
+            "start": sp,
+            "keep_pts": kp}
     # call
     c = com.contcom.PartitionContour(args)
     try:
@@ -499,34 +546,49 @@ def partition_segment(start, end, hstart, hend, hinternal=[]):
         raise ExecError(str(e))
 
 
-def extract_subcontour(source, pstart, pend, project_to="vertex"):
-    """ Extracts singly connected subcontour from given contour
+def extract_subcontours(source, plist, project_to="vertex"):
+    """ Extracts singly connected subcontours from given contour
 
         :param source: source contour identifier
 
-        :param list-of-float pstart:
+        :param list-of-list-of-float plist: consecutive list of
+           subcontours end points
 
-        :param list-of-float pend: points bounding subcontour
+        :param str project_to: defines projection rule for **plist** entries
 
-        :param str project_to: defines projection rule for **pstart**, **pend**
-
-           * ``"line"`` projects to closest contour points
+           * ``"line"`` projects to closest point on the source contour
            * ``"vertex"`` projects to closest contour vertices
            * ``"corner"`` projects to closest contour corner vertices
 
-        :returns: new contour identifier
+        :returns: list of new contours identifiers
 
         :raises: ValueError, ExecError
 
     """
-    dch.ifpointlist([pstart, pend])
+    dch.ifpointlist(plist)
     args = {}
     args['src'] = source
-    [args['p0'], args['p1']] = [Point2(x[0], x[1]) for x in [pstart, pend]]
+    args['plist'] = [Point2(x[0], x[1]) for x in plist]
     args['project_to'] = project_to
     c = com.contcom.ExtractContour(args)
     try:
         flow.exec_command(c)
+        return c._get_added_names()[1]
+    except Exception:
+        raise ExecError('extract subcontours')
+
+
+def connect_subcontours(sources, fix=[], close="no", shiftnext=True):
+    """ TODO
+    """
+    args = {}
+    args['src'] = sources
+    args['fix'] = copy.deepcopy(fix)
+    args['close'] = close
+    args['shiftnext'] = shiftnext
+    c = com.contcom.ConnectSubcontours(args)
+    try:
+        flow.exec_command(c)
         return c._get_added_names()[1][0]
     except Exception:
-        raise ExecError('extract contour')
+        raise ExecError("connect subcontours")

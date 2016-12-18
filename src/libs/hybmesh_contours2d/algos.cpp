@@ -85,14 +85,20 @@ ECollection cns::Simplified(const ECollection& ecol, double degree_angle, bool i
 		auto op = c.ordered_points();
 		vector<Point*> newp(1, op[0]);
 		Point* p0 = op[0];
+		vector<int> ids(1, c.data[0]->id);
 		for (int i=1; i<op.size()-1; ++i){
 			if ( (id_nobreak && c.value(i-1).id != c.value(i).id) ||
 			     !domerge(p0, op[i], op[i+1]) ){
 				newp.push_back(p0 = op[i]);
+				ids.push_back(c.data[i]->id);
 			}
 		}
 		newp.push_back(op.back());
-		ret.Unite(Constructor::ContourFromPoints(op));
+		ret.Unite(Constructor::ContourFromPoints(newp));
+		auto it = ret.data.end() - ids.size();
+		for (int i=0; i<ids.size(); ++i){
+			(*it++)->id = ids[i];
+		}
 	}
 	return ret;
 }
@@ -224,9 +230,9 @@ void cns::MergePoints(ECollection& ecol){
 	std::swap(newedge, ecol.data);
 }
 
-void cns::DeleteUnusedPoints(Container<ECollection>& econt){
-	auto ap1 = econt.all_points();
-	auto& ap2 = econt.pdata.data;
+void cns::DeleteUnusedPoints(const ECollection& ecol, PCollection& pdata){
+	auto ap1 = ecol.all_points();
+	auto& ap2 = pdata.data;
 	std::unordered_set<Point*> ap1set(ap1.begin(), ap1.end());
 	vector<int> used_points;
 	for (int i=0; i<ap2.size(); ++i){
@@ -235,7 +241,10 @@ void cns::DeleteUnusedPoints(Container<ECollection>& econt){
 	if (used_points.size() == ap2.size()) return;
 	ShpVector<Point> newap2;
 	for (int i: used_points) newap2.push_back(ap2[i]);
-	std::swap(econt.pdata.data, newap2);
+	std::swap(pdata.data, newap2);
+}
+void cns::DeleteUnusedPoints(Container<ECollection>& econt){
+	return DeleteUnusedPoints(econt, econt.pdata);
 }
 
 
@@ -411,13 +420,13 @@ Vect cns::SmoothedDirection(const Contour& c, Point* p, int direction, double le
 		last_len = Point::dist(*chosen[iend-1], *chosen[iend]);
 		usedx+=last_len;
 	}
-	//if we've gone too far change chosen[iend] to weighted point to provide len.
+	//if we've gone too far, change chosen[iend] to weighted point to provide len.
 	if (ISGREATER(usedx, len)){
 		double w = (usedx - len)/last_len;
 		apoints.push_back(Point::Weigh(*chosen[iend-1], *chosen[iend], w));
 		chosen[iend] = &apoints.back();
 	}
-	//6 .go backward if necessary
+	//6. go backward if necessary
 	int istart = pindex;
 	if (ISGREATER(len, usedx)){
 		//_THROW_NOT_IMP_;

@@ -93,6 +93,7 @@ HMCont2D::Container<HMCont2D::ContourTree> GpcTree::ToContourTree() const{
 		auto& cont = poly.contour[i];
 		int jmax = cont.num_vertices;
 		if (jmax<3) continue;
+		/*
 		auto hmcont = shared_ptr<HMCont2D::Contour>(new HMCont2D::Contour);
 		//build vector of points
 		ShpVector<Point> shpp; shpp.reserve(poly.contour[i].num_vertices);
@@ -108,6 +109,48 @@ HMCont2D::Container<HMCont2D::ContourTree> GpcTree::ToContourTree() const{
 		hmcont->add_value(shared_ptr<Edge>(new Edge(shpp.back().get(), shpp[0].get())));
 		//add contour to result
 		res.AddContour(hmcont);
+		*/
+		HMCont2D::Container<HMCont2D::ECollection> ecol;
+		//build vector of points
+		for (int j=0; j<jmax; ++j){
+			ecol.pdata.add_value(Point(cont.vertex[j].x, cont.vertex[j].y));
+		}
+		//add edges to contour
+		for (int j=0; j<jmax-1; ++j){
+			ecol.add_value(shared_ptr<Edge>(
+				new Edge(ecol.pdata.pvalue(j), ecol.pdata.pvalue(j+1))));
+		}
+		ecol.add_value(shared_ptr<Edge>(new Edge(ecol.pdata.data.back().get(), ecol.pdata.data[0].get())));
+		int nump_before = ecol.pdata.size();
+		HMCont2D::Algos::MergePoints(ecol);
+		HMCont2D::Algos::DeleteUnusedPoints(ecol);
+		if (ecol.size() < 3) continue; 
+		auto hmcont = shared_ptr<HMCont2D::Contour>(new HMCont2D::Contour);
+		bool found = false;
+		if (ecol.pdata.size() != nump_before){
+			//auto cv = HMCont2D::Assembler::SimpleContours(ecol);
+			//for (int i=0; i<cv.size(); ++i) if (cv[i].is_closed()){
+				//ecol.data = std::move(cv[i].data);
+				//HMCont2D::Algos::DeleteUnusedPoints(ecol);
+				//found = true;
+				//break;
+			//}
+			ecol = HMCont2D::Algos::NoCrosses(ecol);
+			vector<HMCont2D::Contour> ac = HMCont2D::Assembler::AllContours(ecol);
+			for (auto& c: ac) if (c.is_closed()){
+				ecol.data = std::move(c.data);
+				HMCont2D::Algos::DeleteUnusedPoints(ecol);
+				found = true;
+				break;
+			}
+		} else {found = true; }
+		if (found){
+			hmcont->data=std::move(ecol.data);
+			res.pdata.add_values(ecol.pdata.data);
+			assert(hmcont->size()>0 && hmcont->is_closed());
+			//add contour to result
+			res.AddContour(hmcont);
+		}
 	}
 	return res;
 }

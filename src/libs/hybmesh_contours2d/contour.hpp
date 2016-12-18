@@ -7,8 +7,8 @@ namespace HMCont2D{
 
 // ============== Contour: collection of connected edges
 struct Contour: public ECollection{
-	Contour(const Contour& col): ECollection(col){}
-	Contour(): ECollection(){};
+	virtual ~Contour() = default;
+
 	//get info
 	//endpoints
 	Point* first() const;
@@ -35,6 +35,7 @@ struct Contour: public ECollection{
 	bool is_open() const { return first() != last(); }
 	bool is_straight() const { return (is_closed()) ? false : corner_points().size() == 2; }
 	bool correctly_directed_edge(int i) const;
+	bool check_connectivity() const;
 
 	struct PInfo{
 		Point *p, *pprev, *pnext;
@@ -75,6 +76,8 @@ struct Contour: public ECollection{
 	void AddFirstPoint(Point* p);
 	//deletes edge[i] end point
 	void RemoveEdge(int i);
+	//reverse to guarantee start point closest to given one
+	void StartFrom(Point p);
 
 	//removes edge next to deleted point,
 	//moves previous edge start or end point
@@ -130,6 +133,19 @@ struct Contour: public ECollection{
 	//first is 0, last is always 1.
 	static vector<double> EWeights(const Contour& c);
 
+};
+
+struct ContourTReverter{
+	Contour* obj;
+	ContourTReverter(const Contour& cont){
+		obj = const_cast<Contour*>(&cont);
+		if (obj->size() > 1) obj->Reverse();
+		else obj->ReallyReverse();
+	}
+	~ContourTReverter(){
+		if (obj->size() > 1) obj->Reverse();
+		else obj->ReallyReverse();
+	}
 };
 
 

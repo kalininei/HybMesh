@@ -56,6 +56,8 @@ using IsNotBase = typename std::enable_if<!std::is_base_of<T1, T2>::value>::type
 //Basic collection type: vector of shared pointers
 template<class C>
 struct Collection{
+	virtual ~Collection() = default;
+
 	//structs
 	typedef C Tvalue;
 	typedef shared_ptr<C> Tentry;
@@ -212,6 +214,8 @@ struct Collection{
 
 // ============= Basic points collection
 struct PCollection: public Tpp::Collection<Point>{
+	virtual ~PCollection() = default;
+
 	//get
 	Point* point(int i) const { return pvalue(i); }
 
@@ -238,6 +242,8 @@ struct PCollection: public Tpp::Collection<Point>{
 
 // ============= Basic edges collection
 struct ECollection: public Tpp::Collection<Edge>{
+	virtual ~ECollection() = default;
+
 	//get
 	double length() const { return std::accumulate(data.begin(), data.end(), 0.0,
 			[](double s, const Tentry& e){ return s + e->length(); });}

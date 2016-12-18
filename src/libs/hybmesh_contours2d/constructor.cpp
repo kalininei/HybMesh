@@ -287,3 +287,88 @@ HMCont2D::Container<HMCont2D::Contour> cns::Spline(const vector<double>& pnt, in
 	for (int i=0; i<pnt.size(); i+=2) pv.push_back(Point(pnt[i], pnt[i+1]));
 	return Spline(pv, nedges, force_closed);
 }
+
+HMCont2D::Container<HMCont2D::Contour> cns::ContourFromContours(const vector<Contour>& conts,
+		bool last_close, bool fullshift, std::set<int> fixed){
+	//checks
+	for (int i=0; i<conts.size(); ++i){
+		if (conts[i].is_closed()) throw std::runtime_error(
+			"Closed contours are not allowed for "
+			"contour-from-subcontours constructor");
+	}
+	vector<bool> fix(conts.size(), false);
+	for (auto f: fixed) fix[f] = true;
+	//collect endpoints
+	vector<Point> endpoints {*conts[0].first(), *conts[0].last()};
+	vector<bool> reverted {false};
+	double d00 = Point::meas(*conts[0].first(), *conts[1].first());
+	double d10 = Point::meas(*conts[0].last(), *conts[1].first());
+	double d01 = Point::meas(*conts[0].first(), *conts[1].last());
+	double d11 = Point::meas(*conts[0].last(), *conts[1].last());
+	if (std::min(d10, d11) > std::min(d00, d01)){
+		reverted[0] = true;
+		std::swap(endpoints[0], endpoints[1]);
+	}
+	for (int i=1; i<conts.size(); ++i){
+		auto& c=conts[i];
+		Point *p1 = c.first(), *p2 = c.last();
+		double d0 = Point::meas(endpoints.back(), *p1); 
+		double d1 = Point::meas(endpoints.back(), *p2); 
+		reverted.push_back(d0 > d1);
+		if (reverted.back()) std::swap(p1, p2);
+		endpoints.push_back(*p2);
+		auto& pcur = endpoints.back();
+		auto& pprev = endpoints.end()[-2];
+		if (!fix[i] && !fix[i-1]){
+			if (fullshift) pcur += (pprev - *p1);
+			else pprev.set(Point::Weigh(pprev, *p1, 0.5));
+		} else if (fix[i] && !fix[i-1]){
+			pprev.set(*p1); pcur.set(*p2);
+		} else if (!fix[i] && fix[i-1]){
+			if (fullshift) pcur += (pprev - *p1);
+		} else if (fix[i] && fix[i-1]){
+			if (pprev != *p1) throw std::runtime_error("Unconnected fixed edges detected");
+		}
+	}
+	if (last_close){
+		auto &pf = endpoints[0], &pl = endpoints.back();
+		Point p = pl;
+		if (!fix.back() && !fix[0]){
+			p = (pf + pl) / 2;
+		} else if (fix.back() && !fix[0]){
+			p = pl;
+		} else if (!fix.back() && fix[0]){
+			p = pf;
+		} else if (fix.back() && fix[0]){
+			if (pf != pl) throw std::runtime_error("Unconnected fixed edges detected");
+		}
+		pf.set(p); pl.set(p);
+	}
+	//assembling
+	HMCont2D::Container<HMCont2D::ECollection> ret;
+	for (int i=0; i<conts.size(); ++i){
+		HMCont2D::Container<HMCont2D::Contour> acont;
+		HMCont2D::Container<HMCont2D::Contour>::DeepCopy(conts[i], acont);
+
+		vector<Point*> ap = acont.ordered_points();
+		vector<double> rw = HMCont2D::Contour::EWeights(acont);
+		int i1=i, i2=i+1;
+		if (reverted[i]) std::swap(i1, i2);
+		Vect v1 = endpoints[i1] - *ap[0];
+		Vect v2 = endpoints[i2] - *ap.back();
+		for (int j=0; j<ap.size(); ++j){
+			Point p1 = *ap[j] + v1;
+			Point p2 = *ap[j] + v2;
+			ap[j]->set(Point::Weigh(p1, p2, rw[j]));
+		}
+		ret.Unite(acont);
+	}
+	HMCont2D::Algos::MergePoints(ret);
+	HMCont2D::Algos::DeleteUnusedPoints(ret);
+	HMCont2D::Container<HMCont2D::Contour> ret2;
+	HMCont2D::Contour rcont = HMCont2D::Assembler::Contour1(ret, ret.data[0]->pstart);
+	ret2.pdata.data = std::move(ret.pdata.data);
+	ret2.data = std::move(rcont.data);
+	assert(ret2.check_connectivity());
+	return ret2;
+}

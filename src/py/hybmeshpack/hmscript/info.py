@@ -99,7 +99,7 @@ def info_surface(s1):
     return ret
 
 
-def info_getpoint(obj, ind=None, vclosest=None, eclosest=None, cclosest=None):
+def get_point(obj, ind=None, vclosest=None, eclosest=None, cclosest=None):
     """TODO
     """
     g = flow.get_receiver().get_any(obj)
@@ -181,6 +181,21 @@ def domain_area(c):
     libhmcport.free_ecollection_container(ccont)
 
     return ret
+
+
+def pick_contour(pnt, contlist=[]):
+    import copy
+    """not documented
+    """
+    if len(contlist) > 0:
+        lst = copy.deepcopy(contlist)
+    else:
+        lst = flow.get_receiver().get_all_names2()
+    cpts = [get_point(c, eclosest=pnt) for c in lst]
+    cpts = [[x[0] - pnt[0], x[1] - pnt[1]] for x in cpts]
+    meas = [x[0] * x[0] + x[1] * x[1] for x in cpts]
+    minindex, _ = min(enumerate(meas), key=lambda x: x[1])
+    return lst[minindex]
 
 
 def check_compatibility(vers, policy=1):

@@ -108,6 +108,20 @@ HMCont2D::Contour _assemble(AMap& mp, AMap::iterator start){
 		ret.add_value(eprev);
 		remove_edge_from_amap(mp, eprev);
 	}
+	//go backwards if start point had two connected edges
+	//and contour was not closed
+	if (ret.is_open() && start->second.size() == 1){
+		ret.Reverse();
+		ecur = *start->second.begin();
+		it = start;
+		while (it != mp.end()){
+			shared_ptr<Edge> eprev = ecur;
+			take_next(it, ecur);
+			ret.add_value(eprev);
+			remove_edge_from_amap(mp, eprev);
+		}
+		ret.Reverse();
+	}
 	return ret;
 }
 
@@ -438,9 +452,10 @@ struct SepAssembler{
 		if (ind2 == 0) ind2 = fnd->second.size()-1;
 		else --ind2;
 		Point* p2 = fnd->second[ind2];
-		//find contour which has p2 as its second point
-		for (auto it: itset){
-			if (it->value(0).pend == p2) return take_this(it);
+		//find contour which first edge is [*it->last, p2]
+		for (auto it1: itset){
+			if (it1->value(0).pstart == it->last() && it1->value(0).pend == p2)
+				return take_this(it1);
 		}
 		throw std::runtime_error("failed to assemble closed contour");
 	}
@@ -450,7 +465,6 @@ vector<ECollection> cns::ExtendedSeparate(const ECollection& ecol, PCollection& 
 	//assembling subcontours
 	Container<ECollection> ecol2 = Algos::NoCrosses(ecol);
 	pcol = ecol2.pdata;
-	vector<Point*> ap = ecol2.all_points();
 	std::vector<Contour> vconts = SimpleContours(ecol2);
 	std::list<Contour> conts;
 	for (auto& c: vconts) conts.push_back(std::move(c));

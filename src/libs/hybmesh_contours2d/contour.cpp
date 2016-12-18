@@ -4,6 +4,13 @@
 
 using namespace HMCont2D;
 
+bool Contour::check_connectivity() const{
+	for (int i=0; i<size()-1; ++i){
+		if (!Edge::AreConnected(*data[i], *data[i+1])) return false;
+	}
+	return true;
+}
+
 Point* Contour::first() const{
 	if (size() == 0) return 0;
 	else if (size() == 1) return data[0]->pstart;
@@ -42,8 +49,8 @@ vector<Point*> Contour::unique_points() const{
 vector<Point*> Contour::corner_points() const{
 	auto pnt = unique_points();
 	if (pnt.size() == 0) return {};
-	bool cl = is_closed();
 	vector<Point*> ret;
+	bool cl = is_closed();
 	if (!cl) ret.push_back(pnt[0]);
 	for (int i=0; i<(int)pnt.size()-1; ++i){
 		Point *pprev, *p, *pnext;
@@ -53,13 +60,28 @@ vector<Point*> Contour::corner_points() const{
 		} else pprev = pnt[i-1];
 		p = pnt[i];
 		pnext = pnt[i+1];
-		//build triangle. if its area = 0 -> that is not a corner point
 		double ksi = Point::meas_section(*p, *pprev, *pnext);
 		if (ksi>=geps*geps){
 			ret.push_back(p);
 		}
 	}
 	if (!cl) ret.push_back(pnt.back());
+	//ret.push_back(pnt[0]);
+	//for (int i=1; i<(int)pnt.size()-1; ++i){
+	//        Point *pprev(ret.back()), *p(pnt[i]), *pnext(pnt[i+1]);
+	//        double ksi = Point::meas_section(*p, *pprev, *pnext);
+	//        if (ksi>=geps*geps){
+	//                ret.push_back(p);
+	//        }
+	//}
+	//if (is_open()) ret.push_back(pnt.back());
+	//else if (ret.size() > 3){
+	//        Point *pprev(ret.back()), *p(ret[0]), *pnext(ret[1]);
+	//        double ksi = Point::meas_section(*p, *pprev, *pnext);
+	//        if (ksi>=geps*geps){
+	//                ret.erase(ret.begin());
+	//        }
+	//}
 	return ret;
 }
 
@@ -214,6 +236,29 @@ void Contour::ReallyReverse(){
 	else{
 		Reverse();
 		DirectEdges();
+	}
+}
+
+void Contour::StartFrom(Point p){
+	if (is_open()){
+		double d1 = Point::meas(p, *first());
+		double d2 = Point::meas(p, *last());
+		if (d2<d1){
+			if (size() > 1) Reverse();
+			else ReallyReverse();
+		}
+	} else {
+		vector<Point*> op = ordered_points();
+		double dmin = Point::meas(p, *first());
+		int imin = 0;
+		for (int i=1; i<op.size()-1; ++i){
+			double d = Point::meas(p, *op[i]);
+			if (d < dmin){
+				dmin = d;
+				imin = i;
+			}
+		}
+		std::rotate(data.begin(), data.begin()+imin, data.end());
 	}
 }
 
@@ -404,7 +449,6 @@ Point inner_point_core(const Contour& c){
 		}
 	}
 	
-	//return value
 	assert(minksi < std::numeric_limits<double>::max() - 1.0);
 	return Point::Weigh(a0, best_cross, 0.5);
 }
@@ -485,6 +529,7 @@ PCollection Contour::WeightPointsByLen(const Contour& p, vector<double> vw){
 	auto pseq = p.ordered_points();
 	std::sort(vw.begin(), vw.end());
 	assert(!ISLOWER(vw[0], 0) && !ISGREATER(vw.back(), p.length()));
+	
 
 	vector<double> elens {0};
 	for (auto& e: p.data) elens.push_back(Point::dist(*e->pstart, *e->pend));

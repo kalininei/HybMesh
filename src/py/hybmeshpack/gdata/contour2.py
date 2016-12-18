@@ -46,7 +46,7 @@ class AbstractContour2(bgeom.Point2SetStruct):
 
     def sorted_edges(self):
         """ -> [[e1, e2, e3, ...], []] - indicies of connected edges.
-        direction is arbitrary
+            Direction is arbitrary
         """
         raise NotImplementedError
 
@@ -126,6 +126,8 @@ class Contour2(AbstractContour2):
                         nextp = e[0 if e[1] == nextp else 1]
                         ep.remove(ret)
                         eds.append(ret)
+                    elif len(eds) == 1 and nextp == self.edges[eds[0]][1]:
+                        nextp = self.edges[eds[0]][0]
                     else:
                         break
                 self._sorted_edges.append(eds)
@@ -197,7 +199,6 @@ class Contour2(AbstractContour2):
             for k, v in self.bnds.iteritems():
                 btypes[k] = v
             cret, newbtypes = c2core.simplify_contour(cself, btypes, angle)
-            ret = []
             k = 0
             ret = c2core.cont2_from_c(cret)
             if ret.n_edges() == self.n_edges():
@@ -205,7 +206,7 @@ class Contour2(AbstractContour2):
             for i in range(ret.n_edges()):
                 b = newbtypes[i]
                 if b > 0:
-                    ret[-1].bnds[i] = b
+                    ret.bnds[i] = b
         except:
             raise
         finally:

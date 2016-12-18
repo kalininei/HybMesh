@@ -4,6 +4,6 @@ source ../../src/libs/dbgscripts/hmout.gdb
 file python
 set args ../../src/py/hybmesh.py -sx rrj2.py -silent
 set breakpoint pending on
-b cont_assembler.cpp:414
+b grid.cpp:520 if buffer_size > 0
 run
 
