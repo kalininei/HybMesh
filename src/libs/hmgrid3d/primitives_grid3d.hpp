@@ -30,6 +30,10 @@ struct RestoreIds{
 	vector<int> ids;
 	vector<typename C::value_type> _deepdata;
 	const C* _shallowdata;
+
+	//use deepcopy=true only if entries of pvec
+	//could be reallocated/destructed between constructing and destructing of this object
+	//In the latter case this object restores ids of old pvec objects anyway
 	RestoreIds(const C& pvec, bool deepcopy=false): _shallowdata(&pvec){
 		ids.resize(pvec.size());
 		for (int i=0; i<pvec.size(); ++i) ids[i] = pvec[i]->id;
@@ -52,6 +56,7 @@ struct Vertex: public Point3{
 
 	//==== constructor
 	Vertex(double x=0, double y=0, double z=0): Point3(x, y, z){}
+	Vertex(const Point3& p): Point3(p){}
 
 	//==== features
 	static double measure(const Vertex& a, const Vertex& b);
@@ -122,6 +127,7 @@ struct Face{
 	int n_edges() const { return edges.size(); }
 
 	// ===== Data access
+	//first vertex is common to last and first edge
 	ShpVector<Vertex> sorted_vertices() const;
 	ShpVector<Edge> alledges() const;
 	ShpVector<Vertex> allvertices() const;
@@ -135,6 +141,12 @@ struct Face{
 	bool is_positive_edge(int eindex);
 	std::array<Point3, 3> mean_points() const;
 	Vect3 left_normal() const;
+
+	// ==== change data
+	// changes edge entry in this->edges with underlying vertices
+	// if from was not found in edges returns false
+	// from and to edges should be constructed by equal valued end vertices
+	bool change_edge(shared_ptr<Edge> from, shared_ptr<Edge> to);
 
 	// ===== Algos
 	static std::vector<ShpVector<Face>> SubDivide(const ShpVector<Face>& fvec);
@@ -169,14 +181,44 @@ struct Cell{
 	int n_edges() const;
 	int n_vertices() const;
 	std::tuple<int, int, int> n_fev() const; //number of faces, edges, vertices
+
+	// ==== change data
+	// changes face entry in this->faces with underlying edges and vertices
+	// doesn't change input faces left/right attibutes,
+	// if from was not found in faces returns false
+	// from and to faces should be constructed by equal valued vertices
+	// and have same dirction
+	bool change_face(shared_ptr<Face> from, shared_ptr<Face> to);
 	
+	// ==== additional information
 	double volume() const;
+	static vector<double> Volumes(const CellData& cd);
 	
 	// ===== Data access
 	ShpVector<Vertex> allvertices() const;
 	ShpVector<Face> allfaces() const;
 	ShpVector<Edge> alledges() const;
 };
+
+//deep copy procedures
+void DeepCopy(const VertexData& from, VertexData& to);
+void DeepCopy(const EdgeData& from, EdgeData& to, int level=1);
+void DeepCopy(const FaceData& from, FaceData& to, int level=2);
+void DeepCopy(const CellData& from, CellData& to, int level=3);
+//extract procedures
+VertexData AllVertices(const EdgeData& from);
+VertexData AllVertices(const FaceData& from);
+VertexData AllVertices(const CellData& from);
+
+EdgeData AllEdges(const FaceData& from);
+EdgeData AllEdges(const CellData& from);
+
+FaceData AllFaces(const CellData& from);
+
+std::tuple<VertexData> AllPrimitives(const EdgeData& from);
+std::tuple<VertexData, EdgeData> AllPrimitives(const FaceData& from);
+std::tuple<VertexData, EdgeData, FaceData> AllPrimitives(const CellData& from);
+
 
 //Grid primitives collection
 struct GridData{
@@ -190,8 +232,6 @@ struct GridData{
 	//set id's of primitives to its actual indicies
 	void enumerate_all() const;
 
-	//sum of grid cells volume
-	double volume() const;
 };
 
 

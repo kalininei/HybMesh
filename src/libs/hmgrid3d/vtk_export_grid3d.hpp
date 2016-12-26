@@ -71,6 +71,7 @@ class vtkcell_expression{
 	bool try_hexahedron(std::vector<std::vector<int>>& data);
 	bool try_pyramid(std::vector<std::vector<int>>& data);
 	bool try_wedge(std::vector<std::vector<int>>& data);
+	bool try_polygon(std::vector<std::vector<int>>& data);
 	static vtkcell_expression build(std::vector<std::vector<int>>& cint);
 public:
 	//holds points indicies in vtk type orders

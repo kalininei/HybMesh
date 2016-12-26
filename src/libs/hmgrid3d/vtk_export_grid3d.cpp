@@ -156,12 +156,20 @@ bool hme::vtkcell_expression::try_wedge(std::vector<std::vector<int>>& data){
 	pts = {dlower[0], dlower[1], dlower[2], dupper[0], dupper[2], dupper[1]};
 	return true;
 }
+bool hme::vtkcell_expression::try_polygon(std::vector<std::vector<int>>& data){
+	celltype=7;
+	if (data.size() != 1) _false_return();
+	pts = data[0];
+	return true;
+}
+
 hme::vtkcell_expression hme::vtkcell_expression::build(std::vector<std::vector<int>>& cint){
 	vtkcell_expression ret;
 	if (ret.try_tetrahedron(cint)) return ret;
 	if (ret.try_hexahedron(cint)) return ret;
 	if (ret.try_wedge(cint)) return ret;
 	if (ret.try_pyramid(cint)) return ret;
+	if (ret.try_polygon(cint)) return ret;
 	std::string s("Can not treat 3D cell with ");
 	s += std::to_string(cint.size());
 	s += " faces as valid tetrahedron/hexahedron/prism/pyramid";

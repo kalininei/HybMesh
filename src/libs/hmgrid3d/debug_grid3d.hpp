@@ -37,6 +37,18 @@ struct Debug: public HMDebug{
 	static void save_bnd_vtk(const SGrid& grid);
 	static void save_grid_vtk(const GridData& grid);
 	static void save_surf_vtk(const Surface& grid);
+	static void save_cell_vtk(shared_ptr<Cell> c);
+	static void save_cells_vtk(const CellData& grid);
+	static void save_edges_vtk(const EdgeData& edges);
+	static void save_faces_vtk(const FaceData& faces);
+
+	//extracts primitives without ids change
+	static VertexData all_vertices(const CellData&);
+	static VertexData all_vertices(const FaceData&);
+	static VertexData all_vertices(const EdgeData&);
+	static EdgeData all_edges(const CellData&);
+	static EdgeData all_edges(const FaceData&);
+	static FaceData all_faces(const CellData&);
 };
 
 }

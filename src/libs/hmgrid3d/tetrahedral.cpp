@@ -3,23 +3,25 @@
 #include "GModel.h"
 #include "MQuadrangle.h"
 #include "MTriangle.h"
+#include "MElementCut.h"
 #include "MPoint.h"
 #include "MLine.h"
 #include "nan_handler.h"
 #include "hmtimer.hpp"
+#include "tetramesh_preproc.hpp"
 using namespace HMGrid3D::Mesher;
 
 namespace{
 
 struct TransitionalFace{
 	TransitionalFace(){}
-	TransitionalFace(int lc, const std::vector<MVertex*>& vs){
-		points = vs;
-		for (auto p: points) ptsnums.insert(p->getIndex());
+	TransitionalFace(int lc, const std::vector<MVertex*>& vs):points(vs), ptsnums(vs.size()){
+		for (int i=0; i<points.size(); ++i) ptsnums[i] = points[i]->getIndex();
+		std::sort(ptsnums.begin(), ptsnums.end());
 		left_cell = lc;
 		right_cell = -1;
 	}
-	std::set<int> ptsnums;
+	std::vector<int> ptsnums;
 	mutable int left_cell, right_cell;
 	std::vector<MVertex*> points;
 	mutable shared_ptr<HMGrid3D::Face> gface;
@@ -50,7 +52,7 @@ bool operator<(const TransitionalEdge& e1, const TransitionalEdge& e2){
 	return (e1.p2->getIndex() < e2.p2->getIndex());
 }
 
-std::set<TransitionalFace> GridFromModel(GModel& m, HMGrid3D::GridData& ret){
+void GridFromModel(GModel& m, HMGrid3D::GridData& ret){
 	ret.clear();
 	m.indexMeshVertices(true);
 	ret.vvert.resize(m.getNumMeshVertices());
@@ -73,7 +75,7 @@ std::set<TransitionalFace> GridFromModel(GModel& m, HMGrid3D::GridData& ret){
 				assert(index<ret.vvert.size());
 				if (!ret.vvert[index]) ret.vvert[index].reset(new HMGrid3D::Vertex(v->x(), v->y(), v->z()));
 			}
-			//faces to transitional status:: Takes 70% of exec time
+			//faces to transitional status:: Takes 65% of exec time
 			if (e->getType() == TYPE_TET){
 				add_face({elvert[0], elvert[2], elvert[1]}, en);
 				add_face({elvert[0], elvert[3], elvert[2]}, en);
@@ -91,7 +93,7 @@ std::set<TransitionalFace> GridFromModel(GModel& m, HMGrid3D::GridData& ret){
 			aa::add_shared(ret.vcells, HMGrid3D::Cell());
 		}
 	}
-	//faces && edges: Takes 40% of exec time;
+	//faces && edges: Takes 35% of exec time;
 	int numed = 0;
 	for (auto& f: transface){
 		auto nf = aa::add_shared(ret.vfaces, HMGrid3D::Face());
@@ -116,7 +118,6 @@ std::set<TransitionalFace> GridFromModel(GModel& m, HMGrid3D::GridData& ret){
 		if (f->has_left_cell()) f->left.lock()->faces.push_back(f);
 		if (f->has_right_cell()) f->right.lock()->faces.push_back(f);
 	}
-	return transface;
 }
 
 GFace* fill_model_with_2d(GModel& m, const HMGrid3D::Surface& surf, vector<vector<GEdge*>>& gedges, vector<MVertex*>& mvheap){
@@ -208,11 +209,11 @@ void fill_model_with_3d(GModel& m, const vector<vector<GFace*>>& fc){
 void restore_btypes(GFace* gf, std::set<TransitionalFace>& fcset, const HMGrid3D::Surface& surf){
 	auto analyze_melement = [&fcset](MElement* el, int bt){
 		TransitionalFace fndface;
+		fndface.ptsnums.resize(el->getNumVertices());
 		for (int i=0; i<el->getNumVertices(); ++i){
-			fndface.ptsnums.insert(
-				el->getVertex(i)->getIndex()
-			);
+			fndface.ptsnums[i] = el->getVertex(i)->getIndex();
 		}
+		std::sort(fndface.ptsnums.begin(), fndface.ptsnums.end());
 		auto fnd = fcset.find(fndface);
 		if (fnd != fcset.end()){
 			fnd->gface->boundary_type = bt;
@@ -245,58 +246,67 @@ void restore_btypes(GFace* gf, std::set<TransitionalFace>& fcset, const HMGrid3D
 	}
 }
 
+void equal_vertices(const HMGrid3D::GridData& grid, GFace* gf, const HMGrid3D::Surface& surf,
+		HMGrid3D::VertexData& gfvert, HMGrid3D::VertexData& svert){
+	//here we rely on fact that GFace mesh vertices are indexed according to grid.vvert order.
+	//this is guaranteed by earlier GridFromModel procedure call
+	HMGrid3D::VertexData s = AllVertices(surf.faces);
+	HMGrid3D::VertexData g2;
+	auto addvert = [&g2, &grid](MElement* el){
+		for (int j=0; j<el->getNumVertices(); ++j){
+			g2.push_back(grid.vvert[el->getVertex(j)->getIndex() - 1]);
+		}
+	};
+	for (auto nq: gf->triangles) addvert(nq);
+	for (auto nq: gf->quadrangles) addvert(nq);
+	for (auto nq: gf->polygons) addvert(nq);
+
+	HMGrid3D::VertexData g;
+	constant_ids_pvec(g2, -1);
+	for (auto it: g2) if (it->id == -1){
+		g.push_back(it);
+		it->id = 0;
+	}
+	assert(s.size() == g.size());
+	auto vertsort = [](shared_ptr<HMGrid3D::Vertex> a, shared_ptr<HMGrid3D::Vertex> b)->bool{
+		if (ISLOWER(a->x, b->x)) return true;
+		else if (ISLOWER(b->x, a->x)) return false;
+		else if (ISLOWER(a->y, b->y)) return true;
+		else if (ISLOWER(b->y, a->y)) return false;
+		else return ISLOWER(a->z, b->z);
+	};
+	std::sort(s.begin(), s.end(), vertsort);
+	std::sort(g.begin(), g.end(), vertsort);
+	gfvert.resize(gfvert.size()+g.size());
+	svert.resize(svert.size()+s.size());
+	std::copy(g.begin(), g.end(), gfvert.end() - g.size());
+	std::copy(s.begin(), s.end(), svert.end() - s.size());
+}
+
 HMGrid3D::GridData gmsh_fill(const HMGrid3D::SurfaceTree& tree, const HMGrid3D::Surface& cond,
 		const HMGrid3D::VertexData& pcond, const vector<double>& psizes,
 		HMCallback::Caller2& cb){
-	assert(
-		//first node is root, all others are its children
-		[&](){
-			if (tree.nodes[0]->level != 0) return false;
-			for (int i=1; i<tree.nodes.size(); ++i)
-				if (tree.nodes[i]->level != 1) return false;
-			return true;
-		}()
-	);
 	GModel m;
 	m.setFactory("Gmsh");
 	GmshSetOption("General", "Verbosity", 0.0);
+	GmshSetOption("Mesh", "Optimize", 1.0);
 	//GmshSetOption("Mesh", "OptimizeNetgen", 1.0);
 	
 	//decomposition
 	cb.silent_step_after(10, "Surfaces decomposition");
-	HMGrid3D::EdgeData ae=tree.alledges();
-	HMGrid3D::VertexData av=tree.allvertices();
-	vector<vector<HMGrid3D::Surface>> decomposed_surfs;
-	for (auto n: tree.nodes){
-		decomposed_surfs.push_back(HMGrid3D::Surface::ExtractSmooth(*n, 30));
-	}
-	vector<vector<vector<HMGrid3D::EdgeData>>> decomposed_edges;
-	for (auto& ds: decomposed_surfs){
-		vector<vector<HMGrid3D::EdgeData>> de;
-		for (auto& s: ds){
-			vector<HMGrid3D::EdgeData> ds;
-			Vect3 right_normal = s.faces[0]->left_normal()*(-1);
-			auto ex = HMGrid3D::Surface::ExtractAllBoundaries(s, right_normal);
-			assert(ex[0].size() == 1);
-			ds.push_back(ex[0][0]);
-			for (int i=0; i<ex[1].size(); ++i) ds.push_back(ex[1][i]);
-			de.push_back(ds);
-		}
-		decomposed_edges.push_back(de);
-	}
-
-
+	HMGrid3D::Mesher::SurfacePreprocess presurf(tree, 30);
+	
 	//mesh1d
 	cb.step_after(5, "Fill 1D mesh");
-	enumerate_ids_pvec(ae);
-	enumerate_ids_pvec(av);
-	vector<GEdge*> g_edges_heap(ae.size(), 0);
-	vector<GVertex*> g_vertex_heap(av.size(), 0);
-	vector<MVertex*> m_vertex_heap(av.size(), 0);
+	enumerate_ids_pvec(presurf.ae);
+	enumerate_ids_pvec(presurf.av);
+	vector<GEdge*> g_edges_heap(presurf.ae.size(), 0);
+	vector<GVertex*> g_vertex_heap(presurf.av.size(), 0);
+	vector<MVertex*> m_vertex_heap(presurf.av.size(), 0);
 	vector<vector<vector<GEdge*>>> g_edges;
-	for(int id=0; id<decomposed_surfs.size(); ++id)
-	for(int is=0; is<decomposed_surfs[id].size(); ++is){
-		auto& d = decomposed_edges[id][is];
+	for(int id=0; id<presurf.decomposed_surfs.size(); ++id)
+	for(int is=0; is<presurf.decomposed_surfs[id].size(); ++is){
+		auto& d = presurf.decomposed_edges[id][is];
 		g_edges.push_back(fill_model_with_1d(m, d, g_edges_heap, g_vertex_heap, m_vertex_heap));
 	}
 
@@ -304,7 +314,7 @@ HMGrid3D::GridData gmsh_fill(const HMGrid3D::SurfaceTree& tree, const HMGrid3D::
 	cb.step_after(10, "Fill 2D mesh");
 	vector<vector<GFace*>> g_faces;
 	int k=0;
-	for (auto& ds: decomposed_surfs){
+	for (auto& ds: presurf.decomposed_surfs){
 		vector<GFace*> g_faces_1;
 		for (auto& s: ds){
 			GFace* gf = fill_model_with_2d(m, s, g_edges[k++], m_vertex_heap);
@@ -319,26 +329,30 @@ HMGrid3D::GridData gmsh_fill(const HMGrid3D::SurfaceTree& tree, const HMGrid3D::
 
 	HMGrid3D::GridData ret;
 	cb.step_after(30, "Assemble mesh");
-	auto tfaces = GridFromModel(m, ret);
+	GridFromModel(m, ret);
 
 	//restore boundary types from tree
-	cb.step_after(10, "Restore boundary types");
-	auto fit = tfaces.begin();
-	while (fit!=tfaces.end()){
-		if (fit->left_cell>=0 && fit->right_cell>=0){
-			fit = tfaces.erase(fit);
-		} else ++fit;
-	}
-	ret.enumerate_all();
+	cb.step_after(10, "Restore boundary");
+	HMGrid3D::VertexData r1, s1;
 	int k1=0;
-	for (auto& ds: decomposed_surfs){
+	for (auto& ds: presurf.decomposed_surfs){
 		vector<GFace*>& g_faces_1 = g_faces[k1++];
 		int k2=0;
 		for (auto& s: ds){
 			GFace* gf = g_faces_1[k2++];
-			restore_btypes(gf, tfaces, s);
+			equal_vertices(ret, gf, s, r1, s1);
 		}
 	}
+
+	HMGrid3D::VertexData ret_duplicates;
+	HMGrid3D::VertexData surfs_duplicates;
+	constant_ids_pvec(r1, -1);
+	for (int i=0; i<r1.size(); ++i) if (r1[i]->id == -1){
+		r1[i]->id = 0;
+		ret_duplicates.push_back(r1[i]);
+		surfs_duplicates.push_back(s1[i]);
+	}
+	presurf.Restore(ret, ret_duplicates, surfs_duplicates);
 
 	cb.fin();
 	return ret;
@@ -358,13 +372,16 @@ HMGrid3D::GridData TUnstructuredTetrahedral::_run(const HMGrid3D::Surface& sourc
 	vector<HMGrid3D::SurfaceTree> trees = stree.crop_level1();
 	//conditional surfaces
 	HMGrid3D::Surface cond;
+	if (sinner.faces.size() > 0) _THROW_NOT_IMP_;
+	/* TODO
 	std::copy(sinner.faces.begin(), sinner.faces.end(), std::back_inserter(cond.faces));
 	for (auto nd: stree.nodes) if (nd->isopen()){
 		std::copy(nd->faces.begin(), nd->faces.end(), std::back_inserter(cond.faces));
 	}
+	*/
 	//temporary revert faces to match surfaces
 	ShpVector<HMGrid3D::SurfTReverterBase> revs;
-	revs.emplace_back(new HMGrid3D::SurfTReverter(cond));
+	//revs.emplace_back(new HMGrid3D::SurfTReverter(cond));
 	for (auto tree: trees) revs.emplace_back(new HMGrid3D::SurfTreeTReverter(tree));
 
 	HMGrid3D::GridData ret;
@@ -379,7 +396,22 @@ HMGrid3D::GridData TUnstructuredTetrahedral::_run(const HMGrid3D::Surface& sourc
 			std::copy(sg.vcells.begin(), sg.vcells.end(), std::back_inserter(ret.vcells));
 		}
 	}
+	
 	callback->step_after(5, "Finalizing");
+
+	//check volumes: this check should be abandoned
+	//when algorithm becomes more reliable
+	double v1 = Surface::Volume(source.faces);
+	double v2 = 0.;
+	for (auto& c: ret.vcells){
+		double vc = c->volume();
+		assert(vc > 0);
+		v2 += vc;
+	}
+	if (!ISEQ(v1, v2)) throw std::runtime_error(
+		"Volumes check failed");
+
+	
 	return ret;
 }
 

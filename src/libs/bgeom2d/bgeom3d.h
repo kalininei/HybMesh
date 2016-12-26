@@ -21,6 +21,8 @@ struct Point3{
 	static double dist(const Point3& p1, const Point3& p2){
 		return sqrt(meas(p1,p2));
 	}
+	//signed distance to plane. Gives positive if p is to the right of the plane
+	static double sdist_plane(const Point3& p, const Point3& plane1, const Point3& plane2, const Point3& plane3);
 };
 //point operators
 inline Point3 operator+(const Point3& left, const Point3& right) {
@@ -45,8 +47,9 @@ inline Point3& operator*=(Point3& left, double d) {
 	left.x*=d; left.y*=d; left.z*=d;
 	return left;
 }
-inline Point3 operator/(const Point3& p, double d) { auto x=Point3(p); return std::move(x/=d); }
-inline Point3 operator*(const Point3& p, double d) { auto x=Point3(p); return std::move(x*=d); }
+inline Point3 operator/(const Point3& p, double d) { auto x=Point3(p); return x/=d; }
+inline Point3 operator*(const Point3& p, double d) { auto x=Point3(p); return x*=d; }
+inline Point3 operator*(double d, const Point3& p) { auto x=Point3(p); return x*=d; }
 inline bool operator==(const Point3& p1, const Point3& p2) { return (ISEQ(p1.x, p2.x) && ISEQ(p1.y, p2.y) && ISEQ(p1.z, p2.z)); }
 inline bool operator!=(const Point3& p1, const Point3& p2) { return (!ISEQ(p1.x, p2.x) || !ISEQ(p1.y, p2.y) || !ISEQ(p1.z, p2.z)); }
 inline bool operator<(const Point3& p1, const Point3& p2) {
@@ -101,7 +104,7 @@ struct BoundingBox3D{
 	//4 - faces of bb and this cross each other
 	int relation(const BoundingBox3D& bb) const;
 
-	BoundingBox3D widen(double eps){
+	void widen(double eps){
 		xmin-=eps; xmax+=eps;
 		ymin-=eps; ymax+=eps;
 		zmin-=eps; zmax+=eps;
@@ -112,7 +115,6 @@ struct BoundingBox3D{
 	double zlen() const { return zmax - zmin; }
 	double maxlen() const { return std::max(xlen(), std::max(ylen(), zlen())); }
 	Point3 center() const { return Point3((xmax+xmin)/2, (ymax+ymin)/2, (zmax+zmin)/2); }
-
 };
 
 struct ScaleBase3{
@@ -161,6 +163,22 @@ inline Vect3 vecCross(const Vect3& a, const Vect3& b){
 inline void vecNormalize(Vect3& a){
 	double L = vecLen(a);
 	a/=L;
+}
+inline Vect3 right_normal_0(const Point3& p2, const Point3& p3){
+	Vect3 ret = vecCross(p2, p3);
+	vecNormalize(ret);
+	return ret;
+}
+inline Vect3 left_normal_0(const Point3& p2, const Point3& p3){
+	Vect3 ret = vecCross(p3, p2);
+	vecNormalize(ret);
+	return ret;
+}
+inline Vect3 right_normal(const Point3& p1, const Point3& p2, const Point3& p3){
+	return right_normal_0(p2-p1, p3-p1);
+}
+inline Vect3 left_normal(const Point3& p1, const Point3& p2, const Point3& p3){
+	return left_normal_0(p2-p1, p3-p1);
 }
 
 #endif

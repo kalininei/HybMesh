@@ -51,8 +51,8 @@ void hme::TGridGMSH::_run(const SGrid& ser, std::string fn, BFun bfun){
 			for (size_t i=0; i<c.pts.size(); ++i)
 				os<<" "<<c.pts[i]+1;
 		} else {
-			os<<c.pts[0]+1<<" "<<c.pts[2]+1<<" "<<c.pts[1]+1<<" ";
-			os<<c.pts[3]+1<<" "<<c.pts[5]+1<<" "<<c.pts[4]+1;
+			os<<" "<<c.pts[0]+1<<" "<<c.pts[2]+1<<" "<<c.pts[1]+1;
+			os<<" "<<c.pts[3]+1<<" "<<c.pts[5]+1<<" "<<c.pts[4]+1;
 		}
 		return os.str();
 	};

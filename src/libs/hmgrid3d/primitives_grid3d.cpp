@@ -1,6 +1,7 @@
 #include "primitives_grid3d.hpp"
 #include "addalgo.hpp"
 #include "surface_grid3d.hpp"
+#include "debug_grid3d.hpp"
 
 using namespace HMGrid3D;
 
@@ -103,6 +104,7 @@ double Edge::measure() const{
 	return ret;
 }
 double Edge::length() const{
+	//!!!! this is wrong for multiple vertex edge
 	return sqrt(measure());
 }
 void Edge::reverse(){
@@ -133,6 +135,35 @@ ShpVector<Vertex> Face::sorted_vertices() const{
 	}
 	return ret;
 }
+
+bool Face::change_edge(shared_ptr<Edge> from, shared_ptr<Edge> to){
+	int ind = std::find(edges.begin(), edges.end(), from) - edges.begin();
+	if (ind == edges.size()) return false;
+	//underlying vertices
+	auto from1 = from->first();
+	auto from2 = from->last();
+	auto to1 = to->first();
+	auto to2 = to->last();
+	if (*from1 != *to1) std::swap(to1, to2);
+	assert(*from1 == *to1 && *from2 == *to2);
+
+	edges[ind] = to;
+	auto edgeprev = edges[ (ind==0)?edges.size()-1:ind-1 ];
+	auto edgenext = edges[ (ind==edges.size()-1)?0:ind+1 ];
+
+	if (edgeprev->first() == from1) edgeprev->vertices[0] = to1;
+	else if (edgeprev->last() == from1) edgeprev->vertices.back() = to1;
+	else if (edgeprev->first() == from2) edgeprev->vertices[0] = to2;
+	else if (edgeprev->last() == from2) edgeprev->vertices.back() = to2;
+
+	if (edgenext->first() == from1) edgenext->vertices[0] = to1;
+	else if (edgenext->last() == from1) edgenext->vertices.back() = to1;
+	else if (edgenext->first() == from2) edgenext->vertices[0] = to2;
+	else if (edgenext->last() == from2) edgenext->vertices.back() = to2;
+
+	return true;
+}
+
 
 ShpVector<Vertex> Face::allvertices() const{
 	ShpVector<Vertex> ret;
@@ -321,6 +352,39 @@ ShpVector<Edge> Cell::alledges() const{
 	return aa::no_dublicates(ret);
 }
 
+bool Cell::change_face(shared_ptr<Face> from, shared_ptr<Face> to){
+	int ind = std::find(faces.begin(), faces.end(), from) - faces.begin();
+	if (ind == faces.size()) return false;
+	faces[ind] = to;
+	//underlying edges
+	std::list<shared_ptr<Edge>> from_edges(from->edges.begin(), from->edges.end());
+	std::list<shared_ptr<Edge>> to_edges(to->edges.begin(), to->edges.end());
+	auto& p1 = *(*from_edges.begin())->first();
+	auto& p2 = *(*from_edges.begin())->last();
+	for (auto it = to_edges.begin(); it!=to_edges.end(); ++it){
+		auto& p3 = *(*it)->first();
+		auto& p4 = *(*it)->last();
+		if ( (p1 == p3 && p2 == p4) || (p1 == p4 && p2 == p3) ){
+			std::rotate(to_edges.begin(), it, to_edges.end());
+			break;
+		}
+	}
+	for (int i=0; i<faces.size(); ++i) if (i != ind){
+		auto fromit = from_edges.begin();
+		auto toit = to_edges.begin();
+		while (fromit != from_edges.end()){
+			//faces should not have more than one common edge
+			if (faces[i]->change_edge(*fromit, *toit)){
+				from_edges.erase(fromit);
+				to_edges.erase(toit);
+				break;
+			}
+			++fromit; ++toit;
+		}
+	}
+	return true;
+}
+
 double Cell::volume() const{
 	double ret;
 
@@ -339,8 +403,14 @@ double Cell::volume() const{
 		facerev();
 		throw;
 	}
+	facerev();
 
-	facerev;
+	return ret;
+}
+
+vector<double> Cell::Volumes(const CellData& cd){
+	vector<double> ret(cd.size());
+	for (int i=0; i<cd.size(); ++i) ret[i] = cd[i]->volume();
 	return ret;
 }
 
@@ -351,8 +421,163 @@ void GridData::enumerate_all() const{
 	enumerate_ids_pvec(vcells);
 }
 
-double GridData::volume() const{
-	double ret=0;
-	for (auto c: vcells) ret += c->volume();
+namespace {
+template<class T>
+void shared_vec_deepcopy(const vector<shared_ptr<T>>& from, vector<shared_ptr<T>>& to){
+	to.resize(to.size() + from.size());
+	auto it1 = to.end() - from.size();
+	auto it2 = from.begin();
+	while (it1 != to.end()){
+		(it1++)->reset(new T(**(it2++)));
+	}
+}
+}
+
+//deep copy procedures
+void HMGrid3D::DeepCopy(const VertexData& from, VertexData& to){
+	shared_vec_deepcopy(from, to);
+}
+void HMGrid3D::DeepCopy(const EdgeData& from, EdgeData& to, int level){
+	shared_vec_deepcopy(from, to);
+	if (level == 1){
+		VertexData vorig = AllVertices(from);
+		VertexData vnew;
+		DeepCopy(vorig, vnew);
+		enumerate_ids_pvec(vorig);
+		enumerate_ids_pvec(vnew);
+		auto eit = to.end() - from.size();
+		while (eit != to.end()){
+			for (auto& v: (*eit++)->vertices){
+				v = vnew[v->id];
+			}
+		}
+	}
+}
+void HMGrid3D::DeepCopy(const FaceData& from, FaceData& to, int level){
+	shared_vec_deepcopy(from, to);
+	if (level > 0){
+		EdgeData eorig = AllEdges(from);
+		EdgeData enew;
+		DeepCopy(eorig, enew, level - 1);
+		enumerate_ids_pvec(eorig);
+		enumerate_ids_pvec(enew);
+		auto fit = to.end() - from.size();
+		while (fit != to.end()){
+			for (auto& e: (*fit++)->edges){
+				e = enew[e->id];
+			}
+		}
+	}
+}
+void HMGrid3D::DeepCopy(const CellData& from, CellData& to, int level){
+	shared_vec_deepcopy(from, to);
+	if (level > 0){
+		FaceData forig = AllFaces(from);
+		FaceData fnew;
+		DeepCopy(forig, fnew, level - 1);
+		enumerate_ids_pvec(forig);
+		enumerate_ids_pvec(fnew);
+		auto cit = to.end() - from.size();
+		int k = 0;
+		while (cit != to.end()){
+			for (auto& f: (*cit)->faces){
+				f = fnew[f->id];
+				if (forig[f->id]->left.lock() == from[k]) f->left = *cit;
+				else if (forig[f->id]->right.lock() == from[k]) f->right = *cit;
+			}
+			++k;
+			++cit;
+		}
+	}
+}
+//extract procedures
+VertexData HMGrid3D::AllVertices(const EdgeData& from){
+	for (auto& e: from)
+	for (auto& v: e->vertices) v->id = 0;
+	VertexData ret;
+	for (auto& e: from)
+	for (auto& v: e->vertices) if (v->id == 0){
+		ret.push_back(v);
+		v->id = 1;
+	}
+	return ret;
+}
+EdgeData HMGrid3D::AllEdges(const FaceData& from){
+	for (auto& f: from)
+	for (auto& e: f->edges) e->id = 0;
+	EdgeData ret;
+	for (auto& f: from)
+	for (auto& e: f->edges) if (e->id == 0){
+		ret.push_back(e);
+		e->id = 1;
+	}
+	return ret;
+}
+FaceData HMGrid3D::AllFaces(const CellData& from){
+	for (auto& c: from)
+	for (auto& f: c->faces) f->id = 0;
+	FaceData ret;
+	for (auto& c: from)
+	for (auto& f: c->faces) if (f->id == 0){
+		ret.push_back(f);
+		f->id = 1;
+	}
+	return ret;
+}
+VertexData HMGrid3D::AllVertices(const FaceData& from){
+	return AllVertices(AllEdges(from));
+}
+VertexData HMGrid3D::AllVertices(const CellData& from){
+	return AllVertices(AllEdges(AllFaces(from)));
+}
+EdgeData HMGrid3D::AllEdges(const CellData& from){
+	return AllEdges(AllFaces(from));
+}
+std::tuple<VertexData> HMGrid3D::AllPrimitives(const EdgeData& from){
+	std::tuple<VertexData> ret;
+	std::get<0>(ret) = AllVertices(from);
+	return ret;
+}
+std::tuple<VertexData, EdgeData> HMGrid3D::AllPrimitives(const FaceData& from){
+	std::tuple<VertexData, EdgeData> ret;
+	for (auto& f: from)
+	for (auto& e: f->edges){
+		e->id = 0;
+		for (auto& v: e->vertices) v->id = 0;
+	}
+	for (auto& f: from)
+	for (auto& e: f->edges) if (e->id == 0){
+		std::get<1>(ret).push_back(e);
+		e->id = 1;
+		for (auto& v: e->vertices) if (v->id == 0){
+			std::get<0>(ret).push_back(v);
+			v->id = 1;
+		}
+	}
+	return ret;
+}
+std::tuple<VertexData, EdgeData, FaceData> HMGrid3D::AllPrimitives(const CellData& from){
+	std::tuple<VertexData, EdgeData, FaceData> ret;
+	for (auto& c: from)
+	for (auto& f: c->faces){
+		f->id = 0;
+		for (auto& e: f->edges){
+			e->id = 0;
+			for (auto& v: e->vertices) v->id = 0;
+		}
+	}
+	for (auto& c: from)
+	for (auto& f: c->faces) if (f->id == 0){
+		f->id = 1;
+		std::get<2>(ret).push_back(f);
+		for (auto& e: f->edges) if (e->id == 0){
+			std::get<1>(ret).push_back(e);
+			e->id = 1;
+			for (auto& v: e->vertices) if (v->id == 0){
+				std::get<0>(ret).push_back(v);
+				v->id = 1;
+			}
+		}
+	}
 	return ret;
 }

@@ -66,8 +66,10 @@ struct SurfaceTree{
 	};
 	ShpVector<TNode> nodes;
 	ShpVector<TNode> roots() const;
+
 	HMGrid3D::EdgeData alledges() const;
 	HMGrid3D::VertexData allvertices() const;
+	HMGrid3D::FaceData allfaces() const;
 
 	vector<SurfaceTree> crop_level1() const;
 	static SurfaceTree Assemble(const Surface& data);

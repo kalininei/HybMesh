@@ -13,6 +13,9 @@ set (HEADERS
 	hmg_export_grid3d.hpp
 	hmg_import_grid3d.hpp
 	tetrahedral.hpp
+	tetramesh_preproc.hpp
+	merge3d.hpp
+	pyramid_layer.hpp
 )
 
 set (SOURCES
@@ -30,6 +33,9 @@ set (SOURCES
 	hmg_export_grid3d.cpp
 	hmg_import_grid3d.cpp
 	tetrahedral.cpp
+	tetramesh_preproc.cpp
+	merge3d.cpp
+	pyramid_layer.cpp
 )
 
 source_group ("Header Files" FILES ${HEADERS} ${HEADERS})

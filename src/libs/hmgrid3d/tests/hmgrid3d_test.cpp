@@ -389,7 +389,9 @@ void test10(){
 		auto g1 = HMGrid3D::Constructor::Cuboid({0, 0, 0}, 1, 1, 1, 5, 5, 5);
 		auto s1 = HMGrid3D::Surface::GridSurface(g1);
 		auto g2 = HMGrid3D::Mesher::UnstructuredTetrahedral(s1); 
-		//add_check(ISEQ(g2.volume(), 1), "grid in cubic domain");
+		double v = 0;
+		for (auto s: HMGrid3D::Cell::Volumes(g2.vcells)) v+=s;
+		add_check(ISEQ(v, 1), "grid in cubic domain");
 	}
 	{
 		auto g1 = HMGrid3D::Constructor::Cuboid({1, 1, 1}, 2, 3, 1, 7, 8, 4);
@@ -405,9 +407,18 @@ void test10(){
 		for (auto f: g2.vfaces) if (f->is_boundary()) srf.faces.push_back(f);
 
 		//............... Different volume results w/without timer calls
-		auto res = HMGrid3D::Mesher::UnstructuredTetrahedral.WTimer(srf);
-		add_check(fabs(res.volume()-431.422)<1e-2, "domain with multiple nesting");
-		std::cout<<(fabs(res.volume()))<<std::endl;
+		//auto res = HMGrid3D::Mesher::UnstructuredTetrahedral.WVerbTimer(srf);
+		auto res = HMGrid3D::Mesher::UnstructuredTetrahedral(srf);
+		HMGrid3D::Export::SurfaceVTK(srf, "srf.vtk");
+		HMGrid3D::Export::GridVTK(res, "res.vtk");
+
+		double v1 = 0;
+		for (auto s: HMGrid3D::Cell::Volumes(res.vcells)) v1 += s;
+		auto tree = HMGrid3D::SurfaceTree::Assemble(srf);
+		auto* rr = new HMGrid3D::SurfTreeTReverter(tree);
+		double v2 = HMGrid3D::Surface::Volume(srf);
+		delete rr;
+		add_check(ISEQ(v1, v2), "multiply connected domain");
 	}
 }
 
@@ -420,7 +431,7 @@ int main(){
 	//test06();
 	//test07();
 	//test08();
-	//test09();
+	test09();
 	test10();
 	
 	check_final_report();

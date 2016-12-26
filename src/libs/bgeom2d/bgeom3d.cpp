@@ -1,6 +1,11 @@
 #include "bgeom3d.h"
 #include "hmcompute.hpp"
 
+double Point3::sdist_plane(const Point3& p, const Point3& plane1, const Point3& plane2, const Point3& plane3){
+	Vect3 n = right_normal(plane1, plane2, plane3);
+	return vecDot(n, p-plane1);
+}
+
 namespace{
 
 int pos1D(double x, double a, double b){
@@ -69,8 +74,8 @@ int BoundingBox3D::relation(const BoundingBox3D& bb) const{
 }
 
 double tetrahedron_volume_0(const Point3& p1, const Point3& p2, const Point3& p3){
-	double A[] = {p1.x, p2.x, p3.x,
-		      p1.y, p2.y, p3.y,
-		      p1.z, p2.z, p3.z};
+	double A[] = {p1.x, p1.y, p1.z,
+		      p2.x, p2.y, p2.z,
+		      p3.x, p3.y, p3.z};
 	return HMMath::Compute::determinant_3x3(A)/6.;
 }

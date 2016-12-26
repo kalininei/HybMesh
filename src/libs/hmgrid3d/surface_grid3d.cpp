@@ -583,6 +583,14 @@ HMGrid3D::VertexData SurfaceTree::allvertices() const{
 	return ret;
 }
 
+HMGrid3D::FaceData SurfaceTree::allfaces() const{
+	FaceData ret;
+	for (auto& n: nodes){
+		ret.insert(ret.end(), n->faces.begin(), n->faces.end());
+	}
+	return ret;
+}
+
 SurfTReverter::SurfTReverter(const Surface& srf): SurfTReverterBase(){
 	obj = const_cast<Surface*>(&srf);
 	need_revert = vector<bool>(srf.faces.size(), false);

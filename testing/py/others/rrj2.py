@@ -11,8 +11,16 @@ bstep = [step_bl, 0, step_main, 0.1, step_main, 0.9, step_bl, 1]
 bstep1 = [step_bl, 0, step_main, 0.1]
 bstep_main = [step_bl, 0, step_main, 0.05, step_main, 0.95, step_bl, 1]
 
+# boundary types
+binput_left1 = hm.add_boundary_type(1, "input_left1")
+binput_left2 = hm.add_boundary_type(2, "input_left2")
+binput_right1 = hm.add_boundary_type(3, "input_right1")
+binput_right2 = hm.add_boundary_type(4, "input_right2")
+boutput_left = hm.add_boundary_type(5, "output_left")
+boutput_right = hm.add_boundary_type(6, "output_right")
+
 # importing
-cont = hm.import_contour_hmc("../../external_files/RRJ2.hmc")
+cont = hm.import_contour_hmc("../external_files/RRJ2.hmc")
 hm.export_contour_vtk(cont, "cont.vtk")
 
 # =characteristic points
@@ -121,17 +129,19 @@ g1cont = hm.grid_bnd_to_contour(g1, False)
 
 # left appendix: g4
 bs = [0, step_bl, 2 * step_bl, 3 * step_bl]
-bgo = hm.BoundaryGridOptions(c_lappendix, bs, "left", 3 * step_bl,
-                             "const", start_point=c[10], end_point=c[9])
+[b1, b2] = hm.extract_subcontours(c_lappendix, [c[10], c[9], c[10]])
+b1 = hm.partition_contour(b1, "const", 3 * step_bl, angle0=180,
+                          keep_pts=[[286.399, 1647.06], [231.428, 1608.5]])
+b1 = hm.unite_contours([b1, b2])
+bgo = hm.BoundaryGridOptions(b1, bs, "left", 3 * step_bl,
+                             "no", start_point=c[10], end_point=c[9])
 g41 = hm.build_boundary_grid(bgo)
-lc = hm.create_contour([hm.get_point(g41, 104), hm.get_point(g41, 39)])
-lc = hm.partition_contour(lc, "const", 4 * step_bl)
-u = hm.unite_contours([g41, lc])
-d = hm.decompose_contour(u)
-lc = hm.pick_contour([281, 1612.484], d)
-g4 = hm.triangulate_domain(lc, fill='4')
-g4 = hm.unite_grids(g41, [(g4, 0)])
-hm.heal_grid(g4, simplify_boundary=50)
+ctri = hm.clip_domain(b1, g41, "difference", False)
+[c1, c2] = hm.extract_subcontours(ctri, [c[9], c[10], c[9]])
+c1 = hm.partition_contour(c1, "const", 4 * step_bl)
+ctri = hm.unite_contours([c1, c2])
+g42 = hm.triangulate_domain(ctri, fill='4')
+g4 = hm.unite_grids(g41, [(g42, 0)])
 
 # right appendix: g5
 g5 = hm.map_grid(g4, c_rappendix,
@@ -149,6 +159,8 @@ p2 = hm.get_point(c_bot, vclosest=[-601.99, 1483.13])
 ali = hm.connect_subcontours([cb, cr, ct, cl], fix=[0, 2], close="yes")
 
 go = hm.add_unf_rect_grid(nx=3, ny=10)
+gb = hm.add_rect_contour([0, 0], [1, 1], [0, 0, binput_left2, 0])
+go = hm.exclude_contours(go, gb, "outer")
 g6 = hm.map_grid(
     go, ali,
     [[0, 0], [1, 0], [1, 1], [0, 1], [0, 0.5]],
@@ -171,6 +183,8 @@ hm.scale_geom([c6], 150, 250)
 ar1 = hm.connect_subcontours([c3, c0, c1, c2], fix=[0, 2], close="yes")
 ar2 = hm.connect_subcontours([c3, c4, c5, c6], fix=[0, 2], close="yes")
 go = hm.add_unf_rect_grid(nx=3, ny=10)
+gb = hm.add_rect_contour([0, 0], [1, 1], [0, 0, binput_right2, 0])
+go = hm.exclude_contours(go, gb, "outer")
 g31 = hm.map_grid(
     go, ar1,
     [[0, 0], [1, 0], [1, 1], [0, 1], [1, 0.5]],
@@ -257,6 +271,7 @@ g74 = hm.build_boundary_grid(bgo)
 [cl, cb, cr, ct] = hm.extract_subcontours(c_ltop, [[105, 1968], [103, 1962],
                                                    c[21], c[22], [105, 1968]])
 [cr] = hm.extract_subcontours(g723, [c[22], c[21]], "line")
+hm.set_boundary_type(cl, binput_left1)
 nic = hm.connect_subcontours([cb, cl, ct, cr], [1, 3], "yes")
 cl = hm.partition_contour(cl, "const", 1, nedges=3)
 cb = hm.partition_contour(cb, "const", 1, nedges=3)
@@ -315,6 +330,8 @@ cl = hm.create_contour([c[36], c[35]])
 [cout] = hm.extract_subcontours(c_rtop, [c[36], c[35]])
 cout = hm.unite_contours([cl, cout])
 go = hm.add_unf_rect_grid(nx=3, ny=3)
+gb = hm.add_rect_contour([0, 0], [1, 1], [0, binput_right1, 0, 0])
+go = hm.exclude_contours(go, gb, "outer")
 g84 = hm.map_grid(
     go, cout,
     [[0, 0], [1, 0], [1, 1], [0, 1]],
@@ -491,6 +508,58 @@ g10 = hm.unite_grids(
 excont = hm.create_contour([c[44], p1, [2423, 734], p4, c[49], c[44]])
 g1 = hm.exclude_contours(g1, excont, "inner")
 
+# boundary conditions: g13, g14
+p1 = [-925.31885, 84.452568]
+p2 = [-929.79858, 104.02718]
+p3 = [2117.158, 92.669235]
+p4 = [2121.5378, 112.30193]
+bc = hm.add_circ_rect_grid(p1, 50, 10, 0.4)
+cutcont = hm.add_rect_contour([p1[0] - 100, p1[1] - 100], [p1[0], p1[1] + 100])
+bc = hm.exclude_contours(bc, cutcont, "inner")
+src1 = [p1[0], p1[1] - 50]
+src2 = [p1[0], p1[1] - 0.5 * 0.4 * 50]
+src3 = [p1[0], p1[1] + 0.5 * 0.4 * 50]
+src4 = [p1[0], p1[1] + 50]
+tar = hm.add_circ_contour([(p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2], 50, 128)
+tar = hm.clip_domain(tar, c_bot, "intersection")
+tar1 = hm.get_point(tar, vclosest=[p1[0] - 100, p1[1] - 100])
+tar2 = p1
+tar3 = p2
+tar4 = hm.get_point(tar, vclosest=[p1[0] - 100, p1[1] + 100])
+g13 = hm.map_grid(
+    bc, tar,
+    [src1, src2, src3, src4],
+    [tar1, tar2, tar3, tar4])
+
+
+def bfun(x0, y0, x1, y1, bt):
+    global p1, p2, boutput_left
+    yc = (y0 + y1) / 2.
+    if yc > p1[1] and yc < p2[1]:
+        return boutput_left
+
+hm.set_boundary_type(g13, bfun=bfun)
+
+tar = hm.add_circ_contour([(p3[0] + p4[0]) / 2, (p3[1] + p4[1]) / 2], 50, 128)
+tar = hm.clip_domain(tar, c_bot, "intersection")
+tar1 = hm.get_point(tar, vclosest=[p3[0] + 100, p3[1] - 100])
+tar2 = p3
+tar3 = p4
+tar4 = hm.get_point(tar, vclosest=[p3[0] + 100, p3[1] + 100])
+g14 = hm.map_grid(
+    bc, tar,
+    [src1, src2, src3, src4],
+    [tar1, tar2, tar3, tar4], is_reversed=True)
+
+
+def bfun(x0, y0, x1, y1, bt):
+    global p3, p4, boutput_right
+    yc = (y0 + y1) / 2.
+    if yc > p3[1] and yc < p4[1]:
+        return boutput_right
+
+hm.set_boundary_type(g14, bfun=bfun)
+
 # assemble all
 g = g1
 print "UNITE 1. chairs"
@@ -510,5 +579,10 @@ g = hm.unite_grids(g, [(g5, 5)], zero_angle_approx=10, buffer_fill='4')
 print "UNITE 5. top zones"
 g = hm.unite_grids(g, [(g7, 0)])
 g = hm.unite_grids(g, [(g8, 0)])
+print "UNITE 6. boundary zones"
+g = hm.unite_grids(g, [(g13, 10)])
+g = hm.unite_grids(g, [(g14, 10)])
 
 hm.export_grid_vtk([g], "a.vtk")
+hm.export_contour_vtk([g], "b.vtk")
+hm.export_grid_msh(g, "rrj2.msh")
