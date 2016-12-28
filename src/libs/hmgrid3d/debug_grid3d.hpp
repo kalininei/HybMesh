@@ -39,6 +39,7 @@ struct Debug: public HMDebug{
 	static void save_surf_vtk(const Surface& grid);
 	static void save_cell_vtk(shared_ptr<Cell> c);
 	static void save_cells_vtk(const CellData& grid);
+	static void save_cells_faces_vtk(const CellData& grid);
 	static void save_edges_vtk(const EdgeData& edges);
 	static void save_faces_vtk(const FaceData& faces);
 

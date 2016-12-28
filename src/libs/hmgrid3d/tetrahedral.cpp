@@ -9,14 +9,27 @@
 #include "nan_handler.h"
 #include "hmtimer.hpp"
 #include "tetramesh_preproc.hpp"
+#include "debug_grid3d.hpp"
 using namespace HMGrid3D::Mesher;
 
 namespace{
 
 struct TransitionalFace{
 	TransitionalFace(){}
+	TransitionalFace(TransitionalFace&&) = default;
+	TransitionalFace(const TransitionalFace&) = default;
+	TransitionalFace& operator=(const TransitionalFace&) = default;
+
 	TransitionalFace(int lc, const std::vector<MVertex*>& vs):points(vs), ptsnums(vs.size()){
 		for (int i=0; i<points.size(); ++i) ptsnums[i] = points[i]->getIndex();
+		std::sort(ptsnums.begin(), ptsnums.end());
+		left_cell = lc;
+		right_cell = -1;
+	}
+	TransitionalFace(int lc, MVertex* v1, MVertex* v2, MVertex* v3):points(3), ptsnums(3){
+		points[0] = v1; ptsnums[0] = v1->getIndex();
+		points[1] = v2; ptsnums[1] = v2->getIndex();
+		points[2] = v3; ptsnums[2] = v3->getIndex();
 		std::sort(ptsnums.begin(), ptsnums.end());
 		left_cell = lc;
 		right_cell = -1;
@@ -28,28 +41,35 @@ struct TransitionalFace{
 };
 
 bool operator<(const TransitionalFace& f1, const TransitionalFace& f2){
-	//comapare using only vertex indices
-	if (f1.ptsnums.size() < f2.ptsnums.size()) return true;
-	if (f1.ptsnums.size() > f2.ptsnums.size()) return false;
+	//compare using only vertex indices
+	if (f1.ptsnums[0] < f2.ptsnums[0]) return true;
+	else if (f1.ptsnums[0] > f2.ptsnums[0]) return false;
+	else if (f1.ptsnums[1] < f2.ptsnums[1]) return true;
+	else if (f1.ptsnums[1] > f2.ptsnums[1]) return false;
+	return (f1.ptsnums[2] < f2.ptsnums[2]);
+}
+bool operator!=(const TransitionalFace& f1, const TransitionalFace& f2){
+	//compare using only vertex indices
+	if (f1.ptsnums.size() != f2.ptsnums.size()) return true;
 	auto it1 = f1.ptsnums.begin(), it2 = f2.ptsnums.begin();
 	while (it1 != f1.ptsnums.end()){
-		if (*it1 < *it2) return true;
-		if (*it1 > *it2) return false;
+		if (*it1 != *it2) return true;
 		++it1; ++it2;
 	};
 	return false;
 }
 struct TransitionalEdge{
-	TransitionalEdge(MVertex* a, MVertex* b, int num): p1(a), p2(b), ind(num){
-		if (p1->getIndex()>p2->getIndex()) std::swap(p1, p2);
+	TransitionalEdge(MVertex* a, MVertex* b, int num):
+			p1(a), p2(b), ind(num),
+			i1(p1->getIndex(), p2->getIndex()){
+		if (i1.first>i1.second) std::swap(i1.first, i1.second);
 	}
 	MVertex *p1, *p2;
 	int ind;
+	std::pair<int, int> i1;
 };
 bool operator<(const TransitionalEdge& e1, const TransitionalEdge& e2){
-	if (e1.p1->getIndex() < e2.p1->getIndex()) return true;
-	if (e1.p1->getIndex() > e2.p1->getIndex()) return false;
-	return (e1.p2->getIndex() < e2.p2->getIndex());
+	return e1.i1 < e2.i1;
 }
 
 void GridFromModel(GModel& m, HMGrid3D::GridData& ret){
@@ -58,8 +78,13 @@ void GridFromModel(GModel& m, HMGrid3D::GridData& ret){
 	ret.vvert.resize(m.getNumMeshVertices());
 	std::set<TransitionalFace> transface;
 	std::set<TransitionalEdge> transedge;
+
 	auto add_face = [&](const vector<MVertex*>& elvert, int en){
 		auto tf = transface.emplace(en, elvert);
+		if (tf.second == false) tf.first->right_cell = en;
+	};
+	auto add_face3 = [&](MVertex* v1, MVertex* v2, MVertex* v3, int en){
+		auto tf = transface.emplace(en, v1, v2, v3);
 		if (tf.second == false) tf.first->right_cell = en;
 	};
 	for (auto it = m.firstRegion(); it!=m.lastRegion(); ++it){
@@ -75,17 +100,17 @@ void GridFromModel(GModel& m, HMGrid3D::GridData& ret){
 				assert(index<ret.vvert.size());
 				if (!ret.vvert[index]) ret.vvert[index].reset(new HMGrid3D::Vertex(v->x(), v->y(), v->z()));
 			}
-			//faces to transitional status:: Takes 65% of exec time
+			//faces to transitional status:: Takes 50% of function exec time
 			if (e->getType() == TYPE_TET){
-				add_face({elvert[0], elvert[2], elvert[1]}, en);
-				add_face({elvert[0], elvert[3], elvert[2]}, en);
-				add_face({elvert[1], elvert[2], elvert[3]}, en);
-				add_face({elvert[0], elvert[1], elvert[3]}, en);
+				add_face3(elvert[0], elvert[2], elvert[1], en);
+				add_face3(elvert[0], elvert[3], elvert[2], en);
+				add_face3(elvert[1], elvert[2], elvert[3], en);
+				add_face3(elvert[0], elvert[1], elvert[3], en);
 			} else if (e->getType() == TYPE_PYR){
-				add_face({elvert[0], elvert[1], elvert[4]}, en);
-				add_face({elvert[1], elvert[2], elvert[4]}, en);
-				add_face({elvert[2], elvert[3], elvert[4]}, en);
-				add_face({elvert[0], elvert[4], elvert[3]}, en);
+				add_face3(elvert[0], elvert[1], elvert[4], en);
+				add_face3(elvert[1], elvert[2], elvert[4], en);
+				add_face3(elvert[2], elvert[3], elvert[4], en);
+				add_face3(elvert[0], elvert[4], elvert[3], en);
 				add_face({elvert[0], elvert[3], elvert[2], elvert[1]}, en);
 			} else {
 				throw std::runtime_error("unsupported gmsh element type");
@@ -93,7 +118,13 @@ void GridFromModel(GModel& m, HMGrid3D::GridData& ret){
 			aa::add_shared(ret.vcells, HMGrid3D::Cell());
 		}
 	}
-	//faces && edges: Takes 35% of exec time;
+	//check if grid was ok => all vertices were read
+	if (std::any_of(ret.vvert.begin(), ret.vvert.end(),
+			[](shared_ptr<HMGrid3D::Vertex>& v){return v==nullptr;})){
+		throw std::runtime_error("Tetrahedral meshing failed");
+	}
+
+	//faces && edges: Takes 50% of function exec time;
 	int numed = 0;
 	for (auto& f: transface){
 		auto nf = aa::add_shared(ret.vfaces, HMGrid3D::Face());
@@ -105,7 +136,7 @@ void GridFromModel(GModel& m, HMGrid3D::GridData& ret){
 			if (te.second) {
 				auto ind1 = m1->getIndex()-1;
 				auto ind2 = m2->getIndex()-1;
-				aa::add_shared(ret.vedges, HMGrid3D::Edge(ret.vvert[ind1], ret.vvert[ind2]));
+				ret.vedges.emplace_back(new HMGrid3D::Edge(ret.vvert[ind1], ret.vvert[ind2]));
 				++numed;
 			}
 			nf->edges.push_back(ret.vedges[te.first->ind]);
@@ -199,6 +230,8 @@ void fill_model_with_3d(GModel& m, const vector<vector<GFace*>>& fc){
 	auto volume = m.addVolume(fc);
 	//m.writeGEO("gmsh_geo.geo");
 	//m.writeMSH("gmsh_geo.msh");
+	auto bb = m.bounds();
+	GmshSetBoundingBox(bb.min()[0], bb.max()[0], bb.min()[1], bb.max()[1], bb.min()[2], bb.max()[2]);
 	NanSignalHandler::StopCheck();
 	m.mesh(3);
 	NanSignalHandler::StartCheck();
@@ -293,8 +326,13 @@ HMGrid3D::GridData gmsh_fill(const HMGrid3D::SurfaceTree& tree, const HMGrid3D::
 	//GmshSetOption("Mesh", "OptimizeNetgen", 1.0);
 	
 	//decomposition
-	cb.silent_step_after(10, "Surfaces decomposition");
+	cb.step_after(10, "Boundary preprocessing");
 	HMGrid3D::Mesher::SurfacePreprocess presurf(tree, 30);
+	//if whole area is meshed with pyramids
+	if (presurf.decomposed_surfs.size() == 0){
+		cb.fin();
+		return presurf.bnd_grid;
+	}
 	
 	//mesh1d
 	cb.step_after(5, "Fill 1D mesh");

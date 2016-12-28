@@ -1,5 +1,6 @@
 #include "pyramid_layer.hpp"
 #include "debug_grid3d.hpp"
+#include <unordered_map>
 
 using namespace HMGrid3D;
 namespace{
@@ -15,6 +16,22 @@ CellData single_face_cells(const FaceData& fc){
 
 struct PyrConstructor{
 	PyrConstructor(const FaceData& limits){
+		limvertices = AllVertices(limits);
+		BoundingBox3D bball(limvertices);
+		double L = bball.maxlen() / 30.0;
+		bbfinder.reset(new BoundingBox3DFinder(bball, L));
+		enumerate_ids_pvec(limvertices);
+		limfaces.resize(limits.size());
+		for (int i=0; i<limits.size(); ++i){
+			auto f = limits[i].get();
+			auto av = f->sorted_vertices();
+			limfaces[i].resize(av.size());
+			for (int j=0; j<av.size(); ++j)
+				limfaces[i][j] = av[j]->id;
+			BoundingBox3D avbb(av);
+			bbfinder->addentry(avbb);
+			faceind[f] = i;
+		}
 	}
 
 	void build_pyramid(shared_ptr<Cell>& c){
@@ -32,11 +49,11 @@ struct PyrConstructor{
 		}
 		assert(area > 0);
 		cnt /= area;
-		//double len = 1./sqrt(2) * sqrt(area);
 		double len = 0.5 * sqrt(area);
 		rnrm *= (len);
-
 		shared_ptr<Vertex> vert(new Vertex(cnt - rnrm));
+		no_cross_check(c->faces[0].get(), cnt, *vert);
+
 		EdgeData edges;
 		for (auto& v: ap) edges.emplace_back(new Edge(v, vert));
 		//build pyramid faces
@@ -54,8 +71,40 @@ struct PyrConstructor{
 		for (int i=1; i<c->faces.size(); ++i) c->faces[i]->right=c;
 	}
 private:
-	void no_cross_check(Cell& c){
-		_DUMMY_FUN_;
+	static constexpr double CROSSLIMIT = 3;
+	shared_ptr<BoundingBox3DFinder> bbfinder;
+	VertexData limvertices;
+	vector<vector<int>> limfaces;
+	std::unordered_map<const Face*, int> faceind;
+
+	void no_cross_check(const Face* srcface, const Point3& start, Point3& end){
+		Point3 plus = Point3::Weigh(start, end, CROSSLIMIT);
+		BoundingBox3D bbox(start, plus);
+		vector<int> cind = bbfinder->suspects(bbox);
+		double ksimin = 1;
+		double xke[3];
+		int iface = faceind[srcface];
+		for (int i: cind) if (i!=iface){
+			vector<int>& nds = limfaces[i];
+			auto& p0 = *limvertices[nds[0]];
+			for (int j=1; j<nds.size()-1; ++j){
+				bool tricross = segment_triangle_cross3d(
+					start, plus, 
+					p0, *limvertices[nds[j]], *limvertices[nds[j+1]],
+					xke);
+				if (tricross){
+					//found cross
+					ksimin = std::min(ksimin, xke[0]);
+					break;
+				} else if (!ISIN_NN(xke[0], 0, 1)){
+					//start-end doesn't cross face plane
+					break;
+				}
+			}
+		}
+		if (ISLOWER(ksimin, 1)){
+			end.set(Point3::Weigh(start, plus, ksimin/CROSSLIMIT));
+		}
 	}
 };
 
@@ -140,37 +189,67 @@ bool need_merge(const Cell& c1, const Cell& c2, double merge_angle){
 
 struct PyrVertices{
 	CellData& cd;
-	VertexData verts;
-	vector<vector<Point3>> verts_hist;
-
-	PyrVertices(CellData& cd): cd(cd){
-		verts_hist.resize(cd.size());
-		verts.resize(cd.size());
-
-		for (int i=0; i<cd.size(); ++i) if (has_pyramid(*cd[i])){
-			verts[i] = pyramid_vertex(*cd[i]);
+	struct pyr_group{
+		pyr_group(int c1, int c2, shared_ptr<Vertex> v1, shared_ptr<Vertex> v2){
+			icells.insert(c1); icells.insert(c2);
+			origverts.insert(*v1); origverts.insert(*v2);
+			pyrverts.insert(v1); pyrverts.insert(v2);
+			assign_vertex();
+		}
+		std::set<int> icells;
+		std::set<Point3> origverts;
+		std::set<shared_ptr<Vertex>> pyrverts;
+		Point3 vertex;
+		bool has_cell(int icell){
+			return icells.find(icell) != icells.end();
+		}
+		void add_cell(int c1, shared_ptr<Vertex> v1){
+			icells.insert(c1);
+			origverts.insert(*v1);
+			pyrverts.insert(v1);
+			assign_vertex();
+		}
+		void merge_with(const pyr_group& g){
+			icells.insert(g.icells.begin(), g.icells.end());
+			origverts.insert(g.origverts.begin(), g.origverts.end());
+			pyrverts.insert(g.pyrverts.begin(), g.pyrverts.end());
+			assign_vertex();
+		}
+		void assign_vertex(){
+			vertex.set(0, 0, 0);
+			for (auto& ov: origverts) vertex += ov;
+			vertex /= origverts.size();
+			for (auto& pv: pyrverts) pv->set(vertex);
+		}
+	};
+	std::list<pyr_group> groups;
+	void add_to_group(int c1, int c2, shared_ptr<Vertex> v1, shared_ptr<Vertex> v2){
+		std::list<pyr_group>::iterator fnd1=groups.end();
+		std::list<pyr_group>::iterator fnd2=groups.end();
+		for (auto it=groups.begin(); it!=groups.end(); ++it){
+			if (it->has_cell(c1)) fnd1 = it;
+			if (it->has_cell(c2)) fnd2 = it;
+		}
+		if (fnd1 == groups.end() && fnd2 == groups.end()){
+			groups.emplace_back(c1, c2, v1, v2);
+		} else if (fnd1 != groups.end() && fnd2 == groups.end()){
+			fnd1->add_cell(c2, v2);
+		} else if (fnd1 == groups.end() && fnd2 != groups.end()){
+			fnd2->add_cell(c1, v1);
+		} else if (fnd1 != fnd2){
+			fnd1->merge_with(*fnd2);
+			groups.erase(fnd2);
 		}
 	}
 
+	PyrVertices(CellData& cd): cd(cd){}
+
 	void merge(int c1, int c2, PyrConstructor& pc){
+		//build pyramids if they are absent
 		if (has_pyramid(*cd[c1]) == false) tripyramid(c1, c2, pc);
 		if (has_pyramid(*cd[c2]) == false) tripyramid(c2, c1, pc);
-
-		std::set<Point3> avp;
-		if (verts_hist[c1].size() == 0) avp.insert(*verts[c1]);
-		else avp.insert(verts_hist[c1].begin(), verts_hist[c1].end());
-		if (verts_hist[c2].size() == 0) avp.insert(*verts[c2]);
-		else avp.insert(verts_hist[c2].begin(), verts_hist[c2].end());
-		verts_hist[c1] = vector<Point3>(avp.begin(), avp.end());
-		verts_hist[c2] = verts_hist[c1];
-
-		Point3 p(0,0,0);
-		for (auto& it: avp) p += it;
-		p/=avp.size();
-
-		verts[c1]->set(p);
-		verts[c2]->set(p);
-		
+		//find common faces and quit if there are none
+		shared_ptr<Face> fc1, fc2;
 		for (int i=1; i<cd[c1]->faces.size(); ++i)
 		for (int j=1; j<cd[c2]->faces.size(); ++j){
 			auto f1 = cd[c1]->faces[i];
@@ -178,19 +257,67 @@ struct PyrVertices{
 			auto e1 = f1->edges[2];
 			auto e2 = f2->edges[2];
 			if (e1 == e2){
-				f2->reverse();
-				f1->left = f2->left;
-				cd[c2]->change_face(f2, f1);
-				verts[c2] = verts[c1];
-				return;
+				fc1 = f1;
+				fc2 = f2;
+				break;
 			}
 		}
-		assert(false);
+		if (fc1 == nullptr) return;
+
+		//make vertex nodes equal. Do not split primitives.
+		//It will be done in supplementary_merge procedure.
+		add_to_group(c1, c2, pyramid_vertex(*cd[c1]), pyramid_vertex(*cd[c2]));
 	}
+
+	void supplementary_merge(PyrConstructor& pc){
+		//guarantee that all links within the group were merged
+		for (auto g: groups) merge_group(g.icells, g.vertex);
+	}
+
 private:
 	void tripyramid(int c, int ivert, PyrConstructor& pc){
 		pc.build_pyramid(cd[c]);
-		verts[c] = pyramid_vertex(*cd[c]);
+	}
+	void merge_group(const std::set<int>& g, Point3 vertex){
+		FaceData lfaces;
+		for (auto i: g) lfaces.push_back(cd[i]->faces[0]);
+		auto prim = AllPrimitives(lfaces);
+		VertexData& lvert(std::get<0>(prim));
+		EdgeData& ledges(std::get<1>(prim));
+		enumerate_ids_pvec(lvert);
+		enumerate_ids_pvec(ledges);
+		shared_ptr<Vertex> pv(new Vertex(vertex));
+		//vertical edges
+		EdgeData vedges;
+		for (auto v: lvert)
+			vedges.emplace_back(new Edge(v, pv));
+		//vertical faces
+		FaceData vfaces;
+		for (auto e: ledges){
+			vfaces.emplace_back(new Face());
+			auto v1 = e->first();
+			auto v2 = e->last();
+			vfaces.back()->edges.push_back(vedges[v1->id]);
+			vfaces.back()->edges.push_back(vedges[v2->id]);
+			vfaces.back()->edges.push_back(e);
+		}
+		//construct cells
+		for (auto i: g){
+			auto cell = cd[i];
+			cell->faces.resize(1);
+			for (int i=0; i<cell->faces[0]->edges.size(); ++i){
+				auto e = cell->faces[0]->edges[i];
+				cell->faces.push_back(vfaces[e->id]);
+				if (cell->faces[0]->is_positive_edge(i))
+					vfaces[e->id]->left = cell;
+				else
+					vfaces[e->id]->right = cell;
+			}
+		}
+		//guarantee that all bnd faces have cell to its right
+		for (auto f: vfaces) if (f->is_boundary()){
+			if (f->has_left_cell()) f->reverse();
+		}
 	}
 };
 
@@ -213,6 +340,7 @@ void merge_pyramids(CellData& cells, double merge_angle, PyrConstructor& pc){
 		if (need_merge(c1, c2, merge_angle))
 			pv.merge(ec.first, ec.second, pc);
 	}
+	pv.supplementary_merge(pc);
 }
 
 }
@@ -221,19 +349,26 @@ void merge_pyramids(CellData& cells, double merge_angle, PyrConstructor& pc){
 GridData HMGrid3D::BuildPyramidLayer(const FaceData& faces, bool non3only, double merge_angle){
 	//initial commit: add single face cells
 	CellData ac = single_face_cells(faces);
-
-	//Pyramid constructor which will build pyramids
-	//which will not cross input surface
-	PyrConstructor constructor(faces);
-
-	//build initial pyramids
-	for (auto c: ac){
-		if (non3only && c->faces[0]->edges.size() < 4) continue;
-		constructor.build_pyramid(c);
+	bool need_pyramids = !non3only;
+	for (auto f: faces) if (f->edges.size() > 3){
+		need_pyramids = true;
+		break;
 	}
 
-	//merge pyramids
-	merge_pyramids(ac, merge_angle, constructor);
+	if (need_pyramids){
+		//Pyramid constructor which will build pyramids
+		//which will not cross input surface
+		PyrConstructor constructor(faces);
+
+		//build initial pyramids
+		for (auto c: ac){
+			if (non3only && c->faces[0]->edges.size() < 4) continue;
+			constructor.build_pyramid(c);
+		}
+
+		//merge pyramids
+		merge_pyramids(ac, merge_angle, constructor);
+	}
 
 	//assemble grid
 	auto prim = AllPrimitives(ac);

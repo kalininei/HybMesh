@@ -317,6 +317,7 @@ public:
 };
 
 struct BoundingBoxFinder{
+	//L - step size
 	BoundingBoxFinder(const BoundingBox& area, double L);
 
 	void addentry(const BoundingBox& e);

@@ -56,7 +56,8 @@ ShpVector<Edge> Edge::Connect(const ShpVector<Edge>& data, Vertex app_v){
 	assert(fnd != data.end());
 
 	//3. assemble vertex_edge connectivity
-	std::map<shared_ptr<Vertex>, vector<int>> vertex_edge = Edge::Connectivity::EndVertexEdge(data);
+	auto vertex_edge = Edge::Connectivity::EndVertexEdge(data);
+	for (int i=0; i<vertex_edge.size(); ++i) vertex_edge[i].v->id = i;
 
 	//4. assembling
 	vector<int> assembled(1, fnd - data.begin());
@@ -65,13 +66,13 @@ ShpVector<Edge> Edge::Connect(const ShpVector<Edge>& data, Vertex app_v){
 		const shared_ptr<Edge>& curedge = data[assembled.back()];
 		assert(curedge->first() == curv);
 		shared_ptr<Vertex> nextv = curedge->last();
-		auto& ve = vertex_edge[nextv];
+		auto& ve = vertex_edge[nextv->id];
 		assert(ve.size() == 1 || ve.size() == 2);
 		int i_nextedge;
 		if (ve.size() == 1) break;
 		else{
-			i_nextedge = ve[0];
-			if (i_nextedge == assembled.back()) i_nextedge = ve[1];
+			i_nextedge = ve.eind[0];
+			if (i_nextedge == assembled.back()) i_nextedge = ve.eind[1];
 		}
 		if (i_nextedge == assembled[0]) break;
 		else assembled.push_back(i_nextedge);
@@ -84,14 +85,17 @@ ShpVector<Edge> Edge::Connect(const ShpVector<Edge>& data, Vertex app_v){
 	return ret;
 }
 
-std::map<shared_ptr<Vertex>, vector<int>>
-Edge::Connectivity::EndVertexEdge(const ShpVector<Edge>& data){
-	std::map<shared_ptr<Vertex>, vector<int>> ret;
+vector<Edge::Connectivity::EndVertexEdgeR>
+Edge::Connectivity::EndVertexEdge(const EdgeData& data){
+	auto ev = AllEndVertices(data);
+	vector<Edge::Connectivity::EndVertexEdgeR> ret(ev.size());
+	for (int i=0; i<ev.size(); ++i){
+		ret[i].v = ev[i];
+		ret[i].v->id = i;
+	}
 	for (int i=0; i<data.size(); ++i){
-		auto emp1 = ret.emplace(data[i]->first(), std::vector<int>());
-		emp1.first->second.push_back(i);
-		auto emp2 = ret.emplace(data[i]->last(), std::vector<int>());
-		emp2.first->second.push_back(i);
+		ret[data[i]->first()->id].eind.push_back(i);
+		ret[data[i]->last()->id].eind.push_back(i);
 	}
 	return ret;
 }
@@ -229,28 +233,35 @@ Vect3 Face::left_normal() const{
 	return ret;
 }
 
-std::map<shared_ptr<Edge>, vector<int>>
-Face::Connectivity::EdgeFace(const ShpVector<Face>& data){
-	std::map<shared_ptr<Edge>, vector<int>> ret;
-	for (int i=0; i<data.size(); ++i){
-		for (auto e: data[i]->edges){
-			auto emp = ret.emplace(e, vector<int>());
-			emp.first->second.push_back(i);
-		}
+vector<Face::Connectivity::EdgeFaceR>
+Face::Connectivity::EdgeFace(const FaceData& data){
+	auto ae = AllEdges(data);
+	vector<Face::Connectivity::EdgeFaceR> ret(ae.size());
+	for (int i=0; i<ae.size(); ++i){
+		ret[i].e = ae[i];
+		ret[i].e->id = i;
+	}
+	for (int i=0; i<data.size(); ++i)
+	for (auto& e: data[i]->edges){
+		ret[e->id].find.push_back(i);
 	}
 	return ret;
 }
-std::map<shared_ptr<Edge>, vector<std::tuple<int, int, bool>>>
+
+vector<Face::Connectivity::EdgeFaceExtendedR>
 Face::Connectivity::EdgeFaceExtended(const FaceData& data){
-	std::map<shared_ptr<Edge>, vector<std::tuple<int, int, bool>>> ret;
+	auto ae = AllEdges(data);
+	vector<Face::Connectivity::EdgeFaceExtendedR> ret(ae.size());
+	for (int i=0; i<ae.size(); ++i){
+		ret[i].e = ae[i];
+		ret[i].e->id = i;
+	}
 	for (int i=0; i<data.size(); ++i)
 	for (int j=0; j<data[i]->edges.size(); ++j){
-		auto e = data[i]->edges[j];
-		bool dir = data[i]->is_positive_edge(j);
-		auto emp = ret.emplace(e, vector<std::tuple<int, int, bool>>());
-		emp.first->second.push_back(
-			std::make_tuple(i, j, dir)
-		);
+		auto& r = ret[data[i]->edges[j]->id];
+		r.find.push_back(i);
+		r.locind.push_back(j);
+		r.posdir.push_back(data[i]->is_positive_edge(j));
 	}
 	return ret;
 }
@@ -261,13 +272,13 @@ Face::Connectivity::FaceFace(const ShpVector<Face>& data){
 }
 
 vector<vector<int>>
-Face::Connectivity::FaceFace(const std::map<shared_ptr<Edge>, vector<int>>& edge_face, int nfaces){
+Face::Connectivity::FaceFace(const vector<Face::Connectivity::EdgeFaceR>& edge_face, int nfaces){
 	vector<vector<int>> ret(nfaces);
 	for (auto& it: edge_face){
-		for (int i=0; i<it.second.size(); ++i){
-			int f1 = it.second[i];
-			for (int j=i+1; j<it.second.size(); ++j){
-				int f2 = it.second[j];
+		for (int i=0; i<it.size(); ++i){
+			int f1 = it.find[i];
+			for (int j=i+1; j<it.size(); ++j){
+				int f2 = it.find[j];
 				ret[f1].push_back(f2);
 				ret[f2].push_back(f1);
 			}
@@ -355,10 +366,10 @@ ShpVector<Edge> Cell::alledges() const{
 bool Cell::change_face(shared_ptr<Face> from, shared_ptr<Face> to){
 	int ind = std::find(faces.begin(), faces.end(), from) - faces.begin();
 	if (ind == faces.size()) return false;
-	faces[ind] = to;
+
 	//underlying edges
-	std::list<shared_ptr<Edge>> from_edges(from->edges.begin(), from->edges.end());
-	std::list<shared_ptr<Edge>> to_edges(to->edges.begin(), to->edges.end());
+	std::vector<shared_ptr<Edge>> from_edges(from->edges.begin(), from->edges.end());
+	std::vector<shared_ptr<Edge>> to_edges(to->edges.begin(), to->edges.end());
 	auto& p1 = *(*from_edges.begin())->first();
 	auto& p2 = *(*from_edges.begin())->last();
 	for (auto it = to_edges.begin(); it!=to_edges.end(); ++it){
@@ -369,19 +380,43 @@ bool Cell::change_face(shared_ptr<Face> from, shared_ptr<Face> to){
 			break;
 		}
 	}
-	for (int i=0; i<faces.size(); ++i) if (i != ind){
-		auto fromit = from_edges.begin();
-		auto toit = to_edges.begin();
-		while (fromit != from_edges.end()){
-			//faces should not have more than one common edge
-			if (faces[i]->change_edge(*fromit, *toit)){
-				from_edges.erase(fromit);
-				to_edges.erase(toit);
-				break;
+	//underlying vertices
+	Face tmpface;
+	tmpface.edges = from_edges;
+	std::vector<shared_ptr<Vertex>> from_vert = tmpface.sorted_vertices();
+	tmpface.edges = to_edges;
+	std::vector<shared_ptr<Vertex>> to_vert = tmpface.sorted_vertices();
+
+	for (auto f: faces)
+	for (auto e: f->edges){
+		e->id = -1;
+		for (auto v: e->vertices) v->id=-1;
+	}
+	for (int i=0; i<from_edges.size(); ++i) from_edges[i]->id = i;
+	for (int i=0; i<from_vert.size(); ++i) from_vert[i]->id = i;
+	for (int i=0; i<to_edges.size(); ++i) to_edges[i]->id = -2;
+	for (int i=0; i<to_vert.size(); ++i) to_vert[i]->id = -2;
+
+	//change target face
+	faces[ind] = to;
+
+	for (int i=0; i<faces.size(); ++i) if (i != ind)
+	for (int j=0; j<faces[i]->edges.size(); ++j){
+		//change edges of non-target faces
+		int& id = faces[i]->edges[j]->id;
+		if (id >= 0){
+			faces[i]->edges[j] =to_edges[id];
+		}
+		//change vertices of non-target edges
+		if (id == -1){
+			for (auto& v: faces[i]->edges[j]->vertices){
+				int& id2 = v->id;
+				if (id2 >= 0) v = to_vert[id2];
 			}
-			++fromit; ++toit;
+			id = -2;
 		}
 	}
+
 	return true;
 }
 
@@ -411,6 +446,11 @@ double Cell::volume() const{
 vector<double> Cell::Volumes(const CellData& cd){
 	vector<double> ret(cd.size());
 	for (int i=0; i<cd.size(); ++i) ret[i] = cd[i]->volume();
+	return ret;
+}
+double Cell::SumVolumes(const CellData& cd){
+	double ret = 0;
+	for (auto x: Volumes(cd)) ret += x;
 	return ret;
 }
 
@@ -502,6 +542,24 @@ VertexData HMGrid3D::AllVertices(const EdgeData& from){
 	}
 	return ret;
 }
+VertexData HMGrid3D::AllEndVertices(const EdgeData& from){
+	for (auto& e: from){
+		e->first()->id = 0;
+		e->last()->id = 0;
+	}
+	VertexData ret;
+	for (auto& e: from){
+		if (e->first()->id == 0){
+			ret.push_back(e->first());
+			e->first()->id = 1;
+		}
+		if (e->last()->id == 0){
+			ret.push_back(e->last());
+			e->last()->id = 1;
+		}
+	}
+	return ret;
+}
 EdgeData HMGrid3D::AllEdges(const FaceData& from){
 	for (auto& f: from)
 	for (auto& e: f->edges) e->id = 0;
@@ -527,8 +585,14 @@ FaceData HMGrid3D::AllFaces(const CellData& from){
 VertexData HMGrid3D::AllVertices(const FaceData& from){
 	return AllVertices(AllEdges(from));
 }
+VertexData HMGrid3D::AllEndVertices(const FaceData& from){
+	return AllEndVertices(AllEdges(from));
+}
 VertexData HMGrid3D::AllVertices(const CellData& from){
 	return AllVertices(AllEdges(AllFaces(from)));
+}
+VertexData HMGrid3D::AllEndVertices(const CellData& from){
+	return AllEndVertices(AllEdges(AllFaces(from)));
 }
 EdgeData HMGrid3D::AllEdges(const CellData& from){
 	return AllEdges(AllFaces(from));

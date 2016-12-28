@@ -14,6 +14,13 @@ struct Point3{
 	}
 	void set(double a, double b, double c){x=a; y=b; z=c;}
 	void set(const Point3& p2){x=p2.x; y=p2.y; z=p2.z;}
+	
+	//finds a point between two given ones with a certain weight w
+	static Point3 Weigh(const Point3& p1, const Point3& p2, double w){
+		return Point3((1-w)*p1.x + w*p2.x,
+			(1-w)*p1.y + w*p2.y,
+			(1-w)*p1.z + w*p2.z);
+	}
 
 	static double meas(const Point3& p1, const Point3& p2){
 		return (p1.x-p2.x)*(p1.x-p2.x)+(p1.y-p2.y)*(p1.y-p2.y)+(p1.z-p2.z)*(p1.z-p2.z);
@@ -64,10 +71,29 @@ inline std::ostream& operator<<(std::ostream& os, const Point3& p){
 	return os;
 }
 
+//local coordinates of intersection between triangle (tri1, tri2, tri3) and segment (pstart, pend)
+//calculates: xke[0] - local coordinate on (pstart-pend)
+//            xke[1] - local plane coordinate by (tri2-tri1) basis
+//            xke[2] - local plane coordinate by (tri3-tri1) basis
+//returns true if all local coordinates are in [0, 1] and (xke[1] + xke[2] in [0, 1])
+//    using equal or greater comparison.
+//if segment and triangle are parallel then returns false and xke[:]=gbig
+bool segment_triangle_cross3d(const Point3& pstart, const Point3& pend,
+		const Point3& tri1, const Point3& tri2, const Point3& tri3,
+		double* xke);
+
 struct BoundingBox3D{
 	double xmin, xmax, ymin, ymax, zmin, zmax;
 
 	BoundingBox3D(): xmin(0), xmax(0), ymin(0), ymax(0), zmin(0), zmax(0){};
+	BoundingBox3D(const Point3& p1, const Point3& p2){
+		xmin = p1.x; xmax = p2.x;
+		ymin = p1.y; ymax = p2.y;
+		zmin = p1.z; zmax = p2.z;
+		if (xmin > xmax) std::swap(xmin, xmax);
+		if (ymin > ymax) std::swap(ymin, ymax);
+		if (zmin > zmax) std::swap(zmin, zmax);
+	}
 	template<class PContainer>
 	BoundingBox3D(const PContainer& p){
 		if (p.size() == 0){
@@ -115,6 +141,28 @@ struct BoundingBox3D{
 	double zlen() const { return zmax - zmin; }
 	double maxlen() const { return std::max(xlen(), std::max(ylen(), zlen())); }
 	Point3 center() const { return Point3((xmax+xmin)/2, (ymax+ymin)/2, (zmax+zmin)/2); }
+};
+
+struct BoundingBox3DFinder{
+	//L - step size
+	BoundingBox3DFinder(const BoundingBox3D& area, double L);
+
+	void addentry(const BoundingBox3D& e);
+	vector<int> suspects(const BoundingBox3D& bb) const;
+	vector<int> suspects(const Point3& bb) const;
+private:
+	double x0, y0, z0, hx, hy, hz;
+	int mx, my, mz;
+	int totaldata;
+	vector<vector<int>> data;
+	vector<int> allsuspects(int x0, int x1, int y0, int y1, int z0, int z1) const;
+	void addsuspects(int ix, int iy, int iz, vector<int>& ret) const;
+	int get_xstart(double x) const;
+	int get_ystart(double y) const;
+	int get_zstart(double y) const;
+	int get_xend(double x) const;
+	int get_yend(double y) const;
+	int get_zend(double y) const;
 };
 
 struct ScaleBase3{

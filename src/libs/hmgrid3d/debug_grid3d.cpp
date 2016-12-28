@@ -92,6 +92,11 @@ void Debug::save_cells_vtk(const CellData& grid){
 	}
 }
 
+void Debug::save_cells_faces_vtk(const CellData& grid){
+	FaceData fc = all_faces(grid);
+	save_faces_vtk(fc);
+}
+
 void Debug::save_cell_vtk(shared_ptr<Cell> c){
 	return save_cells_vtk(CellData{c});
 }
@@ -169,8 +174,7 @@ VertexData Debug::all_vertices(const EdgeData& a){
 	VertexData ret;
 	for (auto edge: a)
 	for (auto v: edge->vertices) ret.push_back(v);
-	std::sort(ret.begin(), ret.end());
-	ret.resize(std::unique(ret.begin(), ret.end()) - ret.begin());
+	ret = aa::no_dublicates(ret);
 	return ret;
 }
 EdgeData Debug::all_edges(const CellData& a){
@@ -180,16 +184,14 @@ EdgeData Debug::all_edges(const FaceData& a){
 	EdgeData ret;
 	for (auto face: a)
 	for (auto e: face->edges) ret.push_back(e);
-	std::sort(ret.begin(), ret.end());
-	ret.resize(std::unique(ret.begin(), ret.end()) - ret.begin());
+	ret = aa::no_dublicates(ret);
 	return ret;
 }
 FaceData Debug::all_faces(const CellData& a){
 	FaceData ret;
 	for (auto cell: a)
 	for (auto f: cell->faces) ret.push_back(f);
-	std::sort(ret.begin(), ret.end());
-	ret.resize(std::unique(ret.begin(), ret.end()) - ret.begin());
+	ret = aa::no_dublicates(ret);
 	return ret;
 }
 

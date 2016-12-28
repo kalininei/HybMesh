@@ -38,7 +38,7 @@ inline void mat_mult_vec_3x3(double* A, double* x, double* b){
 
 inline bool mat_inverse_3x3(double* A, double* B){
 	double det=determinant_3x3(A);
-	if (ISZERO(det)) return false;
+	if (fabs(det)<std::numeric_limits<double>::epsilon()) return false;
 	B[0] = (A[4]*A[8]-A[5]*A[7])/det;
 	B[1] = (A[2]*A[7]-A[1]*A[8])/det;
 	B[2] = (A[1]*A[5]-A[2]*A[4])/det;
@@ -48,6 +48,29 @@ inline bool mat_inverse_3x3(double* A, double* B){
 	B[6] = (A[3]*A[7]-A[4]*A[6])/det;
 	B[7] = (A[1]*A[6]-A[0]*A[7])/det;
 	B[8] = (A[0]*A[4]-A[1]*A[3])/det;
+	return true;
+}
+
+inline bool mat_solve_3x3(double* A, double* rhs, double* x){
+	double det=determinant_3x3(A);
+	if (fabs(det)<std::numeric_limits<double>::epsilon()) return false;
+
+	x[0] = (A[4]*A[8]-A[5]*A[7])*rhs[0]+
+	       (A[2]*A[7]-A[1]*A[8])*rhs[1]+
+	       (A[1]*A[5]-A[2]*A[4])*rhs[2];
+
+	x[1] = (A[5]*A[6]-A[3]*A[8])*rhs[0]+
+	       (A[0]*A[8]-A[2]*A[6])*rhs[1]+
+	       (A[2]*A[3]-A[0]*A[5])*rhs[2];
+
+	x[2] = (A[3]*A[7]-A[4]*A[6])*rhs[0]+
+	       (A[1]*A[6]-A[0]*A[7])*rhs[1]+
+	       (A[0]*A[4]-A[1]*A[3])*rhs[2];
+
+	x[0]/=det;
+	x[1]/=det;
+	x[2]/=det;
+
 	return true;
 }
 

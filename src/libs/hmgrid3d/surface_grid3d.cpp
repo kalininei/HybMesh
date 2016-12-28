@@ -1,5 +1,6 @@
-#include "surface_grid3d.hpp"
 #include <stack>
+#include "surface_grid3d.hpp"
+#include "debug_grid3d.hpp"
 
 using namespace HMGrid3D;
 
@@ -309,7 +310,7 @@ ShpVector<HMGrid3D::Edge> Surface::ExtractBoundary(const Surface& a, Vertex v){
 	//leave only edges which have single face connection
 	ShpVector<Edge> bedges;
 	for (auto& fe: Face::Connectivity::EdgeFace(fc)){
-		if (fe.second.size() == 1) bedges.push_back(fe.first);
+		if (fe.size() == 1) bedges.push_back(fe.e);
 	}
 	return Edge::Connect(bedges, v);
 }
@@ -319,9 +320,9 @@ std::array<vector<EdgeData>, 2> Surface::ExtractAllBoundaries(const Surface& a, 
 	EdgeData bedges;
 	vector<bool> reversed;
 	for (auto& fe: Face::Connectivity::EdgeFaceExtended(a.faces)){
-		if (fe.second.size() > 1) continue;
-		bedges.push_back(fe.first);
-		reversed.push_back(!std::get<2>(fe.second[0]));
+		if (fe.size() > 1) continue;
+		bedges.push_back(fe.e);
+		reversed.push_back(!fe.posdir[0]);
 	}
 
 	//temporary reverse edges
@@ -351,7 +352,7 @@ std::array<vector<EdgeData>, 2> Surface::ExtractAllBoundaries(const Surface& a, 
 				rs.push_back(ed[icur]);
 				used[icur] = true;
 				icur = ed[icur]->last()->id;
-			} while (istart != icur && icur>=0);
+			} while (istart != icur && icur>=0 && used[icur]==false);
 
 			if (icur<0) ret.resize(ret.size()-1);
 		}

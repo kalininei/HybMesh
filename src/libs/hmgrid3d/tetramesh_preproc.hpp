@@ -17,19 +17,18 @@ struct SurfacePreprocess{
 	HMGrid3D::EdgeData ae;
 	HMGrid3D::VertexData av;
 	vector<vector<vector<HMGrid3D::EdgeData>>> decomposed_edges;
-
+	
+	//boundary grid
+	GridData bnd_grid;
 private:
+	std::map<Surface*, Vect3> surfs_rnormals;
+
 	//constructor subroutings
 	void supplement_from_decomposed_surfs();
 	void assemble_bnd_grid();
 	//data for splitted surface before triangulation
 	vector<vector<HMGrid3D::Surface>> decomposed_surfs1;
 	FaceData allfaces1;
-
-	//extracted shallow subgrids from bndgrid
-	//for each decomposed_edges entry
-	vector<vector<GridData>> split_bnd_grid;
-	GridData bnd_grid;
 
 	void merge_with_bnd(GridData& tar, const vector<int>& tar_points, const vector<int>& bnd_points);
 };

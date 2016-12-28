@@ -113,13 +113,13 @@ struct _TEdgeCrossAnalyser{
 		if (ksieta[0] == gbig && ksieta[1] == gbig){
 			//if edges are parrallel
 			isOnSection(*e1->pstart, *e2->pstart, *e2->pend, ksieta[0]);
-			if (ISIN_SS(ksieta[0], 0, 1)) ecross_set[i2].insert(ksieta[0]);
+			if (ISIN_NN(ksieta[0], 0, 1)) ecross_set[i2].insert(ksieta[0]);
 			isOnSection(*e1->pend, *e2->pstart, *e2->pend, ksieta[0]);
-			if (ISIN_SS(ksieta[0], 0, 1)) ecross_set[i2].insert(ksieta[0]);
+			if (ISIN_NN(ksieta[0], 0, 1)) ecross_set[i2].insert(ksieta[0]);
 			isOnSection(*e2->pstart, *e1->pstart, *e1->pend, ksieta[0]);
-			if (ISIN_SS(ksieta[0], 0, 1)) ecross_set[i1].insert(ksieta[0]);
+			if (ISIN_NN(ksieta[0], 0, 1)) ecross_set[i1].insert(ksieta[0]);
 			isOnSection(*e2->pend, *e1->pstart, *e1->pend, ksieta[0]);
-			if (ISIN_SS(ksieta[0], 0, 1)) ecross_set[i1].insert(ksieta[0]);
+			if (ISIN_NN(ksieta[0], 0, 1)) ecross_set[i1].insert(ksieta[0]);
 		} else if (!Edge::AreConnected(*e1, *e2)){
 			if (ISEQGREATER(ksieta[0], 0) && ISEQLOWER(ksieta[0], 1) &&
 			    ISEQGREATER(ksieta[1], 0) && ISEQLOWER(ksieta[1], 1)){

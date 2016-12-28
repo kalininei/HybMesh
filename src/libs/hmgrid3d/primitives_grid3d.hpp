@@ -99,8 +99,12 @@ struct Edge{
 
 	// ===== Connectivity tables
 	struct Connectivity{
-		static std::map<shared_ptr<Vertex>, vector<int>>
-		EndVertexEdge(const ShpVector<Edge>& data);
+		struct EndVertexEdgeR{
+			shared_ptr<Vertex> v;
+			vector<int> eind;
+			size_t size() const { return eind.size(); }
+		};
+		static vector<EndVertexEdgeR> EndVertexEdge(const ShpVector<Edge>& data);
 	};
 };
 
@@ -155,19 +159,26 @@ struct Face{
 
 	// ===== Connectivity tables
 	struct Connectivity{
-		static std::map<shared_ptr<Edge>, vector<int>>
-		EdgeFace(const ShpVector<Face>& data);
+		struct EdgeFaceR{
+			shared_ptr<Edge> e;
+			vector<int> find;  //faces indicies
+			size_t size() const { return find.size(); }
+		};
+		static vector<EdgeFaceR> EdgeFace(const FaceData& data);
 
-		//for each edge- > <0> face index,
-		//                 <1> local edge index within the face,
-		//                 <2> is edge directed according to face
-		static std::map<shared_ptr<Edge>, vector<std::tuple<int, int, bool>>>
-		EdgeFaceExtended(const FaceData& data);
+		//for each edge- > find - face index,
+		//                 locind - local edge index within the face,
+		//                 posdir - is edge directed according to face
+		struct EdgeFaceExtendedR: public EdgeFaceR{
+			vector<int> locind;
+			vector<bool> posdir;
+		};
+		static vector<EdgeFaceExtendedR> EdgeFaceExtended(const FaceData& data);
 
 		static vector<vector<int>>
-		FaceFace(const ShpVector<Face>& data);
+		FaceFace(const FaceData& data);
 		static vector<vector<int>>
-		FaceFace(const std::map<shared_ptr<Edge>, vector<int>>& edge_face, int nfaces);
+		FaceFace(const vector<EdgeFaceR>& edge_face, int nfaces);
 	};
 };
 
@@ -193,6 +204,7 @@ struct Cell{
 	// ==== additional information
 	double volume() const;
 	static vector<double> Volumes(const CellData& cd);
+	static double SumVolumes(const CellData& cd);
 	
 	// ===== Data access
 	ShpVector<Vertex> allvertices() const;
@@ -209,6 +221,9 @@ void DeepCopy(const CellData& from, CellData& to, int level=3);
 VertexData AllVertices(const EdgeData& from);
 VertexData AllVertices(const FaceData& from);
 VertexData AllVertices(const CellData& from);
+VertexData AllEndVertices(const EdgeData& from);
+VertexData AllEndVertices(const FaceData& from);
+VertexData AllEndVertices(const CellData& from);
 
 EdgeData AllEdges(const FaceData& from);
 EdgeData AllEdges(const CellData& from);

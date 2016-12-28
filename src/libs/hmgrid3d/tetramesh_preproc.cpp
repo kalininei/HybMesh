@@ -16,9 +16,12 @@ SurfacePreprocess::SurfacePreprocess(const HMGrid3D::SurfaceTree& tree, double s
 		}()
 	);
 	allfaces1 = tree.allfaces();
+
+	//decomposed_surfs1 stores decomposition surfaces for all tree node surfaces
 	for (auto n: tree.nodes){
 		decomposed_surfs1.push_back(HMGrid3D::Surface::ExtractSmooth(*n, split_angle));
 	}
+
 	assemble_bnd_grid();
 	supplement_from_decomposed_surfs();
 }
@@ -39,37 +42,60 @@ void SurfacePreprocess::assemble_bnd_grid(){
 		++ids;
 	}
 	
-	//initial commit: add single face cells
+	//copy faces (is it really needed?) 
 	FaceData fd;
 	DeepCopy(allfaces1, fd, 2);
 	for (auto af: fd){ af->left.reset(); af->right.reset(); }
+	//Save faces id since they store decomposition information
 	shared_ptr<RestoreIds<FaceData>> resfd(new RestoreIds<FaceData>(fd));
+	//build pyramids
 	bnd_grid = HMGrid3D::BuildPyramidLayer(fd, true, 60);
 
-	//split bnd grid
+	//split bnd grid inner surfaces according to input surface decomposition
 	resfd.reset();
-	split_bnd_grid.resize(decomposed_surfs1.size());
+	decomposed_surfs.resize(decomposed_surfs1.size());
+	for (int i=0; i<decomposed_surfs1.size(); ++i)
+		decomposed_surfs[i].resize(decomposed_surfs1[i].size());
 	for (auto& c: bnd_grid.vcells){
 		auto& ijc = kmap[c->faces[0]->id];
-		auto& sgrid = split_bnd_grid[ijc.first];
-		if (sgrid.size() <= ijc.second) sgrid.resize(ijc.second + 1);
-		sgrid[ijc.second].vcells.push_back(c);
+		auto& addto = decomposed_surfs[ijc.first][ijc.second];
+		for (auto f: c->faces) if (!f->has_left_cell()){
+			addto.faces.push_back(f);
+		}
 	}
-	for (auto& it1: split_bnd_grid)
-	for (auto& it2: it1){
-		it2.vfaces = AllFaces(it2.vcells);
+	//remove zero length surfaces
+	for (int i=0; i<decomposed_surfs.size(); ++i){
+		auto rs = std::remove_if(decomposed_surfs[i].begin(), decomposed_surfs[i].end(),
+			[](const Surface& s){ return s.faces.size() == 0; });
+		decomposed_surfs[i].resize(rs - decomposed_surfs[i].begin());
 	}
+	auto rs = std::remove_if(decomposed_surfs.begin(), decomposed_surfs.end(),
+			[](const vector<Surface>& sv){ return sv.size() == 0; });
+	decomposed_surfs.resize(rs - decomposed_surfs.begin());
 
-	//assemble decomposed_surfs
-	decomposed_surfs.resize(split_bnd_grid.size());
-	for (int i=0; i<split_bnd_grid.size(); ++i){
-		decomposed_surfs[i].resize(split_bnd_grid[i].size());
-		for (int j=0; j<split_bnd_grid[i].size(); ++j){
-			GridData& g = split_bnd_grid[i][j];
-			for (auto& f: g.vfaces) if (!f->has_left_cell()){
-				decomposed_surfs[i][j].faces.push_back(f);
+	//subdivide each decomposed surfs if necessary
+	for (int i=0; i<decomposed_surfs.size(); ++i){
+		int jmax = decomposed_surfs[i].size();
+		for (int j=0; j<jmax; ++j){
+			auto sd = Face::SubDivide(decomposed_surfs[i][j].faces);
+			assert(sd.size() > 0);
+			if (sd.size() < 2) continue;
+			decomposed_surfs[i][j].faces = sd[0];
+			for (int k=1; k<sd.size(); ++k){
+				decomposed_surfs[i].emplace_back();
+				decomposed_surfs[i].back().faces = sd[k];
 			}
 		}
+	}
+
+	//normals
+	for (auto& ds: decomposed_surfs)
+	for (auto& s: ds){
+		assert(s.faces.size() > 0);
+		Face* f;
+		if (s.faces[0]->has_right_cell()) f = s.faces[0]->right.lock()->faces[0].get();
+		else f = s.faces[0].get();
+		surfs_rnormals[&s] = -1*f->left_normal();
 	}
 }
 
@@ -96,17 +122,22 @@ void SurfacePreprocess::supplement_from_decomposed_surfs(){
 	//decomposed_edges
 	for (auto& ds: decomposed_surfs){
 		vector<vector<HMGrid3D::EdgeData>> de;
-		for (auto& s: ds){
-			vector<HMGrid3D::EdgeData> ds;
-			Vect3 right_normal = s.faces[0]->left_normal()*(-1);
+		for (auto& s: ds) if (s.faces.size() > 0){
+			vector<HMGrid3D::EdgeData> vds;
+			assert(surfs_rnormals.find(&s) != surfs_rnormals.end());
+			Vect3 right_normal = surfs_rnormals[&s];
 			auto ex = HMGrid3D::Surface::ExtractAllBoundaries(s, right_normal);
 			assert(ex[0].size() == 1);
-			ds.push_back(ex[0][0]);
-			for (int i=0; i<ex[1].size(); ++i) ds.push_back(ex[1][i]);
-			de.push_back(ds);
+			vds.push_back(ex[0][0]);
+			for (int i=0; i<ex[1].size(); ++i) vds.push_back(ex[1][i]);
+			de.push_back(vds);
+		} else {
+			assert(false);
+			de.emplace_back();
 		}
 		decomposed_edges.push_back(de);
 	}
+
 }
 
 namespace{
