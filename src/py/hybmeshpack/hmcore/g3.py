@@ -180,20 +180,42 @@ def free_gwriter(c_gwriter):
     libhmcport.g3writer_free(c_gwriter)
 
 
-def tetrahedral_fill(slist, constrlist, p, psize):
+def tetrahedral_fill(slist, constrlist, p, psize, cb):
     plen = max(len(p) / 3, len(psize))
     c_p = list_to_c(p, float)
     c_ps = list_to_c(psize, float)
     c_slist = list_to_c(slist, "void*")
     c_constrlist = list_to_c(constrlist, "void*")
+    c_ret = ct.c_void_p()
 
-    libhmcport.tetrahedral_fill.restype = ct.c_void_p
-    r = libhmcport.tetrahedral_fill(
+    args = (
         ct.c_int(len(slist)), c_slist,
         ct.c_int(len(constrlist)), c_constrlist,
-        ct.c_int(plen), c_p, c_ps)
+        ct.c_int(plen), c_p, c_ps, ct.byref(c_ret))
 
-    if not r:
+    cb.initialize(libhmcport.tetrahedral_fill, args)
+    cb.execute_command()
+    r = cb.get_result()
+
+    if r == 0:
         raise Exception("Tetrahedral fill failed")
     else:
-        return r
+        return c_ret
+
+
+def gvolume(c_g):
+    c_v = ct.c_double()
+    r = libhmcport.grid3_volume(c_g, ct.byref(c_v))
+    if r == 0:
+        raise Exception("grid volume calculation failed")
+    else:
+        return c_v.value
+
+
+def merge(cg1, cg2):
+    cret = ct.c_void_p()
+    r = libhmcport.grid3_merge(cg1, cg2, ct.byref(cret))
+    if r == 0:
+        raise Exception("grids 3d merge failed")
+    else:
+        return cret

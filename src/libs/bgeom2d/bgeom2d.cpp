@@ -76,7 +76,7 @@ bool SectCross(const Point& p1S, const Point& p1E, const Point& p2S, const Point
 	double A[4]={p1E.x-p1S.x,  p2S.x-p2E.x,
 	             p1E.y-p1S.y,  p2S.y-p2E.y};
 	double B[4];
-	if (!HMMath::Compute::mat_inverse_2x2(A, B)){ 
+	if (fabs(HMMath::Compute::mat_inverse_2x2(A, B)) < geps*geps){ 
 		ksieta[0]=gbig; 
 		ksieta[1]=gbig;
 	} else {

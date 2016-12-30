@@ -23,6 +23,13 @@ void grid3_surface_dims(const CPortGrid3D*, int* dims);
 //fills ret array with 'number of boundary faces' values
 int grid3_surface_btypes(const CPortGrid3D* s3, int* ret);
 
+//volume
+int grid3_volume(const CPortGrid3D*, double* ret);
+
+//merge coincident primitives
+int grid3_merge(const CPortGrid3D*, const CPortGrid3D*, CPortGrid3D**);
+
+
 //====== sweep constructors
 //construct by sweep in z direction
 //algo_top/algo_bot = 0 - constant value taken from btop[0]
@@ -46,8 +53,12 @@ CPortGrid3D* grid2_revolve(Grid* g, double* vec, int n_phi, double* phi,
 
 
 //======= unstructured fill
-CPortGrid3D* tetrahedral_fill(int nsurf, void** surf, int nconstr, void** constr,
-		int npts, double* pcoords, double* psizes);
+//0 on fail
+int tetrahedral_fill(int nsurf, void** surf,
+		int nconstr, void** constr,
+		int npts, double* pcoords, double* psizes,
+		void** ret,
+		hmcport_callback cb);
 
 
 //====== exporters

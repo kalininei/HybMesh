@@ -10,6 +10,9 @@ namespace HMGrid3D{
 void MergeGrid(GridData& from, GridData& to,
 		const vector<int>& from_vert, const vector<int>& to_vert);
 
+//deep copied grid, constructed from g1 and g2 will be returned
+GridData MergeGrids(const GridData& g1, const GridData& g2);
+
 
 }
 

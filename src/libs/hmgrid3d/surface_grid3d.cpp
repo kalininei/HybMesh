@@ -25,6 +25,20 @@ ShpVector<Vertex> Surface::allvertices() const{
 	return aa::no_dublicates(ret);
 }
 
+bool Surface::isclosed() const{
+	auto ae = alledges();
+	constant_ids_pvec(ae, 0);
+	for (auto f: faces){
+		for (auto e: f->edges){ ++e->id; }
+	}
+	bool isclosed = true;
+	for (auto e: ae) if (e->id != 2){
+		isclosed = false;
+		break;
+	}
+	return isclosed;
+}
+
 Surface Surface::GridSurface(HMGrid3D::GridData& g, int reversetp){
 	Surface ret = GridSurface(g);
 	if (reversetp == 1){
@@ -535,6 +549,7 @@ SurfaceTree SurfaceTree::Assemble(const Surface& idata){
 					par->children.erase(fnd);
 				}
 				in->parent = self;
+				self->children.push_back(in);
 			}
 		}
 	}
@@ -693,4 +708,27 @@ void SurfTreeTReverter::_do_revert(){
 void SurfTreeTReverter::_undo_revert(){
 	for (auto r: openrevs) r->revert_back();
 	for (auto r: closedrevs) r->revert_back();
+}
+
+GridSurfaceReverter::GridSurfaceReverter(const Surface& srf, bool cells_left){
+	obj = const_cast<Surface*>(&srf);
+	need_revert.resize(srf.faces.size(), false);
+	if (cells_left) for (int i=0; i<srf.faces.size(); ++i){
+		auto& f = srf.faces[i];
+		if (!f->has_left_cell() && f->has_right_cell()){
+			need_revert[i] = true;
+			f->reverse();
+		}
+	} else for (int i=0; i<srf.faces.size(); ++i){
+		auto& f = srf.faces[i];
+		if (!f->has_right_cell() && f->has_left_cell()){
+			need_revert[i] = true;
+			f->reverse();
+		}
+	}
+}
+GridSurfaceReverter::~GridSurfaceReverter(){
+	for (int i=0; i<obj->faces.size(); ++i) if (need_revert[i]){
+		obj->faces[i]->reverse();
+	}
 }

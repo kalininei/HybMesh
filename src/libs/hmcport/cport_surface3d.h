@@ -9,9 +9,12 @@ void free_srf3(CPortSurface3D*);
 
 void surf3_dims(const CPortSurface3D*, int* dims);
 
-//returns 0 on faile and 1 on success
+//returns 0 on fail and 1 on success
 //fills ret array 
 int surf3_btypes(const CPortSurface3D*, int* ret);
+
+//volume
+int surf3_volume(const CPortSurface3D*, double* ret);
 
 //returns 0 on fail or SSurface pointer on success
 void* extract_grid3_surface(const void* grid3);

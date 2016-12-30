@@ -34,6 +34,19 @@ int surf3_btypes(const CPortSurface3D* s3, int* ret){
 	return 1;
 }
 
+int surf3_volume(const CPortSurface3D* s, double* ret){
+	try{
+		auto& s3 = hmsurf(s);
+		auto tree = HMGrid3D::SurfaceTree::Assemble(s3);
+		auto rv = HMGrid3D::SurfTreeTReverter(tree);
+		*ret = fabs(HMGrid3D::Surface::Volume(s3));
+	} catch (std::exception& e){
+		std::cout<<e.what()<<std::endl;
+		return 0;
+	}
+	return 1;
+}
+
 void* extract_grid3_surface(const void* grid3){
 	SSurface* ret = 0;
 	try{

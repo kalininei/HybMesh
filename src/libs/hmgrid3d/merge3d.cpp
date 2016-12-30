@@ -5,6 +5,14 @@ using namespace HMGrid3D;
 
 namespace{
 
+bool ptrsort(Point3* a, Point3* b){
+	if (ISLOWER(a->x, b->x)) return true;
+	else if (ISLOWER(b->x, a->x)) return false;
+	else if (ISLOWER(a->y, b->y)) return true;
+	else if (ISLOWER(b->y, a->y)) return false;
+	else return ISLOWER(a->z, b->z);
+};
+
 vector<int> boundary_edges(const GridData& g){
 	FaceData bfaces;
 	for (auto f: g.vfaces) if (f->is_boundary()){
@@ -109,13 +117,6 @@ void assemble_duplicate_faces(FaceData& ffrom, FaceData& fto, vector<int>& from,
 			to_candidates_cnt[i] += *e->last();
 		}
 	}
-	auto ptrsort = [](Point3* a, Point3* b)->bool{
-		if (ISLOWER(a->x, b->x)) return true;
-		else if (ISLOWER(b->x, a->x)) return false;
-		else if (ISLOWER(a->y, b->y)) return true;
-		else if (ISLOWER(b->y, a->y)) return false;
-		else return ISLOWER(a->z, b->z);
-	};
 	std::sort(fromptr.begin(), fromptr.end(), ptrsort);
 	std::sort(toptr.begin(), toptr.end(), ptrsort);
 
@@ -149,7 +150,7 @@ void HMGrid3D::MergeGrid(GridData& from, GridData& to,
 			return true;
 		}()
 	);
-	if (from_vert.size() == 0) return;
+	//if (from_vert.size() == 0) return;
 	vector<int> bnd_from_edges = boundary_edges(from);
 	vector<int> bnd_to_edges = boundary_edges(to);
 	//primitive id stores index of duplicate primitive
@@ -228,4 +229,36 @@ void HMGrid3D::MergeGrid(GridData& from, GridData& to,
 		if (v->id == -1) to.vvert.push_back(v);
 		else to.vvert[v->id] = v;
 	}
+}
+
+GridData HMGrid3D::MergeGrids(const GridData& _g1, const GridData& _g2){
+	//make deep copies of g1, g2
+	GridData g1, g2;
+	DeepCopy(_g1, g1);
+	DeepCopy(_g2, g2);
+
+	//assemble coincident points
+	auto srf1 = Surface::GridSurface(g1);
+	auto srf2 = Surface::GridSurface(g2);
+	auto pc1 = AllVertices(srf1.faces);
+	auto pc2 = AllVertices(srf2.faces);
+
+	enumerate_ids_pvec(g1.vvert);
+	enumerate_ids_pvec(g2.vvert);
+
+	vector<Point3*> pp1(pc1.size());
+	for (int i=0; i<pc1.size(); ++i) pp1[i] = pc1[i].get();
+	std::sort(pp1.begin(), pp1.end(), ptrsort);
+
+	vector<int> vfrom, vto;
+	for (auto& p: pc2){
+		auto fnd = std::lower_bound(pp1.begin(), pp1.end(), p.get(), ptrsort);
+		if (fnd!=pp1.end() && !ptrsort(p.get(), *fnd)){
+			vfrom.push_back(static_cast<Vertex*>(*fnd)->id);
+			vto.push_back(p->id);
+		}
+	}
+
+	MergeGrid(g1, g2, vfrom, vto);
+	return g2;
 }

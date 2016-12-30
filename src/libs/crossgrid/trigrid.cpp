@@ -375,57 +375,110 @@ void TriGrid::FillFromTree(
 			for (auto& f: fc) f->meshAttributes.recombine = 1.0;
 			FillFromGModel(&m);
 		}
-	
+		//as a result of recombination some narrow reversed boundary triangles may occur.
+		//here we try to fix it by merging with adjacent inner cells.
+		recomb_heal();
+		GGeom::Repair::CellsTo34(*this);
 		//now we should check constraints lay on grid edges
 		//since this feature can be not satisfied after recombination.
-		if (constraints.size() > 0){
-			ShpVector<HMCont2D::Edge> alledges;
-			for (auto& ev: constraints) alledges.insert(alledges.end(), ev->begin(), ev->end());
-			vector<Point> midpoints; midpoints.reserve(alledges.size());
-			for (auto& ev: alledges) midpoints.push_back(ev->center());
-			auto cf = GGeom::Info::CellFinder(this, 30, 30);
-			std::map<const Cell*, int> divide_cells;
-			for (size_t i=0; i<midpoints.size(); ++i){
-				auto candcells = cf.CellCandidates(midpoints[i]);
-				Point* pstart = alledges[i]->pstart;
-				Point* pend = alledges[i]->pend;
-				for (auto cand: candcells) if (cand->dim() == 4){
-					auto cc = GGeom::Info::CellContour(*this, cand->get_ind());
-					if (cc.IsWithin(midpoints[i])){
-						int ep1=-1, ep2=-1;
-						for (int j=0; j<cand->dim(); ++j){
-							auto p1 = cand->get_point(j);
-							if (*p1 == *pstart) ep1 = j;
-							if (*p1 == *pend) ep2 = j;
-						}
-						if (ep1>=0 && ep2>=0){
-							if (ep2 < ep1) std::swap(ep1, ep2);
-							if ((ep2-ep1) % 2 == 0){
-								auto fnd = divide_cells.find(cand);
-								if (fnd != divide_cells.end()){
-									fnd->second = -1;
-								} else {
-									divide_cells.emplace(cand, ep1);
-								}
-							}
-						}
-						break;
-					}
+		vector<HMCont2D::Edge*> alledges;
+		for (auto& ev: constraints)
+		for (auto& e: ev->data) alledges.push_back(e.get());
+		guarantee_edges(alledges);
+	}
+}
+
+void TriGrid::recomb_heal(){
+	auto process = [&](int ic1, int ic2, int n1, int n2){
+		Cell* c1 = cells[ic1].get();
+		Cell* c2 = cells[ic2].get();
+		std::reverse(c2->points.begin(), c2->points.end());
+		int loc1 = -1, loc2 = -1;
+		for (int j=0; j<c1->dim(); ++j){
+			if (c1->get_point(j)->get_ind() == n1){
+				loc1 = j; break;
+			}
+		}
+		for (int j=0; j<c2->dim(); ++j){
+			if (c2->get_point(j)->get_ind() == n1){
+				loc2 = j; break;
+			}
+		}
+		assert(loc1 >= 0 && loc2 >= 0);
+		assert(c1->get_point(loc1+1)->get_ind() == n2);
+		std::rotate(c2->points.begin(), c2->points.begin()+loc2, c2->points.end());
+		c1->points.insert(c1->points.begin()+loc1+1, c2->points.begin()+1, c2->points.end()-1);
+		GGeom::Modify::RemoveCells(*this, {c2});
+		return !c1->has_self_crosses();
+	};
+
+	for (int tries=0; tries<100; ++tries){
+		std::map<std::pair<int, int>, int> used_edges;
+		set_indicies();
+		for (int ic=0; ic<cells.size(); ++ic){
+			Cell* c=cells[ic].get();
+			for (int i=0; i<c->dim(); ++i){
+				int p1 = c->get_point(i)->get_ind();
+				int p2 = c->get_point(i+1)->get_ind();
+				auto er = used_edges.emplace(std::make_pair(p1, p2), ic);
+				if (er.second==false){
+					if (process(ic, er.first->second, p1, p2)) goto NEXT_TRY;
+					else goto ERR_OUT;
 				}
 			}
-			for (auto kv: divide_cells) if (kv.second>=0){
-				GridPoint* p0 = kv.first->points[(kv.second) % 4];
-				GridPoint* p1 = kv.first->points[(kv.second+1) % 4];
-				GridPoint* p2 = kv.first->points[(kv.second+2) % 4];
-				GridPoint* p3 = kv.first->points[(kv.second+3) % 4];
-				cells[kv.first->get_ind()]->points = {p0, p1, p2};
-				auto newcell = aa::add_shared(cells, Cell());
-				newcell->points = {p0, p2, p3};
-			}
-			set_cell_indicies();
 		}
-
+		//no changes in current try => grid is fine.
+		return;
+NEXT_TRY:
+		continue; 
 	}
+ERR_OUT:
+	throw std::runtime_error("cannot restore correct grid from gmsh output");
+}
+
+void TriGrid::guarantee_edges(const vector<HMCont2D::Edge*>& ed){
+	auto cf = GGeom::Info::CellFinder(this, 30, 30);
+	std::map<const Cell*, int> divide_cells;
+	vector<Point> midpoints; midpoints.reserve(ed.size());
+	for (auto& ev: ed) midpoints.push_back(ev->center());
+	for (size_t i=0; i<midpoints.size(); ++i){
+		auto candcells = cf.CellCandidates(midpoints[i]);
+		Point* pstart = ed[i]->pstart;
+		Point* pend = ed[i]->pend;
+		for (auto cand: candcells) if (cand->dim() == 4){
+			auto cc = GGeom::Info::CellContour(*this, cand->get_ind());
+			if (cc.IsWithin(midpoints[i])){
+				int ep1=-1, ep2=-1;
+				for (int j=0; j<cand->dim(); ++j){
+					auto p1 = cand->get_point(j);
+					if (*p1 == *pstart) ep1 = j;
+					if (*p1 == *pend) ep2 = j;
+				}
+				if (ep1>=0 && ep2>=0){
+					if (ep2 < ep1) std::swap(ep1, ep2);
+					if ((ep2-ep1) % 2 == 0){
+						auto fnd = divide_cells.find(cand);
+						if (fnd != divide_cells.end()){
+							fnd->second = -1;
+						} else {
+							divide_cells.emplace(cand, ep1);
+						}
+					}
+				}
+				break;
+			}
+		}
+	}
+	for (auto kv: divide_cells) if (kv.second>=0){
+		GridPoint* p0 = kv.first->points[(kv.second) % 4];
+		GridPoint* p1 = kv.first->points[(kv.second+1) % 4];
+		GridPoint* p2 = kv.first->points[(kv.second+2) % 4];
+		GridPoint* p3 = kv.first->points[(kv.second+3) % 4];
+		cells[kv.first->get_ind()]->points = {p0, p1, p2};
+		auto newcell = aa::add_shared(cells, Cell());
+			newcell->points = {p0, p2, p3};
+	}
+	set_cell_indicies();
 }
 
 shared_ptr<TriGrid> TriGrid::FromGmshGeo(const char* fn){

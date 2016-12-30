@@ -217,6 +217,7 @@ void DeepCopy(const VertexData& from, VertexData& to);
 void DeepCopy(const EdgeData& from, EdgeData& to, int level=1);
 void DeepCopy(const FaceData& from, FaceData& to, int level=2);
 void DeepCopy(const CellData& from, CellData& to, int level=3);
+
 //extract procedures
 VertexData AllVertices(const EdgeData& from);
 VertexData AllVertices(const FaceData& from);
@@ -248,6 +249,7 @@ struct GridData{
 	void enumerate_all() const;
 
 };
+void DeepCopy(const GridData& from, GridData& to);
 
 
 

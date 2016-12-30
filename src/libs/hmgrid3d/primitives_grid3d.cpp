@@ -645,3 +645,25 @@ std::tuple<VertexData, EdgeData, FaceData> HMGrid3D::AllPrimitives(const CellDat
 	}
 	return ret;
 }
+
+void HMGrid3D::DeepCopy(const GridData& from, GridData& to){
+	to.clear();
+	DeepCopy(from.vvert, to.vvert);
+	DeepCopy(from.vedges, to.vedges, 0);
+	DeepCopy(from.vfaces, to.vfaces, 0);
+	DeepCopy(from.vcells, to.vcells, 0);
+	from.enumerate_all();
+
+	for (auto& e: to.vedges)
+	for (auto& v: e->vertices) v = to.vvert[v->id];
+
+	for (auto& f: to.vfaces){
+		for (auto& e: f->edges) e = to.vedges[e->id];
+		if (!f->left.expired()) f->left = to.vcells[f->left.lock()->id];
+		if (!f->right.expired()) f->right = to.vcells[f->right.lock()->id];
+	}
+
+	for (auto& c: to.vcells)
+	for (auto& f: c->faces) f = to.vfaces[f->id];
+
+}

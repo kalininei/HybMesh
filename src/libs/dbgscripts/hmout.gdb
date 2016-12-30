@@ -6,6 +6,14 @@ define contvtk
 	end
 end
 
+define pntvtk
+	if $argc ==1
+		call HMCont2D::PCollection::SaveVtk($arg0, "_dbgout.vtk")
+	else
+		call HMCont2D::PCollection::SaveVtk($arg0, $arg1)
+	end
+end
+
 define gridvtk
 	if $argc ==1
 		call GGeom::Debug::save_vtk($arg0, "_dbgout.vtk")

@@ -146,12 +146,34 @@ class TetrahedralFill(NewGrid3DCommand):
             for s in so['constr']:
                 constr.append(self.any_surface_by_name(s).surface3())
             # 2) call main function
+            cb = self.ask_for_callback()
             c_return = g3core.tetrahedral_fill(
                 [x.cdata for x in surf],
                 [x.cdata for x in constr],
-                so['pts'], so['pts_size'])
+                so['pts'], so['pts_size'], cb)
             return g3core.grid3_from_c(c_return)
         except Exception as e:
             raise command.ExecutionError("Tetrahedral meshing failed", self, e)
         finally:
             pass
+
+
+class Merge(NewGrid3DCommand):
+    def __init__(self, argsdict):
+        super(Merge, self).__init__(argsdict)
+
+    @classmethod
+    def _arguments_types(cls):
+        return {'name': command.BasicOption(str),
+                'src1': command.BasicOption(str),
+                'src2': command.BasicOption(str),
+                }
+
+    def _build_grid(self):
+        so = self.options
+        # get grid
+        g1 = self.grid3_by_name(so['src1'])
+        g2 = self.grid3_by_name(so['src2'])
+        # call main function
+        c_return = g3core.merge(g1.cdata, g2.cdata)
+        return g3core.grid3_from_c(c_return)

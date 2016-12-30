@@ -118,8 +118,10 @@ void GridFromModel(GModel& m, HMGrid3D::GridData& ret){
 			aa::add_shared(ret.vcells, HMGrid3D::Cell());
 		}
 	}
+	while (ret.vvert.size() > 0 && ret.vvert.back() == nullptr)
+		ret.vvert.resize(ret.vvert.size()-1);
 	//check if grid was ok => all vertices were read
-	if (std::any_of(ret.vvert.begin(), ret.vvert.end(),
+	if (ret.vvert.size() == 0 || std::any_of(ret.vvert.begin(), ret.vvert.end(),
 			[](shared_ptr<HMGrid3D::Vertex>& v){return v==nullptr;})){
 		throw std::runtime_error("Tetrahedral meshing failed");
 	}

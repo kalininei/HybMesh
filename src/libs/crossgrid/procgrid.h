@@ -58,6 +58,8 @@ static void AddCell(GridGeom& grid, const std::vector<Point>& cell);
 static void PointModify(GridGeom& grid, std::function<void(GridPoint*)> fun);
 static void CellModify(GridGeom& grid, std::function<void(Cell*)> fun);
 static void ClearAll(GridGeom& grid);
+//cells
+static void CellTo34(Cell* cell, vector<shared_ptr<Cell>>& addto);
 //adds data
 //!! as a result of ShallowAdd points and cells indicies are renumbered according to
 //'to' grid index. Be sure that 'from' grid is not used after this procedure.
@@ -162,6 +164,8 @@ static void RemoveShortEdges(GridGeom& grid, double ref_len);
 static bool HasSelfIntersections(const GridGeom& grid);
 //an in [0, M_PI]. 0 - execute for all concave vertices; M_PI - only for degenerate
 static void NoConcaveCells(GridGeom& grid, double an);
+static void MergeSmallCells(GridGeom& grid, double coef);
+static void CellsTo34(GridGeom& grid);
 
 };
 

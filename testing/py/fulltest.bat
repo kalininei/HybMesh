@@ -19,6 +19,8 @@ echo "--- extrude_test.py"
 %HMCOM% extrude_test.py
 echo "--- proto_test.py"
 %HMCOM% proto_test.py
+echo "--- grid3d_test.py"
+%HMCOM% grid3d_test.py
 
 echo "============ doing doc tests"
 %HMCOM% fromdoc/ex_setbtype.py

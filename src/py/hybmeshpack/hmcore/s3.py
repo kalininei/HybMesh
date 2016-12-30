@@ -97,3 +97,12 @@ def swriter_add_field(c_swriter, f):
 
 def free_swriter(c_swriter):
     libhmcport.s3writer_free(c_swriter)
+
+
+def svolume(c_g):
+    c_v = ct.c_double()
+    r = libhmcport.surf3_volume(c_g, ct.byref(c_v))
+    if r == 0:
+        raise Exception("surface volume calculation failed")
+    else:
+        return c_v.value

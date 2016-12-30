@@ -50,6 +50,12 @@ def export_grid_hmg(g1, fname, fmt='ascii', afields=[]):
 
       See :ref:`grid2d-file` for format description.
     """
+    if fmt == "binary":
+        fmt = "bin"
+    if fmt == "fbinary":
+        fmt = "fbin"
+    if fmt not in ["bin", "fbin", "ascii"]:
+        raise ValueError("Unknown export format %s" % fmt)
     try:
         imex.export_grid("hmg", fname, g1, flow=flow,
                          adata={'fmt': fmt, 'afields': afields})
@@ -276,6 +282,12 @@ def export3d_grid_hmg(g1, fname, fmt="ascii", afields=[]):
 
       See :ref:`grid3d-file` for format description.
     """
+    if fmt == "binary":
+        fmt = "bin"
+    if fmt == "fbinary":
+        fmt = "fbin"
+    if fmt not in ["bin", "fbin", "ascii"]:
+        raise ValueError("Unknown export format %s" % fmt)
     try:
         imex.export_grid("hmg3d", fname, g1, flow=flow,
                          adata={'fmt': fmt, 'afields': afields})
@@ -317,6 +329,12 @@ def export_contour_hmc(c1, fname, fmt="ascii"):
 
       See :ref:`contour2d-file` for format description.
     """
+    if fmt == "binary":
+        fmt = "bin"
+    elif fmt == "fbinary":
+        fmt = "fbin"
+    elif fmt not in ["bin", "fbin", "ascii"]:
+        raise ValueError("Unknown export format %s" % fmt)
     try:
         imex.export_contour("hmc", fname, c1, flow=flow, adata={'fmt': fmt})
     except Exception as e:
@@ -345,6 +363,12 @@ def export_contour_tecplot(c1, fname):
 def export3d_surface_hmc(s1, fname, fmt="ascii"):
     """TODO
     """
+    if fmt == "binary":
+        fmt = "bin"
+    elif fmt == "fbinary":
+        fmt = "fbin"
+    elif fmt not in ["bin", "fbin", "ascii"]:
+        raise ValueError("Unknown export format %s" % fmt)
     try:
         imex.export_surface("hmc", fname, s1, flow=flow, adata={'fmt': fmt})
     except Exception as e:
@@ -547,6 +571,12 @@ def export_all_hmd(fname, fmt="ascii"):
 
        See :ref:`nativeformat` for description.
     """
+    if fmt == "binary":
+        fmt = "bin"
+    elif fmt == "fbinary":
+        fmt = "fbin"
+    elif fmt not in ["bin", "fbin", "ascii"]:
+        raise ValueError("Unknown export format %s" % fmt)
     try:
         imex.export_all(fname, fmt, flow)
     except Exception as e:
@@ -569,6 +599,12 @@ def save_project(fname, fmt="ascii"):
 
        See :ref:`hmp-file` for description.
     """
+    if fmt == "binary":
+        fmt = "bin"
+    elif fmt == "fbinary":
+        fmt = "fbin"
+    elif fmt not in ["bin", "fbin", "ascii"]:
+        raise ValueError("Unknown export format %s" % fmt)
     try:
         imex.write_flow_and_framework_to_file(flow, fname, fmt)
     except Exception as e:

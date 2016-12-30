@@ -159,11 +159,9 @@ def registered_btypes():
 def domain_area(c):
     """Calculates area of the domain bounded by the ``c`` contour
 
-    Args:
-       c: grid or contour identifier
+    :param c: grid or contour identifier
 
-    Returns:
-       positive float or zero for open contours
+    :returns: positive float or zero for open contours
     """
     import ctypes as ct
     # get contour by name
@@ -181,6 +179,25 @@ def domain_area(c):
     libhmcport.free_ecollection_container(ccont)
 
     return ret
+
+
+def domain_volume(s):
+    """Calculates area of closed domain bounded by the s surface
+
+    :param s: grid3d or surface identifier
+
+    :returns: positive float or zero for not closed surfaces
+    """
+    gnames = flow.get_receiver().get_grid3_names()
+    snames = flow.get_receiver().get_usurface_names()
+    if s in gnames:
+        g = flow.get_receiver().get_grid3(name=s)[2]
+        return g.volume()
+    elif s in snames:
+        s = flow.get_receiver().get_usurface(name=s)[2]
+        return s.volume()
+    else:
+        raise Exception("Object %s was not found" % s)
 
 
 def pick_contour(pnt, contlist=[]):

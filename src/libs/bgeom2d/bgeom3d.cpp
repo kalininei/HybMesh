@@ -91,7 +91,7 @@ bool segment_triangle_cross3d(const Point3& pstart, const Point3& pend,
 		pstart.x - tri1.x,
 		pstart.y - tri1.y,
 		pstart.z - tri1.z};
-	if (!HMMath::Compute::mat_solve_3x3(A, rhs, xke)){
+	if (fabs(HMMath::Compute::mat_solve_3x3(A, rhs, xke)) < geps*geps*geps){
 		xke[0] = gbig; xke[1] = gbig; xke[2] = gbig;
 		return false;
 	} else {

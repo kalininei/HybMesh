@@ -353,3 +353,24 @@ def heal_grid(grid_id, simplify_boundary=30, convex_cells=-1):
         flow.exec_command(c)
     except:
         raise ExecError('heal_grid')
+
+
+def merge_grids3(g1, g2):
+    """ Merges 3d grids into single one.
+
+        :param g1:
+
+        :param g2: 3d grids identifiers.
+
+        :returns: new grid identifier.
+
+        :raises: ExecError
+
+        Merge procedure will process only coincident boundary primitives.
+    """
+    c = com.grid3dcom.Merge({"src1": g1, "src2": g2})
+    try:
+        flow.exec_command(c)
+        return c._get_added_names()[2][0]
+    except:
+        raise ExecError('merge_grids3')

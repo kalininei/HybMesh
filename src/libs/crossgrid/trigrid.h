@@ -32,6 +32,9 @@ class TriGrid: public GridGeom{
 			std::map<Point*, double>& w,
 			HMCont2D::PCollection& apnt,
 			double h);
+
+	void guarantee_edges(const vector<HMCont2D::Edge*>& ed);
+	void recomb_heal();
 public:
 	TriGrid(){}
 	//constrcut from non-overlapping contours list and additional points

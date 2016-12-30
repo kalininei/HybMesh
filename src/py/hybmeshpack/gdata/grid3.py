@@ -28,3 +28,6 @@ class Grid3(object):
 
     def deepcopy(self):
         raise NotImplementedError
+
+    def volume(self):
+        return g3core.gvolume(self.cdata)

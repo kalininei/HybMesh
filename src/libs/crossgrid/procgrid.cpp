@@ -179,6 +179,10 @@ void GGeom::Modify::CellModify(GridGeom& grid, std::function<void(Cell*)> fun){
 			[&fun](shared_ptr<Cell> gp){ fun(gp.get()); });
 }
 
+void GGeom::Modify::CellTo34(Cell* cell, vector<shared_ptr<Cell>>& addto){
+	_THROW_NOT_IMP_;
+}
+
 void GGeom::Modify::ClearAll(GridGeom& grid){
 	grid.cells.clear();
 	grid.points.clear();
@@ -321,6 +325,50 @@ bool GGeom::Repair::HasSelfIntersections(const GridGeom& grid){
 	return false;
 }
 
+namespace{
+bool has_cross(const Cell& c, int i1, int i2){
+	auto* p1 = c.get_point(i1);
+	auto* p2 = c.get_point(i2);
+	double ksi[2];
+	for (int i=0; i<c.dim(); ++i){
+		auto* p3 = c.get_point(i);
+		auto* p4 = c.get_point(i+1);
+		if (p3==p1 || p3==p2 || p4==p1 || p4==p2) continue;
+		if (SectCross(*p1, *p2, *p3, *p4, ksi)) return true;
+	}
+	return false;
+};
+int find_second_vert(const Cell& c, int v1){
+	int best = -1;
+	double nrm=1e6;
+	double ran = Angle(*c.get_point(v1-1), *c.get_point(v1), *c.get_point(v1+1))/2.0;
+	for (int i=v1+2; i<=c.dim()+v1-2; ++i){
+		if (has_cross(c, v1, i)) continue; //if edge doesn't cross cell
+		double ian = Angle(*c.get_point(v1-1), *c.get_point(v1), *c.get_point(i));
+		if (ian>=2*ran) continue;  //if edge is within the cell
+		double diff = fabs(ran-ian);
+		if (diff<nrm){nrm=diff; best=i;}
+	}
+	if (best<0) throw std::runtime_error("Failed to divide concave cell");
+	return best;
+};
+
+bool divide_cell(Cell& c, ShpVector<Cell>& add, int idiv){
+	int sec_vert = find_second_vert(c, idiv);
+	if (idiv>sec_vert) std::swap(idiv, sec_vert);
+	auto c1 = aa::add_shared(add, Cell());
+	auto c2 = aa::add_shared(add, Cell());
+	for (int i=idiv; i<=sec_vert; ++i){
+		c1->points.push_back(const_cast<GridPoint*>(c.get_point(i)));
+	}
+	for (int i=sec_vert; i<=idiv+c.dim(); ++i){
+		c2->points.push_back(const_cast<GridPoint*>(c.get_point(i)));
+	}
+	return true;
+}
+}
+
+
 void GGeom::Repair::NoConcaveCells(GridGeom& grid, double an){
 	if (ISZERO(an)) an = 0;
 	auto find_convex = [an](Cell& c)->int{
@@ -332,47 +380,6 @@ void GGeom::Repair::NoConcaveCells(GridGeom& grid, double an){
 		}
 		return -1;
 	};
-	auto has_cross = [](Cell& c, int i1, int i2)->bool{
-		auto* p1 = c.get_point(i1);
-		auto* p2 = c.get_point(i2);
-		double ksi[2];
-		for (int i=0; i<c.dim(); ++i){
-			auto* p3 = c.get_point(i);
-			auto* p4 = c.get_point(i+1);
-			if (p3==p1 || p3==p2 || p4==p1 || p4==p2) continue;
-			if (SectCross(*p1, *p2, *p3, *p4, ksi)) return true;
-		}
-		return false;
-	};
-	auto find_second_vert = [&](Cell& c, int v1)->int{
-		int best = -1;
-		double nrm=1e6;
-		double ran = Angle(*c.get_point(v1-1), *c.get_point(v1), *c.get_point(v1+1))/2.0;
-		for (int i=v1+2; i<=c.dim()+v1-2; ++i){
-			if (has_cross(c, v1, i)) continue; //if edge doesn't cross cell
-			double ian = Angle(*c.get_point(v1-1), *c.get_point(v1), *c.get_point(i));
-			if (ian>=2*ran) continue;  //if edge is within the cell
-			double diff = fabs(ran-ian);
-			if (diff<nrm){nrm=diff; best=i;}
-		}
-		if (best<0) throw std::runtime_error("Failed to divide concave cell");
-		return best;
-	};
-	auto divide_cell = [&](Cell& c, ShpVector<Cell>& add)->bool{
-		int conv_vert = find_convex(c);
-		if (conv_vert == -1) return false;
-		int sec_vert = find_second_vert(c, conv_vert);
-		if (conv_vert>sec_vert) std::swap(conv_vert, sec_vert);
-		auto c1 = aa::add_shared(add, Cell());
-		auto c2 = aa::add_shared(add, Cell());
-		for (int i=conv_vert; i<=sec_vert; ++i){
-			c1->points.push_back(const_cast<GridPoint*>(c.get_point(i)));
-		}
-		for (int i=sec_vert; i<=conv_vert+c.dim(); ++i){
-			c2->points.push_back(const_cast<GridPoint*>(c.get_point(i)));
-		}
-		return true;
-	};
 
 	auto treat_cell = [&](Cell& c, ShpVector<Cell>& newc)->bool{
 		ShpVector<Cell> arch;
@@ -380,7 +387,8 @@ void GGeom::Repair::NoConcaveCells(GridGeom& grid, double an){
 		to_analyze.push(&c);
 		while (to_analyze.size()>0){
 			Cell* cur = to_analyze.top(); to_analyze.pop();
-			bool divided=divide_cell(*cur, arch);
+			int conv_vert = find_convex(c);
+			bool divided = (conv_vert>=0) ? divide_cell(*cur, arch, conv_vert) : false;
 			if (divided){
 				to_analyze.push(arch.end()[-1].get());
 				to_analyze.push(arch.end()[-2].get());
@@ -399,6 +407,56 @@ void GGeom::Repair::NoConcaveCells(GridGeom& grid, double an){
 		aa::remove_entries(grid.cells, cells_to_delete);
 		std::copy(newcells.begin(), newcells.end(), std::back_inserter(grid.cells));
 		grid.set_indicies();
+	}
+}
+
+void GGeom::Repair::MergeSmallCells(GridGeom& grid, double coef){
+	auto merge_cells = [&grid](int c1, int c2){
+		//c1 <- c2; empty c2;
+		_THROW_NOT_IMP_;
+	};
+	while (1){
+		std::vector<double> areas(grid.n_cells());
+		for (int i=0; i<grid.n_cells(); ++i) areas[i] = fabs(grid.cells[i]->area());
+		std::set<Edge> edges = grid.get_edges();
+		vector<bool> processed(grid.n_cells(), false);
+		vector<const Cell*> toremove;
+		for (auto& e: edges){
+			if (e.is_boundary()) continue;
+			if (processed[e.cell_left] || processed[e.cell_right]) continue;
+
+			double a1 = areas[e.cell_left];
+			double a2 = areas[e.cell_right];
+			if (a1 > coef * a2 || a2 > coef * a1){
+				merge_cells(e.cell_left, e.cell_right);
+				processed[e.cell_left] = true;
+				processed[e.cell_right] = true;
+				toremove.push_back(grid.cells[e.cell_right].get());
+			}
+		}
+		if (toremove.size() == 0) break;
+		GGeom::Modify::RemoveCells(grid, toremove);
+	}
+}
+
+void GGeom::Repair::CellsTo34(GridGeom& grid){
+	for (int i=0; i<grid.n_cells(); ++i){
+		if (grid.cells[i]->dim() == 3) continue;
+		vector<double> angles(grid.cells[i]->dim());
+		for (int j=0; j<grid.cells[i]->dim(); ++j){
+			angles[j] = Angle(*grid.cells[i]->get_point(j-1),
+					*grid.cells[i]->get_point(j),
+					*grid.cells[i]->get_point(j+1));
+		}
+		int im = max_element(angles.begin(), angles.end()) - angles.begin();
+		if (grid.cells[i]->dim() == 4 && angles[im]<0.9*M_PI) continue;
+		ShpVector<Cell> newc;
+		divide_cell(*grid.cells[i], newc, im);
+		if (newc.size()>0){
+			grid.cells[i] = newc[0];
+			grid.cells.push_back(newc[1]);
+			--i;
+		}
 	}
 }
 

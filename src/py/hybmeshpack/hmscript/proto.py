@@ -534,9 +534,11 @@ def pebi_fill(domain, constr=None, pts=None):
     return _triquad(domain, constr, pts, 'pebi')
 
 
-def tetrahedral_fill(domain, constr=None, pts=None):
+def tetrahedral_fill(domain):
     """ TODO
     """
+    constr = None
+    pts = None
     if not isinstance(domain, list):
         domain = [domain]
     dch.ifstrlist(domain)

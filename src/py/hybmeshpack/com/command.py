@@ -345,11 +345,10 @@ class Command(object):
         else:
             raise ObjectNotFound(name, self)
 
-
     def any_surface_by_name(self, name):
-        '->contour or raise. Grid contour or user contour by object name'
+        '->surface or raise. Grid contour or user contour by object name'
         if name in self.receiver.get_grid3_names():
-            return self.receiver.get_grid(name=name)[2].surface()
+            return self.receiver.get_grid3(name=name)[2].surface()
         elif name in self.receiver.get_usurface_names():
             return self.receiver.get_usurface(name=name)[2]
         else:

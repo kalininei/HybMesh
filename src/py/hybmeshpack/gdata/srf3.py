@@ -1,4 +1,5 @@
 from hybmeshpack.hmcore import s3 as s3core
+from hybmeshpack.hmcore import g3 as g3core
 
 
 class _AbstractSurface3(object):
@@ -22,6 +23,9 @@ class _AbstractSurface3(object):
 
     def surface3(self):
         "returns Surface3 object"
+        raise NotImplementedError
+
+    def volume(self):
         raise NotImplementedError
 
 
@@ -57,6 +61,9 @@ class Surface3(_AbstractSurface3):
     def surface3(self):
         return self
 
+    def volume(self):
+        return s3core.svolume(self.cdata)
+
 
 class GridSurface(_AbstractSurface3):
     def __init__(self, g):
@@ -64,7 +71,7 @@ class GridSurface(_AbstractSurface3):
         self.cgrid = g.cdata
 
     def __del__(self):
-        # cgrid belongs to Grid3 hence do nothing
+        # cgrid is owned by Grid3 hence do nothing
         pass
 
     def n_points(self):
@@ -85,3 +92,6 @@ class GridSurface(_AbstractSurface3):
 
     def surface3(self):
         return self.deepcopy()
+
+    def volume(self):
+        return g3core.gvolume(self.cgrid)

@@ -2,9 +2,10 @@
 !.gitignore
 !*.py
 tmp.py
+
 !fulltest
 !fulltest.bat
-
 !fromdoc
 !others
-!others/*.svg
+!others/*
+!others/*/*

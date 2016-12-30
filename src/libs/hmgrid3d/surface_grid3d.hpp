@@ -13,6 +13,7 @@ struct Surface{
 	ShpVector<Face> allfaces() const;
 	ShpVector<Edge> alledges() const;
 	ShpVector<Vertex> allvertices() const;
+	bool isclosed() const;
 
 	// ================= Builders
 	//reversetp = 
@@ -119,6 +120,14 @@ struct SurfTreeTReverter: public SurfTReverterBase{
 private:
 	void _do_revert() override;
 	void _undo_revert() override;
+};
+
+class GridSurfaceReverter{
+	Surface* obj;
+	vector<bool> need_revert;
+public:
+	GridSurfaceReverter(const Surface& srf, bool cells_left);
+	~GridSurfaceReverter();
 };
 
 }

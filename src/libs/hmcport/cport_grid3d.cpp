@@ -48,6 +48,41 @@ int grid3_surface_btypes(const CPortGrid3D* g3, int* ret){
 	return 1;
 }
 
+int grid3_volume(const CPortGrid3D* g, double* ret){
+	try{
+		auto& g3 = hmgrid(g);
+		auto srf = HMGrid3D::Surface::GridSurface(g3);
+		auto rv = HMGrid3D::GridSurfaceReverter(srf, true);
+		*ret = HMGrid3D::Surface::Volume(srf);
+	} catch (std::exception& e){
+		std::cout<<e.what()<<std::endl;
+		return 0;
+	}
+	return 1;
+}
+
+int grid3_merge(const CPortGrid3D* _g1, const CPortGrid3D* _g2, CPortGrid3D** gret){
+	auto& g1 = hmgrid(_g1);
+	auto& g2 = hmgrid(_g2);
+	HMGrid3D::VertexData av(g1.vvert);
+	std::copy(g2.vvert.begin(), g2.vvert.end(),
+			std::back_inserter(av));
+	ScaleBase3 sc = ScaleBase3::doscale(av);
+
+	int res = 0;
+	try{
+		HMGrid3D::GridData g = HMGrid3D::MergeGrids(g1, g2);
+		sc.unscale(g.vvert.begin(), g.vvert.end());
+		*gret = new SGrid(std::move(g));
+		res = 1;
+	} catch (std::exception& e){
+		std::cout<<e.what()<<std::endl;
+	}
+
+	sc.unscale(av.begin(), av.end());
+	return res;
+}
+
 namespace{
 struct SideBndFunctor{
 	std::vector<int> edge_bc;
@@ -301,8 +336,12 @@ void g3reader_free(void* greader){
 	}
 }
 
-CPortGrid3D* tetrahedral_fill(int nsurf, void** surf, int nconstr, void** constr,
-		int npts, double* pcoords, double* psizes){
+int tetrahedral_fill(int nsurf, void** surf,
+		int nconstr, void** constr,
+		int npts, double* pcoords, double* psizes,
+		void** ret,
+		hmcport_callback cb){
+	int r = 0;
 	//copy constraint points
 	HMGrid3D::VertexData cp;
 	for (int i=0; i<npts; ++i){
@@ -323,7 +362,6 @@ CPortGrid3D* tetrahedral_fill(int nsurf, void** surf, int nconstr, void** constr
 		std::copy(s->faces.begin(), s->faces.end(),
 				std::back_inserter(cs.faces));
 	}
-	
 	//scaling
 	HMGrid3D::VertexData srcpoints = source.allvertices();
 	HMGrid3D::VertexData cspoints = cs.allvertices();
@@ -332,19 +370,18 @@ CPortGrid3D* tetrahedral_fill(int nsurf, void** surf, int nconstr, void** constr
 	sc.scale(cp.begin(), cp.end());
 	vector<double> ps(npts);
 	for (int i=0; i<npts; ++i) ps[i] = psizes[i] / sc.L;
-	//
-	HMGrid3D::SGrid* ret=NULL;
 	try{
-		HMGrid3D::GridData ans = HMGrid3D::Mesher::UnstructuredTetrahedral.WTimer(source, cs, cp, ps);
+		HMGrid3D::GridData ans = HMGrid3D::Mesher::UnstructuredTetrahedral.WithCallback(
+				cb, source, cs, cp, ps);
 		sc.unscale(ans.vvert.begin(), ans.vvert.end());
-		ret = new HMGrid3D::SGrid(std::move(ans));
+		*ret = new SGrid(std::move(ans));
+		r = 1;
 	} catch (const std::exception &e){
 		std::cout<<e.what()<<std::endl;
-		if (ret != NULL) delete ret;
-		ret=NULL;
+		r = 0;
 	}
 	//unscale input and return
 	sc.unscale(srcpoints.begin(), srcpoints.end());
 	sc.unscale(cspoints.begin(), cspoints.end());
-	return ret;
+	return r;
 }

@@ -426,8 +426,8 @@ void simplify_source_edges(HMCont2D::ContourTree& cont, const HMCont2D::PCollect
 		auto cinfo = c->ordered_info(); cinfo.resize(cinfo.size()-1);
 		for (auto& ci: cinfo){
 			if (edtypes[ci.eprev.get()] == 1 && edtypes[ci.enext.get()] == 1){
-				auto dst = HMCont2D::PCollection::FindClosestNode(srcpnt, *ci.p);
-				if (!ISZERO(sqrt(std::get<2>(dst)))) bad_points.push_back(ci.p);
+				auto ps = HMCont2D::PCollection::FindClosestNode(srcpnt, *ci.p);
+				if (*ci.p != *std::get<0>(ps)) bad_points.push_back(ci.p);
 			}
 		}
 	}
