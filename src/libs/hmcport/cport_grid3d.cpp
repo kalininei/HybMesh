@@ -135,10 +135,9 @@ CPortGrid3D* grid2_sweep_z(const Grid* g, const Grid2DBoundaryStruct* bc,
 			default: throw std::runtime_error("Invalid algo_bot");
 		}
 		auto sidefun = SideBndFunctor(*gg, *bc, algo_side, bside);
-		ret = new HMGrid3D::SGrid(
-			HMGrid3D::Constructor::SweepGrid2D(
-				*gg, z, botfun, topfun, sidefun)
-			);
+		HMGrid3D::GridData sg = HMGrid3D::Constructor::SweepGrid2D(
+				*gg, z, botfun, topfun, sidefun);
+		ret = new HMGrid3D::SGrid(std::move(sg));
 		return ret;
 	} catch (const std::exception &e) {
 		if (ret != NULL) delete ret;
@@ -159,7 +158,7 @@ CPortGrid3D* grid2_revolve(Grid* g, double* vec, int n_phi, double* phi,
 	try{
 		std::vector<double> vphi(phi, phi + n_phi);
 		auto sidefun = SideBndFunctor(*grid, *bc, 1, 0);
-		HMGrid3D::SGrid ser = HMGrid3D::Constructor::RevolveGrid2D(
+		HMGrid3D::GridData ser = HMGrid3D::Constructor::RevolveGrid2D(
 			*grid, vphi, pstart, pend, is_trian!=0, sidefun,
 			[b1](int){ return b1; }, [b2](int){ return b2; });
 		HMGrid3D::Vertex::Unscale2D(ser.vvert, sc);

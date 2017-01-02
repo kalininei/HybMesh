@@ -54,21 +54,13 @@ and contour objects addressed via string identifiers
 returned by object constructors.
 
 .. autofunction:: remove_geom
-
 .. autofunction:: remove_geom
-
 .. autofunction:: remove_all
-
 .. autofunction:: remove_all_but
-
 .. autofunction:: move_geom
-
 .. autofunction:: rotate_geom
-
 .. autofunction:: scale_geom
-
 .. autofunction:: reflect_geom
-
 .. autofunction:: copy_geom
 
 Contour Procedures
@@ -93,6 +85,10 @@ instead of contour identifier should be used.
 .. autofunction:: partition_contour
 .. autofunction:: matched_partition
 .. autofunction:: partition_segment
+.. autofunction:: grid3_bnd_to_surface
+.. autofunction:: decompose_contour
+.. autofunction:: extract_subcontours
+.. autofunction:: connect_subcontours
 
 Grid Procedures
 ---------------
@@ -107,11 +103,12 @@ Building uniform grids in a primitive areas.
 .. autofunction:: add_unf_ring_grid
 .. autofunction:: add_unf_hex_grid
 .. autofunction:: add_triangle_grid
+.. autofunction:: stripe
 .. autofunction:: add_custom_rect_grid
 .. autofunction:: add_circ_rect_grid
 .. autofunction:: triangulate_domain
 .. autofunction:: pebi_fill
-.. autofunction:: stripe
+.. autofunction:: tetrahedral_fill
 
 Transformations
 +++++++++++++++
@@ -121,15 +118,12 @@ See :ref:`functionality` for procedures details.
 .. autofunction:: unite_grids
 .. autofunction:: build_boundary_grid
 .. autofunction:: map_grid
-
 .. autoclass:: BoundaryGridOptions()
    :members: __init__, uniform_partition, incremental_partition
-
 .. autofunction:: heal_grid
-
 .. autofunction:: extrude_grid
-
 .. autofunction:: revolve_grid
+.. autofunction:: merge_grids3
 
 Information
 -----------
@@ -139,12 +133,18 @@ set of special commands.
 .. autofunction:: check_compatibility
 .. autofunction:: info_grid
 .. autofunction:: info_contour
+.. autofunction:: info_grid3d
+.. autofunction:: info_surface
 .. autofunction:: registered_contours
 .. autofunction:: registered_grids
+.. autofunction:: registered_surfaces
 .. autofunction:: registered_grids3d
 .. autofunction:: registered_btypes
 .. autofunction:: domain_area
+.. autofunction:: domain_volume
 .. autofunction:: skewness
+.. autofunction:: get_point
+.. autofunction:: pick_contour
 
 
 Exports
@@ -163,6 +163,7 @@ Exports
 .. autofunction:: export3d_grid_gmsh
 .. autofunction:: export3d_grid_msh
 .. autofunction:: export3d_grid_tecplot
+.. autofunction:: export3d_surface_hmc
 .. autofunction:: export_all_hmd
 .. autofunction:: save_project
 
@@ -174,6 +175,7 @@ Imports
 .. autofunction:: import_grid_gmsh
 .. autofunction:: import_contour_hmc
 .. autofunction:: import3d_grid_hmg
+.. autofunction:: import3d_surface_hmc
 .. autofunction:: import_all_hmd
 .. autofunction:: load_project
 

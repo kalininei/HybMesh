@@ -103,12 +103,13 @@ def clip_domain(cc1, cc2, op, simplify):
 
 
 def contour_partition(c_cont, c_bt, c_step, algo, a0,
-                      keepbnd, nedges, crosses, keep_pts, sp):
+                      keepbnd, nedges, crosses, keep_pts, sp, ep):
     """ c_step: ct.c_double() * n, where n dependes on algo:
     algo = "const" => n = 1,
     algo = "ref_points" => n = 3*k
     algo = "ref_weights" => n = 2*k
     """
+    c_cont = ct.c_void_p(c_cont)
     # algo treatment
     if algo == "const":
         c_algo = ct.c_int(0)
@@ -119,10 +120,20 @@ def contour_partition(c_cont, c_bt, c_step, algo, a0,
     elif algo == "ref_weights":
         c_algo = ct.c_int(2)
         c_n = ct.c_int(len(c_step) / 2)
+    elif algo == "ref_lengths":
+        c_algo = ct.c_int(3)
+        c_n = ct.c_int(len(c_step) / 2)
     else:
         raise ValueError("invalid partition algo")
-    # start point
-    c_sp = list_to_c([sp.x, sp.y], "float")
+    # start/end point
+    if sp is not None:
+        c_sp = list_to_c([sp.x, sp.y], "float")
+    else:
+        c_sp = ct.c_void_p(0)
+    if ep is not None:
+        c_ep = list_to_c([ep.x, ep.y], "float")
+    else:
+        c_ep = ct.c_void_p(0)
 
     # prepare arrays for boundary output
     c_bnd = ct.POINTER(ct.c_int)()
@@ -142,7 +153,7 @@ def contour_partition(c_cont, c_bt, c_step, algo, a0,
                                        ct.c_int(1 if keepbnd else 0), c_ne,
                                        num_crosses, c_crosses,
                                        num_keep_pts, c_keep_pts,
-                                       c_sp,
+                                       c_sp, c_ep,
                                        ct.byref(n_bnd), ct.byref(c_bnd)
                                        )
     # copy c-side allocated bnd array to python side allocated

@@ -189,7 +189,7 @@ void test06(){
 	auto g2d = GGeom::Constructor::RectGrid(Point(1,0), Point(2,1), 1, 1);
 	auto bc0 = [](int){return 0;};
 	{
-		auto g3d = RevolveGrid2D(g2d, {0, 90}, Point(0, 0), Point(0, 1), true, bc0, bc0, bc0);
+		HMGrid3D::GridData g3d = RevolveGrid2D(g2d, {0, 90}, Point(0, 0), Point(0, 1), true, bc0, bc0, bc0);
 		HMGrid3D::Export::GridTecplot.Silent(g3d, "g1.dat");
 		add_file_check(16088294825526263046U, "g1.dat", "single cell, distant, incomplete");
 	}
@@ -357,7 +357,6 @@ void test09(){
 		auto gcube3 = HMGrid3D::Constructor::Cuboid({20, 20, -2.5}, 1, 1, 1, 3, 1, 2);
 
 		gcyl.actualize_serial_data();
-		ghsphere.actualize_serial_data();
 		gcube1.actualize_serial_data();
 		gcube2.actualize_serial_data();
 		gcube3.actualize_serial_data();

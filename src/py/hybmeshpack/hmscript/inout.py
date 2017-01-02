@@ -361,7 +361,22 @@ def export_contour_tecplot(c1, fname):
 
 
 def export3d_surface_hmc(s1, fname, fmt="ascii"):
-    """TODO
+    """Exports 3d surface to hybmesh native format.
+
+      :param s1: single or list of surface identifiers
+
+      :param str fname: output filename
+
+      :param str fmt: output data format:
+
+         * ``'ascii'`` - all fields will be saved as text fields,
+         * ``'bin'`` - all fields will be saved in binary section,
+         * ``'fbin'`` - only floating point fields will be saved
+           in binary section.
+
+      :raises: hmscript.ExportError
+
+      See :ref:`surface3d-file` for format description.
     """
     if fmt == "binary":
         fmt = "bin"
@@ -497,9 +512,7 @@ def import_contour_ascii(fname, wbtype=False, force_closed=False):
 def import_contour_hmc(fname, contname="", allconts=False):
     """Imports contour from hybmesh native format
 
-      :param g1: grid identifier
-
-      :param str fname: output filename
+      :param str fname: filename
 
       :param str contname: name of the contour to import. If **contname**
          is not specified then the first one will be taken.
@@ -524,7 +537,21 @@ def import_contour_hmc(fname, contname="", allconts=False):
 
 
 def import3d_surface_hmc(fname, srfname="", allsurfs=False):
-    """TODO"""
+    """Imports surface from hybmesh native format
+
+      :param str fname: filename
+
+      :param str srfname: name of the surface to import. If **srfname**
+         is not specified then the first one will be taken.
+
+      :param bool allsurfs: if True then all surfaces from the file
+         will be imported. **srfname** will be ignored.
+
+      :returns: surface identifier or
+         list of identifiers if **allsurfs** is set.
+
+      :raises: ExecError
+    """
     c = com.imcom.ImportSurfacesNative(
         {"filename": fname, "srfname": srfname, "all": allsurfs})
     try:

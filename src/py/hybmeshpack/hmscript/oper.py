@@ -389,7 +389,7 @@ def map_grid(base_grid, target_contour, base_points, target_points,
        * ``"inverse_laplace"`` solves Laplace problem in target domain.
 
     :param bool is_reversed: shows whether target contour
-       should be treated in reversed order while builging boundary mapping.
+       should be treated in reversed order while building boundary mapping.
 
     :param bool return_invalid: if this flag is on
        then the procedure will return a grid even if it is not valid

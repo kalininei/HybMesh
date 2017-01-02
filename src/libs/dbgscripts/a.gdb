@@ -5,5 +5,5 @@ source ../../src/libs/dbgscripts/hmout.gdb
 
 file ./hmgrid3d_test
 set breakpoint pending on
-b tetramesh_preproc.cpp:121
+b hmgrid3d_test.cpp:142
 run 

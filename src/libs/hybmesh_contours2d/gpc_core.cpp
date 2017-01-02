@@ -125,26 +125,22 @@ HMCont2D::Container<HMCont2D::ContourTree> GpcTree::ToContourTree() const{
 		HMCont2D::Algos::MergePoints(ecol);
 		HMCont2D::Algos::DeleteUnusedPoints(ecol);
 		if (ecol.size() < 3) continue; 
-		auto hmcont = shared_ptr<HMCont2D::Contour>(new HMCont2D::Contour);
-		bool found = false;
 		if (ecol.pdata.size() != nump_before){
-			//auto cv = HMCont2D::Assembler::SimpleContours(ecol);
-			//for (int i=0; i<cv.size(); ++i) if (cv[i].is_closed()){
-				//ecol.data = std::move(cv[i].data);
-				//HMCont2D::Algos::DeleteUnusedPoints(ecol);
-				//found = true;
-				//break;
-			//}
 			ecol = HMCont2D::Algos::NoCrosses(ecol);
 			vector<HMCont2D::Contour> ac = HMCont2D::Assembler::AllContours(ecol);
+			vector<HMCont2D::Contour*> closed_ones;
 			for (auto& c: ac) if (c.is_closed()){
-				ecol.data = std::move(c.data);
-				HMCont2D::Algos::DeleteUnusedPoints(ecol);
-				found = true;
-				break;
+				closed_ones.push_back(&c);
 			}
-		} else {found = true; }
-		if (found){
+			ecol.data.clear();
+			for (auto cc: closed_ones){
+				ecol.data.insert(ecol.data.end(), cc->data.begin(), cc->data.end());
+			}
+			HMCont2D::Algos::DeleteUnusedPoints(ecol);
+			res.pdata.add_values(ecol.pdata.data);
+			for (auto cc:closed_ones) res.AddContour(*cc);
+		} else {
+			auto hmcont = shared_ptr<HMCont2D::Contour>(new HMCont2D::Contour);
 			hmcont->data=std::move(ecol.data);
 			res.pdata.add_values(ecol.pdata.data);
 			assert(hmcont->size()>0 && hmcont->is_closed());

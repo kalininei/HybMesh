@@ -151,3 +151,50 @@ Versions History
    * *custom_rads, custom_archs* for :func:`add_unf_circ_grid`
    * *crosses* for :func:`partition_contour`
    * *convex_cells* for :func:`heal_grid`
+
+* **0.4.6**:
+   New features:
+
+   * forced connection of not connected open contours
+     using shifting and stretching
+   * decomposition of multiply connected edges into simple contours
+   * subdivision of given contour into subcontours with user defined
+     end points
+   * building contour segmentation using recommended sizes defined by
+     length or normalized length contour coordinates 
+   * definition of target contour segment and fixed points for contour
+     partition algorithm
+   * mapping of grids into reflected domains
+   * finding of an object point closest to the user defined site
+   * calculation of 3D domain volume 
+   * selection of contour closest to user defined point
+   * extraction of grid surface
+   * building tetrahedral mesh in closed 3D domain with arbitrary faces
+   * exporting and importing of surfaces to native file format
+   * merging of 3D grids with coincident boundaries
+
+
+   New python interface functions:
+
+   * :func:`grid3_bnd_to_surface`
+   * :func:`decompose_contour`
+   * :func:`extract_subcontours`
+   * :func:`connect_subcontours`
+   * :func:`merge_grids3`
+   * :func:`info_grid3d`
+   * :func:`info_surface`
+   * :func:`get_point`
+   * :func:`domain_volume`
+   * :func:`pick_contour`
+   * :func:`export3d_surface_hmc`
+   * :func:`import3d_surface_hmc`
+   * :func:`tetrahedral_fill`
+   * :func:`registered_surfaces`
+
+
+   Python interface functions with new options:
+
+   * *keep_pts*, *start*, *end*, *algo* = ``ref_weights``, ``ref_lengths`` for
+     :func:`partition_contour`
+   * *is_reversed* for :func:`map_grid`
+   * *return_invalid* for :func:`add_custom_rect_grid`

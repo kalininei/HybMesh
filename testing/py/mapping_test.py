@@ -131,7 +131,9 @@ for i in range(100):
     y = -0.02 + float(i) / 90.0
     pts.append([x, y])
 right_line2 = hm.create_contour(pts, 7)
-right_line_part2 = hm.partition_contour(right_line2, "const", 0.25)
+right_line_part2 = hm.partition_contour(
+    right_line2, "const", 0.25, angle0=180.,
+    nedges=hm.info_contour(left_line_part)['Nedges'])
 g1 = hm.add_custom_rect_grid(
     "linear",
     left_line_part, bottom_line_part,
@@ -156,7 +158,8 @@ for i in range(100):
 top_line2 = hm.create_contour(pts, 8)
 top_line_part2 = hm.partition_contour(
     top_line2, "ref_points",
-    [0.005, [0, 1], 0.23, [2, 1]]
+    [0.005, [0, 1], 0.23, [2, 1]],
+    angle0=180.
 )
 left_line_part = hm.partition_contour(left_line, "const", 0.05)
 g1 = hm.add_custom_rect_grid(
@@ -443,12 +446,13 @@ fullc = hm.unite_contours([leftc, botc, rightc, topc])
 
 left = hm.partition_contour(
     leftc, "ref_points",
-    [0.2, [0, 0], 0.2, [0.1, 1], 0.05, [0, 0.5]])
-right = hm.partition_contour(rightc, "const", 0.12)
-top = hm.partition_contour(topc, "const", 0.095)
+    [0.2, [0, 0], 0.2, [0.1, 1], 0.05, [0, 0.5]],
+    angle0=180.)
+right = hm.partition_contour(rightc, "const", 0.12, angle0=180.)
+top = hm.partition_contour(topc, "const", 0.095, angle0=180.)
 bot = hm.partition_contour(
     botc, "ref_points",
-    [0.03, [0, 0], 0.15, [2, 0], 0.15, [1, 0]])
+    [0.03, [0, 0], 0.15, [2, 0], 0.15, [1, 0]], angle0=180.)
 
 fullc2 = hm.unite_contours([left, bot, right, top])
 g2 = hm.add_custom_rect_grid("direct_laplace", left, bot, right, top)
@@ -475,12 +479,13 @@ fullc = hm.unite_contours([leftc, botc, rightc, topc])
 
 left = hm.partition_contour(
     leftc, "ref_points",
-    [0.2, [0, 0], 0.2, [0.1, 1], 0.05, [0, 0.5]])
-right = hm.partition_contour(rightc, "const", 0.12)
-top = hm.partition_contour(topc, "const", 0.095)
+    [0.2, [0, 0], 0.2, [0.1, 1], 0.05, [0, 0.5]],
+    angle0=180.)
+right = hm.partition_contour(rightc, "const", 0.12, angle0=180.)
+top = hm.partition_contour(topc, "const", 0.095, angle0=180.)
 bot = hm.partition_contour(
     botc, "ref_points",
-    [0.03, [0, 0], 0.14, [2, 0], 0.15, [1, 0]])
+    [0.03, [0, 0], 0.14, [2, 0], 0.15, [1, 0]], angle0=180.)
 
 fullc3 = hm.unite_contours([left, bot, right, top])
 g3 = hm.add_custom_rect_grid("inverse_laplace", left, bot, right, top)
@@ -513,12 +518,14 @@ g4 = hm.add_custom_rect_grid("orthogonal", left, bot, right, top)
 
 left = hm.partition_contour(
     leftc, "ref_points",
-    [0.05, [0, 0], 0.05, [0.1, 1], 0.2, [0, 0.5]])
-right = hm.partition_contour(rightc, "const", 0.12)
-top = hm.partition_contour(topc, "const", 0.095)
+    [0.05, [0, 0], 0.05, [0.1, 1], 0.2, [0, 0.5]],
+    angle0=180.)
+right = hm.partition_contour(rightc, "const", 0.12, angle0=180.)
+top = hm.partition_contour(topc, "const", 0.095, angle0=180.)
 bot = hm.partition_contour(
     botc, "ref_points",
-    [0.03, [0, 0], 0.14, [2, 0], 0.15, [1, 0]])
+    [0.03, [0, 0], 0.14, [2, 0], 0.15, [1, 0]],
+    angle0=180.)
 
 fullc5 = hm.unite_contours([left, bot, right, top])
 g5 = hm.add_custom_rect_grid("linear_tfi", left, bot, right, top)

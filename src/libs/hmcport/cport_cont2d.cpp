@@ -98,9 +98,10 @@ refp_partition(const HMCont2D::Contour& cont,
 
 // cont: ECOllection pointer
 // btypes: size = cont.size(). Boundary feature for each contour edge
-// algo: 0 - const step; 1 - refference point step
+// algo: 0 - const step; 1 - refference point step; 2,3 - ref weights/lengths steps
 // n_steps: number of reference points in case of algo=1
 // steps: if algo = 0 => [const_step], if algo = 1 => [step0, x0, y0, step1, x1, y1, ...]
+//        if algo = 2,3=> [step0, s0, step1, s1, ...]
 // a0: insignificant angle [180-a0, 180 + a0]
 // keepbnd: =true if all boundary type changing nodes should be preserved
 // n_outbnd - number of output contour edges
@@ -110,7 +111,7 @@ void* contour_partition(void* cont, int* btypes, int algo,
 		int n_steps, double* steps, double a0, int keepbnd, int nedges,
 		int n_crosses, void** crosses,
 		int n_keep_pts, double* keep_pts,
-		double* start_point,
+		double* start_point, double* end_point,
 		int* n_outbnd, int** outbnd){
 	typedef HMCont2D::ECollection TCol;
 	typedef HMCont2D::Container<TCol> TCont;
@@ -126,14 +127,18 @@ void* contour_partition(void* cont, int* btypes, int algo,
 		}
 	} else if (algo == 0){
 		basic_steps.push_back(steps[0]);
-	} else if (algo == 2){
+	} else if (algo == 2 || algo == 3){
 		for (int i=0; i<n_steps; ++i){
 			basic_steps.push_back(steps[2*i]);
 		}
 	}
 	vector<TCol*> vcrosses(n_crosses);
 	for (int i=0; i<n_crosses; ++i) vcrosses[i] = static_cast<TCol*>(crosses[i]);
-	Point start(start_point[0], start_point[1]);
+
+	Point start(0, 0), end(0, 0);
+	if (start_point){ start.set(start_point[0], start_point[1]); }
+	if (end_point){ end.set(end_point[0], end_point[1]); }
+
 	vector<Point> kp(n_keep_pts);
 	for (int i=0; i<n_keep_pts; ++i) kp[i] = Point(keep_pts[2*i], keep_pts[2*i+1]);
 	//scaling
@@ -142,11 +147,36 @@ void* contour_partition(void* cont, int* btypes, int algo,
 	for (auto& v: basic_steps) v/=sc.L;
 	for (auto& c: vcrosses) HMCont2D::ECollection::Scale(*c, sc);
 	sc.scale(kp.begin(), kp.end());
-	sc.scale(start);
+	sc.scale(start); sc.scale(end);
 	//main procedure
 	try{
 		//assemble tree from input data
 		HMCont2D::ExtendedTree ext = HMCont2D::Assembler::ETree(*ecol);
+		//cut by start and end point
+		HMCont2D::ECollection non_processed_edges;
+		if (start_point){
+			Point *p1, *p2;
+			p1 = HMCont2D::ECollection::FindClosestNode(ext, start);
+			HMCont2D::Contour cn = *ext.get_contour(p1);
+			if (end_point){
+				p2 = HMCont2D::ECollection::FindClosestNode(cn, end);
+			} else if (cn.is_closed()) p2 = p1;
+			else {
+				double d1 = Point::meas(*cn.first(), *p1);
+				double d2 = Point::meas(*cn.last(), *p1);
+				if (d1 < d2) p2 = cn.last();
+				else p2 = cn.first();
+			}
+			cn = HMCont2D::Assembler::Contour1(cn, p1, p2);
+			for (auto e: ext.data){
+				if (std::find(cn.begin(), cn.end(), e) == cn.end()){
+					non_processed_edges.add_value(*e);
+				}
+			}
+			ext = HMCont2D::ExtendedTree();
+			ext.AddContour(cn);
+		}
+
 		//assemble significant points
 		if (keepbnd){
 			int i = 0;
@@ -175,37 +205,57 @@ void* contour_partition(void* cont, int* btypes, int algo,
 				}
 			}
 		}
+		//checks
+		if (algo != 0 && ext.cont_count() != 1){
+			throw std::runtime_error("only singly connected contours "
+					"are allowed for refference point partition");
+		}
+		if (algo > 1 && !start_point){
+			throw std::runtime_error("define start point "
+				"for refference partition");
+		}
+		if (ext.cont_count() == 0 || ext.get_contour(0)->size() == 0){
+			throw std::runtime_error("zero length contour can not be parted");
+		}
 		//call partition algorithm
 		TCont out;
+		auto& c0 = *ext.get_contour(0);
 		if (algo == 0){
 			out = const_partition(ext, basic_steps[0], keep_points, nedges);
 		} else if (algo == 1){
-			if (ext.cont_count() != 1){
-				throw std::runtime_error("only singly connected contours "
-						"are allowed for refference point partition");
-			}
-			out = refp_partition(*ext.get_contour(0), basic_steps, basic_points, keep_points, nedges);
+			out = refp_partition(c0, basic_steps, basic_points, keep_points, nedges);
 		} else if (algo == 2){
-			if (ext.cont_count() != 1){
-				throw std::runtime_error("only singly connected contours "
-						"are allowed for refference weights partition");
-			}
-			auto& c = *ext.get_contour(0);
-			//define start point
-			c.StartFrom(start);
+			c0.StartFrom(start);
 			for (int i=0; i<n_steps; ++i){
 				basic_points.push_back(HMCont2D::Contour::WeightPoint(
-					c, steps[2*i+1]));
+					c0, steps[2*i+1]));
 			}
-			out = refp_partition(*ext.get_contour(0), basic_steps, basic_points, keep_points, nedges);
+			out = refp_partition(c0, basic_steps, basic_points, keep_points, nedges);
+		} else if (algo == 3){
+			c0.StartFrom(start);
+			double len = c0.length();
+			for (int i=0; i<n_steps; ++i){
+				double s = steps[2*i+1]/sc.L/len;
+				if (s < 0) s = 1+s;
+				basic_points.push_back(HMCont2D::Contour::WeightPoint(c0, s));
+			}
+			out = refp_partition(c0, basic_steps, basic_points, keep_points, nedges);
+		}
+		//add non-processed
+		HMCont2D::ECollection outcol = out;
+		if (non_processed_edges.size() > 0){
+			outcol.Unite(non_processed_edges);
+			HMCont2D::Algos::MergePoints(outcol);
 		}
 		//boundary assignment
-		*n_outbnd = out.size();
+		*n_outbnd = outcol.size();
 		*outbnd = new int[*n_outbnd];
-		set_ecollection_bc_force(cont, &out, btypes, *outbnd, 3);
+		set_ecollection_bc_force(cont, &outcol, btypes, *outbnd, 3);
 		//unscale and return value
-		HMCont2D::ECollection::Unscale(out, sc);
-		ret = new TCont(std::move(out));
+		HMCont2D::ECollection::Unscale(outcol, sc);
+		TCont contret;
+		TCont::DeepCopy(outcol, contret);
+		ret = new TCont(std::move(contret));
 	} catch (std::runtime_error &e){
 		ret = NULL;
 		std::cout<<e.what()<<std::endl;

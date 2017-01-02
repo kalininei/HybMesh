@@ -11,10 +11,11 @@ extern "C"{
 // algo: 0 - const step;
 //       1 - reference point step
 //       2 - reference weights step
+//       3 - reference lengths step
 // n_steps: number of reference points in case of algo=1
 // steps: if algo = 0 => [const_step],
 //        if algo = 1 => [step0, x0, y0, step1, x1, y1, ...]
-//        if algo = 2 => [step0, s0, step1, s1, ...]
+//        if algo = 2,3 => [step0, s0, step1, s1, ...]
 // a0: insignificant angle [180-a0, 180 + a0]
 // keepbnd: =true if all boundary type changing nodes should be preserved
 // n_outbnd - number of output contour edges
@@ -25,7 +26,7 @@ void* contour_partition(void* cont, int* btypes, int algo,
 		int n_steps, double* steps, double a0, int keepbnd, int nedges,
 		int n_crosses, void** crosses,
 		int n_keep_pts, double* keep_pts,
-		double* start_point,
+		double* start_point, double* end_point,
 		int* n_outbnd, int** outbnd);
 
 //build a spline using basis points

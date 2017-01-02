@@ -318,6 +318,7 @@ void TriGrid::FillFromTree(
 		}
 	};
 
+	NanSignalHandler::StopCheck();
 	//add edges
 	std::vector<GFace*> fc;
 	for (auto& ec: ap){
@@ -337,6 +338,7 @@ void TriGrid::FillFromTree(
 		}
 		for (auto e: eds) fc.back()->addEmbeddedEdge(e);
 	}
+	NanSignalHandler::StartCheck();
 
 	//add embedded points
 	for (auto& p: emb_points){

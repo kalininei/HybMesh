@@ -10,6 +10,7 @@ struct TGridTecplot: public HMCallback::ExecutorBase{
 	HMCB_SET_DEFAULT_DURATION(80);
 
 	void _run(const SGrid& g, std::string fn, BFun bnd_names=def_bfun);
+	void _run(const GridData& g, std::string fn, BFun bnd_names=def_bfun);
 
 };
 

@@ -9,3 +9,5 @@ tmp.py
 !others
 !others/*
 !others/*/*
+others/.*.swp
+others/*/.*.swp

@@ -1,0 +1,8 @@
+#!/bin/sh
+
+# checks hybmesh script using valgrid.
+# should be executed from testing/py directory as
+#     > ../../src/libs/dbgscripts/vgcheck1 scriptname.py
+
+# valgrind --gen-suppressions=all --leak-check=full --suppressions=../../src/libs/dbgscripts/hm_suppress.supp python ../../src/py/hybmesh.py -sx $1
+valgrind --leak-check=full --suppressions=../../src/libs/dbgscripts/hm_suppress.supp python ../../src/py/hybmesh.py -sx $1

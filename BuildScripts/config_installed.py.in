@@ -38,6 +38,7 @@ if sys.platform.startswith('win'):
         'libamd.2.4.4.dll',
         'libcholmod.3.0.9.dll',
         'libspqr.2.0.5.dll',
+        'libtetgen.dll',
         'libGmshLocal.dll',
         'libpolyclipping.dll',
         'libhmproject.dll',

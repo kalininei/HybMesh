@@ -252,8 +252,6 @@ HMGrid3D::SGrid cns::SweepGrid2D(const GridGeom& g, const vector<double>& zcoord
 	return ret;
 }
 
-
-
 HMGrid3D::SGrid cns::Copy::ShallowVertices(const SGrid& g){
 	HMGrid3D::SGrid ret(g);
 	ret.actualize_data();

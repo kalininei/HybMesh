@@ -241,46 +241,6 @@ void fill_model_with_3d(GModel& m, const vector<vector<GFace*>>& fc){
 	//m.writeMSH("gmsh_geo.msh");
 }
 
-void restore_btypes(GFace* gf, std::set<TransitionalFace>& fcset, const HMGrid3D::Surface& surf){
-	auto analyze_melement = [&fcset](MElement* el, int bt){
-		TransitionalFace fndface;
-		fndface.ptsnums.resize(el->getNumVertices());
-		for (int i=0; i<el->getNumVertices(); ++i){
-			fndface.ptsnums[i] = el->getVertex(i)->getIndex();
-		}
-		std::sort(fndface.ptsnums.begin(), fndface.ptsnums.end());
-		auto fnd = fcset.find(fndface);
-		if (fnd != fcset.end()){
-			fnd->gface->boundary_type = bt;
-			fcset.erase(fnd);
-		} else {assert(false);}
-	};
-
-	//keeping the same order at which 2d grid for this surface was created
-	//add mesh
-	int itris=-1, iquads=-1;
-	for (int i=0; i<surf.faces.size(); ++i){
-		auto& f = surf.faces[i];
-		if (f->n_edges() == 3) ++itris;
-		else if (f->n_edges() == 4) ++iquads;
-		else assert(false);
-
-		int btype = f->boundary_type;
-		if (btype==0) continue;
-		
-		auto sv = surf.faces[i]->sorted_vertices();
-		vector<MVertex*> mv(sv.size());
-
-		MElement* nq;
-		if (sv.size()==4) nq = gf->quadrangles[iquads];
-		else if (sv.size()==3) nq = gf->triangles[itris];
-		else throw std::runtime_error("Only triangle and quadrangle surface faces are allowed");
-
-		for (int j=0; j<sv.size(); ++j) mv[j] = nq->getVertex(j);
-		analyze_melement(nq, btype);
-	}
-}
-
 void equal_vertices(const HMGrid3D::GridData& grid, GFace* gf, const HMGrid3D::Surface& surf,
 		HMGrid3D::VertexData& gfvert, HMGrid3D::VertexData& svert){
 	//here we rely on fact that GFace mesh vertices are indexed according to grid.vvert order.

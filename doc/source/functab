@@ -5,24 +5,26 @@ Object       Contour      Grid         Operations   Info           Imp/Exp
 |func-o02|   |func-c02|   |func-g02|   |func-op02|  |func-i02|     |func-ie02|
 |func-o03|   |func-c03|   |func-g03|   |func-op03|  |func-i03|     |func-ie03|
 |func-o04|   |func-c04|   |func-g04|   |func-op04|  |func-i04|     |func-ie04|
-|func-o05|   |func-c05|   |func-g05|   ..           |func-i05|     |func-ie05|
+|func-o05|   |func-c05|   |func-g05|   |func-op05|  |func-i05|     |func-ie05|
 |func-o06|   |func-c06|   |func-g06|   ..           |func-i06|     |func-ie06|
 |func-o07|   |func-c07|   |func-g07|   ..           |func-i07|     |func-ie07|
 |func-o08|   |func-c08|   |func-g08|   ..           |func-i08|     |func-ie08|
 ..           |func-c09|   |func-g09|   ..           |func-i09|     |func-ie09|
-..           |func-c10|   |func-g10|   ..           ..             |func-ie10|
-..           |func-c11|   |func-g11|   ..           ..             |func-ie11|
-..           |func-c12|   |func-g12|   ..           ..             |func-ie12|
-..           |func-c13|   |func-g13|   ..           ..             |func-ie13|
-..           |func-c14|   ..           ..           ..             |func-ie14|
-..           |func-c15|   ..           ..           ..             |func-ie15|
-..           ..           ..           ..           ..             |func-ie16|
-..           ..           ..           ..           ..             |func-ie17|
-..           ..           ..           ..           ..             |func-ie18|
-..           ..           ..           ..           ..             |func-ie19|
+..           |func-c10|   |func-g10|   ..           |func-i10|     |func-ie10|
+..           |func-c11|   |func-g11|   ..           |func-i11|     |func-ie11|
+..           |func-c12|   |func-g12|   ..           |func-i12|     |func-ie12|
+..           |func-c13|   |func-g13|   ..           |func-i13|     |func-ie13|
+..           |func-c14|   ..           ..           |func-i14|     |func-ie14|
+..           |func-c15|   ..           ..           |func-i15|     |func-ie15|
+..           |func-c16|   ..           ..           ..             |func-ie16|
+..           |func-c17|   ..           ..           ..             |func-ie17|
+..           |func-c18|   ..           ..           ..             |func-ie18|
+..           |func-c19|   ..           ..           ..             |func-ie19|
 ..           ..           ..           ..           ..             |func-ie20|
 ..           ..           ..           ..           ..             |func-ie21|
 ..           ..           ..           ..           ..             |func-ie22|
+..           ..           ..           ..           ..             |func-ie23|
+..           ..           ..           ..           ..             |func-ie24|
 ============ ============ ============ ============ =============  =============
 
 
@@ -50,6 +52,10 @@ Object       Contour      Grid         Operations   Info           Imp/Exp
 .. |func-c13| replace:: :func:`partition_contour`   
 .. |func-c14| replace:: :func:`matched_partition`   
 .. |func-c15| replace:: :func:`partition_segment`   
+.. |func-c16| replace:: :func:`grid3_bnd_to_surface`   
+.. |func-c17| replace:: :func:`decompose_contour`
+.. |func-c18| replace:: :func:`extract_subcontours`
+.. |func-c19| replace:: :func:`connect_subcontours`
 
 .. |func-g01| replace:: :func:`add_unf_rect_grid`
 .. |func-g02| replace:: :func:`add_unf_circ_grid`
@@ -58,27 +64,35 @@ Object       Contour      Grid         Operations   Info           Imp/Exp
 .. |func-g05| replace:: :func:`add_triangle_grid`
 .. |func-g06| replace:: :func:`add_custom_rect_grid`
 .. |func-g07| replace:: :func:`add_circ_rect_grid`
-.. |func-g08| replace:: :func:`heal_grid`
-.. |func-g09| replace:: :func:`extrude_grid`
-.. |func-g10| replace:: :func:`revolve_grid`
-.. |func-g11| replace:: :func:`triangulate_domain`
-.. |func-g12| replace:: :func:`pebi_fill`
-.. |func-g13| replace:: :func:`stripe`
+.. |func-g08| replace:: :func:`stripe`
+.. |func-g09| replace:: :func:`heal_grid`
+.. |func-g10| replace:: :func:`extrude_grid`
+.. |func-g11| replace:: :func:`revolve_grid`
+.. |func-g12| replace:: :func:`triangulate_domain`
+.. |func-g13| replace:: :func:`pebi_fill`
+.. |func-g14| replace:: :func:`tetrahedral_fill`
 
 .. |func-op01| replace:: :func:`unite_grids`
 .. |func-op02| replace:: :func:`build_boundary_grid`
 .. |func-op03| replace:: :func:`exclude_contours`
 .. |func-op04| replace:: :func:`map_grid`
+.. |func-op05| replace:: :func:`merge_grids3`
 
 .. |func-i01| replace:: :func:`check_compatibility`
 .. |func-i02| replace:: :func:`info_grid`
 .. |func-i03| replace:: :func:`info_contour`
-.. |func-i04| replace:: :func:`registered_contours`
-.. |func-i05| replace:: :func:`registered_grids`
-.. |func-i06| replace:: :func:`registered_grids3d`
-.. |func-i07| replace:: :func:`registered_btypes`
-.. |func-i08| replace:: :func:`domain_area`
-.. |func-i09| replace:: :func:`skewness`
+.. |func-i04| replace:: :func:`info_grid3d`
+.. |func-i05| replace:: :func:`info_surface`
+.. |func-i06| replace:: :func:`registered_contours`
+.. |func-i07| replace:: :func:`registered_grids`
+.. |func-i08| replace:: :func:`registered_surfaces`
+.. |func-i09| replace:: :func:`registered_grids3d`
+.. |func-i10| replace:: :func:`registered_btypes`
+.. |func-i11| replace:: :func:`domain_area`
+.. |func-i12| replace:: :func:`domain_volume`
+.. |func-i13| replace:: :func:`skewness`
+.. |func-i14| replace:: :func:`get_point`
+.. |func-i15| replace:: :func:`pick_contour`
 
 .. |func-ie01| replace:: :func:`export_grid_hmg`
 .. |func-ie02| replace:: :func:`export_grid_vtk`
@@ -93,12 +107,14 @@ Object       Contour      Grid         Operations   Info           Imp/Exp
 .. |func-ie11| replace:: :func:`export3d_grid_gmsh`
 .. |func-ie12| replace:: :func:`export3d_grid_msh`
 .. |func-ie13| replace:: :func:`export3d_grid_tecplot`
-.. |func-ie14| replace:: :func:`export_all_hmd`
-.. |func-ie15| replace:: :func:`import_grid_hmg`
-.. |func-ie16| replace:: :func:`import_grid_msh`
-.. |func-ie17| replace:: :func:`import_grid_gmsh`
-.. |func-ie18| replace:: :func:`import_contour_hmc`
-.. |func-ie19| replace:: :func:`import3d_grid_hmg`
-.. |func-ie20| replace:: :func:`import_all_hmd`
-.. |func-ie21| replace:: :func:`save_project`
-.. |func-ie22| replace:: :func:`load_project`
+.. |func-ie14| replace:: :func:`export3d_surface_hmc`
+.. |func-ie15| replace:: :func:`export_all_hmd`
+.. |func-ie16| replace:: :func:`import_grid_hmg`
+.. |func-ie17| replace:: :func:`import_grid_msh`
+.. |func-ie18| replace:: :func:`import_grid_gmsh`
+.. |func-ie19| replace:: :func:`import_contour_hmc`
+.. |func-ie20| replace:: :func:`import3d_grid_hmg`
+.. |func-ie21| replace:: :func:`import3d_surface_hmc`
+.. |func-ie22| replace:: :func:`import_all_hmd`
+.. |func-ie23| replace:: :func:`save_project`
+.. |func-ie24| replace:: :func:`load_project`

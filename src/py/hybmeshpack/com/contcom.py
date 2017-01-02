@@ -646,7 +646,8 @@ class PartitionContour(objcom.AbstractAddRemove):
                 'keepbnd': command.BoolOption(),
                 'nedges': command.NoneOr(command.BasicOption(int)),
                 'crosses': command.ListOfOptions(command.BasicOption(str)),
-                'start': command.Point2Option(),
+                'start': command.NoneOr(command.Point2Option()),
+                'end': command.NoneOr(command.Point2Option()),
                 'keep_pts': command.ListOfOptions(command.Point2Option())
                 }
 
@@ -676,7 +677,8 @@ class PartitionContour(objcom.AbstractAddRemove):
                                                     so['nedges'],
                                                     c_crosses,
                                                     so['keep_pts'],
-                                                    so['start'])
+                                                    so['start'],
+                                                    so['end'])
             ret = c2core.cont2_from_c(c_ret, c_bnd)
             c2core.free_cont2(c_ret)
             return [], [], [(so["name"], ret)], []

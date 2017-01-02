@@ -36,18 +36,54 @@
 	...
 	fun:*GmshInitialize*
 }
-#{
-#        py1
-#        Memcheck:Addr4
-#        obj:/usr/lib64/libpython2.7.so.1.0
-#}
-#{
-#        py2
-#        Memcheck:Cond
-#        obj:/usr/lib64/libpython2.7.so.1.0
-#}
-#{
-#        py3
-#        Memcheck:Value8
-#        obj:/usr/lib64/libpython2.7.so.1.0
-#}
+{
+	py1
+	Memcheck:Leak
+	match-leak-kinds: possible
+	fun:malloc
+	fun:_PyObject_GC_Malloc
+}
+{
+	py2
+	Memcheck:Leak
+	match-leak-kinds: possible
+	fun:realloc
+	fun:_PyObject_GC_Resize
+}
+{
+	py3
+	Memcheck:Leak
+	match-leak-kinds: possible
+	fun:malloc
+	fun:PyObject_Realloc
+}
+{
+	py4
+	Memcheck:Addr4
+	fun:PyObject_Free
+}
+{
+	py5
+	Memcheck:Value8
+	fun:PyObject_Free
+}
+{
+	py6
+	Memcheck:Cond
+	fun:PyObject_Free
+}
+{
+	py7
+	Memcheck:Addr4
+	fun:PyObject_Realloc
+}
+{
+	py8
+	Memcheck:Value8
+	fun:PyObject_Realloc
+}
+{
+	py9
+	Memcheck:Cond
+	fun:PyObject_Realloc
+}

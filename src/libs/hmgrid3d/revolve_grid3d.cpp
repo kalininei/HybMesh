@@ -66,19 +66,19 @@ struct revolve_builder{
 		_8_fill_axis_cells();
 		icell.push_back(cells.size());
 	}
-	HMGrid3D::SGrid build_ess(){
-		HMGrid3D::SGrid ret;
-		ret.n_vert = vertices.size()/3;
-		ret.n_faces = iface.size()-1;
-		ret.n_edges = edges.size()/2;
-		ret.n_cells = icell.size()-1;
+	HMGrid3D::GridData build_ess(){
+		HMGrid3D::GridData ret;
+		//ret.n_vert = vertices.size()/3;
+		//ret.n_faces = iface.size()-1;
+		//ret.n_edges = edges.size()/2;
+		//ret.n_cells = icell.size()-1;
 		fill_primitives(ret);
 		for (auto& v: boundary_types){
 			for (auto& find: v.second){
 				ret.vfaces[find]->boundary_type = v.first;
 			}
 		}
-		ret.actualize_serial_data();
+		//ret.actualize_serial_data();
 		return ret;
 	}
 	void side_boundary(std::function<int(int)>& f){
@@ -738,7 +738,7 @@ shared_ptr<revolve_builder> revolve_builder_factory(const GridGeom& g2d, const v
 
 };
 
-HMGrid3D::SGrid cns::RevolveGrid2D(const GridGeom& g2d, const vector<double>& phi_coords,
+HMGrid3D::GridData cns::RevolveGrid2D(const GridGeom& g2d, const vector<double>& phi_coords,
 		Point pstart, Point pend, bool is_trian,
 		std::function<int(int)> side_bt, std::function<int(int)> bt1, std::function<int(int)> bt2){
 	//topology

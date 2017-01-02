@@ -360,13 +360,14 @@ def merge_grids3(g1, g2):
 
         :param g1:
 
-        :param g2: 3d grids identifiers.
+        :param g2: 3d source grids identifiers.
 
         :returns: new grid identifier.
 
         :raises: ExecError
 
-        Merge procedure will process only coincident boundary primitives.
+        Merge procedure will process only strictly
+        coincident boundary primitives.
     """
     c = com.grid3dcom.Merge({"src1": g1, "src2": g2})
     try:

@@ -390,16 +390,13 @@ ReaderA* ReaderA::pcreate(std::string tag){
 }
 
 void ReaderA::write(std::string filename){
-	std::ofstream ofile(filename);
+	std::ofstream ofile(filename, std::ios::out | std::ios::binary);
 	std::string xmlstring = tostring();
+	while (xmlstring.size()!=0 && xmlstring.back()!='>') xmlstring.pop_back();
 	assert(xmlstring.size() > 0);
+	ofile<<xmlstring;
 	if (buffer.size()>0){
-		while (xmlstring.back()!='>') xmlstring.pop_back();
-		std::ostringstream of(std::ios::out | std::ios::binary | std::ios::app);
-		of.write(&buffer[0], buffer.size());
-		ofile<<xmlstring<<of.str();
-	} else {
-		ofile<<xmlstring;
+		ofile.write(&buffer[0], buffer.size());
 	}
 }
 

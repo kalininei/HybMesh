@@ -269,6 +269,11 @@ set(GMSH_EXTERNAL_INCLUDE_DIRS ${EXTERNAL_INCLUDES} CACHE
 set(GMSH_EXTERNAL_LIBRARIES ${LINK_LIBRARIES} CACHE 
     STRING "External libraries" FORCE)
 
+# =================================== add tetgen
+set(HAVE_TETGEN "Tetgen1.5")
+include_directories(${TETGEN_INCLUDE})
+LIST(APPEND LINK_LIBRARIES ${TETGEN_TARGET})
+
 # =================================== static library target
 if(ENABLE_BUILD_LIB)
   add_library(gmsh_static STATIC ${GMSH_SRC})
@@ -287,6 +292,7 @@ if(ENABLE_BUILD_SHARED)
     set_target_properties(${GMSH_TARGET} PROPERTIES LINK_FLAGS ${LAPACK_FLAGS})
   endif(HAVE_LAPACK AND LAPACK_FLAGS)
   target_link_libraries(${GMSH_TARGET} ${LINK_LIBRARIES})
+  target_compile_definitions(${GMSH_TARGET} PRIVATE HAVE_TETGEN=${HAVE_TETGEN} TETLIBRARY)
   install(TARGETS ${GMSH_TARGET} 
 	RUNTIME DESTINATION ${LIB_INSTALL_DIR}
 	LIBRARY DESTINATION ${LIB_INSTALL_DIR}

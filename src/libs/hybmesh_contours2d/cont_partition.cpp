@@ -605,8 +605,7 @@ Contour cns::WeightedPartition(std::map<double, double> basis,
 		throw std::runtime_error("Failed to satisfy forced number of edges property");
 	if (!contour.is_closed() && keep_sorted.size()>nedges+1)
 		throw std::runtime_error("Failed to satisfy forced number of edges property");
-	if ((contour.is_closed() && keep_sorted.size() == nedges) || (
-			!contour.is_closed() && keep_sorted.size() == nedges+1)){
+	if (keep_sorted.size() == nedges+1){
 		std::vector<Point*> p(keep_sorted.begin(), keep_sorted.end());
 		return Constructor::ContourFromPoints(p, false);
 	} else {

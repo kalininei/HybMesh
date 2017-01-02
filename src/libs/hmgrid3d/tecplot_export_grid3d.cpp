@@ -95,6 +95,10 @@ void write_row_n(std::ostream& str, Func&& fun, const vector<V>& vals){
 
 };
 
+void hme::TGridTecplot::_run(const GridData& g, std::string fn, BFun bnd_names){
+	SGrid sg(g);
+	return _run(sg, fn, bnd_names);
+}
 void hme::TGridTecplot::_run(const SGrid& ser, std::string fn, BFun bnames){
 	callback->step_after(30, "Assembling connectivity");
 	//face->nodes connectivity

@@ -88,14 +88,14 @@ def hmxml_new():
     ret = libhmcport.new_writer()
     if ret == 0:
         raise Exception("Failed creating a xml document")
-    return ret
+    return ct.c_void_p(ret)
 
 
 def hmxml_read(fname):
     ret = libhmcport.new_reader(fname)
     if ret == 0:
         raise Exception("Failed parsing file " + fname)
-    return ret
+    return ct.c_void_p(ret)
 
 
 def hmxml_finalize(writer, fname):

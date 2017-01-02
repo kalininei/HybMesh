@@ -11,11 +11,9 @@ from hybmeshpack.basic import geom as bg
 def info_grid(g1):
     """Get grid structure information
 
-    Args:
-       g1: grid identifier
+    :param g1: grid identifier
 
-    Returns:
-       dictionary which represents
+    :returns: dictionary which represents
        total number of nodes/cells/edges
        and number of cells of each type::
 
@@ -38,10 +36,9 @@ def info_grid(g1):
 def info_contour(c1):
     """Get contour structure information
 
-    Args:
-       c1: contour or grid identifier
+    :param c1: contour or grid identifier
 
-    Returns:
+    :returns:
        dictionary representing contour length, total number of nodes, edges,
        number of edges in each subcontour and number of edges
        of each boundary type::
@@ -72,7 +69,19 @@ def info_contour(c1):
 
 
 def info_grid3d(g1):
-    """ TODO
+    """ Get 3d grid structure information
+
+    :param g1: 3d grid identifier
+
+    :returns: dictionary which represents
+       total number of nodes, edges, faces, cells::
+
+         {'Nnodes': int,
+          'Nedges': int,
+          'Nfaces': int,
+          'Ncells': int
+          }
+
     """
     g = flow.get_receiver().get_grid3(name=g1)[2]
     ret = {}
@@ -84,8 +93,21 @@ def info_grid3d(g1):
 
 
 def info_surface(s1):
-    """ TODO
+    """Get surface structure information
+
+    :param s1: surface or 3d grid identifier
+
+    :returns:
+       dictionary representing total number of nodes, edges, faces,
+       and number of faces of each boundary type::
+
+         {'Nnodes': int,
+          'Nedges': int,
+          'Nfaces': int,
+          'btypes': {btype(int): int}  # boundary type: number of faces
+         }
     """
+
     s = flow.get_receiver().get_any_surface(s1)
     ret = {}
     ret['Nnodes'] = s.n_points()
@@ -100,7 +122,33 @@ def info_surface(s1):
 
 
 def get_point(obj, ind=None, vclosest=None, eclosest=None, cclosest=None):
-    """TODO
+    """ Returns object point
+
+    :param obj: grid or contour identifier
+
+    :param int ind: index of point
+
+    :param vclosest: point as [x, y] list
+
+    :param eclosest: point as [x, y] list
+
+    :param cclosest: point as [x, y] list
+
+    :returns: point as [x, y] list
+
+    Only one of **ind**, **vclosest**, **eclosest**, **cclosest**
+    arguments should be defined.
+
+    If **ind** is defined then returns point at given index.
+
+    If **vvlosest** point is defined then returns object vertex closest to
+    this point.
+
+    If **eclosest** point is defined then returns point owned by an
+    object edge closest to input point.
+
+    If **cclosest** point is defined then returns non straight line
+    object contour vertex closest to input point.
     """
     g = flow.get_receiver().get_any(obj)
     ret = None
@@ -126,25 +174,25 @@ def get_point(obj, ind=None, vclosest=None, eclosest=None, cclosest=None):
 
 
 def registered_contours():
-    """Returns list of all contours identifiers
+    """Returns list of all contour identifiers
     """
     return flow.get_receiver().get_ucontour_names()
 
 
 def registered_grids():
-    """ Returns list of all grids identifiers
+    """ Returns list of all grid identifiers
     """
     return flow.get_receiver().get_grid_names()
 
 
 def registered_grids3d():
-    """ Returns list of all 3d grids identifiers
+    """ Returns list of all 3d grid identifiers
     """
     return flow.get_receiver().get_grid3_names()
 
 
 def registered_surfaces():
-    """Returns list of all surfaces identifiers
+    """Returns list of all surface identifiers
     """
     return flow.get_receiver().get_usurface_names()
 
@@ -182,7 +230,7 @@ def domain_area(c):
 
 
 def domain_volume(s):
-    """Calculates area of closed domain bounded by the s surface
+    """Calculates area of closed domain bounded by the **s** surface
 
     :param s: grid3d or surface identifier
 
@@ -201,13 +249,27 @@ def domain_volume(s):
 
 
 def pick_contour(pnt, contlist=[]):
-    import copy
-    """not documented
+    """ Returns contour closest to given point
+
+    :param pnt: point as [x, y] list
+
+    :param contlist: list of contour identifier to choose from
+
+    :returns: closest contour identifier
+
+    If **contlist** is empty then looks over all registered contours.
+    This procedure does not take 2d grid contours into account.
     """
+    ucn = flow.get_receiver().get_ucontour_names()
+    lst = []
     if len(contlist) > 0:
-        lst = copy.deepcopy(contlist)
+        for c in contlist:
+            if c in ucn:
+                lst.append(c)
     else:
-        lst = flow.get_receiver().get_all_names2()
+        lst = ucn
+    if len(lst) == 0:
+        raise ValueError("No contours to choose from")
     cpts = [get_point(c, eclosest=pnt) for c in lst]
     cpts = [[x[0] - pnt[0], x[1] - pnt[1]] for x in cpts]
     meas = [x[0] * x[0] + x[1] * x[1] for x in cpts]

@@ -1,5 +1,6 @@
 #include "merge3d.hpp"
 #include "debug_grid3d.hpp"
+#include "surface_grid3d.hpp"
 
 using namespace HMGrid3D;
 

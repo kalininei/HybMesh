@@ -8,14 +8,14 @@ using HMTesting::add_check;
 using namespace HMCont2D;
 
 void test1(){
-	std::cout<<"Offset closed polygon"<<std::endl;
+	std::cout<<"1. Offset closed polygon"<<std::endl;
 	auto c6 = Constructor::Circle(6, 1.0, Point(0,0));
 	auto oret = Algos::Offset(c6, 0.2, OffsetTp::RC_CLOSED_POLY);
 	add_check(fabs(Area(oret) - 3.923) < 0.01, "6-sided closed polygon offsetting");
 }
 
 void test2(){
-	std::cout<<"Deep copy procedures"<<std::endl;
+	std::cout<<"2. Deep copy procedures"<<std::endl;
 	//edges and points pool
 	auto c = Constructor::Circle(3, 1, Point(5,4));
 	//copy only edges
@@ -79,7 +79,7 @@ void test2(){
 
 
 void test3(){
-	std::cout<<"Partition algorithm"<<std::endl;
+	std::cout<<"3. Partition algorithm"<<std::endl;
 	auto c12 = Constructor::Circle(12, 10, Point(5,4));
 	auto c6 = Constructor::ContourFromPoints({0.0,0.0, 0.2,0, 0.33,0, 0.7,0.2, 0.9,0.6, 1.0,0.0 });
 	double len12 = c12.length();
@@ -108,7 +108,7 @@ void test3(){
 }
 
 void test4(){
-	std::cout<<"Partition direction"<<std::endl;
+	std::cout<<"4. Partition direction"<<std::endl;
 	//ignore all
 	auto c10 = Constructor::Circle(10, 1, Point(-5,4));
 	auto r1 = Algos::Partition(100, c10, PartitionTp::IGNORE_ALL);
@@ -125,7 +125,7 @@ void test4(){
 }
 
 void test5(){
-	std::cout<<"Tree structure"<<std::endl;
+	std::cout<<"5. Tree structure"<<std::endl;
 	ECollection collection;
 
 	//1) closed contour
@@ -174,7 +174,7 @@ void test5(){
 }
 
 void test6(){
-	std::cout<<"Contour unite"<<std::endl;
+	std::cout<<"6. Contour unite"<<std::endl;
 
 	Container<Contour> c1 = Constructor::ContourFromPoints({0,0, 2,1, 4,3, 5,1, 6,2, 7,0});
 	Contour a1 = Contour::ShallowCopy(c1, 0, 1);
@@ -205,7 +205,7 @@ void test6(){
 }
 
 void test7(){
-	std::cout<<"Contour point coordinate by weight"<<std::endl;
+	std::cout<<"7. Contour point coordinate by weight"<<std::endl;
 	auto top = HMCont2D::Constructor::ContourFromPoints({
 		Point{0.43701993, 0.07659573},
 		Point{0.44410482, 0.07840499},
@@ -223,7 +223,7 @@ void test7(){
 }
 
 void test8(){
-	std::cout<<"Contours Cross"<<std::endl;
+	std::cout<<"8. Contours Cross"<<std::endl;
 	auto c1 = HMCont2D::Constructor::ContourFromPoints(
 		{0,0, 1,0, 1,1, 0,1}, true);
 	auto c2 = HMCont2D::Constructor::ContourFromPoints(
@@ -249,7 +249,7 @@ void test8(){
 }
 
 void test9(){
-	std::cout<<"Contours union"<<std::endl;
+	std::cout<<"9. Contours union"<<std::endl;
 	auto c1 = HMCont2D::Constructor::ContourFromPoints(
 		{0,0, 1,0, 1,1, 0,1}, true);
 	auto c2 = HMCont2D::Constructor::ContourFromPoints(
@@ -265,7 +265,22 @@ void test9(){
 	auto c4 = HMCont2D::Constructor::ContourFromPoints(
 		{1.5,1, 2,3, 1.5,2}, true);
 	auto res3 = HMCont2D::Clip::Union({c1, c2, c3, c4});
+	HMCont2D::SaveVtk(c1, "c1.vtk");
+	HMCont2D::SaveVtk(c2, "c2.vtk");
+	HMCont2D::SaveVtk(c3, "c3.vtk");
+	HMCont2D::SaveVtk(c4, "c4.vtk");
+	HMCont2D::SaveVtk(res3, "c5.vtk");
 	add_check(fabs(HMCont2D::Area(res3) - 2.6)<1e-7, "common point");
+	HMCont2D::PCollection pcol;
+	vector<HMCont2D::Contour> sep3 = HMCont2D::Assembler::SimpleContours(res3);
+	add_check([&](){
+		if (sep3.size() != 2) return false;
+		if (sep3[0].is_open()) return false;
+		if (sep3[1].is_open()) return false;
+		double v1 = fabs(HMCont2D::Area(sep3[0]));
+		double v2 = fabs(HMCont2D::Area(sep3[1]));
+		return ISZERO(HMCont2D::Area(res3) - v1 - v2);
+	}(), "common point result separate");
 
 	auto c5 = HMCont2D::Constructor::ContourFromPoints(
 		{0.2,0.2, 0.7,0.2, 0.7,0.7, 0.2,0.7}, true);
@@ -281,7 +296,7 @@ void test9(){
 }
 
 void test10(){
-	std::cout<<"Contours substruct"<<std::endl;
+	std::cout<<"10. Contours substruct"<<std::endl;
 	auto c1 = HMCont2D::Constructor::ContourFromPoints(
 		{0,0, 1,0, 1,1, 0,1}, true);
 	auto c2 = HMCont2D::Constructor::ContourFromPoints(
@@ -303,7 +318,7 @@ void test10(){
 }
 
 void test11(){
-	std::cout<<"Extended tree assembling"<<std::endl;
+	std::cout<<"11. Extended tree assembling"<<std::endl;
 	//common point
 	HMCont2D::PCollection pcol;
 	pcol.add_value(Point(0, 0));
@@ -463,7 +478,7 @@ void test11(){
 }
 
 void test12(){
-	std::cout<<"Contour smoothed direction"<<std::endl;
+	std::cout<<"12. Contour smoothed direction"<<std::endl;
 	//auto cn1 = HMCont2D::Constructor::Circle(16, 1, Point(0, 0));
 	//auto vec1 = HMCont2D::Algos::SmoothedDirection(cn1, cn1.point(0), 1, 0.1);
 	//auto an1 = atan2(vec1.y, vec1.x)/M_PI*180;
@@ -472,7 +487,7 @@ void test12(){
 }
 
 void test13(){
-	std::cout<<"Sorting points out"<<std::endl;
+	std::cout<<"13. Sorting points out"<<std::endl;
 	auto cn1 = HMCont2D::Constructor::ContourFromPoints({0,0, 1,0, 1,1, 0,1}, true);
 	vector<Point> p1 = {Point(-0.5, 0.5), Point(0, 0.5), Point(0.5, 0.5), Point(1, 0.5), Point(1, 0)};
 	auto ans1 = HMCont2D::Algos::SortOutPoints(cn1, p1);
@@ -529,7 +544,7 @@ void test13(){
 }
 
 void test14(){
-	std::cout<<"Weighted Partition"<<std::endl;
+	std::cout<<"14. Weighted Partition"<<std::endl;
 	HMCont2D::PCollection pstore;
 	auto line01 = HMCont2D::Constructor::ContourFromPoints({-0.3,0, 1.7,0});
 	std::map<double, double> w1;

@@ -169,12 +169,35 @@ Container<Contour> ClipperPath::HMContainer(ClipperLib::Path& path, const Boundi
 	bool valid = clipper_heal(path, tob, is_closed);
 	if (!valid) return res;
 	
-	//points
-	std::transform(path.begin(), path.end(), std::back_inserter(res.pdata.data),
-		[&tob](const ClipperLib::IntPoint& p){ return std::make_shared<Point>(tob.ToRealGeom(p)); });
-	//edges
-	for (int i=0; i<res.pdata.size()-1; ++i) res.add_value(Edge(res.pdata.point(i), res.pdata.point(i+1)));
-	res.add_value(Edge(res.pdata.data.back().get(), res.pdata.data[0].get()));
+	////points
+	//std::transform(path.begin(), path.end(), std::back_inserter(res.pdata.data),
+	//        [&tob](const ClipperLib::IntPoint& p){ return std::make_shared<Point>(tob.ToRealGeom(p)); });
+	////edges
+	//for (int i=0; i<res.pdata.size()-1; ++i) res.add_value(Edge(res.pdata.point(i), res.pdata.point(i+1)));
+	//res.add_value(Edge(res.pdata.data.back().get(), res.pdata.data[0].get()));
+	
+	if (path.size() < 2) return res;
+	if (is_closed && path.size() < 3) return res;
+
+	res.pdata.add_value(tob.ToRealGeom(*path.begin()));
+	auto it = path.begin() + 1;
+	while (it != path.end()){
+		Point pnext = tob.ToRealGeom(*it++);
+		if (Point::meas(pnext, *res.pdata.data.back()) > 1e3*geps*geps){
+			res.pdata.add_value(pnext);
+			res.add_value(Edge(res.pdata.end()[-2].get(), res.pdata.end()[-1].get()));
+		}
+	}
+
+	if (is_closed){
+		if (Point::meas(*res.pdata.data[0], *res.pdata.data.back()) > 1e3*geps*geps){
+			res.add_value(Edge(res.pdata.data.back().get(), res.pdata.data[0].get()));
+		} else {
+			res.data.back()->pend = res.pdata.data[0].get();
+			res.pdata.data.resize(res.pdata.size()-1);
+		}
+	}
+
 	return res;
 }
 

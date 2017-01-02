@@ -4,10 +4,12 @@
 #include "stdarg.h"
 #include "nan_handler.h"
 #include <stdio.h>
-#include <execinfo.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <unistd.h>
+#ifndef WIN32
+#include <execinfo.h>
+#endif
 
 
 namespace{
@@ -39,10 +41,12 @@ std::ostream& HMDebug::Cout(){
 }
 
 void HMDebug::print_trace(int d){
+#ifndef WIN32
 	void *array[d];
 	size_t size;
 	//get void*'s for all entries on the stack
 	size = backtrace(array, d);
 	backtrace_symbols_fd(array, size, STDOUT_FILENO);
+#endif
 }
 #endif

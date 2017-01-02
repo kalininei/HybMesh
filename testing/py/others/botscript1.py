@@ -1,7 +1,4 @@
-global hm
 from hybmeshpack import hmscript as hm
-import os
-from os.path import isfile, join
 
 cn_bufsize = 0.100
 dm_bufsize = 0.050
@@ -18,12 +15,11 @@ cn = hm.add_unf_rect_grid([0, 0], [1, 1], 3, 3, x1arr, x2arr)
 mr = hm.add_unf_rect_grid(mr_min, mr_max, 13, 13, mr_step, mr_step)
 cn = hm.unite_grids(cn, [(mr, cn_bufsize)], False, False, 0, "4")
 
-dpath = "others/botscript1_adata/dimples"
-files = [join(dpath, f) for f in os.listdir(dpath) if isfile(join(dpath, f))]
-print files
+dpath = "others/botscript1_adata/"
+files = ["000.msh", "001.msh", "002.msh", "003.msh", "004.msh"]
 for f in files:
     print(f)
-    dimple = hm.import_grid_gmsh(f)
+    dimple = hm.import_grid_gmsh(dpath + f)
     # hm.export_grid_vtk(cn, "a.vtk")
     # hm.export_grid_vtk(dimple, "b.vtk")
     # hm.export_grid_hmg(cn, "a.hmg", fmt="bin")

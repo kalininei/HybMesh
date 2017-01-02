@@ -43,6 +43,8 @@ echo "--- intro_filtration"
 %HMCOM% fromdoc/intro_filtration.py
 echo "--- rrj2"
 %HMCOM% others/rrj2.py
+echo "--- botscript1"
+%HMCOM% others/botscript1.py
 
 :final
 pause

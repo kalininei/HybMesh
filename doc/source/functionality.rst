@@ -553,14 +553,16 @@ will be preserved but scaled in order to match fixed segment number condition.
    fig. 2. Contour meshing with fixed segments number, relative refinement.
 
 Sometimes contour contains points which must be kept in a 1D discretization.
-This procedure provides three mechanisms of keeping such points:
+This procedure provides four mechanisms of keeping such points:
+
+* explicit definition of such points;
 
 * definition of :math:`\alpha_0` tells program to keep all input contour vertices
   which provide turns outside of :math:`[180 - \alpha_0, 180 + \alpha_0]` degrees range.      
   So by setting :math:`\alpha_0 = 0` algorithm will keep all original target contour vertices
   except those lying on the straight line
   and :math:`\alpha_0=180` will disable that option. If :math:`\alpha_0 = -1` then
-  all original vertices will be preserved.
+  all original vertices will be preserved;
 
 * with option **keep boundary = True** algorithm will not throw away original vertices
   which provide boundary contour types changes;

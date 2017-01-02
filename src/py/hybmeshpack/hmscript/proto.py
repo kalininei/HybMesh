@@ -535,7 +535,30 @@ def pebi_fill(domain, constr=None, pts=None):
 
 
 def tetrahedral_fill(domain):
-    """ TODO
+    """ Fills 3D domain with tetrahedral mesh
+
+    :param domain: surface or 3d grid identifier (or list of identifiers)
+
+    :returns: 3d grid identifier
+
+    :raises: ValueError, ExecError
+
+    Domain is defined by any number of closed surfaces passed in **domain**
+    argument.
+    Internal nesting procedure
+    will be executed to built target domain out of given surfaces.
+    Boundary surface could possibly contain faces built
+    by any number of vertices.
+    However if boundary face is not a triangle than a n-side pyramid
+    will be built at its site. Hence resulting grid will not be strictly
+    tetrahedral.
+
+    .. note::
+        
+        By now program uses simplified bounding box based nesting
+        algorithm. It could give improper results for complicated
+        surface structures. Be sure that passed surface list nesting equals
+        nesting of surface bounding boxes.
     """
     constr = None
     pts = None

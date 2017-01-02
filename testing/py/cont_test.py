@@ -1,7 +1,8 @@
 from hybmeshpack import hmscript as hm
 from hybmeshpack.hmscript._dbg import check, check_ascii_file, checkdict
 global hm, check
-hm.check_compatibility("0.4.5")
+hm.check_compatibility("0.4.6")
+
 
 def check_cont(cont, nn, ne, scont, btypes):
     info = hm.info_contour(cont)
@@ -145,7 +146,7 @@ c3 = hm.partition_contour(i3, "ref_points", [0.01, [-1, -1],
                                              0.3, [0, 1]])
 check(hm.info_contour(c1)['Nedges'] == 14)
 check(hm.info_contour(c2)['Nedges'] == 17)
-check(hm.info_contour(c3)['Nedges'] == 74)
+check(hm.info_contour(c3)['Nedges'] == 72)
 
 c1 = hm.partition_contour(i4, "ref_points", [1.0, [0, 0],
                                              1.0, [1, 0],
@@ -167,22 +168,26 @@ hm.export_contour_vtk(cont2, "c.vtk")
 check_ascii_file(13813652183113259463, "c.vtk")
 
 ccirc = hm.add_circ_contour([0, 0], 1, 16)
-cont2 = hm.partition_contour(ccirc, "const", 1, nedges=3)
-check(hm.info_contour(cont2)['Nedges'] == 3)
+hm.export_contour_vtk(ccirc, "c2.vtk")
+cont2 = hm.partition_contour(ccirc, "const", 1, nedges=3, angle0=180.)
+hm.export_contour_vtk(cont2, "c3.vtk")
+check(hm.info_contour(cont2)['Nedges'] == 3 and
+      abs(hm.info_contour(cont2)['length'] - 5.137) < 0.01)
 
 cont2 = hm.partition_contour(ccirc, "const", 1, nedges=22)
 check(hm.info_contour(cont2)['Nedges'] == 22)
 
 contcom = hm.unite_contours([ccirc, cont])
 
-cont2 = hm.partition_contour(contcom, "const", 1, nedges=5)
+cont2 = hm.partition_contour(contcom, "const", 1, nedges=5, angle0=180.)
 check(hm.info_contour(cont2)['Nedges'] == 5)
 
 cont2 = hm.partition_contour(contcom, "const", 1, nedges=15)
 check(hm.info_contour(cont2)['Nedges'] == 15)
 
 cont2 = hm.partition_contour(
-    ccirc, "ref_points", [0.1, [0.5, 0.5], 0.3, [-0.5, -0.5]], nedges=3)
+    ccirc, "ref_points", [0.1, [0.5, 0.5], 0.3, [-0.5, -0.5]], nedges=3,
+    angle0=180.)
 hm.export_contour_vtk(cont2, "c.vtk")
 check_ascii_file(3339651189406511573, "c.vtk")
 
@@ -240,7 +245,7 @@ g1 = hm.triangulate_domain(c5, [c1, c2, c3, c4])
 check(hm.skewness(g1, 0.75)['ok'])
 
 c1 = hm.partition_contour(csqr, "const", 0.05)
-g1 = hm.triangulate_domain(c1, pts=[0.3, [0.3, 0.7], 
+g1 = hm.triangulate_domain(c1, pts=[0.3, [0.3, 0.7],
                                     0.3, [0.7, 0.7],
                                     0.005, [0.5, 0.1]])
 # checkdict(hm.info_grid(g1), {'cell_types': {3: 524}})
@@ -251,9 +256,10 @@ c1 = hm.partition_contour(c1, "const", 0.05, crosses=[csqr])
 c2 = hm.partition_contour(csqr, "const", 0.05, crosses=[c1])
 g1 = hm.triangulate_domain(c2, c1, pts=[0.3, [0.5, 0.7]])
 g2 = hm.triangulate_domain(c2, c1, pts=[0.3, [0.5, 0.7]], fill='4')
-checkdict(hm.info_grid(g1), {'cell_types': {3: 496}})
+# checkdict(hm.info_grid(g1), {'cell_types': {3: 484}})
 # checkdict(hm.info_grid(g2), {'cell_types': {3: 4, 4: 225}})
 check(hm.skewness(g2)['ok'])
+check(hm.skewness(g1)['ok'])
 
 c1 = hm.partition_contour(csqr, "const", 0.05)
 c2 = hm.add_circ_contour([0.5, 0.5], 0.3, 120)
@@ -273,5 +279,40 @@ c1 = hm.partition_contour(c1, "const", 0.03)
 res = hm.matched_partition(c, 0.1, 1.0, [c1], [0.5, [-0.65, 0.65]], power=1)
 checkdict(hm.info_contour(res), {'Nedges': 79})
 
+# contour partition
+c = hm.add_rect_contour([0, 0], [1, 1], [1, 2, 3, 4])
+c1 = hm.partition_contour(
+    c, "ref_weights", [0.01, 0, 0.1, 1],
+    angle0=180, keep_bnd=True,
+    start=[1, 1], end=[0, 0])
+hm.export_contour_vtk(c1, "c2.vtk")
+check_ascii_file(16637453307356387439, "c2.vtk")
 
+c1 = hm.partition_contour(
+    c, "ref_weights", [0.01, 0, 0.1, 1],
+    angle0=180, keep_bnd=True,
+    start=[1, 1], end=[1, 0])
+hm.export_contour_vtk(c1, "c2.vtk")
+check_ascii_file(4757620122664042871, "c2.vtk")
 
+c = hm.add_rect_contour([0, 0], [3, 3], [1, 2, 3, 4])
+c1 = hm.partition_contour(
+    c, "ref_lengths", [0.01, 0.5, 0.1, 0.6, 0.1, 2.4, 0.01, 2.5],
+    angle0=180, keep_bnd=True,
+    start=[3, 3], end=[0, 3])
+hm.export_contour_vtk(c1, "c2.vtk")
+check_ascii_file(15116206157781602922, "c2.vtk")
+
+c1 = hm.partition_contour(
+    c, "ref_lengths", [0.01, 0, 0.1, 0.5, 0.1, -0.5],
+    angle0=180, keep_bnd=True,
+    start=[3, 3])
+hm.export_contour_vtk(c1, "c2.vtk")
+check_ascii_file(10115613561436922700, "c2.vtk")
+
+c1 = hm.partition_contour(
+    c, "const", 0.1,
+    angle0=180, keep_bnd=True,
+    start=[3, 0], end=[3, 3])
+hm.export_contour_vtk(c1, "c2.vtk")
+check_ascii_file(10535023046019963480, "c2.vtk")

@@ -70,6 +70,20 @@ struct TGridMSH: public HMCallback::ExecutorBase{
 	HMCB_SET_DURATION(HMCB_DURATION(TGridMSH, SGrid, std::string) + 30, 
 			SGrid, std::string, BFun, PeriodicData);
 	void _run(const SGrid&, std::string, BFun, PeriodicData);
+
+	// ===== GridData versions
+	void _run(const GridData& a, std::string b){ return _run(SGrid(a), b); }
+	void _run(const GridData& a, std::string b, BFun c) { return _run(SGrid(a), b, c); }
+
+	HMCB_SET_DURATION(HMCB_DURATION(TGridMSH, SGrid, std::string) + 30, 
+			GridData, std::string, PeriodicData);
+	void _run(const GridData& a, std::string b, PeriodicData c){ return _run(SGrid(a), b, c); }
+
+
+	HMCB_SET_DURATION(HMCB_DURATION(TGridMSH, SGrid, std::string) + 30, 
+			GridData, std::string, BFun, PeriodicData);
+	void _run(const GridData& a, std::string b, BFun c, PeriodicData d){ return _run(SGrid(a), b, c, d); }
+
 };
 
 //instance of TGridMSH for function-like operator() calls

@@ -8,7 +8,7 @@ namespace HMGrid3D{namespace Constructor{
 
 //returns final grid
 //phi_coords in degrees
-HMGrid3D::SGrid RevolveGrid2D(const GridGeom& g2d,
+HMGrid3D::GridData RevolveGrid2D(const GridGeom& g2d,
 		const vector<double>& phi_coords,
 		Point pstart, Point pend, bool is_trian=true,
 		std::function<int(int)> side_bt = [](int){ return 1; },

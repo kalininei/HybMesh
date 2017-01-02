@@ -57,6 +57,7 @@ vector<int> SortOutPoints(const ContourTree& t1, const vector<Point>& pnt);
 Contour Simplified(const Contour& cont);
 ContourTree Simplified(const ContourTree& t1);
 ExtendedTree Simplified(const ExtendedTree& t1);
+//makes deep copies of input edges (not points)
 ECollection Simplified(const ECollection& ecol, double degree_angle, bool no_break_at_id_change=false);
 
 Container<ECollection> NoCrosses(const ECollection& ecol);

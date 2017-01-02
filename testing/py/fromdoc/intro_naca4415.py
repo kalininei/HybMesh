@@ -116,3 +116,4 @@ def testf():
     hmdbg.check_ascii_file(2556162334104726686, "res3d.msh", "dev")
 
 testf()
+hm.export3d_grid_vtk(res3d, "g1.vtk")

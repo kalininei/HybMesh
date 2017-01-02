@@ -73,31 +73,80 @@ Contour cns::Simplified(const Contour& cont){
 	return HMCont2D::Constructor::ContourFromPoints(p, cont.is_closed());
 }
 
+namespace{
+
+vector<int> break_by_angle(const vector<Point*>& points, int istart, int iend,
+		const vector<double>& angles, double angle0){
+	if (angle0>=180) return {istart, iend};
+	vector<double> aplus(iend-istart+1, 0.);
+	for (int i=istart+1; i<iend; ++i){
+		aplus[i-istart] = (fabs(angles[i]-180.0) + aplus[i-istart-1]);
+	}
+	aplus.back() = aplus.end()[-2];
+	double backangle = aplus.back();
+	if (points[istart] == points[iend]){
+		backangle += fabs(angles[iend]-180);
+	}
+	if (ISEQLOWER(aplus.back(), angle0)) return {istart, iend};
+	int anglestep_n = std::ceil(backangle / angle0);
+	double angle_step = backangle/anglestep_n;
+	vector<int> ret {istart};
+	for (int i=istart+1; i<iend; ++i){
+		int div1 = aplus[i-istart] / angle_step;
+		int div2 = (aplus[i+1-istart] - geps)/ angle_step;
+		if (div2 > div1) ret.push_back(i);
+	}
+	ret.push_back(iend);
+	return ret;
+}
+
+}
+
 ECollection cns::Simplified(const ECollection& ecol, double degree_angle, bool id_nobreak){
-	double maxcos = cos(degree_angle/180.*M_PI);
-	auto domerge = [&maxcos](Point* p0, Point* p1, Point* p2)->bool{
-		double cos = vecDot(*p1-*p0, *p2-*p1) / vecLen(*p1-*p0) / vecLen(*p2-*p1);
-		return cos>=maxcos;
-	};
 	ECollection ret;
+	if (degree_angle < 0) {
+		ECollection::DeepCopy(ecol, ret);
+		return ret;
+	}
+
 	vector<Contour> sc = Assembler::SimpleContours(ecol);
 	for (auto& c: sc){
 		auto op = c.ordered_points();
-		vector<Point*> newp(1, op[0]);
-		Point* p0 = op[0];
-		vector<int> ids(1, c.data[0]->id);
+		vector<double> angles(op.size(), 0);
+		for (int i=1; i<op.size()-1; ++i){
+			angles[i] = Angle(*op[i-1], *op[i], *op[i+1])/M_PI*180;
+		}
+		if (c.is_closed()){
+			angles[0] = angles.back() = Angle(*op.end()[-2], *op[0], *op[1])/M_PI*180;
+		}
+		vector<int> significant_points(1, 0);
+		//1 break at ids and sharp angles
 		for (int i=1; i<op.size()-1; ++i){
 			if ( (id_nobreak && c.value(i-1).id != c.value(i).id) ||
-			     !domerge(p0, op[i], op[i+1]) ){
-				newp.push_back(p0 = op[i]);
-				ids.push_back(c.data[i]->id);
-			}
+			      angles[i] < 180 - degree_angle ||
+			      angles[i] > 180 + degree_angle)
+				significant_points.push_back(i);
 		}
-		newp.push_back(op.back());
-		ret.Unite(Constructor::ContourFromPoints(newp));
-		auto it = ret.data.end() - ids.size();
-		for (int i=0; i<ids.size(); ++i){
-			(*it++)->id = ids[i];
+		significant_points.push_back(op.size()-1);
+		if (significant_points.size() == op.size()){
+			ECollection::DeepCopy(c, ret);
+			continue;
+		}
+		//2 analyse each section between significant points
+		for (int i=0; i<significant_points.size()-1; ++i){
+			int i0 = significant_points[i];
+			int i1 = significant_points[i+1];
+			if (i0+1 == i1){
+				ret.add_value(*c.data[i0]);
+				continue;
+			}
+			vector<int> bba = break_by_angle(op, i0, i1, angles, degree_angle);
+			for (int j=0; j<bba.size()-1; ++j){
+				int j1 = bba[j];
+				int j2 = bba[j+1];
+				ret.add_value(Edge(op[j1], op[j2]));
+				ret.data.back()->id = c.data[j]->id;
+			}
 		}
 	}
 	return ret;
