@@ -1,19 +1,13 @@
-#include "primitives_grid3d.hpp"
+#include "primitives3d.hpp"
 #include "addalgo.hpp"
-#include "surface_grid3d.hpp"
-#include "debug_grid3d.hpp"
+#include "debug3d.hpp"
+#include "contabs3d.hpp"
+#include "surface.hpp"
 
-using namespace HMGrid3D;
-
-double Vertex::measure(const Vertex& a, const Vertex& b){
-	double xd = a.x - b.x;
-	double yd = a.y - b.y;
-	double zd = a.z - b.z;
-	return xd*xd + yd*yd + zd*zd;
-}
+using namespace HM3D;
 
 std::tuple<Vertex*, int, double>
-Vertex::FindClosestVertex(const ShpVector<Vertex>& vec, Vertex v){
+HM3D::FindClosestVertex(const VertexData& vec, Vertex v){
 	std::tuple<Vertex*, int, double> ret;
 	Vertex*& vout = std::get<0>(ret);
 	int& ind = std::get<1>(ret);
@@ -22,7 +16,7 @@ Vertex::FindClosestVertex(const ShpVector<Vertex>& vec, Vertex v){
 	vout = 0; ind = 0; meas = -1;
 	int it=0;
 	for (auto& x: vec){
-		double m = Vertex::measure(v, *x);
+		double m = Vertex::meas(v, *x);
 		if (vout == 0 || m<meas){
 			vout = x.get(); meas = m; ind = it;
 		}
@@ -32,22 +26,13 @@ Vertex::FindClosestVertex(const ShpVector<Vertex>& vec, Vertex v){
 	return ret;
 }
 
-void Vertex::Unscale2D(ShpVector<Vertex>& vec, ScaleBase sc){
-	for(auto v: vec){
-		v->x *= sc.L; v->x += sc.p0.x;
-		v->y *= sc.L; v->y += sc.p0.y;
-		v->z *= sc.L;
-
-	}
-}
-
 // ================= Edge
-ShpVector<Edge> Edge::Connect(const ShpVector<Edge>& data, Vertex app_v){
+EdgeData HM3D::Connect(const EdgeData& data, Vertex app_v){
 	//1. find closest vertex to v
 	ShpVector<Vertex> vall;
 	for (auto d: data) { vall.push_back(d->first()); vall.push_back(d->last()); }
 	vall = aa::no_dublicates(vall);
-	auto fres = Vertex::FindClosestVertex(vall, app_v);
+	auto fres = FindClosestVertex(vall, app_v);
 	const shared_ptr<Vertex> v = vall[std::get<1>(fres)];
 
 	//2. find edge which includes v as start node
@@ -56,7 +41,7 @@ ShpVector<Edge> Edge::Connect(const ShpVector<Edge>& data, Vertex app_v){
 	assert(fnd != data.end());
 
 	//3. assemble vertex_edge connectivity
-	auto vertex_edge = Edge::Connectivity::EndVertexEdge(data);
+	auto vertex_edge = Connectivity::VertexEdge(data);
 	for (int i=0; i<vertex_edge.size(); ++i) vertex_edge[i].v->id = i;
 
 	//4. assembling
@@ -85,30 +70,10 @@ ShpVector<Edge> Edge::Connect(const ShpVector<Edge>& data, Vertex app_v){
 	return ret;
 }
 
-vector<Edge::Connectivity::EndVertexEdgeR>
-Edge::Connectivity::EndVertexEdge(const EdgeData& data){
-	auto ev = AllEndVertices(data);
-	vector<Edge::Connectivity::EndVertexEdgeR> ret(ev.size());
-	for (int i=0; i<ev.size(); ++i){
-		ret[i].v = ev[i];
-		ret[i].v->id = i;
-	}
-	for (int i=0; i<data.size(); ++i){
-		ret[data[i]->first()->id].eind.push_back(i);
-		ret[data[i]->last()->id].eind.push_back(i);
-	}
-	return ret;
-}
-
 double Edge::measure() const{
-	double ret = 0;
-	for (int i = 0; i<(int)vertices.size()-1; ++i){
-		ret += Vertex::measure(*vertices[i], *vertices[i+1]);
-	}
-	return ret;
+	return Vertex::meas(*first(), *last());
 }
 double Edge::length() const{
-	//!!!! this is wrong for multiple vertex edge
 	return sqrt(measure());
 }
 void Edge::reverse(){
@@ -169,47 +134,37 @@ bool Face::change_edge(shared_ptr<Edge> from, shared_ptr<Edge> to){
 }
 
 
-ShpVector<Vertex> Face::allvertices() const{
-	ShpVector<Vertex> ret;
-	for (auto e: edges){
-		ret.insert(ret.end(), e->vertices.begin(), e->vertices.end());
-	}
-	return aa::no_dublicates(ret);
-}
-
-ShpVector<Edge> Face::alledges() const{ return edges; }
-
 void Face::reverse(){
 	std::swap(left, right);
 	std::reverse(edges.begin(), edges.end());
 }
 
 void Face::correct_edge_directions(){
-	assert(n_edges()>1);
+	assert(edges.size()>1);
 	//first edge
 	auto e1 = edges.back();
 	auto e2 = edges[0];
 	if (e2->first() != e1->last() && e2->first() != e1->first()) e2->reverse();
 	//other edges
-	for (auto i=1; i<n_edges(); ++i){
+	for (auto i=1; i<edges.size(); ++i){
 		auto e1 = edges[i-1], e2 = edges[i];
 		if (e2->first() != e1->last()) e2->reverse();
 	}
 }
 bool Face::is_positive_edge(int eindex){
 	int enext = eindex + 1;
-	if (enext == n_edges()) enext = 0;
+	if (enext == edges.size()) enext = 0;
 	if (edges[eindex]->last() == edges[enext]->first()) return true;
 	if (edges[eindex]->last() == edges[enext]->last()) return true;
 	return false;
 }
 std::array<Point3, 3> Face::mean_points() const{
 	//quick procedure
-	assert(n_edges() > 2);
+	assert(edges.size() > 2);
 	auto op = sorted_vertices();
-	if (n_edges() == 3){
+	if (edges.size() == 3){
 		return {*op[0], *op[1], *op[2]};
-	} else if (n_edges() == 4){
+	} else if (edges.size() == 4){
 		return {*op[0], *op[1], (*op[2] + *op[3])/2};
 	} else {
 		for (int i=2; i<op.size(); ++i){
@@ -233,136 +188,27 @@ Vect3 Face::left_normal() const{
 	return ret;
 }
 
-vector<Face::Connectivity::EdgeFaceR>
-Face::Connectivity::EdgeFace(const FaceData& data){
-	auto ae = AllEdges(data);
-	vector<Face::Connectivity::EdgeFaceR> ret(ae.size());
-	for (int i=0; i<ae.size(); ++i){
-		ret[i].e = ae[i];
-		ret[i].e->id = i;
+// ================== Cell
+std::tuple<int, int, int> Cell::n_fev() const{
+	int nf = faces.size();
+	int ne = 0;
+	int nv = 0;
+	for (auto& f: faces)
+	for (auto& e: f->edges){
+		e->id=0;
+		for (auto& v: e->vertices) v->id=0;
 	}
-	for (int i=0; i<data.size(); ++i)
-	for (auto& e: data[i]->edges){
-		ret[e->id].find.push_back(i);
-	}
-	return ret;
-}
-
-vector<Face::Connectivity::EdgeFaceExtendedR>
-Face::Connectivity::EdgeFaceExtended(const FaceData& data){
-	auto ae = AllEdges(data);
-	vector<Face::Connectivity::EdgeFaceExtendedR> ret(ae.size());
-	for (int i=0; i<ae.size(); ++i){
-		ret[i].e = ae[i];
-		ret[i].e->id = i;
-	}
-	for (int i=0; i<data.size(); ++i)
-	for (int j=0; j<data[i]->edges.size(); ++j){
-		auto& r = ret[data[i]->edges[j]->id];
-		r.find.push_back(i);
-		r.locind.push_back(j);
-		r.posdir.push_back(data[i]->is_positive_edge(j));
-	}
-	return ret;
-}
-
-vector<vector<int>>
-Face::Connectivity::FaceFace(const ShpVector<Face>& data){
-	return FaceFace(EdgeFace(data), data.size());
-}
-
-vector<vector<int>>
-Face::Connectivity::FaceFace(const vector<Face::Connectivity::EdgeFaceR>& edge_face, int nfaces){
-	vector<vector<int>> ret(nfaces);
-	for (auto& it: edge_face){
-		for (int i=0; i<it.size(); ++i){
-			int f1 = it.find[i];
-			for (int j=i+1; j<it.size(); ++j){
-				int f2 = it.find[j];
-				ret[f1].push_back(f2);
-				ret[f2].push_back(f1);
-			}
+	for (auto& f: faces)
+	for (auto& e: f->edges) if (e->id == 0){
+		e->id=1;
+		++ne;
+		for (auto& v: e->vertices) if (v->id==0){
+			v->id=1;
+			++nv;
 		}
 	}
-	return ret;
+	return std::make_tuple(nf, ne, nv);
 }
-
-namespace{
-void connect_faces(int fc, const vector<vector<int>>& ff, vector<bool>& used, vector<int>& ret){
-	if (used[fc]) return;
-	used[fc] = true;
-	ret.push_back(fc);
-	for (int sibf: ff[fc]) connect_faces(sibf, ff, used, ret);
-}
-}
-std::vector<ShpVector<Face>> Face::SubDivide(const ShpVector<Face>& fvec){
-	vector<vector<int>> face_face = Face::Connectivity::FaceFace(fvec);
-	vector<bool> used_faces(fvec.size(), false);
-	vector<ShpVector<Face>> ret;
-	while (1){
-		auto fnd = std::find(used_faces.begin(), used_faces.end(), false);
-		if (fnd == used_faces.end()) break;
-		vector<int> fc;
-		connect_faces(fnd-used_faces.begin(), face_face, used_faces, fc);
-		ret.push_back(ShpVector<Face>());
-		ret.back().reserve(fc.size());
-		for (int i: fc) ret.back().push_back(fvec[i]);
-	}
-	return ret;
-}
-void Face::SetBoundaryTypes(const ShpVector<Face>& fvec, std::function<int(Vertex, int)> bfun){
-	for (auto f: fvec) if (f->is_boundary()){
-		Vertex cv;
-		auto av = f->allvertices();
-		for (auto v: av){ cv.x += v->x; cv.y += v->y; cv.z += v->z; }
-		cv.x /= av.size(); cv.y /= av.size(); cv.z /= av.size();
-		f->boundary_type = bfun(cv, f->boundary_type);
-	}
-}
-
-// ================== Cell
-int Cell::n_faces() const{
-	return faces.size();
-}
-
-int Cell::n_edges() const{
-	return alledges().size();
-}
-int Cell::n_vertices() const{
-	return allvertices().size();
-}
-
-std::tuple<int, int, int> Cell::n_fev() const{
-	std::unordered_set<shared_ptr<Vertex>> ord;
-	int e2 = 0;
-	for (auto f: faces){
-		e2 += f->n_edges();
-		for (auto e: f->edges) ord.insert(e->vertices.begin(), e->vertices.end());
-	}
-
-	return std::make_tuple(n_faces(), (int)e2/2, (int)ord.size());
-}
-
-ShpVector<Vertex> Cell::allvertices() const{
-	ShpVector<Vertex> ret;
-	for (auto f: faces){
-		auto dt = f->allvertices();
-		ret.insert(ret.end(), dt.begin(), dt.end());
-	}
-	return aa::no_dublicates(ret);
-}
-
-ShpVector<Face> Cell::allfaces() const{ return faces; }
-
-ShpVector<Edge> Cell::alledges() const{
-	ShpVector<Edge> ret;
-	for (auto c: faces){
-		auto dt = c->edges;
-		ret.insert(ret.end(), dt.begin(), dt.end());
-	}
-	return aa::no_dublicates(ret);
-}
-
 bool Cell::change_face(shared_ptr<Face> from, shared_ptr<Face> to){
 	int ind = std::find(faces.begin(), faces.end(), from) - faces.begin();
 	if (ind == faces.size()) return false;
@@ -423,8 +269,8 @@ bool Cell::change_face(shared_ptr<Face> from, shared_ptr<Face> to){
 double Cell::volume() const{
 	double ret;
 
-	std::vector<bool> reverted(n_faces(), false);
-	for (int i=0; i<n_faces(); ++i)
+	std::vector<bool> reverted(faces.size(), false);
+	for (int i=0; i<faces.size(); ++i)
 	if (faces[i]->left.lock().get() != this) reverted[i] = true;
 	auto facerev = [&](){
 		for (int i=0; i<faces.size(); ++i)
@@ -433,7 +279,7 @@ double Cell::volume() const{
 
 	facerev();
 	try{
-		ret = HMGrid3D::Surface::Volume(faces);
+		ret = HM3D::Surface::Volume(faces);
 	} catch (...){
 		facerev();
 		throw;
@@ -443,22 +289,22 @@ double Cell::volume() const{
 	return ret;
 }
 
-vector<double> Cell::Volumes(const CellData& cd){
+vector<double> HM3D::Volumes(const CellData& cd){
 	vector<double> ret(cd.size());
 	for (int i=0; i<cd.size(); ++i) ret[i] = cd[i]->volume();
 	return ret;
 }
-double Cell::SumVolumes(const CellData& cd){
+double HM3D::SumVolumes(const CellData& cd){
 	double ret = 0;
 	for (auto x: Volumes(cd)) ret += x;
 	return ret;
 }
 
 void GridData::enumerate_all() const{
-	enumerate_ids_pvec(vvert);
-	enumerate_ids_pvec(vedges);
-	enumerate_ids_pvec(vfaces);
-	enumerate_ids_pvec(vcells);
+	aa::enumerate_ids_pvec(vvert);
+	aa::enumerate_ids_pvec(vedges);
+	aa::enumerate_ids_pvec(vfaces);
+	aa::enumerate_ids_pvec(vcells);
 }
 
 namespace {
@@ -474,17 +320,17 @@ void shared_vec_deepcopy(const vector<shared_ptr<T>>& from, vector<shared_ptr<T>
 }
 
 //deep copy procedures
-void HMGrid3D::DeepCopy(const VertexData& from, VertexData& to){
+void HM3D::DeepCopy(const VertexData& from, VertexData& to){
 	shared_vec_deepcopy(from, to);
 }
-void HMGrid3D::DeepCopy(const EdgeData& from, EdgeData& to, int level){
+void HM3D::DeepCopy(const EdgeData& from, EdgeData& to, int level){
 	shared_vec_deepcopy(from, to);
 	if (level == 1){
 		VertexData vorig = AllVertices(from);
 		VertexData vnew;
 		DeepCopy(vorig, vnew);
-		enumerate_ids_pvec(vorig);
-		enumerate_ids_pvec(vnew);
+		aa::enumerate_ids_pvec(vorig);
+		aa::enumerate_ids_pvec(vnew);
 		auto eit = to.end() - from.size();
 		while (eit != to.end()){
 			for (auto& v: (*eit++)->vertices){
@@ -493,14 +339,14 @@ void HMGrid3D::DeepCopy(const EdgeData& from, EdgeData& to, int level){
 		}
 	}
 }
-void HMGrid3D::DeepCopy(const FaceData& from, FaceData& to, int level){
+void HM3D::DeepCopy(const FaceData& from, FaceData& to, int level){
 	shared_vec_deepcopy(from, to);
 	if (level > 0){
 		EdgeData eorig = AllEdges(from);
 		EdgeData enew;
 		DeepCopy(eorig, enew, level - 1);
-		enumerate_ids_pvec(eorig);
-		enumerate_ids_pvec(enew);
+		aa::enumerate_ids_pvec(eorig);
+		aa::enumerate_ids_pvec(enew);
 		auto fit = to.end() - from.size();
 		while (fit != to.end()){
 			for (auto& e: (*fit++)->edges){
@@ -509,14 +355,14 @@ void HMGrid3D::DeepCopy(const FaceData& from, FaceData& to, int level){
 		}
 	}
 }
-void HMGrid3D::DeepCopy(const CellData& from, CellData& to, int level){
+void HM3D::DeepCopy(const CellData& from, CellData& to, int level){
 	shared_vec_deepcopy(from, to);
 	if (level > 0){
 		FaceData forig = AllFaces(from);
 		FaceData fnew;
 		DeepCopy(forig, fnew, level - 1);
-		enumerate_ids_pvec(forig);
-		enumerate_ids_pvec(fnew);
+		aa::enumerate_ids_pvec(forig);
+		aa::enumerate_ids_pvec(fnew);
 		auto cit = to.end() - from.size();
 		int k = 0;
 		while (cit != to.end()){
@@ -530,8 +376,7 @@ void HMGrid3D::DeepCopy(const CellData& from, CellData& to, int level){
 		}
 	}
 }
-//extract procedures
-VertexData HMGrid3D::AllVertices(const EdgeData& from){
+VertexData HM3D::AllVertices(const EdgeData& from){
 	for (auto& e: from)
 	for (auto& v: e->vertices) v->id = 0;
 	VertexData ret;
@@ -542,25 +387,7 @@ VertexData HMGrid3D::AllVertices(const EdgeData& from){
 	}
 	return ret;
 }
-VertexData HMGrid3D::AllEndVertices(const EdgeData& from){
-	for (auto& e: from){
-		e->first()->id = 0;
-		e->last()->id = 0;
-	}
-	VertexData ret;
-	for (auto& e: from){
-		if (e->first()->id == 0){
-			ret.push_back(e->first());
-			e->first()->id = 1;
-		}
-		if (e->last()->id == 0){
-			ret.push_back(e->last());
-			e->last()->id = 1;
-		}
-	}
-	return ret;
-}
-EdgeData HMGrid3D::AllEdges(const FaceData& from){
+EdgeData HM3D::AllEdges(const FaceData& from){
 	for (auto& f: from)
 	for (auto& e: f->edges) e->id = 0;
 	EdgeData ret;
@@ -571,7 +398,7 @@ EdgeData HMGrid3D::AllEdges(const FaceData& from){
 	}
 	return ret;
 }
-FaceData HMGrid3D::AllFaces(const CellData& from){
+FaceData HM3D::AllFaces(const CellData& from){
 	for (auto& c: from)
 	for (auto& f: c->faces) f->id = 0;
 	FaceData ret;
@@ -582,27 +409,21 @@ FaceData HMGrid3D::AllFaces(const CellData& from){
 	}
 	return ret;
 }
-VertexData HMGrid3D::AllVertices(const FaceData& from){
+VertexData HM3D::AllVertices(const FaceData& from){
 	return AllVertices(AllEdges(from));
 }
-VertexData HMGrid3D::AllEndVertices(const FaceData& from){
-	return AllEndVertices(AllEdges(from));
-}
-VertexData HMGrid3D::AllVertices(const CellData& from){
+VertexData HM3D::AllVertices(const CellData& from){
 	return AllVertices(AllEdges(AllFaces(from)));
 }
-VertexData HMGrid3D::AllEndVertices(const CellData& from){
-	return AllEndVertices(AllEdges(AllFaces(from)));
-}
-EdgeData HMGrid3D::AllEdges(const CellData& from){
+EdgeData HM3D::AllEdges(const CellData& from){
 	return AllEdges(AllFaces(from));
 }
-std::tuple<VertexData> HMGrid3D::AllPrimitives(const EdgeData& from){
+std::tuple<VertexData> HM3D::AllPrimitives(const EdgeData& from){
 	std::tuple<VertexData> ret;
 	std::get<0>(ret) = AllVertices(from);
 	return ret;
 }
-std::tuple<VertexData, EdgeData> HMGrid3D::AllPrimitives(const FaceData& from){
+std::tuple<VertexData, EdgeData> HM3D::AllPrimitives(const FaceData& from){
 	std::tuple<VertexData, EdgeData> ret;
 	for (auto& f: from)
 	for (auto& e: f->edges){
@@ -620,7 +441,7 @@ std::tuple<VertexData, EdgeData> HMGrid3D::AllPrimitives(const FaceData& from){
 	}
 	return ret;
 }
-std::tuple<VertexData, EdgeData, FaceData> HMGrid3D::AllPrimitives(const CellData& from){
+std::tuple<VertexData, EdgeData, FaceData> HM3D::AllPrimitives(const CellData& from){
 	std::tuple<VertexData, EdgeData, FaceData> ret;
 	for (auto& c: from)
 	for (auto& f: c->faces){
@@ -646,11 +467,14 @@ std::tuple<VertexData, EdgeData, FaceData> HMGrid3D::AllPrimitives(const CellDat
 	return ret;
 }
 
-void HMGrid3D::DeepCopy(const GridData& from, GridData& to){
+void HM3D::DeepCopy(const GridData& from, GridData& to, int level){
 	to.clear();
-	DeepCopy(from.vvert, to.vvert);
-	DeepCopy(from.vedges, to.vedges, 0);
-	DeepCopy(from.vfaces, to.vfaces, 0);
+	if (level>=3) DeepCopy(from.vvert, to.vvert);
+	else to.vvert = from.vvert;
+	if (level>=2) DeepCopy(from.vedges, to.vedges, 0);
+	else to.vedges = from.vedges;
+	if (level>=1) DeepCopy(from.vfaces, to.vfaces, 0);
+	else to.vfaces= from.vfaces;
 	DeepCopy(from.vcells, to.vcells, 0);
 	from.enumerate_all();
 
@@ -665,5 +489,12 @@ void HMGrid3D::DeepCopy(const GridData& from, GridData& to){
 
 	for (auto& c: to.vcells)
 	for (auto& f: c->faces) f = to.vfaces[f->id];
+}
 
+void HM3D::Unscale2D(VertexData& vd, const ScaleBase& sc){
+	for (auto& v: vd){
+		v->x = (v->x * sc.L) + sc.p0.x;
+		v->y = (v->y * sc.L) + sc.p0.y;
+		v->z = (v->z * sc.L);
+	}
 }

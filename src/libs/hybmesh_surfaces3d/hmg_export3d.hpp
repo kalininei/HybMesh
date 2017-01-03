@@ -1,12 +1,12 @@
 #ifndef HMG_EXPORT_GRID3D_HPP
 #define HMG_EXPORT_GRID3D_HPP
-#include "serialize_grid3d.hpp"
+#include "serialize3d.hpp"
 #include "hmxmlreader.hpp"
 
-namespace HMGrid3D{ namespace Export{
+namespace HM3D{ namespace Export{
 
 struct GridWriter{
-	GridWriter(const SGrid& g,
+	GridWriter(const Ser::Grid& g,
 		HMXML::ReaderA* writer,
 		HMXML::Reader* subnode,
 		std::string gridname, std::string tp);
@@ -33,7 +33,7 @@ private:
 			bool binary, HMXML::ReaderA& writer);
 
 	HMXML::ReaderA* pwriter;
-	const SGrid* grid;
+	const Ser::Grid* grid;
 	HMXML::Reader gwriter, vwriter, ewriter, fwriter, cwriter;
 	std::string __tp;
 };
@@ -76,7 +76,7 @@ void GridWriter::AddFaceData(std::string fieldname, const A& data, bool binary){
 
 
 struct SurfaceWriter{
-	SurfaceWriter(const SSurface& s,
+	SurfaceWriter(const Ser::Surface& s,
 		HMXML::ReaderA* writer,
 		HMXML::Reader* subnode,
 		std::string surfname, std::string tp);
@@ -98,7 +98,7 @@ private:
 			bool binary, HMXML::ReaderA& writer);
 
 	HMXML::ReaderA* pwriter;
-	const SSurface* surf;
+	const Ser::Surface* surf;
 	HMXML::Reader swriter, vwriter, ewriter, fwriter;
 	std::string __tp;
 };

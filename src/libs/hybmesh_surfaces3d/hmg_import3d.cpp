@@ -1,11 +1,11 @@
-#include "hmg_import_grid3d.hpp"
-using namespace HMGrid3D;
+#include "hmg_import3d.hpp"
+using namespace HM3D;
 using namespace HMXML;
 
 HMCallback::FunctionWithCallback<Import::TReadHMG> Import::ReadHMG;
 
 std::unique_ptr<Import::GridReader> Import::TReadHMG::_run(HMXML::ReaderA* reader, HMXML::Reader* subnode){
-	callback->silent_step_after(30, "Reading data", 4);
+	callback->silent_step_after(50, "Reading data", 4);
 	std::unique_ptr<Import::GridReader> ret(new GridReader(reader, subnode));
 	//read dimensions
 	ret->pgreader->value_int("N_VERTICES", ret->Nv, true);
@@ -34,25 +34,18 @@ std::unique_ptr<Import::GridReader> Import::TReadHMG::_run(HMXML::ReaderA* reade
 	vector<int> facecell = ret->preader->read_num_content(tmp, ret->Nf*2).vec<int>();
 	callback->subprocess_fin();
 
-	callback->step_after(30, "Building serial grid");
 	//constructing serialized grid
-	ret->result.reset(new SGrid());
-	std::swap(vert, ret->result->vert);
-	std::swap(edgevert, ret->result->edges);
-	std::swap(faceedge, ret->result->face_edge);
-	std::swap(facecell, ret->result->face_cell);
+	ret->result.reset(new Ser::Grid());
 	//boundary conditions
+	vector<int> btypes(ret->Nf, 0);
 	try{
-		ret->result->btypes = ret->read_faces_field<int>("__boundary_types__");
+		btypes = ret->read_faces_field<int>("__boundary_types__");
 	} catch (const XmlElementNotFound&){
-		ret->result->btypes.resize(ret->Nf, 0);
 	}
-	//additional serial information
-	ret->result->supplement();
 
 	//unserial
-	callback->step_after(40, "Assembling grid");
-	ret->result->actualize_data();
+	callback->step_after(50, "Assembling grid");
+	ret->result->fill_from_serial(vert, edgevert, faceedge, facecell, btypes);
 	
 	return ret;
 }
@@ -75,7 +68,7 @@ Import::GridReader::TFieldInfo::TFieldInfo(HMXML::Reader& field){
 HMCallback::FunctionWithCallback<Import::TReadHMC> Import::ReadHMC;
 
 std::unique_ptr<Import::SurfaceReader> Import::TReadHMC::_run(HMXML::ReaderA* reader, HMXML::Reader* subnode){
-	callback->silent_step_after(30, "Reading data", 3);
+	callback->silent_step_after(50, "Reading data", 3);
 	std::unique_ptr<Import::SurfaceReader> ret(new SurfaceReader(reader, subnode));
 	//read dimensions
 	ret->psreader->value_int("N_VERTICES", ret->Nv, true);
@@ -97,25 +90,18 @@ std::unique_ptr<Import::SurfaceReader> Import::TReadHMC::_run(HMXML::ReaderA* re
 	tmp = ret->psreader->find_by_path("FACES/EDGE_CONNECT", true);
 	vector<vector<int>> faceedge = ret->preader->read_num_content(tmp, ret->Nf).vecvec<int>();
 
-	callback->step_after(30, "Building serial surface");
 	//constructing serialized grid
-	ret->result.reset(new SSurface());
-	std::swap(vert, ret->result->vert);
-	std::swap(edgevert, ret->result->edges);
-	std::swap(faceedge, ret->result->face_edge);
+	ret->result.reset(new Ser::Surface());
+	vector<int> btypes(ret->Nf, 0);
 	//boundary conditions
 	try{
-		ret->result->btypes = ret->read_faces_field<int>("__boundary_types__");
+		btypes = ret->read_faces_field<int>("__boundary_types__");
 	} catch (const XmlElementNotFound&){
-		ret->result->btypes.resize(ret->Nf, 0);
 	}
-	//additional serial information
-	ret->result->supplement();
 
-	//unserial
-	callback->step_after(40, "Assembling surface");
-	ret->result->actualize_data();
-	
+	callback->step_after(50, "Assembling surface");
+	ret->result->fill_from_serial(vert, edgevert, faceedge, btypes);
+
 	return ret;
 }
 

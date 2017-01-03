@@ -2,9 +2,11 @@
 #define FLUENT_EXPORT_GRID3D_HPP
 #include "hmproject.h"
 #include "hmcallback.hpp"
-#include "serialize_grid3d.hpp"
+#include "serialize3d.hpp"
+#include "treverter3d.hpp"
 
-namespace HMGrid3D{namespace Export{
+namespace HM3D{namespace Export{
+
 typedef std::function<std::string(int)> BFun;
 
 inline std::string def_bfun(int i){
@@ -18,7 +20,7 @@ struct PeriodicDataEntry{
 	Vertex v, v_shadow;
 	bool reversed;
 
-	void assemble(HMGrid3D::SGrid& g, std::map<Face*, Face*>& outmap);
+	void assemble(GridData& g, std::map<Face*, Face*>& outmap);
 };
 struct PeriodicData{
 	//data
@@ -51,38 +53,38 @@ struct PeriodicData{
 	int size() const { return data.size(); }
 
 	//assemble procedure
-	HMGrid3D::SGrid assemble(const HMGrid3D::SGrid& g,
+	GridData assemble(const HM3D::GridData& g,
 			std::map<Face*, Face*>& outmap);
 };
 
 struct TGridMSH: public HMCallback::ExecutorBase{
-	HMCB_SET_PROCNAME("Exporting 3d grid to fluent *.msh");
+	HMCB_SET_PROCNAME("Exporting 3d grid to fluent file");
 	HMCB_SET_DEFAULT_DURATION(100);
 
-	void _run(const SGrid&, std::string);
-	void _run(const SGrid&, std::string, BFun);
+	void _run(const Ser::Grid&, std::string);
+	void _run(const Ser::Grid&, std::string, BFun);
 
-	HMCB_SET_DURATION(HMCB_DURATION(TGridMSH, SGrid, std::string) + 30, 
-			SGrid, std::string, PeriodicData);
-	void _run(const SGrid&, std::string, PeriodicData);
+	HMCB_SET_DURATION(HMCB_DURATION(TGridMSH, Ser::Grid, std::string) + 30, 
+			Ser::Grid, std::string, PeriodicData);
+	void _run(const Ser::Grid&, std::string, PeriodicData);
 
 
-	HMCB_SET_DURATION(HMCB_DURATION(TGridMSH, SGrid, std::string) + 30, 
-			SGrid, std::string, BFun, PeriodicData);
-	void _run(const SGrid&, std::string, BFun, PeriodicData);
+	HMCB_SET_DURATION(HMCB_DURATION(TGridMSH, Ser::Grid, std::string) + 30, 
+			const Ser::Grid&, std::string, BFun, PeriodicData);
+	void _run(const Ser::Grid&, std::string, BFun, PeriodicData);
 
 	// ===== GridData versions
-	void _run(const GridData& a, std::string b){ return _run(SGrid(a), b); }
-	void _run(const GridData& a, std::string b, BFun c) { return _run(SGrid(a), b, c); }
+	void _run(const GridData& a, std::string b){ return _run(Ser::Grid(a), b); }
+	void _run(const GridData& a, std::string b, BFun c) { return _run(Ser::Grid(a), b, c); }
 
-	HMCB_SET_DURATION(HMCB_DURATION(TGridMSH, SGrid, std::string) + 30, 
+	HMCB_SET_DURATION(HMCB_DURATION(TGridMSH, Ser::Grid, std::string) + 30, 
 			GridData, std::string, PeriodicData);
-	void _run(const GridData& a, std::string b, PeriodicData c){ return _run(SGrid(a), b, c); }
+	void _run(const GridData& a, std::string b, PeriodicData c){ return _run(Ser::Grid(a), b, c); }
 
 
-	HMCB_SET_DURATION(HMCB_DURATION(TGridMSH, SGrid, std::string) + 30, 
+	HMCB_SET_DURATION(HMCB_DURATION(TGridMSH, Ser::Grid, std::string) + 30, 
 			GridData, std::string, BFun, PeriodicData);
-	void _run(const GridData& a, std::string b, BFun c, PeriodicData d){ return _run(SGrid(a), b, c, d); }
+	void _run(const GridData& a, std::string b, BFun c, PeriodicData d){ return _run(Ser::Grid(a), b, c, d); }
 
 };
 

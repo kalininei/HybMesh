@@ -1,10 +1,11 @@
 #ifndef HMG_IMPORT_GRID3D_HPP
 #define HMG_IMPORT_GRID3D_HPP
-#include "serialize_grid3d.hpp"
+#include "serialize3d.hpp"
 #include "hmxmlreader.hpp"
 #include "hmcallback.hpp"
 
-namespace HMGrid3D{ namespace Import{
+namespace HM3D{ namespace Import{
+
 struct GridReader;
 struct TReadHMG;
 struct SurfaceReader;
@@ -14,7 +15,7 @@ struct GridReader{
 	GridReader(HMXML::ReaderA* reader, HMXML::Reader* subnode):
 		preader(reader), pgreader(subnode){}
 	//holds data
-	std::unique_ptr<HMGrid3D::SGrid> result;
+	std::unique_ptr<HM3D::Ser::Grid> result;
 
 	struct TFieldInfo{
 		TFieldInfo(HMXML::Reader& field);
@@ -125,7 +126,7 @@ struct SurfaceReader{
 	SurfaceReader(HMXML::ReaderA* reader, HMXML::Reader* subnode):
 		preader(reader), psreader(subnode){}
 	//holds data
-	std::unique_ptr<HMGrid3D::SSurface> result;
+	std::unique_ptr<HM3D::Ser::Surface> result;
 
 	struct TFieldInfo{
 		TFieldInfo(HMXML::Reader& field);

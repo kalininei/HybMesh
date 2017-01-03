@@ -1,14 +1,13 @@
-#include "fluent_export_grid3d.hpp"
+#include "fluent_export3d.hpp"
 #include <unordered_map>
 #include <fstream>
 #include <sstream>
-#include "surface_grid3d.hpp"
-#include "debug_grid3d.hpp"
-#include "serialize_grid3d.hpp"
-#include "construct_grid3d.hpp"
+#include "surface.hpp"
+#include "debug3d.hpp"
+#include "serialize3d.hpp"
 
-using namespace HMGrid3D;
-namespace hme = HMGrid3D::Export;
+using namespace HM3D;
+namespace hme = HM3D::Export;
 
 HMCallback::FunctionWithCallback<hme::TGridMSH> hme::GridMSH;
 
@@ -20,18 +19,18 @@ std::string to_hex(int a){
 	return os.str();
 }
 
-char msh_face_type(HMGrid3D::Face& f){
-	int ne = f.n_edges();
+char msh_face_type(HM3D::Face& f){
+	int ne = f.edges.size();
 	if (ne == 3) return '3';
 	if (ne == 4) return '4';
 	return '5';
 }
 
-char msh_cell_type(HMGrid3D::Cell& c){
-	auto dim = c.n_fev();
-	int nf = std::get<0>(dim);
-	int ne = std::get<1>(dim);
-	int nv = std::get<2>(dim);
+char msh_cell_type(HM3D::Cell& c){
+	auto nfev = c.n_fev();
+	int nf = std::get<0>(nfev);
+	int ne = std::get<1>(nfev);
+	int nv = std::get<2>(nfev);
 	//tetrahedral
 	if (nf == 4 && ne == 6 && nv == 4)
 		return '2';
@@ -48,7 +47,7 @@ char msh_cell_type(HMGrid3D::Cell& c){
 	return '7';
 }
 
-std::map<int, ShpVector<Face>> faces_by_btype(const HMGrid3D::SGrid& g){
+std::map<int, ShpVector<Face>> faces_by_btype(const GridData& g){
 	std::map<int, ShpVector<Face>> ret;
 	//interior zone has always be there
 	ret.emplace(std::numeric_limits<int>::min(), ShpVector<Face>());
@@ -59,7 +58,7 @@ std::map<int, ShpVector<Face>> faces_by_btype(const HMGrid3D::SGrid& g){
 	}
 	return ret;
 }
-std::vector<std::pair<int, int>> left_right_cells(const ShpVector<Face>& data, const ShpVector<HMGrid3D::Cell>& cells){
+std::vector<std::pair<int, int>> left_right_cells(const ShpVector<Face>& data, const ShpVector<HM3D::Cell>& cells){
 	std::vector<std::pair<int, int>> ret; ret.reserve(data.size());
 	auto _indexer = aa::ptr_container_indexer(cells);
 	_indexer.convert();
@@ -157,10 +156,10 @@ void zones_names(const PeriodicMap& periodic,
 }
 
 //save to fluent main function
-void gridmsh(HMCallback::Caller2& callback, const HMGrid3D::SGrid& g, std::string fn,
+void gridmsh(HMCallback::Caller2& callback, const GridData& g, std::string fn,
 		hme::BFun btype_name,
 		std::map<Face*, Face*> pfaces=std::map<Face*, Face*>()){
-	if (g.n_cells == 0) throw std::runtime_error("Exporting blank grid");
+	if (g.vcells.size() == 0) throw std::runtime_error("Exporting blank grid");
 	//Zones:
 	//1    - verticies default
 	//2    - fluid for cells
@@ -226,8 +225,8 @@ void gridmsh(HMCallback::Caller2& callback, const HMGrid3D::SGrid& g, std::strin
 
 	//Cells: Zone 2
 	callback.subprocess_step_after(10);
-	fs<<"(12 (0 1 "<<to_hex(g.n_cells)<<" 0))\n";
-	fs<<"(12 (2 1 "<<to_hex(g.n_cells)<<" 1 "<<cell_common_type<<")";
+	fs<<"(12 (0 1 "<<to_hex(g.vcells.size())<<" 0))\n";
+	fs<<"(12 (2 1 "<<to_hex(g.vcells.size())<<" 1 "<<cell_common_type<<")";
 	if (cell_common_type != '0') fs<<")\n";
 	else {
 		fs<<"(\n";
@@ -282,26 +281,25 @@ void gridmsh(HMCallback::Caller2& callback, const HMGrid3D::SGrid& g, std::strin
 		fs<<"(45 ("<<zonetype<<" "<<facezones_bname[zonetype]<<" "<<btype_name(it->first)<<" 1)())\n";
 		++zonetype;
 	}
-	//fs<<"(45 (2 fluid fluid)())\n";
-	//fs<<"(45 (3 interior default-interior)())\n";
-	//zonetype = 4;
-	//for (auto it = std::next(facezones.begin()); it!=facezones.end(); ++it){
-		//fs<<"(45 ("<<zonetype<<" "<<facezones_bname[zonetype]<<" "<<btype_name(it->first)<<")())\n";
-		//++zonetype;
-	//}
 }
 
 }
 
-void hme::PeriodicDataEntry::assemble(HMGrid3D::SGrid& g, std::map<Face*, Face*>& outmap){
-	HMGrid3D::Surface periodic_surf = HMGrid3D::Surface::FromBoundaryType(g, bt, 1);
-	int dir = (reversed) ? -1 : 1;
-	HMGrid3D::Surface shadow_surf = HMGrid3D::Surface::FromBoundaryType(g, bt_shadow, dir);
+void hme::PeriodicDataEntry::assemble(GridData& g, std::map<Face*, Face*>& outmap){
+	auto surfs = HM3D::Surface::GridSurfaceBType(g);
+	HM3D::FaceData periodic_surf = surfs[bt];
+	HM3D::FaceData shadow_surf = surfs[bt_shadow];
+	
+	bool dir2 = (reversed) ? true : false;
+	Surface::RevertGridSurface r1(periodic_surf, false);
+	Surface::RevertGridSurface r2(shadow_surf, dir2);
+	r1.make_permanent();
+	r2.make_permanent();
 
 	//this (along with not null dir) guaranties that all bondary edges
 	//would have same direction that is needed to call ExtractBoundary
-	for (auto f: periodic_surf.allfaces()) f->correct_edge_directions();
-	for (auto f: shadow_surf.allfaces()) f->correct_edge_directions();
+	for (auto f: periodic_surf) f->correct_edge_directions();
+	for (auto f: shadow_surf) f->correct_edge_directions();
 
 	//boundary
 	ShpVector<Edge> bnd1 = Surface::ExtractBoundary(periodic_surf, v);
@@ -311,18 +309,18 @@ void hme::PeriodicDataEntry::assemble(HMGrid3D::SGrid& g, std::map<Face*, Face*>
 		throw std::runtime_error("Periodic merging failed");
 
 	//subsurface bounded by bnd1, bnd2 (if initial surface are multiply connected)
-	periodic_surf = HMGrid3D::Surface::SubSurface(periodic_surf, bnd1[0]->vertices[0].get());
-	shadow_surf = HMGrid3D::Surface::SubSurface(shadow_surf, bnd2[0]->vertices[0].get());
+	periodic_surf = HM3D::Surface::SubSurface(periodic_surf, bnd1[0]->vertices[0].get());
+	shadow_surf = HM3D::Surface::SubSurface(shadow_surf, bnd2[0]->vertices[0].get());
 
 	//Rearranging to match topology
-	HMGrid3D::Surface::FaceRearrange(periodic_surf, bnd1[0].get());
-	HMGrid3D::Surface::FaceRearrange(shadow_surf, bnd2[0].get());
+	HM3D::Surface::FaceRearrange(periodic_surf, bnd1[0].get());
+	HM3D::Surface::FaceRearrange(shadow_surf, bnd2[0].get());
 
 	//check topology: if ok then map surface else throw
-	if (HMGrid3D::Surface::MatchTopology(periodic_surf, shadow_surf)){
-		auto it1 = periodic_surf.faces.begin();
-		auto it2 = shadow_surf.faces.begin();
-		while (it1 != periodic_surf.faces.end()){
+	if (HM3D::Surface::MatchTopology(periodic_surf, shadow_surf)){
+		auto it1 = periodic_surf.begin();
+		auto it2 = shadow_surf.begin();
+		while (it1 != periodic_surf.end()){
 			outmap[(*it1++).get()] = (*it2++).get();
 		}
 	} else {
@@ -330,33 +328,32 @@ void hme::PeriodicDataEntry::assemble(HMGrid3D::SGrid& g, std::map<Face*, Face*>
 	}
 }
 
-HMGrid3D::SGrid hme::PeriodicData::assemble(const HMGrid3D::SGrid& g,
+HM3D::GridData hme::PeriodicData::assemble(const GridData& g,
 		std::map<Face*, Face*>& outmap){
 	if (size() == 0) return g;
-	HMGrid3D::SGrid ret = HMGrid3D::Constructor::Copy::ShallowVertices(g);
+	HM3D::GridData ret;
+	HM3D::DeepCopy(g, ret, 2);
 	for (auto& d: data) d.assemble(ret, outmap);
 	return ret;
 }
 
-void hme::TGridMSH::_run(const SGrid& g, std::string fn,
+void hme::TGridMSH::_run(const Ser::Grid& g, std::string fn,
 		BFun btype_name, PeriodicData periodic){
 	callback->step_after(30, "Periodic merging");
 	std::map<Face*, Face*> periodic_cells;
-	HMGrid3D::SGrid gp = periodic.assemble(g, periodic_cells);
+	GridData gp = periodic.assemble(g.grid, periodic_cells);
 	return gridmsh(*callback, gp, fn, btype_name, periodic_cells);
 }
 
-void hme::TGridMSH::_run(const HMGrid3D::SGrid& g, std::string fn,
+void hme::TGridMSH::_run(const HM3D::Ser::Grid& g, std::string fn,
 		PeriodicData periodic){
 	return _run(g, fn, def_bfun, periodic);
 }
 
-void hme::TGridMSH::_run(const HMGrid3D::SGrid& g, std::string fn, BFun btype_name){
-	return gridmsh(*callback, g, fn, btype_name);
+void hme::TGridMSH::_run(const HM3D::Ser::Grid& g, std::string fn, BFun btype_name){
+	return gridmsh(*callback, g.grid, fn, btype_name);
 }
 
-void hme::TGridMSH::_run(const HMGrid3D::SGrid& g, std::string fn){
+void hme::TGridMSH::_run(const HM3D::Ser::Grid& g, std::string fn){
 	return _run(g, fn, def_bfun);
 }
-
-

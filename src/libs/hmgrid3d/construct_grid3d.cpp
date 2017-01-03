@@ -1,12 +1,12 @@
 #include "construct_grid3d.hpp"
 #include "debug_grid2d.h"
-#include "debug_grid3d.hpp"
-using namespace HMGrid3D;
+#include "debug3d.hpp"
+using namespace HM3D;
 
 namespace cns = Constructor;
 
-HMGrid3D::SGrid cns::Cuboid(HMGrid3D::Vertex leftp, double lx, double ly, double lz, int nx, int ny, int nz){
-	HMGrid3D::SGrid ret;
+GridData cns::Cuboid(Vertex leftp, double lx, double ly, double lz, int nx, int ny, int nz){
+	GridData ret;
 	//Vertices
 	VertexData vert; vert.reserve(nx*ny*nz);
 	double hx = lx/(nx), hy = ly/(ny), hz = lz/(nz);
@@ -107,23 +107,22 @@ HMGrid3D::SGrid cns::Cuboid(HMGrid3D::Vertex leftp, double lx, double ly, double
 	for (auto f: yfaces) setbt(f, 3, 4);
 	for (auto f: zfaces) setbt(f, 5, 6);
 
-	ret.actualize_serial_data();
 	return ret;
 }
 
-HMGrid3D::SGrid cns::SweepGrid2D(const GridGeom& g, const vector<double>& zcoords){
+GridData cns::SweepGrid2D(const GridGeom& g, const vector<double>& zcoords){
 	return SweepGrid2D(g, zcoords,
 			[](int){ return 1; },
 			[](int){ return 2; },
 			[](int){ return 3; });
 }
 
-HMGrid3D::SGrid cns::SweepGrid2D(const GridGeom& g, const vector<double>& zcoords,
+GridData cns::SweepGrid2D(const GridGeom& g, const vector<double>& zcoords,
 		std::function<int(int)> bottom_bt,
 		std::function<int(int)> top_bt,
 		std::function<int(int)> side_bt){
 
-	HMGrid3D::SGrid ret;
+	GridData ret;
 
 	//Needed Data
 	auto e2d = g.get_edges();
@@ -248,17 +247,5 @@ HMGrid3D::SGrid cns::SweepGrid2D(const GridGeom& g, const vector<double>& zcoord
 			}
 		}
 	}
-	ret.actualize_serial_data();
-	return ret;
-}
-
-HMGrid3D::SGrid cns::Copy::ShallowVertices(const SGrid& g){
-	HMGrid3D::SGrid ret(g);
-	ret.actualize_data();
-	enumerate_ids_pvec(ret.vvert);
-	for (auto& e: ret.vedges){
-		for (auto& n: e->vertices) n = g.vvert[n->id];
-	}
-	ret.vvert = g.vvert;
 	return ret;
 }

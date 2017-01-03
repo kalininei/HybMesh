@@ -1,20 +1,20 @@
 #include <fstream>
-#include "tecplot_export_grid3d.hpp"
-#include "surface_grid3d.hpp"
-#include "debug_grid3d.hpp"
+#include "tecplot_export3d.hpp"
+#include "surface.hpp"
+#include "debug3d.hpp"
 
-namespace hme = HMGrid3D::Export;
+namespace hme = HM3D::Export;
 HMCallback::FunctionWithCallback<hme::TGridTecplot> hme::GridTecplot;
 HMCallback::FunctionWithCallback<hme::TBoundaryTecplot> hme::BoundaryTecplot;
 
 namespace {
-typedef aa::PtrContainerIndexer<const ShpVector<HMGrid3D::Vertex>> TVertIndexer; 
+typedef aa::PtrContainerIndexer<const ShpVector<HM3D::Vertex>> TVertIndexer; 
 
 struct SurfSerial{
-	SurfSerial(HMGrid3D::Surface& srf, TVertIndexer& vrt){
-		n_faces = srf.faces.size();
+	SurfSerial(HM3D::FaceData& srf, TVertIndexer& vrt){
+		n_faces = srf.size();
 		//edge->nodes
-		auto ae = srf.alledges();
+		auto ae = AllEdges(srf);
 		n_edges = ae.size();
 		edges.reserve(n_edges*2);
 		for (auto e: ae){
@@ -23,9 +23,9 @@ struct SurfSerial{
 		}
 		//edge->faces
 		vector<bool> isleft_face_edge;
-		for (auto f: srf.faces){
+		for (auto f: srf){
 			auto eprev = f->edges.back();
-			for (int i=0; i<f->n_edges(); ++i){
+			for (int i=0; i<f->edges.size(); ++i){
 				auto e = f->edges[i];
 				bool isleft = (e->first() == eprev->first() || e->first() == eprev->last());
 				if (!f->has_right_cell()) isleft = !isleft;
@@ -34,10 +34,10 @@ struct SurfSerial{
 			}
 		}
 		auto _eindexer = aa::ptr_container_indexer(ae);
-		vector<HMGrid3D::Face*> fleft(n_edges, 0), fright(n_edges, 0);
+		vector<HM3D::Face*> fleft(n_edges, 0), fright(n_edges, 0);
 		_eindexer.convert();
 		auto it = isleft_face_edge.begin();
-		for (auto f: srf.faces){
+		for (auto f: srf){
 			for (auto e: f->edges){
 				if (*it++) fleft[_eindexer.index(e)] = f.get();
 				else fright[_eindexer.index(e)] = f.get();
@@ -46,7 +46,7 @@ struct SurfSerial{
 		_eindexer.restore();
 		//to integer indicies
 		edge_adj.resize(n_edges*2, -1);
-		auto _findexer = aa::ptr_container_indexer(srf.faces);
+		auto _findexer = aa::ptr_container_indexer(srf);
 		_findexer.convert();
 		for (int i=0; i<n_edges; ++i){
 			if (fleft[i] != 0) edge_adj[2*i] = _findexer.index(fleft[i]);
@@ -58,7 +58,7 @@ struct SurfSerial{
 	vector<int> edges; //start_node_index, end_node_index for each face
 	vector<int> edge_adj;//left face, right face for each edge
 
-	void serialize_vertices(const ShpVector<HMGrid3D::Vertex>& vert){
+	void serialize_vertices(const ShpVector<HM3D::Vertex>& vert){
 		n_vert = vert.size();
 		vertices.resize(3*n_vert);
 		auto it = vertices.begin();
@@ -96,10 +96,10 @@ void write_row_n(std::ostream& str, Func&& fun, const vector<V>& vals){
 };
 
 void hme::TGridTecplot::_run(const GridData& g, std::string fn, BFun bnd_names){
-	SGrid sg(g);
+	Ser::Grid sg(g);
 	return _run(sg, fn, bnd_names);
 }
-void hme::TGridTecplot::_run(const SGrid& ser, std::string fn, BFun bnames){
+void hme::TGridTecplot::_run(const Ser::Grid& ser, std::string fn, BFun bnames){
 	callback->step_after(30, "Assembling connectivity");
 	//face->nodes connectivity
 	vector<vector<int>> face_nodes = ser.face_vertex();
@@ -109,29 +109,30 @@ void hme::TGridTecplot::_run(const SGrid& ser, std::string fn, BFun bnames){
 	//face adjacents
 	vector<int> left_cells, right_cells;
 	{
-		left_cells.reserve(ser.n_faces); right_cells.reserve(ser.n_faces);
-		for (int i=0; i<ser.n_faces; ++i){
-			left_cells.push_back(ser.face_cell[2*i]);
-			right_cells.push_back(ser.face_cell[2*i+1]);
+		left_cells.reserve(ser.n_faces()); right_cells.reserve(ser.n_faces());
+		auto& fc = ser.face_cell();
+		for (int i=0; i<ser.n_faces(); ++i){
+			left_cells.push_back(fc[2*i]);
+			right_cells.push_back(fc[2*i+1]);
 		}
 	}
 	//assembling surfaces
-	std::map<int, HMGrid3D::Surface> surfaces_geom; 
+	std::map<int, FaceData> surfaces_geom; 
 	{
-		for (auto& f: ser.vfaces) if (f->is_boundary()){
+		for (auto& f: ser.grid.vfaces) if (f->is_boundary()){
 			int bt = f->boundary_type;
 			auto fnd = surfaces_geom.find(bt);
 			if (fnd == surfaces_geom.end()){
-				fnd = surfaces_geom.emplace(bt, HMGrid3D::Surface()).first;
+				fnd = surfaces_geom.emplace(bt, FaceData()).first;
 			}
-			fnd->second.faces.push_back(f);
+			fnd->second.push_back(f);
 		}
 	}
 	//serializing surfaces
 	callback->silent_step_after(20, "Serialize surfaces", surfaces_geom.size());
 	std::map<int, SurfSerial> surfaces; 
 	{
-		auto _indexer = aa::ptr_container_indexer(ser.vvert);
+		auto _indexer = aa::ptr_container_indexer(ser.grid.vvert);
 		_indexer.convert();
 		for (auto& m: surfaces_geom){
 			callback->subprocess_step_after(1);
@@ -148,18 +149,18 @@ void hme::TGridTecplot::_run(const SGrid& ser, std::string fn, BFun bnames){
 	of<<"TITLE=\"Tecplot Export\""<<std::endl;
 	of<<"VARIABLES=\"X\" \"Y\" \"Z\""<<std::endl;
 	of<<"ZONE T=\"Grid\""<<std::endl;
-	of<<"Nodes="<<ser.n_vert<<std::endl;
-	of<<"Faces="<<ser.n_faces<<std::endl;
-	of<<"Elements="<<ser.n_cells<<std::endl;
+	of<<"Nodes="<<ser.n_vert()<<std::endl;
+	of<<"Faces="<<ser.n_faces()<<std::endl;
+	of<<"Elements="<<ser.n_cells()<<std::endl;
 	of<<"ZONETYPE=FEPOLYHEDRON"<<std::endl;
 	of<<"DATAPACKING=BLOCK"<<std::endl;
 	of<<"TotalNumFaceNodes="<<totalfn<<std::endl;
 	of<<"NumConnectedBoundaryFaces=0, TotalNumBoundaryConnections=0"<<std::endl;
 	//points
 	callback->subprocess_step_after(3);
-	write_row_n<3, 0, 20>(of, [](double v){ return v; }, ser.vert);
-	write_row_n<3, 1, 20>(of, [](double v){ return v; }, ser.vert);
-	write_row_n<3, 2, 20>(of, [](double v){ return v; }, ser.vert);
+	write_row_n<3, 0, 20>(of, [](double v){ return v; }, ser.vert());
+	write_row_n<3, 1, 20>(of, [](double v){ return v; }, ser.vert());
+	write_row_n<3, 2, 20>(of, [](double v){ return v; }, ser.vert());
 	//face dims
 	callback->subprocess_step_after(1);
 	//for (int i=0; i<face_nodes.size(); ++i) of<<face_nodes[i].size()<<std::endl;
@@ -198,19 +199,19 @@ void hme::TGridTecplot::_run(const SGrid& ser, std::string fn, BFun bnames){
 }
 
 
-void hme::TBoundaryTecplot::_run(const SGrid& g, std::string fn, BFun bnames){
+void hme::TBoundaryTecplot::_run(const Ser::Grid& g, std::string fn, BFun bnames){
 	callback->step_after(30, "Assembling Surfaces");
-	ShpVector<Face> af = g.vfaces;
+	ShpVector<Face> af = g.grid.vfaces;
 	//assembling surfaces
-	std::map<int, HMGrid3D::Surface> surfaces_geom; 
+	std::map<int, FaceData> surfaces_geom; 
 	{
 		for (auto& f: af) if (f->is_boundary()){
 			int bt = f->boundary_type;
 			auto fnd = surfaces_geom.find(bt);
 			if (fnd == surfaces_geom.end()){
-				fnd = surfaces_geom.emplace(bt, HMGrid3D::Surface()).first;
+				fnd = surfaces_geom.emplace(bt, FaceData()).first;
 			}
-			fnd->second.faces.push_back(f);
+			fnd->second.push_back(f);
 		}
 	}
 	//serializing surfaces
@@ -219,7 +220,7 @@ void hme::TBoundaryTecplot::_run(const SGrid& g, std::string fn, BFun bnames){
 	{
 		for (auto& m: surfaces_geom){
 			callback->subprocess_step_after(1);
-			const ShpVector<Vertex> allvert = m.second.allvertices();
+			const ShpVector<Vertex> allvert = AllVertices(m.second);
 			auto _indexer = aa::ptr_container_indexer(allvert);
 			_indexer.convert();
 			auto emp = surfaces.emplace(m.first, SurfSerial(m.second, _indexer));

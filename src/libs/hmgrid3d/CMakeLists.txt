@@ -1,17 +1,7 @@
 set (HEADERS
 	hmgrid3d.hpp
-	primitives_grid3d.hpp
 	construct_grid3d.hpp
 	revolve_grid3d.hpp
-	debug_grid3d.hpp
-	surface_grid3d.hpp
-	serialize_grid3d.hpp
-	fluent_export_grid3d.hpp
-	vtk_export_grid3d.hpp
-	gmsh_export_grid3d.hpp
-	tecplot_export_grid3d.hpp
-	hmg_export_grid3d.hpp
-	hmg_import_grid3d.hpp
 	tetrahedral.hpp
 	tetramesh_preproc.hpp
 	merge3d.hpp
@@ -20,18 +10,8 @@ set (HEADERS
 
 set (SOURCES
 	hmgrid3d.cpp
-	primitives_grid3d.cpp
 	construct_grid3d.cpp
 	revolve_grid3d.cpp
-	debug_grid3d.cpp
-	surface_grid3d.cpp
-	serialize_grid3d.cpp
-	fluent_export_grid3d.cpp
-	vtk_export_grid3d.cpp
-	gmsh_export_grid3d.cpp
-	tecplot_export_grid3d.cpp
-	hmg_export_grid3d.cpp
-	hmg_import_grid3d.cpp
 	tetrahedral.cpp
 	tetramesh_preproc.cpp
 	merge3d.cpp
@@ -47,12 +27,14 @@ add_library(${HMGRID3D_TARGET} SHARED ${HEADERS} ${SOURCES})
 target_link_libraries(${HMGRID3D_TARGET} ${HMPROJECT_TARGET})
 target_link_libraries(${HMGRID3D_TARGET} ${BGEOM2D_TARGET})
 target_link_libraries(${HMGRID3D_TARGET} ${HYBMESH_CONTOURS2D_TARGET})
+target_link_libraries(${HMGRID3D_TARGET} ${HYBMESH_SURFACES3D_TARGET})
 target_link_libraries(${HMGRID3D_TARGET} ${CROSSGRID_TARGET})
 target_link_libraries(${HMGRID3D_TARGET} ${GMSH_TARGET})
 
 include_directories(${HMPROJECT_INCLUDE})
 include_directories(${BGEOM2D_INCLUDE})
 include_directories(${HYBMESH_CONTOURS2D_INCLUDE})
+include_directories(${HYBMESH_SURFACES3D_INCLUDE})
 include_directories(${CROSSGRID_INCLUDE})
 include_directories(${GMSH_INCLUDE})
 

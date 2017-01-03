@@ -1,31 +1,32 @@
 #include <sstream>
 #include <fstream>
 #include "addalgo.hpp"
-#include "gmsh_export_grid3d.hpp"
-#include "serialize_grid3d.hpp"
-#include "vtk_export_grid3d.hpp"
-#include "surface_grid3d.hpp"
+#include "gmsh_export3d.hpp"
+#include "serialize3d.hpp"
+#include "vtk_export3d.hpp"
+#include "surface.hpp"
 
-using namespace HMGrid3D;
-namespace hme = HMGrid3D::Export;
+using namespace HM3D;
+namespace hme = HM3D::Export;
 
 HMCallback::FunctionWithCallback<hme::TGridGMSH> hme::GridGMSH;
 
-void hme::TGridGMSH::_run(const SGrid& ser, std::string fn, BFun bfun){
+void hme::TGridGMSH::_run(const Ser::Grid& ser, std::string fn, BFun bfun){
+	const GridData& grid = ser.grid;
 	callback->step_after(25, "Faces assembling");
 	auto fv = ser.face_vertex();
 	//face data
-	std::map<int, Surface> srfs = Surface::ByBoundaryTypes(ser);
+	std::map<int, FaceData> srfs = Surface::GridSurfaceBType(grid);
 	std::map<int, vector<vector<int>>> psrfs;
 	int totfaces = 0;
-	enumerate_ids_pvec(ser.vfaces);
+	aa::enumerate_ids_pvec(grid.vfaces);
 	for (auto& s: srfs){
-		auto er = psrfs.emplace(s.first, vector<vector<int>>(s.second.faces.size()));
+		auto er = psrfs.emplace(s.first, vector<vector<int>>(s.second.size()));
 		auto& vv = er.first->second;
-		totfaces+=s.second.faces.size();
+		totfaces+=s.second.size();
 		//enumerate nodes so that all cells be on their left side
-		for (int i=0; i<s.second.faces.size(); ++i){
-			auto fc = s.second.faces[i];
+		for (int i=0; i<s.second.size(); ++i){
+			auto fc = s.second[i];
 			int iface = fc->id;
 			vv[i] = fv[iface];
 			if (!fc->has_left_cell()) std::reverse(vv[i].begin()+1, vv[i].end());
@@ -75,23 +76,23 @@ void hme::TGridGMSH::_run(const SGrid& ser, std::string fn, BFun bfun){
 	callback->step_after(25, "Nodes writing");
 	of<<"$Nodes"<<std::endl;
 	{
-		of<<ser.n_vert<<std::endl;
-		auto it=ser.vert.begin();
-		for (int i=0; i<ser.n_vert; ++i){
-			of<<i+1<<" "<<ser.vert[3*i]<<" "<<ser.vert[3*i+1]<<" "<<ser.vert[3*i+2]<<std::endl;
+		of<<ser.n_vert()<<std::endl;
+		auto& vert = ser.vert();
+		for (int i=0; i<ser.n_vert(); ++i){
+			of<<i+1<<" "<<vert[3*i]<<" "<<vert[3*i+1]<<" "<<vert[3*i+2]<<std::endl;
 		}
 	}
 	of<<"$EndNodes"<<std::endl;
 	of<<"$Elements"<<std::endl;
-	of<<ser.n_cells+totfaces<<std::endl;
+	of<<ser.n_cells()+totfaces<<std::endl;
 	//cells
 	{
 		callback->step_after(10, "Interior cells");
 		//3d cells
-		for (int i=0; i<ser.n_cells; ++i){
+		for (int i=0; i<ser.n_cells(); ++i){
 			of<<cell_line(i)<<std::endl;
 		}
-		int icell=ser.n_cells;
+		int icell=ser.n_cells();
 		callback->step_after(10, "Boundary cells");
 		//boundary
 		for (auto& s: psrfs){
@@ -107,6 +108,6 @@ void hme::TGridGMSH::_run(const SGrid& ser, std::string fn, BFun bfun){
 	of<<"$EndElements"<<std::endl;
 }
 
-void hme::TGridGMSH::_run(const SGrid& ser, std::string fn){
+void hme::TGridGMSH::_run(const Ser::Grid& ser, std::string fn){
 	return _run(ser, fn, def_bfun);
 }

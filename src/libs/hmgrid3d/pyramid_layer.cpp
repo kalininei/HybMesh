@@ -1,8 +1,8 @@
 #include "pyramid_layer.hpp"
-#include "debug_grid3d.hpp"
+#include "debug3d.hpp"
 #include <unordered_map>
 
-using namespace HMGrid3D;
+using namespace HM3D;
 namespace{
 
 CellData single_face_cells(const FaceData& fc){
@@ -20,7 +20,7 @@ struct PyrConstructor{
 		BoundingBox3D bball(limvertices);
 		double L = bball.maxlen() / 30.0;
 		bbfinder.reset(new BoundingBox3DFinder(bball, L));
-		enumerate_ids_pvec(limvertices);
+		aa::enumerate_ids_pvec(limvertices);
 		limfaces.resize(limits.size());
 		for (int i=0; i<limits.size(); ++i){
 			auto f = limits[i].get();
@@ -112,7 +112,7 @@ private:
 vector<std::pair<int, int>> edge_cells_table(CellData& cells){
 	vector<std::pair<int, int>> ret;
 
-	enumerate_ids_pvec(cells);
+	aa::enumerate_ids_pvec(cells);
 	for (auto c: cells)
 	for (auto e: c->faces[0]->edges) e->id = -1;
 
@@ -284,8 +284,8 @@ private:
 		auto prim = AllPrimitives(lfaces);
 		VertexData& lvert(std::get<0>(prim));
 		EdgeData& ledges(std::get<1>(prim));
-		enumerate_ids_pvec(lvert);
-		enumerate_ids_pvec(ledges);
+		aa::enumerate_ids_pvec(lvert);
+		aa::enumerate_ids_pvec(ledges);
 		shared_ptr<Vertex> pv(new Vertex(vertex));
 		//vertical edges
 		EdgeData vedges;
@@ -346,7 +346,7 @@ void merge_pyramids(CellData& cells, double merge_angle, PyrConstructor& pc){
 }
 
 
-GridData HMGrid3D::BuildPyramidLayer(const FaceData& faces, bool non3only, double merge_angle){
+GridData HM3D::BuildPyramidLayer(const FaceData& faces, bool non3only, double merge_angle){
 	//initial commit: add single face cells
 	CellData ac = single_face_cells(faces);
 	bool need_pyramids = !non3only;

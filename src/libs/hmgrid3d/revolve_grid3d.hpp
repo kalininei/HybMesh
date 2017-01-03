@@ -1,14 +1,14 @@
-#ifndef  REVOLVE_GRID3D_HPP
-#define  REVOLVE_GRID3D_HPP
+#ifndef REVOLVE_GRID3D_HPP
+#define REVOLVE_GRID3D_HPP
 
-#include "serialize_grid3d.hpp"
 #include "grid.h"
+#include "primitives3d.hpp"
 
-namespace HMGrid3D{namespace Constructor{
+namespace HM3D{namespace Constructor{
 
 //returns final grid
 //phi_coords in degrees
-HMGrid3D::GridData RevolveGrid2D(const GridGeom& g2d,
+HM3D::GridData RevolveGrid2D(const GridGeom& g2d,
 		const vector<double>& phi_coords,
 		Point pstart, Point pend, bool is_trian=true,
 		std::function<int(int)> side_bt = [](int){ return 1; },

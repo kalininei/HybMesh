@@ -1,7 +1,7 @@
 #include "revolve_grid3d.hpp"
 #include "debug_grid2d.h"
-#include "debug_grid3d.hpp"
-using namespace HMGrid3D;
+#include "debug3d.hpp"
+using namespace HM3D;
 
 namespace cns = Constructor;
 
@@ -66,19 +66,14 @@ struct revolve_builder{
 		_8_fill_axis_cells();
 		icell.push_back(cells.size());
 	}
-	HMGrid3D::GridData build_ess(){
-		HMGrid3D::GridData ret;
-		//ret.n_vert = vertices.size()/3;
-		//ret.n_faces = iface.size()-1;
-		//ret.n_edges = edges.size()/2;
-		//ret.n_cells = icell.size()-1;
+	GridData build_ess(){
+		GridData ret;
 		fill_primitives(ret);
 		for (auto& v: boundary_types){
 			for (auto& find: v.second){
 				ret.vfaces[find]->boundary_type = v.first;
 			}
 		}
-		//ret.actualize_serial_data();
 		return ret;
 	}
 	void side_boundary(std::function<int(int)>& f){
@@ -481,7 +476,7 @@ protected:
 		faces[iface[index_face+1]-1] = index_cell;
 	}
 
-	void fill_primitives(HMGrid3D::GridData& ret){
+	void fill_primitives(HM3D::GridData& ret){
 		auto& rvert = ret.vvert;
 		auto& redge = ret.vedges;
 		auto& rface = ret.vfaces;
@@ -501,15 +496,14 @@ protected:
 			auto p1=rvert[*eit++];
 			auto p2=rvert[*eit++];
 			double curv = *curvit++;
-			if (ISZERO(curv)) redge[i].reset(new HMGrid3D::Edge(p1, p2));
-			else redge[i].reset(new CurvEdge(p1, p2, curv));
+			redge[i].reset(new HM3D::Edge(p1, p2));
 		}
 		//faces init
 		rface.resize(iface.size()-1);
 		for (int i=0; i<rface.size(); ++i) rface[i].reset(new Face());
 		//cells init
 		rcell.resize(icell.size()-1);
-		for (int i=0; i<rcell.size(); ++i) rcell[i].reset(new HMGrid3D::Cell());
+		for (int i=0; i<rcell.size(); ++i) rcell[i].reset(new HM3D::Cell());
 		//faces
 		auto fit = faces.begin();
 		for (int i=0; i<rface.size(); ++i){
@@ -738,7 +732,7 @@ shared_ptr<revolve_builder> revolve_builder_factory(const GridGeom& g2d, const v
 
 };
 
-HMGrid3D::GridData cns::RevolveGrid2D(const GridGeom& g2d, const vector<double>& phi_coords,
+HM3D::GridData cns::RevolveGrid2D(const GridGeom& g2d, const vector<double>& phi_coords,
 		Point pstart, Point pend, bool is_trian,
 		std::function<int(int)> side_bt, std::function<int(int)> bt1, std::function<int(int)> bt2){
 	//topology

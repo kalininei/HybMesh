@@ -7,7 +7,7 @@
 
 extern "C"{
 
-typedef void CPortGrid3D;  //SGrid*
+typedef void CPortGrid3D;  //Ser::Grid*
 
 //====== destructor
 void free_grid3d(CPortGrid3D*);

@@ -3,10 +3,10 @@
 
 #include "hmproject.h"
 #include "hmcallback.hpp"
-#include "primitives_grid3d.hpp"
-#include "serialize_grid3d.hpp"
+#include "primitives3d.hpp"
+#include "serialize3d.hpp"
 
-namespace HMGrid3D{namespace Export{
+namespace HM3D{namespace Export{
 
 //save grid (only tetra, hex, wedge cells
 //signature void GridVTK(const HMGrid3D::Grid& g, std::string fn);
@@ -14,7 +14,7 @@ struct TGridVTK: public HMCallback::ExecutorBase{
 	HMCB_SET_PROCNAME("Exporting 3d grid to *.vtk");
 	HMCB_SET_DEFAULT_DURATION(80);
 
-	void _run(const SGrid& g, std::string fn);
+	void _run(const Ser::Grid& g, std::string fn);
 	void _run(const GridData& g, std::string fn);
 
 };
@@ -26,7 +26,7 @@ struct TBoundaryVTK: public HMCallback::ExecutorBase{
 	HMCB_SET_PROCNAME("Exporting 3d grid surface to vtk");
 	HMCB_SET_DEFAULT_DURATION(50);
 
-	void _run(const SGrid&, std::string);
+	void _run(const Ser::Grid&, std::string);
 	void _run(const GridData& g, std::string fn);
 
 };
@@ -36,23 +36,21 @@ extern HMCallback::FunctionWithCallback<TBoundaryVTK> BoundaryVTK;
 struct TAllVTK: public HMCallback::ExecutorBase{
 	HMCB_SET_PROCNAME("Exporting 3d data to vtk");
 	HMCB_SET_DEFAULT_DURATION(
-		HMCB_DURATION(TBoundaryVTK, SGrid, std::string)+ 
-		HMCB_DURATION(TGridVTK, SGrid, std::string)
+		HMCB_DURATION(TBoundaryVTK, Ser::Grid, std::string)+ 
+		HMCB_DURATION(TGridVTK, Ser::Grid, std::string)
 	);
 
-	void _run(const SGrid& g, std::string fngrid, std::string fnbnd);
+	void _run(const Ser::Grid& g, std::string fngrid, std::string fnbnd);
 	void _run(const GridData& g, std::string, std::string fnbnd);
 };
 extern HMCallback::FunctionWithCallback<TAllVTK> AllVTK;
 
 struct TSurfaceVTK: public HMCallback::ExecutorBase{
 	HMCB_SET_PROCNAME("Exporting surface to vtk");
-	HMCB_SET_DURATION(80, const SSurface&, std::string);
-	HMCB_SET_DURATION(100, const Surface&, std::string);
+	HMCB_SET_DURATION(80, const Ser::Surface&, std::string);
 	HMCB_SET_DURATION(100, const FaceData&, std::string);
 
-	void _run(const SSurface& s, std::string fn);
-	void _run(const Surface& s, std::string fn);
+	void _run(const Ser::Surface& s, std::string fn);
 	void _run(const FaceData& s, std::string fn);
 };
 extern HMCallback::FunctionWithCallback<TSurfaceVTK> SurfaceVTK;
@@ -80,7 +78,7 @@ public:
 
 	//tries to build expressions for all cells in ser.
 	//aface is face_vertex connectivity table
-	static vector<vtkcell_expression> cell_assembler(const SGrid& ser,
+	static vector<vtkcell_expression> cell_assembler(const Ser::Grid& ser,
 			const vector<vector<int>>& aface, bool ignore_errors=false);
 	virtual std::string to_string() const;
 

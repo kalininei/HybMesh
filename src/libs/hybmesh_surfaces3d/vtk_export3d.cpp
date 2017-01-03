@@ -1,11 +1,12 @@
 #include <sstream>
 #include <fstream>
 #include "addalgo.hpp"
-#include "vtk_export_grid3d.hpp"
-#include "serialize_grid3d.hpp"
+#include "vtk_export3d.hpp"
+#include "serialize3d.hpp"
 
-using namespace HMGrid3D;
-namespace hme = HMGrid3D::Export;
+using namespace HM3D;
+namespace hme = HM3D::Export;
+
 HMCallback::FunctionWithCallback<hme::TGridVTK> hme::GridVTK;
 HMCallback::FunctionWithCallback<hme::TBoundaryVTK> hme::BoundaryVTK;
 HMCallback::FunctionWithCallback<hme::TAllVTK> hme::AllVTK;
@@ -175,21 +176,22 @@ hme::vtkcell_expression hme::vtkcell_expression::build(std::vector<std::vector<i
 	s += " faces as valid tetrahedron/hexahedron/prism/pyramid";
 	throw std::runtime_error(s.c_str());
 }
-vector<hme::vtkcell_expression> hme::vtkcell_expression::cell_assembler(const SGrid& ser,
+vector<hme::vtkcell_expression> hme::vtkcell_expression::cell_assembler(const Ser::Grid& ser,
 		const vector<vector<int>>& aface, bool ignore_errors){
-	vector<vtkcell_expression> ret; ret.reserve(ser.n_cells);
-	ser.enumerate_all();
+	const GridData& grid = ser.grid;
+	vector<vtkcell_expression> ret; ret.reserve(ser.n_cells());
+	grid.enumerate_all();
 
-	for (int icell=0; icell<ser.n_cells; ++icell){
-		int len = ser.vcells[icell]->n_faces();
+	for (int icell=0; icell<ser.n_cells(); ++icell){
+		int len = grid.vcells[icell]->faces.size();
 		//assemble cell->points
 		vector<vector<int>> cell_points; cell_points.reserve(len);
 		for (int j=0; j<len; ++j){
 			//insert face data
-			int iface = ser.vcells[icell]->faces[j]->id;
+			int iface = grid.vcells[icell]->faces[j]->id;
 			cell_points.push_back(aface[iface]);
 			//reverse to guarantee left cell
-			int leftcell = ser.face_cell[2*iface];
+			int leftcell = ser.face_cell()[2*iface];
 			if (leftcell != icell) {
 				auto& vertv = cell_points.back();
 				std::reverse(vertv.begin(), vertv.end());
@@ -207,7 +209,7 @@ vector<hme::vtkcell_expression> hme::vtkcell_expression::cell_assembler(const SG
 }
 
 
-void hme::TGridVTK::_run(const SGrid& ser, std::string fn){
+void hme::TGridVTK::_run(const Ser::Grid& ser, std::string fn){
 	callback->step_after(20, "Assembling faces");
 	vector<vector<int>> aface = ser.face_vertex();
 
@@ -227,9 +229,10 @@ void hme::TGridVTK::_run(const SGrid& ser, std::string fn){
 	//Points
 	callback->subprocess_step_after(1);
 	fs<<"DATASET UNSTRUCTURED_GRID"<<std::endl;
-	fs<<"POINTS "<<ser.n_vert<< " float"<<std::endl;
-	for (int i=0; i<3*ser.n_vert; i+=3)
-		fs<<ser.vert[i]<<" "<<ser.vert[i+1]<<" "<<ser.vert[i+2]<<std::endl;
+	fs<<"POINTS "<<ser.n_vert()<< " float"<<std::endl;
+	auto& vert = ser.vert();
+	for (int i=0; i<3*ser.n_vert(); i+=3)
+		fs<<vert[i]<<" "<<vert[i+1]<<" "<<vert[i+2]<<std::endl;
 
 	//Cells
 	callback->subprocess_step_after(1);
@@ -242,24 +245,24 @@ void hme::TGridVTK::_run(const SGrid& ser, std::string fn){
 }
 
 void hme::TGridVTK::_run(const GridData& ser, std::string fn){
-	return _run(SGrid(ser), fn);
+	return _run(Ser::Grid(ser), fn);
 }
 
 namespace {
 struct bnd_face_data{
-	bnd_face_data(const SGrid& _ser): ser(&_ser){}
+	bnd_face_data(const Ser::Grid& _ser): ser(&_ser){}
 
 	//--- assembling steps
 	void n1_extract_bfaces(){     //fills findices
-		for (int i=0; i<ser->n_faces; ++i){
-			if (ser->vfaces[i]->is_boundary()){
+		for (int i=0; i<ser->n_faces(); ++i){
+			if (ser->grid.vfaces[i]->is_boundary()){
 				findices.push_back(i);
 			}
 		}
 	} 
 	void n11_extract_boundaries(){ //fills fbtypes
 		//fill non zero types
-		const std::vector<int>& btvec = ser->btypes;
+		const std::vector<int>& btvec = ser->btypes();
 		
 		//fill fbtypes
 		fbtypes.reserve(n_faces());
@@ -273,7 +276,7 @@ struct bnd_face_data{
 		}
 	}
 	void n2_extract_bvert(){      //fills vindices
-		std::vector<bool> used_v(ser->n_vert, false);
+		std::vector<bool> used_v(ser->n_vert(), false);
 		for (int i=0; i<n_faces(); ++i){
 			vector<int>& fver = global_face_vertices[i];
 			for (int j=0; j<fver.size(); ++j){
@@ -287,39 +290,41 @@ struct bnd_face_data{
 	}
 	void n3_extract_bcells(){     //fills cindices
 		cindices.reserve(n_faces());
+		auto& fc = ser->face_cell();
 		for (int i=0; i<n_faces(); ++i){
 			int kf = findices[i];
-			int c1 = ser->face_cell[2*kf];
-			if (c1 < 0) c1 = ser->face_cell[2*kf+1];
+			int c1 = fc[2*kf];
+			if (c1 < 0) c1 = fc[2*kf+1];
 			cindices.push_back(c1);
 		}
 	}
 	void n4_vertices_raw(){     //fills vertices_raw
 		vertices_raw.reserve(3*n_vert());
 		for (int i=0; i<n_vert(); ++i){
-			auto vstart = ser->vert.begin() + 3*vindices[i];
+			auto vstart = ser->vert().begin() + 3*vindices[i];
 			vertices_raw.insert(vertices_raw.end(), vstart, vstart+3);
 		}
 	}
 	void n5_faces_raw(){       //fills faces_raw
 		//vertex addressing
-		vector<int> vert_global_to_local(ser->n_vert, -1);
+		vector<int> vert_global_to_local(ser->n_vert(), -1);
 		for (int i=0; i<n_vert(); ++i){
 			vert_global_to_local[vindices[i]] = i;
 		}
 		
 		//size of raw output
 		int sz = n_faces();
+		auto& fe = ser->face_edge();
 		for (int i=0; i<n_faces(); ++i){
 			int gi = findices[i];
-			sz += (ser->face_edge[gi].size());
+			sz += (fe[gi].size());
 		}
 
 		//raw outpout
 		faces_raw.reserve(sz);
 		for (int i=0; i<n_faces(); ++i){
 			int gi = findices[i];
-			int len = ser->face_edge[gi].size();
+			int len = fe[gi].size();
 			faces_raw.push_back(len);
 			auto start = global_face_vertices[i].begin();
 			for (int j=0; j<len; ++j) {
@@ -357,7 +362,7 @@ struct bnd_face_data{
 	}
 
 	//--- aux data
-	const SGrid* ser;
+	const Ser::Grid* ser;
 	vector<vector<int>> global_face_vertices;
 	
 	//--- main data for output
@@ -373,7 +378,7 @@ struct bnd_face_data{
 };
 }
 
-void hme::TBoundaryVTK::_run(const SGrid& ser, std::string fn){
+void hme::TBoundaryVTK::_run(const Ser::Grid& ser, std::string fn){
 	bnd_face_data fdata(ser);
 	callback->step_after(20, "Extract boundary", 4, 1);
 	fdata.n1_extract_bfaces();
@@ -421,16 +426,16 @@ void hme::TBoundaryVTK::_run(const SGrid& ser, std::string fn){
 	fs.close();
 }
 void hme::TBoundaryVTK::_run(const GridData& ser, std::string fn){
-	return _run(SGrid(ser), fn);
+	return _run(Ser::Grid(ser), fn);
 }
-void hme::TAllVTK::_run(const SGrid& g, std::string fngrid, std::string fnbnd){
+void hme::TAllVTK::_run(const Ser::Grid& g, std::string fngrid, std::string fnbnd){
 	GridVTK.MoveCallback(*callback, g, fngrid);
 	BoundaryVTK.MoveCallback(*callback, g, fnbnd);
 }
 void hme::TAllVTK::_run(const GridData& g, std::string fngrid, std::string fnbnd){
-	return _run(SGrid(g), fngrid, fnbnd);
+	return _run(Ser::Grid(g), fngrid, fnbnd);
 }
-void hme::TSurfaceVTK::_run(const SSurface& s, std::string fn){
+void hme::TSurfaceVTK::_run(const Ser::Surface& s, std::string fn){
 	//header
 	std::ofstream fs(fn);
 	fs<<"# vtk DataFile Version 3.0"<<std::endl;
@@ -440,44 +445,41 @@ void hme::TSurfaceVTK::_run(const SSurface& s, std::string fn){
 	callback->step_after(40, "Writing vertices");
 	//points
 	fs<<"DATASET UNSTRUCTURED_GRID"<<std::endl;
-	fs<<"POINTS "<<s.n_vert<< " float"<<std::endl;
-	for (int i=0; i<3*s.n_vert; i+=3){
-		fs<<(float)s.vert[i+0]<<" ";
-		fs<<(float)s.vert[i+1]<<" ";
-		fs<<(float)s.vert[i+2]<<"\n";
+	fs<<"POINTS "<<s.n_vert()<< " float"<<std::endl;
+	auto& vert = s.vert();
+	for (int i=0; i<3*s.n_vert(); i+=3){
+		fs<<(float)vert[i+0]<<" ";
+		fs<<(float)vert[i+1]<<" ";
+		fs<<(float)vert[i+2]<<"\n";
 	}
 
 	//faces
 	callback->step_after(30, "Writing faces");
-	int raw_dim = s.n_faces;
-	for (int i=0; i<s.n_faces; ++i) raw_dim += s.face_edge[i].size();
-	fs<<"CELLS  "<<s.n_faces<<"   "<<raw_dim<<std::endl;
-	for (int i=0; i<s.n_faces; ++i){
+	int raw_dim = s.n_faces();
+	auto& fe = s.face_edge();
+	for (int i=0; i<s.n_faces(); ++i) raw_dim += fe[i].size();
+	fs<<"CELLS  "<<s.n_faces()<<"   "<<raw_dim<<std::endl;
+	for (int i=0; i<s.n_faces(); ++i){
 		auto& fv = s.face_vertex(i);
 		fs<<fv.size();
 		for (int j=0; j<fv.size(); ++j) fs<<" "<<fv[j]; fs<<"\n";
 	}
-	fs<<"CELL_TYPES  "<<s.n_faces<<std::endl;
-	for (int i=0; i<s.n_faces;++i) fs<<7<<" "; fs<<std::endl;
+	fs<<"CELL_TYPES  "<<s.n_faces()<<std::endl;
+	for (int i=0; i<s.n_faces();++i) fs<<7<<" "; fs<<std::endl;
 
 	//additional info
 	callback->step_after(10, "Boundary types");
-	fs<<"CELL_DATA"<<" "<<s.n_faces<<std::endl;
+	fs<<"CELL_DATA"<<" "<<s.n_faces()<<std::endl;
 	fs<<"SCALARS boundary_type int 1"<<std::endl;
 	fs<<"LOOKUP_TABLE default"<<std::endl;
-	for (int i=0; i<s.n_faces; ++i){
-		fs<<s.btypes[i]<<std::endl;
+	auto& bt = s.btypes();
+	for (int i=0; i<s.n_faces(); ++i){
+		fs<<bt[i]<<std::endl;
 	}
 
 	fs.close();
 }
 void hme::TSurfaceVTK::_run(const FaceData& s, std::string fn){
 	callback->step_after(20, "Serializing data");
-	SSurface ss;
-	ss.faces = s;
-	ss.actualize_serial_data();
-	SurfaceVTK.MoveCallback(*callback, ss, fn);
-}
-void hme::TSurfaceVTK::_run(const Surface& s, std::string fn){
-	return _run(s.faces, fn);
+	SurfaceVTK.MoveCallback(*callback, Ser::Surface(s), fn);
 }

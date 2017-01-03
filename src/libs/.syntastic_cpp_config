@@ -10,5 +10,6 @@
 -I /home/ek/Work/HybMesh/src/libs/hmblay/
 -I /home/ek/Work/HybMesh/src/libs/hmmapping/
 -I /home/ek/Work/HybMesh/src/libs/hmgrid3d/
+-I /home/ek/Work/HybMesh/src/libs/hybmesh_surfaces3d/
 -I /home/ek/Work/HybMesh/src/libs/hmnumeric/
 -I /usr/include/suitesparse/

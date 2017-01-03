@@ -175,7 +175,10 @@ set(CROSSGRID_TARGET crossgrid)
 #libhmblay: global definition of HMBLAY_INCLUDE, HMBLAY_TARGET
 set(HMBLAY_INCLUDE "${CMAKE_SOURCE_DIR}/src/libs/hmblay")
 set(HMBLAY_TARGET hmblay)
-#libhmblay: global definition of HMGRID3D_INCLUDE, HMGRID3D_TARGET
+#libhybmesh_surfaces3d: global definition of HYBMESH_SURFACES3D_INCLUDE, HYBMESH_SURFACES3D_TARGET
+set(HYBMESH_SURFACES3D_INCLUDE "${CMAKE_SOURCE_DIR}/src/libs/hybmesh_surfaces3d")
+set(HYBMESH_SURFACES3D_TARGET hybmesh_surfaces3d)
+#libhmgrid3d: global definition of HMGRID3D_INCLUDE, HMGRID3D_TARGET
 set(HMGRID3D_INCLUDE "${CMAKE_SOURCE_DIR}/src/libs/hmgrid3d")
 set(HMGRID3D_TARGET hmgrid3d)
 #libhmmath: global definition of HMMATH_INCLUDE, HMMATH_TARGET

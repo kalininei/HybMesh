@@ -15,10 +15,12 @@ g6 = hm.tetrahedral_fill([g3, g5])
 
 ss = hm.grid3_bnd_to_surface(g6, separate=True)
 check(abs(hm.domain_volume(g6) - 68.0) < 1e-8)
-check(abs(hm.domain_volume(ss[0]) == 4.0) < 1e-8)
-check(abs(hm.domain_volume(ss[1]) == 72.0) < 1e-8)
+check(abs(hm.domain_volume(ss[0]) - 72.0) < 1e-8)
+check(abs(hm.domain_volume(ss[1]) - 4.0) < 1e-8)
 ss = hm.grid3_bnd_to_surface(g6, separate=False)
-check(abs(hm.domain_volume(ss) == 68.0) < 1e-8)
+check(abs(hm.domain_volume(ss) - 68.0) < 1e-8)
 
 g7 = hm.merge_grids3(g6, g2)
-check(abs(hm.domain_volume(g7) == 72.0) < 1e-8)
+check(abs(hm.domain_volume(g7) - 72.0) < 1e-8)
+
+hm.export3d_grid_vtk(g7, "g7.vtk")

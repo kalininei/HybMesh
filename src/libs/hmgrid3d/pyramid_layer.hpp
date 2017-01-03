@@ -1,9 +1,9 @@
 #ifndef HMGRID3D_PYRAMID_LAYER_HPP
 #define HMGRID3D_PYRAMID_LAYER_HPP
 
-#include "primitives_grid3d.hpp"
+#include "primitives3d.hpp"
 
-namespace HMGrid3D{
+namespace HM3D{
 
 //Faces should have matched direction.
 //Pyramids will be built to the left side of faces
@@ -14,8 +14,8 @@ namespace HMGrid3D{
 //For non3only=true triangle faces without pyramid will form
 //	single face cell with blank face-to-cell connectivity
 //Inner boundary pyramid faces will have no left adjacent cell.
-HMGrid3D::GridData BuildPyramidLayer(
-	const HMGrid3D::FaceData& faces,
+GridData BuildPyramidLayer(
+	const FaceData& faces,
 	bool non3only=true,
 	double merge_angle=60);
 

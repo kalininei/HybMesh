@@ -1,8 +1,8 @@
 #include "merge3d.hpp"
-#include "debug_grid3d.hpp"
-#include "surface_grid3d.hpp"
+#include "debug3d.hpp"
+#include "surface.hpp"
 
-using namespace HMGrid3D;
+using namespace HM3D;
 
 namespace{
 
@@ -20,7 +20,7 @@ vector<int> boundary_edges(const GridData& g){
 		bfaces.push_back(f);
 	}
 	EdgeData bedges = AllEdges(bfaces);
-	enumerate_ids_pvec(g.vedges);
+	aa::enumerate_ids_pvec(g.vedges);
 	vector<int> ret(bedges.size());
 	for (int i=0; i<ret.size(); ++i) ret[i] = bedges[i]->id;
 	return ret;
@@ -137,7 +137,7 @@ void assemble_duplicate_faces(FaceData& ffrom, FaceData& fto, vector<int>& from,
 
 }
 
-void HMGrid3D::MergeGrid(GridData& from, GridData& to,
+void HM3D::MergeGrid(GridData& from, GridData& to,
 		const vector<int>& from_vert, const vector<int>& to_vert){
 	assert(
 		//check points equality
@@ -156,12 +156,12 @@ void HMGrid3D::MergeGrid(GridData& from, GridData& to,
 	vector<int> bnd_to_edges = boundary_edges(to);
 	//primitive id stores index of duplicate primitive
 	//in another grid or -1 if there is no duplicate one.
-	constant_ids_pvec(to.vvert, -1);
-	constant_ids_pvec(to.vedges, -1);
-	constant_ids_pvec(to.vfaces, -1);
-	constant_ids_pvec(from.vvert, -1);
-	constant_ids_pvec(from.vedges, -1);
-	constant_ids_pvec(from.vfaces, -1);
+	aa::constant_ids_pvec(to.vvert, -1);
+	aa::constant_ids_pvec(to.vedges, -1);
+	aa::constant_ids_pvec(to.vfaces, -1);
+	aa::constant_ids_pvec(from.vvert, -1);
+	aa::constant_ids_pvec(from.vedges, -1);
+	aa::constant_ids_pvec(from.vfaces, -1);
 
 	for (int i=0; i<from_vert.size(); ++i){
 		to.vvert[to_vert[i]]->id = from_vert[i];
@@ -232,7 +232,7 @@ void HMGrid3D::MergeGrid(GridData& from, GridData& to,
 	}
 }
 
-GridData HMGrid3D::MergeGrids(const GridData& _g1, const GridData& _g2){
+GridData HM3D::MergeGrids(const GridData& _g1, const GridData& _g2){
 	//make deep copies of g1, g2
 	GridData g1, g2;
 	DeepCopy(_g1, g1);
@@ -241,11 +241,11 @@ GridData HMGrid3D::MergeGrids(const GridData& _g1, const GridData& _g2){
 	//assemble coincident points
 	auto srf1 = Surface::GridSurface(g1);
 	auto srf2 = Surface::GridSurface(g2);
-	auto pc1 = AllVertices(srf1.faces);
-	auto pc2 = AllVertices(srf2.faces);
+	auto pc1 = AllVertices(srf1);
+	auto pc2 = AllVertices(srf2);
 
-	enumerate_ids_pvec(g1.vvert);
-	enumerate_ids_pvec(g2.vvert);
+	aa::enumerate_ids_pvec(g1.vvert);
+	aa::enumerate_ids_pvec(g2.vvert);
 
 	vector<Point3*> pp1(pc1.size());
 	for (int i=0; i<pc1.size(); ++i) pp1[i] = pc1[i].get();

@@ -3,29 +3,30 @@
 #include "grid.h"
 #include "hmgrid3d.hpp"
 #include "bgeom3d.h"
+#include "treverter3d.hpp"
 
-using HMGrid3D::SGrid;
+using HM3D::Ser::Grid;
 
 namespace{
-HMGrid3D::SGrid& hmgrid(CPortGrid3D* g){
-	return *static_cast<HMGrid3D::SGrid*>(g);
+HM3D::Ser::Grid& hmgrid(CPortGrid3D* g){
+	return *static_cast<HM3D::Ser::Grid*>(g);
 }
-const HMGrid3D::SGrid& hmgrid(const CPortGrid3D* g){
-	return *static_cast<const HMGrid3D::SGrid*>(g);
+const HM3D::Ser::Grid& hmgrid(const CPortGrid3D* g){
+	return *static_cast<const HM3D::Ser::Grid*>(g);
 }
 }
 
 void free_grid3d(CPortGrid3D* g){
 	if (g != NULL){
-		delete static_cast<HMGrid3D::SGrid*>(g);
+		delete static_cast<HM3D::Ser::Grid*>(g);
 	}
 }
 
 void grid3_dims(const CPortGrid3D* g, int* nums){
-	nums[0] = hmgrid(g).n_vert;
-	nums[1] = hmgrid(g).n_edges;
-	nums[2] = hmgrid(g).n_faces;
-	nums[3] = hmgrid(g).n_cells;
+	nums[0] = hmgrid(g).n_vert();
+	nums[1] = hmgrid(g).n_edges();
+	nums[2] = hmgrid(g).n_faces();
+	nums[3] = hmgrid(g).n_cells();
 }
 
 void grid3_surface_dims(const CPortGrid3D* g, int* dims){
@@ -36,10 +37,11 @@ void grid3_surface_dims(const CPortGrid3D* g, int* dims){
 
 int grid3_surface_btypes(const CPortGrid3D* g3, int* ret){
 	try{
-		auto g = hmgrid(g3);
+		auto& g = hmgrid(g3);
 		const auto& bf = g.bfaces();
+		const auto& bt = g.btypes();
 		for (size_t i=0; i<bf.size(); ++i){
-			ret[i] = g.btypes[bf[i]];
+			ret[i] = bt[bf[i]];
 		}
 	} catch (std::exception& e){
 		std::cout<<e.what()<<std::endl;
@@ -51,9 +53,9 @@ int grid3_surface_btypes(const CPortGrid3D* g3, int* ret){
 int grid3_volume(const CPortGrid3D* g, double* ret){
 	try{
 		auto& g3 = hmgrid(g);
-		auto srf = HMGrid3D::Surface::GridSurface(g3);
-		auto rv = HMGrid3D::GridSurfaceReverter(srf, true);
-		*ret = HMGrid3D::Surface::Volume(srf);
+		auto srf = HM3D::Surface::GridSurface(g3.grid);
+		HM3D::Surface::RevertGridSurface rv(srf, true);
+		*ret = HM3D::Surface::Volume(srf);
 	} catch (std::exception& e){
 		std::cout<<e.what()<<std::endl;
 		return 0;
@@ -64,16 +66,16 @@ int grid3_volume(const CPortGrid3D* g, double* ret){
 int grid3_merge(const CPortGrid3D* _g1, const CPortGrid3D* _g2, CPortGrid3D** gret){
 	auto& g1 = hmgrid(_g1);
 	auto& g2 = hmgrid(_g2);
-	HMGrid3D::VertexData av(g1.vvert);
-	std::copy(g2.vvert.begin(), g2.vvert.end(),
+	HM3D::VertexData av(g1.grid.vvert);
+	std::copy(g2.grid.vvert.begin(), g2.grid.vvert.end(),
 			std::back_inserter(av));
 	ScaleBase3 sc = ScaleBase3::doscale(av);
 
 	int res = 0;
 	try{
-		HMGrid3D::GridData g = HMGrid3D::MergeGrids(g1, g2);
+		HM3D::GridData g = HM3D::MergeGrids(g1.grid, g2.grid);
 		sc.unscale(g.vvert.begin(), g.vvert.end());
-		*gret = new SGrid(std::move(g));
+		*gret = new HM3D::Ser::Grid(std::move(g));
 		res = 1;
 	} catch (std::exception& e){
 		std::cout<<e.what()<<std::endl;
@@ -120,7 +122,7 @@ CPortGrid3D* grid2_sweep_z(const Grid* g, const Grid2DBoundaryStruct* bc,
 		int algo_bot, int* bbot,
 		int algo_side, int bside){
 	const GridGeom* gg = static_cast<const GridGeom*>(g);
-	HMGrid3D::SGrid* ret = NULL;
+	HM3D::Ser::Grid* ret = NULL;
 	try{
 		vector<double> z(zvals, zvals+nz);
 		std::function<int(int)> botfun, topfun;
@@ -135,9 +137,9 @@ CPortGrid3D* grid2_sweep_z(const Grid* g, const Grid2DBoundaryStruct* bc,
 			default: throw std::runtime_error("Invalid algo_bot");
 		}
 		auto sidefun = SideBndFunctor(*gg, *bc, algo_side, bside);
-		HMGrid3D::GridData sg = HMGrid3D::Constructor::SweepGrid2D(
+		HM3D::GridData sg = HM3D::Constructor::SweepGrid2D(
 				*gg, z, botfun, topfun, sidefun);
-		ret = new HMGrid3D::SGrid(std::move(sg));
+		ret = new HM3D::Ser::Grid(std::move(sg));
 		return ret;
 	} catch (const std::exception &e) {
 		if (ret != NULL) delete ret;
@@ -158,11 +160,11 @@ CPortGrid3D* grid2_revolve(Grid* g, double* vec, int n_phi, double* phi,
 	try{
 		std::vector<double> vphi(phi, phi + n_phi);
 		auto sidefun = SideBndFunctor(*grid, *bc, 1, 0);
-		HMGrid3D::GridData ser = HMGrid3D::Constructor::RevolveGrid2D(
+		HM3D::GridData ser = HM3D::Constructor::RevolveGrid2D(
 			*grid, vphi, pstart, pend, is_trian!=0, sidefun,
 			[b1](int){ return b1; }, [b2](int){ return b2; });
-		HMGrid3D::Vertex::Unscale2D(ser.vvert, sc);
-		ret = new HMGrid3D::SGrid(std::move(ser));
+		HM3D::Unscale2D(ser.vvert, sc);
+		ret = new HM3D::Ser::Grid(std::move(ser));
 	} catch (const std::exception &e){
 		std::cout<<e.what()<<std::endl;
 		if (ret != NULL) {free_grid3d(ret); ret = NULL; }
@@ -175,7 +177,7 @@ CPortGrid3D* grid2_revolve(Grid* g, double* vec, int n_phi, double* phi,
 
 int export_vtk_grid3(const CPortGrid3D* grid, const char* fname, hmcport_callback f2){
 	try{
-		HMGrid3D::Export::GridVTK.WithCallback(f2, hmgrid(grid), fname);
+		HM3D::Export::GridVTK.WithCallback(f2, hmgrid(grid), fname);
 		return 0;
 	} catch (const std::exception &e) {
 		std::cout<<e.what()<<std::endl;
@@ -185,7 +187,7 @@ int export_vtk_grid3(const CPortGrid3D* grid, const char* fname, hmcport_callbac
 
 int export_surface_vtk_grid3(const CPortGrid3D* grid, const char* fname, hmcport_callback f2){
 	try{
-		HMGrid3D::Export::BoundaryVTK.WithCallback(f2, hmgrid(grid), fname);
+		HM3D::Export::BoundaryVTK.WithCallback(f2, hmgrid(grid), fname);
 		return 0;
 	} catch (const std::exception &e) {
 		std::cout<<e.what()<<std::endl;
@@ -196,7 +198,7 @@ int export_surface_vtk_grid3(const CPortGrid3D* grid, const char* fname, hmcport
 
 namespace{
 
-HMGrid3D::Export::BFun construct_bnames(const BoundaryNamesStruct* bnames){
+HM3D::Export::BFun construct_bnames(const BoundaryNamesStruct* bnames){
 	std::map<int, std::string> bnames_map;
 	if (bnames != NULL) for (int i=0; i<bnames->n; ++i){
 		bnames_map[bnames->values[i]] = std::string(bnames->names[i]);
@@ -217,7 +219,7 @@ int export_msh_grid3(const CPortGrid3D* grid, const char* fname, const BoundaryN
 		// name function
 		auto nmfunc = construct_bnames(bnames);
 		// building periodic
-		HMGrid3D::Export::PeriodicData pd;
+		HM3D::Export::PeriodicData pd;
 		for (int i=0; i<n_periodic; ++i){
 			int b1 = (int)(*data_periodic++);
 			int b2 = (int)(*data_periodic++);
@@ -227,13 +229,13 @@ int export_msh_grid3(const CPortGrid3D* grid, const char* fname, const BoundaryN
 			double x2 = *data_periodic++;
 			double y2 = *data_periodic++;
 			double z2 = *data_periodic++;
-			pd.add_condition(b1, b2, HMGrid3D::Vertex(x1, y1, z1), HMGrid3D::Vertex(x2, y2, z2), true);
+			pd.add_condition(b1, b2, HM3D::Vertex(x1, y1, z1), HM3D::Vertex(x2, y2, z2), true);
 		}
 		//call function
 		if (pd.size() == 0){
-			HMGrid3D::Export::GridMSH.WithCallback(f2, hmgrid(grid), fname, nmfunc);
+			HM3D::Export::GridMSH.WithCallback(f2, hmgrid(grid), fname, nmfunc);
 		} else {
-			HMGrid3D::Export::GridMSH.WithCallback(f2, hmgrid(grid), fname, nmfunc, pd);
+			HM3D::Export::GridMSH.WithCallback(f2, hmgrid(grid), fname, nmfunc, pd);
 		}
 		return 0;
 	} catch (const std::exception &e){
@@ -247,7 +249,7 @@ int export_gmsh_grid3(const CPortGrid3D* grid, const char* fname, const Boundary
 		// name function
 		auto nmfunc = construct_bnames(bnames);
 		//call function
-		HMGrid3D::Export::GridGMSH.WithCallback(f2, hmgrid(grid), fname, nmfunc);
+		HM3D::Export::GridGMSH.WithCallback(f2, hmgrid(grid), fname, nmfunc);
 		return 0;
 	} catch (const std::exception &e){
 		std::cout<<e.what()<<std::endl;
@@ -259,7 +261,7 @@ int export_tecplot_grid3(const CPortGrid3D* grid, const char* fname, const Bound
 		hmcport_callback f2){
 	try{
 		auto nmfunc = construct_bnames(bnames);
-		HMGrid3D::Export::GridTecplot.WithCallback(f2, hmgrid(grid), fname, nmfunc);
+		HM3D::Export::GridTecplot.WithCallback(f2, hmgrid(grid), fname, nmfunc);
 		return 0;
 	} catch (const std::exception &e){
 		std::cout<<e.what()<<std::endl;
@@ -272,8 +274,8 @@ void* g3writer_create(const char* gname, void* grid, void* awriter, void* subnod
 	try{
 		HMXML::ReaderA* wr = static_cast<HMXML::ReaderA*>(awriter);
 		HMXML::Reader* sn = static_cast<HMXML::Reader*>(subnode);
-		SGrid* g = static_cast<SGrid*>(grid);
-		auto ret = new HMGrid3D::Export::GridWriter(*g, wr, sn, gname, fmt);
+		HM3D::Ser::Grid* g = static_cast<HM3D::Ser::Grid*>(grid);
+		auto ret = new HM3D::Export::GridWriter(*g, wr, sn, gname, fmt);
 		return ret;
 	} catch (const std::exception &e){
 		std::cout<<e.what()<<std::endl;
@@ -282,14 +284,14 @@ void* g3writer_create(const char* gname, void* grid, void* awriter, void* subnod
 }
 void g3writer_free(void* gwriter){
 	try{
-		delete static_cast<HMGrid3D::Export::GridWriter*>(gwriter);
+		delete static_cast<HM3D::Export::GridWriter*>(gwriter);
 	} catch (const std::exception &e){
 		std::cout<<e.what()<<std::endl;
 	}
 }
 int g3writer_add_defined_field(void* gwriter, const char* field){
 	try{
-		auto gw = static_cast<HMGrid3D::Export::GridWriter*>(gwriter);
+		auto gw = static_cast<HM3D::Export::GridWriter*>(gwriter);
 		std::string f(field);
 		if (f == "face_vertices" || f == "face-vertices") gw->AddFaceVertexConnectivity();
 		else if (f == "cell_faces" || f == "cell-faces") gw->AddCellFaceConnectivity();
@@ -311,7 +313,7 @@ void* g3reader_create(void* awriter, void* subnode, char* outname, hmcport_callb
 		if (nm.size()>1000) throw std::runtime_error("grid name is too long: " + nm);
 		strcpy(outname, nm.c_str());
 		//reader
-		auto ret = HMGrid3D::Import::ReadHMG.WithCallback(f2, wr, sn);
+		auto ret = HM3D::Import::ReadHMG.WithCallback(f2, wr, sn);
 		return ret.release();
 	} catch (const std::exception &e){
 		std::cout<<e.what()<<std::endl;
@@ -320,7 +322,7 @@ void* g3reader_create(void* awriter, void* subnode, char* outname, hmcport_callb
 }
 CPortGrid3D* g3reader_getresult(void* rd){
 	try{
-		auto reader = static_cast<HMGrid3D::Import::GridReader*>(rd);
+		auto reader = static_cast<HM3D::Import::GridReader*>(rd);
 		return reader->result.release();
 	} catch (const std::exception &e){
 		std::cout<<e.what()<<std::endl;
@@ -329,7 +331,7 @@ CPortGrid3D* g3reader_getresult(void* rd){
 }
 void g3reader_free(void* greader){
 	try{
-		delete (HMGrid3D::Import::GridReader*)greader;
+		delete (HM3D::Import::GridReader*)greader;
 	} catch (const std::exception &e){
 		std::cout<<e.what()<<std::endl;
 	}
@@ -342,38 +344,36 @@ int tetrahedral_fill(int nsurf, void** surf,
 		hmcport_callback cb){
 	int r = 0;
 	//copy constraint points
-	HMGrid3D::VertexData cp;
+	HM3D::VertexData cp;
 	for (int i=0; i<npts; ++i){
-		cp.emplace_back(new HMGrid3D::Vertex(pcoords[3*i], pcoords[3*i+1],
+		cp.emplace_back(new HM3D::Vertex(pcoords[3*i], pcoords[3*i+1],
 					pcoords[3*i+2]));
 	}
 	//shallow copy source surfaces
-	HMGrid3D::Surface source;
+	HM3D::FaceData source;
 	for (int i=0; i<nsurf; ++i){
-		auto s = static_cast<HMGrid3D::SSurface*>(surf[i]);
-		std::copy(s->faces.begin(), s->faces.end(),
-				std::back_inserter(source.faces));
+		auto& s = static_cast<HM3D::Ser::Surface*>(surf[i])->surface;
+		std::copy(s.begin(), s.end(), std::back_inserter(source));
 	}
 	//shallow copy constraint surfaces
-	HMGrid3D::Surface cs;
+	HM3D::FaceData cs;
 	for (int i=0; i<nconstr; ++i){
-		auto s = static_cast<HMGrid3D::Surface*>(constr[i]);
-		std::copy(s->faces.begin(), s->faces.end(),
-				std::back_inserter(cs.faces));
+		auto& s = static_cast<HM3D::Ser::Surface*>(constr[i])->surface;
+		std::copy(s.begin(), s.end(), std::back_inserter(cs));
 	}
 	//scaling
-	HMGrid3D::VertexData srcpoints = source.allvertices();
-	HMGrid3D::VertexData cspoints = cs.allvertices();
+	HM3D::VertexData srcpoints = AllVertices(source);
+	HM3D::VertexData cspoints = AllVertices(cs);
 	ScaleBase3 sc = ScaleBase3::doscale(srcpoints);
 	sc.scale(cspoints.begin(), cspoints.end());
 	sc.scale(cp.begin(), cp.end());
 	vector<double> ps(npts);
 	for (int i=0; i<npts; ++i) ps[i] = psizes[i] / sc.L;
 	try{
-		HMGrid3D::GridData ans = HMGrid3D::Mesher::UnstructuredTetrahedral.WithCallback(
+		HM3D::GridData ans = HM3D::Mesher::UnstructuredTetrahedral.WithCallback(
 				cb, source, cs, cp, ps);
 		sc.unscale(ans.vvert.begin(), ans.vvert.end());
-		*ret = new SGrid(std::move(ans));
+		*ret = new HM3D::Ser::Grid(std::move(ans));
 		r = 1;
 	} catch (const std::exception &e){
 		std::cout<<e.what()<<std::endl;

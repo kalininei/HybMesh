@@ -3,7 +3,7 @@
 
 extern "C"{
 
-typedef void CPortSurface3D;  //SSurface*
+typedef void CPortSurface3D;  //Ser::Surface*
 
 void free_srf3(CPortSurface3D*);
 

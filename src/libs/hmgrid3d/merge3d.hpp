@@ -1,9 +1,9 @@
 #ifndef HMGRID3D_MERGE_HPP
 #define HMGRID3D_MERGE_HPP
 
-#include "primitives_grid3d.hpp"
+#include "primitives3d.hpp"
 
-namespace HMGrid3D{
+namespace HM3D{
 
 //duplicate primitives will be taken from `from` grid
 //result will be written to `to` grid.
