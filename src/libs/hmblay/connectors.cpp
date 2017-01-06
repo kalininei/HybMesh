@@ -1,5 +1,9 @@
 #include "connectors.hpp"
 #include "bgrid_impose.hpp"
+#include "contclipping.hpp"
+#include "algos.hpp"
+#include "constructor.hpp"
+#include "treverter2d.hpp"
 
 using namespace HMBlay::Impl;
 // =============================== Factory
@@ -31,8 +35,7 @@ void PlainConnector::ModifyAdjacents() {
 	//make left points of next equal to right points of prev
 	int imin = std::min(prev->left_points.size(), next->right_points.size());
 	for (int i=0; i<imin; ++i){
-		*next->left_points.point(i) =
-			*prev->right_points.point(i);
+		*next->left_points[i] = *prev->right_points[i];
 	}
 }
 
@@ -41,7 +44,7 @@ void AcuteConnector::BuildInternals(){
 	//small triangle is found at intersection of first level cells
 	//it is used to fill acute corner.
 	//1) find two cells which contain corner point
-	Point pc = *prev->rect->BottomContour().last();
+	Point pc = *HM2D::Contour::Last(prev->rect->BottomContour());
 	auto get_cell = [](BGrid& g, Point& pc)->const Cell*{
 		for (int i=0; i<g.n_cells(); ++i){
 			const Cell* c = g.get_cell(i);
@@ -56,14 +59,17 @@ void AcuteConnector::BuildInternals(){
 	if (c1 == 0 || c2 == 0) return;
 	//2) intersect
 	auto cc1 = Cell2Cont(c1), cc2 = Cell2Cont(c2);
-	auto icont = HMCont2D::Clip::Intersection(cc1, cc2);
-	HMCont2D::Clip::Heal(icont);
-	Point* pc2=HMCont2D::ECollection::FindClosestNode(icont, pc);
+	auto icont = HM2D::Contour::Clip::Intersection(cc1, cc2);
+	HM2D::Contour::Clip::Heal(icont);
+	auto _av = HM2D::AllVertices(icont.alledges());
+	auto _fn = HM2D::FindClosestNode(_av, pc);
+	Point* pc2=_av[std::get<0>(_fn)].get();
 	//return if intersection was not found.
 	//Anyway we can safely proceed without this triangle
-	if (icont.cont_count() != 1 || *pc2 != pc) return;
+	if (icont.nodes.size() != 1 || *pc2 != pc) return;
 	//3) get 3 points for a triangle
-	std::array<Point*, 3> cl = icont.nodes[0]->point_siblings(pc2);
+	auto pc2info = HM2D::Contour::PInfo(icont.nodes[0]->contour, pc2);
+	std::array<Point*, 3> cl {pc2info.pprev.get(), pc2info.p.get(), pc2info.pnext.get()};
 	//4) build grid with one triangle
 	filler.reset(new BGrid());
 	GGeom::Modify::AddCell(*filler, {*cl[0], *cl[1], *cl[2]});
@@ -73,14 +79,18 @@ void AcuteConnector::BuildInternals(){
 
 void AcuteConnector::ModifyAdjacents(){
 	//point of intersection to grid point
-	auto crosses = HMCont2D::Algos::CrossAll(prev->rect->TopContour(),
+	auto crosses = HM2D::Contour::Algos::CrossAll(prev->rect->TopContour(),
 			next->rect->TopContour());
 	auto prevcont = GGeom::Info::Contour1(prev->result);
 	auto nextcont = GGeom::Info::Contour1(next->result);
 	for (auto c: crosses){
 		Point p = std::get<1>(c);
-		Point* p1 = HMCont2D::ECollection::FindClosestNode(prevcont, p);
-		Point* p2 = HMCont2D::ECollection::FindClosestNode(nextcont, p);
+		auto _pv = HM2D::AllVertices(prevcont);
+		auto _pn = HM2D::AllVertices(nextcont);
+		auto _f1 = HM2D::FindClosestNode(_pv, p);
+		auto _f2 = HM2D::FindClosestNode(_pn, p);
+		Point* p1 = _pv[std::get<0>(_f1)].get();
+		Point* p2 = _pn[std::get<0>(_f2)].get();
 		p = Point::Weigh(*p1, *p2, 0.5);
 		p1->set(p.x, p.y);
 		p2->set(p.x, p.y);
@@ -91,11 +101,11 @@ void AcuteConnector::ModifyAdjacents(){
 RightConnector::RightConnector(MappedMesher* _prev, MappedMesher* _next): MConnector(_prev, _next){
 	//find cross point between top lines of previous and
 	//next mesh_areas
-	HMCont2D::Contour prev_top = prev->rect->TopContour();
-	HMCont2D::Contour next_top = next->rect->TopContour();
+	HM2D::EdgeData prev_top = prev->rect->TopContour();
+	HM2D::EdgeData next_top = next->rect->TopContour();
 	//first cross from start of next_top contour (essential)
 	std::tuple<bool, Point, double, double> cross =
-		HMCont2D::Algos::Cross(next_top, prev_top);
+		HM2D::Contour::Algos::Cross(next_top, prev_top);
 	assert(std::get<0>(cross));
 	//find crosspoint in conformal rectangle
 	Point pcross_prev = prev->rect->MapToSquare(std::get<1>(cross));
@@ -109,17 +119,17 @@ void RightConnector::BuildInternals() {
 	Point realpoint1 = prev->rect->MapToReal(Point(prev->wend, 0));
 	Point realpoint2 = next->rect->MapToReal(Point(next->wstart, 0));
 	//1) assemble borders
-	HMCont2D::Contour _left = prev->rect->BottomContour();
-	left = HMCont2D::Constructor::CutContour(_left, realpoint1, *_left.last()); 
-	left.ReallyReverse();
-	HMCont2D::Contour _bot = next->rect->BottomContour();
-	bot = HMCont2D::Constructor::CutContour(_bot, *_bot.first(), realpoint2); 
-	HMCont2D::Contour right = next->LeftContour();
-	HMCont2D::Contour top = prev->RightContour();
+	HM2D::EdgeData _left = prev->rect->BottomContour();
+	left = HM2D::Contour::Constructor::CutContour(_left, realpoint1, *HM2D::Contour::Last(_left)); 
+	HM2D::Contour::ReallyRevert::Permanent(left);
+	HM2D::EdgeData _bot = next->rect->BottomContour();
+	bot = HM2D::Contour::Constructor::CutContour(_bot, *HM2D::Contour::First(_bot), realpoint2); 
+	HM2D::EdgeData right = next->LeftContour();
+	HM2D::EdgeData top = prev->RightContour();
 	//get rid of numerical errors
-	Point pc = (*right.last() + *top.last())/2.0;
-	right.last()->set(pc);
-	top.last()->set(pc);
+	Point pc = (*HM2D::Contour::Last(right) + *HM2D::Contour::Last(top))/2.0;
+	HM2D::Contour::Last(right)->set(pc);
+	HM2D::Contour::Last(top)->set(pc);
 
 
 	//2) assemble connector
@@ -128,12 +138,12 @@ void RightConnector::BuildInternals() {
 	connection_grid.reset(new MappedMesher(connection_area.get(), 0.0, 1.0));
 
 	//3) build a grid there
-	auto f1out = HMCont2D::Contour::EWeights(top);
+	auto f1out = HM2D::Contour::EWeights(top);
 	for (auto& x: f1out) x = connection_area->top2bot(x); 
 	auto bot_part=[&f1out](double, double)->vector<double>{ return f1out; };
 
 	//using conform weights instead of real weighs to match adjacent partition
-	vector<double> f2out = HMCont2D::Contour::EWeights(right);
+	vector<double> f2out = HM2D::Contour::EWeights(right);
 	for(auto& x: f2out) x = connection_area->right2conf(x);
 	auto vert_part=[&f2out](double)->vector<double>{ return f2out; };
 
@@ -141,13 +151,13 @@ void RightConnector::BuildInternals() {
 
 	//snap to top and right contours
 	//1. top
-	auto toppnt = top.ordered_points();
+	auto toppnt = HM2D::Contour::OrderedPoints(top);
 	for (int i=0; i<toppnt.size(); ++i){
 		int gridind = right.size()*toppnt.size() + i;
 		connection_grid->result.get_point(gridind)->set(*toppnt[i]);
 	}
 	//2. right
-	auto rpnt = right.ordered_points();
+	auto rpnt = HM2D::Contour::OrderedPoints(right);
 	for (int i=0; i<rpnt.size(); ++i){
 		int gridind = i*(top.size()+1) + top.size();
 		connection_grid->result.get_point(gridind)->set(*rpnt[i]);
@@ -161,28 +171,34 @@ void ReentrantConnector::BuildInternals(){
 	bot = next->LeftContour();
 	// left/bot are straight lines. Otherwise there was an error
 	// during ExtPath division
-	assert(ISEQ( left.length(), Point::dist(*left.first(), *left.last()) ));
-	assert(ISEQ( bot.length(),  Point::dist(*bot.first(), *bot.last())  ));
+	assert(ISEQ( HM2D::Length(left), Point::dist(*HM2D::Contour::First(left), *HM2D::Contour::Last(left)) ));
+	assert(ISEQ( HM2D::Length(bot),  Point::dist(*HM2D::Contour::First(bot), *HM2D::Contour::Last(bot))  ));
 	//int sz = std::min(left.size(), bot.size());
 	//if (left.size()>sz) left = HMCont2D::ECollection::ShallowCopy(left, 0, sz);
 	//if (bot.size()>sz) bot = HMCont2D::ECollection::ShallowCopy(bot, 0, sz);
 
 	//2) assembling top/right
 	// Find a corner point and draw lines from left/bot to it
-	Vect v1 = *left.last() - *left.first();
+	auto leftlast = HM2D::Contour::Last(left);
+	auto leftfirst = HM2D::Contour::First(left);
+	auto botlast = HM2D::Contour::Last(bot);
+	auto botfirst = HM2D::Contour::First(bot);
+	Vect v1 = *leftlast - *leftfirst;
 	v1 = vecRotate(v1, 3*M_PI/2); 
-	Vect v2 = *bot.last() - *bot.first();
+	Vect v2 = *botlast - *botfirst;
 	v2 = vecRotate(v2, M_PI/2);
 	double ksieta[2];
-	SectCross(*left.last(), *left.last() + v1, *bot.last(), *bot.last() + v2, ksieta);
-	top_right_pnt = Point::Weigh(*left.last(), *left.last() + v1, ksieta[0]);
+	SectCross(*leftlast, *leftlast + v1, *botlast, *botlast + v2, ksieta);
+	top_right_pnt = std::make_shared<HM2D::Vertex>(Point::Weigh(*leftlast, *leftlast + v1, ksieta[0]));
 	top.clear(); right.clear();
-	top.add_value(HMCont2D::Edge { left.last(), &top_right_pnt});
-	right.add_value(HMCont2D::Edge { bot.last(), &top_right_pnt});
+	top.emplace_back(new HM2D::Edge ( leftlast, top_right_pnt));
+	right.emplace_back(new HM2D::Edge ( botlast, top_right_pnt));
 
 	//3) assemble connector
-	bool force_rect = (left.is_straight() && right.is_straight() &&
-			prev->rect->use_rect_approx());
+	bool force_rect = (
+			prev->rect->use_rect_approx() &&
+			HM2D::Contour::CornerPoints(left).size() == 2 &&
+			HM2D::Contour::CornerPoints(right).size() == 2);
 	connection_area.reset(
 			new RectForOpenArea(left, right, bot, top, true, force_rect)
 			);
@@ -190,12 +206,12 @@ void ReentrantConnector::BuildInternals(){
 
 	//3) build a grid there
 	auto bot_part=[&](double, double)->vector<double>{
-		return HMCont2D::Contour::EWeights(bot);
+		return HM2D::Contour::EWeights(bot);
 	};
 
 	//calculate before because this function is called multiple times
 	//using conform weights instead of real weighs to match adjacent partition
-	vector<double> f2out = HMCont2D::Contour::EWeights(left);
+	vector<double> f2out = HM2D::Contour::EWeights(left);
 	for(auto& x: f2out) x = connection_area->left2conf(x);
 	auto vert_part=[&f2out](double)->vector<double>{ return f2out; };
 
@@ -206,31 +222,31 @@ void ReentrantConnector::BuildInternals(){
 void RoundConnector::BuildInternals(){
 	assert(next->left_points.size()>1);
 	assert(prev->right_points.size()>1);
-	assert(*next->left_points.point(0) == *prev->right_points.point(0));
-	Point cp = *next->left_points.point(0);
+	assert(*next->left_points[0] == *prev->right_points[0]);
+	Point cp = *next->left_points[0];
 	int Nlay = std::max(next->left_points.size(), prev->right_points.size()) - 1;
 	assert(Nlay>0);
 
 	//start and end points of circles
 	vector<Point> pstart, pend;
-	for (int i=0; i<Nlay; ++i) pstart.push_back(*prev->right_points.point(1+i));
-	for (int i=0; i<Nlay; ++i) pend.push_back(*next->left_points.point(1+i));
+	for (int i=0; i<Nlay; ++i) pstart.push_back(*prev->right_points[1+i]);
+	for (int i=0; i<Nlay; ++i) pend.push_back(*next->left_points[1+i]);
 
-	vector<HMCont2D::Container<HMCont2D::Contour>> circ_start, circ_end;
+	vector<HM2D::EdgeData> circ_start, circ_end;
 	//build circles
 	for (int i=0; i<Nlay; ++i){
 		circ_start.push_back(
-			HMCont2D::Constructor::Circle(36, cp, pstart[i])
+			HM2D::Contour::Constructor::Circle(36, cp, pstart[i])
 		);
 		circ_end.push_back(
-			HMCont2D::Constructor::Circle(36, cp, pend[i])
+			HM2D::Contour::Constructor::Circle(36, cp, pend[i])
 		);
-		circ_start.back().Reverse();
-		circ_end.back().Reverse();
+		HM2D::Contour::Reverse(circ_start.back());
+		HM2D::Contour::Reverse(circ_end.back());
 	}
 
 	//contours from lowest to highest
-	vector<HMCont2D::Container<HMCont2D::Contour>> conts;
+	vector<HM2D::EdgeData> conts;
 	for (int i=0; i<Nlay; ++i){
 		conts.push_back(
 			ContoursWeight(circ_start[i], pstart[i], circ_end[i], pend[i])
@@ -239,24 +255,24 @@ void RoundConnector::BuildInternals(){
 
 	//weights
 	vector<double> w;
-	double lennext = Point::dist(next->left_points.value(Nlay),
-			next->left_points.value(Nlay-1));
-	double lenprev = Point::dist(prev->right_points.value(Nlay),
-			prev->right_points.value(Nlay-1));
+	double lennext = Point::dist(*next->left_points[Nlay],
+			*next->left_points[Nlay-1]);
+	double lenprev = Point::dist(*prev->right_points[Nlay],
+			*prev->right_points[Nlay-1]);
 	double lenav = (lennext+lenprev)/2.0;
-	int N = std::ceil(conts.back().length() / lenav);
+	int N = std::ceil(HM2D::Length(conts.back()) / lenav);
 	for (int i=0; i<=N; ++i) w.push_back((double)i/N);
 
 	//get points
-	vector<HMCont2D::PCollection> allpts;
-	for (auto& c: conts) allpts.push_back(HMCont2D::Contour::WeightPoints(c, w));
+	vector<vector<Point>> allpts;
+	for (auto& c: conts) allpts.push_back(HM2D::Contour::WeightPoints(c, w));
 
 	//build grid points from geometric points
 	vector<ShpVector<GridPoint>> pallpts(allpts.size());
 	for (int i=0; i<allpts.size(); ++i){
 		pallpts[i].resize(allpts[i].size());
 		for (int j=0; j<allpts[i].size(); ++j)
-			pallpts[i][j].reset(new GridPoint(*allpts[i].point(j)));
+			pallpts[i][j].reset(new GridPoint(allpts[i][j]));
 		
 	}
 	shared_ptr<GridPoint> cpoint(new GridPoint(cp));
@@ -298,7 +314,3 @@ void RoundConnector::AssembleGrid(vector<ShpVector<GridPoint>>& pallpts, shared_
 	}
 	GGeom::Repair::Heal(*filler);
 }
-
-
-
-

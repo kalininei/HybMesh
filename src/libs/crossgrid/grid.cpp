@@ -7,6 +7,8 @@
 #include "wireframegrid.h"
 #include "procgrid.h"
 #include "debug_grid2d.h"
+#include "contclipping.hpp"
+#include "algos.hpp"
 
 void Edge::add_adj_cell(int cell_ind, int i1, int i2) const{
 	if ((i1 == p1) && (i2 == p2)){
@@ -446,11 +448,11 @@ GridGeom* GridGeom::combine(GridGeom* gmain, GridGeom* gsec){
 	//if gmain and gsec are not simple structures
 	auto t1 = GGeom::Info::Contour(*gmain);
 	auto t2 = GGeom::Info::Contour(*gsec);
-	auto intersect = HMCont2D::Clip::Union(t1, t2);
+	auto intersect = HM2D::Contour::Clip::Union(t1, t2);
 	bool issimple = true;
 	if (intersect.nodes.size() != intersect.roots().size()){ issimple = false; }
 	else {
-		auto ap = intersect.all_points();
+		auto ap = HM2D::AllVertices(intersect.alledges());
 		for (int i=0; i<ap.size(); ++i)
 		for (int j=i+1; j<ap.size(); ++j){
 			if (*ap[i] == *ap[j]) {issimple = false; break; }
@@ -481,16 +483,16 @@ vector<Point> intersection_points(const GridGeom& gmain, const GridGeom& gsec){
 	//to exclude cases when intersection point is not actual after crossing
 	vector<Point> ret;
 	auto cmain = GGeom::Info::Contour(gmain);
-	auto simp_main = HMCont2D::Algos::Simplified(cmain);
+	auto simp_main = HM2D::Contour::Algos::Simplified(cmain);
 	auto csec = GGeom::Info::Contour(gsec);
-	auto simp_sec = HMCont2D::Algos::Simplified(csec);
-	auto cross = HMCont2D::Clip::Difference(simp_main, simp_sec);
-	HMCont2D::Clip::Heal(cross);
-	auto bbox1 = HMCont2D::ECollection::BBox(simp_sec, geps);
-	for (auto p: cross.all_points()){
+	auto simp_sec = HM2D::Contour::Algos::Simplified(csec);
+	auto cross = HM2D::Contour::Clip::Difference(simp_main, simp_sec);
+	HM2D::Contour::Clip::Heal(cross);
+	auto bbox1 = HM2D::BBox(simp_sec.alledges(), geps);
+	for (auto p: HM2D::AllVertices(cross.alledges())){
 		if (bbox1.whereis(*p) == OUTSIDE) continue;
-		auto mainfnd = HMCont2D::ECollection::FindClosestEdge(simp_main, *p);
-		auto secfnd = HMCont2D::ECollection::FindClosestEdge(simp_sec, *p);
+		auto mainfnd = HM2D::FindClosestEdge(simp_main.alledges(), *p);
+		auto secfnd = HM2D::FindClosestEdge(simp_sec.alledges(), *p);
 		if (ISZERO(std::get<1>(mainfnd)) && ISZERO(std::get<1>(secfnd))){
 			ret.push_back(*p);
 		}

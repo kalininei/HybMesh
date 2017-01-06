@@ -1,56 +1,43 @@
 #ifndef HMCONT2D_CONSTRUCTOR_HPP
 #define HMCONT2D_CONSTRUCTOR_HPP
 
-#include "hybmesh_contours2d.hpp"
+#include "bgeom2d.h"
+#include "primitives2d.hpp"
 
-namespace HMCont2D{ namespace Constructor{
+//Construction routines (unlike assembler routines) always return deep copies of input data
+namespace HM2D{ namespace Contour{ namespace Constructor{
 
-//Shaped contours
-HMCont2D::Container<Contour> Circle(int N, double rad, Point cnt);
-HMCont2D::Container<Contour> Circle(int N, Point cnt, Point point_on_curve);
+EdgeData Circle(int N, double rad, Point cnt);
+EdgeData Circle(int N, Point cnt, Point point_on_curve);
 
-//Contour from points
-HMCont2D::Contour ContourFromPoints(const vector<Point*>& pnt, bool force_closed=false);
-HMCont2D::Contour ContourFromPoints(const HMCont2D::PCollection& dt, bool force_closed=false);
-template<class Iter>
-typename std::enable_if<
-	std::is_convertible<typename Iter::value_type, Point*>::value,
-	HMCont2D::Contour>::type
-ContourFromPoints(Iter first, Iter last, bool force_closed=false){
-	vector<Point*> pnt;
-	for (auto p = first; p!=last; ++p) pnt.push_back(*p);
-	return ContourFromPoints(pnt, force_closed);
-}
-HMCont2D::Container<Contour> ContourFromPoints(vector<double> pnt, bool force_closed=false);
-HMCont2D::Container<Contour> ContourFromPoints(vector<Point> pnt, bool force_closed=false);
-HMCont2D::Container<Contour> ContourFromBBox(BoundingBox bbox);
-HMCont2D::Container<Contour> ContourFromContours(const vector<Contour>& conts,
+EdgeData FromPoints(const vector<double>& pnt, bool force_closed=false);
+EdgeData FromPoints(const vector<Point>& pnt, bool force_closed=false);
+
+//returns deep copies
+EdgeData FromContours(const vector<EdgeData>& conts,
 	bool last_close=true, bool fullshift=true, std::set<int> fixed={});
 
-
 //Contour cut from another contours with deep copy
-HMCont2D::Container<Contour> CutContour(const HMCont2D::Contour& cont,
-		const Point& pstart, int direction, double len);
-HMCont2D::Container<Contour> CutContour(const HMCont2D::Contour& cont,
+EdgeData CutContour(const EdgeData& cont,
 		const Point& pstart, const Point& pend);
-HMCont2D::Container<Contour> CutContourByWeight(const Contour& source, double w1, double w2);
-HMCont2D::Container<Contour> CutContourByLen(const Contour& source, double len1, double len2);
+EdgeData CutContour(const EdgeData& cont,
+		const Point& pstart, int direction, double len);
 
-//Common ECollection constructor
-HMCont2D::Container<HMCont2D::ECollection> ECol(const vector<Point>& pnt, const vector<int>& eds);
-HMCont2D::Container<HMCont2D::ECollection> ECol(int npnt, int neds, double* pnt, int* eds);
+//builds parametric spline which passes given points
+EdgeData Spline(const vector<Point>& pnt, int nedges, bool force_closed=false);
+
+}}
+
+namespace ECol{ namespace Constructor{
+
+EdgeData FromRaw(int npnt, int neds, double* pnt, int* eds);
+
+//resulting contours have no crosses and complicated connections.
+vector<EdgeData> ExtendedSeparate(const EdgeData& ecol);
 
 
-//Perturbed contour between two points.
-//perturbation(double x) gives magnitude of perturbation from (p1,p2) segment coordinate
-HMCont2D::Container<HMCont2D::Contour> PerturbedContour(Point p1, Point p2, int npart,
-		std::function<double(double)> perturbation);
+}}
 
-HMCont2D::Contour Spline(const vector<Point*>& pnt, HMCont2D::PCollection& pcol, int nedges, bool force_closed=false);
-
-HMCont2D::Container<HMCont2D::Contour> Spline(const vector<Point>& pnt, int nedges, bool force_closed=false);
-HMCont2D::Container<HMCont2D::Contour> Spline(const vector<double>& pnt, int nedges, bool force_closed=false);
-
-}};
+}
 
 #endif

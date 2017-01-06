@@ -3,7 +3,7 @@
 
 #include <map>
 #include "grid.h"
-#include "hybmesh_contours2d.hpp"
+#include "tree.hpp"
 
 class BufferGrid: public GridGeom{
 	//buffer grid which was built within grid 'orig'
@@ -16,8 +16,6 @@ class BufferGrid: public GridGeom{
 	vector<const Cell*> orig_cells;  //pointers to cells from orig
 	
 	void new_edge_points(Edge& e, const vector<double>& wht);
-
-	mutable HMCont2D::PCollection apoints;  //additional storage points
 public:
 	BufferGrid(GridGeom& main, const PContour& cont, double buffer_size);
 	
@@ -26,7 +24,7 @@ public:
 	//returns contour of the buffer grid with associated points
 	//length weights which will be used for triangulation
 	std::tuple<
-		HMCont2D::ContourTree,
+		HM2D::Contour::Tree,
 		std::map<Point*, double>
 	> boundary_info(bool preserve_true_bp, double angle0) const;
 	

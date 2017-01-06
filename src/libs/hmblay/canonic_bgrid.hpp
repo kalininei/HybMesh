@@ -7,49 +7,48 @@ namespace HMBlay{ namespace Impl{
 
 //takes two closed contours (c1, c2) and builds
 //averaged one which goes from p1 (in c1) to p2 (in c2)
-HMCont2D::Container<HMCont2D::Contour>
-ContoursWeight(const HMCont2D::Contour& c1, Point p1,
-		const HMCont2D::Contour& c2, Point p2);
+HM2D::EdgeData
+ContoursWeight(const HM2D::EdgeData& c1, Point p1,
+		const HM2D::EdgeData& c2, Point p2);
 
 
 class MappedRect{
 	bool _use_rect_approx;
 protected:
-	HMCont2D::Container<HMCont2D::Contour> left, right, bottom, top;
+	HM2D::EdgeData left, right, bottom, top;
 
-	MappedRect(const HMCont2D::Contour& _left, const HMCont2D::Contour& _right,
-			const HMCont2D::Contour& _bottom, const HMCont2D::Contour& _top,
-			bool rect_approx):
-		_use_rect_approx(rect_approx),
-		left(HMCont2D::Container<HMCont2D::Contour>::DeepCopy(_left)),
-		right(HMCont2D::Container<HMCont2D::Contour>::DeepCopy(_right)),
-		bottom(HMCont2D::Container<HMCont2D::Contour>::DeepCopy(_bottom)),
-		top(HMCont2D::Container<HMCont2D::Contour>::DeepCopy(_top))
-	{}
+	MappedRect(const HM2D::EdgeData& _left, const HM2D::EdgeData& _right,
+			const HM2D::EdgeData& _bottom, const HM2D::EdgeData& _top,
+			bool rect_approx): _use_rect_approx(rect_approx){
+		HM2D::DeepCopy(_left, left);
+		HM2D::DeepCopy(_right, right);
+		HM2D::DeepCopy(_bottom, bottom);
+		HM2D::DeepCopy(_top, top);
+	}
 public:
 	bool use_rect_approx() const { return _use_rect_approx; }
 	//real contour mapped by {u=0->1, v=1 }
-	HMCont2D::Contour TopContour() const { return HMCont2D::Contour(top); }
+	HM2D::EdgeData TopContour() const { return HM2D::EdgeData(top); }
 	//real contour mapped by {u=0->1, v=0 }
-	HMCont2D::Contour BottomContour() const { return HMCont2D::Contour(bottom); }
+	HM2D::EdgeData BottomContour() const { return HM2D::EdgeData(bottom); }
 	//real contour mapped by {u=0, v=0->1 }
-	HMCont2D::Contour LeftContour() const { return HMCont2D::Contour(left); }
+	HM2D::EdgeData LeftContour() const { return HM2D::EdgeData(left); }
 	//real contour mapped by {u=1, v=0->1 }
-	HMCont2D::Contour RightContour() const { return HMCont2D::Contour(right); }
+	HM2D::EdgeData RightContour() const { return HM2D::EdgeData(right); }
 
 	//real coordinates from normalized in [0,1] square
-	virtual HMCont2D::PCollection MapToReal(const vector<const Point*>& p) const = 0;
-	HMCont2D::PCollection MapToReal(const vector<Point*>& p) const{
+	virtual HM2D::VertexData MapToReal(const vector<const Point*>& p) const = 0;
+	HM2D::VertexData MapToReal(const vector<Point*>& p) const{
 		return MapToReal(vector<const Point*>(p.begin(), p.end()));
 	}
-	Point MapToReal(const Point& p) const{ return *(MapToReal({&p}).point(0)); }
+	Point MapToReal(const Point& p) const{ return *(MapToReal({&p})[0]); }
 	
 	//square coordinates from real coordinates
-	virtual HMCont2D::PCollection MapToSquare(const vector<const Point*>& p) const = 0;
-	HMCont2D::PCollection MapToSquare(const vector<Point*>& p) const{
+	virtual HM2D::VertexData MapToSquare(const vector<const Point*>& p) const = 0;
+	HM2D::VertexData MapToSquare(const vector<Point*>& p) const{
 		return MapToSquare(vector<const Point*>(p.begin(), p.end()));
 	}
-	Point MapToSquare(const Point& p) const { return *(MapToSquare({&p}).point(0)); }
+	Point MapToSquare(const Point& p) const { return *(MapToSquare({&p})[0]); }
 
 	virtual Point MapBndToReal(const Point& p) const { return MapToReal(p); }
 	virtual Point MapBndToSquare(const Point& p) const { return MapToSquare(p); }
@@ -72,18 +71,18 @@ public:
 	//bottom (u=0->1; v: 0)
 	//top    (u=0->1; v: 1)
 	static shared_ptr<MappedRect>
-	Factory(HMCont2D::Contour& left, HMCont2D::Contour& right,
-			HMCont2D::Contour& bottom, HMCont2D::Contour& top,
+	Factory(HM2D::EdgeData& left, HM2D::EdgeData& right,
+			HM2D::EdgeData& bottom, HM2D::EdgeData& top,
 			int femn, bool use_rect_approx);
 	//build forcing usage of rectangle approximation
 	static shared_ptr<MappedRect>
-	RectApprox(HMCont2D::Contour& left, HMCont2D::Contour& right,
-			HMCont2D::Contour& bottom, HMCont2D::Contour& top);
+	RectApprox(HM2D::EdgeData& left, HM2D::EdgeData& right,
+			HM2D::EdgeData& bottom, HM2D::EdgeData& top);
 
 	//2. From three lines (no top) and vertical distance h
 	static shared_ptr<MappedRect>
-	Factory(HMCont2D::Contour& left, HMCont2D::Contour& right,
-			HMCont2D::Contour& bottom, double h,
+	Factory(HM2D::EdgeData& left, HM2D::EdgeData& right,
+			HM2D::EdgeData& bottom, double h,
 			int femn, bool use_rect_approx);
 };
 
@@ -91,11 +90,11 @@ class RectForOpenArea: public MappedRect{
 protected:
 	shared_ptr<HMMap::Conformal::Rect> core;
 public:
-	RectForOpenArea(HMCont2D::Contour& left, HMCont2D::Contour& right,
-			HMCont2D::Contour& bottom, HMCont2D::Contour& top,
+	RectForOpenArea(HM2D::EdgeData& left, HM2D::EdgeData& right,
+			HM2D::EdgeData& bottom, HM2D::EdgeData& top,
 			int femn, bool use_rect_approx, bool force_rect_approx=false);
-	HMCont2D::PCollection MapToReal(const vector<const Point*>& p) const override;
-	HMCont2D::PCollection MapToSquare(const vector<const Point*>& p) const override;
+	HM2D::VertexData MapToReal(const vector<const Point*>& p) const override;
+	HM2D::VertexData MapToSquare(const vector<const Point*>& p) const override;
 
 	double conf2top(double w) const override;
 	double conf2bot(double w) const override;
@@ -111,21 +110,21 @@ class RectForClosedArea: public MappedRect{
 public:
 	//if |area(bottom)|<|area(top)| => contours have negative direction
 	//else => positive
-	RectForClosedArea(const HMCont2D::Contour& side, const HMCont2D::Contour& bottom,
-			const HMCont2D::Contour& top);
+	RectForClosedArea(const HM2D::EdgeData& side, const HM2D::EdgeData& bottom,
+			const HM2D::EdgeData& top);
 
 	//pstart should lie in bottom
 	//if bottom is in anti-clockwise direction -> top is an outer contour
 	static shared_ptr<RectForClosedArea>
-	Build(const HMCont2D::Contour& bottom, const Point* pstart, double h);
+	Build(const HM2D::EdgeData& bottom, const Point* pstart, double h);
 
 	//bottom.first(), top.first() will be connected
 	static shared_ptr<RectForClosedArea>
-	Build(const HMCont2D::Contour& bottom, const HMCont2D::Contour& top);
+	Build(const HM2D::EdgeData& bottom, const HM2D::EdgeData& top);
 
 	//mapping functions
-	HMCont2D::PCollection MapToReal(const vector<const Point*>& p) const override;
-	HMCont2D::PCollection MapToSquare(const vector<const Point*>& p) const override;
+	HM2D::VertexData MapToReal(const vector<const Point*>& p) const override;
+	HM2D::VertexData MapToSquare(const vector<const Point*>& p) const override;
 
 	Point MapBndToReal(const Point& p) const override;
 	Point MapBndToSquare(const Point& p) const override;
@@ -149,7 +148,7 @@ public:
 		rect = r; wstart = w1; wend = w2;
 	};
 
-	HMCont2D::PCollection right_points, left_points;
+	vector<GridPoint*> right_points, left_points;
 	BGrid result;
 
 	//takes weight start, weight end of source line.
@@ -167,8 +166,8 @@ public:
 	void Fill(TBotPart bottom_partitioner, TVertPart vertical_partitioner, int source);
 
 	//returns grid boundaries as shallow copy
-	HMCont2D::Contour LeftContour();
-	HMCont2D::Contour RightContour();
+	HM2D::EdgeData LeftContour();
+	HM2D::EdgeData RightContour();
 	
 };
 

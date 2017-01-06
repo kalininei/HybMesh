@@ -2,14 +2,13 @@
 #define HYBMESH_HMC_EXPORT_HPP
 
 #include "hmxmlreader.hpp"
-#include "collections.hpp"
-#include "containers.hpp"
+#include "primitives2d.hpp"
 
-namespace HMCont2D{ namespace Export{
+namespace HM2D{ namespace Export{
 
 struct EColWriter{
 	//tp = "ascii", "bin", "floatbin"
-	EColWriter(const ECollection& g,
+	EColWriter(const EdgeData& g,
 			HMXML::ReaderA* writer,
 			HMXML::Reader* subnode,
 			std::string contname,
@@ -40,7 +39,7 @@ private:
 	virtual void data_changed(){}
 
 	HMXML::ReaderA* pwriter;
-	const ECollection* cont;
+	const EdgeData* cont;
 	HMXML::Reader cwriter, vwriter, ewriter;
 	std::string __tp;
 };
@@ -51,10 +50,10 @@ template<> bool EColWriter::is_binary<float>(){return __tp != "ascii";}
 
 }}
 
-namespace HMCont2D{namespace Import{
+namespace HM2D{namespace Import{
 struct EColReader{
 	EColReader(HMXML::ReaderA* preader, HMXML::Reader* subnode);
-	std::unique_ptr<HMCont2D::Container<HMCont2D::ECollection>> result;
+	std::unique_ptr<HM2D::EdgeData> result;
 
 	struct TFieldInfo{
 		TFieldInfo(HMXML::Reader& field);

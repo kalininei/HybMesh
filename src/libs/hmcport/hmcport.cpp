@@ -7,6 +7,8 @@
 #include "hmcallback.hpp"
 #include "debug_grid2d.h"
 #include "hmxmlreader.hpp"
+#include "contclipping.hpp"
+
 namespace{
 int silent2_function(const char*, const char*, double, double){
 	return HMCallback::OK;
@@ -234,7 +236,7 @@ Grid* grid_exclude_cont(Grid* grd, void* cont, int is_inner){
 Grid* grid_exclude_cont_wcb(Grid* grd, void* cont, int is_inner,
 		hmcport_callback cb_fun){
 	try{
-		HMCont2D::ECollection* pnt = static_cast<HMCont2D::ECollection*>(cont);
+		HM2D::EdgeData* pnt = static_cast<HM2D::EdgeData*>(cont);
 		PointsContoursCollection pcc(*pnt);
 		auto ret = GridGeom::grid_minus_cont(
 				static_cast<GridGeom*>(grd), &pcc,
@@ -277,14 +279,15 @@ int simplify_grid_boundary(Grid* grd, double angle){
 
 void* create_ecollection_container(int Npts, double* pts, int Nedgs, int* edges){
 	try{
-		auto ret = new HMCont2D::Container<HMCont2D::ECollection>();
-		//points
+		auto ret = new HM2D::EdgeData;
+		HM2D::VertexData vd;
 		for (int i=0; i<Npts; ++i){
-			ret->pdata.add_value(Point(pts[2*i], pts[2*i+1]));
+			vd.push_back(std::make_shared<HM2D::Vertex>(pts[2*i], pts[2*i+1]));
 		}
 		//edges
 		for (int i=0; i<Nedgs; ++i){
-			ret->add_value(HMCont2D::Edge(ret->point(edges[2*i]), ret->point(edges[2*i+1])));
+			ret->push_back(std::make_shared<HM2D::Edge>(
+				vd[edges[2*i]], vd[edges[2*i+1]]));
 		}
 		return ret;
 	} catch (const std::exception &e){
@@ -294,46 +297,47 @@ void* create_ecollection_container(int Npts, double* pts, int Nedgs, int* edges)
 }
 
 void* domain_clip(void* c1, void* c2, int oper, int simplify){
-	auto cont1 = static_cast<HMCont2D::ECollection*>(c1);
-	auto cont2 = static_cast<HMCont2D::ECollection*>(c2);
-	auto pnt1 = cont1->all_points();
-	auto pnt2 = cont2->all_points();
+	auto cont1 = static_cast<HM2D::EdgeData*>(c1);
+	auto cont2 = static_cast<HM2D::EdgeData*>(c2);
+	auto pnt1 = HM2D::AllVertices(*cont1);
+	auto pnt2 = HM2D::AllVertices(*cont2);
 
 	ScaleBase sc = ScaleBase::p_doscale(pnt1.begin(), pnt1.end()); 
 	sc.p_scale(pnt2.begin(), pnt2.end());
 
-	auto tree1 = HMCont2D::Assembler::ETree(*cont1);
-	auto tree2 = HMCont2D::Assembler::ETree(*cont2);
+	auto tree1 = HM2D::Contour::Tree::Assemble(*cont1);
+	auto tree2 = HM2D::Contour::Tree::Assemble(*cont2);
 	try{
 		if (tree1.nodes.size() == 0) throw std::runtime_error("not a closed contour");
 		if (tree2.nodes.size() == 0) throw std::runtime_error("not a closed contour");
 
-		HMCont2D::Container<HMCont2D::ContourTree> res;
+		HM2D::Contour::Tree res;
 		switch (oper){
-			case 1: res = HMCont2D::Clip::Union(tree1, tree2); break;
-			case 2: res = HMCont2D::Clip::Difference(tree1, tree2); break;
-			case 3: res = HMCont2D::Clip::Intersection(tree1, tree2); break;
-			case 4: res = HMCont2D::Clip::XOR(tree1, tree2); break;
+			case 1: res = HM2D::Contour::Clip::Union(tree1, tree2); break;
+			case 2: res = HM2D::Contour::Clip::Difference(tree1, tree2); break;
+			case 3: res = HM2D::Contour::Clip::Intersection(tree1, tree2); break;
+			case 4: res = HM2D::Contour::Clip::XOR(tree1, tree2); break;
 			default: throw std::runtime_error("unknown operation");
 		}
-		HMCont2D::Clip::Heal(res);
+		HM2D::Contour::Clip::Heal(res);
 		if (res.nodes.size() !=0 && !simplify){
-			vector<Point*> allpnt(pnt1); allpnt.insert(allpnt.end(), pnt2.begin(), pnt2.end());
+			HM2D::VertexData allpnt(pnt1);
+			allpnt.insert(allpnt.end(), pnt2.begin(), pnt2.end());
 			for (auto p: allpnt){
-				auto fnd = HMCont2D::ECollection::FindClosestEdge(res, *p);
-				if (std::get<0>(fnd) != 0 && std::get<1>(fnd)<geps && 
+				auto fnd = HM2D::FindClosestEdge(res.alledges(), *p);
+				if (std::get<0>(fnd)>=0 && std::get<1>(fnd)<geps && 
 						std::get<2>(fnd) > geps && std::get<2>(fnd) < 1-geps){
-					auto cont = res.get_contour(std::get<0>(fnd));
-					cont->GuaranteePoint(*p, res.pdata);
-					res.ReloadEdges();
+					auto e = res.alledges()[std::get<0>(fnd)].get();
+					auto cont = res.find_node(e);
+					HM2D::Contour::GuaranteePoint(cont->contour, *p);
 				}
 			}
 		}
-		HMCont2D::Container<HMCont2D::ECollection>* r = 0;
+		HM2D::EdgeData* r = 0;
 		if (res.nodes.size() > 0){
-			r = new HMCont2D::Container<HMCont2D::ECollection>();
-			r->Unite(res);
-			sc.p_unscale(r->pdata.begin(), r->pdata.end());
+			r = new HM2D::EdgeData(res.alledges());
+			auto av = HM2D::AllVertices(*r);
+			sc.p_unscale(av.begin(), av.end());
 		}
 		sc.p_unscale(pnt1.begin(), pnt1.end());
 		sc.p_unscale(pnt2.begin(), pnt2.end());
@@ -341,15 +345,15 @@ void* domain_clip(void* c1, void* c2, int oper, int simplify){
 	} catch (const std::exception &e){
 		sc.p_unscale(pnt1.begin(), pnt1.end());
 		sc.p_unscale(pnt2.begin(), pnt2.end());
-		std::cout<<"domain clip error: "<<e.what()<<std::endl;
+		std::cout<<e.what()<<std::endl;
 		return 0;
 	}
 }
 
 void ecollection_edges_info(void* ecol, int* npts, int* neds, double** pts, int** eds){
-	auto c = static_cast<HMCont2D::Container<HMCont2D::ECollection>*>(ecol);
+	auto c = static_cast<HM2D::EdgeData*>(ecol);
 	std::map<Point*, int> pind;
-	for (auto p: c->all_points()) pind.emplace(p, pind.size());
+	for (auto p: HM2D::AllVertices(*c)) pind.emplace(p.get(), pind.size());
 	*npts = pind.size();
 	*pts = new double[2 * *npts];
 	for (auto s: pind){
@@ -359,8 +363,8 @@ void ecollection_edges_info(void* ecol, int* npts, int* neds, double** pts, int*
 	*neds = c->size();
 	*eds = new int[2 * *neds];
 	for (int i=0; i<*neds; ++i){
-		(*eds)[2*i] = pind[c->data[i]->pstart];
-		(*eds)[2*i+1] = pind[c->data[i]->pend];
+		(*eds)[2*i] = pind[(*c)[i]->first().get()];
+		(*eds)[2*i+1] = pind[(*c)[i]->last().get()];
 	}
 }
 void free_ecollection_edges_info(double* pts, int* eds){
@@ -369,15 +373,15 @@ void free_ecollection_edges_info(double* pts, int* eds){
 }
 
 void free_ecollection_container(void* ecol){
-	delete static_cast<HMCont2D::Container<HMCont2D::ECollection>*>(ecol);
+	delete static_cast<HM2D::EdgeData*>(ecol);
 }
 
 int set_ecollection_bc(void* src, void* tar, int def, int* vsrc, int* vtar){
 	try{
-		auto esrc = static_cast<HMCont2D::ECollection*>(src);
-		auto etar = static_cast<HMCont2D::ECollection*>(tar);
-		auto pntsrc = esrc->all_points();
-		auto pnttar = etar->all_points();
+		auto esrc = static_cast<HM2D::EdgeData*>(src);
+		auto etar = static_cast<HM2D::EdgeData*>(tar);
+		auto pntsrc = HM2D::AllVertices(*esrc);
+		auto pnttar = HM2D::AllVertices(*etar);
 
 		//scaling
 		ScaleBase sc = ScaleBase::p_doscale(pntsrc.begin(), pntsrc.end()); 
@@ -386,14 +390,14 @@ int set_ecollection_bc(void* src, void* tar, int def, int* vsrc, int* vtar){
 		//searching
 		for (int i=0; i<etar->size(); ++i){
 			vtar[i] = def;
-			Point cpoint = etar->edge(i)->center();
-			auto ce = HMCont2D::ECollection::FindClosestEdge(*esrc, cpoint);
+			Point cpoint = etar->at(i)->center();
+			auto ce = HM2D::FindClosestEdge(*esrc, cpoint);
 			if (fabs(std::get<1>(ce)) < 1e-3){
-				int ied = std::get<3>(ce);
-				double m1 = Point::meas_line(*etar->edge(i)->pstart,
-						*esrc->edge(ied)->pstart, *esrc->edge(ied)->pend);
-				double m2 = Point::meas_line(*etar->edge(i)->pend,
-						*esrc->edge(ied)->pstart, *esrc->edge(ied)->pend);
+				int ied = std::get<0>(ce);
+				double m1 = Point::meas_line(*etar->at(i)->first(),
+						*esrc->at(ied)->first(), *esrc->at(ied)->last());
+				double m2 = Point::meas_line(*etar->at(i)->last(),
+						*esrc->at(ied)->first(), *esrc->at(ied)->last());
 				if (ISZERO(m1) && ISZERO(m2)) vtar[i] = vsrc[ied];
 			}
 		}
@@ -409,58 +413,58 @@ int set_ecollection_bc(void* src, void* tar, int def, int* vsrc, int* vtar){
 }
 
 int set_ecollection_bc_force(void* src, void* tar, int* vsrc, int* vtar, int algo){
-	HMCont2D::ECollection* src_col = static_cast<HMCont2D::ECollection*>(src);
-	HMCont2D::ECollection* tar_col = static_cast<HMCont2D::ECollection*>(tar);
-	ScaleBase sc = HMCont2D::Scale01(*src_col);
-	HMCont2D::Scale(*tar_col, sc);
+	HM2D::EdgeData* src_col = static_cast<HM2D::EdgeData*>(src);
+	HM2D::EdgeData* tar_col = static_cast<HM2D::EdgeData*>(tar);
+	ScaleBase sc = HM2D::Scale01(*src_col);
+	HM2D::Scale(*tar_col, sc);
 	double ret = 1;
 	try{
 		//target edge->source edge
-		std::map<HMCont2D::Edge*, HMCont2D::Edge*> ans;
+		std::map<HM2D::Edge*, HM2D::Edge*> ans;
 		//set of target edges
-		std::set<HMCont2D::Edge*> unused;
+		std::set<HM2D::Edge*> unused;
 		for (auto e: *tar_col) unused.insert(e.get());
 		//assemble source contour tree
-		auto stree = HMCont2D::Assembler::ETree(*src_col);
+		auto stree = HM2D::Contour::Tree::Assemble(*src_col);
 		//loop over all tree contours
-		for (int i=0; i<stree.cont_count(); ++i){
+		for (int i=0; i<stree.nodes.size(); ++i){
 			auto it = unused.begin();
 			while (it!=unused.end()){
-				HMCont2D::Edge* e = *it;
-				HMCont2D::Contour& cont = *stree.get_contour(i);
-				auto fnd1 = HMCont2D::ECollection::FindClosestEdge(cont, *e->pstart);
-				auto fnd2 = HMCont2D::ECollection::FindClosestEdge(cont, *e->pend);
-				auto fndc = HMCont2D::ECollection::FindClosestEdge(cont, e->center());
+				HM2D::Edge* e = *it;
+				HM2D::EdgeData& cont = stree.nodes[i]->contour;
+				auto fnd1 = HM2D::FindClosestEdge(cont, *e->first());
+				auto fnd2 = HM2D::FindClosestEdge(cont, *e->last());
+				auto fndc = HM2D::FindClosestEdge(cont, e->center());
 				//1) if all 3 edge points lie on contour return bc from center
 				if (ISZERO(std::get<1>(fnd1)) && ISZERO(std::get<1>(fnd2)) && ISZERO(std::get<1>(fndc))){
-					ans[e] = std::get<0>(fndc);
+					ans[e] = cont[std::get<0>(fndc)].get();
 					it = unused.erase(it);
 					continue;
 				}
 				//2) if start and end lie on contour get boundary of weighted center
 				if (algo > 1 && ISZERO(std::get<1>(fnd1)) && ISZERO(std::get<1>(fnd2))){
-					HMCont2D::Edge* r;
-					if (std::get<0>(fnd1) == std::get<0>(fnd2)) r = std::get<0>(fnd1);
+					HM2D::Edge* r;
+					if (std::get<0>(fnd1) == std::get<0>(fnd2)) r = cont[std::get<0>(fnd1)].get();
 					else {
-						double w1 = std::get<1>(cont.coord_at(*e->pstart));
-						double w2 = std::get<1>(cont.coord_at(*e->pend));
-						if (!cont.is_closed()){
-							Point p = HMCont2D::Contour::WeightPoint(cont, (w1+w2)/2.0);
-							r = std::get<0>(HMCont2D::ECollection::FindClosestEdge(cont, p));
+						double w1 = std::get<1>(HM2D::Contour::CoordAt(cont, *e->first()));
+						double w2 = std::get<1>(HM2D::Contour::CoordAt(cont, *e->last()));
+						if (HM2D::Contour::IsOpen(cont)){
+							Point p = HM2D::Contour::WeightPoint(cont, (w1+w2)/2.0);
+							r = cont[std::get<0>(HM2D::FindClosestEdge(cont, p))].get();
 						} else {
 							//for closed contour we have to consider two points and
 							//choose one that is closer to edge center
 							double var1 = (w1 + w2)/2.0;
 							double var2 = (1.0 + w1 + w2)/2.0;
 							if (var2>1.0) var2 -= 1.0;
-							Point pvar1 = HMCont2D::Contour::WeightPoint(cont, var1);
-							Point pvar2 = HMCont2D::Contour::WeightPoint(cont, var2);
+							Point pvar1 = HM2D::Contour::WeightPoint(cont, var1);
+							Point pvar2 = HM2D::Contour::WeightPoint(cont, var2);
 							double meas_var1 = Point::meas(pvar1, e->center());
 							double meas_var2 = Point::meas(pvar2, e->center());
 							if (meas_var1 < meas_var2){
-								r = std::get<0>(HMCont2D::ECollection::FindClosestEdge(cont, pvar1));
+								r = cont[std::get<0>(HM2D::FindClosestEdge(cont, pvar1))].get();
 							} else {
-								r = std::get<0>(HMCont2D::ECollection::FindClosestEdge(cont, pvar2));
+								r = cont[std::get<0>(HM2D::FindClosestEdge(cont, pvar2))].get();
 							}
 						}
 					}
@@ -474,29 +478,31 @@ int set_ecollection_bc_force(void* src, void* tar, int* vsrc, int* vtar, int alg
 		//3) for all remaining cells get closest edge from source collection
 		if (algo>2){
 			for (auto e: unused){
-				auto ce = HMCont2D::ECollection::FindClosestEdge(*src_col, e->center());
-				ans[e] = std::get<0>(ce);
+				auto ce = HM2D::FindClosestEdge(*src_col, e->center());
+				ans[e] = (*src_col)[std::get<0>(ce)].get();
 			}
 		}
 		//fill output arrays
+		aa::enumerate_ids_pvec(*tar_col);
+		aa::enumerate_ids_pvec(*src_col);
 		for (auto a: ans){
-			vtar[tar_col->get_index(a.first)] = vsrc[src_col->get_index(a.second)];
+			vtar[a.first->id] = vsrc[a.second->id];
 		}
 		ret = 0;
 	} catch (const std::exception &e){
 		std::cout<<"set_ecollection_bc_force error: "<<e.what()<<std::endl;
 	}
-	HMCont2D::Unscale(*src_col, sc);
-	HMCont2D::Unscale(*tar_col, sc);
+	HM2D::Unscale(*src_col, sc);
+	HM2D::Unscale(*tar_col, sc);
 	return ret;
 }
 
 
 double ecollection_area(void* ecol){
 	try{
-		auto c = static_cast<HMCont2D::ECollection*>(ecol);
-		auto tree = HMCont2D::Assembler::ETree(*c);
-		return HMCont2D::Area(tree);
+		auto c = static_cast<HM2D::EdgeData*>(ecol);
+		auto tree = HM2D::Contour::Tree::Assemble(*c);
+		return tree.area();
 	} catch (const std::exception &e){
 		std::cout<<"domain area calculation error: "<<e.what()<<std::endl;
 		return 0;
@@ -589,7 +595,7 @@ Grid* boundary_layer_grid_wcb(int N, BoundaryLayerGridOption* popt,
 		for (int i=0; i<N; ++i){
 			auto& opt = popt[i];
 			auto& inp = vinp[i];
-			inp.edges = static_cast<HMCont2D::ECollection*>(opt.cont);
+			inp.edges = static_cast<HM2D::EdgeData*>(opt.cont);
 			inp.direction = HMBlay::DirectionFromString(opt.tp);
 			inp.bnd_step_method = HMBlay::MethFromString(opt.mesh_cont);
 			inp.bnd_step = opt.mesh_cont_step;
@@ -619,15 +625,15 @@ Grid* boundary_layer_grid_wcb(int N, BoundaryLayerGridOption* popt,
 	}
 }
 
-Grid* build_grid_mapping(void* base_grid, void* target_contour, int Npnt,
-		double* pbase, double* ptarget, int snap_method, int algo,
-		int reversed,
+Grid* build_grid_mapping(void* base_grid, void* target_contour,
+		int Npnt, double* pbase, double* ptarget,
+		int snap_method, int algo, int reversed,
 		int return_invalid, hmcport_callback cb){
 	GridGeom* g = static_cast<GridGeom*>(base_grid);
-	HMCont2D::ECollection* col = static_cast<HMCont2D::ECollection*>(target_contour);
+	HM2D::EdgeData* col = static_cast<HM2D::EdgeData*>(target_contour);
 	//scaling
 	ScaleBase bscale = g->do_scale();
-	ScaleBase cscale = HMCont2D::ECollection::Scale01(*col);
+	ScaleBase cscale = HM2D::Scale01(*col);
 	Grid* ret = 0;
 	try{
 		std::vector<Point> p1, p2;
@@ -665,7 +671,7 @@ Grid* build_grid_mapping(void* base_grid, void* target_contour, int Npnt,
 	}
 	//unscaling
 	g->undo_scale(bscale);
-	HMCont2D::ECollection::Unscale(*col, cscale);
+	HM2D::Unscale(*col, cscale);
 	return ret;
 }
 
@@ -740,9 +746,11 @@ char* hmxml_purged_string(void* node){
 		auto unused1 = copy.findall_by_path(".//GRID2D");
 		auto unused2 = copy.findall_by_path(".//GRID3D");
 		auto unused3 = copy.findall_by_path(".//CONTOUR2D");
+		auto unused4 = copy.findall_by_path(".//SURFACE3D");
 		auto unused = unused1;
 		std::copy(unused2.begin(), unused2.end(), std::back_inserter(unused));
 		std::copy(unused3.begin(), unused3.end(), std::back_inserter(unused));
+		std::copy(unused4.begin(), unused4.end(), std::back_inserter(unused));
 		for (auto& n: unused) n.unlink_node();
 		std::string s = copy.tostring();
 		char* out = new char[s.size()+10];

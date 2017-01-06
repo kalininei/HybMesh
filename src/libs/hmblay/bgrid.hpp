@@ -2,7 +2,6 @@
 #define HYBMESH_BGRID_HPP
 
 #include "grid.h"
-#include "hybmesh_contours2d.hpp"
 #include "options.hpp"
 #include "extpath.hpp"
 
@@ -11,11 +10,11 @@ namespace Impl{
 
 class BGrid: public GridGeom{
 protected:
-	typedef HMCont2D::Contour Pth;
-	typedef HMCont2D::Edge Ed;
+	typedef HM2D::EdgeData Pth;
+	typedef HM2D::Edge Ed;
 
 	static ExtPath AssembleExtendedPath(vector<Options*>& data);
-	static shared_ptr<BGrid> NoSelfIntersections(shared_ptr<BGrid> g, const HMCont2D::Contour& source);
+	static shared_ptr<BGrid> NoSelfIntersections(shared_ptr<BGrid> g, const HM2D::EdgeData& source);
 	static shared_ptr<BGrid> MeshFullPath(const ExtPath& p);
 
 	//remove cells overriden to include deletion of features

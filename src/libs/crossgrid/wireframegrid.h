@@ -6,7 +6,7 @@
 #include <array>
 #include <list>
 #include <map>
-#include "hybmesh_contours2d.hpp"
+#include "primitives2d.hpp"
 
 struct GraphLine{
 	GraphLine(int a, int b):i0(a), i1(b) { if (i0>i1) std::swap(i0,i1); }
@@ -25,7 +25,7 @@ struct PtsGraph{
 	explicit PtsGraph(const GridGeom& tg);
 	explicit PtsGraph(const PContour& cont);
 	explicit PtsGraph(const ContoursCollection& cc);
-	explicit PtsGraph(const HMCont2D::ECollection& cc);
+	explicit PtsGraph(const HM2D::EdgeData& cc);
 
 	//get data
 	int Nnodes() const {return (int)nodes.size();}
@@ -39,7 +39,7 @@ struct PtsGraph{
 	//create 2D grid on the basis of current wireframe
 	//all boundary edges has an adjacent cell with index=-1.
 	GridGeom togrid() const;
-	HMCont2D::ECollection toecollection() const;
+	HM2D::EdgeData toecollection() const;
 
 	//imposes contour edges.
 	void add_edges(const PContour&);
@@ -105,7 +105,7 @@ struct SubGraph{
 
 	static vector<SubGraph> build(const PtsGraph& p);
 	GridGeom togrid() const;
-	HMCont2D::Contour tocontour() const;
+	HM2D::EdgeData tocontour() const;
 private:
 	SubGraph(const std::list<int>& used_lines, const PtsGraph* p);
 

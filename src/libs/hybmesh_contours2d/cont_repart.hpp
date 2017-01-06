@@ -3,7 +3,7 @@
 
 #include "contour.hpp"
 
-namespace HMCont2D{namespace Algos{
+namespace HM2D{namespace Contour{ namespace Algos{
 
 //takes contours and makes partition by creating vertex points of so that:
 //1) all sections were less than h
@@ -16,11 +16,10 @@ namespace HMCont2D{namespace Algos{
 
 //returns vector of vector were each first point is the vertex point
 //and all others are contour points which lie within a segment
-vector<vector<Point*>> Coarsening(const HMCont2D::Contour& cont, 
-		const std::set<Point*>& mandatory,
-		HMCont2D::PCollection& pcol,
+vector<VertexData> Coarsening(const EdgeData& cont, 
+		const std::set<shared_ptr<Vertex>>& mandatory,
 		double h, double crit_angle, double snap_dist);
 
-}}
+}}}
 
 #endif

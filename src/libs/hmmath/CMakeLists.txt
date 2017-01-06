@@ -3,11 +3,13 @@ set (HEADERS
 	hmcompute.hpp
 	spmat.hpp
 	piecewise.hpp
+	partition01.hpp
 )
 
 set (SOURCES
 	hmcompute.cpp
 	spmat.cpp
+	partition01.cpp
 )
 
 source_group ("Header Files" FILES ${HEADERS} ${HEADERS})

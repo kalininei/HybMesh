@@ -57,8 +57,8 @@ struct RightConnector: public MConnector{
 private:
 	shared_ptr<MappedRect> connection_area;
 	shared_ptr<MappedMesher> connection_grid;
-	HMCont2D::Container<HMCont2D::Contour> left, bot;
-	HMCont2D::Contour right, top;
+	HM2D::EdgeData left, bot;
+	HM2D::EdgeData right, top;
 	BGrid* ConnectionGrid() override { return &connection_grid->result;}
 	void BuildInternals() override;
 public:
@@ -69,8 +69,8 @@ struct ReentrantConnector: public MConnector{
 private:
 	shared_ptr<MappedRect> connection_area;
 	shared_ptr<MappedMesher> connection_grid;
-	Point top_right_pnt;
-	HMCont2D::Contour left, bot, right, top;
+	shared_ptr<HM2D::Vertex> top_right_pnt;
+	HM2D::EdgeData left, bot, right, top;
 	BGrid* ConnectionGrid() override { return &connection_grid->result;}
 	void BuildInternals() override;
 public:

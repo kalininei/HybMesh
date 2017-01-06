@@ -19,7 +19,7 @@ struct TBuildStripeGrid: public HMCallback::ExecutorBase{
 	HMCB_SET_PROCNAME("Stripe grid building");
 	HMCB_SET_DEFAULT_DURATION(100);
 
-	GridGeom _run(const HMCont2D::Contour& cont,
+	GridGeom _run(const HM2D::EdgeData& cont,
 		const std::vector<double>& partition,
 		int tip_algo,
 		Point& bl, Point& br, Point& tr, Point& tl);

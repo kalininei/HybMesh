@@ -1,7 +1,8 @@
 #include "contours.h"
-#include "hybmesh_contours2d.hpp"
 #include <tuple>
 #include "assert.h"
+#include "constructor.hpp"
+#include "contour.hpp"
 
 PContour PContour::reverse() const {
 	PContour ret(*this);
@@ -72,8 +73,10 @@ double PContour::area() const{
 
 //find internal point: cross algorithm
 Point PContour::inside_point_ca() const{
-	auto cc = HMCont2D::Constructor::ContourFromPoints(pts, true);
-	Point ret = cc.InnerPoint();
+	vector<Point> pts2;
+	for (auto p: pts) pts2.push_back(*p);
+	auto cc = HM2D::Contour::Constructor::FromPoints(pts2, true);
+	Point ret = HM2D::Contour::InnerPoint(cc);
 #ifndef NDEBUG
 	bool hint = true;
 	assert(this->is_inside(ret, &hint) == INSIDE);
@@ -445,22 +448,18 @@ PointsContoursCollection::PointsContoursCollection(const vector<Point>& pts, con
 	build(pts, eds);
 }
 
-PointsContoursCollection::PointsContoursCollection(const HMCont2D::ECollection& col){
+PointsContoursCollection::PointsContoursCollection(const HM2D::EdgeData& col){
 	//points
-	vector<Point*> ap = col.all_points();
+	HM2D::VertexData ap = HM2D::AllVertices(col);
+	aa::enumerate_ids_pvec(ap);
 	vector<Point> p; p.reserve(ap.size());
 	for (auto x: ap) p.push_back(*x);
 	//edges
 	vector<int> eds; eds.reserve(ap.size() * 2);
-	auto _indexer = aa::ptr_container_indexer(ap);
-	_indexer.convert();
-	for (auto e: col.data){
-		Point* p1 = e->pstart;
-		Point* p2 = e->pend;
-		eds.push_back(_indexer.index(p1));
-		eds.push_back(_indexer.index(p2));
+	for (auto e: col){
+		eds.push_back(e->first()->id);
+		eds.push_back(e->last()->id);
 	}
-	_indexer.restore();
 	build(p, eds);
 }
 

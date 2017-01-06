@@ -4,6 +4,7 @@
 #include "hmgrid3d.hpp"
 #include "bgeom3d.h"
 #include "treverter3d.hpp"
+#include "tscaler.hpp"
 
 using HM3D::Ser::Grid;
 
@@ -43,11 +44,11 @@ int grid3_surface_btypes(const CPortGrid3D* g3, int* ret){
 		for (size_t i=0; i<bf.size(); ++i){
 			ret[i] = bt[bf[i]];
 		}
+		return 1;
 	} catch (std::exception& e){
 		std::cout<<e.what()<<std::endl;
 		return 0;
 	}
-	return 1;
 }
 
 int grid3_volume(const CPortGrid3D* g, double* ret){
@@ -56,33 +57,25 @@ int grid3_volume(const CPortGrid3D* g, double* ret){
 		auto srf = HM3D::Surface::GridSurface(g3.grid);
 		HM3D::Surface::RevertGridSurface rv(srf, true);
 		*ret = HM3D::Surface::Volume(srf);
+		return 1;
 	} catch (std::exception& e){
 		std::cout<<e.what()<<std::endl;
 		return 0;
 	}
-	return 1;
 }
 
 int grid3_merge(const CPortGrid3D* _g1, const CPortGrid3D* _g2, CPortGrid3D** gret){
-	auto& g1 = hmgrid(_g1);
-	auto& g2 = hmgrid(_g2);
-	HM3D::VertexData av(g1.grid.vvert);
-	std::copy(g2.grid.vvert.begin(), g2.grid.vvert.end(),
-			std::back_inserter(av));
-	ScaleBase3 sc = ScaleBase3::doscale(av);
-
-	int res = 0;
 	try{
+		auto &g1 = hmgrid(_g1), &g2 = hmgrid(_g2);
+		Autoscale::D3 sc({&g1.grid.vvert, &g2.grid.vvert});
 		HM3D::GridData g = HM3D::MergeGrids(g1.grid, g2.grid);
-		sc.unscale(g.vvert.begin(), g.vvert.end());
+		sc.unscale(g.vvert);
 		*gret = new HM3D::Ser::Grid(std::move(g));
-		res = 1;
+		return 1;
 	} catch (std::exception& e){
 		std::cout<<e.what()<<std::endl;
+		return 0;
 	}
-
-	sc.unscale(av.begin(), av.end());
-	return res;
 }
 
 namespace{
@@ -342,45 +335,39 @@ int tetrahedral_fill(int nsurf, void** surf,
 		int npts, double* pcoords, double* psizes,
 		void** ret,
 		hmcport_callback cb){
-	int r = 0;
 	//copy constraint points
 	HM3D::VertexData cp;
 	for (int i=0; i<npts; ++i){
-		cp.emplace_back(new HM3D::Vertex(pcoords[3*i], pcoords[3*i+1],
-					pcoords[3*i+2]));
+		cp.emplace_back(
+			new HM3D::Vertex(pcoords[3*i], pcoords[3*i+1], pcoords[3*i+2]));
 	}
-	//shallow copy source surfaces
-	HM3D::FaceData source;
-	for (int i=0; i<nsurf; ++i){
-		auto& s = static_cast<HM3D::Ser::Surface*>(surf[i])->surface;
-		std::copy(s.begin(), s.end(), std::back_inserter(source));
-	}
-	//shallow copy constraint surfaces
-	HM3D::FaceData cs;
-	for (int i=0; i<nconstr; ++i){
-		auto& s = static_cast<HM3D::Ser::Surface*>(constr[i])->surface;
-		std::copy(s.begin(), s.end(), std::back_inserter(cs));
-	}
-	//scaling
-	HM3D::VertexData srcpoints = AllVertices(source);
-	HM3D::VertexData cspoints = AllVertices(cs);
-	ScaleBase3 sc = ScaleBase3::doscale(srcpoints);
-	sc.scale(cspoints.begin(), cspoints.end());
-	sc.scale(cp.begin(), cp.end());
-	vector<double> ps(npts);
-	for (int i=0; i<npts; ++i) ps[i] = psizes[i] / sc.L;
+	vector<double> ps(psizes, psizes+npts);
 	try{
+		//shallow copy source surfaces
+		HM3D::FaceData source;
+		for (int i=0; i<nsurf; ++i){
+			auto& s = static_cast<HM3D::Ser::Surface*>(surf[i])->surface;
+			std::copy(s.begin(), s.end(), std::back_inserter(source));
+		}
+		//shallow copy constraint surfaces
+		HM3D::FaceData cs;
+		for (int i=0; i<nconstr; ++i){
+			auto& s = static_cast<HM3D::Ser::Surface*>(constr[i])->surface;
+			std::copy(s.begin(), s.end(), std::back_inserter(cs));
+		}
+		//scaling
+		Autoscale::D3 scale(source);
+		scale.add_data(cs);
+		scale.scale(cp);
+		scale.scale(ps);
+		//procedure
 		HM3D::GridData ans = HM3D::Mesher::UnstructuredTetrahedral.WithCallback(
 				cb, source, cs, cp, ps);
-		sc.unscale(ans.vvert.begin(), ans.vvert.end());
+		scale.unscale(ans.vvert);
 		*ret = new HM3D::Ser::Grid(std::move(ans));
-		r = 1;
-	} catch (const std::exception &e){
+		return 1;
+	} catch (std::exception& e){
 		std::cout<<e.what()<<std::endl;
-		r = 0;
+		return 0;
 	}
-	//unscale input and return
-	sc.unscale(srcpoints.begin(), srcpoints.end());
-	sc.unscale(cspoints.begin(), cspoints.end());
-	return r;
 }

@@ -3,7 +3,8 @@
 
 #include <map>
 #include "grid.h"
-#include "hybmesh_contours2d.hpp"
+#include "primitives2d.hpp"
+#include "tree.hpp"
 
 class TriGrid: public GridGeom{
 	//properties: edges
@@ -19,37 +20,36 @@ class TriGrid: public GridGeom{
 
 	//associates constrain contour with inner contour,
 	//places constrain points to contours if necessary
-	static vector<HMCont2D::ExtendedTree>
-	ConstraintsPreproc(const HMCont2D::ContourTree& cont, 
-			const ShpVector<HMCont2D::Contour>& constraints);
+	static vector<HM2D::Contour::Tree>
+	ConstraintsPreproc(const HM2D::Contour::Tree& cont, 
+			const ShpVector<HM2D::EdgeData>& constraints);
 
 	//GModel* gmod
 	void FillFromGModel(void* gmod);
 
 	static void CrossesProcessing(
-			HMCont2D::ContourTree& cont, 
-			ShpVector<HMCont2D::Contour>& constraints,
+			HM2D::Contour::Tree& cont, 
+			ShpVector<HM2D::EdgeData>& constraints,
 			std::map<Point*, double>& w,
-			HMCont2D::PCollection& apnt,
 			double h);
 
-	void guarantee_edges(const vector<HMCont2D::Edge*>& ed);
+	void guarantee_edges(const vector<HM2D::Edge*>& ed);
 	void recomb_heal();
 public:
 	TriGrid(){}
 	//constrcut from non-overlapping contours list and additional points
 	explicit TriGrid(const ContoursCollection& cont, const vector<double>& lc, double density);
 
-	explicit TriGrid(const HMCont2D::ContourTree& cont, 
-			const ShpVector<HMCont2D::Contour>& constraints,
+	explicit TriGrid(const HM2D::Contour::Tree& cont, 
+			const ShpVector<HM2D::EdgeData>& constraints,
 			double h);
 
-	explicit TriGrid(const HMCont2D::ContourTree& cont, 
-			const ShpVector<HMCont2D::Contour>& constraints,
+	explicit TriGrid(const HM2D::Contour::Tree& cont, 
+			const ShpVector<HM2D::EdgeData>& constraints,
 			const std::vector<double>& emb_points);
 
-	explicit TriGrid(const HMCont2D::ContourTree& cont, 
-			const ShpVector<HMCont2D::Contour>& constraints,
+	explicit TriGrid(const HM2D::Contour::Tree& cont, 
+			const ShpVector<HM2D::EdgeData>& constraints,
 			const std::map<Point*, double>& w, double h);
 
 	static shared_ptr<TriGrid> FromGmshGeo(const char* fn);
@@ -69,9 +69,9 @@ public:
 	static shared_ptr<TriGrid>
 	TriangulateArea(const vector<vector<Point>>& pts, double h);
 	static shared_ptr<TriGrid>
-	TriangulateArea(const HMCont2D::ContourTree& cont, double h);
+	TriangulateArea(const HM2D::Contour::Tree& cont, double h);
 	static shared_ptr<TriGrid>
-	TriangulateArea(const HMCont2D::ContourTree& cont, const std::map<Point*, double>& w, double h);
+	TriangulateArea(const HM2D::Contour::Tree& cont, const std::map<Point*, double>& w, double h);
 
 	static shared_ptr<TriGrid>
 	TriangulateAreaConstrained(const vector<vector<Point>>& bnd,
@@ -79,8 +79,8 @@ public:
 
 	//if h<=0 then h is infinity
 	void FillFromTree(
-			const HMCont2D::ContourTree& cont, 
-			const ShpVector<HMCont2D::Contour>& constraints,
+			const HM2D::Contour::Tree& cont, 
+			const ShpVector<HM2D::EdgeData>& constraints,
 			const vector<Point>& emb_points,
 			const std::map<Point*, double>& w,
 			double h,
@@ -88,10 +88,10 @@ public:
 
 };
 
-GridGeom QuadGrid(const HMCont2D::ContourTree& cont, 
-		const ShpVector<HMCont2D::Contour>& constraints,
+GridGeom QuadGrid(const HM2D::Contour::Tree& cont, 
+		const ShpVector<HM2D::EdgeData>& constraints,
 		const std::vector<double>& emb_points);
-shared_ptr<GridGeom> QuadrangulateArea(const HMCont2D::ContourTree& cont,
+shared_ptr<GridGeom> QuadrangulateArea(const HM2D::Contour::Tree& cont,
 		const std::map<Point*, double>& w, double h);
 
 

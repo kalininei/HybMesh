@@ -5,6 +5,7 @@
 #include "connectors.hpp"
 #include "hmtimer.hpp"
 #include "debug_grid2d.h"
+#include "contclipping.hpp"
 
 using namespace HMBlay::Impl;
 
@@ -16,7 +17,7 @@ shared_ptr<BGrid> BGrid::MeshFullPath(const ExtPath& epath){
 			CornerTp::ACUTE,
 			CornerTp::ROUND});
 	//if closed path with one special corner divide it into two
-	if (epath.is_closed() && pths.size() == 1 &&
+	if (HM2D::Contour::IsClosed(epath) && pths.size() == 1 &&
 			(pths[0].ext_data.back().tp == CornerTp::RIGHT ||
 			 pths[0].ext_data.back().tp == CornerTp::REENTRANT ||
 			 pths[0].ext_data.back().tp == CornerTp::ROUND ||
@@ -29,7 +30,7 @@ shared_ptr<BGrid> BGrid::MeshFullPath(const ExtPath& epath){
 	bool use_rect_approx = !epath.ext_data[0].opt->force_conformal;
 	for (auto& p: pths){
 		//estimate vertical and horizontal partition
-		int isz = p.PathPartition(0, p.length()).size();
+		int isz = p.PathPartition(0, HM2D::Length(p)).size();
 		int jsz = p.largest_vpart_size();
 
 		double h = p.largest_depth();
@@ -51,7 +52,7 @@ shared_ptr<BGrid> BGrid::MeshFullPath(const ExtPath& epath){
 		connectors.push_back(MConnector::Build(t, mesher4[i].get(), mesher4[i+1].get()));
 	}
 	//add first->last connection
-	if (epath.is_closed()){
+	if (HM2D::Contour::IsClosed(epath)){
 		CornerTp t = pths[0].ext_data[0].tp;
 		if (mps.size() > 1){
 			connectors.push_back(MConnector::Build(t, mesher4.back().get(), mesher4[0].get()));
@@ -62,7 +63,7 @@ shared_ptr<BGrid> BGrid::MeshFullPath(const ExtPath& epath){
 	//5. build rectangular meshes
 	for (int i=0; i<mesher4.size(); ++i){
 		ExtPath& ipth = pths[i];
-		double ilen = ipth.length();
+		double ilen = HM2D::Length(ipth);
 		double depth = ipth.largest_depth();
 		auto bpart = [&](double w1, double w2)->vector<double>{
 			vector<double> reallen = ipth.PathPartition(w1*ilen, w2*ilen);
@@ -90,7 +91,7 @@ shared_ptr<BGrid> BGrid::MeshFullPath(const ExtPath& epath){
 			bool with_prev = (g->n_cells() == 0);
 			//add next always except if this
 			//is an end connector for closed path
-			bool with_next = (!epath.is_closed() || &c != &connectors.back());
+			bool with_next = (!HM2D::Contour::IsClosed(epath) || &c != &connectors.back());
 			c->Add(g, with_prev, with_next);
 		}
 		g->merge_congruent_points();
@@ -122,7 +123,7 @@ shared_ptr<BGrid> BGrid::MeshSequence(vector<Options*>& data){
 	return ret;
 }
 
-shared_ptr<BGrid> BGrid::NoSelfIntersections(shared_ptr<BGrid> g, const HMCont2D::Contour& source){
+shared_ptr<BGrid> BGrid::NoSelfIntersections(shared_ptr<BGrid> g, const HM2D::EdgeData& source){
 	//does grid have intersections
 	if (!GGeom::Repair::HasSelfIntersections(*g)){
 		return g;
@@ -148,9 +149,9 @@ shared_ptr<BGrid> BGrid::ImposeBGrids(ShpVector<BGrid>& gg){
 		if (!has_intersections){
 			auto c1 = GGeom::Info::Contour(*gg[0]);
 			auto c2 = GGeom::Info::Contour(*gg[i]);
-			auto inters = HMCont2D::Clip::Intersection(c1, c2);
-			HMCont2D::Clip::Heal(inters);
-			if (inters.cont_count() > 0) has_intersections = true;
+			auto inters = HM2D::Contour::Clip::Intersection(c1, c2);
+			HM2D::Contour::Clip::Heal(inters);
+			if (inters.nodes.size() > 0) has_intersections = true;
 		}
 		gg[0]->ShallowAdd(*gg[i]);
 	}

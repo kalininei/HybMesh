@@ -1,8 +1,9 @@
 #include "contclipping.hpp"
 #include "clipper_core.hpp"
 #include "gpc_core.hpp"
+#include "cont_assembler.hpp"
 
-namespace ci = HMCont2D::Clip;
+namespace ci = HM2D::Contour::Clip;
 using namespace ci;
 
 //#define USE_LIBCLIPPER_FOR_CLIPPING
@@ -213,7 +214,7 @@ TRet ci::Union(const vector<ECont>& cont){
 }
 
 TRet ci::Difference(const ETree& c1, const vector<ECont>& cont){
-	if (cont.size() == 0) return TRet::DeepCopy(c1);
+	if (cont.size() == 0) return Contour::Tree::DeepCopy(c1);
 	Impl::GpcTree p1(c1);
 	for (auto& c: cont){
 		Impl::GpcTree g(c);
@@ -225,14 +226,14 @@ TRet ci::Difference(const ETree& c1, const vector<ECont>& cont){
 void ci::Heal(TRet& c1){
 	//remove zero length edges
 	for (auto& path: c1.nodes){
-		auto pts = path->corner_points();
+		auto pts = Contour::CornerPoints(path->contour);
 	
 		//remove collinear nodes: 180 and 360 angles)
 STARTFOR:
 		if (pts.size()>2) for (int i=0; i<pts.size(); ++i){
-			Point* p0 = pts[(i==0)?pts.size()-1:i-1];
-			Point* p1 = pts[i];
-			Point* p2 = pts[(i==pts.size()-1)?0:i+1];
+			auto& p0 = pts[(i==0)?pts.size()-1:i-1];
+			auto& p1 = pts[i];
+			auto& p2 = pts[(i==pts.size()-1)?0:i+1];
 			if (fabs(triarea(*p0, *p1, *p2))<geps2){
 				pts.erase(pts.begin() + i);
 				goto STARTFOR;
@@ -240,25 +241,20 @@ STARTFOR:
 		}
 
 		//write simplified contour
-		if (pts.size() != path->size()){
-			auto c = HMCont2D::Constructor::ContourFromPoints(pts, true);
-			path->data = c.data;
+		if (pts.size() != path->contour.size()){
+			path->contour = HM2D::Contour::Assembler::Contour1(pts, true);
 		}
 	}
 	//remove invalid contours with less then 3 edges
 	std::set<int> not_needed;
-	for (int i=0; i<c1.cont_count(); ++i){
-		if (c1.nodes[i]->size()<3) not_needed.insert(i);
+	for (int i=0; i<c1.nodes.size(); ++i){
+		if (c1.nodes[i]->contour.size()<3) not_needed.insert(i);
 	}
 	if (not_needed.size() > 0){
 		aa::remove_entries(c1.nodes, not_needed);
 		//updates topology
 		c1.UpdateTopology();
 	}
-
-	//refill data
-	c1.data.clear();
-	for (auto& n: c1.nodes) std::copy(n->begin(), n->end(), std::back_inserter(c1.data));
 }
-#endif
 
+#endif

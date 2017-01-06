@@ -10,10 +10,10 @@ namespace HMBlay{namespace Impl{
 //Does self imposition of a grid using priority function.
 //Weeps out all cells which lie to the right of the source contour.
 shared_ptr<BGrid> BGridImpose(shared_ptr<BGrid> grid, std::function<double(const Cell*)> prifun,
-		const HMCont2D::Contour& source);
+		const HM2D::EdgeData& source);
 
 //Builds a contour from cell non simplified
-HMCont2D::Contour Cell2Cont(const Cell* c);
+HM2D::EdgeData Cell2Cont(const Cell* c);
 
 class NoHangingNodes{
 	BGrid* grid;
@@ -44,7 +44,7 @@ class NoHangingNodes{
 
 	//for c - pseudo contour made of hanging nodes
 	//adds all such nodes to list
-	void AnalyzeSingularContour(const HMCont2D::Contour& c, std::list<GridPoint*>& lst);
+	void AnalyzeSingularContour(const HM2D::EdgeData& c, std::list<GridPoint*>& lst);
 
 	//finds list of all hanging nodes
 	std::list<GridPoint*> Find();

@@ -1,5 +1,6 @@
 #include "procgrid.h"
 #include <stack>
+#include "cont_assembler.hpp"
 
 GridGeom GGeom::Constructor::EmptyGrid(){
 	return GridGeom();
@@ -475,36 +476,39 @@ ShpVector<GridPoint> GGeom::Info::BoundaryPoints(const GridGeom& grid){
 }
 
 
-HMCont2D::ContourTree GGeom::Info::Contour(const GridGeom& grid){
+HM2D::Contour::Tree GGeom::Info::Contour(const GridGeom& grid){
 	//build subgrids.
 	auto sg = Modify::SubGrids(grid);
-	std::list<HMCont2D::Contour> all_contours;
+	std::list<HM2D::EdgeData> all_contours;
 	for (auto& g: sg){
+		HM2D::VertexData av;
+		for (auto p: g.points) av.push_back(std::make_shared<HM2D::Vertex>(*p));
 		//indicies of 'g' cells/points are from 'grid'.
 		//We need to use correct indicies for g in order to build edges.
 		//At the end of this procedure we will bring all grid indicies back
 		g.set_indicies();
 		std::set<Edge> edges = g.get_edges();
-		HMCont2D::ECollection ecol;
+		HM2D::EdgeData ecol;
 		for (auto& e: edges) if (e.is_boundary()){
 			assert(g.points.size() > std::max(e.p1, e.p2));
-			HMCont2D::Edge newe(g.points[e.p1].get(), g.points[e.p2].get());
-			ecol.add_value(newe);
+			auto newe = std::make_shared<HM2D::Edge>(av[e.p1], av[e.p2]);
+			ecol.push_back(newe);
 		}
-		auto ac = HMCont2D::Assembler::AllContours(ecol);
+		auto ac = HM2D::Contour::Assembler::AllContours(ecol);
 		all_contours.insert(all_contours.end(), ac.begin(), ac.end());
 	}
-	all_contours.remove_if([](const HMCont2D::Contour& c){ return c.size()<3 || !c.is_closed(); });
-	HMCont2D::ContourTree tree;
+	all_contours.remove_if([](const HM2D::EdgeData& c){
+		return c.size()<3 || HM2D::Contour::IsOpen(c); });
+	HM2D::Contour::Tree tree;
 	for (auto& c: all_contours)  tree.AddContour(c); 
 	//return correct indicies to grid
 	const_cast<GridGeom*>(&grid)->set_indicies();
 	return tree;
 }
 
-HMCont2D::Contour GGeom::Info::Contour1(const GridGeom& grid){
-	HMCont2D::ContourTree ct = Contour(grid);
-	return *ct.nodes[0];
+HM2D::EdgeData GGeom::Info::Contour1(const GridGeom& grid){
+	HM2D::Contour::Tree ct = Contour(grid);
+	return ct.nodes[0]->contour;
 }
 
 namespace{
@@ -561,37 +565,39 @@ vector<GridGeom> GGeom::Modify::SubGrids(const GridGeom& grid){
 
 struct GGeom::Modify::_ShiftSnapPreCalc{
 	GridGeom* g;
-	HMCont2D::ContourTree gridbnd;
-	std::map<double, Point*> contw;
-	vector<Point*> cp;
+	HM2D::Contour::Tree gridbnd;
+	std::map<double, shared_ptr<HM2D::Vertex>> contw;
+	HM2D::VertexData cp;
 	std::map<const GridPoint*, double> bndw;
 	std::set<Edge> bndeds;
 
-	_ShiftSnapPreCalc(GridGeom& grid, const HMCont2D::Contour& cont,
+	_ShiftSnapPreCalc(GridGeom& grid, const HM2D::EdgeData& cont,
 			const std::vector<GridPoint*>& snap_nodes): g(&grid){
 		//snapping nodes
 		for (auto p: snap_nodes){
 			//try to search amoung vertices
-			Point* fpnt = HMCont2D::ECollection::FindClosestNode(cont, *p);
+			auto cv = HM2D::AllVertices(cont);
+			auto tfpnt = HM2D::FindClosestNode(cv, *p);
+			Point* fpnt = cv[std::get<0>(tfpnt)].get();
 			if (Point::meas(*fpnt, *p)<geps*geps){
 				p->set(*fpnt);
 				continue;
 			}
 			//snap to edge
-			auto fed = HMCont2D::ECollection::FindClosestEdge(cont, *p);
-			HMCont2D::Edge* e = std::get<0>(fed);
+			auto fed = HM2D::FindClosestEdge(cont, *p);
+			HM2D::Edge* e = cont[std::get<0>(fed)].get();
 			double w = std::get<2>(fed);
-			p->set(Point::Weigh(*e->pstart, *e->pend, w));
+			p->set(Point::Weigh(*e->first(), *e->last(), w));
 		}
 		gridbnd = GGeom::Info::Contour(grid);
 		//all contour significant points weights
-		cp = cont.corner_points();
+		cp = HM2D::Contour::CornerPoints(cont);
 		for (auto p: cp){
-			auto coord = cont.coord_at(*p);
+			auto coord = HM2D::Contour::CoordAt(cont, *p);
 			contw[std::get<1>(coord)] = p;
 		}
 		//copy one more time with w+1 for closed contours
-		if (cont.is_closed()){
+		if (HM2D::Contour::IsClosed(cont)){
 			auto it = contw.rbegin();
 			while (it!=contw.rend()){
 				contw[it->first + 1.0] = it->second;
@@ -600,7 +606,7 @@ struct GGeom::Modify::_ShiftSnapPreCalc{
 		}
 		//grid boundary points which lie on cont weights
 		for (auto p: grid.get_bnd_points()){
-			auto coord = cont.coord_at(*p);
+			auto coord = HM2D::Contour::CoordAt(cont, *p);
 			if (std::get<4>(coord)<geps) bndw[p] = std::get<1>(coord);
 		}
 		//assemble set of boundary grid edges
@@ -613,7 +619,7 @@ struct GGeom::Modify::_ShiftSnapPreCalc{
 		assert(w1 < w2 && w2<2.0);
 		for (auto it=contw.lower_bound(w1); it!=contw.end(); ++it){
 			if (it->first>w1+geps && it->first<w2-geps){
-				ret.push_back(it->second);
+				ret.push_back(it->second.get());
 			}
 			if (it->first>w2-geps) break;
 		}
@@ -639,7 +645,7 @@ struct GGeom::Modify::_ShiftSnapPreCalc{
 	}
 };
 
-void GGeom::Modify::SnapToContour(GridGeom& grid, const HMCont2D::Contour& cont,
+void GGeom::Modify::SnapToContour(GridGeom& grid, const HM2D::EdgeData& cont,
 		const std::vector<GridPoint*>& snap_nodes){
 	auto proc = _ShiftSnapPreCalc(grid, cont, snap_nodes);
 	for (auto& p: proc.point_pairs()){
@@ -674,7 +680,7 @@ struct ShiftS{
 bool operator<(const ShiftS& a, const ShiftS& b){ return a.dist2<b.dist2;}
 }
 
-void GGeom::Modify::ShiftToContour(GridGeom& grid, const HMCont2D::Contour& cont,
+void GGeom::Modify::ShiftToContour(GridGeom& grid, const HM2D::EdgeData& cont,
 		const std::vector<GridPoint*>& snap_nodes){
 	auto proc = _ShiftSnapPreCalc(grid, cont, snap_nodes);
 	//get all possible shifts
@@ -724,30 +730,30 @@ void GGeom::Modify::ShiftToContour(GridGeom& grid, const HMCont2D::Contour& cont
 	grid.set_indicies();
 }
 
-void GGeom::Modify::SnapAllBoundary(GridGeom& grid, const HMCont2D::ECollection& cont, int algo){
+void GGeom::Modify::SnapAllBoundary(GridGeom& grid, const HM2D::EdgeData& cont, int algo){
 	auto gtree = GGeom::Info::Contour(grid);
 	if (algo == 2){
-		auto source = cont.all_points();
-		for (auto p: gtree.all_points()){
+		auto source = AllVertices(cont);
+		for (auto p: AllVertices(gtree.alledges())){
 			double minmeas = std::numeric_limits<double>::max();
 			Point* to_p = 0;
 			for (int i=0; i<source.size(); ++i){
 				double m = Point::meas(*source[i], *p);
 				if (m < minmeas){
 					minmeas = m;
-					to_p = source[i];
+					to_p = source[i].get();
 				}
 				if (minmeas<geps*geps) break;
 			}
 			p->set(to_p->x, to_p->y);
 		}
 	} else {
-		for (auto p: gtree.all_points()){
-			auto closest = HMCont2D::ECollection::FindClosestEdge(cont, *p);
+		for (auto p: AllVertices(gtree.alledges())){
+			auto closest = HM2D::FindClosestEdge(cont, *p);
 			if (std::get<1>(closest) > geps){
-				HMCont2D::Edge* e = std::get<0>(closest);
+				HM2D::Edge* e = cont[std::get<0>(closest)].get();
 				double w = std::get<2>(closest); 
-				Point pnew = Point::Weigh(*e->pstart, *e->pend, w);
+				Point pnew = Point::Weigh(*e->first(), *e->last(), w);
 				p->set(pnew.x, pnew.y);
 			}
 		}
@@ -807,10 +813,11 @@ void GGeom::Modify::SimplifyBoundary(GridGeom& grid, double angle){
 	}
 }
 
-HMCont2D::Contour GGeom::Info::CellContour(const GridGeom& grid, int cell_ind){
+HM2D::EdgeData GGeom::Info::CellContour(const GridGeom& grid, int cell_ind){
 	const Cell* c=grid.cells[cell_ind].get();
-	vector<Point*> p(c->points.begin(), c->points.end());
-	return HMCont2D::Constructor::ContourFromPoints(p, true);
+	HM2D::VertexData p;
+	for (auto cp: c->points) p.push_back(std::make_shared<HM2D::Vertex>(*cp));
+	return HM2D::Contour::Assembler::Contour1(p, true);
 }
 
 BoundingBox GGeom::Info::BBox(const GridGeom& grid, double eps){

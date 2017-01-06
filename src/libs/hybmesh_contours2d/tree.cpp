@@ -1,311 +1,180 @@
 #include "tree.hpp"
-#include "contclipping.hpp"
-#include <fstream>
+#include "cont_assembler.hpp"
 
-using namespace HMCont2D;
+using namespace HM2D;
+using namespace HM2D::Contour;
 
-int ContourTree::TreeNode::level() const{
-	if (parent == NULL) return 0;
-	else return parent->level() + 1;
+double Tree::area() const{
+	double ret = 0;
+	for (auto& n: nodes) if (n->isclosed()){
+		double a = fabs(Contour::Area(n->contour));
+		if (n->level % 2 == 0) ret += a;
+		else ret -= a;
+	}
+	return ret;
+};
+
+Tree Tree::Assemble(const EdgeData& input){
+	Tree ret;
+	//1) assemble all possible contours
+	std::vector<EdgeData> conts = Assembler::AllContours(input);
+	//2) add them to ret
+	std::for_each(conts.begin(), conts.end(), [&ret](EdgeData& a){ ret.AddContour(a); });
+	return ret;
 }
 
-vector<ContourTree::TreeNode*> ContourTree::roots() const{
-	vector<TreeNode*> ret;
+EdgeData Tree::alledges() const {
+	EdgeData ret;
+	for (auto& n: nodes){
+		ret.insert(ret.end(), n->contour.begin(), n->contour.end());
+	}
+	return ret;
+};
+
+void Tree::remove_opens(){
+	auto s = std::remove_if(nodes.begin(), nodes.end(), [&](shared_ptr<TNode> nd){
+			return nd->isopen(); });
+	nodes.resize(s - nodes.begin());
+}
+
+ShpVector<Tree::TNode> Tree::open_contours() const{
+	ShpVector<TNode> ret;
+	for (auto n: nodes) if (n->isopen()) ret.push_back(n);
+	return ret;
+}
+ShpVector<Tree::TNode> Tree::closed_contours() const{
+	ShpVector<TNode> ret;
+	for (auto n: nodes) if (n->isclosed()) ret.push_back(n);
+	return ret;
+}
+
+ShpVector<Contour::Tree::TNode> Contour::Tree::roots() const{
+	ShpVector<TNode> ret;
 	std::for_each(nodes.begin(), nodes.end(), 
-		[&](shared_ptr<TreeNode> nd){ if (nd->parent == 0) ret.push_back(nd.get()); }
+		[&](shared_ptr<TNode> nd){ if (nd->level==0) ret.push_back(nd); }
 	);
-	return ret;
-}
-
-double ContourTree::Area(const ContourTree& c){
-	return std::accumulate(c.nodes.begin(), c.nodes.end(), 0.0,
-			[](double s, shared_ptr<Contour> cc){ return s + Contour::Area(*cc); });
-}
-
-ExtendedTree ContourTree::AsExtended(const ContourTree& et){
-	ExtendedTree ret;
-	ret.data = et.data;
-	ret.nodes = et.nodes;
-	return ret;
-}
-
-Contour* ContourTree::get_contour(Point* p) const{
-	Contour* ret = 0;
-	auto fnd = std::find_if(nodes.begin(), nodes.end(),
-		[&p](shared_ptr<Contour> a){ return a->contains_point(p); }
-	);
-	if (fnd != nodes.end()) return fnd->get();
-	else return 0;
-}
-
-Contour* ContourTree::get_contour(Edge* p) const{
-	Contour* ret = 0;
-	auto fnd = std::find_if(nodes.begin(), nodes.end(),
-		[&p](shared_ptr<Contour> a){ return a->contains(p); }
-	);
-	if (fnd != nodes.end()) return fnd->get();
-	else return 0;
-}
-
-Contour* ExtendedTree::get_contour(Edge* e) const{
-	Contour* ret = ContourTree::get_contour(e);
-	if (ret != 0) return ret;
-	for (auto& oc: open_contours) if (oc->contains(e)) return oc.get();
-	return 0;
-}
-
-vector<Contour*> ExtendedTree::all_contours() const{
-	vector<Contour*> ret;
-	for (auto n: nodes) ret.push_back(n.get());
-	for (auto n: open_contours) ret.push_back(n.get());
 	return ret;
 }
 
 namespace{
 
 //returns whether node was embedded
-void add_contour_recursive(ContourTree::TreeNode* node,
-		vector<ContourTree::TreeNode*>& level, ContourTree::TreeNode* parent){
-	Point p = node->InnerPoint();
+void add_contour_recursive(shared_ptr<Tree::TNode> node,
+		ShpVector<Tree::TNode>& level, shared_ptr<Tree::TNode> parent){
+	Point p = InnerPoint(node->contour);
 	for (auto& lv: level){
-		bool node_within_lv = lv->IsWithin(p) &&
-			fabs(HMCont2D::Contour::Area(*lv)) > fabs(HMCont2D::Contour::Area(*node));
-		if (node_within_lv) return add_contour_recursive(node, lv->children, lv);
+		bool node_within_lv = fabs(Area(lv->contour)) > fabs(Area(node->contour));
+		if (WhereIs(lv->contour, p) != INSIDE) node_within_lv = false;
+		if (node_within_lv) {
+			ShpVector<Tree::TNode> newlevel;
+			for (auto w: lv->children) newlevel.push_back(w.lock());
+			return add_contour_recursive(node, newlevel, lv);
+		}
 	}
 	node->parent = parent;
 	for (auto& lv: level){
-		Point p2 = lv->InnerPoint();
-		bool lv_within_node = node->IsWithin(p2) &&
-			fabs(HMCont2D::Contour::Area(*lv)) < fabs(HMCont2D::Contour::Area(*node));
+		Point p2 = InnerPoint(lv->contour);
+		bool lv_within_node = fabs(Area(lv->contour)) < fabs(Area(node->contour));
+		if (WhereIs(node->contour, p2) != INSIDE) lv_within_node = false;
 		if (lv_within_node) lv->parent = node;
 	}
 }
 
 }
 
-void ContourTree::AddContour(shared_ptr<Contour>& c){
-	assert(c->is_closed());
+void Tree::AddContour(const EdgeData& c){
+	if (IsOpen(c)){
+		nodes.emplace_back(new TNode(c, -1));
+		return;
+	}
 	//create node
-	shared_ptr<TreeNode> node(new TreeNode);
-	node->Unite(*c);
-	c = node;
-	Unite(*node);
+	auto node = std::make_shared<TNode>(c, 0);
 	//call recursive algo
 	auto rs = roots();
-	add_contour_recursive(node.get(), rs, 0);
+	add_contour_recursive(node, rs, 0);
 	nodes.push_back(node);
 	UpdateTopology();
 }
 
-void ContourTree::AddContour(const Contour& c){
-	shared_ptr<Contour> c2(new Contour(c));
-	AddContour(c2);
-}
-
-void ContourTree::RemovePoints(const vector<const Point*>& p){
-	for (auto& n: nodes) n->RemovePoints(p);
-	ReloadEdges();
-}
-
-void ContourTree::ReloadEdges(){
-	data.clear();
-	for (auto& n: nodes) data.insert(data.end(), n->data.begin(), n->data.end());
-}
-void ContourTree::Reallocate(){
-	for (auto& n: nodes) n->Reallocate();
-	ReloadEdges();
-}
-
-void ExtendedTree::RemovePoints(const vector<const Point*>& p){
-	for (auto& n: nodes) n->RemovePoints(p);
-	for (auto& n: open_contours) n->RemovePoints(p);
-	ReloadEdges();
-}
-
-void ExtendedTree::ReloadEdges(){
-	data.clear();
-	for (auto& n: nodes) data.insert(data.end(), n->data.begin(), n->data.end());
-	for (auto& n: open_contours) data.insert(data.end(), n->data.begin(), n->data.end());
-}
-
-void ExtendedTree::Reallocate(){
-	for (auto& n: nodes) n->Reallocate();
-	for (auto& n: open_contours) n->Reallocate();
-	ReloadEdges();
-}
-
-void ContourTree::UpdateTopology(){
+void Contour::Tree::UpdateTopology(){
 	//clear children array
 	std::for_each(nodes.begin(), nodes.end(),
-		[&](shared_ptr<TreeNode> a){ a->children.clear(); });
+		[&](shared_ptr<TNode> a){ a->children.clear(); });
 	//restore children
 	for (auto& c: nodes){
-		if (c->parent != 0) c->parent->children.push_back(c.get());
+		if (!c->parent.expired()) c->parent.lock()->children.push_back(c);
 	}
-	
-	std::function<void(TreeNode*, bool)>
-	direct = [&direct](TreeNode* nd, bool dir){
-		nd->ForceDirection(dir);
-		for (auto& c: nd->children) direct(c, !dir);
-	};
-
-	//all roots to positive direction
-	for (auto& c: nodes){
-		if (c->parent == 0) direct(c.get(), true);
-	}
-}
-
-bool ContourTree::IsWithin(const Point& p) const{
-	for (auto nd: nodes) if (HMCont2D::Contour::Area(*nd) > 0){
-		if (nd->IsWithin(p)){
-			for (auto ch: nd->children){
-				if (ch->IsWithin(p)) goto NEXTNODE;
-			}
-			return true;
+	//levels
+	for (auto& n: nodes) if (IsClosed(n->contour)){
+		n->level = 0;
+		auto n2 = n;
+		while (!n2->parent.expired()){
+			++n->level;
+			n2 = n2->parent.lock();
 		}
-	NEXTNODE:;
-	}
-	return false;
+	} else { n->level = -1; }
 }
 
-bool ContourTree::IsWithout(const Point& p) const{
-	for (auto nd: nodes) if (HMCont2D::Contour::Area(*nd) > 0){
-		if (!nd->IsWithout(p)){
-			for (auto ch: nd->children){
-				if (ch->IsWithin(p)) goto NEXTNODE;
-			}
-			return false;
+Tree Tree::DeepCopy(const Tree& from, int level){
+	Tree ret;
+	ret.nodes = from.nodes;
+	if (level == 0) return ret;
+	//copy tree nodes
+	for (int i=0; i<ret.nodes.size(); ++i){
+		ret.nodes[i] = std::make_shared<TNode>(*ret.nodes[i]);
+	}
+	std::map<TNode*, int> nind;
+	for (int i=0; i<from.nodes.size(); ++i) nind.emplace(from.nodes[i].get(), i);
+	for (int i=0; i<ret.nodes.size(); ++i){
+		if (!ret.nodes[i]->parent.expired()){
+			int ind = nind[ret.nodes[i]->parent.lock().get()];
+			ret.nodes[i]->parent = ret.nodes[ind];
 		}
-	NEXTNODE:;
+		for (auto& w: ret.nodes[i]->children){
+			int ind = nind[w.lock().get()];
+			w = ret.nodes[ind];
+		}
 	}
-	return true;
-}
-
-
-void ExtendedTree::AddContour(shared_ptr<Contour>& c){
-	if (c->is_closed()) ContourTree::AddContour(c);
-	else AddOpenContour(c);
-}
-
-void ExtendedTree::AddContour(const Contour& c){
-	if (c.is_closed()) ContourTree::AddContour(c);
-	else {
-		auto sp = std::make_shared<Contour>(c);
-		AddOpenContour(sp);
-	}
-}
-
-void ExtendedTree::AddOpenContour(shared_ptr<Contour>& c){
-	open_contours.push_back(c);
-	Unite(*c);
-}
-
-Contour* ExtendedTree::get_contour(Point* p) const{
-	Contour* ret = ContourTree::get_contour(p);
-	if (ret == 0){
-		auto fnd = std::find_if(open_contours.begin(), open_contours.end(),
-			[&p](shared_ptr<Contour> a){ return a->contains_point(p); }
-		);
-		if (fnd != open_contours.end()) return fnd->get();
+	if (level == 1) return ret;
+	//copy contours
+	for (int i=0; i<ret.nodes.size(); ++i){
+		EdgeData newed;
+		HM2D::DeepCopy(ret.nodes[i]->contour, newed, level-2);
+		std::swap(ret.nodes[i]->contour, newed);
 	}
 	return ret;
 }
 
-
-namespace {
-
-bool check_core(const ContourTree& tree, double v0, double v1){
-	//all contours are closed
-	for (auto cont: tree.nodes){
-		if (!cont->is_closed()) return false;
-	}
-	//each edge is owned by one contour
-	std::set<Edge*> eset;
-	for (auto cont: tree.nodes){
-		for (auto e: cont->data){
-			if (eset.find(e.get()) != eset.end()) return false;
-			eset.insert(e.get());
+shared_ptr<Tree::TNode> Tree::find_node(const Point* p) const{
+	shared_ptr<Tree::TNode> ret;
+	for (auto n: nodes){
+		if (Contains(n->contour, p)){
+			ret = n;
+			break;
 		}
 	}
-	//no edge crosses
-	double ksieta[2];
-	for (int i=0; i<tree.size(); ++i){
-		for (int j=i+1; j<tree.size(); ++j){
-			Edge* e1 = tree.edge(i);
-			Edge* e2 = tree.edge(j);
-			if (Edge::AreConnected(*e1, *e2)) continue;
-			SectCross(*e1->pstart, *e1->pend, *e2->pstart, *e2->pend, ksieta);
-			if (ksieta[0]>v0 && ksieta[0]<v1 && ksieta[1]>v0 && ksieta[1]<v1)
-				return false;
+	return ret;
+}
+shared_ptr<Tree::TNode> Tree::find_node(const Edge* p) const{
+	shared_ptr<Tree::TNode> ret;
+	for (auto n: nodes){
+		if (Contains(n->contour, p)){
+			ret = n;
+			break;
 		}
 	}
-	return true;
+	return ret;
 }
 
-}
-
-bool ContourTree::CheckNoCross(const ContourTree& tree){
-	return check_core(tree, +geps, 1-geps);
-}
-
-bool ContourTree::CheckNoContact(const ContourTree& tree){
-	return check_core(tree, -geps, 1+geps);
-}
-
-
-Contour* ContourTree::get_contour(int i) const{
-	return nodes[i].get();
-}
-
-Contour* ExtendedTree::get_contour(int i) const{
-	if (i < ContourTree::cont_count()) return ContourTree::get_contour(i);
-	else{
-		i = i - ContourTree::cont_count();
-		return open_contours[i].get();
+int Tree::whereis(const Point& p) const{
+	//using WhereIs routine for single contour
+	//since algorithms are the same:
+	//calculation of crosses between [p, far point] and
+	//object edges.
+	EdgeData cedges;
+	for (auto n: nodes) if (n->isclosed()){
+		cedges.insert(cedges.end(), n->contour.begin(),
+				n->contour.end());
 	}
-}
-
-void ContourTree::SaveVtk(const ContourTree& ct, const char* fn){
-	auto et = AsExtended(ct);
-	ExtendedTree::SaveVtk(et, fn);
-}
-
-void ExtendedTree::SaveVtk(const ExtendedTree& ct, const char* fn){
-	//save basic collection
-	ECollection::SaveVtk(ct, fn);
-	//set contours ids, local edge indicies
-	vector<int> cont_ids(ct.data.size(), -1);
-	vector<int> loc_ids(ct.data.size(), -1);
-	//closed contours
-	int ind = 0;
-	for (auto cont: ct.nodes){
-		auto locind = 0;
-		for (auto e: *cont){
-			int gind = ct.get_index(e.get());
-			cont_ids[gind] = ind;
-			loc_ids[gind] = locind++;
-		}
-		++ind;
-	}
-	//open contours
-	for (auto cont: ct.open_contours){
-		auto locind = 0;
-		for (auto e: *cont){
-			int gind = ct.get_index(e.get());
-			cont_ids[gind] = ind;
-			loc_ids[gind] = locind++;
-		}
-		++ind;
-	}
-	
-	//write to file
-	std::ofstream of(fn, std::ios::app);
-	of<<"CELL_DATA "<<cont_ids.size()<<std::endl;
-	of<<"SCALARS contour_id int 1"<<std::endl;
-	of<<"LOOKUP_TABLE default"<<std::endl;
-	for (auto i: cont_ids) of<<i<<std::endl;
-	of<<"SCALARS local_edge_index int 1"<<std::endl;
-	of<<"LOOKUP_TABLE default"<<std::endl;
-	for (auto i: loc_ids) of<<i<<std::endl;
-
+	return Contour::WhereIs(cedges, p);
 }

@@ -1,8 +1,9 @@
 #include "clipper_core.hpp"
 #include <limits>
+#include "cont_assembler.hpp"
 
-using namespace HMCont2D;
-using namespace HMCont2D::Impl;
+using namespace HM2D;
+using namespace HM2D::Impl;
 
 void ClipperObject::ApplyBoundingBox(const BoundingBox& newbbox){
 	bbox = newbbox;
@@ -31,13 +32,13 @@ Point ClipperObject::ToRealGeom(const ClipperLib::IntPoint& p) const{
 }
 
 
-ClipperPath::ClipperPath(const Contour& path){
-	auto pnt = path.ordered_points();
+ClipperPath::ClipperPath(const EdgeData& path){
+	auto pnt = Contour::OrderedPoints(path);
 	ApplyBoundingBox(BoundingBox::Build(pnt.begin(), pnt.end()));
 	std::transform(pnt.begin(), pnt.end(), std::back_inserter(data),
-		[&](Point* p){ return this->ToIntGeom(*p);
+		[&](shared_ptr<Point> p){ return this->ToIntGeom(*p);
 	});
-	if (path.is_closed()) data.resize(data.size()-1);
+	if (Contour::IsClosed(path)) data.resize(data.size()-1);
 }
 
 void ClipperPath::AddPointToEnd(const Point& p){
@@ -64,16 +65,16 @@ int ClipperPath::WhereIs(Point p) const{
 	return ClipperLib::PointInPolygon(ToIntGeom(p), data);
 }
 
-Container<ContourTree> ClipperPath::Offset(double delta, HMCont2D::OffsetTp tp) const{
+Contour::Tree ClipperPath::Offset(double delta, HM2D::Contour::Algos::OffsetTp tp) const{
 	long double dd = (long double)delta * factor;
 	double arctol = ClipperArcTolerance * factor;
 	ClipperLib::ClipperOffset worker;
 	
 	ClipperLib::EndType et;
 	switch (tp){
-		case HMCont2D::OffsetTp::RC_CLOSED_POLY: et = ClipperLib::etClosedPolygon; break;
-		case HMCont2D::OffsetTp::RC_OPEN_ROUND: et = ClipperLib::etOpenRound; break;
-		case HMCont2D::OffsetTp::RC_OPEN_BUTT: et = ClipperLib::etOpenButt; break;
+		case Contour::Algos::OffsetTp::RC_CLOSED_POLY: et = ClipperLib::etClosedPolygon; break;
+		case Contour::Algos::OffsetTp::RC_OPEN_ROUND: et = ClipperLib::etOpenRound; break;
+		case Contour::Algos::OffsetTp::RC_OPEN_BUTT: et = ClipperLib::etOpenButt; break;
 		default: _THROW_NOT_IMP_;
 	}
 	worker.AddPath(this->data, ClipperLib::jtRound, et);
@@ -83,7 +84,7 @@ Container<ContourTree> ClipperPath::Offset(double delta, HMCont2D::OffsetTp tp) 
 	return ClipperTree::HMContainer(sol, bbox);
 }
 
-Container<Contour> ClipperPath::ToHMContainer(){
+EdgeData ClipperPath::ToHMContainer(){
 	return HMContainer(this->data, bbox);
 }
 
@@ -162,65 +163,51 @@ bool clipper_heal(ClipperLib::Path& path, const ClipperObject& bbox, bool is_clo
 
 }
 
-Container<Contour> ClipperPath::HMContainer(ClipperLib::Path& path, const BoundingBox& bbox, bool is_closed){
-	Container<Contour> res;
+EdgeData ClipperPath::HMContainer(ClipperLib::Path& path, const BoundingBox& bbox, bool is_closed){
+	EdgeData res;
 	ClipperObject tob(bbox);
 	//fixing some clipper bugs
 	bool valid = clipper_heal(path, tob, is_closed);
 	if (!valid) return res;
 	
-	////points
-	//std::transform(path.begin(), path.end(), std::back_inserter(res.pdata.data),
-	//        [&tob](const ClipperLib::IntPoint& p){ return std::make_shared<Point>(tob.ToRealGeom(p)); });
-	////edges
-	//for (int i=0; i<res.pdata.size()-1; ++i) res.add_value(Edge(res.pdata.point(i), res.pdata.point(i+1)));
-	//res.add_value(Edge(res.pdata.data.back().get(), res.pdata.data[0].get()));
-	
 	if (path.size() < 2) return res;
 	if (is_closed && path.size() < 3) return res;
 
-	res.pdata.add_value(tob.ToRealGeom(*path.begin()));
+	VertexData pdata;
+	pdata.push_back(std::make_shared<Vertex>(tob.ToRealGeom(*path.begin())));
 	auto it = path.begin() + 1;
 	while (it != path.end()){
 		Point pnext = tob.ToRealGeom(*it++);
-		if (Point::meas(pnext, *res.pdata.data.back()) > 1e3*geps*geps){
-			res.pdata.add_value(pnext);
-			res.add_value(Edge(res.pdata.end()[-2].get(), res.pdata.end()[-1].get()));
+		if (Point::meas(pnext, *pdata.back()) > 1e3*geps*geps){
+			pdata.push_back(std::make_shared<Vertex>(pnext));
 		}
 	}
-
 	if (is_closed){
-		if (Point::meas(*res.pdata.data[0], *res.pdata.data.back()) > 1e3*geps*geps){
-			res.add_value(Edge(res.pdata.data.back().get(), res.pdata.data[0].get()));
-		} else {
-			res.data.back()->pend = res.pdata.data[0].get();
-			res.pdata.data.resize(res.pdata.size()-1);
+		if (Point::meas(*pdata[0], *pdata.back()) <= 1e3*geps*geps){
+			pdata.resize(pdata.size()-1);
 		}
 	}
-
+	res = Contour::Assembler::Contour1(pdata, is_closed);
 	return res;
 }
 
-Container<ContourTree> ClipperTree::HMContainer(const ClipperLib::PolyTree& tree, const BoundingBox& bbox){
-	Container<ContourTree> ret;
+Contour::Tree ClipperTree::HMContainer(const ClipperLib::PolyTree& tree, const BoundingBox& bbox){
+	Contour::Tree ret;
 	if (tree.GetFirst() == 0) return ret;
 	//1) create data filling only parents fields
-	std::function<void(ClipperLib::PolyNode*, ContourTree::TreeNode*)>
-	setcont = [&ret, &bbox, &setcont](ClipperLib::PolyNode* nd, ContourTree::TreeNode* parent){
+	std::function<void(ClipperLib::PolyNode*, shared_ptr<Contour::Tree::TNode>)>
+	setcont = [&ret, &bbox, &setcont](ClipperLib::PolyNode* nd, shared_ptr<Contour::Tree::TNode> parent){
 		if (nd->IsOpen()) return;
 		//build contour
-		Container<Contour> c = ClipperPath::HMContainer(nd->Contour, bbox);
+		EdgeData c = ClipperPath::HMContainer(nd->Contour, bbox);
 		if (c.size() == 0) return;
 		//Using raw push_backs to eschew ret tree rebuilding
-		//add points
-		ret.pdata.Unite(c.pdata);
 		//add edges
-		std::copy(c.data.begin(), c.data.end(), std::back_inserter(ret.data));
-		shared_ptr<ContourTree::TreeNode> newnode(new ContourTree::TreeNode);
-		newnode->Unite(c); //add only edges
+		shared_ptr<Contour::Tree::TNode> newnode(new Contour::Tree::TNode);
+		newnode->contour = c;
 		newnode->parent = parent;
 		ret.nodes.push_back(newnode);
-		for (auto& child: nd->Childs) setcont(child, newnode.get());
+		for (auto& child: nd->Childs) setcont(child, newnode);
 	
 	};
 	for (int i=0; i<tree.ChildCount(); ++i) setcont(tree.Childs[i], nullptr);
@@ -236,16 +223,16 @@ void ClipperTree::ApplyBoundingBox(const BoundingBox& newbbox){
 }
 
 //from tree
-ClipperTree ClipperTree::Build(const ContourTree& tree){
+ClipperTree ClipperTree::Build(const Contour::Tree& tree){
 	ClipperTree ret;
-	ret.ApplyBoundingBox(HMCont2D::ECollection::BBox(tree));
+	ret.ApplyBoundingBox(HM2D::BBox(tree.alledges()));
 	for (auto n: tree.nodes){
 		ret.isopen.push_back(false);
 		ret.data.push_back(ClipperPath());
 		ClipperPath& last = ret.data.back();
 		last.ApplyBoundingBox(ret.bbox);
-		auto sp = n->ordered_points();
-		for (int i=0; i<n->size(); ++i){
+		auto sp = Contour::OrderedPoints(n->contour);
+		for (int i=0; i<n->contour.size(); ++i){
 			last.data.push_back(ret.ToIntGeom(*sp[i]));
 		}
 	}
@@ -324,7 +311,7 @@ BoundingBox SameBoundingBox(
 
 }
 
-Container<ContourTree> ClipperPath::Intersect(
+Contour::Tree ClipperPath::Intersect(
 		vector<ClipperPath>& pths1,
 		vector<ClipperPath>& pths2,
 		bool embedded1,
@@ -343,7 +330,7 @@ Container<ContourTree> ClipperPath::Intersect(
 	return ClipperTree::HMContainer(res, bbox);
 }
 
-Container<ContourTree> ClipperPath::Union(
+Contour::Tree ClipperPath::Union(
 		vector<ClipperPath>& pths1,
 		vector<ClipperPath>& pths2,
 		bool embedded1,
@@ -363,7 +350,7 @@ Container<ContourTree> ClipperPath::Union(
 	return ClipperTree::HMContainer(res, bbox);
 }
 
-Container<ContourTree> ClipperPath::Substruct(
+Contour::Tree ClipperPath::Substruct(
 		vector<ClipperPath>& pths1,
 		vector<ClipperPath>& pths2,
 		bool embedded1,
@@ -382,7 +369,7 @@ Container<ContourTree> ClipperPath::Substruct(
 	return ClipperTree::HMContainer(res, bbox);
 }
 
-Container<ExtendedTree> ClipperPath::CutLines(
+Contour::Tree ClipperPath::CutLines(
 		vector<ClipperPath>& area,
 		vector<ClipperPath>& lines,
 		bool embedded_area){
@@ -398,10 +385,7 @@ Container<ExtendedTree> ClipperPath::CutLines(
 	auto t2 = (embedded_area) ? ClipperLib::pftEvenOdd : ClipperLib::pftNonZero;
 	clrp.Execute(ClipperLib::ctIntersection, res);
 	auto treecont = ClipperTree::HMContainer(res, bbox);
-	Container<ExtendedTree> ret;
-	ret.data = treecont.data;
-	ret.nodes = treecont.nodes;
-	ret.pdata = treecont.pdata;
+	Contour::Tree ret = treecont;
 	ClipperLib::Paths op;
 	ClipperLib::OpenPathsFromPolyTree(res, op);
 
@@ -412,5 +396,3 @@ Container<ExtendedTree> ClipperPath::CutLines(
 
 	return ret;
 }
-
-

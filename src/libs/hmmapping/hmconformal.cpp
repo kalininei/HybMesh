@@ -3,6 +3,9 @@
 #include "dscpack_port.hpp"
 #include "hmcompute.hpp"
 #include "confrect_fem.hpp"
+#include "constructor.hpp"
+#include "cont_assembler.hpp"
+#include "treverter2d.hpp"
 
 using namespace HMMap::Conformal;
 
@@ -79,10 +82,10 @@ vector<Point> Rect::MapToRectangle(const vector<Point*>& input) const{
 }
 
 shared_ptr<Rect> Rect::Factory(
-		const HMCont2D::Contour& left,
-		const HMCont2D::Contour& right,
-		const HMCont2D::Contour& bot,
-		const HMCont2D::Contour& top,
+		const HM2D::EdgeData& left,
+		const HM2D::EdgeData& right,
+		const HM2D::EdgeData& bot,
+		const HM2D::EdgeData& top,
 		const Options& opt){
 	auto input = FactoryInput(left, right, bot, top);
 	return Factory(std::get<0>(input), std::get<1>(input), opt);
@@ -137,20 +140,20 @@ shared_ptr<Rect> Rect::Factory(
 }
 
 std::tuple<vector<Point>, std::array<int, 4>>
-Rect::FactoryInput(const HMCont2D::Contour& left, const HMCont2D::Contour& right,
-		const HMCont2D::Contour& bot, const HMCont2D::Contour& top){
+Rect::FactoryInput(const HM2D::EdgeData& left, const HM2D::EdgeData& right,
+		const HM2D::EdgeData& bot, const HM2D::EdgeData& top){
 	std::tuple<vector<Point>, std::array<int, 4>> ret;
 	auto& vp = std::get<0>(ret);
 	auto& crn = std::get<1>(ret);
 
-	assert(*left.first() == *bot.first());
-	assert(*left.last() == *top.first());
-	assert(*right.first() == *bot.last());
-	assert(*right.last() == *top.last());
-	vector<Point*> lp = left.ordered_points(); std::reverse(lp.begin(), lp.end());
-	vector<Point*> rp = right.ordered_points();
-	vector<Point*> tp = top.ordered_points(); std::reverse(tp.begin(), tp.end());
-	vector<Point*> bp = bot.ordered_points();
+	assert(*HM2D::Contour::First(left) == *HM2D::Contour::First(bot));
+	assert(*HM2D::Contour::Last(left) == *HM2D::Contour::First(top));
+	assert(*HM2D::Contour::First(right) == *HM2D::Contour::Last(bot));
+	assert(*HM2D::Contour::Last(right) == *HM2D::Contour::Last(top));
+	HM2D::VertexData lp = HM2D::Contour::OrderedPoints(left); std::reverse(lp.begin(), lp.end());
+	HM2D::VertexData rp = HM2D::Contour::OrderedPoints(right);
+	HM2D::VertexData tp = HM2D::Contour::OrderedPoints(top); std::reverse(tp.begin(), tp.end());
+	HM2D::VertexData bp = HM2D::Contour::OrderedPoints(bot);
 	for (int i=0; i<lp.size()-1; ++i) vp.push_back(*lp[i]);
 	for (int i=0; i<bp.size()-1; ++i) vp.push_back(*bp[i]);
 	for (int i=0; i<rp.size()-1; ++i) vp.push_back(*rp[i]);
@@ -163,8 +166,8 @@ Rect::FactoryInput(const HMCont2D::Contour& left, const HMCont2D::Contour& right
 }
 
 std::tuple<vector<Point>, std::array<int, 4>>
-Rect::FactoryInput(const HMCont2D::Contour& cont, const std::array<int,4>& a){
-	assert(cont.is_closed());
+Rect::FactoryInput(const HM2D::EdgeData& cont, const std::array<int,4>& a){
+	assert(HM2D::Contour::IsClosed(cont));
 	assert(a[0]<a[1] && a[1]<a[2] && a[2]<a[3]);
 	assert(a[0]>=0 && a[3]<cont.size());
 
@@ -173,7 +176,7 @@ Rect::FactoryInput(const HMCont2D::Contour& cont, const std::array<int,4>& a){
 	auto& ra = std::get<1>(ret);
 
 	//copy points from contour
-	for (auto p: cont.ordered_points()) rcont.push_back(*p);
+	for (auto p: HM2D::Contour::OrderedPoints(cont)) rcont.push_back(*p);
 	rcont.pop_back();
 	ra = a;
 
@@ -190,10 +193,10 @@ Rect::FactoryInput(const HMCont2D::Contour& cont, const std::array<int,4>& a){
 }
 
 HMCallback::FunctionWithCallback<HMMap::Conformal::TBuildRect> HMMap::Conformal::BuildRect;
-shared_ptr<Rect> TBuildRect::_run(const HMCont2D::Contour& left,
-		const HMCont2D::Contour& right,
-		const HMCont2D::Contour& bot,
-		const HMCont2D::Contour& top,
+shared_ptr<Rect> TBuildRect::_run(const HM2D::EdgeData& left,
+		const HM2D::EdgeData& right,
+		const HM2D::EdgeData& bot,
+		const HM2D::EdgeData& top,
 			const Options& opt){
 	callback->step_after(5, "Sorting input");
 	auto inp = Rect::FactoryInput(left, right, bot, top);
@@ -233,31 +236,33 @@ shared_ptr<Impl::RectApprox>
 Impl::RectApprox::Build(const vector<Point>& path, int i1, int i2, int i3){
 	shared_ptr<Impl::RectApprox> ret(new RectApprox());
 	//add points
-	for (auto& p: path) ret->pcol.add_value(p);
-	vector<Point*> allpnt = ret->pcol.pvalues();
+	HM2D::VertexData allpnt;
+	for (auto& p: path) allpnt.push_back(std::make_shared<HM2D::Vertex>(p));
 	allpnt.push_back(allpnt[0]);
 	//left contour
-	ret->left = HMCont2D::Constructor::ContourFromPoints(allpnt.begin(),
-			allpnt.begin()+i1+1, false);
-	ret->bot = HMCont2D::Constructor::ContourFromPoints(allpnt.begin()+i1,
-			allpnt.begin()+i2+1, false);
-	ret->right = HMCont2D::Constructor::ContourFromPoints(allpnt.begin()+i2,
-			allpnt.begin()+i3+1, false);
-	ret->top = HMCont2D::Constructor::ContourFromPoints(allpnt.begin()+i3,
-			allpnt.end(), false);
-	ret->left.ReallyReverse();
-	ret->top.ReallyReverse();
+	HM2D::VertexData ap1(allpnt.begin(), allpnt.begin()+i1+1);
+	ret->left = HM2D::Contour::Assembler::Contour1(ap1, false);
+	HM2D::VertexData ap2(allpnt.begin()+i1, allpnt.begin()+i2+1);
+	ret->bot = HM2D::Contour::Assembler::Contour1(ap2, false);
+	HM2D::VertexData ap3(allpnt.begin()+i2, allpnt.begin()+i3+1);
+	ret->right = HM2D::Contour::Assembler::Contour1(ap3, false);
+	HM2D::VertexData ap4(allpnt.begin()+i3, allpnt.end());
+	ret->top = HM2D::Contour::Assembler::Contour1(ap4, false);
+	HM2D::Contour::ReallyRevert r1(ret->left);
+	HM2D::Contour::ReallyRevert r2(ret->top);
+	r1.make_permanent();
+	r2.make_permanent();
 
 	//calc_options
-	ret->_len_top = ret->top.length();
-	ret->_len_bot = ret->bot.length();
-	ret->_len_right = ret->right.length();
-	ret->_len_left = ret->left.length();
+	ret->_len_top = HM2D::Length(ret->top);
+	ret->_len_bot = HM2D::Length(ret->bot);
+	ret->_len_right = HM2D::Length(ret->right);
+	ret->_len_left = HM2D::Length(ret->left);
 	ret->_module = (ret->_len_top + ret->_len_bot)/(ret->_len_left+ret->_len_right);
-	ret->_left_straight = ret->left.is_straight();
-	ret->_bot_straight = ret->bot.is_straight();
-	ret->_right_straight = ret->right.is_straight();
-	ret->_top_straight = ret->top.is_straight();
+	ret->_left_straight = (HM2D::Contour::CornerPoints(ret->left).size() == 2);
+	ret->_bot_straight = (HM2D::Contour::CornerPoints(ret->bot).size() == 2);
+	ret->_right_straight = (HM2D::Contour::CornerPoints(ret->right).size() == 2);
+	ret->_top_straight = (HM2D::Contour::CornerPoints(ret->top).size() == 2);
 
 	//choose a direction for approximation
 	if (ret->_len_top + ret->_len_bot > ret->_len_left + ret->_len_right)
@@ -270,8 +275,8 @@ Impl::RectApprox::Build(const vector<Point>& path, int i1, int i2, int i3){
 }
 
 shared_ptr<Impl::RectApprox>
-Impl::RectApprox::Build(const HMCont2D::Contour& left, const HMCont2D::Contour& right,
-	const HMCont2D::Contour& bot, const HMCont2D::Contour& top){
+Impl::RectApprox::Build(const HM2D::EdgeData& left, const HM2D::EdgeData& right,
+	const HM2D::EdgeData& bot, const HM2D::EdgeData& top){
 	auto prep = FactoryInput(left, right, bot, top);
 	auto& vp = std::get<0>(prep);
 	auto& a = std::get<1>(prep);
@@ -288,10 +293,10 @@ vector<Point> Impl::RectApprox::MapToPolygon(const vector<Point>& input) const{
 	for (int i=0; i<input.size(); ++i){
 		double ksi = input[i].x/_module;
 		double eta = input[i].y;
-		if (ISEQ(ksi,1)) ret[i] = HMCont2D::Contour::WeightPoint(right, eta);
-		else if (ISEQ(ksi,0)) ret[i] = HMCont2D::Contour::WeightPoint(left, eta);
-		else if (ISEQ(eta,0)) ret[i] = HMCont2D::Contour::WeightPoint(bot, ksi);
-		else if (ISEQ(eta,1)) ret[i] = HMCont2D::Contour::WeightPoint(top, ksi);
+		if (ISEQ(ksi,1)) ret[i] = HM2D::Contour::WeightPoint(right, eta);
+		else if (ISEQ(ksi,0)) ret[i] = HM2D::Contour::WeightPoint(left, eta);
+		else if (ISEQ(eta,0)) ret[i] = HM2D::Contour::WeightPoint(bot, ksi);
+		else if (ISEQ(eta,1)) ret[i] = HM2D::Contour::WeightPoint(top, ksi);
 	}
 	return ret;
 }
@@ -304,10 +309,8 @@ vector<Point> Impl::RectApprox::MapToPolygon_yeta(const vector<Point>& input) co
 	for (auto& p: input) xline_w.insert(p.x/_module);
 
 	// -- calculate points from weights
-	HMCont2D::PCollection bottomp =
-		HMCont2D::Contour::WeightPoints(bot, vector<double>(xline_w.begin(), xline_w.end()));
-	HMCont2D::PCollection topp =
-		HMCont2D::Contour::WeightPoints(top, vector<double>(xline_w.begin(), xline_w.end()));
+	auto bottomp = HM2D::Contour::WeightPoints(bot, vector<double>(xline_w.begin(), xline_w.end()));
+	auto topp = HM2D::Contour::WeightPoints(top, vector<double>(xline_w.begin(), xline_w.end()));
 		
 	// -- calculate coordinates of lines
 	TCoordMap<std::pair<Point, Point>> yline; //from x coordinate
@@ -315,8 +318,8 @@ vector<Point> Impl::RectApprox::MapToPolygon_yeta(const vector<Point>& input) co
 	auto bottomp1 = bottomp.begin();
 	for (auto& w: xline_w){
 		auto& yn = yline[w*_module] = std::pair<Point, Point>(); 
-		yn.first = *(*bottomp1++);
-		yn.second = *(*topp1++);
+		yn.first = (*bottomp1++);
+		yn.second = (*topp1++);
 	}
 
 	// -- calculate points
@@ -345,10 +348,8 @@ vector<Point> Impl::RectApprox::MapToPolygon_xksi(const vector<Point>& input) co
 	for (auto& p: input) yline_w.insert(p.y);
 
 	// -- calculate points from weights
-	HMCont2D::PCollection leftp =
-		HMCont2D::Contour::WeightPoints(left, vector<double>(yline_w.begin(), yline_w.end()));
-	HMCont2D::PCollection rightp =
-		HMCont2D::Contour::WeightPoints(right, vector<double>(yline_w.begin(), yline_w.end()));
+	auto leftp = HM2D::Contour::WeightPoints(left, vector<double>(yline_w.begin(), yline_w.end()));
+	auto rightp = HM2D::Contour::WeightPoints(right, vector<double>(yline_w.begin(), yline_w.end()));
 		
 	// -- calculate coordinates of lines
 	TCoordMap<std::pair<Point, Point>> xline; //from y coordinate
@@ -356,8 +357,8 @@ vector<Point> Impl::RectApprox::MapToPolygon_xksi(const vector<Point>& input) co
 	auto rightp1 = rightp.begin();
 	for (auto& w: yline_w){
 		auto& xn = xline[w] = std::pair<Point, Point>(); 
-		xn.first = *(*leftp1++);
-		xn.second = *(*rightp1++);
+		xn.first = (*leftp1++);
+		xn.second = (*rightp1++);
 	}
 
 	// -- calculate points
@@ -389,10 +390,10 @@ vector<Point> Impl::RectApprox::MapToRectangle(const vector<Point>& input) const
 }
 
 Point Impl::RectApprox::MapToRectangle(const Point& p) const{
-	auto left_fnd = left.coord_at(p);
-	auto right_fnd = right.coord_at(p);
-	auto top_fnd = top.coord_at(p);
-	auto bot_fnd = bot.coord_at(p);
+	auto left_fnd = HM2D::Contour::CoordAt(left, p);
+	auto right_fnd = HM2D::Contour::CoordAt(right, p);
+	auto top_fnd = HM2D::Contour::CoordAt(top, p);
+	auto bot_fnd = HM2D::Contour::CoordAt(bot, p);
 	//if on side walls
 	if (ISZERO(std::get<4>(left_fnd))){
 		return Point(0, std::get<1>(left_fnd));
@@ -411,8 +412,8 @@ Point Impl::RectApprox::MapToRectangle(const Point& p) const{
 Point Impl::RectApprox::MapToRectangle_xksi(const Point& p) const{
 	//calculate eta
 	auto func2 = [&](double x){
-		Point start = HMCont2D::Contour::WeightPoint(left, x);
-		Point end = HMCont2D::Contour::WeightPoint(right, x);
+		Point start = HM2D::Contour::WeightPoint(left, x);
+		Point end = HM2D::Contour::WeightPoint(right, x);
 		return Point::meas_section(p, start, end);
 	};
 	double eta = HMMath::Compute::GoldenRatioMin(0.0, 1.0, func2, 100, 1e-16);
@@ -421,8 +422,8 @@ Point Impl::RectApprox::MapToRectangle_xksi(const Point& p) const{
 	double ksi;
 	Point start, end;
 	//Point coordinate by eta
-	start = HMCont2D::Contour::WeightPoint(left, eta);
-	end = HMCont2D::Contour::WeightPoint(right, eta);
+	start = HM2D::Contour::WeightPoint(left, eta);
+	end = HM2D::Contour::WeightPoint(right, eta);
 	isOnSection(p, start, end, ksi);
 	assert(ISIN_EE(ksi, 0, 1));
 	return Point(ksi*_module, eta);
@@ -431,8 +432,8 @@ Point Impl::RectApprox::MapToRectangle_xksi(const Point& p) const{
 Point Impl::RectApprox::MapToRectangle_yeta(const Point& p) const{
 	//calculate ksi
 	auto func1 = [&](double x){
-		Point start = HMCont2D::Contour::WeightPoint(bot, x);
-		Point end = HMCont2D::Contour::WeightPoint(top, x);
+		Point start = HM2D::Contour::WeightPoint(bot, x);
+		Point end = HM2D::Contour::WeightPoint(top, x);
 		return Point::meas_section(p, start, end);
 	};
 	double ksi = HMMath::Compute::GoldenRatioMin(0.0, 1.0, func1, 100, 1e-16);
@@ -441,16 +442,16 @@ Point Impl::RectApprox::MapToRectangle_yeta(const Point& p) const{
 	double eta;
 	Point start, end;
 	//Point coordinate by ksi
-	start = HMCont2D::Contour::WeightPoint(bot, ksi);
-	end = HMCont2D::Contour::WeightPoint(top, ksi);
+	start = HM2D::Contour::WeightPoint(bot, ksi);
+	end = HM2D::Contour::WeightPoint(top, ksi);
 	isOnSection(p, start, end, eta);
 	assert(eta>-geps && eta<1+geps);
 	return Point(ksi*_module, eta);
 }
 
-HMCont2D::Container<HMCont2D::Contour> Rect::RectContour() const{
+HM2D::EdgeData Rect::RectContour() const{
 	auto pts = RectPoints();
-	return HMCont2D::Constructor::ContourFromPoints(pts, true);
+	return HM2D::Contour::Constructor::FromPoints(pts, true);
 }
 
 // ==================================== Annulus
@@ -461,10 +462,10 @@ shared_ptr<Annulus> Annulus::Factory(
 ){
 	assert([&]()->bool{
 		//anti-clockwise check
-		auto oc = HMCont2D::Constructor::ContourFromPoints(outerpnt, true);
-		auto ic = HMCont2D::Constructor::ContourFromPoints(innerpnt, true);
-		if (HMCont2D::Area(oc)<=0) return false;
-		if (HMCont2D::Area(ic)<=0) return false;
+		auto oc = HM2D::Contour::Constructor::FromPoints(outerpnt, true);
+		auto ic = HM2D::Contour::Constructor::FromPoints(innerpnt, true);
+		if (HM2D::Contour::Area(oc)<=0) return false;
+		if (HM2D::Contour::Area(ic)<=0) return false;
 		return true;
 	}());
 	shared_ptr<Annulus> ret;
@@ -481,12 +482,11 @@ shared_ptr<Annulus> Annulus::Factory(
 	return 0;
 }
 
-HMCont2D::Container<HMCont2D::Contour> Annulus::InnerCircleContour() const{
+HM2D::EdgeData Annulus::InnerCircleContour() const{
 	auto pts = InnerCirclePoints();
-	return HMCont2D::Constructor::ContourFromPoints(pts, true);
+	return HM2D::Contour::Constructor::FromPoints(pts, true);
 }
-HMCont2D::Container<HMCont2D::Contour> Annulus::OuterCircleContour() const{
+HM2D::EdgeData Annulus::OuterCircleContour() const{
 	auto pts = OuterCirclePoints();
-	return HMCont2D::Constructor::ContourFromPoints(pts, true);
+	return HM2D::Contour::Constructor::FromPoints(pts, true);
 }
-

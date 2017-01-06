@@ -1,12 +1,13 @@
 #include "mapped_contour.hpp"
 #include "hmmapping.hpp"
+#include "contour.hpp"
 
 using namespace HMMap::Impl;
-MappedContour::MappedContour(const HMCont2D::Contour* c1, const HMCont2D::Contour* c2, bool reversed):
+MappedContour::MappedContour(const HM2D::EdgeData* c1, const HM2D::EdgeData* c2, bool reversed):
 		base(c1), orig_mapped(c2){
 	if (reversed){
 		rev_mapped = *c2;
-		rev_mapped.Reverse();
+		HM2D::Contour::Reverse(rev_mapped);
 		mapped = &rev_mapped;
 	} else {
 		mapped = orig_mapped;
@@ -95,21 +96,21 @@ double MappedContour::ex2loc_base(double w) const{
 }
 
 Point MappedContour::map_from_base(Point p) const{
-	double w = std::get<1>(base->coord_at(p));
+	double w = std::get<1>(HM2D::Contour::CoordAt(*base, p));
 	return map_from_base(w);
 }
 
 Point MappedContour::map_from_base(double w) const{
 	double ec = loc2ex_base(w);
 	double wcont = ex2loc_mapped(ec);
-	return HMCont2D::Contour::WeightPoint(*mapped, wcont);
+	return HM2D::Contour::WeightPoint(*mapped, wcont);
 }
 
 Point MappedContour::map_from_mapped(Point p) const{
-	double w = std::get<1>(mapped->coord_at(p));
+	double w = std::get<1>(HM2D::Contour::CoordAt(*mapped, p));
 	double ec = loc2ex_mapped(w);
 	double wcont = ex2loc_base(ec);
-	return HMCont2D::Contour::WeightPoint(*base, wcont);
+	return HM2D::Contour::WeightPoint(*base, wcont);
 }
 
 void MappedContour::check_ww() const{
@@ -127,14 +128,14 @@ void MappedContour::check_ww() const{
 }
 
 void MappedContour::add_connection(Point pbase, Point pmapped){
-	double w1 = std::get<1>(base->coord_at(pbase));
-	double w2 = std::get<1>(mapped->coord_at(pmapped));
+	double w1 = std::get<1>(HM2D::Contour::CoordAt(*base, pbase));
+	double w2 = std::get<1>(HM2D::Contour::CoordAt(*mapped, pmapped));
 	ww.emplace(w1, w2);
 	check_ww();
 	ww_inv.emplace(w2, w1);
 }
 
-MappedContour* MappedContourCollection::find_by_base(HMCont2D::Contour* bc){
+MappedContour* MappedContourCollection::find_by_base(HM2D::EdgeData* bc){
 	MappedContour* ret = NULL;
 	for (auto s: data){
 		if (s->base == bc){ ret = s.get(); break; }
@@ -142,7 +143,7 @@ MappedContour* MappedContourCollection::find_by_base(HMCont2D::Contour* bc){
 	return ret;
 }
 
-MappedContour* MappedContourCollection::find_by_mapped(HMCont2D::Contour* bc){
+MappedContour* MappedContourCollection::find_by_mapped(HM2D::EdgeData* bc){
 	MappedContour* ret = NULL;
 	for (auto s: data){
 		if (s->orig_mapped == bc){ ret = s.get(); break; }
@@ -150,7 +151,7 @@ MappedContour* MappedContourCollection::find_by_mapped(HMCont2D::Contour* bc){
 	return ret;
 }
 
-MappedContour* MappedContourCollection::insert(HMCont2D::Contour* cbase, HMCont2D::Contour* cmapped){
+MappedContour* MappedContourCollection::insert(HM2D::EdgeData* cbase, HM2D::EdgeData* cmapped){
 	auto fnd1 = find_by_base(cbase);
 	auto fnd2 = find_by_mapped(cmapped);
 	if (fnd1 != 0 && fnd1 == fnd2){
@@ -171,7 +172,7 @@ Point MappedContourCollection::map_from_base(Point p) const{
 	double closest_dist;
 	
 	for (int i=0; i<data.size(); ++i){
-		auto coord = data[i]->base->coord_at(p);
+		auto coord = HM2D::Contour::CoordAt(*data[i]->base, p);
 		double dist = std::get<4>(coord);
 		if (closest == 0 || dist < closest_dist){
 			closest = data[i].get();

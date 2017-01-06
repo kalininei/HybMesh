@@ -4,7 +4,7 @@
 HMCallback::FunctionWithCallback<HMMap::TMapGrid> HMMap::MapGrid;
 
 GridGeom HMMap::TMapGrid::_run(const GridGeom& base,
-		const HMCont2D::ECollection& area,
+		const HM2D::EdgeData& area,
 		vector<Point> base_points,
 		vector<Point> mapped_points,
 		bool reversed,

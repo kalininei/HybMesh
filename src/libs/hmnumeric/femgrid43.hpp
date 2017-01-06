@@ -27,13 +27,13 @@ public:
 	//triangulation of multiply-connected area
 	//with constraint lines
 	static shared_ptr<Grid43>
-	Build3(const HMCont2D::ContourTree& conts,
-		const ShpVector<HMCont2D::Contour>& constraints,
+	Build3(const HM2D::Contour::Tree& conts,
+		const ShpVector<HM2D::EdgeData>& constraints,
 		double h);
 
 	static shared_ptr<Grid43>
-	Build3(const HMCont2D::ContourTree& conts,
-		const ShpVector<HMCont2D::Contour>& constraints,
+	Build3(const HM2D::Contour::Tree& conts,
+		const ShpVector<HM2D::EdgeData>& constraints,
 		std::map<Point*, double>& h, double hh);
 
 	//build a triangle grid which shares points whith
@@ -62,26 +62,25 @@ struct TAuxGrid3: public HMCallback::ExecutorBase{
 	static constexpr double ZEROANGLE = M_PI/4;
 	static constexpr double CORRECTION_FACTOR = 1.13;
 
-	Grid43 _run(const HMCont2D::ContourTree& _tree,
-			const vector<HMCont2D::Contour>& _constraints,
+	Grid43 _run(const HM2D::Contour::Tree& _tree,
+			const vector<HM2D::EdgeData>& _constraints,
 			int nrec, int nmax);
-	Grid43 _run(const HMCont2D::ContourTree& tree, int nrec, int nmax);
-	Grid43 _run(const HMCont2D::Contour& cont, int nrec, int nmax);
+	Grid43 _run(const HM2D::Contour::Tree& tree, int nrec, int nmax);
+	Grid43 _run(const HM2D::EdgeData& cont, int nrec, int nmax);
 private:
-	HMCont2D::ContourTree tree;
-	ShpVector<HMCont2D::Contour> constraints;
-	HMCont2D::PCollection pcol;
+	HM2D::Contour::Tree tree;
+	ShpVector<HM2D::EdgeData> constraints;
 
-	double step_estimate(const HMCont2D::ContourTree& tree, int nrec);
-	void adopt_boundary(HMCont2D::ContourTree& tree, double h,
+	double step_estimate(const HM2D::Contour::Tree& tree, int nrec);
+	void adopt_boundary(HM2D::Contour::Tree& tree, double h,
 			vector<vector<Point>>& lost);
-	void adopt_contour(HMCont2D::Contour& cont, double h,
+	void adopt_contour(HM2D::EdgeData& cont, double h,
 			vector<vector<Point>>& lost);
-	void input(const HMCont2D::ContourTree& _tree, const vector<HMCont2D::Contour>& _constraints);
+	void input(const HM2D::Contour::Tree& _tree, const vector<HM2D::EdgeData>& _constraints);
 	vector<Point*> gather_section(const vector<Point*>& ordered, int start, double h);
 
-	std::set<Point*> mandatory_points;
-	void mandatory_intersections(HMCont2D::Contour& c1, HMCont2D::Contour& c2);
+	std::set<shared_ptr<HM2D::Vertex>> mandatory_points;
+	void mandatory_intersections(HM2D::EdgeData& c1, HM2D::EdgeData& c2);
 	static bool angle_check(const vector<Point*>& line);
 	void clear();
 };
@@ -127,21 +126,19 @@ class Grid43::IsolineBuilder{
 	//if isoline fun=value passes cell c then 
 	//adds isoline section to Ecollection (returns true)
 	//else do nothing (returns false)
-	bool AddLine(const Cell* c, HMCont2D::ECollection&, HMCont2D::PCollection&,
+	bool AddLine(const Cell* c, HM2D::EdgeData&,
 			double value, const vector<double>& fun) const;
 	//builds a segment using weighted grid points.
 	//adds it to ecol.
 	void BuildLine(int i0, int i1, double wi,
 			int j0, int j1, double wj,
-			HMCont2D::ECollection& ecol,
-			HMCont2D::PCollection& pcol) const;
+			HM2D::EdgeData& ecol) const;
 public:
 	IsolineBuilder(shared_ptr<Grid43>& grid43, shared_ptr<Grid43::Approximator> approx43=0);
 
 	//draw isoline from point in both directions till
 	//closing or boundary.
-	HMCont2D::Container<HMCont2D::Contour>
-	FromPoint(Point p, const vector<double>& fun) const;
+	HM2D::EdgeData FromPoint(Point p, const vector<double>& fun) const;
 };
 
 

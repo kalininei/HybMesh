@@ -46,8 +46,8 @@ public:
 	//  reverse(left), bottom, right, reverse(top)
 	//prec = 12
 	static shared_ptr<ToRect>
-	Build(const HMCont2D::Contour& left, const HMCont2D::Contour& right,
-		const HMCont2D::Contour& bot, const HMCont2D::Contour& top);
+	Build(const HM2D::EdgeData& left, const HM2D::EdgeData& right,
+		const HM2D::EdgeData& bot, const HM2D::EdgeData& top);
 
 	double module() const override { return _module; }
 

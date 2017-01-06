@@ -1,21 +1,21 @@
 #ifndef RECTANGLE_GRID_BUILDER_HPP
 #define RECTANGLE_GRID_BUILDER_HPP
 #include "grid.h"
-#include "hybmesh_contours2d.hpp"
+#include "primitives2d.hpp"
 #include "gridmap.hpp"
 
 namespace HMMap{
 
 //Contours points will be moved to form a rectangle. No reverses.
-GridGeom LinearRectGrid(HMCont2D::Contour& left, HMCont2D::Contour& bot,
-	HMCont2D::Contour& right, HMCont2D::Contour& top);
+GridGeom LinearRectGrid(HM2D::EdgeData& left, HM2D::EdgeData& bot,
+	HM2D::EdgeData& right, HM2D::EdgeData& top);
 
 struct TOrthogonalRectGrid: public HMCallback::ExecutorBase{
 	HMCB_SET_PROCNAME("Orthogonal custom rectangular grid");
 	HMCB_SET_DEFAULT_DURATION(100);
 
-	GridGeom _run(HMCont2D::Contour& left, HMCont2D::Contour& bot,
-		HMCont2D::Contour& right, HMCont2D::Contour& top);
+	GridGeom _run(HM2D::EdgeData& left, HM2D::EdgeData& bot,
+		HM2D::EdgeData& right, HM2D::EdgeData& top);
 };
 extern HMCallback::FunctionWithCallback<TOrthogonalRectGrid> OrthogonalRectGrid;
 
@@ -25,23 +25,23 @@ struct TLaplaceRectGrid: public HMCallback::ExecutorBase{
 	HMCB_SET_PROCNAME("Custom rectangular grid");
 	HMCB_SET_DEFAULT_DURATION(100);
 
-	GridGeom _run(HMCont2D::Contour& left, HMCont2D::Contour& bot,
-		HMCont2D::Contour& right, HMCont2D::Contour& top, std::string algo);
+	GridGeom _run(HM2D::EdgeData& left, HM2D::EdgeData& bot,
+		HM2D::EdgeData& right, HM2D::EdgeData& top, std::string algo);
 };
 extern HMCallback::FunctionWithCallback<TLaplaceRectGrid> LaplaceRectGrid;
 
-GridGeom FDMLaplasRectGrid(HMCont2D::Contour& left, HMCont2D::Contour& bot,
-	HMCont2D::Contour& right, HMCont2D::Contour& top);
+GridGeom FDMLaplasRectGrid(HM2D::EdgeData& left, HM2D::EdgeData& bot,
+	HM2D::EdgeData& right, HM2D::EdgeData& top);
 
-GridGeom LinearTFIRectGrid(HMCont2D::Contour& left, HMCont2D::Contour& bot,
-		HMCont2D::Contour& right, HMCont2D::Contour& top);
+GridGeom LinearTFIRectGrid(HM2D::EdgeData& left, HM2D::EdgeData& bot,
+		HM2D::EdgeData& right, HM2D::EdgeData& top);
 
-GridGeom LinearTFIRectGrid2(HMCont2D::Contour& left, HMCont2D::Contour& bot,
-		HMCont2D::Contour& right, HMCont2D::Contour& top);
+GridGeom LinearTFIRectGrid2(HM2D::EdgeData& left, HM2D::EdgeData& bot,
+		HM2D::EdgeData& right, HM2D::EdgeData& top);
 
 //c = [cleft, cbot, cright, ctop]
-GridGeom CubicTFIRectGrid(HMCont2D::Contour& left, HMCont2D::Contour& bot,
-		HMCont2D::Contour& right, HMCont2D::Contour& top, std::array<double, 4> c);
+GridGeom CubicTFIRectGrid(HM2D::EdgeData& left, HM2D::EdgeData& bot,
+		HM2D::EdgeData& right, HM2D::EdgeData& top, std::array<double, 4> c);
 
 }
 #endif

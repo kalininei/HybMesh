@@ -2,6 +2,9 @@
 #include "hmfem.hpp"
 #include "femassembly.hpp"
 #include "debug_grid2d.h"
+#include "constructor.hpp"
+#include "cont_assembler.hpp"
+#include "algos.hpp"
 
 #define FEM_NMAX 1000000
 #define APPROX_PART 200
@@ -36,21 +39,22 @@ void GradVectors(shared_ptr<HMFem::Grid43> grid, const vector<double>& v,
 	for (int i=0; i<mass.size(); ++i){ dx[i] /= mass[i]; dy[i] /= mass[i]; }
 }
 
-vector<int> GetGridIndicies(const vector<Point>& path, const vector<Point*>& cont){
+vector<int> GetGridIndicies(const std::set<GridPoint>& _bp, const vector<Point>& path){
 	vector<int> origs;
 	for (auto& p: path){
-		auto fnd = std::find_if(cont.begin(), cont.end(),
-			[&p](const Point* sp){return *sp == p;});
-		assert(fnd != cont.end());
-		origs.push_back(static_cast<const GridPoint*>(*fnd)->get_ind());
+		auto fnd = _bp.find(p);
+		assert(fnd != _bp.end());
+		origs.push_back(fnd->get_ind());
 	}
 	return origs;
 }
 
-vector<int> GetGridIndicies(const vector<Point*>& cont){
+vector<int> GetGridIndicies(const std::set<GridPoint>& _bp, const HM2D::VertexData& cont){
 	vector<int> origs;
 	for (auto& p: cont){
-		origs.push_back(static_cast<const GridPoint*>(p)->get_ind());
+		auto fnd = _bp.find(*p);
+		assert(fnd != _bp.end());
+		origs.push_back(fnd->get_ind());
 	}
 	return origs;
 }
@@ -70,7 +74,7 @@ HMCallback::FunctionWithCallback<ToRect::TBuild> ToRect::Build;
 ToRect ToRect::TBuild::_run(const vector<Point>& path, int i1, int i2, int i3, const Options& opt){
 	ToRect ret;
 
-	//1) build fem grid: fill grid, origs, HMCont2D::Contour data
+	//1) build fem grid: fill grid, origs, HM2D::EdgeData data
 	BuildGrid(ret, path, i1, i2, i3, opt.fem_nrec);
 	//2) compute mapping: fill u, v, module, approx
 	DoMapping(ret);
@@ -83,23 +87,25 @@ ToRect ToRect::TBuild::_run(const vector<Point>& path, int i1, int i2, int i3, c
 void ToRect::TBuild::BuildGrid(ToRect& r, const vector<Point>& path, int i1, int i2, int i3, int n){
 	//1) build grid
 	auto subcaller = callback->bottom_line_subrange(45);
-	auto cont = HMCont2D::Constructor::ContourFromPoints(path, true);
+	auto cont = HM2D::Contour::Constructor::FromPoints(path, true);
 	r.grid.reset(new HMFem::Grid43(HMFem::AuxGrid3.UseCallback(subcaller, cont, n, FEM_NMAX)));
 
 	callback->step_after(5, "Assembling original contour");
 	r.approx = r.grid->GetApprox();
 	//2) restore origs
-	HMCont2D::Contour c = GGeom::Info::Contour1(*r.grid);
-	r.origs = GetGridIndicies(path, c.ordered_points());
+	HM2D::EdgeData c = GGeom::Info::Contour1(*r.grid);
+	std::set<GridPoint> _bp;
+	for (auto p: r.grid->get_bnd_points()) _bp.insert(*p);
+	r.origs = GetGridIndicies(_bp, path);
 	//3) build orig contours
-	auto left = HMCont2D::Assembler::Contour1(c, r.grid->get_point(r.origs[0]), r.grid->get_point(r.origs[i1]));
-	auto bottom = HMCont2D::Assembler::Contour1(c, r.grid->get_point(r.origs[i1]), r.grid->get_point(r.origs[i2]));
-	auto right = HMCont2D::Assembler::Contour1(c, r.grid->get_point(r.origs[i2]), r.grid->get_point(r.origs[i3]));
-	auto top = HMCont2D::Assembler::Contour1(c, r.grid->get_point(r.origs[i3]), r.grid->get_point(r.origs[0]));
-	r.ileft = GetGridIndicies(left.ordered_points());
-	r.iright = GetGridIndicies(right.ordered_points());
-	r.itop = GetGridIndicies(top.ordered_points());
-	r.ibottom = GetGridIndicies(bottom.ordered_points());
+	auto left = HM2D::Contour::Assembler::ShrinkContour(c, r.grid->get_point(r.origs[0]), r.grid->get_point(r.origs[i1]));
+	auto bottom = HM2D::Contour::Assembler::ShrinkContour(c, r.grid->get_point(r.origs[i1]), r.grid->get_point(r.origs[i2]));
+	auto right = HM2D::Contour::Assembler::ShrinkContour(c, r.grid->get_point(r.origs[i2]), r.grid->get_point(r.origs[i3]));
+	auto top = HM2D::Contour::Assembler::ShrinkContour(c, r.grid->get_point(r.origs[i3]), r.grid->get_point(r.origs[0]));
+	r.ileft = GetGridIndicies(_bp, HM2D::Contour::OrderedPoints(left));
+	r.iright = GetGridIndicies(_bp, HM2D::Contour::OrderedPoints(right));
+	r.itop = GetGridIndicies(_bp, HM2D::Contour::OrderedPoints(top));
+	r.ibottom = GetGridIndicies(_bp, HM2D::Contour::OrderedPoints(bottom));
 }
 
 void ToRect::TBuild::DoMapping(ToRect& r){
@@ -194,20 +200,22 @@ ToAnnulus::Build(const vector<Point>& outer_path, const vector<Point>& inner_pat
 void ToAnnulus::BuildGrid1(const vector<Point>& outer_path, const vector<Point>& inner_path,
 		int n){
 	//grid
-	auto c1 = HMCont2D::Constructor::ContourFromPoints(inner_path, true);
-	auto c2 = HMCont2D::Constructor::ContourFromPoints(outer_path, true);
-	HMCont2D::ContourTree pretree;
+	auto c1 = HM2D::Contour::Constructor::FromPoints(inner_path, true);
+	auto c2 = HM2D::Contour::Constructor::FromPoints(outer_path, true);
+	HM2D::Contour::Tree pretree;
 	pretree.AddContour(c1);
 	pretree.AddContour(c2);
 	grid.reset(new HMFem::Grid43(HMFem::AuxGrid3(pretree, n, FEM_NMAX)));
 	approx = grid->GetApprox();
 	//boundary indicies
-	HMCont2D::ContourTree ct = GGeom::Info::Contour(*grid);
-	auto outerc = ct.roots()[0]->ordered_points();
-	auto innerc  = ct.roots()[0]->children[0]->ordered_points();
+	HM2D::Contour::Tree ct = GGeom::Info::Contour(*grid);
+	auto outerc = HM2D::Contour::OrderedPoints(ct.roots()[0]->contour);
+	auto innerc  = HM2D::Contour::OrderedPoints(ct.roots()[0]->children[0].lock()->contour);
 	//all bnd points
-	outer = GetGridIndicies(outerc);
-	inner = GetGridIndicies(innerc);
+	std::set<GridPoint> _bp;
+	for (auto p: grid->get_bnd_points()) _bp.insert(*p);
+	outer = GetGridIndicies(_bp, outerc);
+	inner = GetGridIndicies(_bp, innerc);
 }
 
 void ToAnnulus::DoMappingU(){
@@ -223,35 +231,35 @@ void ToAnnulus::DoMappingU(){
 	_module = exp( -2*M_PI/IntegralGrad2(grid, u) );
 }
 
-HMCont2D::Container<HMCont2D::Contour> ToAnnulus::SteepestDescentUCurve(){
+HM2D::EdgeData ToAnnulus::SteepestDescentUCurve(){
 	//get derivatives
 	vector<double> dx, dy;
 	GradVectors(grid, u, dx, dy);
 	//step
 	double h = sqrt(grid->area()/grid->n_cells())/2.0;
 	//outer contour
-	HMCont2D::Contour outerc = *GGeom::Info::Contour(*grid).roots()[0];
+	HM2D::EdgeData outerc = GGeom::Info::Contour(*grid).roots()[0]->contour;
 	//go
 	vector<Point> ret; ret.push_back(pzero);
-	while (outerc.IsWithin(ret.back())){
+	while (HM2D::Contour::WhereIs(outerc, ret.back()) == INSIDE){
 		vector<double> grad = approx->Vals(ret.back(), {&dx, &dy});
 		Vect gradv {grad[0], grad[1]};
 		vecSetLen(gradv, h);
 		ret.push_back(ret.back() - gradv);
 	}
 	//assemble contour
-	auto cont = HMCont2D::Constructor::ContourFromPoints(ret);
+	auto cont = HM2D::Contour::Constructor::FromPoints(ret);
 	//if last point lies outside outerc cut cont
-	if (outerc.IsWithout(ret.back())){
-		auto cr = HMCont2D::Algos::Cross(outerc, cont);
-		*(cont.last()) = std::get<1>(cr);
+	if (HM2D::Contour::WhereIs(outerc, ret.back()) == OUTSIDE){
+		auto cr = HM2D::Contour::Algos::Cross(outerc, cont);
+		*(HM2D::Contour::Last(cont)) = std::get<1>(cr);
 	}
 	//if distance beween last point and one before last is very short
 	//remove point before last
-	if (cont.data.back()->length()<h/4){
-		Point *pp = cont.last();
-		cont.data.pop_back();
-		*cont.last() = *pp;
+	if (cont.back()->length()<h/4){
+		auto pp = HM2D::Contour::Last(cont);
+		cont.pop_back();
+		*HM2D::Contour::Last(cont) = *pp;
 	}
 	return cont;
 }
@@ -260,27 +268,25 @@ HMCont2D::Container<HMCont2D::Contour> ToAnnulus::SteepestDescentUCurve(){
 void ToAnnulus::BuildGrid2(const vector<Point>& outer_path,
 		const vector<Point>& inner_path,
 		int n,
-		const HMCont2D::Contour& razor){
+		const HM2D::EdgeData& razor){
 	//starting from grid/approx filled with doubly-connected grid
 	//0) assemble inner and outer contours
-	auto innerc = std::make_shared<HMCont2D::Container<HMCont2D::Contour>>(
-			HMCont2D::Constructor::ContourFromPoints(inner_path, true));
-	auto outerc = std::make_shared<HMCont2D::Container<HMCont2D::Contour>>(
-			HMCont2D::Constructor::ContourFromPoints(outer_path, true));
-	HMCont2D::ContourTree ct;
-	shared_ptr<HMCont2D::Contour> shi(innerc);
-	shared_ptr<HMCont2D::Contour> sho(outerc);
-	ct.AddContour(shi);
-	ct.AddContour(sho);
+	auto innerc = std::make_shared<HM2D::EdgeData>(
+			HM2D::Contour::Constructor::FromPoints(inner_path, true));
+	auto outerc = std::make_shared<HM2D::EdgeData>(
+			HM2D::Contour::Constructor::FromPoints(outer_path, true));
+	HM2D::Contour::Tree ct;
+	ct.AddContour(*innerc);
+	ct.AddContour(*outerc);
 	
 	//1) assemble doubly-connected contour
 	grid.reset(new HMFem::Grid43(HMFem::AuxGrid3(
-		ct, vector<HMCont2D::Contour> {razor}, n, FEM_NMAX)));
+		ct, vector<HM2D::EdgeData> {razor}, n, FEM_NMAX)));
 	//2) rip double-connected contour by razor polyline
 	//2.1) get points which lie on razor
 	std::vector<const GridPoint*> razor_points;
 	auto modfun1 = [&](GridPoint* p){
-		auto ca = razor.coord_at(*p);
+		auto ca = HM2D::Contour::CoordAt(razor, *p);
 		if (ISZERO(std::get<4>(ca))) razor_points.push_back(p);
 	};
 	GGeom::Modify::PointModify(*grid, modfun1);
@@ -301,10 +307,10 @@ void ToAnnulus::BuildGrid2(const vector<Point>& outer_path,
 		auto fnd2 = m12.find(c->get_point(2));
 		if (fnd0 == m12.end() && fnd1 == m12.end() && fnd2 == m12.end()) return;
 		Point cnt = (*c->get_point(0) + *c->get_point(1) + *c->get_point(2)) / 3.0;
-		auto ca = razor.coord_at(cnt);
-		HMCont2D::Edge red = *razor.edge(std::get<2>(ca));
-		if (!razor.correctly_directed_edge(std::get<2>(ca))) red.Reverse();
-		double ar = triarea(*red.pstart, *red.pend, cnt);
+		auto ca = HM2D::Contour::CoordAt(razor, cnt);
+		HM2D::Edge red = *razor[std::get<2>(ca)];
+		if (!HM2D::Contour::CorrectlyDirectedEdge(razor, std::get<2>(ca))) red.reverse();
+		double ar = triarea(*red.first(), *red.last(), cnt);
 		if (ar > 0) return; //if cell is on the right side don't change
 		if (fnd0 != m12.end()) c->points[0] = fnd0->second;
 		if (fnd1 != m12.end()) c->points[1] = fnd1->second;
@@ -312,18 +318,22 @@ void ToAnnulus::BuildGrid2(const vector<Point>& outer_path,
 	};
 	GGeom::Modify::CellModify(*grid, modfun2);
 	//3) origs
-	HMCont2D::Contour ct2 = GGeom::Info::Contour1(*grid);
-	vector<Point*> allp = ct2.ordered_points(); allp.pop_back();
-	outer_origs = GetGridIndicies(outer_path, allp);
-	inner_origs = GetGridIndicies(inner_path, allp);
+	HM2D::EdgeData ct2 = GGeom::Info::Contour1(*grid);
+	HM2D::VertexData allp = HM2D::Contour::OrderedPoints(ct2); allp.pop_back();
+	std::set<GridPoint> _bp;
+	for (auto p: grid->get_bnd_points()) _bp.insert(*p);
+	outer_origs = GetGridIndicies(_bp, outer_path);
+	inner_origs = GetGridIndicies(_bp, inner_path);
+	auto allorigs = GetGridIndicies(_bp, allp);
 	//4) inner/outer
 	inner.clear(); outer.clear();
-	for (auto p: allp){
-		if (ISZERO(std::get<4>(outerc->coord_at(*p)))){
-			outer.push_back(static_cast<GridPoint*>(p)->get_ind());
+	for (int i=0; i<allp.size(); ++i){
+		auto p = allp[i];
+		if (ISZERO(std::get<4>(HM2D::Contour::CoordAt(*outerc, *p)))){
+			outer.push_back(allorigs[i]);
 		}
-		if (ISZERO(std::get<4>(innerc->coord_at(*p)))){
-			inner.push_back(static_cast<GridPoint*>(p)->get_ind());
+		if (ISZERO(std::get<4>(HM2D::Contour::CoordAt(*innerc, *p)))){
+			inner.push_back(allorigs[i]);
 		}
 	}
 	//5) razor io/oi
@@ -439,7 +449,7 @@ vector<Point> ToAnnulus::MapToOriginal(const vector<Point>& input) const{
 			double rad = vecLen(p);
 			Point pnew;
 			if (fabs(rad-1.0)<geps || fabs(rad-_module)<geps){
-				pnew = HMCont2D::ECollection::ClosestPoint(*InvGridContour(), p);
+				pnew = HM2D::FindClosestEPoint(*InvGridContour(), p);
 				s = inv_approx->Vals(pnew, funs);
 			} else throw;
 		}
@@ -455,9 +465,9 @@ double ToAnnulus::PhiOuter(int i) const{
 	return v[outer_origs[i]];
 }
 
-const HMCont2D::Contour* ToAnnulus::InvGridContour() const{
+const HM2D::EdgeData* ToAnnulus::InvGridContour() const{
 	if (!_inv_cont){
-		_inv_cont = std::make_shared<HMCont2D::Contour>(
+		_inv_cont = std::make_shared<HM2D::EdgeData>(
 				GGeom::Info::Contour1(*inv_grid));
 	}
 	return _inv_cont.get();

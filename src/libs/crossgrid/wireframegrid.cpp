@@ -45,16 +45,11 @@ PtsGraph::PtsGraph(const PContour& c){
 	}
 }
 
-PtsGraph::PtsGraph(const HMCont2D::ECollection& cc){
-	std::map<Point*, int> pind;
-	int i=0;
-	for (auto p: cc.all_points()){
-		nodes.push_back(*p);
-		pind[p] = i++;
-	}
-	for (auto e: cc.data){
-		lines.push_back(GraphLine(pind[e->pstart], pind[e->pend]));
-	}
+PtsGraph::PtsGraph(const HM2D::EdgeData& cc){
+	auto av = HM2D::AllVertices(cc);
+	aa::enumerate_ids_pvec(av);
+	for (auto p: av) nodes.push_back(*p);
+	for (auto e: cc) lines.push_back(GraphLine(e->first()->id, e->last()->id));
 }
 
 auto PtsGraph::_impose_impl(const PtsGraph& main_graph, const PtsGraph& imp_graph, double eps)
@@ -259,17 +254,16 @@ GridGeom PtsGraph::togrid() const{
 	if (grids.size() == 1) return GridGeom::sum(grids);
 
 	//assembling system of outer contours
-	HMCont2D::ContourTree cont;
+	HM2D::Contour::Tree cont;
 	for (int i=0; i<grids.size(); ++i){
 		auto c1 = GGeom::Info::Contour(grids[i]);
-		for (int j=0; j<c1.cont_count(); ++j){
-			shared_ptr<HMCont2D::Contour> x = c1.nodes[j];
-			cont.AddContour(x);
+		for (int j=0; j<c1.nodes.size(); ++j){
+			cont.AddContour(c1.nodes[j]->contour);
 		}
 	}
 
 	//if no inner contours make a summation
-	if (cont.roots().size() == cont.cont_count()) return GridGeom::sum(grids);
+	if (cont.roots().size() == cont.nodes.size()) return GridGeom::sum(grids);
 
 	//some grids lay within cells of parent grids. We need the intrusion algo.
 	return PtsGraph::intrusion_algo(grids);
@@ -290,24 +284,23 @@ GridGeom PtsGraph::intrusion_algo(const vector<GridGeom>& g){
 		}
 	}
 	//2 assemble tree for each singly connected grid
-	HMCont2D::ContourTree concol;
+	HM2D::Contour::Tree concol;
 	for (int i=0; i<grids.size(); ++i){
 		auto c1 = GGeom::Info::Contour(grids[i]);
-		for (int j=0; j<c1.cont_count(); ++j){
-			shared_ptr<HMCont2D::Contour> x = c1.nodes[j];
-			concol.AddContour(x);
+		for (int j=0; j<c1.nodes.size(); ++j){
+			concol.AddContour(c1.nodes[j]->contour);
 		}
 	}
 	
 	//set of level, parent_index, child_index
 	std::set<std::tuple<int, int, int>> lpc;
-	for (int i=0; i<concol.cont_count(); ++i){
-		int level = concol.nodes[i]->level();
+	for (int i=0; i<concol.nodes.size(); ++i){
+		int level = concol.nodes[i]->level;
 		if (level == 0) continue;
 		auto parent_cont = concol.nodes[i]->parent;
 		int parent = -1;
-		for (int j=0; j<concol.cont_count(); ++j){
-			if (concol.nodes[j].get() == parent_cont){
+		for (int j=0; j<concol.nodes.size(); ++j){
+			if (concol.nodes[j] == parent_cont.lock()){
 				parent = j;
 				break;
 			}
@@ -335,19 +328,20 @@ GridGeom PtsGraph::intrusion_algo(const vector<GridGeom>& g){
 
 	//assemble first level grids
 	vector<GridGeom*> lev0;
-	for (int i=0; i<concol.cont_count(); ++i) if (concol.nodes[i]->level() == 0){
+	for (int i=0; i<concol.nodes.size(); ++i) if (concol.nodes[i]->level == 0){
 		lev0.push_back(&grids[i]);
 	}
 	return GridGeom::sum(lev0);
 }
 
-HMCont2D::ECollection PtsGraph::toecollection() const{
-	HMCont2D::ECollection ret;
+HM2D::EdgeData PtsGraph::toecollection() const{
+	HM2D::EdgeData ret;
+	HM2D::VertexData pcol;
+	for (auto& p: nodes) pcol.push_back(std::make_shared<HM2D::Vertex>(p));
+
 	for (int i=0; i<Nlines(); ++i){
 		auto pr = get_line(i);
-		Point* p1 = const_cast<Point*>(&nodes[pr.first]);
-		Point* p2 = const_cast<Point*>(&nodes[pr.second]);
-		ret.add_value(HMCont2D::Edge(p1, p2));
+		ret.emplace_back(new HM2D::Edge(pcol[pr.first], pcol[pr.second]));
 	}
 	return ret;
 }

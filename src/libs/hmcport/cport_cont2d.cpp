@@ -1,49 +1,58 @@
 #include <unordered_map>
 #include "hmproject.h"
 #include "cport_cont2d.h"
-#include "hybmesh_contours2d.hpp"
+#include "hmc_imex.hpp"
+#include "primitives2d.hpp"
+#include "contour.hpp"
+#include "tree.hpp"
+#include "cont_partition.hpp"
+#include "partition01.hpp"
+#include "cont_assembler.hpp"
+#include "algos.hpp"
+#include "treverter2d.hpp"
+#include "constructor.hpp"
 #include "hmc_imex.hpp"
 
+
 namespace{
-HMCont2D::ECollection* to_ecol(void* g){
-	return static_cast<HMCont2D::ECollection*>(g);
+HM2D::EdgeData* to_ecol(void* g){
+	return static_cast<HM2D::EdgeData*>(g);
 }
-const HMCont2D::ECollection* to_ecol(const void* g){
-	return static_cast<const HMCont2D::ECollection*>(g);
+const HM2D::EdgeData* to_ecol(const void* g){
+	return static_cast<const HM2D::EdgeData*>(g);
 }
 }
 
 namespace{
 
-HMCont2D::Container<HMCont2D::ECollection>
-const_partition(const HMCont2D::ExtendedTree& etree, double step, const vector<Point*>& keep, int ne){
-	HMCont2D::PCollection _pdata;
-	vector<HMCont2D::Contour> partdata;
-	int cc = etree.cont_count();
+HM2D::EdgeData
+const_partition(const HM2D::Contour::Tree& etree, double step, const HM2D::VertexData& keep, int ne){
+	vector<HM2D::EdgeData> partdata;
+	int cc = etree.nodes.size();
 	if (ne <= 0) for (int i=0; i<cc; ++i){
 		partdata.push_back(
-			HMCont2D::Algos::Partition(step, *etree.get_contour(i),
-				_pdata, keep));
+			HM2D::Contour::Algos::Partition(step, etree.nodes[i]->contour, keep));
 	} else {
 		vector<double> lens;
-		for (int i=0; i<cc; ++i) lens.push_back(etree.get_contour(i)->length());
+		for (int i=0; i<cc; ++i) lens.push_back(HM2D::Length(etree.nodes[i]->contour));
 		//minimum size includes all keep points
 		vector<int> minsize(cc, 0);
 		for (int i=0; i<keep.size(); ++i){
-			auto c = etree.get_contour(keep[i]);
-			if (c == NULL) continue;
+			auto c = etree.find_node(keep[i].get());
+			if (c == nullptr) continue;
 			else for (int j=0; j<cc; ++j){
-				if (etree.get_contour(j) == c) {
-					if (c->is_closed() ||
-						(keep[i] != c->first() && keep[i] != c->last()))
+				if (etree.nodes[j] == c) {
+					if (HM2D::Contour::IsClosed(c->contour) ||
+						(keep[i] != HM2D::Contour::First(c->contour) &&
+						 keep[i] != HM2D::Contour::Last(c->contour)))
 							++minsize[j];
 					break;
 				}
 			}
 		}
 		for (int i=0; i<cc; ++i){
-			if (!etree.get_contour(i)->is_closed()) minsize[i]++;
-			if (etree.get_contour(i)->is_closed() && minsize[i]<3) minsize[i] = 3;
+			if (!HM2D::Contour::IsClosed(etree.nodes[i]->contour)) minsize[i]++;
+			if (HM2D::Contour::IsClosed(etree.nodes[i]->contour) && minsize[i]<3) minsize[i] = 3;
 		}
 		//nums double
 		vector<double> nums_double;
@@ -52,45 +61,44 @@ const_partition(const HMCont2D::ExtendedTree& etree, double step, const vector<P
 			nums_double.push_back(lens[i]/full_len*ne);
 		}
 		//nums int
-		vector<int> nums = HMCont2D::Algos::RoundVector(nums_double, minsize);
+		vector<int> nums = HMMath::RoundVector(nums_double, minsize);
 		//building
 		std::map<double, double> m; m[0]=step;
-		for (int i=0; i<etree.cont_count(); ++i){
+		for (int i=0; i<etree.nodes.size(); ++i){
 			partdata.push_back(
-				HMCont2D::Algos::WeightedPartition(m, *etree.get_contour(i),
-					_pdata, nums[i], keep));
+				HM2D::Contour::Algos::WeightedPartition(m, etree.nodes[i]->contour,
+					nums[i], keep));
 		}
 	}
 	//assemble data
-	HMCont2D::Container<HMCont2D::ECollection> ret;
+	HM2D::EdgeData ret;
 	for (int i=0; i<partdata.size(); ++i){
-		HMCont2D::Container<HMCont2D::ECollection>::DeepCopy(partdata[i], ret);
+		HM2D::DeepCopy(partdata[i], ret);
 	}
 	return ret;
 }
 
-HMCont2D::Container<HMCont2D::ECollection>
-refp_partition(const HMCont2D::Contour& cont,
+HM2D::EdgeData
+refp_partition(const HM2D::EdgeData& cont,
 		const vector<double>& steps, const vector<Point>& bpoints,
-		const vector<Point*>& keep, int ne){
+		const HM2D::VertexData& keep, int ne){
 	if (bpoints.size() == 1){
-		HMCont2D::ExtendedTree etree;
+		HM2D::Contour::Tree etree;
 		etree.AddContour(cont);
 		return const_partition(etree, steps[0], keep, ne);
 	}
 	//assemble weights
 	std::map<double, double> weights;
 	for (int i=0; i<steps.size(); ++i){
-		auto info = cont.coord_at(bpoints[i]);
+		auto info = HM2D::Contour::CoordAt(cont, bpoints[i]);
 		weights[std::get<1>(info)] = steps[i];
 	}
 	//call partition
-	HMCont2D::PCollection _pdata;
-	HMCont2D::Contour cret = (ne<=0) ? HMCont2D::Algos::WeightedPartition(weights, cont, _pdata, keep)
-	                                 : HMCont2D::Algos::WeightedPartition(weights, cont, _pdata, ne, keep);
+	HM2D::EdgeData cret = (ne<=0) ? HM2D::Contour::Algos::WeightedPartition(weights, cont, keep)
+	                              : HM2D::Contour::Algos::WeightedPartition(weights, cont, ne, keep);
 	//assemble return data
-	HMCont2D::Container<HMCont2D::ECollection> ret;
-	HMCont2D::Container<HMCont2D::ECollection>::DeepCopy(cret, ret);
+	HM2D::EdgeData ret;
+	HM2D::DeepCopy(cret, ret);
 	return ret;
 }
 
@@ -113,8 +121,8 @@ void* contour_partition(void* cont, int* btypes, int algo,
 		int n_keep_pts, double* keep_pts,
 		double* start_point, double* end_point,
 		int* n_outbnd, int** outbnd){
-	typedef HMCont2D::ECollection TCol;
-	typedef HMCont2D::Container<TCol> TCont;
+	typedef HM2D::EdgeData TCol;
+	typedef HM2D::EdgeData TCont;
 	//gather data
 	TCont* ret = NULL;
 	TCol* ecol = to_ecol(cont);
@@ -142,38 +150,42 @@ void* contour_partition(void* cont, int* btypes, int algo,
 	vector<Point> kp(n_keep_pts);
 	for (int i=0; i<n_keep_pts; ++i) kp[i] = Point(keep_pts[2*i], keep_pts[2*i+1]);
 	//scaling
-	ScaleBase sc = HMCont2D::ECollection::Scale01(*ecol);
+	ScaleBase sc = HM2D::Scale01(*ecol);
 	sc.scale(basic_points.begin(), basic_points.end());
 	for (auto& v: basic_steps) v/=sc.L;
-	for (auto& c: vcrosses) HMCont2D::ECollection::Scale(*c, sc);
+	for (auto& c: vcrosses) HM2D::Scale(*c, sc);
 	sc.scale(kp.begin(), kp.end());
 	sc.scale(start); sc.scale(end);
 	//main procedure
 	try{
 		//assemble tree from input data
-		HMCont2D::ExtendedTree ext = HMCont2D::Assembler::ETree(*ecol);
+		HM2D::Contour::Tree ext = HM2D::Contour::Tree::Assemble(*ecol);
 		//cut by start and end point
-		HMCont2D::ECollection non_processed_edges;
+		HM2D::EdgeData non_processed_edges;
 		if (start_point){
 			Point *p1, *p2;
-			p1 = HMCont2D::ECollection::FindClosestNode(ext, start);
-			HMCont2D::Contour cn = *ext.get_contour(p1);
+			auto _av1 = HM2D::AllVertices(ext.alledges());
+			auto _f1 = HM2D::FindClosestNode(_av1, start);
+			p1 = _av1[std::get<0>(_f1)].get();
+			HM2D::EdgeData cn = ext.find_node(p1)->contour;
 			if (end_point){
-				p2 = HMCont2D::ECollection::FindClosestNode(cn, end);
-			} else if (cn.is_closed()) p2 = p1;
+				auto _av2 = HM2D::AllVertices(cn);
+				auto _f2 = HM2D::FindClosestNode(_av2, end);
+				p2 = _av2[std::get<0>(_f2)].get();
+			} else if (HM2D::Contour::IsClosed(cn)) p2 = p1;
 			else {
-				double d1 = Point::meas(*cn.first(), *p1);
-				double d2 = Point::meas(*cn.last(), *p1);
-				if (d1 < d2) p2 = cn.last();
-				else p2 = cn.first();
+				double d1 = Point::meas(*HM2D::Contour::First(cn), *p1);
+				double d2 = Point::meas(*HM2D::Contour::Last(cn), *p1);
+				if (d1 < d2) p2 = HM2D::Contour::Last(cn).get();
+				else p2 = HM2D::Contour::First(cn).get();
 			}
-			cn = HMCont2D::Assembler::Contour1(cn, p1, p2);
-			for (auto e: ext.data){
+			cn = HM2D::Contour::Assembler::ShrinkContour(cn, p1, p2);
+			for (auto e: ext.alledges()){
 				if (std::find(cn.begin(), cn.end(), e) == cn.end()){
-					non_processed_edges.add_value(*e);
+					non_processed_edges.push_back(e);
 				}
 			}
-			ext = HMCont2D::ExtendedTree();
+			ext = HM2D::Contour::Tree();
 			ext.AddContour(cn);
 		}
 
@@ -182,31 +194,31 @@ void* contour_partition(void* cont, int* btypes, int algo,
 			int i = 0;
 			for (auto e: *ecol) e->id = btypes[i++];
 		}
-		HMCont2D::ECollection simpcol = HMCont2D::Algos::Simplified(ext, a0, keepbnd);
-		std::vector<Point*> keep_points = simpcol.all_points();
-		HMCont2D::PCollection pcol;
+		HM2D::EdgeData simpcol = HM2D::ECol::Algos::Simplified(ext.alledges(), a0, keepbnd);
+		HM2D::VertexData keep_points = HM2D::AllVertices(simpcol);
 		//keep points
 		for (int i=0; i<n_keep_pts; ++i){
-			HMCont2D::Edge* efnd = std::get<0>(HMCont2D::ECollection::FindClosestEdge(ext, kp[i]));
-			HMCont2D::Contour* cont = ext.get_contour(efnd);
-			auto gp = cont->GuaranteePoint(kp[i], pcol);
+			auto _ae = ext.alledges();
+			HM2D::Edge* efnd = _ae[std::get<0>(HM2D::FindClosestEdge(_ae, kp[i]))].get();
+			HM2D::EdgeData* cont = &ext.find_node(efnd)->contour;
+			auto gp = HM2D::Contour::GuaranteePoint(*cont, kp[i]);
 			keep_points.push_back(std::get<1>(gp));
 		}
 		//cross points
 		for (auto& c: vcrosses){
-			auto cconts = HMCont2D::Assembler::AllContours(*c);
+			auto cconts = HM2D::Contour::Assembler::AllContours(*c);
 			for (auto& cond: cconts)
-			for (int i=0; i<ext.cont_count(); ++i){
-				HMCont2D::Contour& cont = *ext.get_contour(i);
-				auto cres = HMCont2D::Algos::CrossAll(cont, cond);
+			for (int i=0; i<ext.nodes.size(); ++i){
+				HM2D::EdgeData& cont = ext.nodes[i]->contour;
+				auto cres = HM2D::Contour::Algos::CrossAll(cont, cond);
 				for (auto cross: cres){
-					auto gp = cont.GuaranteePoint(std::get<1>(cross), pcol);
+					auto gp = HM2D::Contour::GuaranteePoint(cont, std::get<1>(cross));
 					keep_points.push_back(std::get<1>(gp));
 				}
 			}
 		}
 		//checks
-		if (algo != 0 && ext.cont_count() != 1){
+		if (algo != 0 && ext.nodes.size() != 1){
 			throw std::runtime_error("only singly connected contours "
 					"are allowed for refference point partition");
 		}
@@ -214,79 +226,76 @@ void* contour_partition(void* cont, int* btypes, int algo,
 			throw std::runtime_error("define start point "
 				"for refference partition");
 		}
-		if (ext.cont_count() == 0 || ext.get_contour(0)->size() == 0){
+		if (ext.nodes.size() == 0 || ext.nodes[0]->contour.size() == 0){
 			throw std::runtime_error("zero length contour can not be parted");
 		}
 		//call partition algorithm
 		TCont out;
-		auto& c0 = *ext.get_contour(0);
+		auto& c0 = ext.nodes[0]->contour;
 		if (algo == 0){
 			out = const_partition(ext, basic_steps[0], keep_points, nedges);
 		} else if (algo == 1){
 			out = refp_partition(c0, basic_steps, basic_points, keep_points, nedges);
 		} else if (algo == 2){
-			c0.StartFrom(start);
+			HM2D::Contour::ForceFirst ff(c0, start);
 			for (int i=0; i<n_steps; ++i){
-				basic_points.push_back(HMCont2D::Contour::WeightPoint(
+				basic_points.push_back(HM2D::Contour::WeightPoint(
 					c0, steps[2*i+1]));
 			}
 			out = refp_partition(c0, basic_steps, basic_points, keep_points, nedges);
 		} else if (algo == 3){
-			c0.StartFrom(start);
-			double len = c0.length();
+			HM2D::Contour::ForceFirst ff(c0, start);
+			double len = HM2D::Length(c0);
 			for (int i=0; i<n_steps; ++i){
 				double s = steps[2*i+1]/sc.L/len;
 				if (s < 0) s = 1+s;
-				basic_points.push_back(HMCont2D::Contour::WeightPoint(c0, s));
+				basic_points.push_back(HM2D::Contour::WeightPoint(c0, s));
 			}
 			out = refp_partition(c0, basic_steps, basic_points, keep_points, nedges);
 		}
 		//add non-processed
-		HMCont2D::ECollection outcol = out;
+		HM2D::EdgeData outcol = out;
 		if (non_processed_edges.size() > 0){
-			outcol.Unite(non_processed_edges);
-			HMCont2D::Algos::MergePoints(outcol);
+			outcol.insert(outcol.end(), non_processed_edges.begin(),
+					non_processed_edges.end());
+			HM2D::ECol::Algos::MergePoints(outcol);
 		}
 		//boundary assignment
 		*n_outbnd = outcol.size();
 		*outbnd = new int[*n_outbnd];
 		set_ecollection_bc_force(cont, &outcol, btypes, *outbnd, 3);
 		//unscale and return value
-		HMCont2D::ECollection::Unscale(outcol, sc);
+		HM2D::Unscale(outcol, sc);
 		TCont contret;
-		TCont::DeepCopy(outcol, contret);
+		DeepCopy(outcol, contret);
 		ret = new TCont(std::move(contret));
 	} catch (std::runtime_error &e){
 		ret = NULL;
 		std::cout<<e.what()<<std::endl;
 	}
-	HMCont2D::ECollection::Unscale(*ecol, sc);
-	for (auto& c: vcrosses) HMCont2D::ECollection::Unscale(*c, sc);
+	HM2D::Unscale(*ecol, sc);
+	for (auto& c: vcrosses) HM2D::Unscale(*c, sc);
 	return ret;
 }
 
 void* spline(int npnt, double* pnts, int nbtypes, int* btypes, int nedges,
 		int* n_outbnd, int** outbnd){
-	HMCont2D::Container<HMCont2D::Contour>* ret = NULL;
+	HM2D::EdgeData* ret = NULL;
 	try{
 		//build points
 		vector<Point> p;
 		for (int i=0; i<2*npnt; i+=2) p.push_back(Point(pnts[i], pnts[i+1]));
-		vector<Point*> pvec;
-		for (int i=0; i<p.size(); ++i) pvec.push_back(&p[i]);
-		ScaleBase sc = ScaleBase::p_doscale(pvec.begin(), pvec.end());
-		if (*pvec[0] == *pvec.back()) pvec.back() = pvec[0];
+		auto sc = ScaleBase::doscale(p.begin(), p.end());
 		//create contour
-		HMCont2D::PCollection pcol;
-		HMCont2D::Contour spline = HMCont2D::Constructor::Spline(pvec, pcol, nedges);
+		HM2D::EdgeData spline = HM2D::Contour::Constructor::Spline(p, nedges);
 		//assign boundary types
 		vector<int> vbt(btypes, btypes + nbtypes);
-		vbt.resize(pvec.size()-1, vbt.back());
-		vector<Point*> op = spline.ordered_points();
+		vbt.resize(p.size()-1, vbt.back());
+		auto op = HM2D::Contour::OrderedPoints(spline);
 		vector<int> basis_index;
-		for (int i=0; i<pvec.size(); ++i){
+		for (int i=0; i<p.size(); ++i){
 			for (int j=0; j<op.size(); ++j){
-				if (pvec[i] == op[j]){
+				if (p[i] == *op[j]){
 					basis_index.push_back(j);
 					break;
 				}
@@ -301,9 +310,9 @@ void* spline(int npnt, double* pnts, int nbtypes, int* btypes, int nedges,
 			for (int j=i1; j<i2; ++j) (*outbnd)[j] = vbt[i];
 		}
 		// Unscale and return
-		HMCont2D::ECollection::Unscale(spline, sc);
-		ret = new HMCont2D::Container<HMCont2D::Contour>();
-		HMCont2D::Container<HMCont2D::Contour>::DeepCopy(spline, *ret);
+		HM2D::Unscale(spline, sc);
+		ret = new HM2D::EdgeData();
+		HM2D::DeepCopy(spline, *ret);
 	} catch (std::runtime_error &e){
 		if (ret != 0) delete ret; 
 		ret = NULL;
@@ -314,17 +323,17 @@ void* spline(int npnt, double* pnts, int nbtypes, int* btypes, int nedges,
 
 void* matched_partition(void* cont, int ncond, void** conds, int npts, double* pcond, double step,
 		double influence_dist, double pw, double a0){
-	typedef HMCont2D::Container<HMCont2D::ECollection> ContEC;
+	typedef HM2D::EdgeData ContEC;
 	ContEC* ret = new ContEC();
-	vector<HMCont2D::Contour> input;
+	vector<HM2D::EdgeData> input;
 	{
-		auto ac = HMCont2D::Assembler::AllContours(
+		auto ac = HM2D::Contour::Assembler::AllContours(
 				*static_cast<ContEC*>(cont));
 		for (auto& c: ac) input.push_back(c);
 	}
-	vector<HMCont2D::Contour> conditions;
+	vector<HM2D::EdgeData> conditions;
 	for (int i=0; i<ncond; ++i){
-		auto ac = HMCont2D::Assembler::AllContours(
+		auto ac = HM2D::Contour::Assembler::AllContours(
 				*static_cast<ContEC*>(conds[i]));
 		for (auto& c: ac) conditions.push_back(c);
 	}
@@ -334,18 +343,17 @@ void* matched_partition(void* cont, int ncond, void** conds, int npts, double* p
 		pconditions.emplace(pconditions.begin(), p1, pcond[3*i]);
 	}
 
-	ScaleBase sc = HMCont2D::ECollection::Scale01(*static_cast<ContEC*>(cont));
-	for (auto& c: conditions) HMCont2D::ECollection::Scale(c, sc);
+	ScaleBase sc = HM2D::Scale01(*static_cast<ContEC*>(cont));
+	for (auto& c: conditions) HM2D::Scale(c, sc);
 	step/=sc.L;
 	influence_dist/=sc.L;
 	for (auto& x: pconditions){ sc.scale(x.first); x.second/=sc.L; }
 
 	try{
-		HMCont2D::PCollection pcol;
 		for (auto& icont: input){
 			//set angle points
-			vector<Point*> fixpoints;
-			if (a0>0) for (auto& info: icont.ordered_info()){
+			HM2D::VertexData fixpoints;
+			if (a0>0) for (auto& info: HM2D::Contour::OrderedInfo(icont)){
 				//end points of open contour
 				if (info.pprev == NULL || info.pnext == NULL){
 					fixpoints.push_back(info.p);
@@ -358,31 +366,31 @@ void* matched_partition(void* cont, int ncond, void** conds, int npts, double* p
 					continue;
 				}
 			} else {
-				fixpoints = icont.all_points();
+				fixpoints = HM2D::AllVertices(icont);
 			}
 			//set cross points
 			for (auto& cond: conditions){
-				auto cr = HMCont2D::Algos::CrossAll(icont, cond);
+				auto cr = HM2D::Contour::Algos::CrossAll(icont, cond);
 				for (auto& icr: cr){
 					Point p = std::get<1>(icr);
-					Point* p1 = std::get<1>(icont.GuaranteePoint(p, pcol));
+					auto p1 = std::get<1>(HM2D::Contour::GuaranteePoint(icont, p));
 					fixpoints.push_back(p1);
 				}
 			}
 			//build partition
-			auto r = HMCont2D::Algos::ConditionalPartition(icont, step, influence_dist,
-					conditions, pconditions, pw, pcol, fixpoints);
+			auto r = HM2D::Contour::Algos::ConditionalPartition(icont, step, influence_dist,
+					conditions, pconditions, pw, fixpoints);
 			//add to answer
-			ContEC::DeepCopy(r, *ret);
+			HM2D::DeepCopy(r, *ret);
 		}
 	} catch (std::runtime_error &e){
 		if (ret!=0) delete ret;
 		ret = NULL;
 		std::cout<<e.what()<<std::endl;
 	}
-	HMCont2D::ECollection::Unscale(*static_cast<ContEC*>(cont), sc);
-	for (auto& c: conditions) HMCont2D::ECollection::Unscale(c, sc);
-	if (ret!=NULL) HMCont2D::ECollection::Unscale(*static_cast<ContEC*>(ret), sc);
+	HM2D::Unscale(*static_cast<ContEC*>(cont), sc);
+	for (auto& c: conditions) HM2D::Unscale(c, sc);
+	if (ret!=NULL) HM2D::Unscale(*static_cast<ContEC*>(ret), sc);
 	return ret;
 
 }
@@ -404,10 +412,9 @@ int segment_part(double start, double end, double h0, double h1,
 			}
 		}
 		//make partition
-		HMCont2D::PCollection pstore;
-		auto icont = HMCont2D::Constructor::ContourFromPoints({Point(0, 0), Point(1, 0)});
-		auto ocont = HMCont2D::Algos::WeightedPartition(conds, icont, pstore);
-		auto opoints = ocont.ordered_points();
+		auto icont = HM2D::Contour::Constructor::FromPoints({Point(0, 0), Point(1, 0)});
+		auto ocont = HM2D::Contour::Algos::WeightedPartition(conds, icont);
+		auto opoints = HM2D::Contour::OrderedPoints(ocont);
 		if (opoints.size()<2) throw std::runtime_error("failed to build partition");
 
 		*nout = opoints.size();
@@ -425,18 +432,18 @@ int extract_contour(void* source, int npnts, double* pnts, const char* method, v
 	vector<Point> p0;
 	for (int i=0; i<npnts; ++i) p0.emplace_back(pnts[2*i], pnts[2*i+1]);
 	std::string m(method);
-	HMCont2D::ECollection* ss = static_cast<HMCont2D::ECollection*>(source);
-	ScaleBase sc = HMCont2D::ECollection::Scale01(*ss);
+	HM2D::EdgeData* ss = static_cast<HM2D::EdgeData*>(source);
+	ScaleBase sc = HM2D::Scale01(*ss);
 	sc.scale(p0.begin(), p0.end());
 	try{
 		if (p0.size()<2) throw std::runtime_error("insufficient number of base points");
-		vector<HMCont2D::Contour> et = HMCont2D::Assembler::SimpleContours(*ss);
+		vector<HM2D::EdgeData> et = HM2D::Contour::Assembler::SimpleContours(*ss);
 		//1) find source contour
-		HMCont2D::Contour* src=nullptr;
+		HM2D::EdgeData* src=nullptr;
 		double mind = 1e32;
 		for (auto& c: et){
-			auto ce1 = HMCont2D::ECollection::FindClosestEdge(*ss, p0[0]);
-			if (std::get<0>(ce1) != nullptr)
+			auto ce1 = HM2D::FindClosestEdge(*ss, p0[0]);
+			if (std::get<0>(ce1) >= 0)
 			if (std::get<1>(ce1) < mind){
 				mind = std::get<1>(ce1);
 				src = &c;
@@ -444,9 +451,8 @@ int extract_contour(void* source, int npnts, double* pnts, const char* method, v
 		}
 		if (src == nullptr) throw std::runtime_error("source contour was not found");
 		//2) project base points
-		HMCont2D::PCollection pcol;
 		if (m == "corner"){
-			auto cp = src->corner_points1();
+			auto cp = HM2D::Contour::CornerPoints1(*src);
 			for (int i=0; i<p0.size(); ++i){
 				double d0 = 1e32;
 				for (int j=0; j<cp.size(); ++j){
@@ -459,18 +465,18 @@ int extract_contour(void* source, int npnts, double* pnts, const char* method, v
 			}
 		} else if (m == "line"){
 			for (int i=0; i<p0.size(); ++i){
-				auto gp0 = src->GuaranteePoint(p0[i], pcol);
+				auto gp0 = HM2D::Contour::GuaranteePoint(*src, p0[i]);
 				p0[i].set(*std::get<1>(gp0));
 			}
 		}
 		//3) Reverse p0 if needed
 		bool reversed_order = false;
-		if (src->is_closed()){
-			if (HMCont2D::Area(*src) < 0) src->Reverse();
+		if (HM2D::Contour::IsClosed(*src)){
+			if (HM2D::Contour::Area(*src) < 0) HM2D::Contour::Reverse(*src);
 			if (p0.size() > 2){
-				double w1 = std::get<1>(src->coord_at(p0[0]));
-				double w2 = std::get<1>(src->coord_at(p0[1]));
-				double w3 = std::get<1>(src->coord_at(p0[2]));
+				double w1 = std::get<1>(HM2D::Contour::CoordAt(*src, p0[0]));
+				double w2 = std::get<1>(HM2D::Contour::CoordAt(*src, p0[1]));
+				double w3 = std::get<1>(HM2D::Contour::CoordAt(*src, p0[2]));
 				if (w2 <= w1) w2 += 1.0;
 				if (w3 <= w1) w3 += 1.0;
 				if (w3 < w2) reversed_order = true;
@@ -481,10 +487,10 @@ int extract_contour(void* source, int npnts, double* pnts, const char* method, v
 		for (int i=0; i<npnts-1; ++i){
 			int i1 = i, i2 = i+1;
 			if (reversed_order) std::swap(i1, i2);
-			auto c = HMCont2D::Assembler::Contour1(*src, p0[i1], p0[i2]);
-			auto econt = new HMCont2D::Container<HMCont2D::ECollection>(); 
-			HMCont2D::Container<HMCont2D::ECollection>::DeepCopy(c, *econt);
-			HMCont2D::ECollection::Unscale(*econt, sc);
+			auto c = HM2D::Contour::Constructor::CutContour(*src, p0[i1], p0[i2]);
+			auto econt = new HM2D::EdgeData(); 
+			HM2D::DeepCopy(c, *econt);
+			HM2D::Unscale(*econt, sc);
 			(*ret)[i] = econt;
 		}
 		ok = 1;
@@ -492,7 +498,7 @@ int extract_contour(void* source, int npnts, double* pnts, const char* method, v
 		std::cout<<e.what()<<std::endl;
 		ok = 0;
 	}
-	HMCont2D::ECollection::Unscale(*ss, sc);
+	HM2D::Unscale(*ss, sc);
 	return ok;
 }
 
@@ -500,8 +506,8 @@ void* cwriter_create(const char* cname, void* cont, void* awriter, void* subnode
 	try{
 		HMXML::ReaderA* wr = static_cast<HMXML::ReaderA*>(awriter);
 		HMXML::Reader* sn = static_cast<HMXML::ReaderA*>(subnode);
-		HMCont2D::ECollection* c = static_cast<HMCont2D::ECollection*>(cont);
-		return new HMCont2D::Export::EColWriter(*c, wr, sn, cname, fmt);
+		HM2D::EdgeData* c = static_cast<HM2D::EdgeData*>(cont);
+		return new HM2D::Export::EColWriter(*c, wr, sn, cname, fmt);
 	} catch (std::runtime_error &e){
 		std::cout<<e.what()<<std::endl;
 		return 0;
@@ -509,14 +515,14 @@ void* cwriter_create(const char* cname, void* cont, void* awriter, void* subnode
 }
 void cwriter_free(void* cwriter){
 	try{
-		delete static_cast<HMCont2D::Export::EColWriter*>(cwriter);
+		delete static_cast<HM2D::Export::EColWriter*>(cwriter);
 	} catch (std::runtime_error &e){
 		std::cout<<e.what()<<std::endl;
 	}
 }
 int cwriter_add_edge_field(void* cwriter, const char* fieldname, void* field, int fsize, const char* type){
 	try{
-		auto cw = static_cast<HMCont2D::Export::EColWriter*>(cwriter);
+		auto cw = static_cast<HM2D::Export::EColWriter*>(cwriter);
 		std::string fn(fieldname);
 		std::string tpstr(type);
 		if (tpstr == "int"){
@@ -553,7 +559,7 @@ void* creader_create(void* awriter, void* subnode, char* outname){
 		if (nm.size()>1000) throw std::runtime_error("grid name is too long: " + nm);
 		strcpy(outname, nm.c_str());
 		//reader
-		HMCont2D::Import::EColReader* ret = new HMCont2D::Import::EColReader(wr, sn);
+		HM2D::Import::EColReader* ret = new HM2D::Import::EColReader(wr, sn);
 		return ret;
 	} catch (std::runtime_error &e){
 		std::cout<<e.what()<<std::endl;
@@ -562,7 +568,7 @@ void* creader_create(void* awriter, void* subnode, char* outname){
 }
 void* creader_getresult(void* rd){
 	try{
-		auto reader = static_cast<HMCont2D::Import::EColReader*>(rd);
+		auto reader = static_cast<HM2D::Import::EColReader*>(rd);
 		return reader->result.release();
 	} catch (std::runtime_error &e){
 		std::cout<<e.what()<<std::endl;
@@ -571,7 +577,7 @@ void* creader_getresult(void* rd){
 }
 void* creader_read_edge_field(void* rd, const char* fieldname, const char* type){
 	try{
-		auto reader = static_cast<HMCont2D::Import::EColReader*>(rd);
+		auto reader = static_cast<HM2D::Import::EColReader*>(rd);
 		std::string fname(fieldname);
 		std::string tpname(type);
 		void* ret = NULL;
@@ -603,78 +609,76 @@ void* creader_read_edge_field(void* rd, const char* fieldname, const char* type)
 }
 void creader_free(void* creader){
 	try{
-		delete (HMCont2D::Import::EColReader*)creader;
+		delete (HM2D::Import::EColReader*)creader;
 	} catch (std::runtime_error &e){
 		std::cout<<e.what()<<std::endl;
 	}
 }
 
 int unite_contours(int ncont, void** conts, void** retcont, int* Nlinks, int** links){
-	typedef HMCont2D::ECollection TECol;
-	typedef HMCont2D::Container<HMCont2D::ECollection> TECont;
+	typedef HM2D::EdgeData TECol;
+	typedef HM2D::EdgeData TECont;
 	TECol inpall;
 	TECont ret;
 	for (int i=0; i<ncont; ++i){
 		auto c = static_cast<TECol*>(conts[i]);
-		inpall.Unite(*c);
+		inpall.insert(inpall.end(), c->begin(), c->end());
 	}
-	ScaleBase sc = HMCont2D::ECollection::Scale01(inpall);
+	ScaleBase sc = HM2D::Scale01(inpall);
 	int r = 0;
 	try{
-		TECont::DeepCopy(inpall, ret);
-		for (int i=0; i<ret.size(); ++i) ret.data[i]->id = i;
-		HMCont2D::Algos::MergePoints(ret);
-		HMCont2D::Algos::DeleteUnusedPoints(ret);
+		HM2D::DeepCopy(inpall, ret);
+		for (int i=0; i<ret.size(); ++i) ret[i]->id = i;
+		HM2D::ECol::Algos::MergePoints(ret);
 		*Nlinks = ret.size();
 		*links = new int[*Nlinks];
 		for (int i=0; i<ret.size(); ++i){
-			(*links)[i] = ret.data[i]->id;
+			(*links)[i] = ret[i]->id;
 		}
-		HMCont2D::ECollection::Unscale(ret, sc);
+		HM2D::Unscale(ret, sc);
 		(*retcont) = new TECont(std::move(ret));
 		r = 1;
 	} catch (std::exception &e){
 		std::cout<<e.what()<<std::endl;
 	}
-	HMCont2D::ECollection::Unscale(inpall, sc);
+	HM2D::Unscale(inpall, sc);
 	return r;
 }
 int simplify_contour(void* cont, double angle, int* btypes, void** ret_cont, int* Nretb, int** retb){
-	typedef HMCont2D::ECollection TECol;
-	typedef HMCont2D::Container<HMCont2D::ECollection> TECont;
+	typedef HM2D::EdgeData TECol;
+	typedef HM2D::EdgeData TECont;
 	TECol* inp = static_cast<TECol*>(cont);
-	ScaleBase sc = TECol::Scale01(*inp);
+	ScaleBase sc = HM2D::Scale01(*inp);
 	int r=0;
 	try{
-		for (int i=0; i<inp->size(); ++i) inp->data[i]->id = btypes[i];
-		TECol ret1 = HMCont2D::Algos::Simplified(*inp, angle, true);
+		for (int i=0; i<inp->size(); ++i) (*inp)[i]->id = btypes[i];
+		TECol ret1 = HM2D::ECol::Algos::Simplified(*inp, angle, true);
 		TECont ret_cont1;
-		TECont::DeepCopy(ret1, ret_cont1);
+		HM2D::DeepCopy(ret1, ret_cont1);
 		*Nretb = ret_cont1.size();
 		*retb = new int[*Nretb];
-		for (int i=0; i<*Nretb; ++i) (*retb)[i] = ret_cont1.data[i]->id;
-		TECol::Unscale(ret_cont1, sc);
+		for (int i=0; i<*Nretb; ++i) (*retb)[i] = ret_cont1[i]->id;
+		HM2D::Unscale(ret_cont1, sc);
 		*ret_cont = new TECont(std::move(ret_cont1));
 		r = 1;
 	} catch (std::exception &e){
 		std::cout<<e.what()<<std::endl;
 	}
-	TECol::Unscale(*inp, sc);
+	HM2D::Unscale(*inp, sc);
 	return r;
 }
 int separate_contour(void* cont, int* btypes, int* Nretc, void*** retc, int* Nretb, int** retb){
-	typedef HMCont2D::ECollection TECol;
-	typedef HMCont2D::Container<HMCont2D::ECollection> TECont;
+	typedef HM2D::EdgeData TECol;
+	typedef HM2D::EdgeData TECont;
 	TECol* inp = static_cast<TECol*>(cont);
-	ScaleBase sc = TECol::Scale01(*inp);
+	ScaleBase sc = HM2D::Scale01(*inp);
 	int r = 0;
 	try{
-		for (int i=0; i<inp->size(); ++i) inp->data[i]->id = btypes[i];
-		HMCont2D::PCollection pcol;
-		vector<TECol> sep = HMCont2D::Assembler::ExtendedSeparate(*inp, pcol);
+		for (int i=0; i<inp->size(); ++i) (*inp)[i]->id = btypes[i];
+		vector<TECol> sep = HM2D::ECol::Constructor::ExtendedSeparate(*inp);
 		vector<TECont> sepr(sep.size());
 		for (int i=0; i<sep.size(); ++i){
-			TECont::DeepCopy(sep[i], sepr[i]);
+			HM2D::DeepCopy(sep[i], sepr[i]);
 		}
 		*Nretc = sep.size();
 		*Nretb = 0;
@@ -683,32 +687,32 @@ int separate_contour(void* cont, int* btypes, int* Nretc, void*** retc, int* Nre
 		int k=0;
 		for (auto& s: sep)
 		for (int i=0; i<s.size(); ++i){
-			(*retb)[k++] = s.data[i]->id;
+			(*retb)[k++] = s[i]->id;
 		}
 		(*retc) = new void*[sepr.size()];
 		for (int i=0; i<sepr.size(); ++i){
-			TECol::Unscale(sepr[i], sc);
+			HM2D::Unscale(sepr[i], sc);
 			(*retc)[i] = new TECont(std::move(sepr[i]));
 		}
 		r = 1;
 	} catch (std::exception &e){
 		std::cout<<e.what()<<std::endl;
 	}
-	TECol::Unscale(*inp, sc);
+	HM2D::Unscale(*inp, sc);
 	return r;
 }
 
 int quick_separate_contour(void* cont, int* btypes, int* Nretc, void*** retc, int* Nretb, int** retb){
-	typedef HMCont2D::ECollection TECol;
-	typedef HMCont2D::Container<HMCont2D::ECollection> TECont;
+	typedef HM2D::EdgeData TECol;
+	typedef HM2D::EdgeData TECont;
 	TECol* inp = static_cast<TECol*>(cont);
 	int r = 0;
 	try{
-		for (int i=0; i<inp->size(); ++i) inp->data[i]->id = btypes[i];
-		vector<TECol> sep = HMCont2D::Assembler::QuickSeparate(*inp);
+		for (int i=0; i<inp->size(); ++i) (*inp)[i]->id = btypes[i];
+		vector<TECol> sep = HM2D::Contour::Assembler::QuickSeparate(*inp);
 		vector<TECont> sepr(sep.size());
 		for (int i=0; i<sep.size(); ++i){
-			TECont::DeepCopy(sep[i], sepr[i]);
+			HM2D::DeepCopy(sep[i], sepr[i]);
 		}
 		*Nretc = sep.size();
 		*Nretb = 0;
@@ -717,7 +721,7 @@ int quick_separate_contour(void* cont, int* btypes, int* Nretc, void*** retc, in
 		int k=0;
 		for (auto& s: sep)
 		for (int i=0; i<s.size(); ++i){
-			(*retb)[k++] = s.data[i]->id;
+			(*retb)[k++] = s[i]->id;
 		}
 		(*retc) = new void*[sepr.size()];
 		for (int i=0; i<sepr.size(); ++i){
@@ -732,39 +736,39 @@ int quick_separate_contour(void* cont, int* btypes, int* Nretc, void*** retc, in
 
 int connect_subcontours(int nconts, void** conts, int nfix, int* fix,  const char* close, int shiftnext, void** cret){
 	int ok;
-	vector<HMCont2D::ECollection*> ecols(nconts);
+	vector<HM2D::EdgeData*> ecols(nconts);
 	int k=0;
 	for (int i=0; i<nconts; ++i){
-		ecols[i] = static_cast<HMCont2D::ECollection*>(conts[i]);
+		ecols[i] = static_cast<HM2D::EdgeData*>(conts[i]);
 		//assign indices for sorting edges in return collection
-		for (int j=0; j<ecols[i]->size(); ++j) ecols[i]->data[j]->id = k++;
+		for (int j=0; j<ecols[i]->size(); ++j) (*ecols[i])[j]->id = k++;
 	}
-	vector<Point*> allpoints;
+	HM2D::VertexData allpoints;
 	for (auto e: ecols)
-	for (auto p: e->all_points())
+	for (auto p: HM2D::AllVertices(*e))
 		allpoints.push_back(p);
 	
 	ScaleBase sc = ScaleBase::p_doscale(allpoints.begin(), allpoints.end());
 	std::string close_method(close);
 	try{
 		//assemble contours
-		vector<HMCont2D::Contour> vconts;
+		vector<HM2D::EdgeData> vconts;
 		for (int i=0; i<nconts; ++i) if (ecols[i]->size()>0){
-			vconts.push_back(HMCont2D::Assembler::Contour1(*ecols[i], ecols[i]->data[0]->pstart));
+			vconts.push_back(HM2D::Contour::Assembler::Contour1(*ecols[i], (*ecols[i])[0]->first().get()));
 		}
 		//construct new contour
 		std::set<int> fixset(fix, fix+nfix);
-		HMCont2D::Container<HMCont2D::Contour> ret = HMCont2D::Constructor::ContourFromContours(
+		HM2D::EdgeData ret = HM2D::Contour::Constructor::FromContours(
 			vconts, close_method=="yes", shiftnext==1, fixset);
-		if (close_method == "force" && ret.is_open()){
-			ret.add_value(HMCont2D::Edge(ret.last(), ret.first()));
+		if (close_method == "force" && HM2D::Contour::IsOpen(ret)){
+			HM2D::Contour::AddLastPoint(ret, HM2D::Contour::First(ret));
 		}
-		HMCont2D::Unscale(ret, sc);
+		HM2D::Unscale(ret, sc);
 		//return value
-		auto mm = new HMCont2D::Container<HMCont2D::ECollection>();
-		HMCont2D::Container<HMCont2D::ECollection>::DeepCopy(ret, *mm);
-		std::sort(mm->data.begin(), mm->data.end(),
-				[](shared_ptr<HMCont2D::Edge> e1, shared_ptr<HMCont2D::Edge> e2)->bool{
+		auto mm = new HM2D::EdgeData();
+		HM2D::DeepCopy(ret, *mm);
+		std::sort(mm->begin(), mm->end(),
+				[](shared_ptr<HM2D::Edge> e1, shared_ptr<HM2D::Edge> e2)->bool{
 					return e1->id < e2->id;
 				});
 		*cret = mm;

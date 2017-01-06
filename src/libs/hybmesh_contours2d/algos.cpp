@@ -1,81 +1,48 @@
 #include "algos.hpp"
-#include "constructor.hpp"
 #include "clipper_core.hpp"
-#include <unordered_map>
-
-using namespace HMCont2D;
-namespace cns = Algos;
-
+#include "contabs2d.hpp"
+#include "cont_assembler.hpp"
+#include "treverter2d.hpp"
+using namespace HM2D;
+using Contour::Tree;
+namespace cal = HM2D::Contour::Algos;
+namespace eal = HM2D::ECol::Algos;
 
 // ===================================== Offset implementation
-Container<ContourTree> cns::Offset(const Contour& source, double delta, OffsetTp tp){
+Tree cal::Offset(const EdgeData& source, double delta, OffsetTp tp){
 	Impl::ClipperPath cp(source);
-	if (source.is_closed() && Contour::Area(source) < 0) delta = -delta;
+	if (IsClosed(source) && Contour::Area(source) < 0) delta = -delta;
 	return cp.Offset(delta, tp);
 };
 
-Container<Contour> cns::Offset1(const Contour& source, double delta){
-	Container<ContourTree> ans;
-	if (source.is_closed()) ans = Offset(source, delta, OffsetTp::RC_CLOSED_POLY);
+EdgeData cal::Offset1(const EdgeData& source, double delta){
+	Contour::Tree ans;
+	if (IsClosed(source)) ans = Offset(source, delta, OffsetTp::RC_CLOSED_POLY);
 	else ans = Offset(source, delta, OffsetTp::RC_OPEN_ROUND);
-	assert(ans.cont_count() == 1);
-	return Container<Contour>::DeepCopy(*ans.get_contour(0));
+	assert(ans.nodes.size() == 1);
+	return ans.nodes[0]->contour;
 };
 
+
 // ===================================== Simplifications
-ContourTree cns::Simplified(const ContourTree& t1){
-	ContourTree ret;
+Tree cal::Simplified(const Tree& t1){
+	Tree ret = Tree::DeepCopy(t1);
 	//copy all contours to ret with simplified structure
-	for (auto& n: t1.nodes){
-		auto simpcont = Simplified(*n);
-		ret.nodes.push_back(std::make_shared<ContourTree::TreeNode>());
-		ret.nodes.back()->data = simpcont.data;
+	for (auto& n: ret.nodes){
+		n->contour = Simplified(n->contour);
 	}
 
-	//fill parent
-	for (int i=0; i<t1.nodes.size(); ++i){
-		auto oldparent = t1.nodes[i]->parent;
-		if (oldparent == 0) ret.nodes[i]->parent=0;
-		else{
-			int fnd=0;
-			while (fnd<t1.nodes.size()){
-				if (t1.nodes[fnd].get() == oldparent) break;
-				else ++fnd;
-			}
-			assert(fnd<t1.nodes.size());
-			ret.nodes[i]->parent = ret.nodes[fnd].get();
-		}
-	}
-	//fill children
-	for (auto& c: ret.nodes){
-		if (c->parent != 0) c->parent->children.push_back(c.get());
-	}
-	//fill ret.data
-	ret.ReloadEdges();
 	return ret;
 }
 
-ExtendedTree cns::Simplified(const ExtendedTree& t1){
-	ExtendedTree ret;
-	//insert simplified closed contour nodes
-	auto ct = Simplified(static_cast<ContourTree>(t1));
-	ret.nodes.insert(ret.nodes.end(), ct.nodes.begin(), ct.nodes.end());
-	//insert simplified open contour nodes
-	for (auto& oc: t1.open_contours){
-		ret.open_contours.push_back(std::make_shared<Contour>(Simplified(*oc)));
-	}
-	ret.ReloadEdges();
-	return ret;
-}
-
-Contour cns::Simplified(const Contour& cont){
-	auto p = cont.corner_points();
-	return HMCont2D::Constructor::ContourFromPoints(p, cont.is_closed());
+EdgeData cal::Simplified(const EdgeData& cont){
+	auto p = CornerPoints(cont);
+	return Assembler::Contour1(p, IsClosed(cont));
 }
 
 namespace{
 
-vector<int> break_by_angle(const vector<Point*>& points, int istart, int iend,
+vector<int> break_by_angle(const VertexData& points, int istart, int iend,
 		const vector<double>& angles, double angle0){
 	if (angle0>=180) return {istart, iend};
 	vector<double> aplus(iend-istart+1, 0.);
@@ -102,34 +69,34 @@ vector<int> break_by_angle(const vector<Point*>& points, int istart, int iend,
 
 }
 
-ECollection cns::Simplified(const ECollection& ecol, double degree_angle, bool id_nobreak){
-	ECollection ret;
+EdgeData eal::Simplified(const EdgeData& ecol, double degree_angle, bool id_nobreak){
+	EdgeData ret;
 	if (degree_angle < 0) {
-		ECollection::DeepCopy(ecol, ret);
+		DeepCopy(ecol, ret);
 		return ret;
 	}
 
-	vector<Contour> sc = Assembler::SimpleContours(ecol);
+	vector<EdgeData> sc = Contour::Assembler::SimpleContours(ecol);
 	for (auto& c: sc){
-		auto op = c.ordered_points();
+		auto op = Contour::OrderedPoints(c);
 		vector<double> angles(op.size(), 0);
 		for (int i=1; i<op.size()-1; ++i){
 			angles[i] = Angle(*op[i-1], *op[i], *op[i+1])/M_PI*180;
 		}
-		if (c.is_closed()){
+		if (Contour::IsClosed(c)){
 			angles[0] = angles.back() = Angle(*op.end()[-2], *op[0], *op[1])/M_PI*180;
 		}
 		vector<int> significant_points(1, 0);
 		//1 break at ids and sharp angles
 		for (int i=1; i<op.size()-1; ++i){
-			if ( (id_nobreak && c.value(i-1).id != c.value(i).id) ||
+			if ( (id_nobreak && c[i-1]->id != c[i]->id) ||
 			      angles[i] < 180 - degree_angle ||
 			      angles[i] > 180 + degree_angle)
 				significant_points.push_back(i);
 		}
 		significant_points.push_back(op.size()-1);
 		if (significant_points.size() == op.size()){
-			ECollection::DeepCopy(c, ret);
+			DeepCopy(c, ret);
 			continue;
 		}
 		//2 analyse each section between significant points
@@ -137,15 +104,15 @@ ECollection cns::Simplified(const ECollection& ecol, double degree_angle, bool i
 			int i0 = significant_points[i];
 			int i1 = significant_points[i+1];
 			if (i0+1 == i1){
-				ret.add_value(*c.data[i0]);
+				ret.push_back(c[i0]);
 				continue;
 			}
 			vector<int> bba = break_by_angle(op, i0, i1, angles, degree_angle);
 			for (int j=0; j<bba.size()-1; ++j){
 				int j1 = bba[j];
 				int j2 = bba[j+1];
-				ret.add_value(Edge(op[j1], op[j2]));
-				ret.data.back()->id = c.data[j]->id;
+				ret.push_back(std::make_shared<Edge>(op[j1], op[j2]));
+				ret.back()->id = c[j]->id;
 			}
 		}
 	}
@@ -158,18 +125,18 @@ struct _TEdgeCrossAnalyser{
 	_TEdgeCrossAnalyser(int nedges): ecross_set(nedges) {}
 	void add_crosses(Edge* e1, Edge* e2, int i1, int i2){
 		double ksieta[2];
-		SectCross(*e1->pstart, *e1->pend, *e2->pstart, *e2->pend, ksieta);
+		SectCross(*e1->first(), *e1->last(), *e2->first(), *e2->last(), ksieta);
 		if (ksieta[0] == gbig && ksieta[1] == gbig){
 			//if edges are parrallel
-			isOnSection(*e1->pstart, *e2->pstart, *e2->pend, ksieta[0]);
+			isOnSection(*e1->first(), *e2->first(), *e2->last(), ksieta[0]);
 			if (ISIN_NN(ksieta[0], 0, 1)) ecross_set[i2].insert(ksieta[0]);
-			isOnSection(*e1->pend, *e2->pstart, *e2->pend, ksieta[0]);
+			isOnSection(*e1->last(), *e2->first(), *e2->last(), ksieta[0]);
 			if (ISIN_NN(ksieta[0], 0, 1)) ecross_set[i2].insert(ksieta[0]);
-			isOnSection(*e2->pstart, *e1->pstart, *e1->pend, ksieta[0]);
+			isOnSection(*e2->first(), *e1->first(), *e1->last(), ksieta[0]);
 			if (ISIN_NN(ksieta[0], 0, 1)) ecross_set[i1].insert(ksieta[0]);
-			isOnSection(*e2->pend, *e1->pstart, *e1->pend, ksieta[0]);
+			isOnSection(*e2->last(), *e1->first(), *e1->last(), ksieta[0]);
 			if (ISIN_NN(ksieta[0], 0, 1)) ecross_set[i1].insert(ksieta[0]);
-		} else if (!Edge::AreConnected(*e1, *e2)){
+		} else if (!e1->connected_to(*e2)){
 			if (ISEQGREATER(ksieta[0], 0) && ISEQLOWER(ksieta[0], 1) &&
 			    ISEQGREATER(ksieta[1], 0) && ISEQLOWER(ksieta[1], 1)){
 				//if not connected edges cross
@@ -178,7 +145,7 @@ struct _TEdgeCrossAnalyser{
 			}
 		}
 	}
-	void divide_edges(ShpVector<Edge>& ecol, ShpVector<Point>& pcol){
+	void divide_edges(ShpVector<Edge>& ecol){
 		for (int i=0; i<ecross_set.size(); ++i) if (ecross_set[i].size()>0){
 			auto& st = ecross_set[i];
 			auto& edge = *ecol[i];
@@ -186,46 +153,44 @@ struct _TEdgeCrossAnalyser{
 			if (st.size() == 0) continue;
 			if (ISEQ(*st.rbegin(), 1)) st.erase(std::prev(st.end()));
 			if (st.size() == 0) continue;
-			Point* p1 = edge.pstart;
-			Point* p2 = edge.pend;
-			vector<Point*> pa(1, p1);
+			auto p1 = edge.first();
+			auto p2 = edge.last();
+			VertexData pa(1, p1);
 			for (auto ksi: st){
-				pcol.emplace_back(new Point(Point::Weigh(*p1, *p2, ksi)));
-				pa.push_back(pcol.back().get());
+				pa.push_back(std::make_shared<Vertex>(Point::Weigh(*p1, *p2, ksi)));
 			}
 			pa.push_back(p2);
 			for (int i=0; i<pa.size()-1; ++i){
 				ecol.emplace_back(new Edge(edge));
-				ecol.back()->pstart = pa[i];
-				ecol.back()->pend = pa[i+1];
+				ecol.back()->first() = pa[i];
+				ecol.back()->last() = pa[i+1];
 				//edge with equal bounds will be removed in 
 				//MergePoints procedure
-				edge.pstart = edge.pend = pa[0];
+				edge.first() = edge.last() = pa[0];
 			}
 		}
 	}
 };
 }
 
-Container<ECollection> cns::NoCrosses(const ECollection& ecol){
-	Container<ECollection> ret;
-	Container<ECollection>::DeepCopy(ecol, ret);
+EdgeData eal::NoCrosses(const EdgeData& ecol){
+	EdgeData ret;
+	DeepCopy(ecol, ret);
 	//Find crosses
-	BoundingBox area = ECollection::BBox(ret, geps);
+	BoundingBox area = BBox(ret, geps);
 	BoundingBoxFinder finder(area, area.maxlen()/20);
-	for (auto e: ret) finder.addentry(e->bbox());
+	for (auto e: ret) finder.addentry(BoundingBox(*e->first(), *e->last()));
 	_TEdgeCrossAnalyser ec(ret.size());
 	for (int i=0; i<ecol.size(); ++i){
-		auto s = finder.suspects(ret.value(i).bbox());
+		auto s = finder.suspects(BoundingBox(*ret[i]->first(), *ret[i]->last()));
 		for (auto ei: s) if (ei!=i){
-			ec.add_crosses(ret.pvalue(i), ret.pvalue(ei), i, ei);
+			ec.add_crosses(ret[i].get(), ret[ei].get(), i, ei);
 		}
 	}
 	//Part edges
-	ec.divide_edges(ret.data, ret.pdata.data);
+	ec.divide_edges(ret);
 	//Merge points
 	MergePoints(ret);
-	DeleteUnusedPoints(ret);
 	return ret;
 }
 
@@ -236,8 +201,8 @@ struct _TEdgeSet{
 	vector<bool> added;
 	void add_edge(Edge* ed){
 		added.resize(added.size() + 1);
-		Point* p1 = ed->pstart;
-		Point* p2 = ed->pend;
+		Point* p1 = ed->first().get();
+		Point* p2 = ed->last().get();
 		added.back() = false;
 		if (p1 != p2){
 			if (p1>p2) std::swap(p1, p2);
@@ -248,94 +213,47 @@ struct _TEdgeSet{
 	bool was_used(int i){ return added[i]; }
 };
 }
-void cns::MergePoints(ECollection& ecol){
-	auto ap = ecol.all_points();
-	auto pe = ecol.tab_points_edges();
-	vector<std::vector<int>> shadows(ap.size());
-	vector<bool> isactive(ap.size(), true);
-	for (int i=0; i<ap.size(); ++i)
+void eal::MergePoints(EdgeData& ecol){
+	auto pe = Connectivity::VertexEdge(ecol);
+	vector<std::vector<int>> shadows(pe.size());
+	vector<bool> isactive(pe.size(), true);
+	for (int i=0; i<pe.size(); ++i)
 	for (int j=0; j<i; ++j) if (isactive[j]){
-		if (Point::meas(*ap[i], *ap[j]) < geps*geps){
+		if (Point::meas(*pe[i].v, *pe[j].v) < geps*geps){
 			shadows[j].push_back(i);
 			isactive[i] = false;
 			break;
 		}
 	}
-	for (int i=0; i<ap.size(); ++i)
+	for (int i=0; i<pe.size(); ++i)
 	for (auto psh: shadows[i]){
-		for (auto e: pe[psh]){
-			auto edge = ecol.pvalue(e);
-			if (edge->pstart == ap[psh])
-				edge->pstart = ap[i];
+		for (auto ei: pe[psh].eind){
+			auto edge = ecol[ei];
+			if (edge->first() == pe[psh].v)
+				edge->vertices[0] = pe[i].v;
 			else
-				edge->pend = ap[i];
+				edge->vertices[1] = pe[i].v;
 		}
 	}
 	_TEdgeSet es;
 	for (auto e: ecol) es.add_edge(e.get());
 	ShpVector<Edge> newedge;
 	for (int i=0; i<ecol.size(); ++i) if (es.was_used(i))
-		newedge.push_back(ecol.data[i]);
-	std::swap(newedge, ecol.data);
-}
-
-void cns::DeleteUnusedPoints(const ECollection& ecol, PCollection& pdata){
-	auto ap1 = ecol.all_points();
-	auto& ap2 = pdata.data;
-	std::unordered_set<Point*> ap1set(ap1.begin(), ap1.end());
-	vector<int> used_points;
-	for (int i=0; i<ap2.size(); ++i){
-		if (ap1set.find(ap2[i].get()) != ap1set.end()) used_points.push_back(i);
-	}
-	if (used_points.size() == ap2.size()) return;
-	ShpVector<Point> newap2;
-	for (int i: used_points) newap2.push_back(ap2[i]);
-	std::swap(pdata.data, newap2);
-}
-void cns::DeleteUnusedPoints(Container<ECollection>& econt){
-	return DeleteUnusedPoints(econt, econt.pdata);
-}
-
-
-// ==================================== Crosses and intersections
-bool cns::DoIntersect(const Contour& c1, const Contour& c2){
-	auto bbox1 = Contour::BBox(c1);
-	auto bbox2 = Contour::BBox(c2);
-	if (!bbox1.has_common_points(bbox2)) return false;
-	auto c = HMCont2D::Clip::Union(c1, c2);
-	if (c.cont_count() > 1) return false;
-	else return true;
-}
-
-bool cns::DoReallyIntersect(const Contour& c1, const Contour& c2){
-	auto bbox1 = Contour::BBox(c1);
-	auto bbox2 = Contour::BBox(c2);
-	if (!bbox1.has_common_points(bbox2)) return false;
-	auto c = HMCont2D::Clip::Union(c1, c2);
-	if (c.cont_count() > 1) return false;
-	double a1 = fabs(HMCont2D::Area(c1));
-	double a2 = fabs(HMCont2D::Area(c2));
-	double suma = fabs(HMCont2D::Area(*c.nodes[0]));
-	return (!ISZERO(a1+a2 - suma));
-}
-
-bool cns::DoIntersect(const ContourTree& t1, const Contour& c2){
-	auto bbox1 = ContourTree::BBox(t1);
-	auto bbox2 = Contour::BBox(c2);
-	if (!bbox1.has_common_points(bbox2)) return false;
-	auto c = HMCont2D::Clip::Union(t1, c2);
-	if (c.cont_count() > t1.cont_count()) return false;
-	else return true;
+		newedge.push_back(ecol[i]);
+	std::swap(newedge, ecol);
 }
 
 namespace{
 vector<std::tuple<bool, Point, double, double>>
-cross_core(const Contour& c1, const Contour& c2, bool is1){
+cross_core(const EdgeData& c1, const EdgeData& c2, bool is1){
 	vector<std::tuple<bool, Point, double, double>> retv;
-	vector<Point*> op1 = c1.ordered_points();
-	vector<Point*> op2 = c2.ordered_points();
+	auto bb1 = HM2D::BBox(c1), bb2 = HM2D::BBox(c2);
+	if (!bb1.has_common_points(bb2)) return retv;
 
-	auto lens1 = ECollection::ELengths(c1), lens2 = ECollection::ELengths(c2);
+	VertexData op1 = Contour::OrderedPoints(c1);
+	VertexData op2 = Contour::OrderedPoints(c2);
+
+	auto lens1 = ELengths(c1), lens2 = ELengths(c2);
 	double flen1 = std::accumulate(lens1.begin(), lens1.end(), 0.0);
 	double flen2 = std::accumulate(lens2.begin(), lens2.end(), 0.0);
 
@@ -378,23 +296,23 @@ cross_core(const Contour& c1, const Contour& c2, bool is1){
 }
 
 std::tuple<bool, Point, double, double>
-cns::Cross(const Contour& c1, const Contour& c2){
+cal::Cross(const EdgeData& c1, const EdgeData& c2){
 	auto retv = cross_core(c1, c2, true);
 	if (retv.size() == 0) return std::make_tuple(false, Point(0,0), 0.0, 0.0);
 	else return retv[0];
 }
 
 vector<std::tuple<bool, Point, double, double>>
-cns::CrossAll(const Contour& c1, const Contour& c2){
+cal::CrossAll(const EdgeData& c1, const EdgeData& c2){
 	return cross_core(c1, c2, false);
 }
 
-vector<int> cns::SortOutPoints(const Contour& t1, const vector<Point>& pnt){
-	ContourTree tree;
+vector<int> cal::SortOutPoints(const EdgeData& t1, const vector<Point>& pnt){
+	Contour::Tree tree;
 	tree.AddContour(t1);
-	auto ret = cns::SortOutPoints(tree, pnt);
+	auto ret = cal::SortOutPoints(tree, pnt);
 	//if t1 is inner contour
-	if (t1.data[0] != tree.nodes[0]->data[0]){
+	if (Contour::Area(t1) < 0){
 		for (auto& r: ret){
 			if (r == OUTSIDE) r = INSIDE;
 			else if (r == INSIDE) r = OUTSIDE;
@@ -402,112 +320,59 @@ vector<int> cns::SortOutPoints(const Contour& t1, const vector<Point>& pnt){
 	}
 	return ret;
 }
-vector<int> cns::SortOutPoints(const ContourTree& t1, const vector<Point>& pnt){
-	auto ctree = Impl::ClipperTree::Build(HMCont2D::Algos::Simplified(t1));
-	return ctree.SortOutPoints(pnt);
-}
+vector<int> cal::SortOutPoints(const Tree& t1, const vector<Point>& pnt){
+	std::function<void(const ShpVector<Tree::TNode>&, Point&, int&)>
+	lvwithin = [&lvwithin](const ShpVector<Tree::TNode>& lv, Point& p, int& a){
+		int indwithin = -1;
+		for (int i=0; i<lv.size(); ++i){
+			int rs = WhereIs(lv[i]->contour, p);
+			if (rs == BOUND){ a = -2; return; }
+			else if (rs == INSIDE) { indwithin = i; break; }
+		}
+		if (indwithin == -1) return;
+		else {
+			ShpVector<Tree::TNode> newlv;
+			for (auto w: lv[indwithin]->children) newlv.push_back(w.lock());
+			return lvwithin(newlv, p, ++a);
+		}
+	};
 
-// =================================== Smoothing
-namespace{
-Vect smoothed_direction_core(const vector<Point*>& p){
-	assert(p.size() > 1);
-	Vect ret1 = *p[1] - *p[0];
-	Vect ret2 = *p.back() - *p[0];
-	double a = Angle(ret1, Point(0, 0), ret2);
-	Vect ret;
-	if (a<M_PI/4 || a>3*M_PI/4) ret = ret1;
-	else ret = ret2;
-	vecNormalize(ret);
+	vector<int> ret;
+	auto roots = t1.roots();
+	for (auto p: pnt){
+		int maxlevel = -1;
+		lvwithin(roots, p, maxlevel);
+		if (maxlevel == -2) ret.push_back(BOUND);
+		else if (maxlevel == -1) ret.push_back(OUTSIDE);
+		else if (maxlevel % 2 == 0) ret.push_back(INSIDE);
+		else ret.push_back(OUTSIDE);
+	}
+
 	return ret;
 }
-}
-
-Vect cns::SmoothedDirection(const Contour& c, Point* p, int direction, double len){
-	std::list<Point> apoints; //storage for additional points
-	vector<Point*> chosen = c.ordered_points();
-	//1. place p into chosen array
-	int pindex = -1;
-	//try to find exact match
-	auto fnd = std::find(chosen.begin(), chosen.end(), p);
-	if (fnd == chosen.end()) fnd = std::find_if(chosen.begin(), chosen.end(),
-			[&p](Point* p1){ return *p1 == *p; });
-	if (fnd != chosen.end()) pindex = fnd - chosen.begin();
-	//if failed -> place p on nearest edge
-	if (pindex < 0){
-		auto ce = ECollection::FindClosestEdge(c, *p);
-		Edge* e = std::get<0>(ce);
-		double &w = std::get<2>(ce);
-		if (ISEQ(w, 0)) return SmoothedDirection(c,  e->pstart, direction, len);
-		if (ISEQ(w, 1)) return SmoothedDirection(c,  e->pend, direction, len);
-		apoints.push_back(Point::Weigh(*e->pstart, *e->pend, w));
-		pindex = c.get_index(e) + 1;
-		chosen.insert(chosen.begin() + pindex, &apoints.back());
-	}
-
-	//2. revert according to direction
-	if (direction == -1){
-		std::reverse(chosen.begin(), chosen.end());
-		pindex = chosen.size()- 1 - pindex;
-	}
-	//3. for closed contours set p as the first point
-	//and guarantee len > 0.25 of full length. Hence we can remove edge before pindex.
-	if (c.is_closed()){
-		chosen.pop_back();
-		for (int i=0; i<pindex; ++i) chosen.push_back(chosen[i]);
-		chosen = vector<Point*>(chosen.begin()+pindex, chosen.end());
-		pindex = 0;
-		len = std::min(len, 0.25*c.length());
-	} else {
-	//4. if full length of open contour is less then len treat all contour
-		if (len>=c.length()) return smoothed_direction_core(chosen);
-	}
-	//5. go forward till we can
-	int iend = pindex;
-	double usedx = 0, last_len=0;
-	while (iend<chosen.size()-1 && ISGREATER(len, usedx)){
-		++iend;
-		last_len = Point::dist(*chosen[iend-1], *chosen[iend]);
-		usedx+=last_len;
-	}
-	//if we've gone too far, change chosen[iend] to weighted point to provide len.
-	if (ISGREATER(usedx, len)){
-		double w = (usedx - len)/last_len;
-		apoints.push_back(Point::Weigh(*chosen[iend-1], *chosen[iend], w));
-		chosen[iend] = &apoints.back();
-	}
-	//6. go backward if necessary
-	int istart = pindex;
-	if (ISGREATER(len, usedx)){
-		//_THROW_NOT_IMP_;
-	}
-
-	//7. leave only [istart-iend] points and calculate
-	chosen = vector<Point*>(chosen.begin()+istart,  chosen.begin() + iend+1);
-	return smoothed_direction_core(chosen);
-}
 
 namespace{
-Point smoothed_direction_step(const HMCont2D::Contour& c, double w0, double w_step){
+Point smoothed_direction_step(const EdgeData& c, double w0, double w_step){
 	double w = w0+w_step;
 	//adjust w_step
 	if (w > 1.0){
-		if (!c.is_closed()) return *c.last();
+		if (Contour::IsOpen(c)) return *Contour::Last(c);
 		while (w>1) w -= 1.0;
 	}
-	return HMCont2D::Contour::WeightPoint(c, w);
+	return Contour::WeightPoint(c, w);
 }
 }
-Vect cns::SmoothedDirection2(const Contour& c, const Point *p, int direction, double len_forward, double len_backward){
+Vect cal::SmoothedDirection2(const EdgeData& c, const Point* p, int direction, double len_forward, double len_backward){
 	//preliminary simplification
-	auto cont = HMCont2D::Algos::Simplified(c);
+	auto cont = cal::Simplified(c);
 	//decrease lens to half of contour lengths
-	double full_len = cont.length();
+	double full_len = Length(cont);
 	if (len_forward > full_len/2) len_forward = full_len/2;
 	if (len_backward > full_len/2) len_backward = full_len/2;
 	//find points
-	double pw = std::get<1>(cont.coord_at(*p));
+	double pw = std::get<1>(Contour::CoordAt(cont, *p));
 	Point p1 = smoothed_direction_step(cont, pw, len_forward/full_len);
-	cont.ReallyReverse();
+	Contour::ReallyRevert::Permanent(cont);
 	Point p2 = smoothed_direction_step(cont, 1 - pw, len_backward/full_len);
 	
 	//return zero if all lengths are 0
@@ -523,4 +388,3 @@ Vect cns::SmoothedDirection2(const Contour& c, const Point *p, int direction, do
 	vecNormalize(ret);
 	return ret;
 }
-

@@ -1,7 +1,6 @@
 #ifndef HYBMESH_DOMAPPING_HPP
 #define HYBMESH_DOMAPPING_HPP
 
-#include "hybmesh_contours2d.hpp"
 #include "gridmap.hpp"
 #include "hmfem.hpp"
 #include "mapped_contour.hpp"
@@ -14,7 +13,7 @@ struct DoMapping{
 	
 	// ====== set input
 	void set_grid(const GridGeom& ig);
-	void set_contour(const HMCont2D::ECollection& ecol);
+	void set_contour(const HM2D::EdgeData& ecol);
 	void set_points(const vector<Point>& gridpnt, const vector<Point>& contpnt);
 
 	// ====== main procedure
@@ -24,17 +23,17 @@ protected:
 	// ====== main data
 	HMMap::Options opt;
 	GridGeom inpgrid;
-	HMCont2D::ECollection contdata;
+	HM2D::EdgeData contdata;
 	vector<Point> gridpoints;
 	vector<Point> contpoints;
 
 	// ====== aux data
 	//filled by prepare_mapped_contour
-	HMCont2D::ContourTree mapped_outer;
-	HMCont2D::ContourTree inpgrid_outer;
+	HM2D::Contour::Tree mapped_outer;
+	HM2D::Contour::Tree inpgrid_outer;
 	//those are filled by prepare_grid and its subroutines
 	shared_ptr<HMFem::Grid43> g3;   //triangle grid
-	HMCont2D::ContourTree g3outer;  //triangle grid borders
+	HM2D::Contour::Tree g3outer;  //triangle grid borders
 	shared_ptr<HMFem::LaplasProblem> laplace; //laplace problem
 
 	MappedContourCollection mcol;   //contour mapper: from g3 contour to contdata contour
@@ -70,7 +69,7 @@ struct DoMapping2{
 	
 	// ====== set input
 	void set_grid(const GridGeom& ig);
-	void set_contour(const HMCont2D::ECollection& ecol);
+	void set_contour(const HM2D::EdgeData& ecol);
 	void set_points(const vector<Point>& gridpnt, const vector<Point>& contpnt);
 
 	// ====== main procedure
@@ -79,17 +78,17 @@ private:
 	// ====== main data
 	HMMap::Options opt;
 	GridGeom inpgrid;
-	HMCont2D::ECollection contdata;
+	HM2D::EdgeData contdata;
 	vector<Point> gridpoints;
 	vector<Point> contpoints;
 
 	// ====== aux data
 	//filled by prepare_mapped_contour
-	HMCont2D::ContourTree mapped_outer;
-	HMCont2D::ContourTree inpgrid_outer;
+	HM2D::Contour::Tree mapped_outer;
+	HM2D::Contour::Tree inpgrid_outer;
 	//those are filled by prepare_grid and its subroutines
 	shared_ptr<HMFem::Grid43> g3;   //triangle grid within mapped_outer
-	HMCont2D::ContourTree g3outer;  //triangle grid borders
+	HM2D::Contour::Tree g3outer;  //triangle grid borders
 	shared_ptr<HMFem::LaplasProblem> laplace; //laplace problem
 
 	MappedContourCollection mcol;   //contour mapper: from g3 contour to inpgrid contour

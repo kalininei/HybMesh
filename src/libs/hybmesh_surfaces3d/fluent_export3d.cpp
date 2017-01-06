@@ -210,7 +210,7 @@ void gridmsh(HMCallback::Caller2& callback, const GridData& g, std::string fn,
 	//=========== Write to file
 	callback.silent_step_after(40, "Writing File", 30);
 	std::ofstream fs(fn);
-	fs.precision(17);
+	fs.precision(16);
 	//header
 	fs<<"(0 \"HybMesh to Fluent File\")\n(2 3)\n";
 

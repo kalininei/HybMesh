@@ -3,6 +3,9 @@
 #include "hmconformal.hpp"
 #include "hmtesting.hpp"
 #include "debug_grid2d.h"
+#include "constructor.hpp"
+#include "cont_assembler.hpp"
+#include "vtk_export2d.hpp"
 
 using HMTesting::add_check;
 
@@ -10,7 +13,7 @@ void test01(){
 	std::cout<<"01. Boundary Layers grid from circle"<<std::endl;
 	std::string cn;
 	// 1. Build Edges Collection 
-	auto col = HMCont2D::Constructor::Circle(8, 2.0, Point(0, 0));
+	auto col = HM2D::Contour::Constructor::Circle(8, 2.0, Point(0, 0));
 	// 2. set inp
 	HMBlay::Input inp;
 	inp.edges = &col;
@@ -37,7 +40,7 @@ void test01(){
 		  fabs(Ans2.area() - 10.903)<0.1, cn);
 
 	cn = "long edges";
-	auto col2 = HMCont2D::Constructor::Circle(16, 3.0, Point(0, 0));
+	auto col2 = HM2D::Contour::Constructor::Circle(16, 3.0, Point(0, 0));
 	HMBlay::Input inp2;
 	inp2.edges = &col2;
 	inp2.direction = HMBlay::DirectionFromString("OUTER");
@@ -49,9 +52,9 @@ void test01(){
 	add_check( [&]()->bool{
 		//points should lie strictly on the source contour
 		auto gcont = GGeom::Info::Contour(Ans3);
-		HMCont2D::Contour& inner = *gcont.roots()[0]->children[0];
-		for (auto pt: inner.all_points()){
-			double dist = std::get<4>(col2.coord_at(*pt));
+		HM2D::EdgeData& inner = gcont.roots()[0]->children[0].lock()->contour;
+		for (auto pt: HM2D::AllVertices(inner)){
+			double dist = std::get<4>(HM2D::Contour::CoordAt(col2, *pt));
 			if (!ISZERO(dist)) {return false;}
 		}
 		return true;
@@ -73,7 +76,7 @@ void test02(){
 	inp.start = inp.end = Point(0,0);
 
 	std::string cn("8-side polygon with outer layer");
-	auto col1 = HMCont2D::Constructor::Circle(8, 1.3, Point(2, 2));
+	auto col1 = HM2D::Contour::Constructor::Circle(8, 1.3, Point(2, 2));
 	inp.edges = &col1;
 	GridGeom Ans1 = HMBlay::BuildBLayerGrid({inp});
 
@@ -112,7 +115,7 @@ void test03(){
 	inp.straight_angle = 300;
 
 	std::string cn("5-points polyline. Left layer");
-	auto col1 = HMCont2D::Constructor::ContourFromPoints(
+	auto col1 = HM2D::Contour::Constructor::FromPoints(
 			{0,0, 1,1, 2,1.9, 4,3.5, 7,6.1});
 	inp.direction = HMBlay::DirectionFromString("LEFT");
 	inp.start = Point(0,0);
@@ -147,7 +150,7 @@ void test03(){
 void test04(){
 	std::cout<<"04. Different partitions"<<std::endl;
 
-	auto col1 = HMCont2D::Constructor::Circle(8, 10, Point(0, 0));
+	auto col1 = HM2D::Contour::Constructor::Circle(8, 10, Point(0, 0));
 	//basic inp1
 	HMBlay::Input inp1;
 	inp1.bnd_step_method = HMBlay::MethFromString("KEEP_ALL");
@@ -228,7 +231,7 @@ void test04(){
 
 void test05(){
 	std::cout<<"05. Non-right boundary angle at the ends"<<std::endl;
-	auto col1 = HMCont2D::Constructor::ContourFromPoints(
+	auto col1 = HM2D::Contour::Constructor::FromPoints(
 		{0,0, 5,0, 6,4, 2,4}, true);
 
 	HMBlay::Input inp1;
@@ -252,7 +255,7 @@ void test05(){
 
 void test06(){
 	std::cout<<"06. 1 segment sources"<<std::endl;
-	auto col1 = HMCont2D::Constructor::ContourFromPoints(
+	auto col1 = HM2D::Contour::Constructor::FromPoints(
 			{0,0, 2,0});
 
 	HMBlay::Input inp1;
@@ -315,16 +318,18 @@ void test06(){
 
 void test07(){
 	std::cout<<"07. Corner angle algorithm basic test"<<std::endl;
-	auto c1 = HMCont2D::Constructor::Circle(36, 3, Point(0, 0));
-	HMCont2D::PCollection apoints;
-	apoints.add_value(Point(-3, -7));
-	apoints.add_value(Point(4, -7));
-	HMCont2D::Contour con1 = HMCont2D::Assembler::Contour1(c1,
-			HMCont2D::ECollection::FindClosestNode(c1, Point(3,0)),
-			HMCont2D::ECollection::FindClosestNode(c1, Point(-3,0)));
-	con1.add_value(HMCont2D::Edge(con1.last(), apoints.point(0)));
-	con1.add_value(HMCont2D::Edge(apoints.point(0), apoints.point(1)));
-	con1.add_value(HMCont2D::Edge(apoints.point(1), con1.first()));
+	auto c1 = HM2D::Contour::Constructor::Circle(36, 3, Point(0, 0));
+	auto vc1 = HM2D::AllVertices(c1);
+	HM2D::VertexData apoints;
+	apoints.emplace_back(new HM2D::Vertex(-3, -7));
+	apoints.emplace_back(new HM2D::Vertex(4, -7));
+	Point *p0, *p1;
+	p0 = vc1[std::get<0>(HM2D::FindClosestNode(vc1, Point(3,0)))].get();
+	p1 = vc1[std::get<0>(HM2D::FindClosestNode(vc1, Point(-3,0)))].get();
+	HM2D::EdgeData con1 = HM2D::Contour::Assembler::Contour1(c1, p0, p1);
+	con1.emplace_back(new HM2D::Edge(HM2D::Contour::Last(con1), apoints[0]));
+	con1.emplace_back(new HM2D::Edge(apoints[0], apoints[1]));
+	con1.emplace_back(new HM2D::Edge(apoints[1], HM2D::Contour::First(con1)));
 	
 	HMBlay::Input inp1;
 	inp1.bnd_step_method = HMBlay::MethFromString("KEEP_SHAPE");
@@ -344,14 +349,16 @@ void test07(){
 
 void test08(){
 	std::cout<<"08 Single angle connection"<<std::endl;
-	auto c1 = HMCont2D::Constructor::Circle(36, 3, Point(0, 0));
-	HMCont2D::PCollection apoints;
-	apoints.add_value(Point(3, -3));
-	HMCont2D::Contour con1 = HMCont2D::Assembler::Contour1(c1,
-			HMCont2D::ECollection::FindClosestNode(c1, Point(3,0)),
-			HMCont2D::ECollection::FindClosestNode(c1, Point(0,-3)));
-	con1.add_value(HMCont2D::Edge(con1.last(), apoints.point(0)));
-	con1.add_value(HMCont2D::Edge(apoints.point(0), con1.first()));
+	auto c1 = HM2D::Contour::Constructor::Circle(36, 3, Point(0, 0));
+	auto vc1 = HM2D::AllVertices(c1);
+	HM2D::VertexData apoints;
+	apoints.emplace_back(new HM2D::Vertex(3, -3));
+	Point *p0, *p1;
+	p0 = vc1[std::get<0>(HM2D::FindClosestNode(vc1, Point(3,0)))].get();
+	p1 = vc1[std::get<0>(HM2D::FindClosestNode(vc1, Point(0,-3)))].get();
+	HM2D::EdgeData con1 = HM2D::Contour::Assembler::Contour1(c1, p0, p1);
+	con1.emplace_back(new HM2D::Edge(HM2D::Contour::Last(con1), apoints[0]));
+	con1.emplace_back(new HM2D::Edge(apoints[0], HM2D::Contour::First(con1)));
 
 	HMBlay::Input inp1;
 	inp1.bnd_step_method = HMBlay::MethFromString("KEEP_SHAPE");
@@ -387,7 +394,7 @@ void test09(){
 
 void test10(){
 	std::cout<<"10. right + re-entrant angle"<<std::endl;
-	auto c = HMCont2D::Constructor::ContourFromPoints(
+	auto c = HM2D::Contour::Constructor::FromPoints(
 		{0,0, 2,0, 2.3,-1,  5,-1});
 	HMBlay::Input inp1;
 	inp1.bnd_step_method = HMBlay::MethFromString("KEEP_SHAPE");
@@ -407,7 +414,7 @@ void test10(){
 
 void test11(){
 	std::cout<<"11. Acute angle"<<std::endl;
-	auto c = HMCont2D::Constructor::ContourFromPoints(
+	auto c = HM2D::Contour::Constructor::FromPoints(
 			{-10,0, 5,0, 0,1.5});
 	HMBlay::Input inp1;
 	inp1.bnd_step_method = HMBlay::MethFromString("KEEP_SHAPE");
@@ -433,7 +440,7 @@ void test11(){
 
 void test12(){
 	std::cout<<"12. Different kinds of reflex angles"<<std::endl;
-	auto c = HMCont2D::Constructor::ContourFromPoints(
+	auto c = HM2D::Contour::Constructor::FromPoints(
 			{0,0, 1,0.3, 2,0, 1.8,-3, 1.5,-1});
 
 	HMBlay::Input inp1;
@@ -459,7 +466,7 @@ void test13(){
 	auto g1 = GGeom::Constructor::RectGrid(Point(0,0), Point(30, 10), 90, 30);
 	//g2
 	HMBlay::Input inp1, inp2;
-	auto c = HMCont2D::Constructor::ContourFromPoints({0, 0, 30, 0});
+	auto c = HM2D::Contour::Constructor::FromPoints({0, 0, 30, 0});
 	inp1.bnd_step_method = HMBlay::MethFromString("KEEP_SHAPE");
 	inp1.direction = HMBlay::DirectionFromString("LEFT");
 	inp1.edges = &c;
@@ -468,13 +475,13 @@ void test13(){
 	inp1.end = Point(30, 0);
 	inp1.partition = {0, 0.03, 0.07, 0.12, 0.2, 0.3, 0.45, 0.7};
 	GridGeom g2_1 = HMBlay::BuildBLayerGrid({inp1});
-	c = HMCont2D::Constructor::ContourFromPoints({30, 10, 0, 10});
+	c = HM2D::Contour::Constructor::FromPoints({30, 10, 0, 10});
 	inp1.edges = &c;
 	inp1.start = Point(30,10); inp1.end = Point(0, 10);
 	GridGeom g2_2 = HMBlay::BuildBLayerGrid({inp1});
 	GridGeom g2 = GridGeom::sum(vector<GridGeom*> {&g2_1, &g2_2});
 	//g3
-	c = HMCont2D::Constructor::Circle(64, 0.5, Point(10, 5));
+	c = HM2D::Contour::Constructor::Circle(64, 0.5, Point(10, 5));
 	inp1.direction = HMBlay::DirectionFromString("RIGHT");
 	inp1.edges = &c;
 	inp1.bnd_step = 0.05;
@@ -505,10 +512,10 @@ void test13(){
 	delete gr1; delete gr2; delete gr3; delete gr4;
 }
 
-GridGeom* grid_minus_cont(GridGeom& g, const HMCont2D::Contour& cont){
+GridGeom* grid_minus_cont(GridGeom& g, const HM2D::EdgeData& cont){
 	vector<Point> pp;
 	vector<int> eds;
-	for (auto p: cont.ordered_points()) pp.push_back(*p);
+	for (auto p: HM2D::Contour::OrderedPoints(cont)) pp.push_back(*p);
 	pp.resize(pp.size()-1);
 	for (int i=0; i<pp.size(); ++i){
 		eds.push_back(i);
@@ -527,17 +534,17 @@ void test14(){
 	auto fy = [](double t){ return 0.013*(-sin(2.0*M_PI*5.0*t)); };
 	double h=0.01;
 	double t=1-h;
-	HMCont2D::PCollection pc1;
+	HM2D::VertexData pc1;
 	while (t>h/2.0){
-		pc1.add_value(Point(fx(t)+0.08*t, t));
+		pc1.emplace_back(new HM2D::Vertex(fx(t)+0.08*t, t));
 		t-=h;
 	}
 	while (t<1+h/2.0){
-		pc1.add_value(Point(t, fy(t)));
+		pc1.emplace_back(new HM2D::Vertex(t, fy(t)));
 		t+=h;
 	}
-	pc1.add_value(Point(1,1));
-	auto c1 = HMCont2D::Constructor::ContourFromPoints(pc1, true); 
+	pc1.emplace_back(new HM2D::Vertex(1,1));
+	auto c1 = HM2D::Contour::Assembler::Contour1(pc1, true); 
 	HMBlay::Input inp1;
 	inp1.bnd_step_method = HMBlay::MethFromString("IGNORE_ALL");
 	inp1.direction = HMBlay::DirectionFromString("LEFT");
@@ -546,11 +553,11 @@ void test14(){
 	inp1.force_conformal = true;
 	inp1.partition = {0, 0.01, 0.02, 0.03, 0.04, 0.053, 0.07, 0.095, 0.12};
 
-	HMCont2D::SaveVtk(c1, "ecol.vtk");
+	HM2D::Export::ContourVTK(c1, "ecol.vtk");
 
 	GridGeom g1 = HMBlay::BuildBLayerGrid({inp1});
 	GridGeom basgrid1 = GGeom::Constructor::RectGrid(Point(-0.1, -0.1), Point(1.1, 1.1), 30, 30);
-	GridGeom* b1 = grid_minus_cont(basgrid1, *GGeom::Info::Contour(g1).roots()[0]);
+	GridGeom* b1 = grid_minus_cont(basgrid1, GGeom::Info::Contour(g1).roots()[0]->contour);
 	GridGeom* gr1 = GridGeom::cross_grids(b1, &g1, 0.03, 7, false, false, 0, 0, HMCallback::to_cout2);
 	GGeom::Modify::SimplifyBoundary(*gr1, M_PI/4);
 	add_check(fabs(gr1->area() - 0.955398)<1e-5, "Square with curved boundary");
@@ -566,19 +573,19 @@ void test14(){
 	pc2.push_back(Point(4, 0.4));
 	pc2.push_back(Point(4, 1.5));
 	pc2.push_back(Point(-1, 1.0));
-	auto c2 = HMCont2D::Constructor::ContourFromPoints(pc2, true);
+	auto c2 = HM2D::Contour::Constructor::FromPoints(pc2, true);
 	inp1.edges=&c2;
 	inp1.bnd_step = 0.02;
 	inp1.start =inp1.end = Point(0, 0);
 	GridGeom g2 = HMBlay::BuildBLayerGrid({inp1});
 	GridGeom basgrid2 = GGeom::Constructor::RectGrid(Point(-2.1, -1.1), Point(2.8, 2.1), 150, 100);
-	GridGeom* b2 = grid_minus_cont(basgrid2, *GGeom::Info::Contour(g2).roots()[0]);
+	GridGeom* b2 = grid_minus_cont(basgrid2, GGeom::Info::Contour(g2).roots()[0]->contour);
 	GridGeom* gr2 = GridGeom::cross_grids(b2, &g2, 0.03, 7, false, false, 0, 0, HMCallback::to_cout2);
 	GGeom::Modify::SimplifyBoundary(*gr2, M_PI/4);
 	add_check(fabs(gr2->area() - 6.26758)<1e-5, "Reentrant area with a hole");
 
 	//acute angle
-	auto c3 = HMCont2D::Constructor::ContourFromPoints(
+	auto c3 = HM2D::Contour::Constructor::FromPoints(
 			{0,0, 5,0, 0,1.5}, true);
 	HMBlay::Input inp2;
 	inp2.bnd_step_method = HMBlay::MethFromString("KEEP_SHAPE");
@@ -599,8 +606,8 @@ void test14(){
 void test15(){
 	std::cout<<"15. Geometry noise"<<std::endl;
 
-	auto c1 = HMCont2D::Constructor::ContourFromPoints({0,0, 0.5, -0.03, 0.55, 0, 0.68, 0, 0.7, 0.02, 0.75, 0, 1, 0, 1.01, -0.02, 1.03, 0, 1.1, 0}); 
-	HMCont2D::SaveVtk(c1, "c15.vtk");
+	auto c1 = HM2D::Contour::Constructor::FromPoints({0,0, 0.5, -0.03, 0.55, 0, 0.68, 0, 0.7, 0.02, 0.75, 0, 1, 0, 1.01, -0.02, 1.03, 0, 1.1, 0}); 
+	HM2D::Export::ContourVTK(c1, "c15.vtk");
 	HMBlay::Input inp1;
 	inp1.bnd_step_method = HMBlay::MethFromString("KEEP_SHAPE");
 	inp1.direction = HMBlay::DirectionFromString("LEFT");
@@ -619,12 +626,13 @@ void test16(){
 	GridGeom gcirc = GGeom::Constructor::Ring(Point(0, 0), 1, 0.6, 34, 5);
 
 	//2) get boundary from it
-	HMCont2D::ContourTree gcont = GGeom::Info::Contour(gcirc);
+	HM2D::Contour::Tree gcont = GGeom::Info::Contour(gcirc);
+	auto _ae = gcont.alledges();
 	//3) build a boundary layer around it
 	HMBlay::Input inp1;
 	inp1.bnd_step_method = HMBlay::MethFromString("IGNORE_ALL");
 	inp1.direction = HMBlay::DirectionFromString("LEFT");
-	inp1.edges = &gcont;
+	inp1.edges = &_ae;
 	inp1.bnd_step = 0.06;
 	inp1.start = Point(1, 0);
 	inp1.end = Point(1, 1);
@@ -689,8 +697,8 @@ void test17(){
 	inppts.push_back(Point(0, 0));
 	inppts.insert(inppts.end(), inpx.begin(), inpx.end());
 
-	HMCont2D::Container<HMCont2D::Contour>
-	cont = HMCont2D::Constructor::ContourFromPoints(inppts, false);
+	HM2D::EdgeData
+	cont = HM2D::Contour::Constructor::FromPoints(inppts, false);
 
 	HMBlay::Input inp1;
 	inp1.bnd_step_method = HMBlay::MethFromString("NO");
@@ -703,17 +711,17 @@ void test17(){
 	GridGeom bgrid1 = HMBlay::BuildBLayerGrid({inp1}); 
 	auto bcont1 = GGeom::Info::Contour(bgrid1);
 	add_check(bgrid1.n_points() == 141 &&
-		bcont1.IsWithin(Point(-0.02+1e-3, 0.1)) &&
-		bcont1.IsWithin(Point(1.88046632081399, 0.209839818196609)),
+		bcont1.whereis(Point(-0.02+1e-3, 0.1)) == INSIDE &&
+		bcont1.whereis(Point(1.88046632081399, 0.209839818196609)) == INSIDE,
 		"one section with zig-zag bottom and left");
-	HMCont2D::SaveVtk(cont, "t17_1.vtk");
+	HM2D::Export::ContourVTK(cont, "t17_1.vtk");
 
 	inp1.start = Point(-0.02, 1.9);
 	GridGeom bgrid2 = HMBlay::BuildBLayerGrid({inp1});
 	auto bcont2 = GGeom::Info::Contour(bgrid2);
 	add_check(bgrid2.n_points() == 297 &&
-		bcont2.IsWithin(Point(-0.02+1e-3, 0.1)) &&
-		bcont2.IsWithout(Point(0.1, 0.0168026937561729)),
+		bcont2.whereis(Point(-0.02+1e-3, 0.1)) == INSIDE &&
+		bcont2.whereis(Point(0.1, 0.0168026937561729)) == OUTSIDE,
 		"zig-zag bottom and left sections with right angle");
 
 	inp1.bnd_step_method = HMBlay::MethFromString("IGNORE_ALL");
@@ -721,9 +729,9 @@ void test17(){
 	GridGeom bgrid3 = HMBlay::BuildBLayerGrid({inp1});
 	auto bcont3 = GGeom::Info::Contour(bgrid2);
 	add_check(bgrid3.n_points() == 722 &&
-		bcont3.IsWithin(Point(-0.02+1e-3, 0.1)) &&
-		bcont3.IsWithout(Point(0.1, 0.0168026937561729)) && 
-		bcont3.IsWithout(Point(0.0161764309193625, 1.80159049128253)),
+		bcont3.whereis(Point(-0.02+1e-3, 0.1)) == INSIDE &&
+		bcont3.whereis(Point(0.1, 0.0168026937561729)) == OUTSIDE && 
+		bcont3.whereis(Point(0.0161764309193625, 1.80159049128253)) == OUTSIDE,
 		"same with ignore_all option");
 }
 

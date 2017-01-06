@@ -7,25 +7,29 @@
 #include "scpack_port.hpp"
 #include "dscpack_port.hpp"
 #include "confrect_fem.hpp"
+#include "constructor.hpp"
+#include "cont_partition.hpp"
+#include "treverter2d.hpp"
+#include "cont_assembler.hpp"
 using HMTesting::add_check;
 using HMTesting::add_file_check;
 
 void test01(){
 	using namespace HMMap::Conformal::Impl::SCPack;
 	std::cout<<"01. SCPACK conformal mapping"<<std::endl;
-	auto left = HMCont2D::Constructor::ContourFromPoints({
+	auto left = HM2D::Contour::Constructor::FromPoints({
 			Point {0.4, 0.2},
 			Point {0.47662610, 0.22298783},
 		});
-	auto bottom = HMCont2D::Constructor::ContourFromPoints({
+	auto bottom = HM2D::Contour::Constructor::FromPoints({
 			Point {0.4, 0.2},
 			Point {0.46, 0.0},
 		});
-	auto right = HMCont2D::Constructor::ContourFromPoints({
+	auto right = HM2D::Contour::Constructor::FromPoints({
 			Point {0.46, 0.0},
 			Point {0.53990000, -0.00000002},
 			});
-	auto top = HMCont2D::Constructor::ContourFromPoints({
+	auto top = HM2D::Contour::Constructor::FromPoints({
 			Point {0.47662610, 0.22298783},
 			Point {0.53662610, 0.02298783},
 			Point {0.53909957, 0.01196903},
@@ -49,20 +53,20 @@ void test01(){
 void test02(){
 	using namespace HMMap::Conformal::Impl;
 	std::cout<<"02. Rectangle approximation of conformal mapping"<<std::endl;
-	auto top = HMCont2D::Constructor::ContourFromPoints({
+	auto top = HM2D::Contour::Constructor::FromPoints({
 		Point{0.43701993, 0.07659573},
 		Point{0.44410482, 0.07840499},
 		Point{0.45201250, 0.07960025},
 		Point{0.46000000, 0.08000000},
 		Point{1.00000000, 0.08000000}});
 
-	auto right = HMCont2D::Constructor::ContourFromPoints({
+	auto right = HM2D::Contour::Constructor::FromPoints({
 		Point(1,0), Point(1,0.08)});
 
-	auto bottom = HMCont2D::Constructor::ContourFromPoints({
+	auto bottom = HM2D::Contour::Constructor::FromPoints({
 		Point(0.46, 0.0), Point(1.0, 0.0)});
 
-	auto left = HMCont2D::Constructor::ContourFromPoints({
+	auto left = HM2D::Contour::Constructor::FromPoints({
 		Point(0.46, 0.0), Point(0.43701993, 0.07659573)});
 	auto trans = RectApprox::Build(left, right, bottom, top);
 	add_check(fabs(trans->module()-6.89702)<1e-5, "module");
@@ -85,8 +89,8 @@ void test03(){
 	using namespace HMMap::Conformal::Impl::DSCPack;
 	std::cout<<"03. DSCPack conformal mapping"<<std::endl;
 
-	auto bot1 = HMCont2D::Constructor::Circle(8, 2, Point(0,0.1));
-	auto top1 = HMCont2D::Constructor::Circle(10, 4, Point(0,0.1));
+	auto bot1 = HM2D::Contour::Constructor::Circle(8, 2, Point(0,0.1));
+	auto top1 = HM2D::Contour::Constructor::Circle(10, 4, Point(0,0.1));
 	auto trans1 = ToAnnulus::Build(top1, bot1);
 
 	auto p10 = vector<Point> {Point(2.5, 1.5)};
@@ -103,7 +107,7 @@ void test03(){
 void test04(){
 	std::cout<<"04. Conformal mapping to rectangle: FEM vs SCPACK"<<std::endl;
 	int sz1 = 13;
-	auto r1 = HMCont2D::Constructor::Circle(sz1, 10, Point(0,0));
+	auto r1 = HM2D::Contour::Constructor::Circle(sz1, 10, Point(0,0));
 	auto inp1 = HMMap::Conformal::Rect::FactoryInput(r1, {0, sz1/4, sz1/2, 3*sz1/4});
 	Point po(7.2, 1.1);
 
@@ -142,11 +146,11 @@ void test04(){
 void test05(){
 	std::cout<<"05. Conformal mapping to annulus: FEM vs DSCPACK"<<std::endl;
 
-	auto top = HMCont2D::Constructor::Circle(12, 1.5, Point(10,0.1));
-	auto bot = HMCont2D::Constructor::Circle(5, 0.4, Point(10.5,0.2));
+	auto top = HM2D::Contour::Constructor::Circle(12, 1.5, Point(10,0.1));
+	auto bot = HM2D::Contour::Constructor::Circle(5, 0.4, Point(10.5,0.2));
 	vector<Point> topp, botp;
-	for (auto p: top.ordered_points()) topp.push_back(*p); topp.pop_back();
-	for (auto p: bot.ordered_points()) botp.push_back(*p); botp.pop_back();
+	for (auto p: HM2D::Contour::OrderedPoints(top)) topp.push_back(*p); topp.pop_back();
+	for (auto p: HM2D::Contour::OrderedPoints(bot)) botp.push_back(*p); botp.pop_back();
 
 	Point tp(11.12415, 0.40282);
 
@@ -184,7 +188,7 @@ void test05(){
 void test06(){
 	std::cout<<"06. Map grid from square"<<std::endl;
 	GridGeom base = GGeom::Constructor::RectGrid01(10, 10);
-	auto cont = HMCont2D::Constructor::ContourFromPoints({0,0, 1,0, 1.5, 1, 1, 1.3, 0.7, 1.0}, true);
+	auto cont = HM2D::Contour::Constructor::FromPoints({0,0, 1,0, 1.5, 1, 1, 1.3, 0.7, 1.0}, true);
 	GridGeom mapped = HMMap::MapGrid(base, cont,
 		std::vector<Point>{Point(0, 0), Point(1, 0), Point(1,1), Point(0, 1)},
 		std::vector<Point>{Point(0, 0), Point(1, 0), Point(1.5, 1), Point(0.7, 1.0)},
@@ -193,7 +197,7 @@ void test06(){
 	add_check(base.n_cells() == mapped.n_cells(), "cells number");
 	add_check(base.n_points() == mapped.n_points(), "nodes number");
 	add_check([&](){
-		double a1 = HMCont2D::Area(cont);
+		double a1 = HM2D::Contour::Area(cont);
 		double a2 = GGeom::Info::Area(mapped);
 		if (a2>a1) return false;
 		if (a1<0.9*a2) return false;
@@ -206,11 +210,11 @@ void test07(){
 	std::cout<<"07. Throw at invalid data"<<std::endl;
 	GridGeom base = GGeom::Constructor::Ring(Point(1,1), 2, 1, 36, 6);
 
-	auto c1 = HMCont2D::Constructor::Circle(4, 5, Point(0, 0));
-	auto c2 = HMCont2D::Constructor::Circle(18, 2, Point(0, 0.1));
-	HMCont2D::ECollection ecol;
-	ecol.Unite(c1);
-	ecol.Unite(c2);
+	auto c1 = HM2D::Contour::Constructor::Circle(4, 5, Point(0, 0));
+	auto c2 = HM2D::Contour::Constructor::Circle(18, 2, Point(0, 0.1));
+	HM2D::EdgeData ecol;
+	ecol.insert(ecol.end(), c1.begin(), c1.end());
+	ecol.insert(ecol.end(), c2.begin(), c2.end());
 
 	bool was_err1 = false;
 	try{
@@ -264,9 +268,9 @@ void test07(){
 void test08(){
 	std::cout<<"08. Circle vs rectangle"<<std::endl;
 	GridGeom circgrid = GGeom::Constructor::Circle(Point(2, 3), 2, 16, 6, false);
-	auto cont4 = HMCont2D::Constructor::ContourFromPoints({0,0, 3,0, 3,2, 0,2}, true);
+	auto cont4 = HM2D::Contour::Constructor::FromPoints({0,0, 3,0, 3,2, 0,2}, true);
 	GridGeom rectgrid = GGeom::Constructor::RectGrid01(5, 7);
-	auto contc = HMCont2D::Constructor::Circle(200, 16, Point(8, 9));
+	auto contc = HM2D::Contour::Constructor::Circle(200, 16, Point(8, 9));
 
 	GridGeom ans1 = HMMap::MapGrid(circgrid, cont4,
 			std::vector<Point> {Point(4, 3)},
@@ -304,7 +308,7 @@ void test08(){
 void test09(){
 	std::cout<<"09. Snapping"<<std::endl;
 	GridGeom rectgrid = GGeom::Constructor::RectGrid01(10, 10);
-	auto mcont = HMCont2D::Constructor::ContourFromPoints(
+	auto mcont = HM2D::Contour::Constructor::FromPoints(
 		{0,0, 2,2, 1,3, -4,3}, true);
 	HMMap::Options opt("inverse-laplace");
 	opt.fem_nrec = 5000;
@@ -313,14 +317,14 @@ void test09(){
 	GridGeom ans1 = HMMap::MapGrid(rectgrid, mcont,
 			std::vector<Point> {Point(0, 0)},
 			std::vector<Point> {Point(0, 0)}, false, opt);
-	add_check(fabs(HMCont2D::Area(mcont) - GGeom::Info::Area(ans1))<1e-12 &&
+	add_check(fabs(HM2D::Contour::Area(mcont) - GGeom::Info::Area(ans1))<1e-12 &&
 	          rectgrid.n_points() + 3 == ans1.n_points(),
 		"snapping by adding points");
 	GGeom::Export::GridVTK(ans1, "ans1.vtk");
 
 	opt.snap = "SHIFT_VERTICES";
 	GridGeom ans2 = HMMap::MapGrid(rectgrid, mcont, vector<Point>{Point(0,0)}, vector<Point> {Point(0,0)}, false, opt);
-	add_check(fabs(HMCont2D::Area(mcont) - GGeom::Info::Area(ans2))<1e-12 &&
+	add_check(fabs(HM2D::Contour::Area(mcont) - GGeom::Info::Area(ans2))<1e-12 &&
 	          rectgrid.n_points() == ans2.n_points(),
 		"snapping by shifting points");
 	GGeom::Export::GridVTK(ans2, "ans2.vtk");
@@ -363,7 +367,7 @@ void test10(){
 void test11(){
 	std::cout<<"11. M-like target"<<std::endl;
 	GridGeom g1 = GGeom::Constructor::RectGrid01(10, 10);
-	auto cont = HMCont2D::Constructor::ContourFromPoints({0,0, 1,0, 1,1, 0.5, 0.2, 0,1}, true);
+	auto cont = HM2D::Contour::Constructor::FromPoints({0,0, 1,0, 1,1, 0.5, 0.2, 0,1}, true);
 
 	auto ans = HMMap::MapGrid.Silent(g1, cont,
 			std::vector<Point> {Point(0,0), Point(1,0), Point(1,1), Point(0,1)},
@@ -383,28 +387,41 @@ void test11(){
 	add_file_check(4588482714625395358U, "g1.vtk", "m-like base, direct");
 }
 
+HM2D::EdgeData PerturbedContour(Point p1, Point p2, int npart,
+		std::function<double(double)> perturbation){
+	vector<Point> pp(npart+1);
+	pp[0] = p1;
+	pp.back() = p2;
+	Vect pvec = p2 - p1;
+	for (int i=1; i<npart; ++i){
+		double t = (double)i/(npart);
+		double m = perturbation(t);
+		Vect perpvec(-pvec.y, pvec.x);
+		if (m<0) perpvec *= -1.0;
+		vecSetLen(perpvec, fabs(m));
+		pp[i] = Point::Weigh(p1, p2, t);
+		pp[i] += perpvec;
+	}
+	return HM2D::Contour::Constructor::FromPoints(pp);
+}
+
 void test12(){
 	std::cout<<"12. Orthonal grid in curvilinear quadrangle"<<std::endl;
 	{
 		//initial contours
-		HMCont2D::PCollection pcol;
-		auto left1 = HMCont2D::Constructor::PerturbedContour(Point(0, 0), Point(-0.11, 1), 100,
+		HM2D::VertexData pcol;
+		auto left1 = PerturbedContour(Point(0, 0), Point(-0.11, 1), 100,
 				[](double x){ return 0.2*sin(2*M_PI*x); });
-		auto bot1 = HMCont2D::Constructor::PerturbedContour(Point(0, 0), Point(3, 0), 100,
+		auto bot1 = PerturbedContour(Point(0, 0), Point(3, 0), 100,
 				[](double x){ return 0.13*sin(8*M_PI*x); });
-		auto right1 = HMCont2D::Constructor::PerturbedContour(Point(3, 0), Point(3.06, 1), 100,
+		auto right1 = PerturbedContour(Point(3, 0), Point(3.06, 1), 100,
 				[](double x){ return 0.07*sin(4*M_PI*x); });
-		auto top1 = HMCont2D::Constructor::PerturbedContour(Point(-0.11, 1), Point(3.06, 1), 100,
+		auto top1 = PerturbedContour(Point(-0.11, 1), Point(3.06, 1), 100,
 				[](double x){ return 0.1*sin(6*M_PI*x); });
 		//partition
-		auto left = HMCont2D::Algos::Partition(0.1, left1, pcol);
-		auto bot = HMCont2D::Algos::Partition(0.1, bot1, pcol);
+		auto left = HM2D::Contour::Algos::Partition(0.1, left1);
+		auto bot = HM2D::Contour::Algos::Partition(0.1, bot1);
 		//build grid
-		HMCont2D::ECollection ecol;
-		ecol.Unite(left);
-		ecol.Unite(bot);
-		ecol.Unite(right1);
-		ecol.Unite(top1);
 		GridGeom ans = HMMap::OrthogonalRectGrid(left, bot, right1, top1);
 		GGeom::Export::GridVTK(ans, "g1.vtk");
 		add_file_check(15045105319010820220U, "g1.vtk", "grid");
@@ -413,26 +430,25 @@ void test12(){
 void test13(){
 	std::cout<<"13. Laplace algorithms for custom rectangle"<<std::endl;
 	{
-		auto left1 = HMCont2D::Constructor::PerturbedContour(Point(-0.1, -0.1), Point(-0.0, 0.98), 100,
+		auto left1 = PerturbedContour(Point(-0.1, -0.1), Point(-0.0, 0.98), 100,
 				[](double x){ return 0.1*sin(M_PI*x); });
-		auto bot1 = HMCont2D::Constructor::PerturbedContour(Point(-0.1, -0.1), Point(2.1, 0.1), 100,
+		auto bot1 = PerturbedContour(Point(-0.1, -0.1), Point(2.1, 0.1), 100,
 				[](double x){ return 0.05*sin(2*M_PI*x); });
-		auto right1 = HMCont2D::Constructor::PerturbedContour(Point(2.1, 0.1), Point(2.8, 1.4), 100,
+		auto right1 = PerturbedContour(Point(2.1, 0.1), Point(2.8, 1.4), 100,
 				[](double x){ return 0.07*sin(4*M_PI*x); });
-		auto top1 = HMCont2D::Constructor::PerturbedContour(Point(-0.0, 0.98), Point(2.8, 1.4), 100,
+		auto top1 = PerturbedContour(Point(-0.0, 0.98), Point(2.8, 1.4), 100,
 				[](double x){ return 0.05*sin(8*M_PI*x); });
 		std::map<double, double> m;
-		HMCont2D::PCollection pcol;
 
 		m.clear(); m[0] = 0.2; m[0.3] = 0.03; m[1]=0.1;
-		auto left = HMCont2D::Algos::WeightedPartition(m, left1, pcol);
+		auto left = HM2D::Contour::Algos::WeightedPartition(m, left1);
 		m.clear(); m[0] = 0.1; m[0.5]=0.07; m[1]=0.15;
-		auto right = HMCont2D::Algos::WeightedPartition(m, right1, pcol);
+		auto right = HM2D::Contour::Algos::WeightedPartition(m, right1);
 
 		m.clear(); m[0] = 0.02; m[0.6]=0.2; m[1.0]=0.07;
-		auto bot = HMCont2D::Algos::WeightedPartition(m, bot1, pcol);
+		auto bot = HM2D::Contour::Algos::WeightedPartition(m, bot1);
 		m.clear(); m[0] = 0.04; m[0.3]=0.2; m[1.0]=0.09;
-		auto top = HMCont2D::Algos::WeightedPartition(m, top1, pcol);
+		auto top = HM2D::Contour::Algos::WeightedPartition(m, top1);
 
 		GridGeom ans1 = HMMap::LaplaceRectGrid(left, bot, right, top, "inverse-laplace");
 		GGeom::Export::GridVTK(ans1, "g1.vtk");
@@ -448,37 +464,40 @@ void test13(){
 
 void test14(){
 	std::cout<<"14. Different source locations for custom rectangle"<<std::endl;
-	auto left1 = HMCont2D::Constructor::PerturbedContour(Point(0.1, -0.1), Point(0.0, 1.3), 10,
+	auto left1 = PerturbedContour(Point(0.1, -0.1), Point(0.0, 1.3), 10,
 			[](double x){ return 0.03*sin(M_PI*x); });
-	auto bot1 = HMCont2D::Constructor::PerturbedContour(Point(0.1, -0.1), Point(3, 0), 25,
+	auto bot1 = PerturbedContour(Point(0.1, -0.1), Point(3, 0), 25,
 			[](double x){ return 0.05*sin(2*M_PI*x); });
-	auto right1 = HMCont2D::Constructor::PerturbedContour(Point(3, 0), Point(3.2, 1.0), 10,
+	auto right1 = PerturbedContour(Point(3, 0), Point(3.2, 1.0), 10,
 			[](double x){ return 0.07*sin(4*M_PI*x); });
-	auto top1 = HMCont2D::Constructor::PerturbedContour(Point(0.0, 1.3), Point(3.2, 1.0), 25,
+	auto top1 = PerturbedContour(Point(0.0, 1.3), Point(3.2, 1.0), 25,
 			[](double x){ return 0.02*sin(8*M_PI*x); });
 	GridGeom ans = HMMap::LaplaceRectGrid(left1, bot1, right1, top1, "direct-laplace");
 	GGeom::Export::GridVTK(ans, "g1.vtk");
 	//Inversions
 	{
-		auto top = HMCont2D::Constructor::ContourFromPoints(top1.ordered_points());
-		top.ReallyReverse();
+		auto top = HM2D::Contour::Assembler::Contour1(HM2D::Contour::OrderedPoints(top1));
+		HM2D::Contour::ReallyRevert::Permanent(top);
 		GridGeom ans1 = HMMap::LaplaceRectGrid(left1, bot1, right1, top, "direct-laplace");
 		GGeom::Export::GridVTK(ans1, "g2.vtk");
 		add_file_check("g1.vtk", "g2.vtk", "top reversed");
 	}
 	{
-		auto left = HMCont2D::Constructor::ContourFromPoints(left1.ordered_points());
-		left.ReallyReverse();
+		auto left = HM2D::Contour::Assembler::Contour1(HM2D::Contour::OrderedPoints(left1));
+		HM2D::Contour::ReallyRevert::Permanent(left);
 		GridGeom ans1 = HMMap::LaplaceRectGrid(left, bot1, right1, top1, "direct-laplace");
 		GGeom::Export::GridVTK(ans1, "g2.vtk");
 		add_file_check("g1.vtk", "g2.vtk", "left reversed");
 	}
 	{
-		auto top = HMCont2D::Constructor::ContourFromPoints(top1.ordered_points());
-		auto left = HMCont2D::Constructor::ContourFromPoints(left1.ordered_points());
-		auto bot = HMCont2D::Constructor::ContourFromPoints(bot1.ordered_points());
-		auto right = HMCont2D::Constructor::ContourFromPoints(right1.ordered_points());
-		top.ReallyReverse(); left.ReallyReverse(); bot.ReallyReverse(); right.ReallyReverse();
+		auto top = HM2D::Contour::Assembler::Contour1(HM2D::Contour::OrderedPoints(top1));
+		auto left = HM2D::Contour::Assembler::Contour1(HM2D::Contour::OrderedPoints(left1));
+		auto bot = HM2D::Contour::Assembler::Contour1(HM2D::Contour::OrderedPoints(bot1));
+		auto right = HM2D::Contour::Assembler::Contour1(HM2D::Contour::OrderedPoints(right1));
+		HM2D::Contour::ReallyRevert::Permanent(top);
+		HM2D::Contour::ReallyRevert::Permanent(left);
+		HM2D::Contour::ReallyRevert::Permanent(bot);
+		HM2D::Contour::ReallyRevert::Permanent(right);
 		GridGeom ans1 = HMMap::LaplaceRectGrid(left, bot, right, top, "direct-laplace");
 		GGeom::Export::GridVTK(ans1, "g2.vtk");
 		add_file_check("g1.vtk", "g2.vtk", "all reversed");
@@ -495,32 +514,34 @@ void test14(){
 		add_check(ISEQ(GGeom::Info::Area(ans1), GGeom::Info::Area(ans)), "right->bot->left->top");
 	}
 	{
-		auto top = HMCont2D::Constructor::ContourFromPoints(top1.ordered_points());
-		top.ReallyReverse();
+		auto top = HM2D::Contour::Assembler::Contour1(HM2D::Contour::OrderedPoints(top1));
+		HM2D::Contour::ReallyRevert::Permanent(top);
 		GridGeom ans1 = HMMap::LaplaceRectGrid(top, right1, bot1, left1, "direct-laplace");
 		GGeom::Export::GridVTK(ans1, "g2.vtk");
 		add_check(ISEQ(GGeom::Info::Area(ans1), GGeom::Info::Area(ans)), "top->right->bot->left");
 	}
 	//not connected data
 	{
-		HMCont2D::PCollection pcol;
-		auto top = HMCont2D::Constructor::ContourFromPoints(top1.ordered_points());
-		auto left = HMCont2D::Constructor::ContourFromPoints(left1.ordered_points());
-		auto bot = HMCont2D::Constructor::ContourFromPoints(bot1.ordered_points());
-		auto right = HMCont2D::Constructor::ContourFromPoints(right1.ordered_points());
-		top.ReallocatePoints(pcol); left.ReallocatePoints(pcol);
-		bot.ReallocatePoints(pcol); right.ReallocatePoints(pcol);
+		auto top2 = HM2D::Contour::Assembler::Contour1(HM2D::Contour::OrderedPoints(top1));
+		auto left2 = HM2D::Contour::Assembler::Contour1(HM2D::Contour::OrderedPoints(left1));
+		auto bot2 = HM2D::Contour::Assembler::Contour1(HM2D::Contour::OrderedPoints(bot1));
+		auto right2 = HM2D::Contour::Assembler::Contour1(HM2D::Contour::OrderedPoints(right1));
+		HM2D::EdgeData top, left, bot, right;
+		HM2D::DeepCopy(top2, top);
+		HM2D::DeepCopy(left2, left);
+		HM2D::DeepCopy(right2, right);
+		HM2D::DeepCopy(bot2, bot);
 
-		left.ReallyReverse();
-		for (auto p: top.ordered_points()) *p+=Point(0.2, 1.2);
-		for (auto p: right.ordered_points()) *p+=Point(-0.5, 0);
+		HM2D::Contour::ReallyRevert::Permanent(left);
+		for (auto p: HM2D::Contour::OrderedPoints(top)) *p+=Point(0.2, 1.2);
+		for (auto p: HM2D::Contour::OrderedPoints(right)) *p+=Point(-0.5, 0);
 
 		GridGeom ans1 = HMMap::LaplaceRectGrid(left, bot, right, top, "direct-laplace");
 		GGeom::Export::GridVTK(ans1, "g2.vtk");
 		add_check(ISEQ(GGeom::Info::Area(ans1), GGeom::Info::Area(ans)), "moved top, right");
 
-		for (auto p: top.ordered_points()) *p+=Point(0.2, 1.2);
-		for (auto p: right.ordered_points()) *p+=Point(-0.5, 0);
+		for (auto p: HM2D::Contour::OrderedPoints(top)) *p+=Point(0.2, 1.2);
+		for (auto p: HM2D::Contour::OrderedPoints(right)) *p+=Point(-0.5, 0);
 		GridGeom ans2 = HMMap::LaplaceRectGrid(top, left, bot, right, "direct-laplace");
 		GGeom::Export::GridVTK(ans2, "g2.vtk");
 		add_check(ISEQ(GGeom::Info::Area(ans2), GGeom::Info::Area(ans))
@@ -528,26 +549,30 @@ void test14(){
 	}
 	//equal data
 	{
-		HMCont2D::PCollection pcol;
-		auto top = HMCont2D::Constructor::ContourFromPoints(top1.ordered_points());
-		auto left = HMCont2D::Constructor::ContourFromPoints(left1.ordered_points());
-		auto bot = HMCont2D::Constructor::ContourFromPoints(top1.ordered_points());
-		auto right = HMCont2D::Constructor::ContourFromPoints(left1.ordered_points());
-		top.ReallocatePoints(pcol); left.ReallocatePoints(pcol);
-		bot.ReallocatePoints(pcol); right.ReallocatePoints(pcol);
+		auto top2 = HM2D::Contour::Assembler::Contour1(HM2D::Contour::OrderedPoints(top1));
+		auto left2 = HM2D::Contour::Assembler::Contour1(HM2D::Contour::OrderedPoints(left1));
+		auto bot2 = HM2D::Contour::Assembler::Contour1(HM2D::Contour::OrderedPoints(top1));
+		auto right2 = HM2D::Contour::Assembler::Contour1(HM2D::Contour::OrderedPoints(left1));
+		HM2D::EdgeData top, left, bot, right;
+		HM2D::DeepCopy(top2, top);
+		HM2D::DeepCopy(left2, left);
+		HM2D::DeepCopy(right2, right);
+		HM2D::DeepCopy(bot2, bot);
 
 		GridGeom ans1 = HMMap::LaplaceRectGrid(top, left, bot, right, "direct-laplace");
 		GGeom::Export::GridVTK(ans1, "g3.vtk");
 		add_file_check(11091658640678329136U, "g3.vtk", "top & left");
 	}
 	{
-		HMCont2D::PCollection pcol;
-		auto right = HMCont2D::Constructor::ContourFromPoints(right1.ordered_points());
-		auto bot = HMCont2D::Constructor::ContourFromPoints(bot1.ordered_points());
-		auto left = HMCont2D::Constructor::ContourFromPoints(right1.ordered_points());
-		auto top = HMCont2D::Constructor::ContourFromPoints(bot1.ordered_points());
-		top.ReallocatePoints(pcol); left.ReallocatePoints(pcol);
-		bot.ReallocatePoints(pcol); right.ReallocatePoints(pcol);
+		auto top2 = HM2D::Contour::Assembler::Contour1(HM2D::Contour::OrderedPoints(right1));
+		auto left2 = HM2D::Contour::Assembler::Contour1(HM2D::Contour::OrderedPoints(bot1));
+		auto bot2 = HM2D::Contour::Assembler::Contour1(HM2D::Contour::OrderedPoints(right1));
+		auto right2 = HM2D::Contour::Assembler::Contour1(HM2D::Contour::OrderedPoints(bot1));
+		HM2D::EdgeData top, left, bot, right;
+		HM2D::DeepCopy(top2, top);
+		HM2D::DeepCopy(left2, left);
+		HM2D::DeepCopy(right2, right);
+		HM2D::DeepCopy(bot2, bot);
 
 		GridGeom ans1 = HMMap::LaplaceRectGrid(right, bot, left, top, "direct-laplace");
 		GGeom::Export::GridVTK(ans1, "g4.vtk");
@@ -558,34 +583,33 @@ void test14(){
 void test15(){
 	std::cout<<"15. Transfinite Interpolation"<<std::endl;
 	{
-		auto left = HMCont2D::Constructor::ContourFromPoints({0,0, 0,1});
-		auto bot = HMCont2D::Constructor::PerturbedContour(Point(0, 0), Point(1, 0), 100,
+		auto left = HM2D::Contour::Constructor::FromPoints({0,0, 0,1});
+		auto bot = PerturbedContour(Point(0, 0), Point(1, 0), 100,
 			       [](double t){return 0.15*sin(2*M_PI*3*t);});
-		auto right = HMCont2D::Constructor::ContourFromPoints({1,0, 1,1});
-		auto top = HMCont2D::Constructor::ContourFromPoints({0,1, 1,1});
-		HMCont2D::PCollection pcol;
+		auto right = HM2D::Contour::Constructor::FromPoints({1,0, 1,1});
+		auto top = HM2D::Contour::Constructor::FromPoints({0,1, 1,1});
 		std::map<double, double> m;
 		m.clear(); m[0] = 0.05; m[1] = 0.2;
-		auto left1 = HMCont2D::Algos::WeightedPartition(m, left, pcol);
+		auto left1 = HM2D::Contour::Algos::WeightedPartition(m, left);
 		m.clear(); m[0] = 0.2; m[1] = 0.05;
-		auto right1 = HMCont2D::Algos::WeightedPartition(m, right, pcol);
+		auto right1 = HM2D::Contour::Algos::WeightedPartition(m, right);
 		m.clear(); m[0] = 0.018; m[1] = 0.1;
-		auto top1 = HMCont2D::Algos::WeightedPartition(m, top, pcol);
+		auto top1 = HM2D::Contour::Algos::WeightedPartition(m, top);
 		m.clear(); m[0] = 0.16; m[1] = 0.1;
-		auto bot1 = HMCont2D::Algos::WeightedPartition(m, bot, pcol, 21);
+		auto bot1 = HM2D::Contour::Algos::WeightedPartition(m, bot, 21);
 
 		GridGeom g1 = HMMap::LinearTFIRectGrid(left1, bot1, right1, top1);
 		GGeom::Export::GridVTK(g1, "g1.vtk");
 		add_file_check(8469727367193026329U, "g1.vtk", "1.linear tfi");
 	}
 	{
-		auto left = HMCont2D::Constructor::PerturbedContour(Point(0, 0), Point(0.05, 0.9), 10,
+		auto left = PerturbedContour(Point(0, 0), Point(0.05, 0.9), 10,
 				[](double t){return 0.10*sin(2*M_PI*t);});
-		auto bot = HMCont2D::Constructor::PerturbedContour(Point(0, 0), Point(1, 0.1), 7,
+		auto bot = PerturbedContour(Point(0, 0), Point(1, 0.1), 7,
 				[](double t){return 0.04*sin(2*M_PI*1.5*t);});
-		auto right = HMCont2D::Constructor::PerturbedContour(Point(1, 0.1), Point(0.9, 1.05), 10,
+		auto right = PerturbedContour(Point(1, 0.1), Point(0.9, 1.05), 10,
 				[](double t){return 0.07*sin(-2*M_PI*t);});
-		auto top = HMCont2D::Constructor::PerturbedContour(Point(0.05, 0.9), Point(0.9, 1.05), 7,
+		auto top = PerturbedContour(Point(0.05, 0.9), Point(0.9, 1.05), 7,
 				[](double t){return 0.2*sin(M_PI*t);});
 		GridGeom g1 = HMMap::LinearTFIRectGrid(left, bot, right, top);
 		GridGeom g2 = HMMap::CubicTFIRectGrid(left, bot, right, top, {1, 1, 1, 1});

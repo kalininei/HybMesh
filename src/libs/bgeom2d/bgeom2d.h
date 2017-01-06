@@ -271,9 +271,10 @@ public:
 	template<class Iter> static typename std::enable_if<
 		!std::is_base_of<Point, typename Iter::value_type>::value,
 		BoundingBox
-	>::type Build(Iter first, Iter last){
+	>::type Build(Iter first, Iter last, double e=0.){
 		BoundingBox ret((*first)->x, (*first)->y, (*first)->x, (*first)->y);
 		while (first!=last) {ret.WidenWithPoint(**first); ++first;}
+		ret.widen(e);
 		return ret;
 	}
 

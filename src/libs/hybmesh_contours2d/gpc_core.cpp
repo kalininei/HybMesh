@@ -1,13 +1,16 @@
 #include "gpc_core.hpp"
 #include "string.h"
+#include "algos.hpp"
+#include "cont_assembler.hpp"
 
-using namespace HMCont2D::Impl;
+using namespace HM2D::Impl;
+using namespace HM2D;
 
 namespace{
 
-void gpc_fill_vertex_list(gpc_vertex_list& lst, const HMCont2D::Contour& inp){
-	assert(inp.is_closed());
-	auto pts = inp.ordered_points();
+void gpc_fill_vertex_list(gpc_vertex_list& lst, const EdgeData& inp){
+	assert(Contour::IsClosed(inp));
+	auto pts = Contour::OrderedPoints(inp);
 	lst.vertex = (gpc_vertex*)malloc(inp.size()*sizeof(gpc_vertex));
 	for (int i=0; i<inp.size(); ++i){
 		lst.vertex[i].x = pts[i]->x;
@@ -34,8 +37,8 @@ void gpc_copy_polygon(gpc_polygon& to, const gpc_polygon& from){
 }
 
 }
-GpcTree::GpcTree(const HMCont2D::Contour& inp): poly{0, 0, 0}{
-	assert(inp.is_closed());
+GpcTree::GpcTree(const EdgeData& inp): poly{0, 0, 0}{
+	assert(Contour::IsClosed(inp));
 	if (inp.size()>2){
 		poly.num_contours = 1;
 		poly.hole = (int*)malloc(sizeof(int));
@@ -45,24 +48,24 @@ GpcTree::GpcTree(const HMCont2D::Contour& inp): poly{0, 0, 0}{
 	}
 }
 
-GpcTree::GpcTree(const HMCont2D::ContourTree& inp): poly{0, 0, 0}{
+GpcTree::GpcTree(const Contour::Tree& inp): poly{0, 0, 0}{
 	int nc = inp.nodes.size();
 	poly.num_contours = nc;
 	poly.hole = (int*)malloc(sizeof(int)*nc);
 	poly.contour = (gpc_vertex_list*)malloc(sizeof(gpc_vertex_list)*nc);
 	int i=0;
 	for (auto node: inp.nodes){
-		if (node->size()<3) continue;
+		if (node->contour.size()<3) continue;
 		//holes
 		bool is_inner = true;
 		auto upper = node.get();
-		while (upper->parent != 0){
-			upper = upper->parent;
+		while (!upper->parent.expired()){
+			upper = upper->parent.lock().get();
 			is_inner = !is_inner;
 		}
 		poly.hole[i] = is_inner?0:1;
 		//contours
-		gpc_fill_vertex_list(poly.contour[i++], *node);
+		gpc_fill_vertex_list(poly.contour[i++], node->contour);
 	}
 }
 
@@ -87,65 +90,38 @@ GpcTree::~GpcTree(){
 }
 
 
-HMCont2D::Container<HMCont2D::ContourTree> GpcTree::ToContourTree() const{
-	HMCont2D::Container<HMCont2D::ContourTree> res;
+Contour::Tree GpcTree::ToContourTree() const{
+	Contour::Tree res;
 	for (int i=0; i<poly.num_contours; ++i){
 		auto& cont = poly.contour[i];
 		int jmax = cont.num_vertices;
 		if (jmax<3) continue;
-		/*
-		auto hmcont = shared_ptr<HMCont2D::Contour>(new HMCont2D::Contour);
-		//build vector of points
-		ShpVector<Point> shpp; shpp.reserve(poly.contour[i].num_vertices);
-		for (int j=0; j<jmax; ++j){
-			aa::add_shared(shpp, Point(cont.vertex[j].x, cont.vertex[j].y));
-		}
-		//add points
-		res.pdata.add_values(shpp);
-		//add edges to contour
-		for (int j=0; j<jmax-1; ++j){
-			hmcont->add_value(shared_ptr<Edge>(new Edge(shpp[j].get(), shpp[j+1].get())));
-		}
-		hmcont->add_value(shared_ptr<Edge>(new Edge(shpp.back().get(), shpp[0].get())));
-		//add contour to result
-		res.AddContour(hmcont);
-		*/
-		HMCont2D::Container<HMCont2D::ECollection> ecol;
+		VertexData pdata;
 		//build vector of points
 		for (int j=0; j<jmax; ++j){
-			ecol.pdata.add_value(Point(cont.vertex[j].x, cont.vertex[j].y));
+			pdata.emplace_back(new Vertex(cont.vertex[j].x, cont.vertex[j].y));
 		}
 		//add edges to contour
-		for (int j=0; j<jmax-1; ++j){
-			ecol.add_value(shared_ptr<Edge>(
-				new Edge(ecol.pdata.pvalue(j), ecol.pdata.pvalue(j+1))));
-		}
-		ecol.add_value(shared_ptr<Edge>(new Edge(ecol.pdata.data.back().get(), ecol.pdata.data[0].get())));
-		int nump_before = ecol.pdata.size();
-		HMCont2D::Algos::MergePoints(ecol);
-		HMCont2D::Algos::DeleteUnusedPoints(ecol);
+		EdgeData ecol = Contour::Assembler::Contour1(pdata, true);
+		int nump_before = pdata.size();
+		ECol::Algos::MergePoints(ecol);
 		if (ecol.size() < 3) continue; 
-		if (ecol.pdata.size() != nump_before){
-			ecol = HMCont2D::Algos::NoCrosses(ecol);
-			vector<HMCont2D::Contour> ac = HMCont2D::Assembler::AllContours(ecol);
-			vector<HMCont2D::Contour*> closed_ones;
-			for (auto& c: ac) if (c.is_closed()){
+		if (AllVertices(ecol).size() != nump_before){
+			ecol = ECol::Algos::NoCrosses(ecol);
+			vector<EdgeData> ac = Contour::Assembler::AllContours(ecol);
+			vector<EdgeData*> closed_ones;
+			for (auto& c: ac) if (Contour::IsClosed(c)){
 				closed_ones.push_back(&c);
 			}
-			ecol.data.clear();
+			ecol.clear();
 			for (auto cc: closed_ones){
-				ecol.data.insert(ecol.data.end(), cc->data.begin(), cc->data.end());
+				ecol.insert(ecol.end(), cc->begin(), cc->end());
 			}
-			HMCont2D::Algos::DeleteUnusedPoints(ecol);
-			res.pdata.add_values(ecol.pdata.data);
 			for (auto cc:closed_ones) res.AddContour(*cc);
 		} else {
-			auto hmcont = shared_ptr<HMCont2D::Contour>(new HMCont2D::Contour);
-			hmcont->data=std::move(ecol.data);
-			res.pdata.add_values(ecol.pdata.data);
-			assert(hmcont->size()>0 && hmcont->is_closed());
+			assert(ecol.size()>0 && Contour::IsClosed(ecol));
 			//add contour to result
-			res.AddContour(hmcont);
+			res.AddContour(ecol);
 		}
 	}
 	return res;

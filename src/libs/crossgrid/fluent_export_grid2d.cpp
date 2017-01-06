@@ -2,7 +2,8 @@
 #include <sstream>
 #include <unordered_map>
 #include "fluent_export_grid2d.hpp"
-#include "hybmesh_contours2d.hpp"
+#include "primitives2d.hpp"
+#include "cont_assembler.hpp"
 
 namespace hme = GGeom::Export;
 
@@ -158,34 +159,40 @@ std::vector<int> hme::PeriodicData::assemble(const GridGeom& g, vector<Edge>& ed
 	}
 	//build contour collection from boundary grid edges
 	//all edges are directed so that cells are on left side
-	std::vector<HMCont2D::ECollection> ecols;
+	std::vector<HM2D::EdgeData> ecols;
 	for (int i=0; i<btypes.size(); ++i){
 		ecols.emplace_back();
 		for (int k=0; k<bnd_edges.size(); ++k) if (bnd_edges_btp[k] == btypes[i]){
 			Edge* ge = bnd_edges[k];
-			shared_ptr<HMCont2D::Edge> ce( new HMCont2D::Edge(0, 0));
-			ce->pstart = const_cast<GridPoint*>(g.get_point(ge->p1));
-			ce->pend = const_cast<GridPoint*>(g.get_point(ge->p2));
-			if (ge->cell_left<0) std::swap(ce->pstart, ce->pend);
-			ecols.back().data.push_back(ce);
+			shared_ptr<HM2D::Edge> ce( new HM2D::Edge(0, 0));
+			ce->vertices[0] = std::make_shared<HM2D::Vertex>(*g.get_point(ge->p1));
+			ce->vertices[1] = std::make_shared<HM2D::Vertex>(*g.get_point(ge->p2));
+			if (ge->cell_left<0) ce->reverse();
+			ecols.back().push_back(ce);
 		}
 	}
 	//assemble contours
-	std::vector<HMCont2D::Contour> assembled_b_contours;
+	std::vector<HM2D::EdgeData> assembled_b_contours;
 	for (int i=0; i<ecols.size(); ++i){
-		auto ar = HMCont2D::Assembler::AllContours(ecols[i]);
+		auto ar = HM2D::Contour::Assembler::AllContours(ecols[i]);
 		if (ar.size() != 1){
 			throw std::runtime_error("Periodic merging failed");
 		}
 		//check direction
-		if (ar[0].size() > 1 && ar[0].pvalue(0)->pend != ar[0].pvalue(1)->pstart) ar[0].Reverse();
+		if (ar[0].size() > 1 && ar[0][0]->last() != ar[0][1]->first()) HM2D::Contour::Reverse(ar[0]);
 		assembled_b_contours.push_back(std::move(ar[0]));
 	}
 	//map for adressing
-	std::unordered_map<HMCont2D::Edge*, int> e_cont_to_grid;
-	for (auto& it1: assembled_b_contours) for (auto& it2: it1){
-		int p1 = static_cast<GridPoint*>(it2->pstart)->get_ind();
-		int p2 = static_cast<GridPoint*>(it2->pend)->get_ind();
+	std::set<GridPoint> bp;
+	for (auto it: g.get_bnd_points()) bp.insert(*it);
+	
+	std::unordered_map<HM2D::Edge*, int> e_cont_to_grid;
+	for (auto& it1: assembled_b_contours)
+	for (auto& it2: it1){
+		int p1 = bp.find(*it2->first())->get_ind();
+		int p2 = bp.find(*it2->last())->get_ind();
+		//int p1 = static_cast<GridPoint*>(it2->pstart)->get_ind();
+		//int p2 = static_cast<GridPoint*>(it2->pend)->get_ind();
 		int gi;
 		for (gi=0; gi<bnd_edges.size(); ++gi){
 			auto e = bnd_edges[gi];
@@ -197,19 +204,21 @@ std::vector<int> hme::PeriodicData::assemble(const GridGeom& g, vector<Edge>& ed
 		e_cont_to_grid.emplace(it2.get(), bnd_edges_indicies[gi]);
 	}
 	//build relations
-	std::vector<HMCont2D::Edge*> cont_edges_relations;
+	std::vector<HM2D::Edge*> cont_edges_relations;
 	for (int k=0; k<size(); ++k){
 		int k1 = std::find(btypes.begin(), btypes.end(), b1[k]) - btypes.begin();
 		int k2 = std::find(btypes.begin(), btypes.end(), b2[k]) - btypes.begin();
 		auto c1 = &assembled_b_contours[k1];
 		auto c2 = &assembled_b_contours[k2];
-		if (c1->size() != c2->size() || c1->is_closed() || c2->is_closed()){
+		if (c1->size() != c2->size() ||
+				HM2D::Contour::IsClosed(*c1) ||
+				HM2D::Contour::IsClosed(*c2)){
 			throw std::runtime_error("Periodic merging failed");
 		}
-		if (isrev[k]) c2->Reverse();
+		if (isrev[k]) HM2D::Contour::Reverse(*c2);
 		for (int i=0; i<c1->size(); ++i){
-			cont_edges_relations.push_back(c1->pvalue(i));
-			cont_edges_relations.push_back(c2->pvalue(i));
+			cont_edges_relations.push_back((*c1)[i].get());
+			cont_edges_relations.push_back((*c2)[i].get());
 		}
 	}
 	// assemble result

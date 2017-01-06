@@ -2,6 +2,8 @@
 #include "rectangle_grid_builder.hpp"
 #include "procgrid.h"
 #include "debug_grid2d.h"
+#include "constructor.hpp"
+#include "cont_partition.hpp"
 
 namespace{
 
@@ -21,19 +23,19 @@ void reflect_and_merge(GridGeom& g, Point p1, Point p2){
 	GGeom::Repair::Heal(g);
 }
 
-GridGeom laplace_algo(HMCont2D::Contour& left, HMCont2D::Contour& bot,
-		HMCont2D::Contour& right, HMCont2D::Contour& top){
+GridGeom laplace_algo(HM2D::EdgeData& left, HM2D::EdgeData& bot,
+		HM2D::EdgeData& right, HM2D::EdgeData& top){
 	return HMMap::FDMLaplasRectGrid(left, bot, right, top);
 }
 
-GridGeom linear_algo(HMCont2D::Contour& left, HMCont2D::Contour& bot,
-		HMCont2D::Contour& right, HMCont2D::Contour& top){
+GridGeom linear_algo(HM2D::EdgeData& left, HM2D::EdgeData& bot,
+		HM2D::EdgeData& right, HM2D::EdgeData& top){
 	GridGeom ret = GGeom::Constructor::RectGrid01(bot.size(), left.size());
 
-	auto pleft = left.ordered_points();
-	auto pbot = bot.ordered_points();
-	auto ptop = top.ordered_points();
-	auto w = HMCont2D::Contour::EWeights(left);
+	auto pleft = HM2D::Contour::OrderedPoints(left);
+	auto pbot = HM2D::Contour::OrderedPoints(bot);
+	auto ptop = HM2D::Contour::OrderedPoints(top);
+	auto w = HM2D::Contour::EWeights(left);
 
 	for (int i=0; i<bot.size()+1; ++i){
 		Point p1 = *pbot[i];
@@ -47,11 +49,11 @@ GridGeom linear_algo(HMCont2D::Contour& left, HMCont2D::Contour& bot,
 	return ret;
 }
 
-GridGeom ortho_algo(HMCont2D::Contour& left, HMCont2D::Contour& bot,
-		HMCont2D::Contour& right, HMCont2D::Contour& top){
+GridGeom ortho_algo(HM2D::EdgeData& left, HM2D::EdgeData& bot,
+		HM2D::EdgeData& right, HM2D::EdgeData& top){
 	GridGeom ret = HMMap::OrthogonalRectGrid(left, bot, right, top);
 	//modify top points so they lay on the circle
-	double rad = left.last()->y;
+	double rad = HM2D::Contour::Last(left)->y;
 	for (int i=0; i<bot.size()+1; ++i){
 		int ind = i + left.size()*(bot.size()+1);
 		GridPoint* gp = ret.get_point(ind);
@@ -60,8 +62,8 @@ GridGeom ortho_algo(HMCont2D::Contour& left, HMCont2D::Contour& bot,
 	return ret;
 }
 
-GridGeom ortho_circ_algo(HMCont2D::Contour& left, HMCont2D::Contour& bot,
-		HMCont2D::Contour& right, HMCont2D::Contour& top){
+GridGeom ortho_circ_algo(HM2D::EdgeData& left, HM2D::EdgeData& bot,
+		HM2D::EdgeData& right, HM2D::EdgeData& top){
 	return HMMap::OrthogonalRectGrid(left, top, right, bot);
 }
 }
@@ -85,36 +87,36 @@ GridGeom HMMap::Circ4Prototype(Point center, double rad, int n, std::string algo
 	//weights for left, right contours
 	//double bav = (b1 + b2)/2.0;
 	double bav = b1;
-	auto auxcont = HMCont2D::Constructor::ContourFromPoints({0, 0, bav, 0});
+	auto auxcont = HM2D::Contour::Constructor::FromPoints({0, 0, bav, 0});
 	std::map<double, double> auxbasis;
 	auxbasis[0] = h1; auxbasis[1] = h2;
-	auto auxpart = HMCont2D::Algos::WeightedPartition(auxbasis, auxcont, auxcont.pdata);
+	auto auxpart = HM2D::Contour::Algos::WeightedPartition(auxbasis, auxcont);
 	vector<double> w(auxpart.size()+1);
 	auto wit = w.begin();
-	for (auto p: auxpart.ordered_points()) *wit++ = p->x/bav;
+	for (auto p: HM2D::Contour::OrderedPoints(auxpart)) *wit++ = p->x/bav;
 
 	//assemble stencil
 	//::bottom
 	vector<Point> botpoints(n1+1);
 	for (int i=0; i<n1+1; ++i) botpoints[i] = Point(a*i/n1, a);
-	auto bot = HMCont2D::Constructor::ContourFromPoints(botpoints);
+	auto bot = HM2D::Contour::Constructor::FromPoints(botpoints);
 	//::top
 	vector<Point> toppoints(n1+1);
 	for (int i=0; i<n1+1; ++i){
 		double alpha = M_PI/2.0 - M_PI/4.0*i/n1;
 		toppoints[i] = Point(cos(alpha), sin(alpha));
 	}
-	auto top = HMCont2D::Constructor::ContourFromPoints(toppoints);
+	auto top = HM2D::Contour::Constructor::FromPoints(toppoints);
 	//::left
 	Point pleft0(0, a), pleft1(0, 1);
 	vector<Point> leftpoints(w.size());
 	for (int i=0; i<w.size(); ++i) leftpoints[i] = Point::Weigh(pleft0, pleft1, w[i]);
-	auto left = HMCont2D::Constructor::ContourFromPoints(leftpoints);
+	auto left = HM2D::Contour::Constructor::FromPoints(leftpoints);
 	//::right
 	Point pright0(a, a), pright1(sqrt(2)/2.0, sqrt(2)/2.0);
 	vector<Point> rightpoints(w.size());
 	for (int i=0; i<w.size(); ++i) rightpoints[i] = Point::Weigh(pright0, pright1, w[i]);
-	auto right = HMCont2D::Constructor::ContourFromPoints(rightpoints);
+	auto right = HM2D::Contour::Constructor::FromPoints(rightpoints);
 	
 	//make mapping
 	GridGeom gcirc = [&](){
@@ -130,10 +132,10 @@ GridGeom HMMap::Circ4Prototype(Point center, double rad, int n, std::string algo
 	//to use it as a base for internal rectangle grid building
 	vector<double> botc(2*n1+1);
 	if (algo == "orthogonal-circ"){
-		auto botcont = HMCont2D::Constructor::CutContour(
+		auto botcont = HM2D::Contour::Constructor::CutContour(
 			GGeom::Info::Contour1(gcirc), Point(0, a), Point(a, a));
 		int i=0;
-		for (auto p: botcont.ordered_points()){
+		for (auto p: HM2D::Contour::OrderedPoints(botcont)){
 			botc[n1+i] =  p->x;
 			botc[n1-i] = -p->x;
 			++i;

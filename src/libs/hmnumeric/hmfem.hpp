@@ -48,6 +48,9 @@ class LaplasProblem{
 	std::set<TDirData, TDirCmp> dirichlet_data;
 
 	void RebuildSolutionMatrix();
+
+	mutable std::set<GridPoint> _bp;
+	const GridPoint* get_boundary_point(const Point& p) const;
 public:
 	//constructors:
 	//creating grid and build laplas operator
@@ -63,7 +66,7 @@ public:
 	void SetNeumann(const vector<const GridPoint*>& pts, TNeuFunc f);
 
 	//using contours which shear points with grid.
-	void SetDirichlet(const HMCont2D::Contour& pts, TDirFunc f);
+	void SetDirichlet(const HM2D::EdgeData& pts, TDirFunc f);
 
 	//solve Ax=0 with bc rebuilding
 	void Solve(vector<double>& ans);
@@ -83,7 +86,7 @@ public:
 			const vector<double>& f);
 	
 	//pnt Contour should share points with grid
-	double IntegralDfDn(const HMCont2D::Contour& pnt,
+	double IntegralDfDn(const HM2D::EdgeData& pnt,
 			const vector<double>& f);
 };
 

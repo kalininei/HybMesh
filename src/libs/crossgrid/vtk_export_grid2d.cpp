@@ -1,6 +1,7 @@
 #include <fstream>
 #include "vtk_export_grid2d.hpp"
 #include "procgrid.h"
+#include "vtk_export2d.hpp"
 
 namespace hme = GGeom::Export;
 namespace{
@@ -46,8 +47,8 @@ void hme::GridVTK(const GridGeom& g, std::string fn){
 
 void hme::BoundaryVTK(const GridGeom& g, std::string fn, const vector<int>& bcond){
 	//save contour
-	auto ct = GGeom::Info::Contour(g);
-	HMCont2D::ECollection::SaveVtk(ct, fn.c_str());
+	auto ct = GGeom::Info::Contour(g).alledges();
+	HM2D::Export::ContourVTK(ct, fn.c_str());
 	if (bcond.size() == 0) return;
 
 	//add boundary condition
@@ -57,10 +58,15 @@ void hme::BoundaryVTK(const GridGeom& g, std::string fn, const vector<int>& bcon
 	for (auto& e: g.get_edges()) eind.emplace(e, i++);
 	vector<int> convertedbc(eind.size(), 0);
 
+	std::set<GridPoint> bp;
+	for (auto it: g.get_bnd_points()) bp.insert(*it);
+
 	i = 0;
 	for (auto e: ct){
-		int ind1 = static_cast<GridPoint*>(e->pstart)->get_ind();
-		int ind2 = static_cast<GridPoint*>(e->pend)->get_ind();
+		int ind1 = bp.find(*e->first())->get_ind();
+		int ind2 = bp.find(*e->last())->get_ind();
+		//int ind1 = static_cast<GridPoint*>(e->pstart)->get_ind();
+		//int ind2 = static_cast<GridPoint*>(e->pend)->get_ind();
 		Edge fedge(ind1, ind2);
 		auto fnd = eind.find(fedge);
 		assert(fnd!=eind.end());

@@ -13,6 +13,8 @@
 #include "fluent_export_grid2d.hpp"
 #include "hmg_export_grid2d.hpp"
 #include "hmg_import_grid2d.hpp"
+#include "constructor.hpp"
+#include "vtk_export2d.hpp"
 
 using HMTesting::add_check;
 using HMTesting::add_file_check;
@@ -250,7 +252,7 @@ void test14(){
 	int edges[] = {
 		0,1, 3,0, 2,3, 2,1, 7,6, 6,5, 4,5, 7,4
 	};
-	auto c = HMCont2D::Constructor::ECol(8, 8, pts, edges);
+	auto c = HM2D::ECol::Constructor::FromRaw(8, 8, pts, edges);
 
 	auto res1 = grid_exclude_cont(&g, &c, true);
 	auto res2 = grid_exclude_cont(&g, &c, false);
@@ -261,7 +263,7 @@ void test14(){
 	grid_free(res2);
 	{
 		GridGeom g = GGeom::Constructor::RectGrid01(10, 12);
-		auto c = HMCont2D::Constructor::ContourFromPoints({0, 0.5, 0.5, 0, 1.1, 0.5, 0.5, 1.1}, true);
+		auto c = HM2D::Contour::Constructor::FromPoints({0, 0.5, 0.5, 0, 1.1, 0.5, 0.5, 1.1}, true);
 		GridGeom* res3 = static_cast<GridGeom*>(grid_exclude_cont(&g, &c, true));
 		GGeom::Export::GridVTK(*res3, "res3.vtk");
 		add_check(grid_ncells(res3) == 67 && grid_npoints(res3) == 102, "cut contour touches grid contour");
@@ -278,7 +280,7 @@ void test15(){
 	int edges[] = {
 		0,1, 1,2, 2,3, 3,0
 	};
-	auto c = HMCont2D::Constructor::ECol(4, 4, points, edges);
+	auto c = HM2D::ECol::Constructor::FromRaw(4, 4, points, edges);
 
 	auto res = grid_exclude_cont(&g, &c, true);
 	add_check(grid_ncells(res) == 100 && grid_npoints(res) == 121, "fully inside");
@@ -291,7 +293,7 @@ void test15(){
 	double points2[] = {
 		0.03,0.03, 0.04,0.03, 0.04,0.04, 0.03,0.04
 	};
-	c = HMCont2D::Constructor::ECol(4, 4, points2, edges);
+	c = HM2D::ECol::Constructor::FromRaw(4, 4, points2, edges);
 	res = grid_exclude_cont(&g, &c, false);
 	add_check(grid_ncells(res) == 1 && grid_npoints(res) == 4, "inner contour within cell");
 	grid_free(res);
@@ -317,8 +319,8 @@ void test16(){
 	int e2[] = {
 		7,6, 5,6, 2,1, 2,4, 0,1, 0,3, 4,3, 5,7
 	};
-	auto c1 = HMCont2D::Constructor::ECol(8, 8, p1, e1);
-	auto c2 = HMCont2D::Constructor::ECol(8, 8, p2, e2);
+	auto c1 = HM2D::ECol::Constructor::FromRaw(8, 8, p1, e1);
+	auto c2 = HM2D::ECol::Constructor::FromRaw(8, 8, p2, e2);
 	int v1[] = {0,1,2,3,4,5,6,7};
 	int v2[] = {0,0,0,0,0,0,0,0};
 	int ans[] = {7,4,6,5,6,3,3,2};
@@ -341,8 +343,8 @@ void test17(){
 
 void test18(){
 	std::cout<<"18. Excluding of multiple contours"<<std::endl;
-	auto c1 = HMCont2D::Constructor::Circle(5, 1.0, Point(0, 0)); 
-	auto c2 = HMCont2D::Constructor::Circle(12, 0.2, Point(3, 2.7)); 
+	auto c1 = HM2D::Contour::Constructor::Circle(5, 1.0, Point(0, 0)); 
+	auto c2 = HM2D::Contour::Constructor::Circle(12, 0.2, Point(3, 2.7)); 
 	auto g = GGeom::Constructor::RectGrid(Point(-2, -2), Point(6, 4), 30, 30);
 
 	//1) excluding one by one
@@ -351,7 +353,7 @@ void test18(){
 	add_check(grid_ncells(g3) == 869 && grid_npoints(g3)==962, "one by one exclusion");
 
 	//2) simultaneous exclusion
-	c2.ECollection::Unite(c1);
+	c2.insert(c2.end(), c1.begin(), c1.end());
 	auto g4 = grid_exclude_cont(&g, &c2, 1);
 	add_check(grid_ncells(g4) == 869 && grid_npoints(g4)==962, "simulataneous exclusion");
 
@@ -372,7 +374,7 @@ void test19(){
 void test20(){
 	std::cout<<"20. Empty holes"<<std::endl;
 	auto g1 = GGeom::Constructor::RectGrid01(6, 6);
-	auto c1 = HMCont2D::Constructor::Circle(10, 0.3, Point(0.5, 0.5));
+	auto c1 = HM2D::Contour::Constructor::Circle(10, 0.3, Point(0.5, 0.5));
 	auto g2 = grid_exclude_cont(&g1, &c1, 1);
 
 	auto g3 = GGeom::Constructor::RectGrid(Point(0.45, 0.45), Point(0.55, 0.55), 3, 3);
@@ -435,14 +437,14 @@ void test21(){
 
 void test22(){
 	std::cout<<"22. Snap and shift boundaries"<<std::endl;
-	auto cont = HMCont2D::Constructor::ContourFromPoints(
+	auto cont = HM2D::Contour::Constructor::FromPoints(
 		{0,0, 6,0, 9,1, 9,5, 4,5, 2,4, 0,2}, true);
 	double pts[] = {0,0, 9,2.5, 8,5, 3.8,4.9, 2.2,4.1, 1.3,3.3};
 	int cls[] = {6,0,1,2,3,4,5};
 
 	GridGeom ans1(6, 1, pts, cls);
 	GGeom::Modify::SnapToContour(ans1, cont, {});
-	add_check(fabs(HMCont2D::Area(cont) - GGeom::Info::Area(ans1))<1e-12,
+	add_check(fabs(HM2D::Contour::Area(cont) - GGeom::Info::Area(ans1))<1e-12,
 		"snapping of single cell");
 
 	GridGeom ans2(6, 1, pts, cls);
@@ -452,7 +454,7 @@ void test22(){
 		"shifting vertices of single cell");
 
 	GGeom::Export::GridVTK(ans2, "t22.vtk");
-	HMCont2D::SaveVtk(cont, "c22.vtk");
+	HM2D::Export::ContourVTK(cont, "c22.vtk");
 }
 
 void test23(){

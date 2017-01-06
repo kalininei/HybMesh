@@ -1,154 +1,94 @@
 #include "constructor.hpp"
-#include "edges.hpp"
 #include "spmat.hpp"
+#include "partition01.hpp"
 #include "contour.hpp"
+#include "treverter2d.hpp"
+#include "cont_assembler.hpp"
+#include "algos.hpp"
 
-using namespace HMCont2D;
-namespace cns = Constructor;
+using namespace HM2D;
+using namespace HM2D::Contour;
+namespace cns = HM2D::Contour::Constructor;
+namespace ens = HM2D::ECol::Constructor;
 
-Container<Contour> cns::Circle(int N, double rad, Point cnt){
+EdgeData cns::Circle(int N, double rad, Point cnt){
 	Point poc = cnt + Point(rad, 0);
 	return Circle(N, cnt, poc);
 };
 
-HMCont2D::Container<Contour> cns::Circle(int N, Point cnt, Point poc){
-	typedef Container<Contour> TRes;
-	TRes res;
+EdgeData cns::Circle(int N, Point cnt, Point poc){
+	EdgeData res;
 	Point p = poc-cnt;
 	double rad = Point::dist(poc, cnt);
 	double angle0 = atan2(p.y, p.x);
+	VertexData pdata;
 	for (int i=0; i<N; ++i){
 		double angle = 2*M_PI/N*i + angle0;
-		Point a(rad*cos(angle), rad*sin(angle));
-		a += cnt;
-
-		res.pdata.add_value(a);
-
-		if (i>0) res.add_value(Edge(res.point(i-1), res.point(i)));
+		pdata.emplace_back(new Vertex(rad*cos(angle), rad*sin(angle)));
+		*pdata.back() += cnt;
+		if (i>0) res.emplace_back(new Edge(pdata[i-1], pdata[i]));
 	}
-	res.add_value(Edge(res.point(N-1), res.point(0)));
+	res.emplace_back(new Edge(pdata[N-1], pdata[0]));
 	return res;
 }
 
-Contour cns::ContourFromPoints(const vector<Point*>& pnt, bool force_closed){
-	Contour ret;
-	if (pnt.size()<2) return ret;
-	for (int i=0; i<(int)pnt.size() - 1; ++i){
-		ret.add_value(Edge(pnt[i], pnt[i+1]));
+EdgeData cns::FromPoints(const vector<double>& pnt, bool force_closed){
+	VertexData p;
+	for (int i=0; i<(int)pnt.size(); i+=2) p.emplace_back(new Vertex(pnt[i], pnt[i+1]));
+	if (*p[0] == *p.back()) p.back() = p[0];
+	return Contour::Assembler::Contour1(p, force_closed);
+}
+
+EdgeData cns::FromPoints(const vector<Point>& pnt, bool force_closed){
+	VertexData p;
+	for (int i=0; i<(int)pnt.size(); ++i) p.emplace_back(new Vertex(pnt[i]));
+	if (*p[0] == *p.back()) p.back() = p[0];
+	return Contour::Assembler::Contour1(p, force_closed);
+}
+
+EdgeData cns::CutContour(const EdgeData& cont, const Point& pstart, int direction, double len){
+	if (direction == -1){
+		ReallyRevert rr(cont);
+		return CutContour(cont, pstart, 1, len);
 	}
-	if (force_closed && pnt[0]!=pnt.back()){
-		ret.add_value(Edge(pnt.back(), pnt[0]));
+	EdgeData other;
+	DeepCopy(cont, other);
+	ReallyDirect::Permanent(other);
+	auto ps = std::get<1>(GuaranteePoint(other, pstart));
+	if (IsClosed(other)){
+		ForceFirst::Permanent(other, pstart);
+	} else {
+		int ind = std::find_if(other.begin(), other.end(),
+			[&ps](shared_ptr<Edge> e){ return e->first() == ps; })
+			- other.begin();
+		assert(ind < other.size());
+		other.erase(other.begin(), other.begin() + ind);
 	}
+	assert(len<=Length(other));
+	Point p2 = Contour::WeightPointsByLen(other, {len})[0];
+	auto ps2 = std::get<1>(GuaranteePoint(other, p2));
+	return Assembler::ShrinkContour(other, ps.get(), ps2.get());
+}
+
+EdgeData cns::CutContour(const EdgeData& cont, const Point& pstart, const Point& pend){
+	EdgeData ret;
+	DeepCopy(cont, ret);
+	auto p1 = std::get<1>(GuaranteePoint(ret, pstart));
+	auto p2 = std::get<1>(GuaranteePoint(ret, pend));
+	ret = Assembler::ShrinkContour(ret, p1.get(), p2.get());
+	if (First(ret) != p1) ReallyRevert::Permanent(ret);
 	return ret;
 }
 
-Container<Contour> cns::ContourFromPoints(vector<double> pnt, bool force_closed){
-	vector<Point> p;
-	for (int i=0; i<(int)pnt.size(); i+=2) p.push_back(Point(pnt[i], pnt[i+1]));
-	return cns::ContourFromPoints(p, force_closed);
-}
-
-Container<Contour> cns::ContourFromPoints(vector<Point> pnt, bool force_closed){
-	PCollection pc;
-	for (auto& it: pnt) pc.add_value(it);
-	vector<Point*> p = pc.pvalues();
-	if (pnt[0] == pnt.back()){
-		pc.pop_value();
-		p.back() = p[0];
-	}
-	Contour cc = cns::ContourFromPoints(p, force_closed);
-	Container<Contour> ret;
-	ret.data = cc.data;
-	ret.pdata = pc;
-	return ret;	
-}
-
-Contour cns::ContourFromPoints(const HMCont2D::PCollection& dt, bool force_closed){
-	return cns::ContourFromPoints(dt.pvalues(), force_closed);
-}
-
-Container<Contour> cns::ContourFromBBox(BoundingBox bbox){
-	return ContourFromPoints(bbox.FourPoints(), true);
-}
-
-Container<Contour> cns::CutContour(const HMCont2D::Contour& cont,
-		const Point& pstart, int direction, double len){
-	Container<Contour> ret;
-	//if pstart lies on cont -> use simple assembling
-	vector<Point*> op = cont.ordered_points();
-	auto fnd = std::find_if(op.begin(), op.end(), [&pstart](Point* p){return pstart == *p;});
-	if (fnd != op.end()){
-		Contour c2 = Assembler::Contour1(cont, *fnd, direction, len);
-		Container<Contour>::DeepCopy(c2, ret);
-		if (*ret.first() != pstart) ret.ReallyReverse();
-		return ret;
-	}
-	//if not-> place point and try once again
-	Container<Contour> c2 = Container<Contour>::DeepCopy(cont);
-	c2.GuaranteePoint(pstart, c2.pdata);
-	return cns::CutContour(c2, pstart, direction, len);
-}
-
-Container<Contour> cns::CutContour(const HMCont2D::Contour& cont,
-		const Point& pstart, const Point& pend){
-	PCollection tmpp;
-	Contour tmpc = cont;
-	auto p1 = std::get<1>(tmpc.GuaranteePoint(pstart, tmpp));
-	auto p2 = std::get<1>(tmpc.GuaranteePoint(pend, tmpp));
-	tmpc = Assembler::Contour1(tmpc, p1, p2);
-	Container<Contour> ret;
-	Container<Contour>::DeepCopy(tmpc, ret);
-	if (*ret.first() != *p1) ret.ReallyReverse();
-	return ret;
-}
-
-Container<Contour> cns::CutContourByWeight(const Contour& source, double w1, double w2){
-	PCollection wp = Contour::WeightPoints(source, {w1, w2});
-	return CutContour(source, wp.value(0), wp.value(1));
-}
-Container<Contour> cns::CutContourByLen(const Contour& source, double len1, double len2){
-	double len = source.length();
-	return CutContourByWeight(source, len1/len, len2/len);
-}
-
-HMCont2D::Container<HMCont2D::ECollection> cns::ECol(const vector<Point>& pnt, const vector<int>& eds){
-	HMCont2D::Container<HMCont2D::ECollection> ret;
-	ret.pdata.data.reserve(pnt.size());
-	ret.data.reserve(eds.size()/2);
-	for (auto& p: pnt) ret.pdata.add_value(p);
-
-	for (int i=0; i<eds.size()/2; ++i){
-		int i1 = eds[2*i];
-		int i2 = eds[2*i+1];
-		ret.add_value(HMCont2D::Edge(ret.point(i1), ret.point(i2)));
+EdgeData ens::FromRaw(int npnt, int neds, double* pnt, int* eds){
+	VertexData pdata;
+	for (int i=0; i<npnt; ++i) pdata.push_back(std::make_shared<Vertex>(pnt[2*i], pnt[2*i+1]));
+	EdgeData ret;
+	for (int i=0; i<neds; ++i){
+		ret.push_back(std::make_shared<Edge>(
+			pdata[eds[2*i]], pdata[eds[2*i+1]]));
 	}
 	return ret;
-}
-HMCont2D::Container<HMCont2D::ECollection> cns::ECol(int npnt, int neds, double* pnt, int* eds){
-	vector<int> evec(eds, eds + 2*neds);
-	vector<Point> pvec; pvec.reserve(npnt);
-	for (int i=0; i<npnt; ++i){
-		pvec.push_back(Point(pnt[2*i], pnt[2*i+1]));
-	}
-	return ECol(pvec, evec);
-}
-
-HMCont2D::Container<HMCont2D::Contour> cns::PerturbedContour(Point p1, Point p2, int npart,
-		std::function<double(double)> perturbation){
-	vector<Point> pp(npart+1);
-	pp[0] = p1;
-	pp.back() = p2;
-	Vect pvec = p2 - p1;
-	for (int i=1; i<npart; ++i){
-		double t = (double)i/(npart);
-		double m = perturbation(t);
-		Vect perpvec(-pvec.y, pvec.x);
-		if (m<0) perpvec *= -1.0;
-		vecSetLen(perpvec, fabs(m));
-		pp[i] = Point::Weigh(p1, p2, t);
-		pp[i] += perpvec;
-	}
-	return cns::ContourFromPoints(pp);
 }
 
 namespace {
@@ -221,14 +161,17 @@ std::array<double, 4> to_spline_segment(double x0, double x1, double y0, double 
 }
 
 };
-HMCont2D::Contour cns::Spline(const vector<Point*>& pnt, HMCont2D::PCollection& pcol, int nedges, bool force_closed){
+
+EdgeData cns::Spline(const vector<Point>& pnt1, int nedges, bool force_closed){
 	//force closed option
-	if (force_closed && pnt[0] != pnt.back()){
-		vector<Point*> pnew = pnt;
-		if (*pnt[0] != *pnt.back()) pnew.push_back(pnt[0]);
-		else pnew.back() = pnt[0];
-		return Spline(pnew, pcol, nedges, false);
+	if (force_closed && pnt1[0] != pnt1.back()){
+		auto pnew = pnt1;
+		pnew.push_back(pnt1[0]);
+		return Spline(pnew, nedges, false);
 	}
+	vector<const Point*> pnt;
+	for (auto& p: pnt1) pnt.push_back(&p);
+	if (*pnt[0] == *pnt.back()) pnt.back() = pnt[0];
 
 	int nseg = pnt.size() - 1;
 	vector<double> double_nsum;
@@ -239,7 +182,7 @@ HMCont2D::Contour cns::Spline(const vector<Point*>& pnt, HMCont2D::PCollection& 
 		double_nsum.push_back(len);
 	}
 	for (int i=0; i<nseg; ++i) double_nsum[i] *= (nedges/vlen.back());
-	vector<int> nsum = Algos::RoundVector(double_nsum, vector<int>(nseg, 1));
+	vector<int> nsum = HMMath::RoundVector(double_nsum, vector<int>(nseg, 1));
 
 	std::vector<double> xvec, yvec;
 	for (auto p: pnt) {xvec.push_back(p->x); yvec.push_back(p->y); }
@@ -252,66 +195,49 @@ HMCont2D::Contour cns::Spline(const vector<Point*>& pnt, HMCont2D::PCollection& 
 		xcubic[i] = to_spline_segment(vlen[i], vlen[i+1], xvec[i], xvec[i+1], kx[i], kx[i+1]);
 		ycubic[i] = to_spline_segment(vlen[i], vlen[i+1], yvec[i], yvec[i+1], ky[i], ky[i+1]);
 	}
-	vector<Point*> pp;
+	vector<Point> pp;
 	for (int i=0; i<nseg; ++i){
-		pp.push_back(pnt[i]);
+		pp.push_back(*pnt[i]);
 		auto& fx = xcubic[i];
 		auto& fy = ycubic[i];
 		for (int j=1; j<nsum[i]; ++j){
 			double t = (double)j/(nsum[i]);
 			double x = fx[0]*t*t*t + fx[1]*t*t + fx[2]*t + fx[3];
 			double y = fy[0]*t*t*t + fy[1]*t*t + fy[2]*t + fy[3];
-			shared_ptr<Point> p(new Point(x, y));
-			pcol.add_value(p);
-			pp.push_back(p.get());
+			pp.push_back(Point(x, y));
 		}
 	}
-	pp.push_back(pnt.back());
+	pp.push_back(*pnt.back());
 
-	return cns::ContourFromPoints(pp, false);
+	return cns::FromPoints(pp, false);
 }
 
-HMCont2D::Container<HMCont2D::Contour> cns::Spline(const vector<Point>& pnt, int nedges, bool force_closed){
-	vector<Point*> p2;
-	for (auto& p: pnt) p2.push_back(const_cast<Point*>(&p));
-	if (*p2[0] == *p2.back()) p2.back() = p2[0];
-	HMCont2D::PCollection pcol;
-	auto cont = Spline(p2, pcol, nedges, force_closed);
-	HMCont2D::Container<HMCont2D::Contour> ret;
-	HMCont2D::Container<HMCont2D::Contour>::DeepCopy(cont, ret);
-	return ret;
-}
-
-HMCont2D::Container<HMCont2D::Contour> cns::Spline(const vector<double>& pnt, int nedges, bool force_closed){
-	vector<Point> pv;
-	for (int i=0; i<pnt.size(); i+=2) pv.push_back(Point(pnt[i], pnt[i+1]));
-	return Spline(pv, nedges, force_closed);
-}
-
-HMCont2D::Container<HMCont2D::Contour> cns::ContourFromContours(const vector<Contour>& conts,
-		bool last_close, bool fullshift, std::set<int> fixed){
+EdgeData cns::FromContours(const vector<EdgeData>& conts,
+	bool last_close, bool fullshift, std::set<int> fixed){
 	//checks
 	for (int i=0; i<conts.size(); ++i){
-		if (conts[i].is_closed()) throw std::runtime_error(
+		if (IsClosed(conts[i])) throw std::runtime_error(
 			"Closed contours are not allowed for "
 			"contour-from-subcontours constructor");
 	}
 	vector<bool> fix(conts.size(), false);
 	for (auto f: fixed) fix[f] = true;
 	//collect endpoints
-	vector<Point> endpoints {*conts[0].first(), *conts[0].last()};
+	Point f0=*First(conts[0]), f1=*First(conts[1]),
+	      l0=*Last(conts[0]), l1=*Last(conts[1]);
+	vector<Point> endpoints {f0, l0};
 	vector<bool> reverted {false};
-	double d00 = Point::meas(*conts[0].first(), *conts[1].first());
-	double d10 = Point::meas(*conts[0].last(), *conts[1].first());
-	double d01 = Point::meas(*conts[0].first(), *conts[1].last());
-	double d11 = Point::meas(*conts[0].last(), *conts[1].last());
+	double d00 = Point::meas(f0, f1);
+	double d10 = Point::meas(l0, f1);
+	double d01 = Point::meas(f0, l1);
+	double d11 = Point::meas(l0, l1);
 	if (std::min(d10, d11) > std::min(d00, d01)){
 		reverted[0] = true;
 		std::swap(endpoints[0], endpoints[1]);
 	}
 	for (int i=1; i<conts.size(); ++i){
 		auto& c=conts[i];
-		Point *p1 = c.first(), *p2 = c.last();
+		shared_ptr<Vertex> p1 = First(c), p2 = Last(c);
 		double d0 = Point::meas(endpoints.back(), *p1); 
 		double d1 = Point::meas(endpoints.back(), *p2); 
 		reverted.push_back(d0 > d1);
@@ -345,13 +271,13 @@ HMCont2D::Container<HMCont2D::Contour> cns::ContourFromContours(const vector<Con
 		pf.set(p); pl.set(p);
 	}
 	//assembling
-	HMCont2D::Container<HMCont2D::ECollection> ret;
+	EdgeData ret;
 	for (int i=0; i<conts.size(); ++i){
-		HMCont2D::Container<HMCont2D::Contour> acont;
-		HMCont2D::Container<HMCont2D::Contour>::DeepCopy(conts[i], acont);
+		EdgeData acont;
+		DeepCopy(conts[i], acont);
 
-		vector<Point*> ap = acont.ordered_points();
-		vector<double> rw = HMCont2D::Contour::EWeights(acont);
+		auto ap = OrderedPoints(acont);
+		vector<double> rw = EWeights(acont);
 		int i1=i, i2=i+1;
 		if (reverted[i]) std::swap(i1, i2);
 		Vect v1 = endpoints[i1] - *ap[0];
@@ -361,14 +287,116 @@ HMCont2D::Container<HMCont2D::Contour> cns::ContourFromContours(const vector<Con
 			Point p2 = *ap[j] + v2;
 			ap[j]->set(Point::Weigh(p1, p2, rw[j]));
 		}
-		ret.Unite(acont);
+		ret.insert(ret.end(), acont.begin(), acont.end());
 	}
-	HMCont2D::Algos::MergePoints(ret);
-	HMCont2D::Algos::DeleteUnusedPoints(ret);
-	HMCont2D::Container<HMCont2D::Contour> ret2;
-	HMCont2D::Contour rcont = HMCont2D::Assembler::Contour1(ret, ret.data[0]->pstart);
-	ret2.pdata.data = std::move(ret.pdata.data);
-	ret2.data = std::move(rcont.data);
-	assert(ret2.check_connectivity());
-	return ret2;
+	ECol::Algos::MergePoints(ret);
+	return Contour::Assembler::Contour1(ret, ret[0]->first().get());
 }
+
+namespace{
+struct SepAssembler{
+	std::list<EdgeData*> itset;
+	std::map<Point*, vector<Point*>> ppmap;
+	bool has_conts(){ return itset.size() > 0; }
+
+	SepAssembler(std::list<EdgeData>& clist){
+		for (auto it=clist.begin(); it!=clist.end(); ++it){
+			itset.push_back(&(*it));
+			auto er = ppmap.emplace(First(*it).get(), vector<Point*>());
+			er.first->second.push_back((*it)[0]->last().get());
+		}
+		//sort ppmap by angle
+		for (auto& it: ppmap){
+			std::map<Point*, double> anmap;
+			for (auto& it2: it.second){
+				Vect v = *it2 - *it.first;
+				anmap[it2] = atan2(v.y, v.x);
+			}
+			std::sort(it.second.begin(), it.second.end(),
+					[&anmap](Point* p1, Point* p2){ return anmap[p1]<anmap[p2];} );
+		}
+	}
+	EdgeData* take_this(EdgeData* it){
+		itset.remove(it);
+		return it;
+	}
+	EdgeData* take_any(){
+		return take_this(*itset.begin());
+	}
+	EdgeData* take_next(EdgeData* it){
+		auto fnd = ppmap.find(Last(*it).get());
+		assert(fnd != ppmap.end());
+		Point* pprev= it->back()->first().get();
+		auto fnd2 = std::find(fnd->second.begin(), fnd->second.end(), pprev);
+		assert(fnd2 != fnd->second.end());
+		int ind2 = fnd2 - fnd->second.begin();
+		if (ind2 == 0) ind2 = fnd->second.size()-1;
+		else --ind2;
+		Point* p2 = fnd->second[ind2];
+		//find contour which first edge is [*it->last, p2]
+		for (auto it1: itset){
+			if ((*it1)[0]->first() == Last(*it) && (*it1)[0]->last().get() == p2)
+				return take_this(it1);
+		}
+		throw std::runtime_error("failed to assemble closed contour");
+	}
+};
+}
+
+vector<EdgeData> ens::ExtendedSeparate(const EdgeData& ecol){
+	//assembling subcontours
+	EdgeData ecol2 = ECol::Algos::NoCrosses(ecol);
+	std::vector<EdgeData> vconts = Contour::Assembler::SimpleContours(ecol2);
+	std::list<EdgeData> conts;
+	for (auto& c: vconts) conts.push_back(std::move(c));
+	//nodes building
+	std::map<Point*, int> nmap;
+	for (auto it: conts) if (IsOpen(it)){
+		auto er1 = nmap.emplace(First(it).get(), 0);
+		auto er2 = nmap.emplace(Last(it).get(), 0);
+		er1.first->second += 1;
+		er2.first->second += 1;
+	}
+	vector<Point*> nodes;
+	for (auto& it: nmap) if (it.second > 2) nodes.push_back(it.first);
+	//get rid of open contours and fully closed contours
+	vector<EdgeData> ret;
+	for (auto it=conts.begin(); it!=conts.end();){
+		if (IsClosed(*it) ||
+		    std::find(nodes.begin(), nodes.end(), First(*it).get()) == nodes.end() ||
+		    std::find(nodes.begin(), nodes.end(), Last(*it).get()) == nodes.end()){
+			ret.push_back(EdgeData(std::move(*it)));
+			it = conts.erase(it);
+		} else ++it;
+	}
+	//double conts
+	{
+		int isz = conts.size();
+		auto it = conts.begin();
+		for (int i=0; i<isz; ++i, ++it){
+			ReallyDirect::Permanent(*it);
+			conts.push_back(EdgeData());
+			DeepCopy(*it, conts.back());
+			ReallyRevert::Permanent(conts.back());
+		}
+	}
+	//initialize builder
+	SepAssembler sep_builder(conts);
+	//start assembling contours
+	while (sep_builder.has_conts()){
+		EdgeData bf;
+		auto it = sep_builder.take_any();
+		Point* p0 = First(*it).get();
+		while (1){
+			Connect(bf, *it);
+			if (Last(*it).get() == p0) break;
+			else it = sep_builder.take_next(it);
+		};
+		if (Contour::Area(bf) > 0){
+			ret.push_back(EdgeData(std::move(bf)));
+		}
+	}
+
+	return ret;
+}
+

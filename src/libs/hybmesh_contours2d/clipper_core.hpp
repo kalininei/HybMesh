@@ -1,10 +1,12 @@
 #ifndef HYBMESH_CONTOURS2D_CLIPPER_CORE_HPP
 #define HYBMESH_CONTOURS2D_CLIPPER_CORE_HPP
 
-#include "hybmesh_contours2d.hpp"
 #include "clipper.hpp"
+#include "contour.hpp"
+#include "tree.hpp"
+#include "algos.hpp"
 
-namespace HMCont2D{ namespace Impl{
+namespace HM2D{ namespace Impl{
 class ClipperPath;
 class ClipperTree;
 
@@ -40,7 +42,7 @@ struct ClipperPath: public ClipperObject{
 
 	//constructor
 	ClipperPath(): ClipperObject(), data(){};
-	ClipperPath(const Contour&);
+	ClipperPath(const EdgeData&);
 
 	//scaling methods
 	void ApplyBoundingBox(const BoundingBox& newbbox) override;
@@ -50,18 +52,18 @@ struct ClipperPath: public ClipperObject{
 	void AddPointToEnd(const Point& p);
 
 	// === Methods
-	Container<ContourTree> Offset(double delta, HMCont2D::OffsetTp tp) const;
+	Contour::Tree Offset(double delta, HM2D::Contour::Algos::OffsetTp tp) const;
 	//-1 - point is on polygon
 	// 0 - point is outside polygon
 	// 1 - point is in polygon
 	int WhereIs(Point p) const;
 
-	Container<Contour> ToHMContainer();
-	static Container<Contour> HMContainer(ClipperLib::Path&, const BoundingBox& bbox, bool is_closed=true);
+	EdgeData ToHMContainer();
+	static EdgeData HMContainer(ClipperLib::Path&, const BoundingBox& bbox, bool is_closed=true);
 
 	//intersection of closed contours.
 	//if embedded1/2 is true then contours in сorresponding vector is treated as a tree.
-	static Container<ContourTree> Intersect(
+	static Contour::Tree Intersect(
 			vector<ClipperPath>& pths1,
 			vector<ClipperPath>& pths2,
 			bool embedded1,
@@ -69,7 +71,7 @@ struct ClipperPath: public ClipperObject{
 
 	//union of closed contours. 
 	//if embedded1/2 is true then contours in сorresponding vector are treated as a tree.
-	static Container<ContourTree> Union(
+	static Contour::Tree Union(
 			vector<ClipperPath>& pths1,
 			vector<ClipperPath>& pths2,
 			bool embedded1,
@@ -77,14 +79,14 @@ struct ClipperPath: public ClipperObject{
 
 	//substruction of closed contours. 
 	//if embedded1/2 is true then contours in сorresponding vector are treated as a tree.
-	static Container<ContourTree> Substruct(
+	static Contour::Tree Substruct(
 			vector<ClipperPath>& pths1,
 			vector<ClipperPath>& pths2,
 			bool embedded1,
 			bool embedded2);
 
 	//cuts lines by area intersection
-	static Container<ExtendedTree> CutLines(
+	static Contour::Tree CutLines(
 			vector<ClipperPath>& area,
 			vector<ClipperPath>& lines,
 			bool embedded_area);
@@ -97,9 +99,9 @@ struct ClipperTree: public ClipperObject{
 	//overriden
 	void ApplyBoundingBox(const BoundingBox& newbbox) override;
 	//from tree
-	static ClipperTree Build(const ContourTree& tree);
+	static ClipperTree Build(const Contour::Tree& tree);
 	//to container
-	static Container<ContourTree> HMContainer(const ClipperLib::PolyTree&, const BoundingBox&);
+	static Contour::Tree HMContainer(const ClipperLib::PolyTree&, const BoundingBox&);
 	//sorting physical points: INSIDE/OUTSIDE/BOUND for each point
 	vector<int> SortOutPoints(const vector<Point>& pts) const;
 
@@ -110,7 +112,6 @@ private:
 
 
 }}
-
 
 
 #endif

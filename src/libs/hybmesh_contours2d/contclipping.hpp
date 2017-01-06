@@ -1,14 +1,15 @@
 #ifndef HMCONT2D_CONTCLIPPING_HPP
 #define HMCONT2D_CONTCLIPPING_HPP
 
-#include "hybmesh_contours2d.hpp"
+#include "primitives2d.hpp"
+#include "contour.hpp"
+#include "tree.hpp"
 
-namespace HMCont2D{ namespace Clip{
+namespace HM2D{ namespace Contour{ namespace Clip{
 
-typedef HMCont2D::Container<HMCont2D::ContourTree> TRet;
-typedef HMCont2D::Container<HMCont2D::ExtendedTree> TExRet;
-typedef HMCont2D::Contour ECont;
-typedef HMCont2D::ContourTree ETree;
+typedef HM2D::Contour::Tree TRet;
+typedef HM2D::Contour::Tree ETree;
+typedef HM2D::EdgeData ECont;
 
 //two contours. direction is not taken into account
 TRet Intersection(const ECont& c1, const ECont& c2);
@@ -37,6 +38,6 @@ TRet Difference(const ETree& c1, const vector<ECont>& cont);
 //may appear as a result of boolean operations
 void Heal(TRet& c1);
 
-}}
+}}}
 
 #endif

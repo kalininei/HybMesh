@@ -1,10 +1,11 @@
 #include "cont_repart.hpp"
-using namespace HMCont2D;
+using namespace HM2D;
+using namespace HM2D::Contour;
 
 namespace{
 
 struct data{
-	vector<Point*> cont;
+	VertexData cont;
 	vector<double> clen;
 	std::list<double> div;
 	double h;
@@ -343,11 +344,11 @@ vector<vector<int>> snapping(data& d){
 	return ret;
 }
 
-vector<vector<Point*>> final_result(data& d, const vector<vector<int>>& r, HMCont2D::PCollection& pcol){
-	vector<vector<Point*>> ret(r.size());
+vector<VertexData> final_result(data& d, const vector<vector<int>>& r){
+	vector<VertexData> ret(r.size());
 	auto it = d.div.begin();
 	for (int i=0; i<r.size(); ++i, ++it){
-		Point* p1 = (r[i][0] == -1) ? pcol.add_value(d.get_point(*it)) : d.cont[r[i][0]];
+		shared_ptr<Vertex> p1 = (r[i][0] == -1) ? std::make_shared<Vertex>(d.get_point(*it)) : d.cont[r[i][0]];
 		ret[i].push_back(p1);
 		for (int j=1; j<r[i].size()-1; ++j) ret[i].push_back(d.cont[r[i][j]]);
 	}
@@ -357,13 +358,12 @@ vector<vector<Point*>> final_result(data& d, const vector<vector<int>>& r, HMCon
 }
 
 
-vector<vector<Point*>> HMCont2D::Algos::Coarsening(const HMCont2D::Contour& cont, 
-		const std::set<Point*>& mandatory,
-		HMCont2D::PCollection& pcol,
+vector<VertexData> Algos::Coarsening(const EdgeData& cont, 
+		const std::set<shared_ptr<Vertex>>& mandatory,
 		double h, double crit_angle, double snap_dist){
 	//fill data
 	data d;
-	d.cont = cont.ordered_points();
+	d.cont = OrderedPoints(cont);
 	d.clen = {0};
 	for (int i=1; i<d.cont.size(); ++i){
 		d.clen.push_back(d.clen[i-1] + Point::dist(*d.cont[i], *d.cont[i-1]));
@@ -399,5 +399,5 @@ vector<vector<Point*>> HMCont2D::Algos::Coarsening(const HMCont2D::Contour& cont
 	vector<vector<int>> snres = snapping(d);
 
 	//6. assemble result
-	return final_result(d, snres, pcol);
+	return final_result(d, snres);
 }

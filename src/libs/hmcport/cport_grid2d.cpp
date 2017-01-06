@@ -1,7 +1,6 @@
 #include "hmproject.h"
 #include "cport_grid2d.h"
 #include "grid.h"
-#include "hybmesh_contours2d.hpp"
 #include "fluent_export_grid2d.hpp"
 #include "tecplot_export_grid2d.hpp"
 #include "procgrid.h"
@@ -11,6 +10,7 @@
 #include "pebi.h"
 #include "hmg_export_grid2d.hpp"
 #include "hmg_import_grid2d.hpp"
+#include "cont_assembler.hpp"
 
 
 namespace{
@@ -119,21 +119,21 @@ int export_tecplot_grid(const Grid* grid, const char* fname,
 void* custom_rectangular_grid(int algo, void* left, void* bot,
 		void* right, void* top, double* her_w, int return_invalid, hmcport_callback cb){
 	//gather data
-	HMCont2D::ECollection* _left1 = static_cast<HMCont2D::ECollection*>(left);
-	HMCont2D::ECollection* _bot1 = static_cast<HMCont2D::ECollection*>(bot);
-	HMCont2D::ECollection* _right1 = static_cast<HMCont2D::ECollection*>(right);
-	HMCont2D::ECollection* _top1 = static_cast<HMCont2D::ECollection*>(top);
+	HM2D::EdgeData* _left1 = static_cast<HM2D::EdgeData*>(left);
+	HM2D::EdgeData* _bot1 = static_cast<HM2D::EdgeData*>(bot);
+	HM2D::EdgeData* _right1 = static_cast<HM2D::EdgeData*>(right);
+	HM2D::EdgeData* _top1 = static_cast<HM2D::EdgeData*>(top);
 	GridGeom* ret = 0;
 	//scale
-	ScaleBase sc = HMCont2D::ECollection::Scale01(*_left1);
-	HMCont2D::ECollection::Scale(*_bot1, sc);
-	HMCont2D::ECollection::Scale(*_right1, sc);
-	HMCont2D::ECollection::Scale(*_top1, sc);
+	ScaleBase sc = HM2D::Scale01(*_left1);
+	HM2D::Scale(*_bot1, sc);
+	HM2D::Scale(*_right1, sc);
+	HM2D::Scale(*_top1, sc);
 	try{
-		HMCont2D::Contour left1 = HMCont2D::Assembler::Contour1(*_left1, _left1->data[0]->pstart);
-		HMCont2D::Contour bot1 = HMCont2D::Assembler::Contour1(*_bot1, _bot1->data[0]->pstart);
-		HMCont2D::Contour right1 = HMCont2D::Assembler::Contour1(*_right1, _right1->data[0]->pstart);
-		HMCont2D::Contour top1 = HMCont2D::Assembler::Contour1(*_top1, _top1->data[0]->pstart);
+		HM2D::EdgeData left1 = HM2D::Contour::Assembler::SimpleContours(*_left1)[0];
+		HM2D::EdgeData bot1 = HM2D::Contour::Assembler::SimpleContours(*_bot1)[0];
+		HM2D::EdgeData right1 = HM2D::Contour::Assembler::SimpleContours(*_right1)[0];
+		HM2D::EdgeData top1 = HM2D::Contour::Assembler::SimpleContours(*_top1)[0];
 		//assemble grid
 		if (algo == 0){
 			ret = new GridGeom(HMMap::LinearRectGrid(left1, bot1, right1, top1));
@@ -168,10 +168,10 @@ void* custom_rectangular_grid(int algo, void* left, void* bot,
 		ret = 0;
 	}
 	//unscale
-	HMCont2D::ECollection::Unscale(*_left1, sc);
-	HMCont2D::ECollection::Unscale(*_bot1, sc);
-	HMCont2D::ECollection::Unscale(*_right1, sc);
-	HMCont2D::ECollection::Unscale(*_top1, sc);
+	HM2D::Unscale(*_left1, sc);
+	HM2D::Unscale(*_bot1, sc);
+	HM2D::Unscale(*_right1, sc);
+	HM2D::Unscale(*_top1, sc);
 	return ret;
 }
 
@@ -203,11 +203,11 @@ Grid* circ4grid(int algo, double* center, double rad, double step, double sqrsid
 
 void* triangulate_domain(void* domain, void* constr, int nemb, double* emb, int algo){
 	GridGeom* ret = NULL;
-	HMCont2D::ECollection* dom = static_cast<HMCont2D::ECollection*>(domain);
-	HMCont2D::ECollection* con = (constr==0)?0:static_cast<HMCont2D::ECollection*>(constr);
+	HM2D::EdgeData* dom = static_cast<HM2D::EdgeData*>(domain);
+	HM2D::EdgeData* con = (constr==0)?0:static_cast<HM2D::EdgeData*>(constr);
 
-	ScaleBase sc = HMCont2D::ECollection::Scale01(*dom);
-	if (con!=0) HMCont2D::ECollection::Scale(*con, sc);
+	ScaleBase sc = HM2D::Scale01(*dom);
+	if (con!=0) HM2D::Scale(*con, sc);
 	std::vector<double> ep;
 	for (int i=0; i<nemb; ++i){
 		ep.push_back((emb[3*i+0]-sc.p0.x)/sc.L);
@@ -215,14 +215,15 @@ void* triangulate_domain(void* domain, void* constr, int nemb, double* emb, int 
 		ep.push_back(emb[3*i+2]/sc.L);
 	}
 	try{
-		auto etree = HMCont2D::Assembler::ETree(*dom);
-		auto tree = etree.ExtractTree(etree);
+		auto etree = HM2D::Contour::Tree::Assemble(*dom);
+		auto tree = etree;
+		tree.remove_opens();
 		if (tree.nodes.size() == 0)
 			throw std::runtime_error("Failed to find bounding contour");
 
-		ShpVector<HMCont2D::Contour> cc;
-		vector<HMCont2D::Contour> cas;
-		if (con!=0) cas = HMCont2D::Assembler::AllContours(*con);
+		ShpVector<HM2D::EdgeData> cc;
+		vector<HM2D::EdgeData> cas;
+		if (con!=0) cas = HM2D::Contour::Assembler::AllContours(*con);
 		for (int i=0; i<cas.size(); ++i) aa::add_shared(cc, cas[i]);
 
 		if (algo == 0) ret = new TriGrid(TriGrid(tree, cc, ep));
@@ -234,18 +235,18 @@ void* triangulate_domain(void* domain, void* constr, int nemb, double* emb, int 
 		if (ret!=0) delete ret;
 		ret = NULL;
 	}
-	HMCont2D::ECollection::Unscale(*dom, sc);
-	if (con!=0) HMCont2D::ECollection::Unscale(*con, sc);
+	HM2D::Unscale(*dom, sc);
+	if (con!=0) HM2D::Unscale(*con, sc);
 	return ret;
 }
 
 void* pebi_fill(void* domain, void* constr, int nemb, double* emb){
 	GridGeom* ret = NULL;
-	HMCont2D::ECollection* dom = static_cast<HMCont2D::ECollection*>(domain);
-	HMCont2D::ECollection* con = (constr==0)?0:static_cast<HMCont2D::ECollection*>(constr);
+	HM2D::EdgeData* dom = static_cast<HM2D::EdgeData*>(domain);
+	HM2D::EdgeData* con = (constr==0)?0:static_cast<HM2D::EdgeData*>(constr);
 
-	ScaleBase sc = HMCont2D::ECollection::Scale01(*dom);
-	if (con!=0) HMCont2D::ECollection::Scale(*con, sc);
+	ScaleBase sc = HM2D::Scale01(*dom);
+	if (con!=0) HM2D::Scale(*con, sc);
 	std::vector<double> ep;
 	for (int i=0; i<nemb; ++i){
 		ep.push_back((emb[3*i+0]-sc.p0.x)/sc.L);
@@ -253,15 +254,15 @@ void* pebi_fill(void* domain, void* constr, int nemb, double* emb){
 		ep.push_back(emb[3*i+2]/sc.L);
 	}
 	try{
-		auto etree = HMCont2D::Assembler::ETree(*dom);
-		auto tree = etree.ExtractTree(etree);
+		auto tree = HM2D::Contour::Tree::Assemble(*dom);
+		tree.remove_opens();
 
 		if (tree.nodes.size() == 0)
 			throw std::runtime_error("Failed to find bounding contour");
 
-		ShpVector<HMCont2D::Contour> cc;
-		vector<HMCont2D::Contour> cas;
-		if (con!=0) cas = HMCont2D::Assembler::AllContours(*con);
+		ShpVector<HM2D::EdgeData> cc;
+		vector<HM2D::EdgeData> cas;
+		if (con!=0) cas = HM2D::Contour::Assembler::AllContours(*con);
 		for (int i=0; i<cas.size(); ++i) aa::add_shared(cc, cas[i]);
 
 		TriGrid g3 = TriGrid(tree, cc, ep);
@@ -273,8 +274,8 @@ void* pebi_fill(void* domain, void* constr, int nemb, double* emb){
 		if (ret!=0) delete ret;
 		ret = NULL;
 	}
-	HMCont2D::ECollection::Unscale(*dom, sc);
-	if (con!=0) HMCont2D::ECollection::Unscale(*con, sc);
+	HM2D::Unscale(*dom, sc);
+	if (con!=0) HM2D::Unscale(*con, sc);
 	return ret;
 }
 
@@ -297,29 +298,35 @@ void* convex_cells(void* input_grid, double an){
 void* stripe_grid(void* input_contour, int npart, double* part, int tip_algo, 
 		void** bot, void** left, void** top, void** right, hmcport_callback cb){
 	GridGeom* ret = NULL;
-	auto ecol = static_cast<HMCont2D::ECollection*>(input_contour);
-	ScaleBase sc = HMCont2D::ECollection::Scale01(*ecol);
-	HMCont2D::Contour cbot, cright, cleft, ctop;
+	auto ecol = static_cast<HM2D::EdgeData*>(input_contour);
+	ScaleBase sc = HM2D::Scale01(*ecol);
+	HM2D::EdgeData cbot, cright, cleft, ctop;
 	try{
 		vector<double> spart(part, part+npart);
 		for (auto& x: spart) x/=sc.L;
 		Point bl, br, tr, tl;
-		HMCont2D::Contour ic = HMCont2D::Assembler::Contour1(*ecol, ecol->data[0]->pstart);
+		HM2D::EdgeData ic = HM2D::Contour::Assembler::Contour1(*ecol, ecol->at(0)->first().get());
 		ret = new GridGeom(HMBlay::BuildStripeGrid.WithCallback(cb, ic, spart, tip_algo, bl, br, tr, tl));
 
+		auto gc = GGeom::Info::Contour(*ret);
+		auto av = HM2D::AllVertices(gc.alledges());
+		auto bl2 = av[std::get<0>(HM2D::FindClosestNode(av, bl))].get();
+		auto br2 = av[std::get<0>(HM2D::FindClosestNode(av, br))].get();
+		auto tl2 = av[std::get<0>(HM2D::FindClosestNode(av, tl))].get();
+		auto tr2 = av[std::get<0>(HM2D::FindClosestNode(av, tr))].get();
+
 		if (bl != br){
+			auto& cont = gc.nodes[0]->contour;
 			//if open
-			auto gc = GGeom::Info::Contour1(*ret);
-			cbot = HMCont2D::Assembler::Contour1(gc, bl, br);
-			ctop = HMCont2D::Assembler::Contour1(gc, tr, tl);
-			cleft = HMCont2D::Assembler::Contour1(gc, tl, bl);
-			cright = HMCont2D::Assembler::Contour1(gc, br, tr);
+			cbot = HM2D::Contour::Assembler::Contour1(cont, bl2, br2);
+			ctop = HM2D::Contour::Assembler::Contour1(cont, tr2, tl2);
+			cleft = HM2D::Contour::Assembler::Contour1(cont, tl2, bl2);
+			cright = HM2D::Contour::Assembler::Contour1(cont, br2, tr2);
 		} else {
-			auto gc = GGeom::Info::Contour(*ret);
-			auto gout = gc.roots()[0];
-			auto gin = gout->children[0];
-			cbot = HMCont2D::Assembler::Contour1(*gin, bl, br);
-			ctop = HMCont2D::Assembler::Contour1(*gout, tr, tl);
+			auto& gout = gc.roots()[0]->contour;
+			auto& gin = gc.roots()[0]->children[0].lock()->contour;
+			cbot = HM2D::Contour::Assembler::Contour1(gin, bl2, br2);
+			ctop = HM2D::Contour::Assembler::Contour1(gout, tr2, tl2);
 		}
 	} catch (std::runtime_error &e){
 		std::cout<<e.what()<<std::endl;
@@ -328,14 +335,14 @@ void* stripe_grid(void* input_contour, int npart, double* part, int tip_algo,
 	}
 	ret->undo_scale(sc);
 
-	auto s1 = new HMCont2D::Container<HMCont2D::ECollection>();
-	HMCont2D::Container<HMCont2D::ECollection>::DeepCopy(cbot, *s1);
-	auto s2 = new HMCont2D::Container<HMCont2D::ECollection>();
-	HMCont2D::Container<HMCont2D::ECollection>::DeepCopy(cright, *s2);
-	auto s3 = new HMCont2D::Container<HMCont2D::ECollection>();
-	HMCont2D::Container<HMCont2D::ECollection>::DeepCopy(ctop, *s3);
-	auto s4 = new HMCont2D::Container<HMCont2D::ECollection>();
-	HMCont2D::Container<HMCont2D::ECollection>::DeepCopy(cleft, *s4);
+	auto s1 = new HM2D::EdgeData();
+	HM2D::DeepCopy(cbot, *s1);
+	auto s2 = new HM2D::EdgeData();
+	HM2D::DeepCopy(cright, *s2);
+	auto s3 = new HM2D::EdgeData();
+	HM2D::DeepCopy(ctop, *s3);
+	auto s4 = new HM2D::EdgeData();
+	HM2D::DeepCopy(cleft, *s4);
 
 	*bot = s1;
 	*right =s2;

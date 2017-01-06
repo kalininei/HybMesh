@@ -1,4 +1,5 @@
 #include "dscpack_port.hpp"
+#include "contour.hpp"
 using namespace HMMap::Conformal::Impl::DSCPack;
 
 extern "C"{
@@ -95,14 +96,14 @@ ToAnnulus::Build(const vector<Point>& outer, const vector<Point>& inner){
 }
 
 shared_ptr<ToAnnulus>
-ToAnnulus::Build(const HMCont2D::Contour& outer, const HMCont2D::Contour& inner){
-	assert(outer.is_closed() && inner.is_closed());
+ToAnnulus::Build(const HM2D::EdgeData& outer, const HM2D::EdgeData& inner){
+	assert(HM2D::Contour::IsClosed(outer) && HM2D::Contour::IsClosed(inner));
 	vector<Point> v1(outer.size()), v2(inner.size());
-	auto p1 = outer.ordered_points(); p1.pop_back();
-	auto p2 = inner.ordered_points(); p2.pop_back();
-	std::transform(p1.begin(), p1.end(), v1.begin(), [](const Point* p){
+	auto p1 = HM2D::Contour::OrderedPoints(outer); p1.pop_back();
+	auto p2 = HM2D::Contour::OrderedPoints(inner); p2.pop_back();
+	std::transform(p1.begin(), p1.end(), v1.begin(), [](shared_ptr<HM2D::Vertex> p){
 			return *p;});
-	std::transform(p2.begin(), p2.end(), v2.begin(), [](const Point* p){
+	std::transform(p2.begin(), p2.end(), v2.begin(), [](shared_ptr<HM2D::Vertex> p){
 			return *p;});
 	return Build(v1, v2);
 }

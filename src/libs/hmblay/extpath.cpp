@@ -1,4 +1,9 @@
 #include "extpath.hpp"
+#include "algos.hpp"
+#include "constructor.hpp"
+#include "treverter2d.hpp"
+#include "cont_partition.hpp"
+#include "cont_assembler.hpp"
 
 using namespace HMBlay::Impl;
 
@@ -13,8 +18,8 @@ const double HCOEF = 2.1;
 void PathPntData::set_smooth_angle(int dir, bool redefine_type){
 	double h = HCOEF*opt->partition.back();
 	if (dir == 0){
-		Vect direct1 = HMCont2D::Algos::SmoothedDirection2(*opt->get_full_source(), p,  1, h, 0);
-		Vect direct2 = HMCont2D::Algos::SmoothedDirection2(*opt->get_full_source(), p, -1, 0, h);
+		Vect direct1 = HM2D::Contour::Algos::SmoothedDirection2(*opt->get_full_source(), p,  1, h, 0);
+		Vect direct2 = HM2D::Contour::Algos::SmoothedDirection2(*opt->get_full_source(), p, -1, 0, h);
 		if (direct1.x == 0 && direct1.y == 0) direct1 = direct2 * -1;
 		if (direct2.x == 0 && direct2.y == 0) direct2 = direct1 * -1;
 		angle = Angle(direct2, Point(0,0), direct1);
@@ -24,11 +29,11 @@ void PathPntData::set_smooth_angle(int dir, bool redefine_type){
 			normal = vecRotate(direct2, -angle/2.0);
 		}
 	} else if (dir == 1){
-		Vect direct = HMCont2D::Algos::SmoothedDirection2(*opt->get_full_source(), p,  1, h, 0);
+		Vect direct = HM2D::Contour::Algos::SmoothedDirection2(*opt->get_full_source(), p,  1, h, 0);
 		angle = M_PI;
 		normal = vecRotate(direct, angle/2.0);
 	} else if (dir == -1){
-		Vect direct = HMCont2D::Algos::SmoothedDirection2(*opt->get_full_source(), p,  1, 0, h);
+		Vect direct = HM2D::Contour::Algos::SmoothedDirection2(*opt->get_full_source(), p,  1, 0, h);
 		angle = M_PI;
 		normal = vecRotate(direct, angle/2.0);
 	}
@@ -46,8 +51,9 @@ void PathPntData::set_smooth_angle(int dir, bool redefine_type){
 void PathPntData::set_exact_angle(int dir, bool redefine_type){
 	Point *p1, *p2, *p3;
 	p2 = p;
-	p1 = (dir != 1) ? opt->get_full_source()->prev_point(p2) : 0;
-	p3 = (dir != -1) ? opt->get_full_source()->next_point(p2) : 0;
+	auto info = HM2D::Contour::PInfo(*opt->get_full_source(), p2);
+	p1 = (dir != 1) ? info.pprev.get() : 0;
+	p3 = (dir != -1) ? info.pnext.get() : 0;
 
 	Vect v;
 	if (p1 == 0 || p3 == 0){
@@ -70,14 +76,14 @@ void PathPntData::set_exact_angle(int dir, bool redefine_type){
 double ExtPath::largest_depth() const{
 	vector<double> h; h.reserve(ext_data.size());
 	for (auto& e: ext_data) h.push_back(e.opt->partition.back());
-	if (!is_closed()) h.resize(h.size() - 1);
+	if (HM2D::Contour::IsOpen(*this)) h.resize(h.size() - 1);
 	return *std::max_element(h.begin(), h.end());
 }
 
 int ExtPath::largest_vpart_size() const{
 	vector<int> h(ext_data.size());
 	for (int i=0; i<ext_data.size(); ++i) h[i] = ext_data[i].opt->partition.size();
-	if (!is_closed()) h.resize(h.size() - 1);
+	if (HM2D::Contour::IsOpen(*this)) h.resize(h.size() - 1);
 	return *std::max_element(h.begin(), h.end());
 }
 
@@ -89,9 +95,9 @@ ExtPath ExtPath::Assemble(const vector<Options*>& data){
 	for (auto d: data){
 		auto p = d->get_path();
 		//check for ordering
-		assert(ret.size() == 0 || ret.last() == p->first());
+		assert(ret.size() == 0 || HM2D::Contour::Last(ret) == HM2D::Contour::First(*p));
 		//add edges
-		ret.Unite(*p);
+		HM2D::Contour::Connect(ret, *p);
 		for (int i=0; i<p->size(); ++i) edgeopt.push_back(d);
 	}
 	//add empty options
@@ -99,30 +105,33 @@ ExtPath ExtPath::Assemble(const vector<Options*>& data){
 		ret.ext_data.push_back(PathPntData(edgeopt[i]));
 	}
 	//fill options
-	auto p = ret.ordered_points();
+	auto p = HM2D::Contour::OrderedPoints(ret);
 	for (int i=0; i<edgeopt.size(); ++i){
-		Point* pprev = (i==0) ? 0 : p[i-1];
-		Point* pnext = p[i+1];
-		ret.ext_data[i].fill(pprev, p[i], pnext);
+		auto pprev = (i==0) ? 0 : p[i-1];
+		auto pnext = p[i+1];
+		ret.ext_data[i].fill(pprev.get(), p[i].get(), pnext.get());
 	}
 	//for closed contours take into account first-last connection
-	if (ret.is_closed()){
-		Point* p0 = p[p.size()-2];
-		Point* p1 = p[p.size()-1];
-		Point* p2 = p[0];
-		Point* p3 = p[1];
+	if (HM2D::Contour::IsClosed(ret)){
+		Point* p0 = p[p.size()-2].get();
+		Point* p1 = p[p.size()-1].get();
+		Point* p2 = p[0].get();
+		Point* p3 = p[1].get();
 		ret.ext_data[0].fill(p0,p2,p3);
 		//ret.ext_data.back().fill(p0,p1,p);
 	}
 	//add one entry to match ordered_points() length
-	if (ret.is_closed()){
+	if (HM2D::Contour::IsClosed(ret)){
 		ret.ext_data.push_back(ret.ext_data[0]);
 	} else {
 		ret.ext_data.push_back(ret.ext_data.back());
-		Point *pprev = ret.ext_data[0].opt->get_full_source()->point_siblings(p[0])[0];
-		Point *pnext = ret.ext_data.back().opt->get_full_source()->point_siblings(p.back())[2];
-		ret.ext_data[0].fill(pprev, p[0], p[1]);
-		ret.ext_data.back().fill(p[p.size()-2], p.back(), pnext);
+		auto in0 = HM2D::Contour::PInfo(*ret.ext_data[0].opt->get_full_source(), p[0].get());
+		auto in1 = HM2D::Contour::PInfo(*ret.ext_data[0].opt->get_full_source(), p.back().get());
+		Point* pprev = in0.pprev.get();
+		Point* pnext = in1.pnext.get();
+
+		ret.ext_data[0].fill(pprev, p[0].get(), p[1].get());
+		ret.ext_data.back().fill(p[p.size()-2].get(), p.back().get(), pnext);
 	}
 		
 	ret.FillEndConditions();
@@ -164,18 +173,24 @@ void ExtPath::FillEndConditions(){
 	//building start point boundary
 	if (ext_data[0].tp == CornerTp::RIGHT){
 		double h = 2*ext_data[0].opt->partition.back();
-		leftbc = HMCont2D::Constructor::CutContour(*full_source, *first(), -1, h);
+		leftbc = HM2D::Contour::Constructor::CutContour(*full_source, *HM2D::Contour::First(*this), -1, h);
 		//if leftbc contains only single edge its direction is not defined
 		//we have to guarantee direction of bnd.
-		if (*first() != *leftbc.first()) leftbc.ReallyReverse();
+		if (*HM2D::Contour::First(*this) !=
+		    *HM2D::Contour::First(leftbc)){
+			HM2D::Contour::ReallyRevert::Permanent(leftbc);
+		}
 	} else {
 		PerpendicularStart();
 	}
 	//end point boundary
 	if (ext_data.back().tp == CornerTp::RIGHT){
 		double h = 2*ext_data.back().opt->partition.back();
-		rightbc = HMCont2D::Constructor::CutContour(*full_source, *last(), 1, h);
-		if (*rightbc.first() != *last()) rightbc.ReallyReverse();
+		rightbc = HM2D::Contour::Constructor::CutContour(*full_source, *HM2D::Contour::Last(*this), 1, h);
+		if (*HM2D::Contour::First(rightbc) !=
+		    *HM2D::Contour::Last(*this)){
+			HM2D::Contour::ReallyRevert::Permanent(rightbc);
+		}
 	} else {
 		PerpendicularEnd();
 	}
@@ -184,15 +199,17 @@ void ExtPath::FillEndConditions(){
 void ExtPath::PerpendicularStart(){
 	leftbc.clear();
 	Vect v = ext_data[0].normal * 100;
-	auto c = HMCont2D::Constructor::ContourFromPoints({*first(), *first()+v});
-	leftbc.Unite(c);
+	Point f = *HM2D::Contour::First(*this);
+	auto c = HM2D::Contour::Constructor::FromPoints({f, f+v});
+	HM2D::Contour::Connect(leftbc, c);
 }
 
 void ExtPath::PerpendicularEnd(){
 	rightbc.clear();
 	Vect v = ext_data.back().normal * 100;
-	auto c = HMCont2D::Constructor::ContourFromPoints({*last(), *last()+v});
-	rightbc.Unite(c);
+	Point f = *HM2D::Contour::Last(*this);
+	auto c = HM2D::Contour::Constructor::FromPoints({f, f+v});
+	HM2D::Contour::Connect(rightbc, c);
 }
 
 
@@ -204,7 +221,7 @@ vector<ExtPath> ExtPath::DivideByAngle(const ExtPath& pth, vector<CornerTp> tps)
 	vector<ExtPath> ret;
 	if (pth.size()==0) return ret;
 	if (pth.size()==1) return {pth};
-	auto info = pth.ordered_info();
+	auto info = HM2D::Contour::OrderedInfo(pth);
 	ret.push_back(ExtPath());
 	auto istps = [&](CornerTp t){
 		return std::find(tps.begin(), tps.end(), t)
@@ -216,14 +233,14 @@ vector<ExtPath> ExtPath::DivideByAngle(const ExtPath& pth, vector<CornerTp> tps)
 			ret.back().ext_data.push_back(pth.ext_data[it.index]);
 			ret.push_back(ExtPath());
 		}
-		ret.back().add_value(it.enext);
+		ret.back().push_back(it.enext);
 		ret.back().ext_data.push_back(pth.ext_data[it.index]);
 	}
 	ret.back().ext_data.push_back(pth.ext_data[info.back().index]);
 	//if this is a closed contour get rid of division at the first point
-	if (pth.is_closed() && ret.size()>1 && !istps(ret[0].ext_data[0].tp)){
+	if (HM2D::Contour::IsClosed(pth) && ret.size()>1 && !istps(ret[0].ext_data[0].tp)){
 		ExtPath np(ret.back());
-		np.Unite(ret[0]);
+		HM2D::Contour::Connect(np, ret[0]);
 		for (int i=1; i<ret[0].ext_data.size(); ++i){
 			np.ext_data.push_back(ret[0].ext_data[i]);
 		}
@@ -234,7 +251,7 @@ vector<ExtPath> ExtPath::DivideByAngle(const ExtPath& pth, vector<CornerTp> tps)
 
 	for (auto& r: ret){
 		r.FillEndConditions();
-		assert(r.ext_data.size() == r.ordered_points().size());
+		assert(r.ext_data.size() == HM2D::Contour::OrderedPoints(r).size());
 	}
 	return ret;
 }
@@ -242,20 +259,21 @@ vector<ExtPath> ExtPath::DivideByAngle(const ExtPath& pth, vector<CornerTp> tps)
 vector<ExtPath> ExtPath::DivideByHalf(const ExtPath& pth){
 	// === find half point
 	assert(pth.size() > 2);
-	Point* hp = HMCont2D::ECollection::FindClosestNode(
-			pth, HMCont2D::Contour::WeightPoint(pth, 0.5));
-	vector<Point*> dp = pth.ordered_points();
+	auto _av = HM2D::AllVertices(pth);
+	auto _f1 = HM2D::FindClosestNode(_av, HM2D::Contour::WeightPoint(pth, 0.5));
+	auto hp = _av[std::get<0>(_f1)];
+	auto dp = HM2D::Contour::OrderedPoints(pth);
 	int hind = std::find(dp.begin(), dp.end(), hp) - dp.begin();
 	if (hind == 0) hind = 1;
 	if (hind == dp.size()-1) hind = dp.size()-2;
 	// === write data
 	vector<ExtPath> ret(2);
 	//first edges
-	ret[0].add_value(HMCont2D::Edge(dp[0], dp[1]));
-	for (int i=2; i<hind+1; ++i) ret[0].AddLastPoint(dp[i]);
+	ret[0].emplace_back(new HM2D::Edge(dp[0], dp[1]));
+	for (int i=2; i<hind+1; ++i) HM2D::Contour::AddLastPoint(ret[0], dp[i]);
 	//second edges
-	ret[1].add_value(HMCont2D::Edge(dp[hind], dp[hind+1]));
-	for (int i = hind+2; i<dp.size(); ++i) ret[1].AddLastPoint(dp[i]);
+	ret[1].emplace_back(new HM2D::Edge(dp[hind], dp[hind+1]));
+	for (int i = hind+2; i<dp.size(); ++i) HM2D::Contour::AddLastPoint(ret[1], dp[i]);
 	//first ext_data
 	for (int i=0; i<hind+1; ++i) ret[0].ext_data.push_back(pth.ext_data[i]);
 	//second ext_data
@@ -267,11 +285,11 @@ vector<ExtPath> ExtPath::DivideByHalf(const ExtPath& pth){
 }
 
 void ExtPath::ReinterpretCornerTp(ExtPath& pth){
-	vector<Point*> op = pth.ordered_points();
+	auto op = HM2D::Contour::OrderedPoints(pth);
 	//calculate smoothed angles and place neglactable feature
 	for (int i=0; i<op.size(); ++i){
 		auto ct = pth.ext_data[i].tp;
-		if ((!pth.is_closed() && (i==0 || i==op.size()-1)) ||
+		if ((HM2D::Contour::IsOpen(pth) && (i==0 || i==op.size()-1)) ||
 				ct == CornerTp::REENTRANT ||
 				ct == CornerTp::NO ||
 				ct == CornerTp::ROUND ||
@@ -283,54 +301,56 @@ void ExtPath::ReinterpretCornerTp(ExtPath& pth){
 }
 
 vector<double> ExtPath::PathPartition(double len1, double len2) const{
-	HMCont2D::PCollection apoints;
-
 	//1) create a sub-contour [len1->len2]
-	ExtPath subpath = SubPath(len1, len2, apoints);
+	ExtPath subpath = SubPath(len1, len2);
 
 	//2) create sub-sub-contours whith same partition options
 	vector<ExtPath> subs = DivideByBndPart(subpath);
 
 	//3) make a partition of each sub-sub-contour
-	vector<Contour> conts2; conts2.reserve(subs.size());
+	vector<HM2D::EdgeData> conts2; conts2.reserve(subs.size());
 	for (auto& p: subs){
-		conts2.push_back(p.Partition(apoints));
+		conts2.push_back(p.Partition());
 	}
 
 	//4) get lengths of each subcontour segments and gather result
 	vector<double> ret {len1};
 	for (auto& c: conts2){
 		bool is0 = true;
-		for (auto& p: c.ordered_points()){
+		for (auto& p: HM2D::Contour::OrderedPoints(c)){
 			if (is0) {is0=false; continue; }
-			auto coord = coord_at(*p);
+			auto coord = HM2D::Contour::CoordAt(*this, *p);
 			ret.push_back(std::get<0>(coord));
 		}
 	}
 	return ret;
 }
 
-HMCont2D::Contour ExtPath::Partition(HMCont2D::PCollection& apoints) const{
+HM2D::EdgeData ExtPath::Partition() const{
 	auto& opt = *ext_data[0].opt;
 	switch (opt.bnd_step_method){
 		case BndStepMethod::NO_BND_STEPPING:
 			return *this;
 		case BndStepMethod::CONST_BND_STEP:
-			return HMCont2D::Algos::Partition(opt.bnd_step, *this,
-					apoints, HMCont2D::PartitionTp::IGNORE_ALL);
+			return HM2D::Contour::Algos::Partition(opt.bnd_step, *this,
+					HM2D::Contour::Algos::PartitionTp::IGNORE_ALL);
 		case BndStepMethod::CONST_BND_STEP_KEEP_SHAPE:
-			return HMCont2D::Algos::Partition(opt.bnd_step, *this,
-					apoints, HMCont2D::PartitionTp::KEEP_SHAPE);
+			return HM2D::Contour::Algos::Partition(opt.bnd_step, *this,
+					HM2D::Contour::Algos::PartitionTp::KEEP_SHAPE);
 		case BndStepMethod::CONST_BND_STEP_KEEP_ALL:
-			return HMCont2D::Algos::Partition(opt.bnd_step, *this,
-					apoints, HMCont2D::PartitionTp::KEEP_ALL);
+			return HM2D::Contour::Algos::Partition(opt.bnd_step, *this,
+					HM2D::Contour::Algos::PartitionTp::KEEP_ALL);
 		case BndStepMethod::INCREMENTAL:{
-			double wstart = std::get<1>(opt.get_full_source()->coord_at(*first()));
-			double wend = std::get<1>(opt.get_full_source()->coord_at(*last()));
-			double w1 = std::get<1>(opt.get_full_source()->coord_at(opt.bnd_step_basis[0].first));
-			double w2 = std::get<1>(opt.get_full_source()->coord_at(opt.bnd_step_basis[1].first));
+			Point c0 = *HM2D::Contour::First(*this);
+			Point c1 = *HM2D::Contour::Last(*this);
+			Point c2 = opt.bnd_step_basis[0].first;
+			Point c3 = opt.bnd_step_basis[1].first;
+			double wstart = std::get<1>(HM2D::Contour::CoordAt(*opt.get_full_source(), c0));
+			double wend = std::get<1>(HM2D::Contour::CoordAt(*opt.get_full_source(), c1));
+			double w1 = std::get<1>(HM2D::Contour::CoordAt(*opt.get_full_source(), c2));
+			double w2 = std::get<1>(HM2D::Contour::CoordAt(*opt.get_full_source(), c3));
 			assert(!ISZERO(wstart-wend) && !ISZERO(w1-w2));
-			if (opt.get_full_source()->is_closed()){
+			if (HM2D::Contour::IsClosed(*opt.get_full_source())){
 				if (wstart>wend) wend+=1.0;
 				while (w1-wstart>geps) w1-=1.0;   //to get: w1<=wstart
 				while (wend-w2>geps) w2+=1.0;         //to get: w2>=wend
@@ -340,8 +360,8 @@ HMCont2D::Contour ExtPath::Partition(HMCont2D::PCollection& apoints) const{
 			b1/=(w2-w1); b2/=(w2-w1);
 			std::map<double, double> wbas;
 			wbas[0] = b1; wbas[1] = b2;
-			return HMCont2D::Algos::WeightedPartition(wbas, *this,
-					apoints, HMCont2D::PartitionTp::IGNORE_ALL);
+			return HM2D::Contour::Algos::WeightedPartition(wbas, *this,
+					HM2D::Contour::Algos::PartitionTp::IGNORE_ALL);
 		}
 		default:
 			throw std::runtime_error("Unsupported partition algorithm");
@@ -349,8 +369,8 @@ HMCont2D::Contour ExtPath::Partition(HMCont2D::PCollection& apoints) const{
 }
 
 vector<ExtPath> ExtPath::DivideByBndPart(const ExtPath& pth){
-	vector<Point*> ap = pth.ordered_points();
-	vector<Point*> rpoints {ap[0]};
+	HM2D::VertexData ap = HM2D::Contour::OrderedPoints(pth);
+	HM2D::VertexData rpoints {ap[0]};
 	auto last_method = pth.ext_data[0].opt->bnd_step_method;
 	auto last_step = pth.ext_data[0].opt->bnd_step;
 	for (int i=0; i<ap.size(); ++i){
@@ -367,17 +387,17 @@ vector<ExtPath> ExtPath::DivideByBndPart(const ExtPath& pth){
 	if (rpoints.back() != ap.back()) rpoints.push_back(ap.back());
 	vector<ExtPath> subs;
 	for (int i=0; i<rpoints.size()-1; ++i){
-		subs.push_back(pth.SubPath(rpoints[i], rpoints[i+1]));
+		subs.push_back(pth.SubPath(rpoints[i].get(), rpoints[i+1].get()));
 	}
 	return subs;
 }
 
 ExtPath ExtPath::SubPath(const Point* p1, const Point* p2) const{
-	HMCont2D::Contour c = HMCont2D::Assembler::Contour1(*this, p1, p2);
+	HM2D::EdgeData c = HM2D::Contour::Assembler::ShrinkContour(*this, p1, p2);
 	ExtPath ret;
-	ret.Unite(c);
-	auto orig_pts = ordered_points();
-	for (auto p: c.ordered_points()){
+	ret.insert(ret.end(), c.begin(), c.end());
+	auto orig_pts = HM2D::Contour::OrderedPoints(*this);
+	for (auto p: HM2D::Contour::OrderedPoints(c)){
 		int i = std::find(orig_pts.begin(), orig_pts.end(), p) - orig_pts.begin();
 		ret.ext_data.push_back(ext_data[i]);
 	}
@@ -385,31 +405,31 @@ ExtPath ExtPath::SubPath(const Point* p1, const Point* p2) const{
 	return ret;
 }
 
-ExtPath ExtPath::SubPath(double len1, double len2, HMCont2D::PCollection& apoints) const{
+ExtPath ExtPath::SubPath(double len1, double len2) const{
 	ExtPath ret(*this);
-	Point* p1 = ret.AddPoint(len1, apoints);
-	Point* p2 = ret.AddPoint(len2, apoints);
+	Point* p1 = ret.AddPoint(len1);
+	Point* p2 = ret.AddPoint(len2);
 	return ret.SubPath(p1, p2);
 }
 
-Point* ExtPath::AddPoint(double len, HMCont2D::PCollection& apoints){
-	auto w = WeightPointsByLen(*this, {len});
-	auto g = GuaranteePoint(*w.point(0), apoints);
-	Point* ret = std::get<1>(g);
+Point* ExtPath::AddPoint(double len){
+	auto w = HM2D::Contour::WeightPointsByLen(*this, {len});
+	auto g = HM2D::Contour::GuaranteePoint(*this, w[0]);
+	auto ret = std::get<1>(g);
 	//if point already in path -> return it
-	if (std::get<0>(g) == false) return ret;
+	if (std::get<0>(g) == false) return ret.get();
 	//if not -> add new entry to ext_data vector
-	vector<Point*> op = this->ordered_points();
+	auto op = HM2D::Contour::OrderedPoints(*this);
 	auto ifnd = std::find(op.begin(), op.end(), ret) - op.begin();
 	if (ifnd!=0) ext_data.insert(ext_data.begin() + ifnd, ext_data[ifnd-1]);
 	else ext_data.insert(ext_data.begin(), ext_data[0]);
-	return ret;
+	return ret.get();
 }
 
 vector<double> ExtPath::VerticalPartition(double len) const{
 	int i=0;
 	double used_len = 0;
-	while (ISGREATER(len, used_len) && i<size()-1) {used_len += edge(i)->length(); ++i;}
+	while (ISGREATER(len, used_len) && i<size()-1) {used_len += at(i)->length(); ++i;}
 	if (ISGREATER(used_len, len)) --i;
 	Options* ret;
 	//if point lies exactly on edge division point choose longest partition
@@ -417,7 +437,7 @@ vector<double> ExtPath::VerticalPartition(double len) const{
 		Options *cand1 = 0, *cand2 = 0;
 		cand1 = ext_data[i].opt;
 		if (i == 0){
-			if (is_closed()){
+			if (HM2D::Contour::IsClosed(*this)){
 				cand2 = ext_data[size()-1].opt;
 			} else {
 				cand2 = 0;
@@ -436,7 +456,3 @@ vector<double> ExtPath::VerticalPartition(double len) const{
 
 	return ret->partition;
 }
-
-
-
-

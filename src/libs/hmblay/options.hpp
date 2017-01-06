@@ -1,7 +1,7 @@
 #ifndef HYBMESH_HMBLAY_OPTIONS_HPP
 #define HYBMESH_HMBLAY_OPTIONS_HPP
 
-#include "hybmesh_contours2d.hpp"
+#include "primitives2d.hpp"
 
 namespace HMBlay{
 
@@ -32,7 +32,7 @@ struct Input{
 	Direction direction;
 
 	//input contours tree. weak reference
-	HMCont2D::ECollection* edges;
+	HM2D::EdgeData* edges;
 
 	//step along contour length
 	double bnd_step;     //for const stepping
@@ -85,17 +85,17 @@ class Options: public Input{
 	Options(const Input& other): Input(other){}
 	//-- data filled by CreateFromParent and Initialize procedures
 	//pool for all edges and points
-	shared_ptr<HMCont2D::Container<HMCont2D::ECollection>> __all_data;
+	shared_ptr<HM2D::EdgeData> __all_data;
 	//storage for parent 'edges' member
-	shared_ptr<HMCont2D::ECollection> __edges_data;
+	shared_ptr<HM2D::EdgeData> __edges_data;
 
 
 	//these are contours which should be meshed (path)
 	//and full contour which contains the path
 	//path and full_source are directed in such a way that 
 	//grid is build in an inner (left) direction
-	HMCont2D::Contour full_source;
-	HMCont2D::Contour path;
+	HM2D::EdgeData full_source;
+	HM2D::EdgeData path;
 
 	//start/end belong of path
 	Point *pnt_start, *pnt_end;
@@ -108,8 +108,8 @@ class Options: public Input{
 public:
 	//get
 	ScaleBase* get_scaling(){ return scaling.get(); }
-	HMCont2D::Contour* get_path(){ return &path; }
-	HMCont2D::Contour* get_full_source(){ return &full_source; }
+	HM2D::EdgeData* get_path(){ return &path; }
+	HM2D::EdgeData* get_full_source(){ return &full_source; }
 
 	//treats corner according to this option
 	//a is an angle in radians

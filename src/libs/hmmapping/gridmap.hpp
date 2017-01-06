@@ -2,8 +2,8 @@
 #define HYBMESH_GRIDMAP_HPP
 
 #include "hmproject.h"
-#include "hybmesh_contours2d.hpp"
 #include "grid.h"
+#include "primitives2d.hpp"
 
 namespace HMMap{
 
@@ -39,7 +39,7 @@ struct TMapGrid: public HMCallback::ExecutorBase{
 	HMCB_SET_DEFAULT_DURATION(110);
 
 	GridGeom _run(const GridGeom& base,
-			const HMCont2D::ECollection& area,
+			const HM2D::EdgeData& area,
 			vector<Point> base_points,
 			vector<Point> mapped_points,
 			bool reversed,

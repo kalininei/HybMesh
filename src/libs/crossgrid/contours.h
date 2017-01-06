@@ -3,7 +3,7 @@
 #include "crossgrid.h"
 #include "bgeom2d.h"
 #include <list>
-#include "hybmesh_contours2d.hpp"
+#include "primitives2d.hpp"
 
 //Contour basic class
 class PContour{
@@ -214,7 +214,7 @@ public:
 	PointsContoursCollection(const vector<double>& pts, const vector<int>& eds);
 	PointsContoursCollection(const vector<Point>& pts, const vector<int>& eds);
 	PointsContoursCollection(const ContoursCollection& col);
-	PointsContoursCollection(const HMCont2D::ECollection& col);
+	PointsContoursCollection(const HM2D::EdgeData& col);
 
 	int n_edges() const { return edges.size();}
 	int n_total_points() const { return pdata.size(); }

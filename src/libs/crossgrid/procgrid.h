@@ -1,8 +1,8 @@
 #ifndef CROSSGRID_PROCGRID_H
 #define CROSSGRID_PROCGRID_H
-//This is a new style interface.
-//Old interface should be completely changed to new one during grid refactoring.
-#include "hybmesh_contours2d.hpp"
+
+#include "primitives2d.hpp"
+#include "tree.hpp"
 #include <sstream>
 #include "grid.h"
 namespace GGeom{
@@ -81,16 +81,16 @@ static vector<GridGeom> SubGrids(const GridGeom& grid);
 //all significant contour points between (p1, p2) will present in grid
 //grid should be located to the left of the contour
 //snap_nodes is a list of points which will be snapped to contour before procedure starts
-static void SnapToContour(GridGeom& grid, const HMCont2D::Contour& cont,
+static void SnapToContour(GridGeom& grid, const HM2D::EdgeData& cont,
 		const std::vector<GridPoint*>& snap_nodes);
 //shifts boundary grid node to significant contour vertex
 //if it is non-significant by itself. Otherwise does nothing
-static void ShiftToContour(GridGeom& grid, const HMCont2D::Contour& cont,
+static void ShiftToContour(GridGeom& grid, const HM2D::EdgeData& cont,
 		const std::vector<GridPoint*>& snap_nodes);
 //all boundary contour nodes will be moved to edges or vertices of cont
 //algo = 1 -> to edges
 //algo = 2 -> to vertices
-static void SnapAllBoundary(GridGeom& grid, const HMCont2D::ECollection& cont, int algo);
+static void SnapAllBoundary(GridGeom& grid, const HM2D::EdgeData& cont, int algo);
 
 //no complicated boundary cell edges
 //angle is between [0, M_PI]
@@ -110,12 +110,12 @@ static ShpVector<GridPoint> SharePoints(const GridGeom& grid);
 static ShpVector<GridPoint> SharePoints(const GridGeom& grid, const vector<int>& indicies);
 static ShpVector<GridPoint> BoundaryPoints(const GridGeom& grid);
 //collection of all outer contours
-static HMCont2D::ContourTree Contour(const GridGeom& grid);
+static HM2D::Contour::Tree Contour(const GridGeom& grid);
 //only the first contour of tree.
 //Used for grids which are definitly singly connected
-static HMCont2D::Contour Contour1(const GridGeom& grid);
+static HM2D::EdgeData Contour1(const GridGeom& grid);
 //contour from grid cell
-static HMCont2D::Contour CellContour(const GridGeom& grid, int cell_ind);
+static HM2D::EdgeData CellContour(const GridGeom& grid, int cell_ind);
 //Build a bounding box
 static BoundingBox BBox(const GridGeom& grid, double eps=geps);
 //calculate skewness

@@ -102,8 +102,8 @@ ToRect::Build(const vector<Point>& pnt, int i1, int i2, int i3){
 }
 
 shared_ptr<ToRect>
-ToRect::Build(const HMCont2D::Contour& left, const HMCont2D::Contour& right,
-		const HMCont2D::Contour& bot, const HMCont2D::Contour& top){
+ToRect::Build(const HM2D::EdgeData& left, const HM2D::EdgeData& right,
+		const HM2D::EdgeData& bot, const HM2D::EdgeData& top){
 	auto prep = FactoryInput(left, right, bot, top);
 	auto& vp = std::get<0>(prep);
 	auto& a = std::get<1>(prep);

@@ -6,6 +6,8 @@
 #include "trigrid.h"
 #include "nan_handler.h"
 #include "procgrid.h"
+#include "algos.hpp"
+#include "constructor.hpp"
 
 void TriGrid::FillFromGModel(void* gmod){
 	GModel* m = static_cast<GModel*>(gmod);
@@ -95,32 +97,29 @@ TriGrid::TriGrid(const ContoursCollection& cont, const vector<double>& lc, doubl
 	FillFromGModel(&m);
 }
 
-vector<HMCont2D::ExtendedTree>
-TriGrid::ConstraintsPreproc(const HMCont2D::ContourTree& cont, 
-		const ShpVector<HMCont2D::Contour>& constraints){
-	vector<HMCont2D::ExtendedTree> ret;
+vector<HM2D::Contour::Tree>
+TriGrid::ConstraintsPreproc(const HM2D::Contour::Tree& cont, 
+		const ShpVector<HM2D::EdgeData>& constraints){
+	vector<HM2D::Contour::Tree> ret;
 	//1) sort out all inner contours
 	for (auto rc: cont.nodes){
-		if (HMCont2D::Contour::Area(*rc) > 0){
-			ret.push_back(HMCont2D::ExtendedTree());
+		if (HM2D::Contour::Area(rc->contour) > 0){
+			ret.push_back(HM2D::Contour::Tree());
 			auto& et = ret.back();
-			shared_ptr<HMCont2D::Contour> rc2(new HMCont2D::Contour(*rc));
-			et.AddContour(rc2);
+			et.AddContour(rc->contour);
 			for (auto cc: rc->children){
-				shared_ptr<HMCont2D::Contour> cc2(new HMCont2D::Contour(*cc));
-				et.AddContour(cc2);
+				et.AddContour(cc.lock()->contour);
 			}
 		}
 	}
 	//2) check where constraint lies and add it to
 	//   one of extended trees
 	for (auto& c: constraints){
-		for (auto p: c->ordered_points()){
+		for (auto p: HM2D::Contour::OrderedPoints(*c)){
 			bool found = false;
 			for (auto& et: ret){
-				if (!et.IsWithout(*p)){
-					shared_ptr<HMCont2D::Contour> sc(c);
-					et.AddOpenContour(sc);
+				if (et.whereis(*p) != OUTSIDE){
+					et.AddContour(*c);
 					found = true;
 					break;
 				}
@@ -133,7 +132,7 @@ TriGrid::ConstraintsPreproc(const HMCont2D::ContourTree& cont,
 
 	//3) if point of open contour lies on bounding contours
 	//   -> add this point to bounding contour
-	auto split_edge = [](HMCont2D::Contour* cont, int ind, Point* point){
+	auto split_edge = [](HM2D::EdgeData* cont, int ind, Point* point){
 		Point* p1 = cont->edge(ind)->pstart;
 		Point* p2 = cont->edge(ind)->pend;
 		//equal nodes should have equal address
@@ -171,20 +170,20 @@ TriGrid::ConstraintsPreproc(const HMCont2D::ContourTree& cont,
 	return ret;
 }
 
-TriGrid::TriGrid(const HMCont2D::ContourTree& cont, 
-		const ShpVector<HMCont2D::Contour>& constraints,
+TriGrid::TriGrid(const HM2D::Contour::Tree& cont, 
+		const ShpVector<HM2D::EdgeData>& constraints,
 		double h){
 	FillFromTree(cont, constraints, {}, std::map<Point*,double>(), h);
 }
 
-TriGrid::TriGrid(const HMCont2D::ContourTree& cont, 
-		const ShpVector<HMCont2D::Contour>& constraints,
+TriGrid::TriGrid(const HM2D::Contour::Tree& cont, 
+		const ShpVector<HM2D::EdgeData>& constraints,
 		const std::map<Point*, double>& w, double h){
 	FillFromTree(cont, constraints, {}, w, h);
 }
 
-TriGrid::TriGrid(const HMCont2D::ContourTree& cont, 
-		const ShpVector<HMCont2D::Contour>& constraints,
+TriGrid::TriGrid(const HM2D::Contour::Tree& cont, 
+		const ShpVector<HM2D::EdgeData>& constraints,
 		const std::vector<double>& emb_points){
 	std::map<Point*, double> w;
 
@@ -198,48 +197,47 @@ TriGrid::TriGrid(const HMCont2D::ContourTree& cont,
 }
 
 void TriGrid::CrossesProcessing(
-		HMCont2D::ContourTree& cont, 
-		ShpVector<HMCont2D::Contour>& constraints,
+		HM2D::Contour::Tree& cont, 
+		ShpVector<HM2D::EdgeData>& constraints,
 		std::map<Point*, double>& w,
-		HMCont2D::PCollection& apnt,
 		double h){
 	auto getpw = [&](Point* p)->double{
 		auto fnd = w.find(p);
 		return (fnd==w.end())?h:fnd->second;
 	};
 	std::set<Point*> cross_points;
-	auto treat_conts = [&](HMCont2D::Contour& c1, HMCont2D::Contour& c2){
-		auto crosses = HMCont2D::Algos::CrossAll(c1, c2);
+	auto treat_conts = [&](HM2D::EdgeData& c1, HM2D::EdgeData& c2){
+		auto crosses = HM2D::Contour::Algos::CrossAll(c1, c2);
 		for (auto& c: crosses){
-			auto res1 = c1.GuaranteePoint(std::get<1>(c), apnt);
-			auto res2 = c2.GuaranteePoint(std::get<1>(c), apnt);
+			auto res1 = HM2D::Contour::GuaranteePoint(c1, std::get<1>(c));
+			auto res2 = HM2D::Contour::GuaranteePoint(c2, std::get<1>(c));
 			auto p1 = std::get<1>(res1);
 			auto p2 = std::get<1>(res2);
 			if (p1 == p2) continue;
 			//substitute res2 with res1 pointers
-			auto info1 = c1.pinfo(p1);
-			auto info2 = c2.pinfo(p2);
+			auto info1 = HM2D::Contour::PInfo(c1, p1.get());
+			auto info2 = HM2D::Contour::PInfo(c2, p2.get());
 			if (info2.eprev){
-				if (info2.eprev->pstart == p2) info2.eprev->pstart = p1;
-				else info2.eprev->pend = p1;
+				if (info2.eprev->first() == p2) info2.eprev->vertices[0] = p1;
+				else info2.eprev->vertices[1] = p1;
 			}
 			if (info2.enext){
-				if (info2.enext->pstart == p2) info2.enext->pstart = p1;
-				else info2.enext->pend = p1;
+				if (info2.enext->first() == p2) info2.enext->vertices[0] = p1;
+				else info2.enext->vertices[1] = p1;
 			}
 			//set largest weight
 			double cw = 0;
-			if (!std::get<0>(res1)) cw = std::max(cw, getpw(p1));
+			if (!std::get<0>(res1)) cw = std::max(cw, getpw(p1.get()));
 			else{
-				if (info1.pprev != 0) cw = std::max(cw, getpw(info1.pprev));
-				if (info1.pnext != 0) cw = std::max(cw, getpw(info1.pnext));
+				if (info1.pprev != 0) cw = std::max(cw, getpw(info1.pprev.get()));
+				if (info1.pnext != 0) cw = std::max(cw, getpw(info1.pnext.get()));
 			}
-			if (!std::get<0>(res2)) cw = std::max(cw, getpw(p2));
+			if (!std::get<0>(res2)) cw = std::max(cw, getpw(p2.get()));
 			else{
-				if (info2.pprev != 0) cw = std::max(cw, getpw(info2.pprev));
-				if (info2.pnext != 0) cw = std::max(cw, getpw(info2.pnext));
+				if (info2.pprev != 0) cw = std::max(cw, getpw(info2.pprev.get()));
+				if (info2.pnext != 0) cw = std::max(cw, getpw(info2.pnext.get()));
 			}
-			w[p1] = cw;
+			w[p1.get()] = cw;
 		}
 	};
 	//constraints vs constraints crosses
@@ -253,14 +251,14 @@ void TriGrid::CrossesProcessing(
 	//constraints vs contours
 	for (auto& cns: constraints){
 		for (auto& tree_cont: cont.nodes){
-			treat_conts(*tree_cont, *cns);
+			treat_conts(tree_cont->contour, *cns);
 		}
 	}
 }
 
 void TriGrid::FillFromTree(
-		const HMCont2D::ContourTree& cont_, 
-		const ShpVector<HMCont2D::Contour>& constraints_,
+		const HM2D::Contour::Tree& cont_, 
+		const ShpVector<HM2D::EdgeData>& constraints_,
 		const vector<Point>& emb_points,
 		const std::map<Point*, double>& w_,
 		double h,
@@ -268,18 +266,20 @@ void TriGrid::FillFromTree(
 	if (cont_.nodes.size() == 0) return; 
 
 	//treat default size
-	if (h<=0) h = 2*HMCont2D::ECollection::BBox(cont_).lendiag();
+	if (h<=0) h = 2*HM2D::BBox(cont_.alledges()).lendiag();
 
 	//modify input data with respect to crosses with constraints
-	HMCont2D::ContourTree cont = cont_;
-	ShpVector<HMCont2D::Contour> constraints = constraints_;
+	HM2D::Contour::Tree cont = cont_;
+	ShpVector<HM2D::EdgeData> constraints = constraints_;
 	std::map<Point*, double> w = w_;
-	HMCont2D::PCollection apnt;
 	if (constraints.size() > 0){
-		for (auto& c: cont.nodes) c->Reallocate();
-		cont.ReloadEdges();
-		for (auto& c: constraints) c->Reallocate();
-		CrossesProcessing(cont, constraints, w, apnt, h);
+		cont = HM2D::Contour::Tree::DeepCopy(cont_);
+		for (auto& c: constraints) {
+			shared_ptr<HM2D::EdgeData> ne(new HM2D::EdgeData());
+			DeepCopy(*c, *ne);
+			std::swap(ne, c);
+		}
+		CrossesProcessing(cont, constraints, w, h);
 	}
 
 	//part tree by doubly connected ones and link each constraint with it.
@@ -294,9 +294,9 @@ void TriGrid::FillFromTree(
 
 	//add points
 	vector<const Point*> allpoints;
-	for (auto& x: ap){
-		auto _t = x.all_points();
-		std::copy(_t.begin(), _t.end(), std::back_inserter(allpoints));
+	for (auto& x: ap)
+	for (auto& _t: HM2D::AllVertices(x.alledges())){
+		allpoints.push_back(_t.get());
 	}
 
 	std::map<const Point*, GVertex*> verticies;
@@ -308,12 +308,12 @@ void TriGrid::FillFromTree(
 	
 
 	//add edges and faces: each gmsh face should be single connected
-	auto add_contour_edges = [&m, &verticies](const HMCont2D::Contour& c,
+	auto add_contour_edges = [&m, &verticies](const HM2D::EdgeData& c,
 			vector<GEdge*>& e){
-		vector<Point*> op = c.ordered_points();
+		HM2D::VertexData op = HM2D::Contour::OrderedPoints(c);
 		for (int i=0; i<op.size()-1; ++i){
-			const Point* p = op[i];
-			const Point* pn = op[i+1];
+			auto p = op[i].get();
+			auto pn = op[i+1].get();
 			e.push_back(m.addLine(verticies[p], verticies[pn]));
 		}
 	};
@@ -324,17 +324,17 @@ void TriGrid::FillFromTree(
 	for (auto& ec: ap){
 		std::vector<GEdge*> eds;
 		//inner contour
-		add_contour_edges(*ec.roots()[0], eds);
+		add_contour_edges(ec.roots()[0]->contour, eds);
 		//outer contours
 		for (auto& child: ec.roots()[0]->children){
-			add_contour_edges(*child, eds);
+			add_contour_edges(child.lock()->contour, eds);
 		}
 		//assemble face
 		fc.push_back(m.addPlanarFace({eds}));
 		//constraints
 		eds.clear();
-		for (int i=ec.nodes.size(); i<ec.cont_count(); ++i){
-			add_contour_edges(*ec.get_contour(i), eds);
+		for (int i=ec.nodes.size(); i<ec.nodes.size(); ++i){
+			add_contour_edges(ec.nodes[i]->contour, eds);
 		}
 		for (auto e: eds) fc.back()->addEmbeddedEdge(e);
 	}
@@ -347,7 +347,7 @@ void TriGrid::FillFromTree(
 		auto added = m.addVertex(p.x, p.y, 0, hh);
 		//find face containing point
 		for (int i=0; i<ap.size(); ++i){
-			if (ap[i].IsWithin(p)) fc[i]->addEmbeddedVertex(added);
+			if (ap[i].whereis(p) == INSIDE) fc[i]->addEmbeddedVertex(added);
 			break;
 		}
 	}
@@ -383,9 +383,9 @@ void TriGrid::FillFromTree(
 		GGeom::Repair::CellsTo34(*this);
 		//now we should check constraints lay on grid edges
 		//since this feature can be not satisfied after recombination.
-		vector<HMCont2D::Edge*> alledges;
+		vector<HM2D::Edge*> alledges;
 		for (auto& ev: constraints)
-		for (auto& e: ev->data) alledges.push_back(e.get());
+		for (auto& e: (*ev)) alledges.push_back(e.get());
 		guarantee_edges(alledges);
 	}
 }
@@ -438,18 +438,18 @@ ERR_OUT:
 	throw std::runtime_error("cannot restore correct grid from gmsh output");
 }
 
-void TriGrid::guarantee_edges(const vector<HMCont2D::Edge*>& ed){
+void TriGrid::guarantee_edges(const vector<HM2D::Edge*>& ed){
 	auto cf = GGeom::Info::CellFinder(this, 30, 30);
 	std::map<const Cell*, int> divide_cells;
 	vector<Point> midpoints; midpoints.reserve(ed.size());
 	for (auto& ev: ed) midpoints.push_back(ev->center());
 	for (size_t i=0; i<midpoints.size(); ++i){
 		auto candcells = cf.CellCandidates(midpoints[i]);
-		Point* pstart = ed[i]->pstart;
-		Point* pend = ed[i]->pend;
+		Point* pstart = ed[i]->first().get();
+		Point* pend = ed[i]->last().get();
 		for (auto cand: candcells) if (cand->dim() == 4){
 			auto cc = GGeom::Info::CellContour(*this, cand->get_ind());
-			if (cc.IsWithin(midpoints[i])){
+			if (HM2D::Contour::WhereIs(cc, midpoints[i]) == INSIDE){
 				int ep1=-1, ep2=-1;
 				for (int j=0; j<cand->dim(); ++j){
 					auto p1 = cand->get_point(j);
@@ -589,27 +589,27 @@ TriGrid::TriangulateArea(const vector<vector<Point>>& pts, double h){
 shared_ptr<TriGrid>
 TriGrid::TriangulateAreaConstrained(const vector<vector<Point>>& bnd,
 		const vector<vector<Point>>& cns, double h){
-	ShpVector<HMCont2D::Container<HMCont2D::Contour>> contours;
-	ShpVector<HMCont2D::Container<HMCont2D::Contour>> constraints;
+	ShpVector<HM2D::EdgeData> contours;
+	ShpVector<HM2D::EdgeData> constraints;
 	for (auto& p: bnd) aa::add_shared(
 			contours,
-			HMCont2D::Constructor::ContourFromPoints(p, true)
+			HM2D::Contour::Constructor::FromPoints(p, true)
 	);
 
 	for (auto& p: cns) aa::add_shared(
 			constraints,
-			HMCont2D::Constructor::ContourFromPoints(p, false)
+			HM2D::Contour::Constructor::FromPoints(p, false)
 	);
 
-	ShpVector<HMCont2D::Contour> ccontours;
+	ShpVector<HM2D::EdgeData> ccontours;
 	for (auto v: contours) ccontours.push_back(v);
-	ShpVector<HMCont2D::Contour> cconstraints;
+	ShpVector<HM2D::EdgeData> cconstraints;
 	for (auto v: constraints) cconstraints.push_back(v);
 
 
-	HMCont2D::ContourTree tree;
+	HM2D::Contour::Tree tree;
 	for (auto& p: ccontours){
-		tree.AddContour(p);
+		tree.AddContour(*p);
 	}
 
 
@@ -619,18 +619,18 @@ TriGrid::TriangulateAreaConstrained(const vector<vector<Point>>& bnd,
 }
 
 shared_ptr<TriGrid>
-TriGrid::TriangulateArea(const HMCont2D::ContourTree& cont, double h){
+TriGrid::TriangulateArea(const HM2D::Contour::Tree& cont, double h){
 	return shared_ptr<TriGrid>(new TriGrid(cont, {}, h));
 }
 
 shared_ptr<TriGrid>
-TriGrid::TriangulateArea(const HMCont2D::ContourTree& cont, const std::map<Point*, double>& w, double h){
+TriGrid::TriangulateArea(const HM2D::Contour::Tree& cont, const std::map<Point*, double>& w, double h){
 	return shared_ptr<TriGrid>(new TriGrid(cont, {}, w, h));
 }
 
 
-GridGeom QuadGrid(const HMCont2D::ContourTree& cont, 
-		const ShpVector<HMCont2D::Contour>& constraints,
+GridGeom QuadGrid(const HM2D::Contour::Tree& cont, 
+		const ShpVector<HM2D::EdgeData>& constraints,
 		const std::vector<double>& emb_points){
 	std::map<Point*, double> w;
 
@@ -645,11 +645,10 @@ GridGeom QuadGrid(const HMCont2D::ContourTree& cont,
 	return GridGeom(std::move(g));
 }
 
-shared_ptr<GridGeom> QuadrangulateArea(const HMCont2D::ContourTree& cont,
+shared_ptr<GridGeom> QuadrangulateArea(const HM2D::Contour::Tree& cont,
 		const std::map<Point*, double>& w, double h){
 	TriGrid g;
 	g.FillFromTree(cont, {}, {}, w, 2, true);
 	shared_ptr<GridGeom> ret(new GridGeom(std::move(g)));
 	return ret;
 }
-

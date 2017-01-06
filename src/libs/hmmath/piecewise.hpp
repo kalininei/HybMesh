@@ -4,10 +4,6 @@
 
 namespace HMMath{
 
-struct Error: public std::runtime_error{
-	Error(): std::runtime_error("Piecewise operation error"){};
-};
-
 
 template<class A>
 class Piecewise{
@@ -15,6 +11,10 @@ protected:
 	aa::DoubleMap<A> _data;
 	virtual double _section_integral(typename std::map<double, A>::const_iterator, double x1, double x2) const = 0;
 public:
+	struct Error: public std::runtime_error{
+		Error(): std::runtime_error("Piecewise operation error"){};
+	};
+
 	static constexpr double inf() { return std::numeric_limits<double>::max()/10.0; }
 	static constexpr double eps() { return geps; }
 

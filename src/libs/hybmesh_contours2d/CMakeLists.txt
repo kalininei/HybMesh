@@ -1,39 +1,40 @@
 #library file
 set (HEADERS
-	c_hybmesh_contours2d.h
-	hybmesh_contours2d.hpp
-	collections.hpp
-	containers.hpp
-	edges.hpp
+	primitives2d.hpp
 	tree.hpp
 	contour.hpp
+	contabs2d.hpp
+	treverter2d.hpp
 	constructor.hpp
 	clipper_core.hpp
 	contclipping.hpp
-	debug_cont2d.hpp
+	debug2d.hpp
 	gpc_core.hpp
 	cont_assembler.hpp
 	algos.hpp
 	cont_partition.hpp
 	cont_repart.hpp
 	hmc_imex.hpp
+	vtk_export2d.hpp
 )
 
 set (SOURCES
-	hybmesh_contours2d.cpp
-	constructor.cpp
-	collections.cpp
-	contour.cpp
-	clipper_core.cpp
+	primitives2d.cpp
 	tree.cpp
+	contour.cpp
+	contabs2d.cpp
+	treverter2d.cpp
+	constructor.cpp
+	clipper_core.cpp
 	contclipping.cpp
-	debug_cont2d.cpp
+	debug2d.cpp
 	gpc_core.cpp
 	cont_assembler.cpp
 	algos.cpp
 	cont_partition.cpp
 	cont_repart.cpp
 	hmc_imex.cpp
+	vtk_export2d.cpp
 )
 
 source_group ("Header Files" FILES ${HEADERS} ${HEADERS})

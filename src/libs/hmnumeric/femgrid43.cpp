@@ -2,6 +2,9 @@
 #include "trigrid.h"
 #include "procgrid.h"
 #include "debug_grid2d.h"
+#include "algos.hpp"
+#include "cont_repart.hpp"
+#include "cont_assembler.hpp"
 
 using namespace HMFem;
 
@@ -61,8 +64,8 @@ Grid43::Build3(const vector<vector<Point>>& cnts, double h){
 }
 
 shared_ptr<Grid43>
-Grid43::Build3(const HMCont2D::ContourTree& conts,
-		const ShpVector<HMCont2D::Contour>& constr,
+Grid43::Build3(const HM2D::Contour::Tree& conts,
+		const ShpVector<HM2D::EdgeData>& constr,
 		double h){
 	TriGrid g1(conts, constr, h);
 	shared_ptr<Grid43> ret(new Grid43());
@@ -70,8 +73,8 @@ Grid43::Build3(const HMCont2D::ContourTree& conts,
 	return ret;
 }
 shared_ptr<Grid43>
-Grid43::Build3(const HMCont2D::ContourTree& conts,
-	const ShpVector<HMCont2D::Contour>& constraints,
+Grid43::Build3(const HM2D::Contour::Tree& conts,
+	const ShpVector<HM2D::EdgeData>& constraints,
 	std::map<Point*, double>& h, double hh){
 	TriGrid g1(conts, constraints, h, hh);
 	shared_ptr<Grid43> ret(new Grid43());
@@ -428,8 +431,7 @@ Grid43::IsolineBuilder::IsolineBuilder(shared_ptr<Grid43>& grid43,
 }
 
 bool Grid43::IsolineBuilder::AddLine(const Cell* c,
-		HMCont2D::ECollection& ecol,
-		HMCont2D::PCollection& pcol,
+		HM2D::EdgeData& ecol,
 		double value, const vector<double>& fun) const{
 	int i0 = c->get_point(0)->get_ind();
 	int i1 = c->get_point(1)->get_ind();
@@ -445,20 +447,20 @@ bool Grid43::IsolineBuilder::AddLine(const Cell* c,
 	if (value<f0 || value > f2) return false;
 	else if (ISEQ(value, f0)){
 		if (ISGREATER(f1, f0)) return false;
-		else BuildLine(i0, i1, 0, i0, i1, 1, ecol, pcol);
+		else BuildLine(i0, i1, 0, i0, i1, 1, ecol);
 	} else if (ISEQ(value, f1)){
 		if (!ISEQ(f1,f2)) return false;
-		else BuildLine(i1, i2, 0, i1, i2, 1, ecol, pcol);
+		else BuildLine(i1, i2, 0, i1, i2, 1, ecol);
 	} else if (ISEQ(value, f2)){
 		return false;
 	} else if (value < f1){
 		double w1 = (value - f0)/(f1 - f0);
 		double w2 = (value - f0)/(f2 - f0);
-		BuildLine(i0, i1, w1, i0, i2, w2, ecol, pcol);
+		BuildLine(i0, i1, w1, i0, i2, w2, ecol);
 	} else if (value < f2){
 		double w1 = (value - f1)/(f2 - f1);
 		double w2 = (value - f0)/(f2 - f0);
-		BuildLine(i1, i2, w1, i0, i2, w2, ecol, pcol);
+		BuildLine(i1, i2, w1, i0, i2, w2, ecol);
 	} else return false;
 
 	return true;
@@ -466,83 +468,81 @@ bool Grid43::IsolineBuilder::AddLine(const Cell* c,
 
 void Grid43::IsolineBuilder::BuildLine(int i0, int i1, double wi,
 		int j0, int j1, double wj,
-		HMCont2D::ECollection& ecol,
-		HMCont2D::PCollection& pcol) const{
-	auto pi = std::make_shared<Point>(
+		HM2D::EdgeData& ecol) const{
+	auto pi = std::make_shared<HM2D::Vertex>(
 		Point::Weigh(*grid->get_point(i0), *grid->get_point(i1), wi));
-	auto pj = std::make_shared<Point>(
+	auto pj = std::make_shared<HM2D::Vertex>(
 		Point::Weigh(*grid->get_point(j0), *grid->get_point(j1), wj));
-	pcol.add_value(pi);
-	pcol.add_value(pj);
-	ecol.add_value(HMCont2D::Edge(pi.get(), pj.get()));
+	ecol.emplace_back(new HM2D::Edge(pi, pj));
 }
 
-HMCont2D::Container<HMCont2D::Contour>
+HM2D::EdgeData
 Grid43::IsolineBuilder::FromPoint(Point pstart, const vector<double>& fun) const{
 	//find value
 	double value = approx->Val(pstart, fun);
 	//assemble all edges of contour
-	HMCont2D::PCollection points;
-	HMCont2D::ECollection edges;
+	HM2D::EdgeData edges;
 	for (int i=0; i<grid->n_cells(); ++i)
-		AddLine(grid->get_cell(i), edges, points, value, fun);
+		AddLine(grid->get_cell(i), edges, value, fun);
 	//collect into contours
-	auto et = HMCont2D::Assembler::ETree(edges);
+	auto et = HM2D::Contour::Tree::Assemble(edges);
 	//choose contour which passes pstart
-	HMCont2D::Contour* cnt;
-	if (et.cont_count() == 1) cnt = et.get_contour(0);
+	HM2D::EdgeData* cnt;
+	if (et.nodes.size() == 1) cnt = &et.nodes[0]->contour;
 	else{
-		for (int i=0; i<et.cont_count(); ++i){
-			cnt = et.get_contour(i);
-			if (ISZERO(std::get<4>(cnt->coord_at(pstart)))) break;
+		for (int i=0; i<et.nodes.size(); ++i){
+			cnt = &et.nodes[i]->contour;
+			if (ISZERO(std::get<4>(HM2D::Contour::CoordAt(*cnt, pstart)))) break;
 		}
 	}
 	
-	return HMCont2D::Container<HMCont2D::Contour>::DeepCopy(*cnt);
+	HM2D::EdgeData ret;
+	HM2D::DeepCopy(*cnt, ret);
+	return ret;
 }
 
 HMCallback::FunctionWithCallback<HMFem::TAuxGrid3> HMFem::AuxGrid3;
-double TAuxGrid3::step_estimate(const HMCont2D::ContourTree& tree, int nrec){
-	double area = HMCont2D::ContourTree::Area(tree);
+double TAuxGrid3::step_estimate(const HM2D::Contour::Tree& tree, int nrec){
+	double area = tree.area();
 	double triarea = area/2/nrec;
 	//from a area of equilateral triangle
 	return sqrt(2.3094017677*triarea);
 }
 
-void TAuxGrid3::input(const HMCont2D::ContourTree& _tree, const vector<HMCont2D::Contour>& _constraints){
+void TAuxGrid3::input(const HM2D::Contour::Tree& _tree, const vector<HM2D::EdgeData>& _constraints){
 	clear();
 	//deep copy edges input to internal structure
-	HMCont2D::ContourTree::DeepCopy(_tree, tree);
+	tree = HM2D::Contour::Tree::DeepCopy(_tree);
 	constraints.reserve(_constraints.size());
 	for (auto& c: _constraints){
-		constraints.emplace_back(new HMCont2D::Contour());
-		HMCont2D::Contour::DeepCopy(c, *constraints.back());
+		constraints.emplace_back(new HM2D::EdgeData());
+		HM2D::DeepCopy(c, *constraints.back());
 	}
 	//fill mandatory points
 	for (int i=0; i<constraints.size(); ++i){
 		for (int j=0; j<constraints.size(); ++j) if (i!=j){
 			mandatory_intersections(*constraints[i], *constraints[j]);
 		}
-		for (auto& c: tree.nodes) mandatory_intersections(*constraints[i], *c);
+		for (auto& c: tree.nodes) mandatory_intersections(*constraints[i], c->contour);
 	}
 }
 
-void TAuxGrid3::mandatory_intersections(HMCont2D::Contour& c1, HMCont2D::Contour& c2){
-	auto cres = HMCont2D::Algos::CrossAll(c1, c2);
+void TAuxGrid3::mandatory_intersections(HM2D::EdgeData& c1, HM2D::EdgeData& c2){
+	auto cres = HM2D::Contour::Algos::CrossAll(c1, c2);
 	for (auto& it: cres){
 		Point& p = std::get<1>(it);
-		auto gp1 = c1.GuaranteePoint(p, pcol);
-		auto gp2 = c2.GuaranteePoint(p, pcol);
+		auto gp1 = HM2D::Contour::GuaranteePoint(c1, p);
+		auto gp2 = HM2D::Contour::GuaranteePoint(c2, p);
 		mandatory_points.insert(std::get<1>(gp1));
 		mandatory_points.insert(std::get<1>(gp2));
 	}
 }
 
-void TAuxGrid3::adopt_contour(HMCont2D::Contour& cont, double h,
+void TAuxGrid3::adopt_contour(HM2D::EdgeData& cont, double h,
 		vector<vector<Point>>& lost){
-	auto repart = HMCont2D::Algos::Coarsening(cont, mandatory_points, pcol, h,
+	auto repart = HM2D::Contour::Algos::Coarsening(cont, mandatory_points, h,
 			ZEROANGLE, 0.2);
-	vector<Point*> ret;
+	HM2D::VertexData ret;
 	for (int i=0; i<repart.size(); ++i){
 		auto& v = repart[i];
 		ret.push_back(v[0]);
@@ -554,17 +554,16 @@ void TAuxGrid3::adopt_contour(HMCont2D::Contour& cont, double h,
 			lost.back().push_back(*repart[(i+1) % repart.size()][0]);
 		}
 	}
-	cont = HMCont2D::Constructor::ContourFromPoints(ret, cont.is_closed());
+	cont = HM2D::Contour::Assembler::Contour1(ret, HM2D::Contour::IsClosed(cont));
 }
 
-void TAuxGrid3::adopt_boundary(HMCont2D::ContourTree& tree, double h,
+void TAuxGrid3::adopt_boundary(HM2D::Contour::Tree& tree, double h,
 		vector<vector<Point>>& lost){
-	for (auto n: tree.nodes) adopt_contour(*n, h, lost);
-	tree.ReloadEdges();
+	for (auto n: tree.nodes) adopt_contour(n->contour, h, lost);
 }
 
-Grid43 HMFem::TAuxGrid3::_run(const HMCont2D::ContourTree& _tree,
-		const vector<HMCont2D::Contour>& _constraints,
+Grid43 HMFem::TAuxGrid3::_run(const HM2D::Contour::Tree& _tree,
+		const vector<HM2D::EdgeData>& _constraints,
 		int nrec, int nmax){
 	assert(nrec<nmax);
 	//1)
@@ -594,17 +593,16 @@ Grid43 HMFem::TAuxGrid3::_run(const HMCont2D::ContourTree& _tree,
 }
 void HMFem::TAuxGrid3::clear(){
 	//explicit clear because there is the reusable entry of TAuxGrid class
-	tree = HMCont2D::ContourTree();
+	tree = HM2D::Contour::Tree();
 	constraints.clear();
-	pcol.clear();
 	mandatory_points.clear();
 }
 
-Grid43 HMFem::TAuxGrid3::_run(const HMCont2D::ContourTree& tree, int nrec, int nmax){
+Grid43 HMFem::TAuxGrid3::_run(const HM2D::Contour::Tree& tree, int nrec, int nmax){
 	return _run(tree, {}, nrec, nmax);
 }
-Grid43 HMFem::TAuxGrid3::_run(const HMCont2D::Contour& cont, int nrec, int nmax){
-	HMCont2D::ContourTree tree;
+Grid43 HMFem::TAuxGrid3::_run(const HM2D::EdgeData& cont, int nrec, int nmax){
+	HM2D::Contour::Tree tree;
 	tree.AddContour(cont);
 	return _run(tree, nrec, nmax);
 }

@@ -13,13 +13,21 @@ std::vector<PebiBndPoint> assemble_bnd(const TriGrid& g){
 	std::vector<PebiBndPoint> ret;
 	auto cont = GGeom::Info::Contour(g);
 	auto gpoints = GGeom::Info::SharePoints(g);
+
+	std::set<GridPoint> bp;
+	for (auto it: g.get_bnd_points()) bp.insert(*it);
+
 	for (auto c: cont.nodes){
-		auto op = c->ordered_points();
+		auto op = HM2D::Contour::OrderedPoints(c->contour);
 		for (int i=0; i<op.size()-1; ++i){
 			int im = (i==0)?op.size()-2:i-1;
-			int cur = static_cast<const GridPoint*>(op[i])->get_ind();
-			int prev = static_cast<const GridPoint*>(op[im])->get_ind();
-			int next = static_cast<const GridPoint*>(op[i+1])->get_ind();
+			int cur = bp.find(*op[i])->get_ind();
+			int prev = bp.find(*op[im])->get_ind();
+			int next = bp.find(*op[i+1])->get_ind();
+			assert(cur<bp.size() && prev<bp.size() && next<bp.size());
+			//int cur = static_cast<const GridPoint*>(op[i])->get_ind();
+			//int prev = static_cast<const GridPoint*>(op[im])->get_ind();
+			//int next = static_cast<const GridPoint*>(op[i+1])->get_ind();
 			ret.push_back(PebiBndPoint {cur, gpoints[prev], gpoints[next]});
 			ret.back().hnext.reset(new GridPoint((*gpoints[cur]+*gpoints[next])/2.0));
 			if (i!=0) ret.back().hprev = ret.end()[-2].hnext;

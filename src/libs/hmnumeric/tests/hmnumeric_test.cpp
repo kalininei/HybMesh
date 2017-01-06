@@ -1,8 +1,11 @@
-#include "hybmesh_contours2d.hpp"
 #include "hmfem.hpp"
 #include "femassembly.hpp"
 #include "hmtesting.hpp"
 #include "vtk_export_grid2d.hpp"
+#include "cont_assembler.hpp"
+#include "constructor.hpp"
+#include "vtk_export2d.hpp"
+#include "cont_partition.hpp"
 using HMTesting::add_check;
 
 void test01(){
@@ -12,12 +15,18 @@ void test01(){
 	//-> Dfdn(bottom), Dfdx(area), DfDy(area)
 	auto dotest = [&](shared_ptr<HMFem::Grid43> g)->std::array<double, 3>{
 		auto cont = GGeom::Info::Contour1(*g);
-		GridPoint* gp1 = static_cast<GridPoint*>(HMCont2D::ECollection::FindClosestNode(cont, p1));
-		GridPoint* gp2 = static_cast<GridPoint*>(HMCont2D::ECollection::FindClosestNode(cont, p2));
-		GridPoint* gp3 = static_cast<GridPoint*>(HMCont2D::ECollection::FindClosestNode(cont, p3));
-		GridPoint* gp4 = static_cast<GridPoint*>(HMCont2D::ECollection::FindClosestNode(cont, p4));
-		auto contbot = HMCont2D::Assembler::Contour1(cont, gp1, gp2);
-		auto conttop = HMCont2D::Assembler::Contour1(cont, gp3, gp4);
+		auto _av = HM2D::AllVertices(cont);
+		auto cp1 = _av[std::get<0>(HM2D::FindClosestNode(_av, p1))].get();
+		auto cp2 = _av[std::get<0>(HM2D::FindClosestNode(_av, p2))].get();
+		auto cp3 = _av[std::get<0>(HM2D::FindClosestNode(_av, p3))].get();
+		auto cp4 = _av[std::get<0>(HM2D::FindClosestNode(_av, p4))].get();
+
+		//GridPoint* gp1 = static_cast<GridPoint*>(HMCont2D::ECollection::FindClosestNode(cont, p1));
+		//GridPoint* gp2 = static_cast<GridPoint*>(HMCont2D::ECollection::FindClosestNode(cont, p2));
+		//GridPoint* gp3 = static_cast<GridPoint*>(HMCont2D::ECollection::FindClosestNode(cont, p3));
+		//GridPoint* gp4 = static_cast<GridPoint*>(HMCont2D::ECollection::FindClosestNode(cont, p4));
+		auto contbot = HM2D::Contour::Assembler::ShrinkContour(cont, cp1, cp2);
+		auto conttop = HM2D::Contour::Assembler::ShrinkContour(cont, cp3, cp4);
 
 		auto p = HMFem::LaplasProblem(g);
 		p.SetDirichlet(contbot, [](const GridPoint* p){ return 1.0; });
@@ -66,7 +75,7 @@ void test02(){
 	std::cout<<"02. Auxiliary triangulation"<<std::endl;
 	{
 		//Rectangle checks
-		auto rcont = HMCont2D::Constructor::ContourFromPoints({0,0, 10,0, 10,10, 0,10}, true);
+		auto rcont = HM2D::Contour::Constructor::FromPoints({0,0, 10,0, 10,10, 0,10}, true);
 		auto ans1 = HMFem::AuxGrid3(rcont, 200, 200000);
 		add_check(abs(ans1.n_points()-200)<0.1*200, "coarse grid in rectangle");
 
@@ -82,21 +91,20 @@ void test02(){
 	}
 	{
 		//grid with coarsening needed
-		auto rcont = HMCont2D::Constructor::Circle(400, 1.0, Point(0, 0));
+		auto rcont = HM2D::Contour::Constructor::Circle(400, 1.0, Point(0, 0));
 		GridGeom ans1 = HMFem::AuxGrid3(rcont, 1000, 1000000);
 		add_check(abs(ans1.n_points()-1000)<0.5*1000, "grid in fine circle contour");
 	}
 	{
-		HMCont2D::PCollection pcol;
-		auto rcont2 = HMCont2D::Constructor::ContourFromPoints({
+		auto rcont2 = HM2D::Contour::Constructor::FromPoints({
 			0.0,0.0, 3.0,0.0,   3.0,1.0,   2.5,1.0, 2.47,1.04, 2.43,1,
 			1.6,1.0, 1.57,1.04, 1.55,0.99, 0.0,1.0}, true);
 		std::map<double, double> w;
 		w[0] = 0.02; w[0.5] = 0.4;
-		HMCont2D::SaveVtk(rcont2, "c1.vtk");
-		auto rcont = HMCont2D::Algos::WeightedPartition(w, rcont2, pcol,
-				HMCont2D::PartitionTp::KEEP_ALL);
-		HMCont2D::SaveVtk(rcont, "c1.vtk");
+		HM2D::Export::ContourVTK(rcont2, "c1.vtk");
+		auto rcont = HM2D::Contour::Algos::WeightedPartition(w, rcont2,
+				HM2D::Contour::Algos::PartitionTp::KEEP_ALL);
+		HM2D::Export::ContourVTK(rcont, "c1.vtk");
 		GridGeom ans1 = HMFem::AuxGrid3(rcont, 500, 1000000);
 		GGeom::Export::GridVTK(ans1, "g1.vtk");
 		add_check(abs(ans1.n_points()-500)<500, "grid with fine regions in its source tree");
@@ -106,12 +114,12 @@ void test02(){
 void test03(){
 	std::cout<<"03. Auxiliary triangulation with contour constrains"<<std::endl;
 	{
-		auto sqrcont = HMCont2D::Constructor::Circle(32, 1.0, Point(0, 0));
-		auto constr = HMCont2D::Constructor::ContourFromPoints({
+		auto sqrcont = HM2D::Contour::Constructor::Circle(32, 1.0, Point(0, 0));
+		auto constr = HM2D::Contour::Constructor::FromPoints({
 				-0.7,0, -0.69,0, -0.68,0, -0.67,0, -0.3,0, 0.1,0.4, 0.6,-0.3});
-		HMCont2D::ContourTree tree;
+		HM2D::Contour::Tree tree;
 		tree.AddContour(sqrcont);
-		GridGeom ans1 = HMFem::AuxGrid3(tree, vector<HMCont2D::Contour> {constr}, 1000, 1000000);
+		GridGeom ans1 = HMFem::AuxGrid3(tree, vector<HM2D::EdgeData> {constr}, 1000, 1000000);
 		add_check([&](){
 			auto fpoint = [&](double x, double y){
 				Point pp(x, y);
@@ -124,16 +132,15 @@ void test03(){
 		}(), "non-touching constraint");
 	}
 	{
-		auto sqrcont = HMCont2D::Constructor::ContourFromPoints({0,0, 1,0, 1,1, 0,1}, true);
-		HMCont2D::PCollection pcol;
+		auto sqrcont = HM2D::Contour::Constructor::FromPoints({0,0, 1,0, 1,1, 0,1}, true);
 		std::map<double, double> w;
 		w[0.133] = 0.01; w[0.5] = 0.1;
-		auto sqrcont2 = HMCont2D::Algos::WeightedPartition(w, sqrcont, pcol);
-		auto lineconst = HMCont2D::Constructor::ContourFromPoints({0.5,0, 0.2,0.5});
-		HMCont2D::ContourTree tree;
+		auto sqrcont2 = HM2D::Contour::Algos::WeightedPartition(w, sqrcont);
+		auto lineconst = HM2D::Contour::Constructor::FromPoints({0.5,0, 0.2,0.5});
+		HM2D::Contour::Tree tree;
 		tree.AddContour(sqrcont2);
 		GridGeom ans1 = HMFem::AuxGrid3(tree,
-				vector<HMCont2D::Contour> {lineconst}, 500, 100000);
+				vector<HM2D::EdgeData> {lineconst}, 500, 100000);
 		add_check(ans1.n_points() < 700 && ans1.n_cells() < 1200 &&
 			[&](){
 				Point p1(0.5, 0), p2(0.2, 0.5);
@@ -150,17 +157,16 @@ void test03(){
 			, "touching coarse constraint");
 	}
 	{
-		auto sqrcont = HMCont2D::Constructor::ContourFromPoints({0,0, 1,0, 1,1, 0,1}, true);
-		HMCont2D::PCollection pcol;
+		auto sqrcont = HM2D::Contour::Constructor::FromPoints({0,0, 1,0, 1,1, 0,1}, true);
 		std::map<double, double> w;
 		w[0.133] = 0.01; w[0.5] = 0.2;
-		auto sqrcont2 = HMCont2D::Algos::WeightedPartition(w, sqrcont, pcol);
-		auto lineconst = HMCont2D::Constructor::ContourFromPoints({0.5,0, 0.2,0.5, 1,0.2});
-		auto lineconst2 = HMCont2D::Algos::Partition(0.01, lineconst, pcol, HMCont2D::PartitionTp::KEEP_ALL);
-		HMCont2D::ContourTree tree;
+		auto sqrcont2 = HM2D::Contour::Algos::WeightedPartition(w, sqrcont);
+		auto lineconst = HM2D::Contour::Constructor::FromPoints({0.5,0, 0.2,0.5, 1,0.2});
+		auto lineconst2 = HM2D::Contour::Algos::Partition(0.01, lineconst, HM2D::Contour::Algos::PartitionTp::KEEP_ALL);
+		HM2D::Contour::Tree tree;
 		tree.AddContour(sqrcont2);
 		GridGeom ans1 = HMFem::AuxGrid3(tree,
-				vector<HMCont2D::Contour> {lineconst2}, 500, 100000);
+				vector<HM2D::EdgeData> {lineconst2}, 500, 100000);
 		add_check(ans1.n_points() < 800, "touching fine constraint");
 	}
 };

@@ -16,7 +16,7 @@ class ToRect: public HMMap::Conformal::Rect{
 	vector<int> origs;
 	//Contours made of original points. shares points with grid.
 	//direction coinsides with canonic axes: u[0->1], v[0->1]
-	//HMCont2D::Contour left, bottom, right, top;
+	//HM2D::EdgeData left, bottom, right, top;
 	vector<int> ileft, ibottom, iright, itop;
 	//discrete mapping function to canonic domain
 	vector<double> u, v;
@@ -90,13 +90,13 @@ class ToAnnulus: public HMMap::Conformal::Annulus{
 	void DoMappingU();
 
 	//returns curve of steepest descent of u from inner to outer contours
-	HMCont2D::Container<HMCont2D::Contour> SteepestDescentUCurve();
+	HM2D::EdgeData SteepestDescentUCurve();
 
 	//fills vgrid, vapprox, v_outer/inner_origs, v_raz_io/oi
 	void BuildGrid2(const vector<Point>& outer_path,
 			const vector<Point>& inner_path,
 			int n,
-			const HMCont2D::Contour& razor);
+			const HM2D::EdgeData& razor);
 
 	//fills u, v
 	void DoMapping();
@@ -105,8 +105,8 @@ class ToAnnulus: public HMMap::Conformal::Annulus{
 	void BuildInverse();
 
 	// ===================== mapping subroutins and data
-	mutable shared_ptr<HMCont2D::Contour> _inv_cont;
-	const HMCont2D::Contour* InvGridContour() const;
+	mutable shared_ptr<HM2D::EdgeData> _inv_cont;
+	const HM2D::EdgeData* InvGridContour() const;
 
 public:
 	static shared_ptr<ToAnnulus>

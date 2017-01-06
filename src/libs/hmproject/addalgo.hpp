@@ -351,6 +351,13 @@ PtrContainerIndexer<C> ptr_container_indexer(C& data){
 	return PtrContainerIndexer<C>(data);
 }
 
+template<class C>
+std::vector<C*> shvec_to_pvec(const std::vector<std::shared_ptr<C>>& inp){
+	std::vector<C*> ret(inp.size());
+	for (int i=0; i<inp.size(); ++i) ret[i] = inp[i].get();
+	return ret;
+}
+
 // ============ procedures for vector<A*> where A has mutable id attribute
 template<class C>
 void enumerate_ids_pvec(const C& inp){

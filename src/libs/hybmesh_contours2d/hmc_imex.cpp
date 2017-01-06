@@ -1,6 +1,7 @@
 #include "hmc_imex.hpp"
+#include "constructor.hpp"
 
-using namespace HMCont2D;
+using namespace HM2D;
 using namespace HMXML;
 
 namespace{
@@ -14,7 +15,7 @@ void add_field(Reader& subnode, std::string fieldname, const vector<A>& data, bo
 }
 }
 
-Export::EColWriter::EColWriter(const ECollection& c,
+Export::EColWriter::EColWriter(const EdgeData& c,
 		HMXML::ReaderA* writer,
 		HMXML::Reader* subnode,
 		std::string contname,
@@ -22,7 +23,7 @@ Export::EColWriter::EColWriter(const ECollection& c,
 	__tp = tp;
 	
 	//supplementary data
-	auto ap = c.all_points();
+	auto ap = AllVertices(c);
 	vector<double> pcoords(ap.size()*2);
 	for (int i=0; i<ap.size(); ++i){
 		pcoords[2*i] = ap[i]->x;
@@ -32,8 +33,8 @@ Export::EColWriter::EColWriter(const ECollection& c,
 	auto _indexer = aa::ptr_container_indexer(ap);
 	_indexer.convert();
 	for (auto e: *cont){
-		edgeconnect.push_back(_indexer.index(e->pstart));
-		edgeconnect.push_back(_indexer.index(e->pend));
+		edgeconnect.push_back(_indexer.index(e->first().get()));
+		edgeconnect.push_back(_indexer.index(e->last().get()));
 	}
 	_indexer.restore();
 
@@ -140,17 +141,8 @@ void Import::EColReader::fill_result(){
 	vector<int> edgevert = preader->read_num_content(tmp, 2*Ne).vec<int>();
 	for (auto i: edgevert) if (i>=Nv || i<0) throw std::runtime_error("Edge-Vertex connectivity contains illegal vertex index");
 	
-	result.reset(new Container<ECollection>());
-	//add points
-	for (int i=0; i<Nv; ++i){
-		result->pdata.add_value(Point(vert[2*i], vert[2*i+1]));
-	}
-	//add edges
-	for (int i=0; i<Ne; ++i){
-		auto p1 = result->pdata.pvalue(edgevert[2*i]);
-		auto p2 = result->pdata.pvalue(edgevert[2*i+1]);
-		result->add_value(Edge(p1, p2));
-	}
+	result.reset(new EdgeData);
+	*result = HM2D::ECol::Constructor::FromRaw(Nv, Ne, &vert[0], &edgevert[0]);
 }
 std::vector<Import::EColReader::TFieldInfo> Import::EColReader::edges_fields(){
 	std::vector<EColReader::TFieldInfo> ret;

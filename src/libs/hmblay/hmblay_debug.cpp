@@ -1,20 +1,21 @@
-#include "hmblay_debug.hpp"
-
 #ifndef NDEBUG
+#include "hmblay_debug.hpp"
+#include "contour.hpp"
+
 using namespace HMBlay;
 
 void Debug::info_extpath(const Impl::ExtPath& pth){
 	std::cout<<"+++ Extended path at "<<&pth<<". "<<pth.size()<<" edges. ";
-	if (pth.is_closed()) std::cout<<"Closed. "<<"Area = "<<HMCont2D::Contour::Area(pth)<<std::endl;
+	if (HM2D::Contour::IsClosed(pth)) std::cout<<"Closed. "<<"Area = "<<HM2D::Contour::Area(pth)<<std::endl;
 	else std::cout<<"Open."<<std::endl;
-	std::cout<<"+++ Length = "<<pth.length()<<std::endl;
-	auto op = pth.ordered_points();
+	std::cout<<"+++ Length = "<<HM2D::Length(pth)<<std::endl;
+	auto op = HM2D::Contour::OrderedPoints(pth);
 	for (int i=0; i<op.size(); ++i){
-		printf("Point %p:  (%10.6f, %10.6f)", op[i], op[i]->x, op[i]->y);
+		printf("Point %p:  (%10.6f, %10.6f)", op[i].get(), op[i]->x, op[i]->y);
 		if (i<pth.size())
-			printf("   --> Edge %p", pth.edge(i));
+			printf("   --> Edge %p", pth[i].get());
 		else
-			printf("   --> Edge %p", pth.edge(i-pth.size()));
+			printf("   --> Edge %p", pth[i-pth.size()].get());
 		
 		double an = pth.ext_data[i].angle/M_PI*180;
 		printf("  angle = %6.2f;", an);

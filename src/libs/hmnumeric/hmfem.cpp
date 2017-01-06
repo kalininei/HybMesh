@@ -3,6 +3,16 @@
 
 using namespace HMFem;
 
+const GridPoint* LaplasProblem::get_boundary_point(const Point& p) const{
+	if (_bp.size() == 0){
+		for(auto pbp: grid->get_bnd_points()){
+			_bp.insert(*pbp);
+		}
+	}
+	auto fnd = _bp.find(p);
+	return grid->get_point(fnd->get_ind());
+}
+
 LaplasProblem::LaplasProblem(GridGeom* g):
 		grid(Grid43::Build(g)),
 		laplas_mat(HMFem::Assemble::PureLaplas(*grid)),
@@ -33,12 +43,10 @@ void LaplasProblem::SetDirichlet(const vector<const GridPoint*>& pts, TDirFunc f
 		dirichlet_data.insert(dt);
 	}
 }
-void LaplasProblem::SetDirichlet(const HMCont2D::Contour& pts, TDirFunc f){
+void LaplasProblem::SetDirichlet(const HM2D::EdgeData& pts, TDirFunc f){
 	vector<const GridPoint*> pts2; pts2.reserve(pts.size());
-	for(const Point* p: pts.ordered_points())
-		pts2.push_back(
-			static_cast<const GridPoint*>(p)
-		);
+	for(auto p: HM2D::Contour::OrderedPoints(pts))
+		pts2.push_back(get_boundary_point(*p));
 	SetDirichlet(pts2, f);
 }
 
@@ -112,25 +120,29 @@ double LaplasProblem::IntegralDfDn(const vector<const GridPoint*>& pnt,
 	assert(pnt.size()>1 && pnt[0] != pnt.back());
 	assert( [&](){
 		auto tree = GGeom::Info::Contour(*grid);
-		shared_ptr<HMCont2D::ContourTree::TreeNode> c;
-		for (int i=0; i<tree.cont_count(); ++i){
-			if (tree.nodes[i]->contains_point(pnt[0])){
-				c = tree.nodes[i]; 
-				break;
+		shared_ptr<HM2D::Contour::Tree::TNode> c;
+		for (auto& t: tree.nodes){
+			for (auto v: HM2D::AllVertices(t->contour)){
+				if (*pnt[0] == *v){
+					c = t;
+					break;
+				}
 			}
+			if (c) break;
 		}
 		if (!c) return false;
-		auto pp = c->ordered_points(); pp.pop_back();
-		auto fnd = std::find(pp.begin(), pp.end(), pnt[0]);
+		auto pp = HM2D::Contour::OrderedPoints(c->contour); pp.pop_back();
+		auto fnd = pp.begin();
+		while (**fnd != *pnt[0]) ++fnd;
 		//choose forward or backward
 		std::rotate(pp.begin(), fnd, pp.end());
-		if (pnt[1] != pp[1]){
+		if (*pnt[1] != *pp[1]){
 		//try backward
 			std::reverse(pp.begin(), pp.end());
 			std::rotate(pp.begin(), pp.end()-1, pp.end());
 		}
 		for (int i=0; i<pnt.size(); ++i){
-			if (pnt[i] != pp[i]) return false;
+			if (*pnt[i] != *pp[i]) return false;
 		}
 		return true;
 	}());
@@ -158,14 +170,9 @@ double LaplasProblem::IntegralDfDn(const vector<const GridPoint*>& pnt,
 	return std::accumulate(lk_dfdn.begin(), lk_dfdn.end(), 0.0);
 }
 
-double LaplasProblem::IntegralDfDn(const HMCont2D::Contour& pnt, const vector<double>& f){
+double LaplasProblem::IntegralDfDn(const HM2D::EdgeData& pnt, const vector<double>& f){
 	vector<const GridPoint*> pts2; pts2.reserve(pnt.size());
-	for(const Point* p: pnt.ordered_points())
-		pts2.push_back(
-			static_cast<const GridPoint*>(p)
-		);
+	for(auto p: HM2D::Contour::OrderedPoints(pnt))
+		pts2.push_back(get_boundary_point(*p));
 	return IntegralDfDn(pts2, f);
 }
-
-
-

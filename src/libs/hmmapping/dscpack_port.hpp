@@ -41,7 +41,7 @@ public:
 	Build(const vector<Point>& outer, const vector<Point>& inner);
 
 	static shared_ptr<ToAnnulus>
-	Build(const HMCont2D::Contour& outer, const HMCont2D::Contour& inner);
+	Build(const HM2D::EdgeData& outer, const HM2D::EdgeData& inner);
 
 	double module() const override { return _module; }
 

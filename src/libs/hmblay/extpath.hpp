@@ -1,7 +1,6 @@
 #ifndef HYBMESH_HMBLAY_EXTPATH_HPP
 #define HYBMESH_HMBLAY_EXTPATH_HPP
 
-#include "hybmesh_contours2d.hpp"
 #include "options.hpp"
 
 namespace HMBlay{
@@ -26,17 +25,17 @@ struct PathPntData{
 };
 
 //path with extended info
-struct ExtPath: public HMCont2D::Contour{
-	typedef HMCont2D::Edge Ed;
+struct ExtPath: public HM2D::EdgeData{
+	typedef HM2D::Edge Ed;
 
 	//PathPnt options for each node. size = ordered_points().size()
 	vector<PathPntData> ext_data;
 
 	//contours staring from endpoints and representing boundaries.
 	//all angles are between 
-	HMCont2D::Container<Contour> leftbc, rightbc;
+	HM2D::EdgeData leftbc, rightbc;
 
-	HMCont2D::Contour* full_source;
+	HM2D::EdgeData* full_source;
 
 	//get methods
 	double largest_depth() const;
@@ -75,9 +74,9 @@ private:
 	void PerpendicularEnd();
 
 	ExtPath SubPath(const Point* p1, const Point* p2) const;
-	ExtPath SubPath(double len1, double len2, HMCont2D::PCollection&) const;
-	Point* AddPoint(double len, HMCont2D::PCollection& apoints);
-	HMCont2D::Contour Partition(HMCont2D::PCollection&) const;
+	ExtPath SubPath(double len1, double len2) const;
+	Point* AddPoint(double len);
+	HM2D::EdgeData Partition() const;
 };
 
 

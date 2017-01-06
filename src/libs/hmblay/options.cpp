@@ -1,4 +1,8 @@
 #include "options.hpp"
+#include "algos.hpp"
+#include "cont_partition.hpp"
+#include "cont_assembler.hpp"
+#include "treverter2d.hpp"
 
 using namespace HMBlay::Impl;
 
@@ -42,12 +46,11 @@ HMBlay::Direction HMBlay::DirectionFromString(const char* str){
 vector<Options> Options::CreateFromParent(const vector<HMBlay::Input>& par){
 	//makes deep copy of parent contours, scales them,
 	//writes everything to ret
-	typedef HMCont2D::ECollection Edc;
-	typedef HMCont2D::Container<Edc> EdCon;
-	typedef HMCont2D::Edge Ed;
+	typedef HM2D::EdgeData Edc;
+	typedef HM2D::Edge Ed;
 	vector<Options> ret;
 	//1) copy unique edge collections
-	shared_ptr<EdCon> all_data(new EdCon());
+	shared_ptr<Edc> all_data(new Edc());
 	std::map<Edc*, shared_ptr<Edc>> edges_old_new;
 	for (auto& p: par){
 		auto fnd = edges_old_new.find(p.edges);
@@ -56,13 +59,13 @@ vector<Options> Options::CreateFromParent(const vector<HMBlay::Input>& par){
 			Edc& enew = *(edges_old_new[p.edges] = std::make_shared<Edc>(Edc()));
 			//Deepcopy data to temp. container and then share points and
 			//edge info to add_data container and enew collection
-			EdCon tmp; EdCon::DeepCopy(eold, tmp);
-			all_data->Unite(tmp);
-			enew.Unite(tmp);
+			Edc tmp; HM2D::DeepCopy(eold, tmp);
+			all_data->insert(all_data->end(), tmp.begin(), tmp.end());
+			enew.insert(enew.end(), tmp.begin(), tmp.end());
 		}
 	}
 	//2) non-dimensioning copied edges
-	shared_ptr<ScaleBase> sc = std::make_shared<ScaleBase>(HMCont2D::Scale01(*all_data));
+	shared_ptr<ScaleBase> sc = std::make_shared<ScaleBase>(HM2D::Scale01(*all_data));
 	
 	//3) construct deepcopied input
 	for (auto& p: par){
@@ -90,44 +93,47 @@ vector<Options> Options::CreateFromParent(const vector<HMBlay::Input>& par){
 
 void Options::Initialize(){
 	//make correct partition of contours, assemble paths
-	typedef HMCont2D::ECollection ECol;
-	typedef HMCont2D::Contour ECont;
-	typedef HMCont2D::PartitionTp Ptp;
-	typedef HMCont2D::ExtendedTree Etree;
+	typedef HM2D::EdgeData ECol;
+	typedef HM2D::EdgeData ECont;
+	typedef HM2D::Contour::Algos::PartitionTp Ptp;
+	typedef HM2D::Contour::Tree Etree;
 	//Start and End points
-	pnt_start = ECol::FindClosestNode(*edges, start);
-	pnt_end = ECol::FindClosestNode(*edges, end);
+	auto av = HM2D::AllVertices(*edges);
+	auto fnd1 = HM2D::FindClosestNode(av, start);
+	auto fnd2 = HM2D::FindClosestNode(av, end);
+	pnt_start = av[std::get<0>(fnd1)].get();
+	pnt_end = av[std::get<0>(fnd2)].get();
 
 	//if points were not found as edges vertices then place them straight to __edges_data
 	//pool so that other option instances could find them and don't create their own copies
 	//of these points (only for open contours)
 	if (start != end){
 		auto split_edge = [&](Point psplit)->Point*{
-			auto ce = HMCont2D::ECollection::FindClosestEdge(*__edges_data, psplit);
+			auto ce = HM2D::FindClosestEdge(*__edges_data, psplit);
 			assert(std::get<0>(ce)!=0);
-			HMCont2D::Edge* eold = std::get<0>(ce);
-			if (ISZERO(std::get<2>(ce))) return  eold->pstart;
-			if (ISZERO(1 - std::get<2>(ce))) return  eold->pend;
-			Point* newp = __all_data->pdata.add_value(Point::Weigh(*eold->pstart,
-						*eold->pend, std::get<2>(ce)));
-			HMCont2D::Edge enew1(eold->pstart, newp), enew2(eold->pend, newp);
-			__edges_data->RemoveAt({std::get<3>(ce)});
-			__edges_data->add_value(enew1);
-			__edges_data->add_value(enew2);
-			return newp;
+			HM2D::Edge* eold = (*__edges_data)[std::get<0>(ce)].get();
+			if (ISZERO(std::get<2>(ce))) return  eold->first().get();
+			if (ISZERO(1 - std::get<2>(ce))) return  eold->last().get();
+			auto newp = std::make_shared<HM2D::Vertex>(
+					Point::Weigh(*eold->first(), *eold->last(), std::get<2>(ce)));
+			auto enew1 = std::make_shared<HM2D::Edge>(eold->first(), newp);
+			auto enew2 = std::make_shared<HM2D::Edge>(eold->last(), newp);
+			__edges_data->erase(__edges_data->begin() + std::get<0>(ce));
+			__edges_data->push_back(enew1);
+			__edges_data->push_back(enew2);
+			return newp.get();
 		};
 		if (*pnt_start != start) pnt_start = split_edge(start);
 		if (*pnt_end != end) pnt_end = split_edge(end);
 	}
 
 	//assemble a tree -> find contour with pnt_start/end -> cut it
-	auto tree = HMCont2D::Assembler::ETree(*edges);
-	HMCont2D::Contour* contour_in_tree = tree.get_contour(pnt_start);
-	assert(contour_in_tree != 0);
-	full_source = HMCont2D::Contour(*contour_in_tree);
-	assert(full_source.contains_point(pnt_end));
+	auto tree = HM2D::Contour::Tree::Assemble(*edges);
+	HM2D::EdgeData* contour_in_tree = &tree.find_node(pnt_start)->contour;
+	full_source = HM2D::EdgeData(*contour_in_tree);
+	assert(HM2D::Contains(full_source, pnt_end));
 	//place Start/End points to contour if necessary
-	if (!(start==end && full_source.is_closed())){
+	if (!(start==end && HM2D::Contour::IsClosed(full_source))){
 		//pnt_start = std::get<1>(full_source.GuaranteePoint(start, __all_data->pdata));
 		//pnt_end   = std::get<1>(full_source.GuaranteePoint(end, __all_data->pdata));
 		//throw if points coincide
@@ -136,17 +142,26 @@ void Options::Initialize(){
 	}
 
 	//assemble path
-	path = HMCont2D::Assembler::Contour1(full_source, pnt_start, pnt_end);
+	path = HM2D::Contour::Assembler::Contour1(full_source, pnt_start, pnt_end);
 	//all edges in path are directed according to global direction. May be usefull.
-	path.DirectEdges();
-	//if path has only 1 segment we need to implicitly define its direction
-	if (path.size() == 1){ path.edge(0)->pstart = pnt_start; path.edge(0)->pend = pnt_end; }
+	if (path[0]->first().get() != pnt_start){
+		HM2D::Contour::ReallyRevert::Permanent(path);
+	} else {
+		HM2D::Contour::ReallyDirect::Permanent(path);
+	}
 	//reverse full_source if path is in opposite direction.
-	if (full_source.next_point(pnt_start) != path.next_point(pnt_start)) full_source.Reverse();
-	assert(full_source.next_point(pnt_start) == path.next_point(pnt_start));
+	if (HM2D::Contour::PInfo(full_source, pnt_start).pnext !=
+	    HM2D::Contour::PInfo(path, pnt_start).pnext){
+		HM2D::Contour::Reverse(full_source);
+	}
+	assert(HM2D::Contour::PInfo(full_source, pnt_start).pnext ==
+	       HM2D::Contour::PInfo(path, pnt_start).pnext);
 	
 	//reverse path if necessary.
-	if (direction == Direction::OUTER) { path.ReallyReverse(); full_source.Reverse(); }
+	if (direction == Direction::OUTER) {
+		HM2D::Contour::ReallyRevert::Permanent(path);
+		HM2D::Contour::Reverse(full_source);
+	}
 }
 
 vector<vector<Options*>> Options::BuildSequence(vector<Options>& inp){
@@ -161,15 +176,15 @@ vector<vector<Options*>> Options::BuildSequence(vector<Options>& inp){
 		//2) in a loop find if edge->last==lst.first => push_front
 		//                  if edge->first==lst.last => push_back
 		for (auto it=setop.begin(); it!=setop.end();){
-			Point* p0 = lst.front()->path.first();
-			Point* p1 = lst.back()->path.last();
+			Point* p0 = HM2D::Contour::First(lst.front()->path).get();
+			Point* p1 = HM2D::Contour::Last(lst.back()->path).get();
 			//path is already closed
 			if (p0 == p1) break;
 			//last=first
-			if (p1 == (*it)->path.first()){
+			if (p1 == HM2D::Contour::First((*it)->path).get()){
 				lst.push_back(*it); it = setop.erase(it);
 			//first=last
-			} else if (p0 == (*it)->path.last()){
+			} else if (p0 == HM2D::Contour::Last((*it)->path).get()){
 				lst.push_front(*it); it = setop.erase(it);
 			} else ++it;
 		}

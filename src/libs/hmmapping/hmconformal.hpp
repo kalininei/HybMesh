@@ -2,8 +2,8 @@
 #define HYBMESH_HMMATH_HMCONFORMAL_HPP
 #include "hmproject.h"
 #include "bgeom2d.h"
-#include "hybmesh_contours2d.hpp"
 #include "hmcallback.hpp"
+#include "primitives2d.hpp"
 
 namespace HMMap{ namespace Conformal{
 
@@ -60,7 +60,7 @@ public:
 
 	//get canonic rectangle containing all original points
 	virtual vector<Point> RectPoints() const = 0;
-	HMCont2D::Container<HMCont2D::Contour> RectContour() const;
+	HM2D::EdgeData RectContour() const;
 
 	//path -- an ordered set of points in anti-clockwise direction
 	//corners -- indicies or corner points directed as
@@ -71,10 +71,10 @@ public:
 			const Options& opt = Options());
 
 	static shared_ptr<Rect> Factory(
-			const HMCont2D::Contour& left,
-			const HMCont2D::Contour& right,
-			const HMCont2D::Contour& bot,
-			const HMCont2D::Contour& top,
+			const HM2D::EdgeData& left,
+			const HM2D::EdgeData& right,
+			const HM2D::EdgeData& bot,
+			const HM2D::EdgeData& top,
 			const Options& opt = Options());
 
 	//prepare data for factory input from 4 connected contours
@@ -83,22 +83,22 @@ public:
 	//  reverse(left), bottom, right, reverse(top)
 	//  returning std::array starts with zero
 	static std::tuple<vector<Point>, std::array<int, 4>>
-	FactoryInput(const HMCont2D::Contour& left, const HMCont2D::Contour& right,
-		const HMCont2D::Contour& bot, const HMCont2D::Contour& top);
+	FactoryInput(const HM2D::EdgeData& left, const HM2D::EdgeData& right,
+		const HM2D::EdgeData& bot, const HM2D::EdgeData& top);
 
 	//from closed contour
 	static std::tuple<vector<Point>, std::array<int, 4>>
-	FactoryInput(const HMCont2D::Contour& cont, const std::array<int,4>& a);
+	FactoryInput(const HM2D::EdgeData& cont, const std::array<int,4>& a);
 };
 
 struct TBuildRect: public HMCallback::ExecutorBase{
 	HMCB_SET_PROCNAME("Conformal mapping to rectangle");
 	HMCB_SET_DEFAULT_DURATION(100);
 
-	shared_ptr<Rect> _run(const HMCont2D::Contour& left,
-		const HMCont2D::Contour& right,
-		const HMCont2D::Contour& bot,
-		const HMCont2D::Contour& top,
+	shared_ptr<Rect> _run(const HM2D::EdgeData& left,
+		const HM2D::EdgeData& right,
+		const HM2D::EdgeData& bot,
+		const HM2D::EdgeData& top,
 		const Options& opt);
 };
 extern HMCallback::FunctionWithCallback<TBuildRect> BuildRect;
@@ -134,8 +134,8 @@ public:
 	virtual double PhiInner(int i) const = 0;
 	virtual double PhiOuter(int i) const = 0;
 	
-	HMCont2D::Container<HMCont2D::Contour> InnerCircleContour() const;
-	HMCont2D::Container<HMCont2D::Contour> OuterCircleContour() const;
+	HM2D::EdgeData InnerCircleContour() const;
+	HM2D::EdgeData OuterCircleContour() const;
 };
 
 
@@ -146,8 +146,7 @@ class RectApprox: public Rect{
 	double _len_top, _len_bot, _len_left, _len_right;
 	double _module;
 	bool _left_straight, _right_straight, _top_straight, _bot_straight;
-	HMCont2D::PCollection pcol;
-	HMCont2D::Contour left, right, top, bot;
+	HM2D::EdgeData left, right, top, bot;
 
 	//which direction will be used for approximation
 	//x-ksi if true and y-eta otherwise
@@ -170,8 +169,8 @@ public:
 	//Builders
 	static shared_ptr<RectApprox> Build(const vector<Point>& path, int i1, int i2, int i3);
 	static shared_ptr<RectApprox>
-	Build(const HMCont2D::Contour& left, const HMCont2D::Contour& right,
-		const HMCont2D::Contour& bot, const HMCont2D::Contour& top);
+	Build(const HM2D::EdgeData& left, const HM2D::EdgeData& right,
+		const HM2D::EdgeData& bot, const HM2D::EdgeData& top);
 
 	//get mapping of original points
 	vector<Point> RectPoints() const override {_THROW_NOT_IMP_;}
