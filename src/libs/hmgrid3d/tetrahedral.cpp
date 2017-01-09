@@ -382,9 +382,9 @@ HM3D::GridData TUnstructuredTetrahedral::_run(const FaceData& source,
 	}
 	*/
 	//temporary revert faces to match surfaces
-	ShpVector<Surface::RevertTree> revs;
+	ShpVector<Surface::R::RevertTree> revs;
 	//revs.emplace_back(new HM3D::SurfTReverter(cond));
-	for (auto tree: trees) revs.emplace_back(new Surface::RevertTree(tree));
+	for (auto tree: trees) revs.emplace_back(new Surface::R::RevertTree(tree));
 
 	HM3D::GridData ret;
 	for (int i=0; i<trees.size(); ++i){

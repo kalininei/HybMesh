@@ -8,6 +8,7 @@
 #include "procgrid.h"
 #include "algos.hpp"
 #include "constructor.hpp"
+#include "treverter2d.hpp"
 
 void TriGrid::FillFromGModel(void* gmod){
 	GModel* m = static_cast<GModel*>(gmod);
@@ -102,13 +103,13 @@ TriGrid::ConstraintsPreproc(const HM2D::Contour::Tree& cont,
 		const ShpVector<HM2D::EdgeData>& constraints){
 	vector<HM2D::Contour::Tree> ret;
 	//1) sort out all inner contours
-	for (auto rc: cont.nodes){
-		if (HM2D::Contour::Area(rc->contour) > 0){
+	for (auto rc: cont.nodes) if (rc->isbound()){
+		if (rc->level % 2 == 0){
 			ret.push_back(HM2D::Contour::Tree());
 			auto& et = ret.back();
-			et.AddContour(rc->contour);
+			et.add_contour(rc->contour);
 			for (auto cc: rc->children){
-				et.AddContour(cc.lock()->contour);
+				et.add_contour(cc.lock()->contour);
 			}
 		}
 	}
@@ -119,7 +120,7 @@ TriGrid::ConstraintsPreproc(const HM2D::Contour::Tree& cont,
 			bool found = false;
 			for (auto& et: ret){
 				if (et.whereis(*p) != OUTSIDE){
-					et.AddContour(*c);
+					et.add_detached_contour(*c);
 					found = true;
 					break;
 				}
@@ -264,6 +265,7 @@ void TriGrid::FillFromTree(
 		double h,
 		bool recomb){
 	if (cont_.nodes.size() == 0) return; 
+	HM2D::Contour::R::RevertTree rt(cont_);
 
 	//treat default size
 	if (h<=0) h = 2*HM2D::BBox(cont_.alledges()).lendiag();
@@ -333,8 +335,8 @@ void TriGrid::FillFromTree(
 		fc.push_back(m.addPlanarFace({eds}));
 		//constraints
 		eds.clear();
-		for (int i=ec.nodes.size(); i<ec.nodes.size(); ++i){
-			add_contour_edges(ec.nodes[i]->contour, eds);
+		for (auto c: ec.detached_contours()){
+			add_contour_edges(c->contour, eds);
 		}
 		for (auto e: eds) fc.back()->addEmbeddedEdge(e);
 	}
@@ -609,7 +611,7 @@ TriGrid::TriangulateAreaConstrained(const vector<vector<Point>>& bnd,
 
 	HM2D::Contour::Tree tree;
 	for (auto& p: ccontours){
-		tree.AddContour(*p);
+		tree.add_contour(*p);
 	}
 
 

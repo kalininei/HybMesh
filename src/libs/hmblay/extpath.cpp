@@ -173,24 +173,53 @@ void ExtPath::FillEndConditions(){
 	//building start point boundary
 	if (ext_data[0].tp == CornerTp::RIGHT){
 		double h = 2*ext_data[0].opt->partition.back();
-		leftbc = HM2D::Contour::Constructor::CutContour(*full_source, *HM2D::Contour::First(*this), -1, h);
-		//if leftbc contains only single edge its direction is not defined
-		//we have to guarantee direction of bnd.
-		if (*HM2D::Contour::First(*this) !=
-		    *HM2D::Contour::First(leftbc)){
-			HM2D::Contour::ReallyRevert::Permanent(leftbc);
+		//leftbc = HM2D::Contour::Constructor::CutContour(*full_source, *HM2D::Contour::First(*this), -1, h);
+		Point p1 = *HM2D::Contour::First(*this), p2;
+		auto fndp1 = HM2D::Contour::CoordAt(*full_source, p1);
+		double l2 = std::get<0>(fndp1) - h;
+		if (l2 < 0){
+			assert(HM2D::Contour::IsClosed(*full_source));
+			l2 += HM2D::Length(*full_source);
 		}
+		auto fndp2 = HM2D::Contour::CoordAt(*full_source, HM2D::Contour::WeightPointsByLen(*full_source, {l2})[0]);
+		if (ISEQ(std::get<3>(fndp2), 0.)){
+			p2 = *(*full_source)[std::get<2>(fndp2)]->first();
+		} else if (ISEQ(std::get<3>(fndp2), 1)){
+			p2 = *(*full_source)[std::get<2>(fndp2)]->last();
+		} else if (HM2D::Contour::CorrectlyDirectedEdge(*full_source, std::get<2>(fndp2))){
+			p2 = *(*full_source)[std::get<2>(fndp2)]->first();
+		} else {
+			p2 = *(*full_source)[std::get<2>(fndp2)]->last();
+		}
+		leftbc = HM2D::Contour::Constructor::CutContour(*full_source, p2, p1);
+		HM2D::Contour::R::ForceFirst::Permanent(leftbc, p1);
 	} else {
 		PerpendicularStart();
 	}
 	//end point boundary
 	if (ext_data.back().tp == CornerTp::RIGHT){
 		double h = 2*ext_data.back().opt->partition.back();
-		rightbc = HM2D::Contour::Constructor::CutContour(*full_source, *HM2D::Contour::Last(*this), 1, h);
-		if (*HM2D::Contour::First(rightbc) !=
-		    *HM2D::Contour::Last(*this)){
-			HM2D::Contour::ReallyRevert::Permanent(rightbc);
+		//rightbc = HM2D::Contour::Constructor::CutContour(*full_source, *HM2D::Contour::Last(*this), 1, h);
+		Point p1 = *HM2D::Contour::Last(*this), p2;
+		auto fndp1 = HM2D::Contour::CoordAt(*full_source, p1);
+		double l2 = std::get<0>(fndp1) + h;
+		double fslen = HM2D::Length(*full_source);
+		if (l2 > fslen){
+			assert(HM2D::Contour::IsClosed(*full_source));
+			l2 -= fslen;
 		}
+		auto fndp2 = HM2D::Contour::CoordAt(*full_source, HM2D::Contour::WeightPointsByLen(*full_source, {l2})[0]);
+		if (ISEQ(std::get<3>(fndp2), 0)){
+			p2 = *(*full_source)[std::get<2>(fndp2)]->first();
+		} else if (ISEQ(std::get<3>(fndp2), 1)){
+			p2 = *(*full_source)[std::get<2>(fndp2)]->last();
+		} else if (HM2D::Contour::CorrectlyDirectedEdge(*full_source, std::get<2>(fndp2))){
+			p2 = *(*full_source)[std::get<2>(fndp2)]->last();
+		} else {
+			p2 = *(*full_source)[std::get<2>(fndp2)]->first();
+		}
+		rightbc = HM2D::Contour::Constructor::CutContour(*full_source, p1, p2);
+		HM2D::Contour::R::ForceFirst::Permanent(rightbc, p1);
 	} else {
 		PerpendicularEnd();
 	}

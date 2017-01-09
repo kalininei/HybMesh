@@ -1,8 +1,9 @@
 #ifndef HYBMESH_TREVERTER2D_HPP
 #define HYBMESH_TREVERTER2D_HPP
 #include "contour.hpp"
+#include "tree.hpp"
 
-namespace HM2D{ namespace Contour{
+namespace HM2D{ namespace Contour{ namespace R{
 
 //this reverses edges and
 //forces correct direction of points within edges
@@ -77,5 +78,56 @@ public:
 	}
 };
 
-}}
+//forces clockwise or counterclockwise direction of closed contour
+//makes real edges reversions
+class Clockwise{
+	std::unique_ptr<ReallyDirect> really_direct;
+	std::unique_ptr<ReallyRevert> really_revert;
+public:
+	Clockwise(const Clockwise&) = delete;
+	Clockwise(Clockwise&&) = delete;
+	Clockwise& operator=(const Clockwise&) = delete;
+
+	//direct = true -> clockwise;
+	//direct = false -> counterclockwise
+	Clockwise(const EdgeData& ed, bool direct);
+	~Clockwise(){}
+
+	void make_permanent(){
+		if (really_direct) really_direct->make_permanent();
+		if (really_revert) really_revert->make_permanent();
+	}
+
+	static void Permanent(EdgeData& ed, bool direct){
+		Clockwise c(ed, direct);
+		c.make_permanent();
+	}
+};
+
+//forces counterclockwise for even level tree nodes
+//and clockwise for odd level tree nodes
+class RevertTree{
+	std::list<std::unique_ptr<Clockwise>> really_clockwise;
+	std::list<std::unique_ptr<ReallyDirect>> really_direct;
+public:
+	RevertTree(const RevertTree&) = delete;
+	RevertTree(RevertTree&&) = delete;
+	RevertTree& operator=(const RevertTree&) = delete;
+
+	RevertTree(const Tree& tree);
+	~RevertTree(){}
+
+	void make_permanent(){
+		for (auto& it:really_clockwise) it->make_permanent();
+		for (auto& it:really_direct) it->make_permanent();
+	}
+
+	static void Permanent(Tree& tree){
+		RevertTree r(tree);
+		r.make_permanent();
+	}
+
+};
+
+}}}
 #endif

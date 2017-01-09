@@ -6,7 +6,7 @@ using namespace HM2D::Contour;
 
 double Tree::area() const{
 	double ret = 0;
-	for (auto& n: nodes) if (n->isclosed()){
+	for (auto& n: nodes) if (n->isbound()){
 		double a = fabs(Contour::Area(n->contour));
 		if (n->level % 2 == 0) ret += a;
 		else ret -= a;
@@ -19,7 +19,7 @@ Tree Tree::Assemble(const EdgeData& input){
 	//1) assemble all possible contours
 	std::vector<EdgeData> conts = Assembler::AllContours(input);
 	//2) add them to ret
-	std::for_each(conts.begin(), conts.end(), [&ret](EdgeData& a){ ret.AddContour(a); });
+	std::for_each(conts.begin(), conts.end(), [&ret](EdgeData& a){ ret.add_contour(a); });
 	return ret;
 }
 
@@ -31,20 +31,20 @@ EdgeData Tree::alledges() const {
 	return ret;
 };
 
-void Tree::remove_opens(){
+void Tree::remove_detached(){
 	auto s = std::remove_if(nodes.begin(), nodes.end(), [&](shared_ptr<TNode> nd){
-			return nd->isopen(); });
+			return nd->isdetached(); });
 	nodes.resize(s - nodes.begin());
 }
 
-ShpVector<Tree::TNode> Tree::open_contours() const{
+ShpVector<Tree::TNode> Tree::detached_contours() const{
 	ShpVector<TNode> ret;
-	for (auto n: nodes) if (n->isopen()) ret.push_back(n);
+	for (auto n: nodes) if (n->isdetached()) ret.push_back(n);
 	return ret;
 }
-ShpVector<Tree::TNode> Tree::closed_contours() const{
+ShpVector<Tree::TNode> Tree::bound_contours() const{
 	ShpVector<TNode> ret;
-	for (auto n: nodes) if (n->isclosed()) ret.push_back(n);
+	for (auto n: nodes) if (n->isbound()) ret.push_back(n);
 	return ret;
 }
 
@@ -82,10 +82,9 @@ void add_contour_recursive(shared_ptr<Tree::TNode> node,
 
 }
 
-void Tree::AddContour(const EdgeData& c){
+void Tree::add_contour(const EdgeData& c){
 	if (IsOpen(c)){
-		nodes.emplace_back(new TNode(c, -1));
-		return;
+		return add_detached_contour(c);
 	}
 	//create node
 	auto node = std::make_shared<TNode>(c, 0);
@@ -93,10 +92,14 @@ void Tree::AddContour(const EdgeData& c){
 	auto rs = roots();
 	add_contour_recursive(node, rs, 0);
 	nodes.push_back(node);
-	UpdateTopology();
+	update_topology();
 }
 
-void Contour::Tree::UpdateTopology(){
+void Tree::add_detached_contour(const EdgeData& cont){
+	nodes.emplace_back(new TNode(cont, -1));
+}
+
+void Contour::Tree::update_topology(){
 	//clear children array
 	std::for_each(nodes.begin(), nodes.end(),
 		[&](shared_ptr<TNode> a){ a->children.clear(); });
@@ -169,10 +172,9 @@ shared_ptr<Tree::TNode> Tree::find_node(const Edge* p) const{
 int Tree::whereis(const Point& p) const{
 	//using WhereIs routine for single contour
 	//since algorithms are the same:
-	//calculation of crosses between [p, far point] and
-	//object edges.
+	//calculation of crosses between [p, far point]
 	EdgeData cedges;
-	for (auto n: nodes) if (n->isclosed()){
+	for (auto n: nodes) if (n->isbound()){
 		cedges.insert(cedges.end(), n->contour.begin(),
 				n->contour.end());
 	}

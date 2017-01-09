@@ -1,0 +1,9 @@
+#!/bin/sh
+
+# checks testing program
+# should be executed from build/bin directory as
+#     > ../../src/libs/dbgscripts/vgcheck2 exename
+
+# valgrind --gen-suppressions=all --leak-check=full --suppressions=../../src/libs/dbgscripts/hm_suppress.supp $1
+# valgrind --leak-check=full --suppressions=../../src/libs/dbgscripts/hm_suppress.supp $1
+valgrind --leak-check=full --show-leak-kinds=all --suppressions=../../src/libs/dbgscripts/hm_suppress.supp $1

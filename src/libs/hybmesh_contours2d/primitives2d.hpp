@@ -143,6 +143,7 @@ BoundingBox BBox(const EdgeData&, double eps=0.);
 BoundingBox BBox(const CellData&, double eps=0.);
 
 ScaleBase Scale01(EdgeData&);
+ScaleBase Scale01(VertexData&);
 void Scale(EdgeData&, const ScaleBase& sc);
 void Unscale(EdgeData&, const ScaleBase& sc);
 

@@ -213,7 +213,7 @@ Contour::Tree ClipperTree::HMContainer(const ClipperLib::PolyTree& tree, const B
 	for (int i=0; i<tree.ChildCount(); ++i) setcont(tree.Childs[i], nullptr);
 
 	//2) restore children
-	ret.UpdateTopology();
+	ret.update_topology();
 	return ret;
 }
 

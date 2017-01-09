@@ -72,7 +72,7 @@ vector<int> break_by_angle(const VertexData& points, int istart, int iend,
 EdgeData eal::Simplified(const EdgeData& ecol, double degree_angle, bool id_nobreak){
 	EdgeData ret;
 	if (degree_angle < 0) {
-		DeepCopy(ecol, ret);
+		DeepCopy(ecol, ret, 0);
 		return ret;
 	}
 
@@ -96,7 +96,7 @@ EdgeData eal::Simplified(const EdgeData& ecol, double degree_angle, bool id_nobr
 		}
 		significant_points.push_back(op.size()-1);
 		if (significant_points.size() == op.size()){
-			DeepCopy(c, ret);
+			DeepCopy(c, ret, 0);
 			continue;
 		}
 		//2 analyse each section between significant points
@@ -309,7 +309,7 @@ cal::CrossAll(const EdgeData& c1, const EdgeData& c2){
 
 vector<int> cal::SortOutPoints(const EdgeData& t1, const vector<Point>& pnt){
 	Contour::Tree tree;
-	tree.AddContour(t1);
+	tree.add_contour(t1);
 	auto ret = cal::SortOutPoints(tree, pnt);
 	//if t1 is inner contour
 	if (Contour::Area(t1) < 0){
@@ -372,7 +372,7 @@ Vect cal::SmoothedDirection2(const EdgeData& c, const Point* p, int direction, d
 	//find points
 	double pw = std::get<1>(Contour::CoordAt(cont, *p));
 	Point p1 = smoothed_direction_step(cont, pw, len_forward/full_len);
-	Contour::ReallyRevert::Permanent(cont);
+	Contour::R::ReallyRevert::Permanent(cont);
 	Point p2 = smoothed_direction_step(cont, 1 - pw, len_backward/full_len);
 	
 	//return zero if all lengths are 0

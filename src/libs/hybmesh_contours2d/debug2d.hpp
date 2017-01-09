@@ -23,6 +23,8 @@ struct Debug: public HMDebug{
 
 	//contour in vtk format
 	static void save_edges_vtk(const EdgeData& c);
+	static void save_edges_vtk(const EdgeData& c, const std::map<Point*, double>& data);
+	static void save_vertices_vtk(const VertexData& c);
 
 	static double hash(const EdgeData& ecol);
 
@@ -31,6 +33,9 @@ struct Debug: public HMDebug{
 		if (prefix.size() > 0) prefix = " ("+prefix+")";
 		std::cout<<"Hash for contour 2d"<<prefix<<": "<<hash(grid)<<std::endl;
 	}
+
+	//extract primitives without id change
+	static VertexData allvertices(const EdgeData& c);
 };
 
 }

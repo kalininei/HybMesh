@@ -327,7 +327,7 @@ void test09(){
 
 		double v1 = HM3D::SumVolumes(res.vcells);
 		auto tree = HM3D::Surface::Tree::Assemble(srf);
-		auto* rr = new HM3D::Surface::RevertTree(tree);
+		auto* rr = new HM3D::Surface::R::RevertTree(tree);
 		double v2 = HM3D::Surface::Volume(srf);
 		delete rr;
 		add_check(ISEQ(v1, v2), "multiply connected domain");

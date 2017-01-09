@@ -188,7 +188,7 @@ public:
 
 // ====================== no dublicates in vector preserving the order
 template<class C>
-std::vector<C> no_dublicates(const std::vector<C>& input){
+std::vector<C> no_duplicates(const std::vector<C>& input){
 	//no duplicates preserving the order of input
 	std::unordered_set<C> usedv;
 	std::vector<C> ret; ret.reserve(input.size());

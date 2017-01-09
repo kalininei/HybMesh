@@ -8,6 +8,7 @@
 #include "cont_assembler.hpp"
 #include "vtk_export2d.hpp"
 #include "cont_repart.hpp"
+#include "treverter2d.hpp"
 
 using HMTesting::add_check;
 
@@ -24,15 +25,15 @@ void test2(){
 	std::cout<<"2. Deep copy procedures"<<std::endl;
 	//edges and points pool
 	auto c = Contour::Constructor::Circle(3, 1, Point(5,4));
+	VertexData cvert = AllVertices(c);
 	//copy only edges
 	EdgeData ne;
 	DeepCopy(c, ne, 0);
-	VertexData cvert = AllVertices(c);
 	try{
 		for (auto e=ne.begin(); e!=ne.end(); ++e){
 			//new edges are not in c edges
 			if (std::find(c.begin(), c.end(), *e) != c.end()) throw 1;
-			//points in new edges are all in e.pdata
+			//points in new edges are all in cvert
 			if (std::find(cvert.begin(), cvert.end(), (*e)->first()) == cvert.end()) throw 1;
 			if (std::find(cvert.begin(), cvert.end(), (*e)->last()) == cvert.end()) throw 1;
 		}
@@ -44,7 +45,7 @@ void test2(){
 	DeepCopy(cvert, pc);
 	try{
 		for (auto p=pc.begin(); p!=pc.end(); ++p){
-			//new points are not in c.pdata
+			//new points are not in cvert
 			if (std::find(cvert.begin(), cvert.end(), *p) != cvert.end()) throw 1;
 		}
 		add_check(true, "Deep copy of points");
@@ -52,13 +53,13 @@ void test2(){
 
 	//copy whole container
 	EdgeData nc;
-	VertexData ncvert = AllVertices(nc);
 	DeepCopy(c, nc, 1);
+	VertexData ncvert = AllVertices(nc);
 	try{
 		for (auto e=nc.begin(); e!=nc.end(); ++e){
 			//edges of nc are not in c edges
 			if (std::find(c.begin(), c.end(), *e) != c.end()) throw 1;
-			//points of nc are not in in e.pdata
+			//points of nc are not in in cvert
 			if (std::find(cvert.begin(), cvert.end(), (*e)->first()) != cvert.end()) throw 1;
 			if (std::find(cvert.begin(), cvert.end(), (*e)->last()) != cvert.end()) throw 1;
 			//points of nc are in nc
@@ -75,7 +76,7 @@ void test3(){
 	auto c6 = Contour::Constructor::FromPoints({0.0,0.0, 0.2,0, 0.33,0, 0.7,0.2, 0.9,0.6, 1.0,0.0 });
 	double len12 = Length(c12);
 	double len6 = Length(c6);
-	//add_check(fabs(len12 - 62) - 0.5, "12-sided contour length");
+	add_check(fabs(len12 - 62) < 0.5, "12-sided contour length");
 	//1) ignore all algorithm
 	auto r1 = Contour::Algos::Partition(len12/5.0, c12, Contour::Algos::PartitionTp::IGNORE_ALL);
 	add_check(fabs(Length(r1)-57.5067)<1e-3, "ignore all");
@@ -89,8 +90,9 @@ void test3(){
 
 	//3) keep shape
 	auto r4 = Contour::Algos::Partition(1.0, c6, Contour::Algos::PartitionTp::KEEP_SHAPE);
-	add_check(r4.size() == 4 && fabs(Length(r4)-len6)<1e-12,
-				"keep shape coarse");
+	HM2D::Export::ContourVTK(c6, "c1.vtk");
+	HM2D::Export::ContourVTK(r4, "c2.vtk");
+	add_check(r4.size() == 4 && fabs(Length(r4)-len6)<1e-12, "keep shape coarse");
 	auto r5 = Contour::Algos::Partition(0.1, c6, Contour::Algos::PartitionTp::KEEP_SHAPE);
 	add_check(fabs(Length(r5)-len6)<1e-12, "keep shape fine");
 }
@@ -266,8 +268,8 @@ void test9(){
 		{0.2,0.2, 0.7,0.2, 0.7,0.7, 0.2,0.7}, true);
 
 	Contour::Tree tree;
-	tree.AddContour(c1);
-	tree.AddContour(c5);
+	tree.add_contour(c1);
+	tree.add_contour(c5);
 
 	auto res4 = Contour::Clip::Union(tree, c2);
 	add_check(fabs(res4.area() - 1.104)<1e-7, "union with a tree");
@@ -286,8 +288,8 @@ void test10(){
 	auto c5 = Contour::Constructor::FromPoints(
 		{0.2,0.2, 0.7,0.2, 0.7,0.7, 0.2,0.7}, true);
 	Contour::Tree tree;
-	tree.AddContour(c1);
-	tree.AddContour(c5);
+	tree.add_contour(c1);
+	tree.add_contour(c5);
 
 	auto res2 = Contour::Clip::Difference(tree, c2);
 	add_check(fabs(res2.area() - 0.729)<1e-7, "substruction from a tree");
@@ -328,15 +330,15 @@ void test11(){
 	EdgeData ecol1;
 	ecol1.emplace_back(new Edge(ed[0]));
 	auto tree1 = Contour::Tree::Assemble(ecol1);
-	add_check(tree1.nodes.size() == 1 && Length(tree1.open_contours()[0]->contour) == 1.0, "one side");
+	add_check(tree1.nodes.size() == 1 && Length(tree1.detached_contours()[0]->contour) == 1.0, "one side");
 
 	//2. 2 divergent edges
 	EdgeData ecol2;
 	ecol2.emplace_back(new Edge(ed[0]));
 	ecol2.emplace_back(new Edge(ed[11]));
 	auto tree2 = Contour::Tree::Assemble(ecol2);
-	add_check(tree2.nodes.size() == 2 && Length(tree2.open_contours()[0]->contour) == 1.0 &&
-		Length(tree2.open_contours()[1]->contour) == 1.0, "two divergent sides");
+	add_check(tree2.nodes.size() == 2 && Length(tree2.detached_contours()[0]->contour) == 1.0 &&
+		Length(tree2.detached_contours()[1]->contour) == 1.0, "two divergent sides");
 
 	//3. 2 connected edges
 	EdgeData ecol3;
@@ -344,7 +346,7 @@ void test11(){
 	ecol3.emplace_back(new Edge(ed[1]));
 	auto tree3 = Contour::Tree::Assemble(ecol3);
 	add_check(tree3.nodes.size() == 1 &&
-			Length(tree3.open_contours()[0]->contour) == 2.0, "two connected edges");
+			Length(tree3.detached_contours()[0]->contour) == 2.0, "two connected edges");
 
 	//4. 2 connected and 1 disconnected
 	EdgeData ecol4;
@@ -353,8 +355,8 @@ void test11(){
 	ecol4.emplace_back(new Edge(ed[2]));
 	auto tree4 = Contour::Tree::Assemble(ecol4);
 	add_check(tree4.nodes.size() == 2 && [&]()->bool{
-		auto oc1 = tree4.open_contours()[0]->contour;
-		auto oc2 = tree4.open_contours()[1]->contour;
+		auto oc1 = tree4.detached_contours()[0]->contour;
+		auto oc2 = tree4.detached_contours()[1]->contour;
 		if (oc1.size() == 2) std::swap(oc1, oc2);
 		if (oc1.size() != 1 || Length(oc1) != 1.0) return false;
 		if (oc2.size() != 2 || Length(oc2) != 2.0) return false;
@@ -367,7 +369,7 @@ void test11(){
 	ecol5.emplace_back(new Edge(ed[11]));
 	ecol5.emplace_back(new Edge(ed[2]));
 	auto tree5 = Contour::Tree::Assemble(ecol5);
-	add_check(tree5.nodes.size() == 1 && Length(tree5.open_contours()[0]->contour) == 3.0,
+	add_check(tree5.nodes.size() == 1 && Length(tree5.detached_contours()[0]->contour) == 3.0,
 			"3 connected edges");
 
 	//6. Closed contour
@@ -424,7 +426,7 @@ void test11(){
 	ecol9.emplace_back(new Edge(ed[8]));
 	auto tree9 = Contour::Tree::Assemble(ecol9);
 	add_check(tree9.nodes.size() == 2 && tree9.area() == 1.0 &&
-		Length(tree9.open_contours()[0]->contour) == 3.0,
+		Length(tree9.detached_contours()[0]->contour) == 3.0,
 		"closed contour + open contour with common points");
 
 	//10. Swastika sign 
@@ -440,8 +442,8 @@ void test11(){
 
 	auto tree10 = Contour::Tree::Assemble(ecol10);
 	add_check(tree10.nodes.size() == 2 &&
-		Length(tree10.open_contours()[0]->contour) == 4.0 &&
-		Length(tree10.open_contours()[1]->contour) == 4.0,
+		Length(tree10.detached_contours()[0]->contour) == 4.0 &&
+		Length(tree10.detached_contours()[1]->contour) == 4.0,
 		"two crossed open contours");
 
 	//11. All in one. Result here is ambiguous.
@@ -479,8 +481,8 @@ void test13(){
 
 	auto cn2 = Contour::Constructor::FromPoints({0.1,0.1, 0.9,0.1, 0.9,0.9, 0.1,0.9}, true);
 	Contour::Tree ctree;
-	ctree.AddContour(cn1);
-	ctree.AddContour(cn2);
+	ctree.add_contour(cn1);
+	ctree.add_contour(cn2);
 
 	vector<Point> p2 = {Point(-0.5, 0.5), Point(0, 0.5), Point(0.05, 0.5), Point(0.1, 0.5), Point(0.5, 0.5)};
 	auto ans2 = Contour::Algos::SortOutPoints(ctree, p2);
@@ -613,7 +615,11 @@ void test15(){
 		for (auto p: AllVertices(c1)) p->y/=5;
 		auto c2 = Contour::Constructor::Circle(256, 0.07, Point(-0.95, 0));
 		auto c3 = Contour::Clip::Difference(c1, c2);
-		auto res = Contour::Algos::Coarsening(c3.nodes[0]->contour, {}, 0.2, M_PI/4, 0.2);
+		HM2D::Export::ContourVTK(c1, "c1.vtk");
+		HM2D::Export::ContourVTK(c2, "c2.vtk");
+		HM2D::Export::ContourVTK(c3.alledges(), "c3.vtk");
+		HM2D::Contour::R::Clockwise rev(c3.nodes[0]->contour, false);
+		auto res = Contour::Algos::Coarsening(c3.nodes[0]->contour, {}, 0.2, M_PI/4, 0.2); 
 		add_check(vpnts(res) == 29 && totpnts(res) == 216, "ellipse minus circ");
 	}
 

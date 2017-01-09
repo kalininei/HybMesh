@@ -47,7 +47,7 @@ void remove_with_connections(AMap& mp, AMap::iterator pos){
 	//remove entry from siblings
 	for (auto it = pos->second.begin(); it != pos->second.end(); ++it){
 		shared_ptr<Edge> ed = *it;
-		const Point* sibl = ed->sibling(pos->first).get();
+		const Vertex* sibl = ed->sibling(pos->first).get();
 		mp[sibl].remove(ed);
 	}
 	//remove this section
@@ -318,7 +318,17 @@ EdgeData get_contour_by_pts(const EdgeData& col, const Point* pnt1, const Point*
 		ret = *it;
 	}
 	assert(contains_point(ret, pnt1));
-	assert(pnt2 ==0 || contains_point(ret, pnt2));
+	assert(pnt2 == 0 || contains_point(ret, pnt2));
+	//force same result for
+	if (IsOpen(ret)){
+		if (ret.size() > 1 &&
+		    Point::meas(*First(ret), *pnt1) > Point::meas(*Last(ret), *pnt1)){
+			Reverse(ret);
+		}
+	} else {
+		if (Area(ret) < 0) Reverse(ret);
+	}
+
 	return ret;
 }
 
@@ -346,6 +356,7 @@ EdgeData cns::Contour1(const EdgeData& col, const Point* pnt_start, const Point*
 
 //Assemble from another contour
 EdgeData cns::ShrinkContour(const EdgeData& con, const Point* pnt_start, const Point* pnt_end){
+	assert(IsContour(con));
 	//find indicies of pnt_start/pnt_end
 	auto op = OrderedPoints(con);
 	int i0 = std::find_if(op.begin(), op.end(), [&pnt_start](shared_ptr<Vertex> x)
@@ -382,7 +393,6 @@ EdgeData cns::Contour1(const VertexData& pnt, bool force_closed){
 	}
 	return ret;
 }
-
 
 vector<EdgeData> cns::QuickSeparate(const EdgeData& ecol){
 	auto ee = Connectivity::EdgeEdge(ecol);

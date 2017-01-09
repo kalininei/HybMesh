@@ -483,10 +483,16 @@ int set_ecollection_bc_force(void* src, void* tar, int* vsrc, int* vtar, int alg
 			}
 		}
 		//fill output arrays
-		aa::enumerate_ids_pvec(*tar_col);
-		aa::enumerate_ids_pvec(*src_col);
+		aa::constant_ids_pvec(*tar_col, -992997);
+		for (int i=0; i<src_col->size(); ++i){
+			(*src_col)[i]->id = vsrc[i];
+		}
 		for (auto a: ans){
-			vtar[a.first->id] = vsrc[a.second->id];
+			if (a.first->id == -992997) a.first->id = a.second->id;
+		}
+		for (int i=0; i<tar_col->size(); ++i){
+			int b = (*tar_col)[i]->id;
+			if (b != -992997) vtar[i] = b;
 		}
 		ret = 0;
 	} catch (const std::exception &e){

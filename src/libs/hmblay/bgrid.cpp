@@ -6,6 +6,7 @@
 #include "hmtimer.hpp"
 #include "debug_grid2d.h"
 #include "contclipping.hpp"
+#include "debug2d.hpp"
 
 using namespace HMBlay::Impl;
 
@@ -58,7 +59,6 @@ shared_ptr<BGrid> BGrid::MeshFullPath(const ExtPath& epath){
 			connectors.push_back(MConnector::Build(t, mesher4.back().get(), mesher4[0].get()));
 		}
 	}
-
 
 	//5. build rectangular meshes
 	for (int i=0; i<mesher4.size(); ++i){

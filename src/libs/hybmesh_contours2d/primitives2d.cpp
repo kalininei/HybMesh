@@ -246,6 +246,9 @@ std::tuple<int, double> HM2D::FindClosestNode(const VertexData& dt, const Point&
 // ================== scaling
 ScaleBase HM2D::Scale01(EdgeData& ed){
 	auto av = AllVertices(ed);
+	return HM2D::Scale01(av);
+}
+ScaleBase HM2D::Scale01(VertexData& av){
 	return ScaleBase::p_doscale(av.begin(), av.end());
 }
 void HM2D::Scale(EdgeData& ed, const ScaleBase& sc){

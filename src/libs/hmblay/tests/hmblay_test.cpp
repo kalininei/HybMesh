@@ -6,6 +6,7 @@
 #include "constructor.hpp"
 #include "cont_assembler.hpp"
 #include "vtk_export2d.hpp"
+#include "vtk_export_grid2d.hpp"
 
 using HMTesting::add_check;
 
@@ -140,6 +141,7 @@ void test03(){
 	cn = std::string("5-points polyline. Right layer. Opposite direction");
 	std::swap(inp.start, inp.end);
 	GridGeom Ans3 = HMBlay::BuildBLayerGrid({inp});
+	GGeom::Export::GridVTK(Ans3, "g2.vtk");
 	add_check([&](){
 		for (int i=0; i<Ans3.n_cells(); ++i) if (Ans3.get_cell(i)->area()<0) return false;
 		for (int i=0; i<Ans3.n_points(); ++i) if (Ans3.get_point(i)->y<0.0) return false;
@@ -164,17 +166,17 @@ void test04(){
 	inp1.start = Point(10, 0);
 	inp1.end = Point(-10, 0);
 	inp1.bnd_step = 0.3;
-	GridGeom Ans1 = HMBlay::BuildBLayerGrid({inp1});
-	add_check([&](){
-		for (int i=0; i<Ans1.n_cells(); ++i) if (Ans1.get_cell(i)->area()<0) return false;
-		for (int i=0; i<Ans1.n_points(); ++i) if (Ans1.get_point(i)->y<-1e-3) return false;
-		bool hasp1=false, hasp2=false;
-		for (int i=0; i<Ans1.n_points(); ++i){
-			if (Point::dist(*Ans1.get_point(i), Point(10.4, 0))<1e-2) hasp1 = true;
-			if (Point::dist(*Ans1.get_point(i),Point(-10.4, 0))<1e-2) hasp2 = true;
-		}
-		return true;
-	}(), cn);
+	//GridGeom Ans1 = HMBlay::BuildBLayerGrid({inp1});
+	//add_check([&](){
+		//for (int i=0; i<Ans1.n_cells(); ++i) if (Ans1.get_cell(i)->area()<0) return false;
+		//for (int i=0; i<Ans1.n_points(); ++i) if (Ans1.get_point(i)->y<-1e-3) return false;
+		//bool hasp1=false, hasp2=false;
+		//for (int i=0; i<Ans1.n_points(); ++i){
+			//if (Point::dist(*Ans1.get_point(i), Point(10.4, 0))<1e-2) hasp1 = true;
+			//if (Point::dist(*Ans1.get_point(i),Point(-10.4, 0))<1e-2) hasp2 = true;
+		//}
+		//return true;
+	//}(), cn);
 
 	cn = std::string("Two layers with same partition depth count: outer");
 	HMBlay::Input inp2(inp1);
@@ -326,7 +328,7 @@ void test07(){
 	Point *p0, *p1;
 	p0 = vc1[std::get<0>(HM2D::FindClosestNode(vc1, Point(3,0)))].get();
 	p1 = vc1[std::get<0>(HM2D::FindClosestNode(vc1, Point(-3,0)))].get();
-	HM2D::EdgeData con1 = HM2D::Contour::Assembler::Contour1(c1, p0, p1);
+	HM2D::EdgeData con1 = HM2D::Contour::Assembler::ShrinkContour(c1, p0, p1);
 	con1.emplace_back(new HM2D::Edge(HM2D::Contour::Last(con1), apoints[0]));
 	con1.emplace_back(new HM2D::Edge(apoints[0], apoints[1]));
 	con1.emplace_back(new HM2D::Edge(apoints[1], HM2D::Contour::First(con1)));
@@ -356,9 +358,10 @@ void test08(){
 	Point *p0, *p1;
 	p0 = vc1[std::get<0>(HM2D::FindClosestNode(vc1, Point(3,0)))].get();
 	p1 = vc1[std::get<0>(HM2D::FindClosestNode(vc1, Point(0,-3)))].get();
-	HM2D::EdgeData con1 = HM2D::Contour::Assembler::Contour1(c1, p0, p1);
+	HM2D::EdgeData con1 = HM2D::Contour::Assembler::ShrinkContour(c1, p0, p1);
 	con1.emplace_back(new HM2D::Edge(HM2D::Contour::Last(con1), apoints[0]));
 	con1.emplace_back(new HM2D::Edge(apoints[0], HM2D::Contour::First(con1)));
+	HM2D::Export::ContourVTK(con1, "c1.vtk");
 
 	HMBlay::Input inp1;
 	inp1.bnd_step_method = HMBlay::MethFromString("KEEP_SHAPE");
@@ -373,14 +376,17 @@ void test08(){
 	double minsz1 = *std::min_element(sz1.begin(), sz1.end());
 	double maxsz1 = *std::max_element(sz1.begin(), sz1.end());
 	add_check(Ans1.n_points() == 565 && Ans1.n_cells() == 452 &&
-			fabs(maxsz1 - 0.02)<1e-6 && fabs(minsz1 - 0.0004)<1e-6, "Mesh inner");
+	          fabs(maxsz1 - 0.02)<1e-6 && fabs(minsz1 - 0.0004)<1e-6, "Mesh inner");
 
 	inp1.direction = HMBlay::DirectionFromString("OUTER");
 	GridGeom Ans2 = HMBlay::BuildBLayerGrid({inp1});
 	auto sz2 = GGeom::Info::CellAreas(Ans2);
 	double minsz2 = *std::min_element(sz2.begin(), sz2.end());
 	double maxsz2 = *std::max_element(sz2.begin(), sz2.end());
-	add_check(Ans2.n_points() == 575 && Ans2.n_cells() == 460 && fabs(maxsz2 - 0.0209396)<1e-4 && fabs(minsz2 - 0.0004)<1e-6, "Mesh inner");
+	add_check(Ans2.n_points() == 575 && Ans2.n_cells() == 460 &&
+	          fabs(maxsz2 - 0.0209396)<1e-4 && fabs(minsz2 - 0.0004)<1e-6, "Mesh outer");
+	GGeom::Export::GridVTK(Ans1, "g1.vtk");
+	GGeom::Export::GridVTK(Ans2, "g2.vtk");
 }
 
 void test09(){
@@ -585,8 +591,7 @@ void test14(){
 	add_check(fabs(gr2->area() - 6.26758)<1e-5, "Reentrant area with a hole");
 
 	//acute angle
-	auto c3 = HM2D::Contour::Constructor::FromPoints(
-			{0,0, 5,0, 0,1.5}, true);
+	auto c3 = HM2D::Contour::Constructor::FromPoints({0,0, 5,0, 0,1.5}, true);
 	HMBlay::Input inp2;
 	inp2.bnd_step_method = HMBlay::MethFromString("KEEP_SHAPE");
 	inp2.direction = HMBlay::DirectionFromString("INNER");
@@ -677,6 +682,8 @@ void test16(){
 	std::copy_if(skew1.begin(), skew1.end(), std::back_inserter(badskew1), [](double a){return a>0.8;});
 	std::copy_if(skew2.begin(), skew2.end(), std::back_inserter(badskew2), [](double a){return a>0.8;});
 	add_check(badskew1.size() == 0 && badskew2.size() < 6, "skewness check");
+	GGeom::Export::GridVTK(*impgrid, "g1.vtk");
+	GGeom::Export::GridVTK(*impgrid1, "g2.vtk");
 
 	delete impgrid;
 	delete impgrid1;

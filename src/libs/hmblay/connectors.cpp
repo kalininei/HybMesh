@@ -61,6 +61,7 @@ void AcuteConnector::BuildInternals(){
 	auto cc1 = Cell2Cont(c1), cc2 = Cell2Cont(c2);
 	auto icont = HM2D::Contour::Clip::Intersection(cc1, cc2);
 	HM2D::Contour::Clip::Heal(icont);
+	HM2D::Contour::R::RevertTree::Permanent(icont);
 	auto _av = HM2D::AllVertices(icont.alledges());
 	auto _fn = HM2D::FindClosestNode(_av, pc);
 	Point* pc2=_av[std::get<0>(_fn)].get();
@@ -77,23 +78,43 @@ void AcuteConnector::BuildInternals(){
 	filler->weight[filler->get_cell(0)] = 0;
 };
 
+namespace{
+bool pntless(const Point* p1, const Point* p2){ return *p1 < *p2; }
+}
 void AcuteConnector::ModifyAdjacents(){
 	//point of intersection to grid point
 	auto crosses = HM2D::Contour::Algos::CrossAll(prev->rect->TopContour(),
 			next->rect->TopContour());
+	if (crosses.size() == 0) return;
 	auto prevcont = GGeom::Info::Contour1(prev->result);
 	auto nextcont = GGeom::Info::Contour1(next->result);
+	auto prevset1 = prev->result.get_bnd_points();
+	auto nextset1 = next->result.get_bnd_points();
+	typedef std::set<const Point*, bool(*)(const Point* p1, const Point* p2)> Tpset;
+	Tpset prevset2(prevset1.begin(), prevset1.end(), pntless);
+	Tpset nextset2(nextset1.begin(), nextset1.end(), pntless);
+	auto _pv = HM2D::AllVertices(prevcont);
+	auto _pn = HM2D::AllVertices(nextcont);
 	for (auto c: crosses){
 		Point p = std::get<1>(c);
-		auto _pv = HM2D::AllVertices(prevcont);
-		auto _pn = HM2D::AllVertices(nextcont);
 		auto _f1 = HM2D::FindClosestNode(_pv, p);
 		auto _f2 = HM2D::FindClosestNode(_pn, p);
 		Point* p1 = _pv[std::get<0>(_f1)].get();
 		Point* p2 = _pn[std::get<0>(_f2)].get();
 		p = Point::Weigh(*p1, *p2, 0.5);
+		auto fnd1 = prevset2.find(p1);
+		auto fnd2 = nextset2.find(p2);
+		assert(fnd1 != prevset2.end() && fnd2 != nextset2.end());
+		GridPoint* gp1 = const_cast<GridPoint*>(static_cast<const GridPoint*>(*fnd1));
+		GridPoint* gp2 = const_cast<GridPoint*>(static_cast<const GridPoint*>(*fnd2));
+		prevset2.erase(fnd1);
+		nextset2.erase(fnd2);
+		gp1->set(p.x, p.y);
+		gp2->set(p.x, p.y);
 		p1->set(p.x, p.y);
 		p2->set(p.x, p.y);
+		prevset2.insert(gp1);
+		nextset2.insert(gp2);
 	}
 }
 
@@ -121,7 +142,7 @@ void RightConnector::BuildInternals() {
 	//1) assemble borders
 	HM2D::EdgeData _left = prev->rect->BottomContour();
 	left = HM2D::Contour::Constructor::CutContour(_left, realpoint1, *HM2D::Contour::Last(_left)); 
-	HM2D::Contour::ReallyRevert::Permanent(left);
+	HM2D::Contour::R::ReallyRevert::Permanent(left);
 	HM2D::EdgeData _bot = next->rect->BottomContour();
 	bot = HM2D::Contour::Constructor::CutContour(_bot, *HM2D::Contour::First(_bot), realpoint2); 
 	HM2D::EdgeData right = next->LeftContour();

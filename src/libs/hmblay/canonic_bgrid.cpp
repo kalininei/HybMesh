@@ -5,6 +5,7 @@
 #include "algos.hpp"
 #include "treverter2d.hpp"
 #include "cont_assembler.hpp"
+#include "treverter2d.hpp"
 
 #define USE_ANALYTICAL_MAPPINGS false
 
@@ -151,7 +152,7 @@ MappedRect::Factory(HM2D::EdgeData& left, HM2D::EdgeData& right,
 		top = HM2D::Contour::Constructor::CutContour(ellipse,
 				*HM2D::Contour::Last(right2),
 				*HM2D::Contour::Last(left2));
-		HM2D::Contour::ReallyRevert::Permanent(top);
+		HM2D::Contour::R::ReallyRevert::Permanent(top);
 		//getting rid of numerical errors
 		//*left2.last() = *top.first();
 		//*right2.last() = *top.last();
@@ -164,7 +165,7 @@ MappedRect::Factory(HM2D::EdgeData& left, HM2D::EdgeData& right,
 	{
 		//central ellipse and central point
 		auto cellipse = HM2D::Contour::Algos::Offset1(bottom, h);
-		HM2D::Contour::ReallyRevert::Permanent(cellipse);
+		HM2D::Contour::R::ReallyRevert::Permanent(cellipse);
 		Point vecp1 = HM2D::Contour::WeightPoint(bottom, 0.5);
 		Point vecp2 = HM2D::Contour::WeightPoint(bottom, 0.51);
 		Vect v=vecp2-vecp1; vecSetLen(v, 100); v=vecRotate(v, M_PI/2);
@@ -179,7 +180,7 @@ MappedRect::Factory(HM2D::EdgeData& left, HM2D::EdgeData& right,
 		HM2D::EdgeData top1;
 		if (!ISEQ(hleft, h)){
 			auto ellipse2 = HM2D::Contour::Algos::Offset1(bottom, hleft);
-			HM2D::Contour::ReallyRevert::Permanent(ellipse2);
+			HM2D::Contour::R::ReallyRevert::Permanent(ellipse2);
 			top1 = ContoursWeight(ellipse2, *HM2D::Contour::Last(left2),
 					cellipse, cpoint);
 		} else top1 = HM2D::Contour::Constructor::CutContour(cellipse, *HM2D::Contour::Last(left2), cpoint);
@@ -187,7 +188,7 @@ MappedRect::Factory(HM2D::EdgeData& left, HM2D::EdgeData& right,
 		HM2D::EdgeData top2;
 		if (!ISEQ(hright, h)){
 			auto ellipse2 = HM2D::Contour::Algos::Offset1(bottom, hright);
-			HM2D::Contour::ReallyRevert::Permanent(ellipse2);
+			HM2D::Contour::R::ReallyRevert::Permanent(ellipse2);
 			top2 = ContoursWeight(cellipse, cpoint,
 					ellipse2, *HM2D::Contour::Last(right2));
 		} else top2 = HM2D::Contour::Constructor::CutContour(cellipse, cpoint, *HM2D::Contour::Last(right2));
@@ -366,13 +367,16 @@ RectForClosedArea::Build(const HM2D::EdgeData& bottom, const Point* pstart, doub
 	//if failed to build single connected area -> do smth
 	if (toptree.nodes.size() != 1) _THROW_NOT_IMP_;
 	auto top = toptree.nodes[0]->contour;
-	if (HM2D::Contour::Area(bottom) < 0) HM2D::Contour::Reverse(top);
+	if (HM2D::Contour::Area(bottom) * HM2D::Contour::Area(top) < 0){
+		HM2D::Contour::Reverse(top);
+	}
 	//find point on a cross between normal from bottom.first() and top contour
 	//and set it as a start point for top
 	auto gp = HM2D::Contour::GuaranteePoint(top, *HM2D::Contour::First(bottom));
-	auto top2 = HM2D::Contour::Assembler::Contour1(top, std::get<1>(gp).get(), std::get<1>(gp).get());
+	//auto top2 = HM2D::Contour::Assembler::ShrinkContour(top, std::get<1>(gp).get(), std::get<1>(gp).get());
+	HM2D::Contour::R::ForceFirst::Permanent(top, *std::get<1>(gp));
 	//all 4 contours were set. call main routine
-	return Build(bottom, top2);
+	return Build(bottom, top);
 }
 
 
@@ -675,7 +679,7 @@ void MappedMesher::Fill(TBotPart bottom_partitioner, TVertPart vertical_partitio
 			//reversing so that snapping contour have grid on its left side
 			HM2D::EdgeData lc;
 			HM2D::DeepCopy(rect->LeftContour(), lc);
-			HM2D::Contour::ReallyRevert::Permanent(lc);
+			HM2D::Contour::R::ReallyRevert::Permanent(lc);
 			GGeom::Modify::SnapToContour(g4, lc, ppbot); 
 			//!!! here we have to refill left_points array but until now
 			//there was no need in this because grids with curved left/right

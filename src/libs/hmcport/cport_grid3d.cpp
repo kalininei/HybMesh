@@ -55,7 +55,7 @@ int grid3_volume(const CPortGrid3D* g, double* ret){
 	try{
 		auto& g3 = hmgrid(g);
 		auto srf = HM3D::Surface::GridSurface(g3.grid);
-		HM3D::Surface::RevertGridSurface rv(srf, true);
+		HM3D::Surface::R::RevertGridSurface rv(srf, true);
 		*ret = HM3D::Surface::Volume(srf);
 		return 1;
 	} catch (std::exception& e){

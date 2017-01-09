@@ -31,7 +31,7 @@ EdgeData HM3D::Connect(const EdgeData& data, Vertex app_v){
 	//1. find closest vertex to v
 	ShpVector<Vertex> vall;
 	for (auto d: data) { vall.push_back(d->first()); vall.push_back(d->last()); }
-	vall = aa::no_dublicates(vall);
+	vall = aa::no_duplicates(vall);
 	auto fres = FindClosestVertex(vall, app_v);
 	const shared_ptr<Vertex> v = vall[std::get<1>(fres)];
 

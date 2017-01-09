@@ -37,7 +37,7 @@ int surf3_volume(const CPortSurface3D* s, double* ret){
 	try{
 		auto& s3 = hmsurf(s);
 		auto tree = HM3D::Surface::Tree::Assemble(s3.surface);
-		HM3D::Surface::RevertTree rv(tree);
+		HM3D::Surface::R::RevertTree rv(tree);
 		*ret = fabs(HM3D::Surface::Volume(s3.surface));
 	} catch (std::exception& e){
 		std::cout<<e.what()<<std::endl;

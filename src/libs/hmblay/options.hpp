@@ -83,21 +83,18 @@ enum class CornerTp {NO, ZERO, ACUTE, RIGHT, STRAIGHT, REENTRANT, ROUND, NEGLECT
 //All data is deepcopied.
 class Options: public Input{
 	Options(const Input& other): Input(other){}
-	//-- data filled by CreateFromParent and Initialize procedures
-	//pool for all edges and points
-	shared_ptr<HM2D::EdgeData> __all_data;
 	//storage for parent 'edges' member
 	shared_ptr<HM2D::EdgeData> __edges_data;
-
 
 	//these are contours which should be meshed (path)
 	//and full contour which contains the path
 	//path and full_source are directed in such a way that 
 	//grid is build in an inner (left) direction
+	//they have deep copied from __edges_data edges and shallow vertices
 	HM2D::EdgeData full_source;
 	HM2D::EdgeData path;
 
-	//start/end belong of path
+	//start/end in path
 	Point *pnt_start, *pnt_end;
 
 	//all data in [0, 1] square. 'scaling' stores original sizes.

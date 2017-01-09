@@ -3,6 +3,7 @@
 
 using namespace HM3D;
 using namespace HM3D::Surface;
+using namespace HM3D::Surface::R;
 
 Revert::Revert(const FaceData& srf){
 	obj = const_cast<FaceData*>(&srf);

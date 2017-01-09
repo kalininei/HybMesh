@@ -99,7 +99,7 @@ void DoMapping::prepare_mapped_contour(){
 	mapped_outer.nodes.clear();
 	for (auto c: included_conts){
 		assert(HM2D::Contour::IsClosed(*c));
-		mapped_outer.AddContour(*c);
+		mapped_outer.add_contour(*c);
 	}
 	mapped_outer = HM2D::Contour::Algos::Simplified(mapped_outer);
 

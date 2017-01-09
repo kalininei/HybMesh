@@ -5,7 +5,7 @@
 GridGeom HalfCirc(HM2D::EdgeData& b1, HM2D::EdgeData& b2, double sz){
 	Point b1f = *HM2D::Contour::First(b1);
 	Point b1l = *HM2D::Contour::Last(b1);
-	Point b2f = *HM2D::Contour::Last(b2);
+	Point b2f = *HM2D::Contour::First(b2);
 	Point b2l = *HM2D::Contour::Last(b2);
 	//calculate size
 	bool has_center = b1f == b2f;

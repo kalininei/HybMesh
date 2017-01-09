@@ -118,7 +118,7 @@ void test03(){
 		auto constr = HM2D::Contour::Constructor::FromPoints({
 				-0.7,0, -0.69,0, -0.68,0, -0.67,0, -0.3,0, 0.1,0.4, 0.6,-0.3});
 		HM2D::Contour::Tree tree;
-		tree.AddContour(sqrcont);
+		tree.add_contour(sqrcont);
 		GridGeom ans1 = HMFem::AuxGrid3(tree, vector<HM2D::EdgeData> {constr}, 1000, 1000000);
 		add_check([&](){
 			auto fpoint = [&](double x, double y){
@@ -138,7 +138,7 @@ void test03(){
 		auto sqrcont2 = HM2D::Contour::Algos::WeightedPartition(w, sqrcont);
 		auto lineconst = HM2D::Contour::Constructor::FromPoints({0.5,0, 0.2,0.5});
 		HM2D::Contour::Tree tree;
-		tree.AddContour(sqrcont2);
+		tree.add_contour(sqrcont2);
 		GridGeom ans1 = HMFem::AuxGrid3(tree,
 				vector<HM2D::EdgeData> {lineconst}, 500, 100000);
 		add_check(ans1.n_points() < 700 && ans1.n_cells() < 1200 &&
@@ -164,7 +164,7 @@ void test03(){
 		auto lineconst = HM2D::Contour::Constructor::FromPoints({0.5,0, 0.2,0.5, 1,0.2});
 		auto lineconst2 = HM2D::Contour::Algos::Partition(0.01, lineconst, HM2D::Contour::Algos::PartitionTp::KEEP_ALL);
 		HM2D::Contour::Tree tree;
-		tree.AddContour(sqrcont2);
+		tree.add_contour(sqrcont2);
 		GridGeom ans1 = HMFem::AuxGrid3(tree,
 				vector<HM2D::EdgeData> {lineconst2}, 500, 100000);
 		add_check(ans1.n_points() < 800, "touching fine constraint");

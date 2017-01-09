@@ -23,7 +23,7 @@ HM2D::EdgeData deepcopy(const HM2D::EdgeData& cont, bool isrev){
 
 bool has_self_cross(const HM2D::EdgeData& cont){
 	double ksieta[2];
-	for (int i=0; i<cont.size()-2; ++i){
+	for (int i=0; i<(int)cont.size()-2; ++i){
 		for (int j=i+2; j<cont.size(); ++j){
 			Point& p1 = *cont[i]->first();
 			Point& p2 = *cont[i]->last();

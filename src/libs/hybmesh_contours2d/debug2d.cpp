@@ -3,6 +3,7 @@
 #include "debug2d.hpp"
 #include "constructor.hpp"
 #include <fstream>
+#include "vtk_export2d.hpp"
 
 using namespace HM2D;
 
@@ -112,6 +113,45 @@ double Debug::hash(const EdgeData& ecol){
 		++i;
 	}
 	return sum;
+}
+
+VertexData Debug::allvertices(const EdgeData& c){
+	VertexData ret;
+	for (auto e: c){
+		ret.push_back(e->first());
+		ret.push_back(e->last());
+	}
+	return aa::no_duplicates(ret);
+}
+
+void Debug::save_edges_vtk(const EdgeData& c){
+	auto av = allvertices(c);
+	aa::RestoreIds<EdgeData> r1(c);
+	aa::RestoreIds<VertexData> r2(av);
+
+	HM2D::Export::ContourVTK(c, "_dbgout.vtk");
+}
+
+void Debug::save_edges_vtk(const EdgeData& c, const std::map<Point*, double>& data){
+	save_edges_vtk(c);
+	auto av = allvertices(c);
+	vector<float> values(av.size(), -1);
+	for (int i=0; i<values.size(); ++i){
+		auto fnd = data.find(av[i].get());
+		if (fnd == data.end()) continue;
+		values[i] = fnd->second;
+	}
+	std::ofstream fs("_dbgout.vtk", std::ios::app);
+	fs<<"POINT_DATA "<<av.size()<<std::endl;
+	fs<<"SCALARS mapped_values float 1"<<std::endl;
+	fs<<"LOOKUP_TABLE default"<<std::endl;
+	for (auto x: values) fs<<x<<std::endl;
+}
+
+void Debug::save_vertices_vtk(const VertexData& c){
+	aa::RestoreIds<VertexData> r1(c);
+
+	HM2D::Export::VerticesVTK(c, "_dbgout.vtk");
 }
 
 #endif

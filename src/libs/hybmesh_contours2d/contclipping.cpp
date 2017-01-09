@@ -253,7 +253,7 @@ STARTFOR:
 	if (not_needed.size() > 0){
 		aa::remove_entries(c1.nodes, not_needed);
 		//updates topology
-		c1.UpdateTopology();
+		c1.update_topology();
 	}
 }
 

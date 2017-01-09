@@ -8,6 +8,7 @@
 #include "algos.hpp"
 #include "contclipping.hpp"
 #include "cont_partition.hpp"
+#include "treverter2d.hpp"
 namespace{
 
 //this is a temporary function which will be deleted after
@@ -321,7 +322,7 @@ HM2D::Contour::Tree do_bnd_partition(
 		}
 		HM2D::EdgeData part1 = HM2D::Contour::Algos::WeightedPartition(
 				bw1, c->contour, keep_p);
-		ret.AddContour(part1);
+		ret.add_contour(part1);
 	}
 	return HM2D::Contour::Tree::DeepCopy(ret);
 }
@@ -423,25 +424,32 @@ void simplify_bnd_edges(HM2D::Contour::Tree& cont, std::map<Point*, double>& bw,
 void simplify_source_edges(HM2D::Contour::Tree& cont, const HM2D::VertexData& srcpnt,
 		std::map<const HM2D::Edge*, int>& edtypes){
 	for (auto c: cont.nodes){
-		if (c->isopen()) continue;
-		std::vector<const Point*> bad_points;
-		auto cinfo = HM2D::Contour::OrderedInfo(c->contour);
-		cinfo.resize(cinfo.size()-1);
-		for (auto& ci: cinfo){
-			if (edtypes[ci.eprev.get()] == 1 && edtypes[ci.enext.get()] == 1){
-				auto ps = HM2D::FindClosestNode(srcpnt, *ci.p);
-				if (*ci.p != *srcpnt[std::get<0>(ps)]) bad_points.push_back(ci.p.get());
+		if (c->isdetached()) continue;
+		HM2D::Contour::R::ReallyDirect::Permanent(c->contour);
+		vector<int> types;
+		for (auto& e: c->contour){
+			types.push_back(edtypes[e.get()]);
+		}
+		vector<bool> isgood(c->contour.size(), true);
+		for (int i=0; i<c->contour.size(); ++i){
+			int iprev = (i==0)? c->contour.size()-1 : i-1;
+			if (types[iprev] == 1 && types[i] == 1){
+				auto& p = *c->contour[i]->first();
+				auto ps = HM2D::FindClosestNode(srcpnt, p);
+				if (p != *srcpnt[std::get<0>(ps)]) isgood[i] = false;
 			}
 		}
-		auto op = HM2D::Contour::OrderedPoints(c->contour);
-		HM2D::VertexData op2;
-		for (int i=0; i<op.size()-1; ++i)
-		if (std::find(bad_points.begin(), bad_points.end(), op[i].get())
-				== bad_points.end()){
-			op2.push_back(op[i]);
+		if (std::all_of(isgood.begin(), isgood.end(), [](bool a){ return a; }))
+			continue;
+		HM2D::VertexData newp;
+		vector<int> newt;
+		for (int i=0; i<c->contour.size(); ++i) if (isgood[i]){
+			newp.push_back(c->contour[i]->first());
+			newt.push_back(types[i]);
 		}
-		if (op2.size() != op.size()-1){
-			c->contour = HM2D::Contour::Assembler::Contour1(op2, true);
+		c->contour = HM2D::Contour::Assembler::Contour1(newp, true);
+		for (int i=0; i<c->contour.size(); ++i){
+			edtypes[c->contour[i].get()] = newt[i];
 		}
 	}
 }
@@ -484,6 +492,8 @@ std::tuple<
 
 	//outer contour initial
 	cont = GGeom::Info::Contour(*this);
+	auto ae = cont.alledges();
+	HM2D::ECol::Algos::MergePoints(ae);
 
 	// ================ building edge types
 	//edges types:
@@ -508,6 +518,14 @@ std::tuple<
 
 	// ================ cont purge procedures
 	simplify_source_edges(cont, AllVertices(scont), edtypes);
+	//reload *_edges since last procedure could copy edges
+	inner_edges.clear(); bnd_edges.clear(); outer_edges.clear();
+	for (auto e: cont.alledges()){
+		int et = edtypes[e.get()];
+		if (et == 1) inner_edges.push_back(e);
+		else if (et == 2) bnd_edges.push_back(e);
+		else if (et == 3) outer_edges.push_back(e);
+	}
 
 	//simplify bnd edges if needed:
 	//  for connected sequence of bnd_edges changes last point of first edge

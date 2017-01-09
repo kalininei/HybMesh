@@ -140,7 +140,7 @@ GridGeom GGeom::Constructor::ExtractCells(const GridGeom& g, const std::vector<i
 			}
 		}
 	}
-	ret.points = aa::no_dublicates(ret.points);
+	ret.points = aa::no_duplicates(ret.points);
 	if (policy == 2) return ret;
 	if (policy == 1){
 		ret.set_indicies();
@@ -500,7 +500,7 @@ HM2D::Contour::Tree GGeom::Info::Contour(const GridGeom& grid){
 	all_contours.remove_if([](const HM2D::EdgeData& c){
 		return c.size()<3 || HM2D::Contour::IsOpen(c); });
 	HM2D::Contour::Tree tree;
-	for (auto& c: all_contours)  tree.AddContour(c); 
+	for (auto& c: all_contours)  tree.add_contour(c); 
 	//return correct indicies to grid
 	const_cast<GridGeom*>(&grid)->set_indicies();
 	return tree;

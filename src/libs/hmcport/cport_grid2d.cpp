@@ -3,6 +3,7 @@
 #include "grid.h"
 #include "fluent_export_grid2d.hpp"
 #include "tecplot_export_grid2d.hpp"
+#include "vtk_export_grid2d.hpp"
 #include "procgrid.h"
 #include "hmmapping.hpp"
 #include "trigrid.h"
@@ -217,7 +218,7 @@ void* triangulate_domain(void* domain, void* constr, int nemb, double* emb, int 
 	try{
 		auto etree = HM2D::Contour::Tree::Assemble(*dom);
 		auto tree = etree;
-		tree.remove_opens();
+		tree.remove_detached();
 		if (tree.nodes.size() == 0)
 			throw std::runtime_error("Failed to find bounding contour");
 
@@ -255,7 +256,7 @@ void* pebi_fill(void* domain, void* constr, int nemb, double* emb){
 	}
 	try{
 		auto tree = HM2D::Contour::Tree::Assemble(*dom);
-		tree.remove_opens();
+		tree.remove_detached();
 
 		if (tree.nodes.size() == 0)
 			throw std::runtime_error("Failed to find bounding contour");

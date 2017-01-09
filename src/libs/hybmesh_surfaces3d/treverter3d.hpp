@@ -3,7 +3,7 @@
 #include "surface.hpp"
 #include "surface_tree.hpp"
 
-namespace HM3D{ namespace Surface{
+namespace HM3D{ namespace Surface{ namespace R{
 
 //temporary reverts all face edges direction so that all
 //face dirctions match each other.
@@ -59,6 +59,6 @@ public:
 	void make_permanent();
 };
 
-}}
+}}}
 
 #endif

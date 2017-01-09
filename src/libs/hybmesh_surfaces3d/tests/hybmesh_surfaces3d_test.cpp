@@ -20,7 +20,7 @@ void test01(){
 		double v1, v2, v3, v4, v5, v6;
 		v1 = HM3D::Surface::Volume(s1);
 		{
-			HM3D::Surface::Revert rr(s1);
+			HM3D::Surface::R::Revert rr(s1);
 			v2 = HM3D::Surface::Volume(s1);
 			rr.reverse_direction();
 			v3 = HM3D::Surface::Volume(s1);
@@ -83,7 +83,7 @@ void test01(){
 
 		auto tree = HM3D::Surface::Tree::Assemble(totalsurface);
 		double v1 = HM3D::Surface::Volume(totalsurface);
-		auto* rr = new HM3D::Surface::RevertTree(tree);
+		auto* rr = new HM3D::Surface::R::RevertTree(tree);
 		double v2 = HM3D::Surface::Volume(totalsurface);
 		delete rr;
 		double v3 = HM3D::Surface::Volume(totalsurface);

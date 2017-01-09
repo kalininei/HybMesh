@@ -291,8 +291,8 @@ void hme::PeriodicDataEntry::assemble(GridData& g, std::map<Face*, Face*>& outma
 	HM3D::FaceData shadow_surf = surfs[bt_shadow];
 	
 	bool dir2 = (reversed) ? true : false;
-	Surface::RevertGridSurface r1(periodic_surf, false);
-	Surface::RevertGridSurface r2(shadow_surf, dir2);
+	Surface::R::RevertGridSurface r1(periodic_surf, false);
+	Surface::R::RevertGridSurface r2(shadow_surf, dir2);
 	r1.make_permanent();
 	r2.make_permanent();
 

@@ -48,15 +48,15 @@ EdgeData cns::FromPoints(const vector<Point>& pnt, bool force_closed){
 
 EdgeData cns::CutContour(const EdgeData& cont, const Point& pstart, int direction, double len){
 	if (direction == -1){
-		ReallyRevert rr(cont);
+		R::ReallyRevert rr(cont);
 		return CutContour(cont, pstart, 1, len);
 	}
 	EdgeData other;
 	DeepCopy(cont, other);
-	ReallyDirect::Permanent(other);
+	R::ReallyDirect::Permanent(other);
 	auto ps = std::get<1>(GuaranteePoint(other, pstart));
 	if (IsClosed(other)){
-		ForceFirst::Permanent(other, pstart);
+		R::ForceFirst::Permanent(other, pstart);
 	} else {
 		int ind = std::find_if(other.begin(), other.end(),
 			[&ps](shared_ptr<Edge> e){ return e->first() == ps; })
@@ -76,7 +76,7 @@ EdgeData cns::CutContour(const EdgeData& cont, const Point& pstart, const Point&
 	auto p1 = std::get<1>(GuaranteePoint(ret, pstart));
 	auto p2 = std::get<1>(GuaranteePoint(ret, pend));
 	ret = Assembler::ShrinkContour(ret, p1.get(), p2.get());
-	if (First(ret) != p1) ReallyRevert::Permanent(ret);
+	if (First(ret) != p1) R::ReallyRevert::Permanent(ret);
 	return ret;
 }
 
@@ -343,7 +343,9 @@ struct SepAssembler{
 };
 }
 
-vector<EdgeData> ens::ExtendedSeparate(const EdgeData& ecol){
+vector<EdgeData> cns::ExtendedSeparate(const EdgeData& _ecol){
+	EdgeData ecol;
+	DeepCopy(_ecol, ecol);
 	//assembling subcontours
 	EdgeData ecol2 = ECol::Algos::NoCrosses(ecol);
 	std::vector<EdgeData> vconts = Contour::Assembler::SimpleContours(ecol2);
@@ -374,10 +376,10 @@ vector<EdgeData> ens::ExtendedSeparate(const EdgeData& ecol){
 		int isz = conts.size();
 		auto it = conts.begin();
 		for (int i=0; i<isz; ++i, ++it){
-			ReallyDirect::Permanent(*it);
+			R::ReallyDirect::Permanent(*it);
 			conts.push_back(EdgeData());
-			DeepCopy(*it, conts.back());
-			ReallyRevert::Permanent(conts.back());
+			DeepCopy(*it, conts.back(), 0);
+			R::ReallyRevert::Permanent(conts.back());
 		}
 	}
 	//initialize builder

@@ -35,11 +35,18 @@ shared_ptr<Vertex> Contour::Last(const EdgeData& ed){
 }
 
 bool hc::IsClosed(const EdgeData& cont){
-	if (cont.size() < 2) return false;
-	return (cont[0]->first() == cont.back()->last() ||
-		cont[0]->last() == cont.back()->first() ||
-		cont[0]->first() == cont.back()->first() ||
-		cont[0]->last() == cont.back()->last());
+	if (cont.size() < 2) {
+		return false;
+	} else if (cont.size() == 2){
+		if (cont[0]->first() == cont.back()->first() &&
+		    cont[0]->last() == cont.back()->last()) return true;
+		if (cont[0]->last() == cont.back()->first() &&
+		    cont[0]->first() == cont.back()->last()) return true;
+		return false;
+	} else return (cont[0]->first() == cont.back()->last() ||
+	               cont[0]->last() == cont.back()->first() ||
+	               cont[0]->first() == cont.back()->first() ||
+	               cont[0]->last() == cont.back()->last());
 }
 bool hc::IsOpen(const EdgeData& cont){
 	return !IsClosed(cont);
@@ -108,12 +115,12 @@ bool Contour::CorrectlyDirectedEdge(const EdgeData& cont, int i){
 	Edge* e2;
 	if (i == 0){
 		p2 = cont[i]->last().get();
-		e2 = cont[i].get();
+		e2 = cont[i+1].get();
 	} else {
 		p2 = cont[i]->first().get();
 		e2 = cont[i-1].get();
 	}
-	return e2->first().get() == p2 || e2->first().get() == p2;
+	return e2->first().get() == p2 || e2->last().get() == p2;
 }
 
 PInfoR Contour::PInfo(const EdgeData& ed, const Point* p){
@@ -206,7 +213,7 @@ int Contour::WhereIs(const EdgeData& ed, const Point& p){
 			SectCross(p, pout, *e->first(), *e->last(), ksieta);
 			if (ISIN_NN(ksieta[0], 0, 1) && ISIN_NN(ksieta[1], 0, 1)){
 				++ncrosses;
-			} else if (ISEQ(ksieta[0], 0)){
+			} else if (ISEQ(ksieta[0], 0) && ISIN_EE(ksieta[1], 0, 1)){
 			       return BOUND;
 			} else if (ISEQ(ksieta[1], 0) || ISEQ(ksieta[1], 1)){
 				//[p, pout] crosses one of ed vertices.
@@ -226,6 +233,7 @@ NEXTTRY:
 namespace {
 Point inner_point_core(const EdgeData& c){
 	auto up = UniquePoints(c);
+	up.resize(up.size()-1);
 	assert(up.size()>=3);
 	//c is closed inner contour
 	//1) build vector from first point of c along the median
@@ -345,6 +353,8 @@ Contour::GuaranteePoint(EdgeData& ed, const Point& p){
 			ed[std::get<0>(ce)] = e2;
 			ed.insert(ed.begin()+std::get<0>(ce)+1, e1);
 		}
+		std::get<0>(ret) = true;
+		std::get<1>(ret) = pnew;
 	}
 	return ret;
 }

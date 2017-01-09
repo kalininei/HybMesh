@@ -44,7 +44,7 @@ class NoHangingNodes{
 
 	//for c - pseudo contour made of hanging nodes
 	//adds all such nodes to list
-	void AnalyzeSingularContour(const HM2D::EdgeData& c, std::list<GridPoint*>& lst);
+	void AnalyzeSingularContour(const HM2D::EdgeData& c, std::list<HM2D::Vertex*>& lst);
 
 	//finds list of all hanging nodes
 	std::list<GridPoint*> Find();

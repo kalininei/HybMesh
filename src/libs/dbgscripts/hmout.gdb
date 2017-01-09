@@ -1,17 +1,9 @@
 define contvtk
-	if $argc ==1
-		call HMCont2D::ECollection::SaveVtk($arg0, "_dbgout.vtk")
-	else
-		call HMCont2D::ECollection::SaveVtk($arg0, $arg1)
-	end
+	call HM2D::Debug::save_edges_vtk($arg0)
 end
 
 define pntvtk
-	if $argc ==1
-		call HMCont2D::PCollection::SaveVtk($arg0, "_dbgout.vtk")
-	else
-		call HMCont2D::PCollection::SaveVtk($arg0, $arg1)
-	end
+	call HM2D::Debug::save_vertices_vtk($arg0)
 end
 
 define gridvtk
@@ -43,15 +35,11 @@ define ppvec
 end
 
 define info_contour
-	call HMCont2D::Debug::info_contour($arg0)
+	call HM2D::Debug::info_contour($arg0)
 end
 
 define info_tree
 	call HMCont2D::Debug::info_tree($arg0)
-end
-
-define info_ecollection
-	call HMCont2D::Debug::info_ecollection($arg0)
 end
 
 define info_extpath

@@ -248,8 +248,8 @@ Impl::RectApprox::Build(const vector<Point>& path, int i1, int i2, int i3){
 	ret->right = HM2D::Contour::Assembler::Contour1(ap3, false);
 	HM2D::VertexData ap4(allpnt.begin()+i3, allpnt.end());
 	ret->top = HM2D::Contour::Assembler::Contour1(ap4, false);
-	HM2D::Contour::ReallyRevert r1(ret->left);
-	HM2D::Contour::ReallyRevert r2(ret->top);
+	HM2D::Contour::R::ReallyRevert r1(ret->left);
+	HM2D::Contour::R::ReallyRevert r2(ret->top);
 	r1.make_permanent();
 	r2.make_permanent();
 

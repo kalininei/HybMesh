@@ -3,7 +3,7 @@
 
 source ../../src/libs/dbgscripts/hmout.gdb
 
-file ./hmgrid3d_test
+file ./hmblay_test
 set breakpoint pending on
-b fluent_export3d.cpp:344
-run 
+b grid.cpp:526
+run

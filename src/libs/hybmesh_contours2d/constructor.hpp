@@ -26,14 +26,14 @@ EdgeData CutContour(const EdgeData& cont,
 //builds parametric spline which passes given points
 EdgeData Spline(const vector<Point>& pnt, int nedges, bool force_closed=false);
 
+//resulting contours have no crosses and complicated connections.
+vector<EdgeData> ExtendedSeparate(const EdgeData& ecol);
+
 }}
 
 namespace ECol{ namespace Constructor{
 
 EdgeData FromRaw(int npnt, int neds, double* pnt, int* eds);
-
-//resulting contours have no crosses and complicated connections.
-vector<EdgeData> ExtendedSeparate(const EdgeData& ecol);
 
 
 }}

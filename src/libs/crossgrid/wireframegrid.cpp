@@ -258,7 +258,7 @@ GridGeom PtsGraph::togrid() const{
 	for (int i=0; i<grids.size(); ++i){
 		auto c1 = GGeom::Info::Contour(grids[i]);
 		for (int j=0; j<c1.nodes.size(); ++j){
-			cont.AddContour(c1.nodes[j]->contour);
+			cont.add_contour(c1.nodes[j]->contour);
 		}
 	}
 
@@ -288,7 +288,7 @@ GridGeom PtsGraph::intrusion_algo(const vector<GridGeom>& g){
 	for (int i=0; i<grids.size(); ++i){
 		auto c1 = GGeom::Info::Contour(grids[i]);
 		for (int j=0; j<c1.nodes.size(); ++j){
-			concol.AddContour(c1.nodes[j]->contour);
+			concol.add_contour(c1.nodes[j]->contour);
 		}
 	}
 	

@@ -267,11 +267,11 @@ EdgeData partition_core(A& step, const EdgeData& contour){
 
 template<class A>
 EdgeData partition_section(A& step, const EdgeData& cont, shared_ptr<Vertex> pstart, shared_ptr<Vertex> pend){
-	EdgeData sub = Assembler::Contour1(cont, pstart.get(), pend.get());
+	EdgeData sub = Assembler::ShrinkContour(cont, pstart.get(), pend.get());
 	A substep = build_substep(step, cont, pstart, pend);
 	//temporary reverse contour with single edge if needed
-	std::unique_ptr<ReallyRevert> trev;
-	if (First(sub) != pstart) trev.reset(new ReallyRevert(sub));
+	std::unique_ptr<R::ReallyRevert> trev;
+	if (First(sub) != pstart) trev.reset(new R::ReallyRevert(sub));
 	assert(First(sub) == pstart);
 	return partition_core(substep, sub);
 }

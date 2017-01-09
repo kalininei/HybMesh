@@ -603,6 +603,6 @@ Grid43 HMFem::TAuxGrid3::_run(const HM2D::Contour::Tree& tree, int nrec, int nma
 }
 Grid43 HMFem::TAuxGrid3::_run(const HM2D::EdgeData& cont, int nrec, int nmax){
 	HM2D::Contour::Tree tree;
-	tree.AddContour(cont);
+	tree.add_contour(cont);
 	return _run(tree, nrec, nmax);
 }

@@ -31,7 +31,7 @@ def check_grid(grid, nn, ne, nc, ct):
 def check_zero(a):
     check(abs(a) < 1e-8)
 
-print "unition rect and ring"
+print "union of rect and ring"
 g1 = hm.add_unf_rect_grid([-1, -1], [1, 1], 10, 10)
 g2 = hm.add_unf_ring_grid([0, 0], 0.5, 0.8, 500, 7)
 hm.move_geom([g2], 0, 1)
@@ -78,7 +78,7 @@ def cosine_boundary(n):
     ret.append(ret[0])
     return ret
 
-print "unition with a boundary grid"
+print "union of with a boundary grid"
 plist = cosine_boundary(20)
 c1 = hm.create_contour(plist, [1] * (len(plist) - 3) + [2, 2])
 hm.rotate_geom(c1, 17)
@@ -90,13 +90,13 @@ g10 = hm.build_boundary_grid(op1)
 g11 = hm.unite_grids(g9, [(g10, 0.05)])
 check(len(hm.skewness(g11)['bad_cells']) <= 3)
 
-print "unition of detached grids"
+print "union of detached grids"
 g12 = hm.add_unf_ring_grid([0, 0], 20, 10, 300, 10)
 g13 = hm.add_unf_circ_grid([0, 0], 9.5, 50, 5)
 g14 = hm.unite_grids(g12, [(g13, 5)])
 check(len(hm.info_contour(g14)['subcont']) == 3)
 
-print "unition of grids with common boundary segments"
+print "union of grids with common boundary segments"
 g15 = hm.add_unf_circ_grid([0, 0], 1, 16, 5)
 g16 = hm.add_unf_rect_grid([-1, -2], [1, -1], 10, 10)
 g17 = hm.add_unf_rect_grid([-0.7, -3], [0.3, -2], 20, 20)

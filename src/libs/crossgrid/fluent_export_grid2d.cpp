@@ -4,6 +4,7 @@
 #include "fluent_export_grid2d.hpp"
 #include "primitives2d.hpp"
 #include "cont_assembler.hpp"
+#include "algos.hpp"
 
 namespace hme = GGeom::Export;
 
@@ -170,6 +171,7 @@ std::vector<int> hme::PeriodicData::assemble(const GridGeom& g, vector<Edge>& ed
 			if (ge->cell_left<0) ce->reverse();
 			ecols.back().push_back(ce);
 		}
+		HM2D::ECol::Algos::MergePoints(ecols.back());
 	}
 	//assemble contours
 	std::vector<HM2D::EdgeData> assembled_b_contours;

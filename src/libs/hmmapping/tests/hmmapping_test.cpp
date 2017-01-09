@@ -477,14 +477,14 @@ void test14(){
 	//Inversions
 	{
 		auto top = HM2D::Contour::Assembler::Contour1(HM2D::Contour::OrderedPoints(top1));
-		HM2D::Contour::ReallyRevert::Permanent(top);
+		HM2D::Contour::R::ReallyRevert::Permanent(top);
 		GridGeom ans1 = HMMap::LaplaceRectGrid(left1, bot1, right1, top, "direct-laplace");
 		GGeom::Export::GridVTK(ans1, "g2.vtk");
 		add_file_check("g1.vtk", "g2.vtk", "top reversed");
 	}
 	{
 		auto left = HM2D::Contour::Assembler::Contour1(HM2D::Contour::OrderedPoints(left1));
-		HM2D::Contour::ReallyRevert::Permanent(left);
+		HM2D::Contour::R::ReallyRevert::Permanent(left);
 		GridGeom ans1 = HMMap::LaplaceRectGrid(left, bot1, right1, top1, "direct-laplace");
 		GGeom::Export::GridVTK(ans1, "g2.vtk");
 		add_file_check("g1.vtk", "g2.vtk", "left reversed");
@@ -494,10 +494,10 @@ void test14(){
 		auto left = HM2D::Contour::Assembler::Contour1(HM2D::Contour::OrderedPoints(left1));
 		auto bot = HM2D::Contour::Assembler::Contour1(HM2D::Contour::OrderedPoints(bot1));
 		auto right = HM2D::Contour::Assembler::Contour1(HM2D::Contour::OrderedPoints(right1));
-		HM2D::Contour::ReallyRevert::Permanent(top);
-		HM2D::Contour::ReallyRevert::Permanent(left);
-		HM2D::Contour::ReallyRevert::Permanent(bot);
-		HM2D::Contour::ReallyRevert::Permanent(right);
+		HM2D::Contour::R::ReallyRevert::Permanent(top);
+		HM2D::Contour::R::ReallyRevert::Permanent(left);
+		HM2D::Contour::R::ReallyRevert::Permanent(bot);
+		HM2D::Contour::R::ReallyRevert::Permanent(right);
 		GridGeom ans1 = HMMap::LaplaceRectGrid(left, bot, right, top, "direct-laplace");
 		GGeom::Export::GridVTK(ans1, "g2.vtk");
 		add_file_check("g1.vtk", "g2.vtk", "all reversed");
@@ -515,7 +515,7 @@ void test14(){
 	}
 	{
 		auto top = HM2D::Contour::Assembler::Contour1(HM2D::Contour::OrderedPoints(top1));
-		HM2D::Contour::ReallyRevert::Permanent(top);
+		HM2D::Contour::R::ReallyRevert::Permanent(top);
 		GridGeom ans1 = HMMap::LaplaceRectGrid(top, right1, bot1, left1, "direct-laplace");
 		GGeom::Export::GridVTK(ans1, "g2.vtk");
 		add_check(ISEQ(GGeom::Info::Area(ans1), GGeom::Info::Area(ans)), "top->right->bot->left");
@@ -532,7 +532,7 @@ void test14(){
 		HM2D::DeepCopy(right2, right);
 		HM2D::DeepCopy(bot2, bot);
 
-		HM2D::Contour::ReallyRevert::Permanent(left);
+		HM2D::Contour::R::ReallyRevert::Permanent(left);
 		for (auto p: HM2D::Contour::OrderedPoints(top)) *p+=Point(0.2, 1.2);
 		for (auto p: HM2D::Contour::OrderedPoints(right)) *p+=Point(-0.5, 0);
 
@@ -564,10 +564,10 @@ void test14(){
 		add_file_check(11091658640678329136U, "g3.vtk", "top & left");
 	}
 	{
-		auto top2 = HM2D::Contour::Assembler::Contour1(HM2D::Contour::OrderedPoints(right1));
-		auto left2 = HM2D::Contour::Assembler::Contour1(HM2D::Contour::OrderedPoints(bot1));
-		auto bot2 = HM2D::Contour::Assembler::Contour1(HM2D::Contour::OrderedPoints(right1));
-		auto right2 = HM2D::Contour::Assembler::Contour1(HM2D::Contour::OrderedPoints(bot1));
+		auto right2 = HM2D::Contour::Assembler::Contour1(HM2D::Contour::OrderedPoints(right1));
+		auto bot2 = HM2D::Contour::Assembler::Contour1(HM2D::Contour::OrderedPoints(bot1));
+		auto left2 = HM2D::Contour::Assembler::Contour1(HM2D::Contour::OrderedPoints(right1));
+		auto top2 = HM2D::Contour::Assembler::Contour1(HM2D::Contour::OrderedPoints(bot1));
 		HM2D::EdgeData top, left, bot, right;
 		HM2D::DeepCopy(top2, top);
 		HM2D::DeepCopy(left2, left);

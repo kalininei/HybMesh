@@ -1,6 +1,7 @@
 #include "treverter2d.hpp"
 using namespace HM2D;
 using namespace HM2D::Contour;
+using namespace HM2D::Contour::R;
 
 ReallyRevert::ReallyRevert(const EdgeData& ed){
 	permanent = false;
@@ -71,4 +72,28 @@ ForceFirst::ForceFirst(const EdgeData& ed, Point p0){
 
 ForceFirst::~ForceFirst(){
 	std::rotate(obj->begin(), obj->begin()+oldstart, obj->end());
+}
+
+Clockwise::Clockwise(const EdgeData& ed, bool direct){
+	assert(IsClosed(ed));
+	bool dirnow = Contour::Area(ed) < 0;
+	if (dirnow == direct){
+		really_direct.reset(new ReallyDirect(ed));
+	} else {
+		really_revert.reset(new ReallyRevert(ed));
+	}
+}
+
+RevertTree::RevertTree(const Tree& tree){
+	for (auto& n: tree.nodes){
+		if (n->isdetached()){
+			really_direct.emplace_back(
+				new ReallyDirect(n->contour)
+			);
+		} else {
+			really_clockwise.emplace_back(
+				new Clockwise(n->contour, n->level % 2 == 1)
+			);
+		}
+	}
 }

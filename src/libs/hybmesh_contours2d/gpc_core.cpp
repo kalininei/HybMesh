@@ -117,11 +117,11 @@ Contour::Tree GpcTree::ToContourTree() const{
 			for (auto cc: closed_ones){
 				ecol.insert(ecol.end(), cc->begin(), cc->end());
 			}
-			for (auto cc:closed_ones) res.AddContour(*cc);
+			for (auto cc:closed_ones) res.add_contour(*cc);
 		} else {
 			assert(ecol.size()>0 && Contour::IsClosed(ecol));
 			//add contour to result
-			res.AddContour(ecol);
+			res.add_contour(ecol);
 		}
 	}
 	return res;

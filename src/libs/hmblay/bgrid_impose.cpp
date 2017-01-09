@@ -4,6 +4,7 @@
 #include "constructor.hpp"
 #include "cont_assembler.hpp"
 #include "algos.hpp"
+#include "treverter2d.hpp"
 
 using namespace HMBlay::Impl;
 
@@ -249,6 +250,7 @@ void PurgeGrid(BGrid& grid, const HM2D::EdgeData& cont){
 		HM2D::Contour::Clip::TRet ret;
 		if (innercont) ret = HM2D::Contour::Clip::Intersection(ccont, cont);
 		else ret = HM2D::Contour::Clip::Difference(ccont, cont);
+		HM2D::Contour::R::RevertTree::Permanent(ret);
 		if (ret.nodes.size() < 1) continue;
 		mgoodareas.push_back(ret);
 		if (ret.nodes.size()>1) _THROW_NOT_IMP_
@@ -547,20 +549,20 @@ void NoHangingNodes::AddHangingNode(GridPoint* p){
 }
 
 void NoHangingNodes::AnalyzeSingularContour(
-		const HM2D::EdgeData& c, std::list<GridPoint*>& lst){
+		const HM2D::EdgeData& c, std::list<HM2D::Vertex*>& lst){
 	//put all points except corner points to lst
 	auto info = HM2D::Contour::OrderedInfo(c);
 	for (int i=0; i<c.size(); ++i){
-		Point* ps[3] {info[i].pprev.get(), info[i].p.get(), info[i].pnext.get()};
+		HM2D::Vertex* ps[3] {info[i].pprev.get(), info[i].p.get(), info[i].pnext.get()};
 		Vect v1 = *ps[0] - *ps[1]; vecNormalize(v1);
 		Vect v2 = *ps[2] - *ps[1]; vecNormalize(v2);
 		if (Point::meas(v1,v2)>geps){
-			lst.push_back(static_cast<GridPoint*>(ps[1]));
+			lst.push_back(ps[1]);
 		}
 	}
 }
 std::list<GridPoint*> NoHangingNodes::Find(){
-	std::list<GridPoint*> hnodes;
+	std::list<HM2D::Vertex*> hnodes;
 	//hanging nodes create zero-area domains in grid contour tree
 	auto gcont = GGeom::Info::Contour(*grid);
 	for (auto n: gcont.nodes){
@@ -575,7 +577,16 @@ std::list<GridPoint*> NoHangingNodes::Find(){
 			AnalyzeSingularContour(n->contour, hnodes);
 		}
 	}
-	return hnodes;
+	std::list<GridPoint*> hnodes2;
+	//find nodes amoung grid points boundary nodes
+	std::set<GridPoint> gp;
+	for (auto p: grid->get_bnd_points()) gp.insert(*p);
+	for (auto v: hnodes){
+		auto fnd = gp.find(GridPoint(v->x, v->y));
+		assert(fnd != gp.end());
+		hnodes2.push_back(grid->get_point(fnd->get_ind()));
+	}
+	return hnodes2;
 }
 
 NoHangingNodes::NoHangingNodes(BGrid& _grid): grid(&_grid), cfinder(grid, 20, 20){
