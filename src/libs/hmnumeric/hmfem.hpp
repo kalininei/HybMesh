@@ -9,32 +9,34 @@ namespace HMFem{
 
 //Solution of (nabla^2)f = 0 equation.
 class LaplasProblem{
-	typedef std::function<double(const GridPoint*)> TDirFunc;
-	typedef std::function<double(GridPoint*, GridPoint*)> TNeuFunc;
+	typedef std::function<double(const HM2D::Vertex*)> TDirFunc;
+	typedef std::function<double(const HM2D::Vertex*, const HM2D::Vertex*)> TNeuFunc;
 	struct TNeuData{
-		GridPoint *point1, *point2;
+		int index1, index2;
 		TNeuFunc *fun;
 		double dist;
 	};
 	struct TDirData{
-		const GridPoint* point;
+		int index;
 		TDirFunc* fun;
 	};
 	struct TNeuCmp{
 		bool operator()(const TNeuData& x, const TNeuData& y) const {
-			return (x.point1->get_ind() == y.point1->get_ind()) ?
-				x.point2->get_ind() < y.point2->get_ind() :
-				x.point1->get_ind() < y.point1->get_ind();
+			if (x.index1 == y.index1){
+				return x.index2 < y.index2;
+			} else { 
+				return x.index1 < y.index1;
+			}
 		}
 	};
 	struct TDirCmp{
 		bool operator()(const TDirData& x, const TDirData& y) const {
-			return x.point->get_ind() < y.point->get_ind();
+			return x.index < y.index;
 		}
 	};
 
 	//Grids
-	shared_ptr<HMFem::Grid43> grid;
+	const HM2D::GridData* grid;
 	//Matricies
 	shared_ptr<HMMath::Mat> laplas_mat;
 
@@ -49,21 +51,20 @@ class LaplasProblem{
 
 	void RebuildSolutionMatrix();
 
-	mutable std::set<GridPoint> _bp;
-	const GridPoint* get_boundary_point(const Point& p) const;
+	mutable std::set<HM2D::Vertex> _bp;
+	const HM2D::Vertex* get_boundary_point(const Point& p) const;
+	int get_boundary_point_index(const Point& p) const;
 public:
 	//constructors:
-	//creating grid and build laplas operator
-	LaplasProblem(GridGeom* g);
-	//using prebuild grid
-	LaplasProblem(shared_ptr<Grid43> g);
-	//using prebuilt grid and laplas matrix
-	LaplasProblem(shared_ptr<Grid43> g, shared_ptr<HMMath::Mat> lap);
+	//build laplas operator
+	LaplasProblem(const HM2D::GridData& g);
+	//using prebuilt laplas matrix
+	LaplasProblem(const HM2D::GridData& g, shared_ptr<HMMath::Mat> lap);
 
 	//boundary conditions: using vector of grid points
 	void ClearBC();
-	void SetDirichlet(const vector<const GridPoint*>& pts, TDirFunc f);
-	void SetNeumann(const vector<const GridPoint*>& pts, TNeuFunc f);
+	void SetDirichlet(const HM2D::VertexData& pts, TDirFunc f);
+	void SetNeumann(const HM2D::VertexData& pts, TNeuFunc f);
 
 	//using contours which shear points with grid.
 	void SetDirichlet(const HM2D::EdgeData& pts, TDirFunc f);
@@ -82,7 +83,7 @@ public:
 	//pnt should be sorted as an open path ( pnt[0]->pnt[back] )
 	//Neumann conditions should exist on edges adjacent to this path.
 	//Otherwise dfdn=0 on that edges is assumed.
-	double IntegralDfDn(const vector<const GridPoint*>& pnt,
+	double IntegralDfDn(const vector<const HM2D::Vertex*>& pnt,
 			const vector<double>& f);
 	
 	//pnt Contour should share points with grid

@@ -4,6 +4,7 @@
 #include "treverter2d.hpp"
 #include "cont_partition.hpp"
 #include "cont_assembler.hpp"
+#include "finder2d.hpp"
 
 using namespace HMBlay::Impl;
 
@@ -289,7 +290,7 @@ vector<ExtPath> ExtPath::DivideByHalf(const ExtPath& pth){
 	// === find half point
 	assert(pth.size() > 2);
 	auto _av = HM2D::AllVertices(pth);
-	auto _f1 = HM2D::FindClosestNode(_av, HM2D::Contour::WeightPoint(pth, 0.5));
+	auto _f1 = HM2D::Finder::ClosestPoint(_av, HM2D::Contour::WeightPoint(pth, 0.5));
 	auto hp = _av[std::get<0>(_f1)];
 	auto dp = HM2D::Contour::OrderedPoints(pth);
 	int hind = std::find(dp.begin(), dp.end(), hp) - dp.begin();

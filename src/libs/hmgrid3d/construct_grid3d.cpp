@@ -1,5 +1,4 @@
 #include "construct_grid3d.hpp"
-#include "debug_grid2d.h"
 #include "debug3d.hpp"
 using namespace HM3D;
 
@@ -110,14 +109,14 @@ GridData cns::Cuboid(Vertex leftp, double lx, double ly, double lz, int nx, int 
 	return ret;
 }
 
-GridData cns::SweepGrid2D(const GridGeom& g, const vector<double>& zcoords){
+GridData cns::SweepGrid2D(const HM2D::GridData& g, const vector<double>& zcoords){
 	return SweepGrid2D(g, zcoords,
 			[](int){ return 1; },
 			[](int){ return 2; },
 			[](int){ return 3; });
 }
 
-GridData cns::SweepGrid2D(const GridGeom& g, const vector<double>& zcoords,
+GridData cns::SweepGrid2D(const HM2D::GridData& g, const vector<double>& zcoords,
 		std::function<int(int)> bottom_bt,
 		std::function<int(int)> top_bt,
 		std::function<int(int)> side_bt){
@@ -125,19 +124,13 @@ GridData cns::SweepGrid2D(const GridGeom& g, const vector<double>& zcoords,
 	GridData ret;
 
 	//Needed Data
-	auto e2d = g.get_edges();
-	vector<::Edge> e2dvector(e2d.begin(), e2d.end());
-	int n2p = g.n_points(), n2c = g.n_cells(), n2e = e2d.size(), nz = zcoords.size();
-	vector<vector<int>> cell_edges2d(n2c);
-	for (int i=0; i<n2c; ++i){
-		auto c2d = g.get_cell(i);
-		for (int j=0; j<c2d->dim(); ++j){
-			int p1 = c2d->get_point(j)->get_ind();
-			int p2 = c2d->get_point(j+1)->get_ind();
-			::Edge e(p1, p2);
-			int fnd = std::find(e2dvector.begin(), e2dvector.end(), e) - e2dvector.begin();
-			cell_edges2d[i].push_back(fnd);
-		}
+	auto& e2d = g.vedges;
+	int n2p = g.vvert.size(), n2c = g.vcells.size(), n2e = e2d.size(), nz = zcoords.size();
+	g.enumerate_all();
+	vector<vector<int>> cell_edges2d; cell_edges2d.reserve(n2c);
+	for (auto c: g.vcells){
+		cell_edges2d.emplace_back();
+		for (auto e: c->edges) cell_edges2d.back().push_back(e->id);
 	}
 
 	//Vertices
@@ -146,7 +139,7 @@ GridData cns::SweepGrid2D(const GridGeom& g, const vector<double>& zcoords,
 		for (int i=0; i<nz; ++i){
 			double z = zcoords[i];
 			for (int j=0; j<n2p; ++j){
-				auto p = g.get_point(j);
+				auto& p = g.vvert[j];
 				vert.emplace_back(new Vertex(p->x, p->y, z));
 			}
 		}
@@ -158,9 +151,9 @@ GridData cns::SweepGrid2D(const GridGeom& g, const vector<double>& zcoords,
 		//xy edges
 		int j=0;
 		for (int i=0; i<nz; ++i){
-			for (auto& e: e2dvector){
-				int i1 = i*n2p + e.p1;
-				int i2 = i*n2p + e.p2;
+			for (auto& e: e2d){
+				int i1 = i*n2p + e->first()->id;
+				int i2 = i*n2p + e->last()->id;
 				xyedges[j++].reset(new Edge(vert[i1], vert[i2]));
 			}
 		}
@@ -194,8 +187,8 @@ GridData cns::SweepGrid2D(const GridGeom& g, const vector<double>& zcoords,
 		//zfaces
 		for (int i=0; i<nz-1; ++i){
 			for (int j=0; j<n2e; ++j){
-				int i12d = e2dvector[j].p1;
-				int i22d = e2dvector[j].p2;
+				int i12d = e2d[j]->first()->id;
+				int i22d = e2d[j]->last()->id;
 				Face* f = new Face();
 				auto e1 = xyedges[j + i*n2e];
 				auto e2 = zedges[i22d + i*n2p];
@@ -223,7 +216,7 @@ GridData cns::SweepGrid2D(const GridGeom& g, const vector<double>& zcoords,
 				for (int k: cell_edges2d[j]){
 					auto f1 = zfaces[k + n2e*i];
 					c->faces.push_back(f1);
-					bool isleft = (e2dvector[k].cell_left == j);
+					bool isleft = (e2d[k]->left.lock()->id == j);
 					if (isleft) f1->left = c;
 					else f1->right = c;
 				}
@@ -240,7 +233,7 @@ GridData cns::SweepGrid2D(const GridGeom& g, const vector<double>& zcoords,
 			xyfaces[j++]->boundary_type = top_bt(i);
 		}
 		//sides
-		for (int i=0; i<n2e; ++i) if (e2dvector[i].is_boundary()){
+		for (int i=0; i<n2e; ++i) if (e2d[i]->is_boundary()){
 			int bt = side_bt(i);
 			for (int k=0; k<nz-1; ++k){
 				zfaces[i + k*n2e]->boundary_type = bt;

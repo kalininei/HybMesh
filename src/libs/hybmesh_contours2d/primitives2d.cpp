@@ -1,4 +1,6 @@
 #include "primitives2d.hpp"
+#include "contabs2d.hpp"
+#include "hmgraph.hpp"
 using namespace HM2D;
 
 void GridData::enumerate_all() const{
@@ -140,39 +142,6 @@ void HM2D::DeepCopy(const GridData& from, GridData& to, int level){
 	for (auto& e: c->edges) e = to.vedges[e->id];
 }
 
-// =============== contains procedures
-shared_ptr<Vertex> HM2D::Contains(const VertexData& data, const Point* pnt){
-	auto fnd = std::find_if(data.begin(), data.end(),
-		[&pnt](const shared_ptr<Vertex>& pd){ return pd.get() == pnt; });
-	if (fnd != data.end()) return *fnd;
-	else return nullptr;
-}
-shared_ptr<Vertex> HM2D::Contains(const EdgeData& data, const Point* pnt){
-	for (auto e: data){
-		if (e->vertices[0].get() == pnt) return e->vertices[0];
-		if (e->vertices[1].get() == pnt) return e->vertices[1];
-	}
-	return nullptr;
-}
-shared_ptr<Edge> HM2D::Contains(const EdgeData& data, const Edge* ed){
-	auto fnd = std::find_if(data.begin(), data.end(),
-		[&ed](const shared_ptr<Edge>& pd){ return pd.get() == ed; });
-	if (fnd != data.end()) return *fnd;
-	else return nullptr;
-}
-shared_ptr<Vertex> HM2D::Contains(const CellData& data, const Point* pnt){
-	return Contains(AllVertices(data), pnt);
-}
-shared_ptr<Edge> HM2D::Contains(const CellData& data, const Edge* ed){
-	return Contains(AllEdges(data), ed);
-}
-shared_ptr<Cell> HM2D::Contains(const CellData& data, const Cell* c){
-	auto fnd = std::find_if(data.begin(), data.end(),
-		[&c](const shared_ptr<Cell>& pd){ return pd.get() == c; });
-	if (fnd != data.end()) return *fnd;
-	else return nullptr;
-}
-
 // ===================== Miscellaneous
 double HM2D::Length(const EdgeData& ed){
 	double ret = 0;
@@ -194,68 +163,63 @@ BoundingBox HM2D::BBox(const EdgeData& ed, double eps){
 BoundingBox HM2D::BBox(const CellData& cd, double eps){
 	return BBox(AllVertices(cd), eps);
 }
-std::tuple<int, double, double>
-HM2D::FindClosestEdge(const EdgeData& dt, const Point& p){
-	std::tuple<int, double, double> ret;
-	int& ind = std::get<0>(ret);
-	double& dist = std::get<1>(ret);
-	double& ksi = std::get<2>(ret);
-	dist = 1e99; ksi = 1e99; ind = -1;
-
-	double k;
-	for (int i=0; i<dt.size(); ++i){
-		auto& e = dt[i];
-		double dnew = Point::meas_section(p, *e->first(), *e->last(), k);
-		//if (dnew < dist){
-		if (dnew - dist < geps*geps){
-			dist = dnew;
-			ksi = k;
-			ind = i;
-			if (dist<geps*geps) break;
-		}
-	}
-
-	dist = sqrt(dist);
-	return ret;
-}
-
-Point HM2D::FindClosestEPoint(const EdgeData& dt, const Point& p){
-	auto fec = FindClosestEdge(dt, p);
-	auto e = dt[std::get<0>(fec)];
-	return Point::Weigh(*e->first(), *e->last(), std::get<2>(fec));
-}
-
-std::tuple<int, double> HM2D::FindClosestNode(const VertexData& dt, const Point& p){
-	if (dt.size() == 0) return std::tuple<int, double>(-1, -1);
-	std::tuple<int, double> ret(0, 0);
-	int& bind = std::get<0>(ret);
-	double& bm = std::get<1>(ret);
-	bm = Point::meas(*dt[0], p);
-	for (int i=1; i<dt.size(); ++i){
-		double m = Point::meas(*dt[i], p);
-		if (m < bm){
-			bm = m;
-			bind = i;
-		}
-	}
-	bm = sqrt(bm);
-	return ret;
-}
-
-
 // ================== scaling
-ScaleBase HM2D::Scale01(EdgeData& ed){
+ScaleBase HM2D::Scale01(EdgeData& ed, double a){
 	auto av = AllVertices(ed);
-	return HM2D::Scale01(av);
+	return HM2D::Scale01(av, a);
 }
-ScaleBase HM2D::Scale01(VertexData& av){
-	return ScaleBase::p_doscale(av.begin(), av.end());
+ScaleBase HM2D::Scale01(VertexData& av, double a){
+	return ScaleBase::p_doscale(av.begin(), av.end(), a);
 }
 void HM2D::Scale(EdgeData& ed, const ScaleBase& sc){
 	auto av = AllVertices(ed);
 	sc.p_scale(av.begin(), av.end());
 }
+void HM2D::Scale(VertexData& av, const ScaleBase& sc){
+	sc.p_scale(av.begin(), av.end());
+}
 void HM2D::Unscale(EdgeData& ed, const ScaleBase& sc){
 	auto av = AllVertices(ed);
 	sc.p_unscale(av.begin(), av.end());
+}
+void HM2D::Unscale(VertexData& av, const ScaleBase& sc){
+	sc.p_unscale(av.begin(), av.end());
+}
+
+// ================== split
+vector<EdgeData> HM2D::SplitData(const EdgeData& data){
+	vector<vector<int>> ee = Connectivity::EdgeEdge(data);
+	vector<vector<int>> sg = HMMath::Graph::SplitGraph(ee);
+	vector<EdgeData> ret;
+	for (auto& g: sg){
+		ret.emplace_back();
+		for (auto& gg: g){
+			ret.back().push_back(data[gg]);
+		}
+	}
+	return ret;
+}
+
+vector<CellData> HM2D::SplitData(const CellData& data){
+	vector<vector<int>> cc = Connectivity::CellCell(data);
+	vector<vector<int>> sg = HMMath::Graph::SplitGraph(cc);
+	vector<CellData> ret;
+	for (auto& g: sg){
+		ret.emplace_back();
+		for (auto& gg: g){
+			ret.back().push_back(data[gg]);
+		}
+	}
+	return ret;
+}
+
+vector<GridData> HM2D::SplitData(const GridData& data){
+	vector<CellData> c = SplitData(data.vcells);
+	vector<GridData> ret(c.size());
+	for (int i=0; i<c.size(); ++i){
+		ret[i].vcells = std::move(c[i]);
+		ret[i].vedges = AllEdges(ret[i].vcells);
+		ret[i].vvert = AllVertices(ret[i].vedges);
+	}
+	return ret;
 }

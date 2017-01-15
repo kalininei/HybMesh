@@ -1,12 +1,13 @@
 #include "rectangle_grid_builder.hpp"
-#include "procgrid.h"
 #include "hmmapping.hpp"
 #include "hmfdm.hpp"
 #include "hmconformal.hpp"
-#include "debug_grid2d.h"
 #include "constructor.hpp"
 #include "cont_assembler.hpp"
 #include "algos.hpp"
+#include "healgrid.hpp"
+#include "buildgrid.hpp"
+#include "finder2d.hpp"
 
 HMCallback::FunctionWithCallback<HMMap::TOrthogonalRectGrid> HMMap::OrthogonalRectGrid;
 HMCallback::FunctionWithCallback<HMMap::TLaplaceRectGrid> HMMap::LaplaceRectGrid;
@@ -37,7 +38,7 @@ bool has_self_cross(const HM2D::EdgeData& cont){
 	return false;
 }
 bool no_cross_except_touch(const HM2D::EdgeData& c1, const HM2D::EdgeData& c2){
-	//return (HM2D::Contour::Algos::CrossAll(c1, c2).size() != 1);
+	//return (HM2D::Contour::Algos::Finder::CrossAll(c1, c2).size() != 1);
 	int n_touches = 0;
 	Point p11 = *HM2D::Contour::First(c1), p12 = *HM2D::Contour::Last(c1);
 	if (p11 == *HM2D::Contour::First(c2) || p11 == *HM2D::Contour::Last(c2)){
@@ -51,7 +52,7 @@ bool no_cross_except_touch(const HM2D::EdgeData& c1, const HM2D::EdgeData& c2){
 	bool ret;
 	if (n_touches != 1) ret = false;
 	else{
-		ret = !std::get<0>(HM2D::Contour::Algos::Cross(c1, c2));
+		ret = !std::get<0>(HM2D::Contour::Finder::Cross(c1, c2));
 	}
 	HM2D::Contour::First(c1)->set(p11);
 	HM2D::Contour::Last(c1)->set(p12);
@@ -61,8 +62,8 @@ bool check_for_no_cross(const HM2D::EdgeData& left, const HM2D::EdgeData& bot,
 		const HM2D::EdgeData& right, const HM2D::EdgeData& top){
 	if (!no_cross_except_touch(left, bot)) return false;
 	if (!no_cross_except_touch(left, top)) return false;
-	if (std::get<0>(HM2D::Contour::Algos::Cross(left, right))) return false;
-	if (std::get<0>(HM2D::Contour::Algos::Cross(bot, top))) return false;
+	if (std::get<0>(HM2D::Contour::Finder::Cross(left, right))) return false;
+	if (std::get<0>(HM2D::Contour::Finder::Cross(bot, top))) return false;
 	if (!no_cross_except_touch(bot, right)) return false;
 	if (!no_cross_except_touch(top, right)) return false;
 	if (has_self_cross(right)) return false;  //only right was modified pointwisely
@@ -172,18 +173,18 @@ vector<HM2D::EdgeData> connect_contours(HM2D::EdgeData& left, HM2D::EdgeData& bo
 }
 
 //check direction of first cell and reverse all cells if needed
-void check_direction(GridGeom& ret){
-	if (ret.n_cells() == 0) return;
-	if (ret.get_cell(0)->area() < 0){
-		GGeom::Modify::CellModify(ret, [](Cell* c){
-			std::reverse(c->points.begin(), c->points.end());} );
+void check_direction(HM2D::GridData& ret){
+	if (ret.vcells.size() == 0) return;
+	if (HM2D::Contour::Area(ret.vcells[0]->edges) < 0){
+		for (auto e: ret.vedges) std::swap(e->left, e->right);
+		for (auto c: ret.vcells) HM2D::Contour::Reverse(c->edges);
 	}
-	if (!GGeom::Info::Check(ret)) throw HMMap::EInvalidGrid(std::move(ret));
+	if (!HM2D::Grid::Algos::Check(ret)) throw HMMap::EInvalidGrid(std::move(ret));
 }
 
 }
 
-GridGeom HMMap::LinearRectGrid(HM2D::EdgeData& _left, HM2D::EdgeData& _bot,
+HM2D::GridData HMMap::LinearRectGrid(HM2D::EdgeData& _left, HM2D::EdgeData& _bot,
 		HM2D::EdgeData& _right, HM2D::EdgeData& _top){
 	if (_left.size() != _right.size() || _bot.size() != _top.size())
 		throw std::runtime_error("right/top contours should have same number "
@@ -196,9 +197,9 @@ GridGeom HMMap::LinearRectGrid(HM2D::EdgeData& _left, HM2D::EdgeData& _bot,
 	auto& top = newcont[3]; auto ptop = HM2D::Contour::OrderedPoints(top);
 	
 	//build grid main grid connectivity
-	GridGeom ret = GGeom::Constructor::RectGrid01(bot.size(), left.size());
+	HM2D::GridData ret = HM2D::Grid::Constructor::RectGrid01(bot.size(), left.size());
 	//shift nodes
-	auto allnodes = GGeom::Info::SharePoints(ret);
+	auto allnodes = ret.vvert;
 	int k=0;
 	double ksieta[2];
 	for (int j=0; j<left.size()+1; ++j){
@@ -231,7 +232,7 @@ vector<Point*> topp(const HM2D::VertexData& data){
 }
 }
 
-GridGeom HMMap::TOrthogonalRectGrid::_run(HM2D::EdgeData& _left, HM2D::EdgeData& _bot,
+HM2D::GridData HMMap::TOrthogonalRectGrid::_run(HM2D::EdgeData& _left, HM2D::EdgeData& _bot,
 		HM2D::EdgeData& _right, HM2D::EdgeData& _top){
 	callback->step_after(5, "Connect contours");
 	auto conres = connect_contours(_left, _bot, _right, _top);
@@ -253,29 +254,27 @@ GridGeom HMMap::TOrthogonalRectGrid::_run(HM2D::EdgeData& _left, HM2D::EdgeData&
 	auto cmap = HMMap::Conformal::BuildRect.UseCallback(subcaller,
 			left, right, bot, top, opt);
 	int lsz = left_basic ? left.size() : right.size();
-	GridGeom ret = GGeom::Constructor::RectGrid01(bot.size(), lsz);
+	HM2D::GridData ret = HM2D::Grid::Constructor::RectGrid01(bot.size(), lsz);
 
 	//grid to conformal rectangle
 	callback->step_after(10, "Map grid", 2, 1);
 	vector<Point> xpts = cmap->MapToRectangle(topp(HM2D::Contour::OrderedPoints(bot)));
 	vector<Point> ypts = left_basic ? cmap->MapToRectangle(topp(HM2D::Contour::OrderedPoints(left)))
 	                                : cmap->MapToRectangle(topp(HM2D::Contour::OrderedPoints(right)));
-	auto to_conf = [&xpts, &ypts, &bot](GridPoint* p){
-		int i = p->get_ind() % (bot.size() + 1);
-		int j = p->get_ind() / (bot.size() + 1);
-		p->set(xpts[i].x, ypts[j].y);
-	};
-	GGeom::Modify::PointModify(ret, to_conf);
+	for (int i=0; i<ret.vvert.size(); ++i){
+		int ni = i % (bot.size() + 1);
+		int nj = i / (bot.size() + 1);
+		ret.vvert[i]->set(xpts[ni].x, ypts[nj].y);
+	}
 
 	//grid to physical domain
 	callback->subprocess_step_after(1);
-	vector<Point> gpnt(ret.n_points());
-	for (int i=0; i<ret.n_points(); ++i) gpnt[i] = *ret.get_point(i);
+	vector<Point> gpnt(ret.vvert.size());
+	for (int i=0; i<ret.vvert.size(); ++i) gpnt[i].set(*ret.vvert[i]);
 	vector<Point> physpnt = cmap->MapToPolygon(gpnt);
-	GGeom::Modify::PointModify(ret, [&physpnt](GridPoint* p){
-			Point& pp = physpnt[p->get_ind()];
-			p->set(pp.x, pp.y);
-	});
+	for (int i=0; i<ret.vvert.size(); ++i){
+		ret.vvert[i]->set(physpnt[i]);
+	}
 
 	callback->step_after(5, "Grid check");
 	check_direction(ret);
@@ -284,7 +283,7 @@ GridGeom HMMap::TOrthogonalRectGrid::_run(HM2D::EdgeData& _left, HM2D::EdgeData&
 		//bottom
 		auto pp = HM2D::Contour::OrderedPoints(bot);
 		for (int i=0; i<pp.size(); ++i){
-			ret.get_point(i)->set(*pp[i]);
+			ret.vvert[i]->set(*pp[i]);
 		}
 	}
 	{
@@ -292,14 +291,14 @@ GridGeom HMMap::TOrthogonalRectGrid::_run(HM2D::EdgeData& _left, HM2D::EdgeData&
 		auto pp = HM2D::Contour::OrderedPoints( (left_basic) ? left : right );
 		int i0 = (left_basic) ? 0 : bot.size();
 		for (int i=0; i<pp.size(); ++i){
-			ret.get_point(i0)->set(*pp[i]);
+			ret.vvert[i0]->set(*pp[i]);
 			i0 += bot.size()+1;
 		}
 	}
 	return ret;
 }
 
-GridGeom HMMap::FDMLaplasRectGrid(HM2D::EdgeData& _left, HM2D::EdgeData& _bot,
+HM2D::GridData HMMap::FDMLaplasRectGrid(HM2D::EdgeData& _left, HM2D::EdgeData& _bot,
 	HM2D::EdgeData& _right, HM2D::EdgeData& _top){
 	if (_left.size() != _right.size() || _bot.size() != _top.size())
 		throw std::runtime_error("right/top contours should have same number "
@@ -357,17 +356,16 @@ GridGeom HMMap::FDMLaplasRectGrid(HM2D::EdgeData& _left, HM2D::EdgeData& _bot,
 	slv.Solve(ycoords);
 
 	//building resulting grid
-	GridGeom ret = GGeom::Constructor::RectGrid01(x.size()-1, y.size()-1);
-	GGeom::Modify::PointModify(ret, [&xcoords, &ycoords](GridPoint* p){
-				p->x = xcoords[p->get_ind()];
-				p->y = ycoords[p->get_ind()];
-			});
+	HM2D::GridData ret = HM2D::Grid::Constructor::RectGrid01(x.size()-1, y.size()-1);
+	for (int i=0; i<ret.vvert.size(); ++i){
+		ret.vvert[i]->set(xcoords[i], ycoords[i]);
+	}
 
 	check_direction(ret);
 	return ret;
 }
 
-GridGeom HMMap::TLaplaceRectGrid::_run(HM2D::EdgeData& left, HM2D::EdgeData& bot,
+HM2D::GridData HMMap::TLaplaceRectGrid::_run(HM2D::EdgeData& left, HM2D::EdgeData& bot,
 		HM2D::EdgeData& right, HM2D::EdgeData& top, std::string algo){
 	if (left.size() != right.size() || bot.size() != top.size())
 		throw std::runtime_error("right/top contours should have same number "
@@ -400,7 +398,7 @@ GridGeom HMMap::TLaplaceRectGrid::_run(HM2D::EdgeData& left, HM2D::EdgeData& bot
 	auto rectright = weight_contour(right1, true, true);
 	auto rectbot = weight_contour(bot1, false, false);
 	auto recttop = weight_contour(top1, false, true);
-	GridGeom base = HMMap::LinearRectGrid(rectleft, rectbot, rectright, recttop);
+	HM2D::GridData base = HMMap::LinearRectGrid(rectleft, rectbot, rectright, recttop);
 
 	//map grid base and mapped points
 	callback->step_after(10, "Boundary mapping");
@@ -436,7 +434,7 @@ GridGeom HMMap::TLaplaceRectGrid::_run(HM2D::EdgeData& left, HM2D::EdgeData& bot
 	return HMMap::MapGrid.UseCallback(subcaller, base, ecol, base_pnt, mapped_pnt, false, opt);
 }
 
-GridGeom HMMap::LinearTFIRectGrid(HM2D::EdgeData& left, HM2D::EdgeData& bot,
+HM2D::GridData HMMap::LinearTFIRectGrid(HM2D::EdgeData& left, HM2D::EdgeData& bot,
 		HM2D::EdgeData& right, HM2D::EdgeData& top){
 	if (left.size() != right.size() || bot.size() != top.size())
 		throw std::runtime_error("right/top contours should have same number "
@@ -464,9 +462,9 @@ GridGeom HMMap::LinearTFIRectGrid(HM2D::EdgeData& left, HM2D::EdgeData& bot,
 	//for (int i=0; i<ksi.size(); ++i) ksi[i] = (double)i/(ksi.size()-1);
 	//for (int i=0; i<eta.size(); ++i) eta[i] = (double)i/(eta.size()-1);
 
-	GridGeom U = GGeom::Constructor::RectGrid01(bot.size(), left.size());
-	GridGeom V = GGeom::Constructor::RectGrid01(bot.size(), left.size());
-	GridGeom UV = GGeom::Constructor::RectGrid01(bot.size(), left.size());
+	HM2D::GridData U = HM2D::Grid::Constructor::RectGrid01(bot.size(), left.size());
+	HM2D::GridData V = HM2D::Grid::Constructor::RectGrid01(bot.size(), left.size());
+	HM2D::GridData UV = HM2D::Grid::Constructor::RectGrid01(bot.size(), left.size());
 
 	for (int j=0; j<left.size()+1; ++j){
 		//double eta = double(j)/(left.size());
@@ -475,24 +473,24 @@ GridGeom HMMap::LinearTFIRectGrid(HM2D::EdgeData& left, HM2D::EdgeData& bot,
 			//double ksi = double(i)/(bot.size());
 			double k = ksi[i];
 			int gi = i + j*(bot.size()+1);
-			U.get_point(gi)->set(Point::Weigh(*leftp[j], *rightp[j], k));
-			V.get_point(gi)->set(Point::Weigh(*botp[i], *topp[i], e));
-			UV.get_point(gi)->set(
+			U.vvert[gi]->set(Point::Weigh(*leftp[j], *rightp[j], k));
+			V.vvert[gi]->set(Point::Weigh(*botp[i], *topp[i], e));
+			UV.vvert[gi]->set(
 				p00*(1-k)*(1-e) + p11*k*e + p10*k*(1-e) + p01*(1-k)*e
 			);
 		}
 	}
-	for (int i=0; i<U.n_points(); ++i){
-		GridPoint*  p1 = U.get_point(i);
-		GridPoint*  p2 = V.get_point(i);
-		GridPoint*  p3 = UV.get_point(i);
+	for (int i=0; i<U.vvert.size(); ++i){
+		HM2D::Vertex*  p1 = U.vvert[i].get();
+		HM2D::Vertex*  p2 = V.vvert[i].get();
+		HM2D::Vertex*  p3 = UV.vvert[i].get();
 		p1->set(*p1 + *p2 - *p3);
 	}
 	check_direction(U);
 	return U;
 }
 
-GridGeom HMMap::CubicTFIRectGrid(HM2D::EdgeData& left, HM2D::EdgeData& bot,
+HM2D::GridData HMMap::CubicTFIRectGrid(HM2D::EdgeData& left, HM2D::EdgeData& bot,
 		HM2D::EdgeData& right, HM2D::EdgeData& top, std::array<double, 4> c){
 	if (left.size() != right.size() || bot.size() != top.size())
 		throw std::runtime_error("right/top contours should have same number "
@@ -564,17 +562,17 @@ GridGeom HMMap::CubicTFIRectGrid(HM2D::EdgeData& left, HM2D::EdgeData& bot,
 	Point detaksi_10 = (deta_bot.back() - deta_bot[deta_bot.size()-2])/(ksi.back()-ksi[ksi.size()-2]);
 	Point detaksi_11 = (deta_top.back() - deta_top[deta_top.size()-2])/(ksi.back()-ksi[ksi.size()-2]);
 
-	GridGeom U = GGeom::Constructor::RectGrid01(bot.size(), left.size());
-	GridGeom V = GGeom::Constructor::RectGrid01(bot.size(), left.size());
-	GridGeom UV = GGeom::Constructor::RectGrid01(bot.size(), left.size());
+	HM2D::GridData U = HM2D::Grid::Constructor::RectGrid01(bot.size(), left.size());
+	HM2D::GridData V = HM2D::Grid::Constructor::RectGrid01(bot.size(), left.size());
+	HM2D::GridData UV = HM2D::Grid::Constructor::RectGrid01(bot.size(), left.size());
 
 	for (int j=0; j<left.size()+1; ++j){
 		for (int i=0; i<bot.size()+1; ++i){
 			int gi = i + j*(bot.size()+1);
-			U.get_point(gi)->set(
+			U.vvert[gi]->set(
 				*leftp[j]*a01[i] + *rightp[j]*a02[i]+
 				dksi_left[j]*a11[i] + dksi_right[j]*a12[i]);
-			V.get_point(gi)->set(
+			V.vvert[gi]->set(
 				*botp[i]*b01[j] + *topp[i]*b02[j]+
 				deta_bot[i]*b11[j] + deta_top[i]*b12[j]);
 		}
@@ -582,9 +580,9 @@ GridGeom HMMap::CubicTFIRectGrid(HM2D::EdgeData& left, HM2D::EdgeData& bot,
 	for (int j=0; j<left.size()+1; ++j){
 		for (int i=0; i<bot.size()+1; ++i){
 			int gi = i + j*(bot.size()+1);
-			UV.get_point(gi)->set(
-				*V.get_point(j*(bot.size()+1))*a01[i]+
-				*V.get_point(bot.size() + j*(bot.size()+1))*a02[i]+
+			UV.vvert[gi]->set(
+				*V.vvert[j*(bot.size()+1)]*a01[i] +
+				*V.vvert[bot.size() + j*(bot.size()+1)]*a02[i]+
 				(dksi_left[0]*b01[j] + dksi_left.back()*b02[j] + 
 					detaksi_00*b11[j]+detaksi_01*b12[j])*a11[i]+
 				(dksi_right[0]*b01[j] + dksi_right.back()*b02[j] +
@@ -593,10 +591,10 @@ GridGeom HMMap::CubicTFIRectGrid(HM2D::EdgeData& left, HM2D::EdgeData& bot,
 		}
 	}
 
-	for (int i=0; i<U.n_points(); ++i){
-		GridPoint*  p1 = U.get_point(i);
-		GridPoint*  p2 = V.get_point(i);
-		GridPoint*  p3 = UV.get_point(i);
+	for (int i=0; i<U.vvert.size(); ++i){
+		auto& p1 = U.vvert[i];
+		auto& p2 = V.vvert[i];
+		auto& p3 = UV.vvert[i];
 		p1->set(*p1 + *p2 - *p3);
 	}
 

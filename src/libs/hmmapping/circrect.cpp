@@ -1,36 +1,38 @@
 #include "circrect.hpp"
 #include "rectangle_grid_builder.hpp"
-#include "procgrid.h"
-#include "debug_grid2d.h"
 #include "constructor.hpp"
 #include "cont_partition.hpp"
+#include "healgrid.hpp"
+#include "buildgrid.hpp"
+#include "modgrid.hpp"
+#include "cont_assembler.hpp"
 
 namespace{
 
-void reflect_and_merge(GridGeom& g, Point p1, Point p2){
+void reflect_and_merge(HM2D::GridData& g, Point p1, Point p2){
 	double lx = p2.x - p1.x, ly = p2.y - p1.y;
 	double r2 = lx*lx + ly*ly;
 	lx /= sqrt(r2); ly /= sqrt(r2);
 	double A[4] = {lx*lx - ly*ly, 2*lx*ly, 2*lx*ly, ly*ly - lx*lx};
-	auto reflect_point=[&p1, &A](GridPoint* p){
+	HM2D::GridData g2;
+	HM2D::DeepCopy(g, g2);
+	for (int i=0; i<g2.vvert.size(); ++i){
+		auto& p = g2.vvert[i];
 		Point r = *p - p1;
 		p->x = A[0] * r.x + A[1] * r.y + p1.x;
 		p->y = A[2] * r.x + A[3] * r.y + p1.y;
-	};
-	auto g2 = GGeom::Constructor::DeepCopy(g);
-	GGeom::Modify::PointModify(g2, reflect_point);
-	GGeom::Modify::ShallowAdd(&g2, &g);
-	GGeom::Repair::Heal(g);
+	}
+	HM2D::Grid::Algos::MergeTo(g2, g);
 }
 
-GridGeom laplace_algo(HM2D::EdgeData& left, HM2D::EdgeData& bot,
+HM2D::GridData laplace_algo(HM2D::EdgeData& left, HM2D::EdgeData& bot,
 		HM2D::EdgeData& right, HM2D::EdgeData& top){
 	return HMMap::FDMLaplasRectGrid(left, bot, right, top);
 }
 
-GridGeom linear_algo(HM2D::EdgeData& left, HM2D::EdgeData& bot,
+HM2D::GridData linear_algo(HM2D::EdgeData& left, HM2D::EdgeData& bot,
 		HM2D::EdgeData& right, HM2D::EdgeData& top){
-	GridGeom ret = GGeom::Constructor::RectGrid01(bot.size(), left.size());
+	HM2D::GridData ret = HM2D::Grid::Constructor::RectGrid01(bot.size(), left.size());
 
 	auto pleft = HM2D::Contour::OrderedPoints(left);
 	auto pbot = HM2D::Contour::OrderedPoints(bot);
@@ -41,7 +43,7 @@ GridGeom linear_algo(HM2D::EdgeData& left, HM2D::EdgeData& bot,
 		Point p1 = *pbot[i];
 		Point p2 = *ptop[i];
 		for (int j=0; j<left.size()+1; ++j){
-			GridPoint* gp = ret.get_point(i + pbot.size()*j);
+			auto gp = ret.vvert[i + pbot.size()*j];
 			gp->set(Point::Weigh(p1, p2, w[j]));
 		}
 	}
@@ -49,26 +51,25 @@ GridGeom linear_algo(HM2D::EdgeData& left, HM2D::EdgeData& bot,
 	return ret;
 }
 
-GridGeom ortho_algo(HM2D::EdgeData& left, HM2D::EdgeData& bot,
+HM2D::GridData ortho_algo(HM2D::EdgeData& left, HM2D::EdgeData& bot,
 		HM2D::EdgeData& right, HM2D::EdgeData& top){
-	GridGeom ret = HMMap::OrthogonalRectGrid(left, bot, right, top);
+	HM2D::GridData ret = HMMap::OrthogonalRectGrid(left, bot, right, top);
 	//modify top points so they lay on the circle
 	double rad = HM2D::Contour::Last(left)->y;
 	for (int i=0; i<bot.size()+1; ++i){
 		int ind = i + left.size()*(bot.size()+1);
-		GridPoint* gp = ret.get_point(ind);
-		vecSetLen(*gp, rad);
+		vecSetLen(*ret.vvert[ind], rad);
 	}
 	return ret;
 }
 
-GridGeom ortho_circ_algo(HM2D::EdgeData& left, HM2D::EdgeData& bot,
+HM2D::GridData ortho_circ_algo(HM2D::EdgeData& left, HM2D::EdgeData& bot,
 		HM2D::EdgeData& right, HM2D::EdgeData& top){
 	return HMMap::OrthogonalRectGrid(left, top, right, bot);
 }
 }
 
-GridGeom HMMap::Circ4Prototype(Point center, double rad, int n, std::string algo,
+HM2D::GridData HMMap::Circ4Prototype(Point center, double rad, int n, std::string algo,
 		double a, double hcoef){
 	if (a>1.4) throw std::runtime_error("square side is too big");
 
@@ -119,7 +120,7 @@ GridGeom HMMap::Circ4Prototype(Point center, double rad, int n, std::string algo
 	auto right = HM2D::Contour::Constructor::FromPoints(rightpoints);
 	
 	//make mapping
-	GridGeom gcirc = [&](){
+	HM2D::GridData gcirc = [&](){
 		if (algo == "linear") return linear_algo(left, bot, right, top);
 		else if (algo == "laplace") return laplace_algo(left, bot, right, top);
 		else if (algo == "orthogonal-rect") return ortho_algo(left, bot, right, top);
@@ -133,7 +134,8 @@ GridGeom HMMap::Circ4Prototype(Point center, double rad, int n, std::string algo
 	vector<double> botc(2*n1+1);
 	if (algo == "orthogonal-circ"){
 		auto botcont = HM2D::Contour::Constructor::CutContour(
-			GGeom::Info::Contour1(gcirc), Point(0, a), Point(a, a));
+			HM2D::Contour::Assembler::GridBoundary1(gcirc),
+			Point(0, a), Point(a, a));
 		int i=0;
 		for (auto p: HM2D::Contour::OrderedPoints(botcont)){
 			botc[n1+i] =  p->x;
@@ -151,17 +153,15 @@ GridGeom HMMap::Circ4Prototype(Point center, double rad, int n, std::string algo
 	reflect_and_merge(gcirc, Point(0, 0), Point(1, 0));
 
 	//inner rectangle grid
-	auto grect = GGeom::Constructor::RectGrid(botc, botc);
+	auto grect = HM2D::Grid::Constructor::RectGrid(botc, botc);
 
 	//connect all grids
-	GGeom::Modify::ShallowAdd(&gcirc, &grect);
-	GGeom::Repair::Heal(grect);
+	HM2D::Grid::Algos::MergeTo(gcirc, grect);
 
 	//scale, translate, return
-	auto pmod = [&rad, &center](GridPoint* p){
-		p->x *= rad; p->x += center.x;
-		p->y *= rad; p->y += center.y;
-	};
-	GGeom::Modify::PointModify(grect, pmod);
+	for (int i=0; i<grect.vvert.size(); ++i){
+		(*grect.vvert[i]) *= rad;
+		(*grect.vvert[i]) += center;
+	}
 	return grect;
 }

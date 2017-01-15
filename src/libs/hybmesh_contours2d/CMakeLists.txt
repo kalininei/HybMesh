@@ -1,9 +1,10 @@
 #library file
 set (HEADERS
 	primitives2d.hpp
-	tree.hpp
 	contour.hpp
+	tree.hpp
 	contabs2d.hpp
+	finder2d.hpp
 	treverter2d.hpp
 	constructor.hpp
 	clipper_core.hpp
@@ -14,15 +15,20 @@ set (HEADERS
 	algos.hpp
 	cont_partition.hpp
 	cont_repart.hpp
-	hmc_imex.hpp
-	vtk_export2d.hpp
+	export2d_hm.hpp
+	export2d_vtk.hpp
+	export2d_tecplot.hpp
+	export2d_gmsh.hpp
+	export2d_fluent.hpp
+	import2d_hm.hpp
 )
 
 set (SOURCES
 	primitives2d.cpp
-	tree.cpp
 	contour.cpp
+	tree.cpp
 	contabs2d.cpp
+	finder2d.cpp
 	treverter2d.cpp
 	constructor.cpp
 	clipper_core.cpp
@@ -33,8 +39,12 @@ set (SOURCES
 	algos.cpp
 	cont_partition.cpp
 	cont_repart.cpp
-	hmc_imex.cpp
-	vtk_export2d.cpp
+	export2d_hm.cpp
+	export2d_vtk.cpp
+	export2d_tecplot.cpp
+	export2d_gmsh.cpp
+	export2d_fluent.cpp
+	import2d_hm.cpp
 )
 
 source_group ("Header Files" FILES ${HEADERS} ${HEADERS})

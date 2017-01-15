@@ -26,11 +26,17 @@ EdgeData Contour1(const VertexData& pnt, bool force_closed=false);
 //assemble contour from another contour.
 EdgeData ShrinkContour(const EdgeData& con, const Point* pnt_start, const Point* pnt_end);
 
+//build first grid boundary found
+EdgeData GridBoundary1(const GridData&);
 
+//build all grid boundaries
+vector<EdgeData> GridBoundary(const GridData&);
+}}
+
+namespace ECol{ namespace Assembler{
 // ================== Ecollection modificators
-//splits the edge->vertices graph
-//!!!resulting edges do not form assembled contours
-vector<EdgeData> QuickSeparate(const EdgeData& ecol);
+
+EdgeData GridBoundary(const GridData&);
 
 }}}
 

@@ -1,13 +1,11 @@
 #include "hmgrid3d.hpp"
-#include "procgrid.h"
 #include <fstream>
-#include "debug_grid2d.h"
 #include "debug3d.hpp"
 #include "hmtesting.hpp"
 #include "hmtimer.hpp"
-#include "vtk_export_grid2d.hpp"
-#include "trigrid.h"
-#include "pebi.h"
+#include "buildgrid.hpp"
+#include "contour.hpp"
+#include "healgrid.hpp"
 
 using namespace HMTesting;
 
@@ -36,19 +34,21 @@ void test01(){
 		          "cuboid surface temporal reverse procedure");
 	}
 	{
-		auto gcyl2 = GGeom::Constructor::Circle(Point{0, 0}, 1, 64, 3, false);
+		auto gcyl2 = HM2D::Grid::Constructor::Circle(Point{0, 0}, 1, 64, 3, false);
 		auto gcyl = HM3D::Constructor::SweepGrid2D(gcyl2, {0, 1, 2, 3});
-		auto gtmp1 = GGeom::Constructor::Circle(Point(0, 0), 0.3, 64, 3, true);
+		auto gtmp1 = HM2D::Grid::Constructor::Circle(Point(0, 0), 0.3, 64, 3, true);
 		vector<int> inpcells;
 		vector<int> badpoints;
-		for (int i=0; i<gtmp1.n_points(); ++i){
-			if (ISLOWER(gtmp1.get_point(i)->x, 0)) badpoints.push_back(i);
+		for (int i=0; i<gtmp1.vvert.size(); ++i){
+			if (ISLOWER(gtmp1.vvert[i]->x, 0)) badpoints.push_back(i);
 		}
-		for (int i=0; i<gtmp1.n_cells(); ++i){
-			auto c = gtmp1.get_cell(i);
+		aa::enumerate_ids_pvec(gtmp1.vvert);
+		for (int i=0; i<gtmp1.vcells.size(); ++i){
+			auto c = gtmp1.vcells[i];
 			bool good = true;
-			for (int j=0; j<c->dim(); ++j){
-				int pind = c->get_point(j)->get_ind();
+			auto op = HM2D::Contour::OrderedPoints(c->edges);
+			for (int j=0; j<c->edges.size(); ++j){
+				int pind = op[j]->id;
 				if (std::find(badpoints.begin(), badpoints.end(), pind) !=
 						badpoints.end()){
 					good = false;
@@ -57,7 +57,10 @@ void test01(){
 			}
 			if (good) inpcells.push_back(i);
 		}
-		auto ghsphere2 = GGeom::Constructor::ExtractCells(gtmp1, inpcells, 1);
+		HM2D::CellData cls2;
+		for (auto i: inpcells) cls2.push_back(gtmp1.vcells[i]);
+		auto ghsphere2 = HM2D::Grid::Constructor::InvokeGrid::Permanent(cls2);
+
 		vector<double> degs = {0};
 		for (int i=0; i<32; ++i) degs.push_back(degs.back() + 180./32.);
 		auto ghsphere = HM3D::Constructor::RevolveGrid2D(ghsphere2, degs,

@@ -1,16 +1,15 @@
 #include "bgrid.hpp"
 #include "canonic_bgrid.hpp"
-#include "trigrid.h"
 #include "bgrid_impose.hpp"
 #include "connectors.hpp"
 #include "hmtimer.hpp"
-#include "debug_grid2d.h"
 #include "contclipping.hpp"
 #include "debug2d.hpp"
+#include "healgrid.hpp"
 
 using namespace HMBlay::Impl;
 
-shared_ptr<BGrid> BGrid::MeshFullPath(const ExtPath& epath){
+BGrid BGrid::MeshFullPath(const ExtPath& epath){
 	//1. divide by angles
 	vector<ExtPath> pths = ExtPath::DivideByAngle(epath,
 			{CornerTp::RIGHT,
@@ -84,27 +83,27 @@ shared_ptr<BGrid> BGrid::MeshFullPath(const ExtPath& epath){
 	}
 	
 	//7. Gather all resulting meshes
-	shared_ptr<BGrid> g(new BGrid());
+	BGrid g;
 	if (connectors.size() > 0){
 		for (auto& c: connectors){
 			//add_previous with grid is empty
-			bool with_prev = (g->n_cells() == 0);
+			bool with_prev = (g.vcells.size() == 0);
 			//add next always except if this
 			//is an end connector for closed path
 			bool with_next = (!HM2D::Contour::IsClosed(epath) || &c != &connectors.back());
 			c->Add(g, with_prev, with_next);
 		}
-		g->merge_congruent_points();
+		HM2D::Grid::Algos::Heal(g);
 	} else {
 		assert(mesher4.size() == 1);
-		g->ShallowAdd(mesher4[0]->result);
+		g = std::move(mesher4[0]->result);
 	}
 
 	return g;
 }
 
-shared_ptr<BGrid> BGrid::MeshSequence(vector<Options*>& data){ 
-	auto ret = shared_ptr<BGrid>();
+BGrid BGrid::MeshSequence(vector<Options*>& data){ 
+	auto ret = BGrid();
 
 	//1) assemble extended path = path + boundaries + angles
 	ExtPath fullpath = ExtPath::Assemble(data);
@@ -123,88 +122,105 @@ shared_ptr<BGrid> BGrid::MeshSequence(vector<Options*>& data){
 	return ret;
 }
 
-shared_ptr<BGrid> BGrid::NoSelfIntersections(shared_ptr<BGrid> g, const HM2D::EdgeData& source){
+BGrid BGrid::NoSelfIntersections(BGrid& g, const HM2D::EdgeData& source){
 	//does grid have intersections
-	if (!GGeom::Repair::HasSelfIntersections(*g)){
-		return g;
-	}
+	if (!HM2D::Grid::Algos::Check(g)) return g;
 	//else do imposition on the basis of cells weights
-	auto wfun = [&](const Cell* c){
-		int w = g->get_weight(c);
+	auto wfun = [&](const HM2D::Cell* c){
+		int w = g.get_weight(c);
 		if (w == 0) return 1e3;
-		else return 1.0/g->get_weight(c);
+		else return 1.0/g.get_weight(c);
 	};
-	return BGridImpose(g, wfun, source);
+	BGridImpose(g, wfun, source);
+	return g;
 }
 
-shared_ptr<BGrid> BGrid::ImposeBGrids(ShpVector<BGrid>& gg){
-	if (gg.size() == 0) return shared_ptr<BGrid>();
+BGrid BGrid::ImposeBGrids(ShpVector<BGrid>& gg){
+	if (gg.size() == 0) return BGrid();
 	//we can omit self intersections checks for single grid
 	//because it should be done in ::NoSelfIntersections procedure before
-	if (gg.size() == 1) return gg[0];
+	if (gg.size() == 1) return *gg[0];
 	//straight grid addition. This may cause new self intersections which
 	//should be treated correctly
 	bool has_intersections = false;
 	for (int i=1; i<(int)gg.size(); ++i){
 		if (!has_intersections){
-			auto c1 = GGeom::Info::Contour(*gg[0]);
-			auto c2 = GGeom::Info::Contour(*gg[i]);
+			auto c1 = HM2D::Contour::Tree::GridBoundary(*gg[0]);
+			auto c2 = HM2D::Contour::Tree::GridBoundary(*gg[i]);
 			auto inters = HM2D::Contour::Clip::Intersection(c1, c2);
-			HM2D::Contour::Clip::Heal(inters);
 			if (inters.nodes.size() > 0) has_intersections = true;
 		}
-		gg[0]->ShallowAdd(*gg[i]);
+		gg[0]->add_grid(*gg[i]);
 	}
-	if (!has_intersections) return gg[0];
+	if (!has_intersections) return std::move(*gg[0]);
 	//TODO: here should be a procedure which
 	//      make impositions if grid has self intersections
 	std::cout<<"Self intersected grids treatment is not done yet"<<std::endl;
 	_THROW_NOT_IMP_;
 }
 
-void BGrid::AddWeights(const std::map<const Cell*, int>& w){
-	for (auto& it: w) set_cell_index(it.first, -1);
-	set_cell_indicies();
-	for (auto& it: w){
-		if (it.first->get_ind()>=0) weight[it.first] = it.second;
+void BGrid::add_weights(const std::map<const HM2D::Cell*, int>& w){
+	for (auto& it: w) it.first->id = -1;
+	aa::constant_ids_pvec(vcells, 0);
+	for (auto& it: w) if (it.first->id == 0){
+		weight.insert(it);
 	}
 }
-void BGrid::AddSourceFeat(const std::map<const Cell*, shared_ptr<int>>& f){
-	for (auto& it: f) set_cell_index(it.first, -1);
-	set_cell_indicies();
-	for (auto& it: f){
-		if (it.first->get_ind()>=0) source_feat[it.first] = it.second;
+void BGrid::add_source_feat(const std::map<const HM2D::Cell*, shared_ptr<int>>& f){
+	for (auto& it: f) it.first->id = -1;
+	aa::constant_ids_pvec(vcells, 0);
+	for (auto& it: f) if (it.first->id == 0){
+		source_feat.insert(it);
 	}
 }
 
 void BGrid::remove_cells(const vector<int>& bad_cells){
 	for (int ic: bad_cells){
-		weight.erase(get_cell(ic));
-		source_feat.erase(get_cell(ic));
+		weight.erase(vcells[ic].get());
+		source_feat.erase(vcells[ic].get());
+		vcells[ic] = nullptr;
 	}
-	GridGeom::remove_cells(bad_cells);
+	HM2D::Grid::Algos::RestoreFromCells(*this);
 }
 
-void BGrid::ShallowAdd(const BGrid& g){
-	GGeom::Modify::ShallowAdd(&g, this);
-	AddWeights(g.weight);
-	AddSourceFeat(g.source_feat);
+void BGrid::add_grid(const BGrid& g){
+	vvert.insert(vvert.end(), g.vvert.begin(), g.vvert.end());
+	vedges.insert(vedges.end(), g.vedges.begin(), g.vedges.end());
+	vcells.insert(vcells.end(), g.vcells.begin(), g.vcells.end());
+
+	add_weights(g.weight);
+	add_source_feat(g.source_feat);
 }
 
-void BGrid::ShallowAddCell(shared_ptr<Cell> c, const Cell* same_feat_cell){
-	cells.push_back(c);
+void BGrid::add_cell(shared_ptr<HM2D::Cell> c, const HM2D::Cell* same_feat_cell){
+	vcells.push_back(c);
 	if (same_feat_cell != 0){
 		auto fnd1 = weight.find(same_feat_cell);
 		auto fnd2 = source_feat.find(same_feat_cell);
 		if (fnd1 != weight.end()) weight[c.get()] = fnd1->second;
 		if (fnd2 != source_feat.end()) source_feat[c.get()] = fnd2->second;
 	}
-	set_indicies();
 }
 
-void BGrid::RemoveFeatures(const Cell* c){
+void BGrid::remove_features(const HM2D::Cell* c){
 	auto fnd1 = weight.find(c);
 	auto fnd2 = source_feat.find(c);
 	if (fnd1 != weight.end()) weight.erase(fnd1);
 	if (fnd2 != source_feat.end()) source_feat.erase(fnd2);
+}
+
+shared_ptr<BGrid> BGrid::MoveFrom1(HM2D::GridData&& gg){
+	shared_ptr<BGrid> ret = std::make_shared<BGrid>();
+	ret->vcells = std::move(gg.vcells);
+	ret->vedges = std::move(gg.vedges);
+	ret->vvert = std::move(gg.vvert);
+	return ret;
+}
+
+BGrid BGrid::MoveFrom2(HM2D::GridData&& gg){
+	BGrid ret;
+	ret.vcells = std::move(gg.vcells);
+	ret.vedges = std::move(gg.vedges);
+	ret.vvert = std::move(gg.vvert);
+	return ret;
 }

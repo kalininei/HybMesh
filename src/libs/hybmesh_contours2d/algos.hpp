@@ -38,17 +38,6 @@ vector<int> SortOutPoints(const Tree& t1, const vector<Point>& pnt);
 EdgeData Simplified(const EdgeData& cont);
 Contour::Tree Simplified(const Tree& t1);
 
-// ======== Crosses and intersections
-//finds first cross (with respect to length of c1) of contours c1, c2.
-//returns <0>: if cross was found
-//        <1>: cross point
-//        <2,3>: normalized length coordinate of intersection
-std::tuple<bool, Point, double, double> 
-Cross(const EdgeData& c1, const EdgeData& c2);
-
-vector<std::tuple<bool, Point, double, double>>
-CrossAll(const EdgeData& c1, const EdgeData& c2);
-
 //Gives a vector defining a director of contour in given point p which should be amoung contour points.
 //direction = 1 -> consider contour as it is
 //direction = -1 -> revert contour before procedure
@@ -58,13 +47,20 @@ CrossAll(const EdgeData& c1, const EdgeData& c2);
 //result is a unit vector
 Vect SmoothedDirection2(const EdgeData& c, const Point* p, int direction, double len_forwad, double len_backward);
 
+//removes points by indicies
+//if inner point is removed then a new edge will be created.
+//It will keep all features of the edge previous to deleted point
+void RemovePoints(EdgeData& data, vector<int> ipnt);
+
 }}
 
 // ============================ algorithms for shattered edges collections
 namespace ECol{ namespace Algos{
-//makes deep copies of input edges (not points)
+//Does simplifications of simple contours assembled from ecol shattered edges.
+//makes deep copies of input edges (not points).
 EdgeData Simplified(const EdgeData& ecol, double degree_angle, bool no_break_at_id_change=false);
 
+//deep copies everything
 EdgeData NoCrosses(const EdgeData& ecol);
 
 void MergePoints(EdgeData& ecol);

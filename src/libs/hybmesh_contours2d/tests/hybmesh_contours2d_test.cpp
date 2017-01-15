@@ -6,9 +6,10 @@
 #include "cont_partition.hpp"
 #include "contclipping.hpp"
 #include "cont_assembler.hpp"
-#include "vtk_export2d.hpp"
 #include "cont_repart.hpp"
 #include "treverter2d.hpp"
+#include "export2d_vtk.hpp"
+#include "finder2d.hpp"
 
 using HMTesting::add_check;
 

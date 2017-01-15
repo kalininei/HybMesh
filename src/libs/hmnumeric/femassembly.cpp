@@ -5,7 +5,7 @@ using namespace HMFem;
 namespace{
 
 // =========================== 3 node cells
-shared_ptr<HMMath::LocMat> LaplasLocalMatrix3(const vector<const GridPoint*>& points){
+shared_ptr<HMMath::LocMat> LaplasLocalMatrix3(const HM2D::VertexData& points){
 	assert(points.size() == 3);
 	shared_ptr<HMMath::LocMat3Sym> ret(new HMMath::LocMat3Sym());
 	const double &x1 = points[0]->x, &x2 = points[1]->x, &x3 = points[2]->x;
@@ -38,7 +38,7 @@ shared_ptr<HMMath::LocMat> LaplasLocalMatrix3(const vector<const GridPoint*>& po
 	return ret;
 }
 
-shared_ptr<HMMath::LocMat> DDxLocalMatrix3(const vector<const GridPoint*>& points){
+shared_ptr<HMMath::LocMat> DDxLocalMatrix3(const HM2D::VertexData& points){
 	assert(points.size() == 3);
 	shared_ptr<HMMath::LocMat3> ret(new HMMath::LocMat3());
 	const double &y1 = points[0]->y, &y2 = points[1]->y, &y3 = points[2]->y;
@@ -51,7 +51,7 @@ shared_ptr<HMMath::LocMat> DDxLocalMatrix3(const vector<const GridPoint*>& point
 	return ret;
 }
 
-shared_ptr<HMMath::LocMat> DDyLocalMatrix3(const vector<const GridPoint*>& points){
+shared_ptr<HMMath::LocMat> DDyLocalMatrix3(const HM2D::VertexData& points){
 	assert(points.size() == 3);
 	shared_ptr<HMMath::LocMat3> ret(new HMMath::LocMat3());
 	const double &x1 = points[0]->x, &x2 = points[1]->x, &x3 = points[2]->x;
@@ -65,7 +65,7 @@ shared_ptr<HMMath::LocMat> DDyLocalMatrix3(const vector<const GridPoint*>& point
 	return ret;
 }
 
-shared_ptr<HMMath::LocMat> FullMassLocalMatrix3(const vector<const GridPoint*>& points){
+shared_ptr<HMMath::LocMat> FullMassLocalMatrix3(const HM2D::VertexData& points){
 	assert(points.size() == 3);
 	shared_ptr<HMMath::LocMat3Sym> ret(new HMMath::LocMat3Sym());
 	const double &x1 = points[0]->x, &x2 = points[1]->x, &x3 = points[2]->x;
@@ -162,7 +162,7 @@ struct Integration9: public _Integration{
 std::unique_ptr<_Integration> NumIntegration(new Integration9());
 
 //stiff matrix 
-double stiff4(const vector<const GridPoint*>& pts, int i, int j, double k, double e){
+double stiff4(const HM2D::VertexData& pts, int i, int j, double k, double e){
 	//basic function derivatives
 	static const std::function<double(double, double)> ddk[4] ={
 		[](double x, double y){ return -(1-y)/4; },
@@ -198,9 +198,9 @@ double stiff4(const vector<const GridPoint*>& pts, int i, int j, double k, doubl
 	return (d1dx*d2dx+d1dy*d2dy)/modj;
 }
 
-shared_ptr<HMMath::LocMat> LaplasLocalMatrix4(const vector<const GridPoint*>& points){
-	assert(points.size() == 4);
+shared_ptr<HMMath::LocMat> LaplasLocalMatrix4(const HM2D::VertexData& points){
 	using namespace std::placeholders;
+	assert(points.size() == 4);
 	shared_ptr<HMMath::LocMat4Sym> ret(new HMMath::LocMat4Sym());
 	auto& I = *NumIntegration;
 	(*ret)[0] = I(std::bind(stiff4, points, 0, 0, _1, _2));
@@ -216,29 +216,29 @@ shared_ptr<HMMath::LocMat> LaplasLocalMatrix4(const vector<const GridPoint*>& po
 	return ret;
 }
 
-shared_ptr<HMMath::LocMat> DDxLocalMatrix4(const vector<const GridPoint*>& points){
+shared_ptr<HMMath::LocMat> DDxLocalMatrix4(const HM2D::VertexData& points){
 	_THROW_NOT_IMP_;
 }
-shared_ptr<HMMath::LocMat> DDyLocalMatrix4(const vector<const GridPoint*>& points){
+shared_ptr<HMMath::LocMat> DDyLocalMatrix4(const HM2D::VertexData& points){
 	_THROW_NOT_IMP_;
 }
-shared_ptr<HMMath::LocMat> FullMassLocalMatrix4(const vector<const GridPoint*>& points){
+shared_ptr<HMMath::LocMat> FullMassLocalMatrix4(const HM2D::VertexData& points){
 	_THROW_NOT_IMP_;
 }
 
-shared_ptr<HMMath::LocMat> LaplasLocalMatrix(const vector<const GridPoint*>& points){
+shared_ptr<HMMath::LocMat> LaplasLocalMatrix(const HM2D::VertexData& points){
 	if (points.size() == 3) return LaplasLocalMatrix3(points);
 	else return LaplasLocalMatrix4(points);
 }
-shared_ptr<HMMath::LocMat> FullMassLocalMatrix(const vector<const GridPoint*>& points){
+shared_ptr<HMMath::LocMat> FullMassLocalMatrix(const HM2D::VertexData& points){
 	if (points.size() == 3) return FullMassLocalMatrix3(points);
 	else return FullMassLocalMatrix4(points);
 }
-shared_ptr<HMMath::LocMat> DDxLocalMatrix(const vector<const GridPoint*>& points){
+shared_ptr<HMMath::LocMat> DDxLocalMatrix(const HM2D::VertexData& points){
 	if (points.size() == 3) return DDxLocalMatrix3(points);
 	else return DDxLocalMatrix4(points);
 }
-shared_ptr<HMMath::LocMat> DDyLocalMatrix(const vector<const GridPoint*>& points){
+shared_ptr<HMMath::LocMat> DDyLocalMatrix(const HM2D::VertexData& points){
 	if (points.size() == 3) return DDyLocalMatrix3(points);
 	else return DDyLocalMatrix4(points);
 }
@@ -249,38 +249,39 @@ shared_ptr<HMMath::LocMat> DDyLocalMatrix(const vector<const GridPoint*>& points
 // ============================== Global assembling
 namespace{
 
-shared_ptr<HMMath::Mat> GlobAssembly(const Grid43& grid, 
+shared_ptr<HMMath::Mat> GlobAssembly(const HM2D::GridData& grid, 
 		decltype(LaplasLocalMatrix)& fun){
+	aa::enumerate_ids_pvec(grid.vvert);
 	shared_ptr<HMMath::Mat> ret(new HMMath::Mat());
-	for (int i=0; i<grid.n_cells(); ++i){
-		vector<const GridPoint*> pp = grid.get_cell(i)->get_points();
+	for (int i=0; i<grid.vcells.size(); ++i){
+		HM2D::VertexData pp = HM2D::Contour::OrderedPoints(grid.vcells[i]->edges);
 		shared_ptr<HMMath::LocMat> A = fun(pp);
 		vector<int> pind(pp.size());
 		std::transform(pp.begin(), pp.end(), pind.begin(), 
-				[](const GridPoint* p){ return p->get_ind(); });
+				[](const shared_ptr<HM2D::Vertex>& p){ return p->id; });
 		A->ToMat(pind, *ret);
 	}
 	return ret;
 }
 
 }
-shared_ptr<HMMath::Mat> Assemble::PureLaplas(const Grid43& grid){
+shared_ptr<HMMath::Mat> Assemble::PureLaplas(const HM2D::GridData& grid){
 	return GlobAssembly(grid, LaplasLocalMatrix);
 }
 
-shared_ptr<HMMath::Mat> Assemble::FullMass(const Grid43& grid){
+shared_ptr<HMMath::Mat> Assemble::FullMass(const HM2D::GridData& grid){
 	return GlobAssembly(grid, FullMassLocalMatrix);
 }
 
-shared_ptr<HMMath::Mat> Assemble::DDx(const Grid43& grid){
+shared_ptr<HMMath::Mat> Assemble::DDx(const HM2D::GridData& grid){
 	return GlobAssembly(grid, DDxLocalMatrix);
 }
 
-shared_ptr<HMMath::Mat> Assemble::DDy(const Grid43& grid){
+shared_ptr<HMMath::Mat> Assemble::DDy(const HM2D::GridData& grid){
 	return GlobAssembly(grid, DDyLocalMatrix);
 }
 
-vector<double> Assemble::LumpMass(const Grid43& grid){
+vector<double> Assemble::LumpMass(const HM2D::GridData& grid){
 	shared_ptr<HMMath::Mat> m = FullMass(grid);
 	vector<double> tmp(m->rows(), 1.0);
 	vector<double> ret(m->rows(), 0.0);

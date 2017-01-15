@@ -12,6 +12,7 @@ enum class PartitionTp{
 };
 
 //step - step of partitioning
+//builds new edges, but all points which should be kept will present in resulting edges
 EdgeData Partition(double step, const EdgeData& contour, PartitionTp tp);
 EdgeData Partition(double step, const EdgeData& contour, const VertexData& keepit = {});
 

@@ -4,6 +4,10 @@
 #include "algos.hpp"
 #include "constructor.hpp"
 #include "treverter2d.hpp"
+#include "buildgrid.hpp"
+#include "cont_assembler.hpp"
+#include "healgrid.hpp"
+#include "finder2d.hpp"
 
 using namespace HMBlay::Impl;
 // =============================== Factory
@@ -19,14 +23,14 @@ shared_ptr<MConnector> MConnector::Build(CornerTp tp, MappedMesher* prev, Mapped
 	}
 }
 
-void MConnector::Add(shared_ptr<BGrid>& g, bool with_prev, bool with_next){
+void MConnector::Add(BGrid& g, bool with_prev, bool with_next){
 	//Simply adds cells. Imposition will be done in the postprocessing
 	//routine
-	if (with_prev) g->ShallowAdd(prev->result);
-	if (with_next) g->ShallowAdd(next->result);
+	if (with_prev) g.add_grid(prev->result);
+	if (with_next) g.add_grid(next->result);
 	//add connection grid if it exists
 	BGrid* cg = ConnectionGrid();
-	if (cg) g->ShallowAdd(*cg);
+	if (cg) g.add_grid(*cg);
 }
 
 // =============================== Plain
@@ -45,37 +49,34 @@ void AcuteConnector::BuildInternals(){
 	//it is used to fill acute corner.
 	//1) find two cells which contain corner point
 	Point pc = *HM2D::Contour::Last(prev->rect->BottomContour());
-	auto get_cell = [](BGrid& g, Point& pc)->const Cell*{
-		for (int i=0; i<g.n_cells(); ++i){
-			const Cell* c = g.get_cell(i);
-			for (int i=0; i<c->dim(); ++i){
-				if (*c->points[i] == pc) return c;
-			}
+	auto get_cell = [](BGrid& g, Point& pc)->const HM2D::Cell*{
+		for (auto& c: g.vcells)
+		for (auto& e: c->edges){
+			if (e->first().get() == &pc) return c.get();
+			if (e->last().get() == &pc) return c.get();
 		}
 		return 0;
 	};
-	const Cell* c1 = get_cell(prev->result, pc);
-	const Cell* c2 = get_cell(next->result, pc);
+	const HM2D::Cell* c1 = get_cell(prev->result, pc);
+	const HM2D::Cell* c2 = get_cell(next->result, pc);
 	if (c1 == 0 || c2 == 0) return;
 	//2) intersect
-	auto cc1 = Cell2Cont(c1), cc2 = Cell2Cont(c2);
-	auto icont = HM2D::Contour::Clip::Intersection(cc1, cc2);
+	auto icont = HM2D::Contour::Clip::Intersection(c1->edges, c2->edges);
 	HM2D::Contour::Clip::Heal(icont);
 	HM2D::Contour::R::RevertTree::Permanent(icont);
 	auto _av = HM2D::AllVertices(icont.alledges());
-	auto _fn = HM2D::FindClosestNode(_av, pc);
+	auto _fn = HM2D::Finder::ClosestPoint(_av, pc);
 	Point* pc2=_av[std::get<0>(_fn)].get();
 	//return if intersection was not found.
 	//Anyway we can safely proceed without this triangle
 	if (icont.nodes.size() != 1 || *pc2 != pc) return;
 	//3) get 3 points for a triangle
 	auto pc2info = HM2D::Contour::PInfo(icont.nodes[0]->contour, pc2);
-	std::array<Point*, 3> cl {pc2info.pprev.get(), pc2info.p.get(), pc2info.pnext.get()};
+	HM2D::VertexData cl {pc2info.pprev, pc2info.p, pc2info.pnext};
 	//4) build grid with one triangle
-	filler.reset(new BGrid());
-	GGeom::Modify::AddCell(*filler, {*cl[0], *cl[1], *cl[2]});
+	filler = BGrid::MoveFrom1(HM2D::Grid::Constructor::FromTab(cl, {{0, 1, 2}}));
 	//5) set highest priority
-	filler->weight[filler->get_cell(0)] = 0;
+	filler->weight[filler->vcells[0].get()] = 0;
 };
 
 namespace{
@@ -83,38 +84,22 @@ bool pntless(const Point* p1, const Point* p2){ return *p1 < *p2; }
 }
 void AcuteConnector::ModifyAdjacents(){
 	//point of intersection to grid point
-	auto crosses = HM2D::Contour::Algos::CrossAll(prev->rect->TopContour(),
+	auto crosses = HM2D::Contour::Finder::CrossAll(prev->rect->TopContour(),
 			next->rect->TopContour());
 	if (crosses.size() == 0) return;
-	auto prevcont = GGeom::Info::Contour1(prev->result);
-	auto nextcont = GGeom::Info::Contour1(next->result);
-	auto prevset1 = prev->result.get_bnd_points();
-	auto nextset1 = next->result.get_bnd_points();
-	typedef std::set<const Point*, bool(*)(const Point* p1, const Point* p2)> Tpset;
-	Tpset prevset2(prevset1.begin(), prevset1.end(), pntless);
-	Tpset nextset2(nextset1.begin(), nextset1.end(), pntless);
-	auto _pv = HM2D::AllVertices(prevcont);
-	auto _pn = HM2D::AllVertices(nextcont);
+	auto prevcont = HM2D::ECol::Assembler::GridBoundary(prev->result);
+	auto nextcont = HM2D::ECol::Assembler::GridBoundary(next->result);
+	auto prevcontv = HM2D::AllVertices(prevcont);
+	auto nextcontv = HM2D::AllVertices(nextcont);
 	for (auto c: crosses){
 		Point p = std::get<1>(c);
-		auto _f1 = HM2D::FindClosestNode(_pv, p);
-		auto _f2 = HM2D::FindClosestNode(_pn, p);
-		Point* p1 = _pv[std::get<0>(_f1)].get();
-		Point* p2 = _pn[std::get<0>(_f2)].get();
+		auto fp1 = HM2D::Finder::ClosestPoint(prevcontv, p);
+		auto fp2 = HM2D::Finder::ClosestPoint(nextcontv, p);
+		Point* p1 = prevcontv[std::get<0>(fp1)].get();
+		Point* p2 = nextcontv[std::get<0>(fp2)].get();
 		p = Point::Weigh(*p1, *p2, 0.5);
-		auto fnd1 = prevset2.find(p1);
-		auto fnd2 = nextset2.find(p2);
-		assert(fnd1 != prevset2.end() && fnd2 != nextset2.end());
-		GridPoint* gp1 = const_cast<GridPoint*>(static_cast<const GridPoint*>(*fnd1));
-		GridPoint* gp2 = const_cast<GridPoint*>(static_cast<const GridPoint*>(*fnd2));
-		prevset2.erase(fnd1);
-		nextset2.erase(fnd2);
-		gp1->set(p.x, p.y);
-		gp2->set(p.x, p.y);
 		p1->set(p.x, p.y);
 		p2->set(p.x, p.y);
-		prevset2.insert(gp1);
-		nextset2.insert(gp2);
 	}
 }
 
@@ -126,7 +111,7 @@ RightConnector::RightConnector(MappedMesher* _prev, MappedMesher* _next): MConne
 	HM2D::EdgeData next_top = next->rect->TopContour();
 	//first cross from start of next_top contour (essential)
 	std::tuple<bool, Point, double, double> cross =
-		HM2D::Contour::Algos::Cross(next_top, prev_top);
+		HM2D::Contour::Finder::Cross(next_top, prev_top);
 	assert(std::get<0>(cross));
 	//find crosspoint in conformal rectangle
 	Point pcross_prev = prev->rect->MapToSquare(std::get<1>(cross));
@@ -175,13 +160,13 @@ void RightConnector::BuildInternals() {
 	auto toppnt = HM2D::Contour::OrderedPoints(top);
 	for (int i=0; i<toppnt.size(); ++i){
 		int gridind = right.size()*toppnt.size() + i;
-		connection_grid->result.get_point(gridind)->set(*toppnt[i]);
+		connection_grid->result.vvert[gridind]->set(*toppnt[i]);
 	}
 	//2. right
 	auto rpnt = HM2D::Contour::OrderedPoints(right);
 	for (int i=0; i<rpnt.size(); ++i){
 		int gridind = i*(top.size()+1) + top.size();
-		connection_grid->result.get_point(gridind)->set(*rpnt[i]);
+		connection_grid->result.vvert[gridind]->set(*rpnt[i]);
 	}
 }
 
@@ -289,49 +274,56 @@ void RoundConnector::BuildInternals(){
 	for (auto& c: conts) allpts.push_back(HM2D::Contour::WeightPoints(c, w));
 
 	//build grid points from geometric points
-	vector<ShpVector<GridPoint>> pallpts(allpts.size());
+	vector<ShpVector<HM2D::Vertex>> pallpts(allpts.size());
 	for (int i=0; i<allpts.size(); ++i){
 		pallpts[i].resize(allpts[i].size());
 		for (int j=0; j<allpts[i].size(); ++j)
-			pallpts[i][j].reset(new GridPoint(allpts[i][j]));
+			pallpts[i][j].reset(new HM2D::Vertex(allpts[i][j]));
 		
 	}
-	shared_ptr<GridPoint> cpoint(new GridPoint(cp));
+	shared_ptr<HM2D::Vertex> cpoint(new HM2D::Vertex(cp));
 
 	//assemble procedure
 	AssembleGrid(pallpts, cpoint);
 }
 
-void RoundConnector::AssembleGrid(vector<ShpVector<GridPoint>>& pallpts, shared_ptr<GridPoint> cpoint){
+void RoundConnector::AssembleGrid(vector<HM2D::VertexData>& pallpts, shared_ptr<HM2D::Vertex> cpoint){
 	//assemble grid
-	filler.reset(new BGrid());
-	for (auto& c: pallpts) filler->ShallowAddNodes(c);
 	shared_ptr<int> feat(new int);
+	HM2D::VertexData ap;
+	for (auto& c: pallpts) ap.insert(ap.end(), c.begin(), c.end());
+	ap.push_back(cpoint);
+	aa::enumerate_ids_pvec(ap);
+	vector<vector<int>> cell_vert;
+	vector<int> cell_weights;
+	vector<shared_ptr<int>> cell_feat;
 	//rectangular cells
 	for (int i=0; i<pallpts.size()-1; ++i){
 		auto& pts1 = pallpts[i];
 		auto& pts2 = pallpts[i+1];
 		for (int j=0; j<pts1.size()-1; ++j){
-			shared_ptr<Cell> cell(new Cell);
-			cell->points.push_back(pts1[j].get());
-			cell->points.push_back(pts1[j+1].get());
-			cell->points.push_back(pts2[j+1].get());
-			cell->points.push_back(pts2[j].get());
-			filler->ShallowAddCell(cell);
-			filler->weight[cell.get()] = i+2;
-			filler->source_feat[cell.get()] = feat;
+			cell_vert.emplace_back();
+			cell_vert.back().push_back(pts1[j]->id);
+			cell_vert.back().push_back(pts1[j+1]->id);
+			cell_vert.back().push_back(pts2[j+1]->id);
+			cell_vert.back().push_back(pts2[j]->id);
+			cell_weights.push_back(i+2);
+			cell_feat.push_back(feat);
 		}
 	}
 	//triangle cells
-	filler->ShallowAddNode(cpoint);
 	for (int j=0; j<pallpts[0].size()-1; ++j){
-		shared_ptr<Cell> cell(new Cell);
-		cell->points.push_back(cpoint.get());
-		cell->points.push_back(pallpts[0][j].get());
-		cell->points.push_back(pallpts[0][j+1].get());
-		filler->ShallowAddCell(cell);
-		filler->weight[cell.get()] = 1;
-		filler->source_feat[cell.get()] = feat;
+		cell_vert.emplace_back();
+		cell_vert.back().push_back(ap.back()->id);
+		cell_vert.back().push_back(pallpts[0][j]->id);
+		cell_vert.back().push_back(pallpts[0][j+1]->id);
+		cell_weights.push_back(1);
+		cell_feat.push_back(feat);
 	}
-	GGeom::Repair::Heal(*filler);
+	filler = BGrid::MoveFrom1(HM2D::Grid::Constructor::FromTab(ap, cell_vert));
+	for (int i=0; i<filler->vcells.size(); ++i){
+		filler->weight.emplace(filler->vcells[i].get(), cell_weights[i]);
+		filler->source_feat.emplace(filler->vcells[i].get(), cell_feat[i]);
+	}
+	HM2D::Grid::Algos::Heal(*filler);
 }

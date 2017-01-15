@@ -146,7 +146,7 @@ Grid* cross_grids_wcb(Grid* gbase, Grid* gsecondary, double buffer_size,
 		int preserve_bp, int empty_holes, double angle0, int algo, hmcport_callback cb_fun);
 
 // === NewGrid = Grid exclude Contour Area
-// grd - GridGeom pointer,
+// grd - HM2D::GridData pointer,
 // cont - HMCont2D::ECollection pointer
 //with callback defined globally
 Grid* grid_exclude_cont(Grid* grd, void* cont, int is_inner);

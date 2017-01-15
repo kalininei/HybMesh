@@ -3,7 +3,7 @@
 #include "debug3d.hpp"
 #include "stdarg.h"
 #include <fstream>
-#include "vtk_export3d.hpp"
+#include "export3d_vtk.hpp"
 
 using namespace HM3D;
 

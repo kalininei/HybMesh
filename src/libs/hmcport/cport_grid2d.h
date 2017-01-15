@@ -38,7 +38,7 @@ int export_tecplot_grid(const Grid* grid, const char* fname,
 //tfi_hermite_w: dx weights for left, bot, right, top.
 //   dx=1 => normal connection, dx=0 => linear connection
 //if input are not positioned correctly their vertices coordinates will be changed
-//returns pointer to GridGeom or NULL if failed
+//returns pointer to HM2D::GridData or NULL if failed
 void* custom_rectangular_grid(int algo, void* left, void* bot,
 		void* right, void* top, double* tfi_hermite_w, int return_invalid, hmcport_callback cb_fun);
 
@@ -64,7 +64,7 @@ Grid* circ4grid(int algo, double* center, double rad, double step, double sqrsid
 // emb - set of data in [x1, y2, size2, x2, y2, size2, ...] representing embedded points
 //algo = 0 -> triangulation
 //algo = 1 -> quadrangulation
-//returns pointer to GridGeom or NULL if failed
+//returns pointer to HM2D::GridData or NULL if failed
 void* triangulate_domain(void* domain, void* constr, int nemb, double* emb, int algo);
 
 void* pebi_fill(void* domain, void* constr, int nemb, double* emb);

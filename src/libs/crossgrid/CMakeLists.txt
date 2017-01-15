@@ -1,38 +1,26 @@
 #library file
 set (HEADERS
-	crossgrid.h
-	grid.h
-	trigrid.h
-	buffergrid.h
-	wireframegrid.h
-	contours.h
-	intrusion.h
-	procgrid.h
-	debug_grid2d.h
-	pebi.h
-	vtk_export_grid2d.hpp
-	fluent_export_grid2d.hpp
-	tecplot_export_grid2d.hpp
-	hmg_export_grid2d.hpp
-	hmg_import_grid2d.hpp
+	unite_grids.hpp
+	buffergrid.hpp
+	buildgrid.hpp
+	trigrid.hpp
+	pebi.hpp
+	healgrid.hpp
+	modgrid.hpp
+	infogrid.hpp
+	wireframegrid.hpp
 )
 
 set (SOURCES
-	crossgrid.cpp
-	grid.cpp
-	trigrid.cpp
+	unite_grids.cpp
 	buffergrid.cpp
-	wireframegrid.cpp
-	contours.cpp
-	intrusion.cpp
-	procgrid.cpp
-	debug_grid2d.cpp
+	buildgrid.cpp
+	trigrid.cpp
 	pebi.cpp
-	vtk_export_grid2d.cpp
-	fluent_export_grid2d.cpp
-	tecplot_export_grid2d.cpp
-	hmg_export_grid2d.cpp
-	hmg_import_grid2d.cpp
+	healgrid.cpp
+	modgrid.cpp
+	infogrid.cpp
+	wireframegrid.cpp
 )
 
 source_group ("Header Files" FILES ${HEADERS} ${HEADERS})
@@ -44,12 +32,14 @@ add_library(${CROSSGRID_TARGET} SHARED ${HEADERS} ${SOURCES})
 target_link_libraries(${CROSSGRID_TARGET} ${GMSH_TARGET})
 target_link_libraries(${CROSSGRID_TARGET} ${HMPROJECT_TARGET})
 target_link_libraries(${CROSSGRID_TARGET} ${BGEOM2D_TARGET})
+target_link_libraries(${CROSSGRID_TARGET} ${HMMATH_TARGET})
 target_link_libraries(${CROSSGRID_TARGET} ${HYBMESH_CONTOURS2D_TARGET})
 
 include_directories(${GMSH_INCLUDE})
 include_directories(${HMPROJECT_INCLUDE})
 include_directories(${BGEOM2D_INCLUDE})
 include_directories(${HYBMESH_CONTOURS2D_INCLUDE})
+include_directories(${HMMATH_INCLUDE})
 
 install(TARGETS ${CROSSGRID_TARGET}
 	RUNTIME DESTINATION ${LIB_INSTALL_DIR}

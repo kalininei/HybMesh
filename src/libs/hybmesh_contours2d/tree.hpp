@@ -15,6 +15,7 @@ struct Tree{
 
 		TNode():level(0){}
 		TNode(const EdgeData& s, int level=0): contour(s), level(level){}
+		TNode(EdgeData&& s, int level=0): contour(std::move(s)), level(level){}
 		bool isdetached(){ return level<0; }
 		bool isbound(){ return level>=0; }
 	};
@@ -31,6 +32,9 @@ struct Tree{
 	//builders
 	void add_contour(const EdgeData& cont);
 	void add_detached_contour(const EdgeData& cont);
+	void add_contour(EdgeData&& cont);
+	void add_detached_contour(EdgeData&& cont);
+
 	//using node->parents calculate children and nesting level
 	void update_topology();
 	void remove_detached();
@@ -41,12 +45,21 @@ struct Tree{
 
 	//assemble procedure: returned tree uses edges of data
 	static Tree Assemble(const EdgeData& data);
+	static Tree GridBoundary(const GridData& data);
+	//first node of each returning entry is a single root contour.
+	//all others are its children
+	static vector<Tree> GridBoundary01(const GridData& data);
+
+	//returns vector of trees each of which contains single root node
+	//and its children.
+	static vector<Tree> CropLevel01(const Tree& data);
 
 	//lv = 3 => deepcopy all primitives
 	//lv = 2 => leave vertices (realloc tnodes and edges)
 	//lv = 1 => leave vertices and edges (realloc tnodes)
 	//lv = 0 => leave everything: vertices, edges and tnodes
 	static Tree DeepCopy(const Tree& from, int level=3);
+
 };
 
 

@@ -1,4 +1,5 @@
 #include "contour.hpp"
+#include "finder2d.hpp"
 using namespace HM2D;
 using namespace HM2D::Contour;
 namespace hc = HM2D::Contour;
@@ -172,7 +173,7 @@ vector<PInfoR> Contour::OrderedInfo(const EdgeData& ed){
 
 std::tuple<double, double, int, double, double>
 hc::CoordAt(const EdgeData& cont, const Point& p){
-	auto fnd = FindClosestEdge(cont, p);
+	auto fnd = HM2D::Finder::ClosestEdge(cont, p);
 	int ind = std::get<0>(fnd);
 	assert(ind >= 0);
 	auto lens = ELengths(cont);
@@ -192,42 +193,6 @@ void hc::Reverse(EdgeData& ed){ std::reverse(ed.begin(), ed.end()); }
 void Contour::AddLastPoint(EdgeData& to, std::shared_ptr<Vertex> p){
 	auto p0 = Last(to);
 	to.push_back(std::make_shared<Edge>(p0, p));
-}
-
-int Contour::WhereIs(const EdgeData& ed, const Point& p){
-	//whereis for contour trees uses this routine
-	//passing all tree edges as 'ed'.
-	//Hence 'ed' is not always a closed contour.
-	//assert(IsClosed(ed));
-	auto bbox = BBox(ed, 0);
-	if (bbox.whereis(p) == OUTSIDE) return OUTSIDE;
-
-	//calculate number of crosses between ed and [p, pout]
-	//where pout is random outside point
-	Point pout(bbox.xmax + 1.56749, bbox.ymax + 1.06574);
-
-	for (int tries=0; tries<100; ++tries){
-		double ksieta[2];
-		int ncrosses = 0;
-		for (auto& e: ed){
-			SectCross(p, pout, *e->first(), *e->last(), ksieta);
-			if (ISIN_NN(ksieta[0], 0, 1) && ISIN_NN(ksieta[1], 0, 1)){
-				++ncrosses;
-			} else if (ISEQ(ksieta[0], 0) && ISIN_EE(ksieta[1], 0, 1)){
-			       return BOUND;
-			} else if (ISEQ(ksieta[1], 0) || ISEQ(ksieta[1], 1)){
-				//[p, pout] crosses one of ed vertices.
-				//This is ambiguous so we change pout and try again
-				goto NEXTTRY;
-			}
-		}
-		if (ncrosses % 2 == 0) return OUTSIDE;
-		else return INSIDE;
-NEXTTRY:
-		pout+=Point(-0.4483, 0.0342);
-	}
-
-	throw std::runtime_error("failed to detect point-contour relation");
 }
 
 namespace {
@@ -325,7 +290,7 @@ std::tuple<bool, shared_ptr<Vertex>>
 Contour::GuaranteePoint(EdgeData& ed, const Point& p){
 	std::tuple<bool, shared_ptr<Vertex>> ret;
 
-	auto ce = FindClosestEdge(ed, p);
+	auto ce = HM2D::Finder::ClosestEdge(ed, p);
 	if (std::get<0>(ce)<0){
 		std::get<0>(ret) = false;
 		return ret;
@@ -431,20 +396,24 @@ void hc::Connect(EdgeData& to, const EdgeData& from){
 	else if (self0 == target0) goto NEED_REVERSE;
 	else goto THROW;
 
-	COPY03:{
+COPY03:
+	{
 		to.insert(to.begin(), from.begin(), from.end());
 		return;
 	}
-	COPY12:{
+COPY12:
+	{
 		to.insert(to.end(), from.begin(), from.end());
 		return;
 	}
-	NEED_REVERSE:{
+NEED_REVERSE:
+	{
 		EdgeData tmp(from);
 		Reverse(tmp);
 		return Connect(to, tmp);
 	}
-	THROW:{
+THROW:
+	{
 		throw std::runtime_error("Impossible to unite non-connected contours");
 	}
 }

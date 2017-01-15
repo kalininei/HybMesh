@@ -3,6 +3,7 @@
 #include "cont_partition.hpp"
 #include "cont_assembler.hpp"
 #include "treverter2d.hpp"
+#include "finder2d.hpp"
 
 using namespace HMBlay::Impl;
 
@@ -100,15 +101,15 @@ void Options::Initialize(){
 		pnt_end = std::get<1>(HM2D::Contour::GuaranteePoint(*edges, end)).get();
 	} else {
 		auto av = HM2D::AllVertices(*edges);
-		auto fnd1 = HM2D::FindClosestNode(av, start);
-		auto fnd2 = HM2D::FindClosestNode(av, end);
+		auto fnd1 = HM2D::Finder::ClosestPoint(av, start);
+		auto fnd2 = HM2D::Finder::ClosestPoint(av, end);
 		pnt_start = av[std::get<0>(fnd1)].get();
 		pnt_end = av[std::get<0>(fnd2)].get();
 	}
 	/*
 	auto av = HM2D::AllVertices(*edges);
-	auto fnd1 = HM2D::FindClosestNode(av, start);
-	auto fnd2 = HM2D::FindClosestNode(av, end);
+	auto fnd1 = HM2D::Finder::ClosestPoint(av, start);
+	auto fnd2 = HM2D::Finder::ClosestPoint(av, end);
 	pnt_start = av[std::get<0>(fnd1)].get();
 	pnt_end = av[std::get<0>(fnd2)].get();
 
@@ -117,7 +118,7 @@ void Options::Initialize(){
 	//of these points (only for open contours)
 	if (start != end){
 		auto split_edge = [&](Point psplit)->Point*{
-			auto ce = HM2D::FindClosestEdge(*__edges_data, psplit);
+			auto ce = HM2D::Finder::ClosestEdge(*__edges_data, psplit);
 			assert(std::get<0>(ce)!=0);
 			HM2D::Edge* eold = (*__edges_data)[std::get<0>(ce)].get();
 			if (ISZERO(std::get<2>(ce))) return  eold->first().get();
@@ -152,7 +153,7 @@ void Options::Initialize(){
 			HM2D::Contour::R::ReallyDirect::Permanent(full_source);
 		}
 	}
-	assert(HM2D::Contains(full_source, pnt_end));
+	assert(HM2D::Finder::Contains(full_source, pnt_end));
 	//place Start/End points to contour if necessary
 	if (!(start==end && HM2D::Contour::IsClosed(full_source))){
 		//throw if points coincide

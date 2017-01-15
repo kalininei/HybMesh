@@ -1,7 +1,7 @@
 #ifndef HMMAPPING_CIRCRECT_HPP
 #define HMMAPPING_CIRCRECT_HPP
 
-#include "grid.h"
+#include "primitives2d.hpp"
 
 namespace HMMap{
 
@@ -12,7 +12,7 @@ namespace HMMap{
 //hcoef = 1 gives square cells
 //hcoef < 1 gives refinement towards outer boundary
 //algos : "linear", "laplace", "orthogonal-circ", "orthogonal-rect"
-GridGeom Circ4Prototype(Point center, double rad, int n, std::string algo,
+HM2D::GridData Circ4Prototype(Point center, double rad, int n, std::string algo,
 	double a=1.0, double hcoef=1.0);
 }
 

@@ -3,7 +3,9 @@
 #include "contour.hpp"
 #include "tree.hpp"
 
-namespace HM2D{ namespace Contour{ namespace R{
+namespace HM2D{
+	
+namespace Contour{ namespace R{
 
 //this reverses edges and
 //forces correct direction of points within edges
@@ -14,8 +16,6 @@ class ReallyRevert{
 public:
 	//delete default constructors to avoid premature reversion.
 	ReallyRevert(const ReallyRevert&) = delete;
-	ReallyRevert(ReallyRevert&&) = delete;
-	ReallyRevert& operator=(const ReallyRevert&) = delete;
 
 	ReallyRevert(const EdgeData& ed);
 	~ReallyRevert();
@@ -35,8 +35,6 @@ class ReallyDirect{
 public:
 	//delete default constructors to avoid premature reversion.
 	ReallyDirect(const ReallyDirect&) = delete;
-	ReallyDirect(ReallyDirect&&) = delete;
-	ReallyDirect& operator=(const ReallyDirect&) = delete;
 
 	ReallyDirect(const EdgeData& ed);
 	~ReallyDirect();
@@ -60,8 +58,6 @@ class ForceFirst{
 public:
 	//delete default constructors to avoid premature reversion.
 	ForceFirst(const ForceFirst&) = delete;
-	ForceFirst(ForceFirst&&) = delete;
-	ForceFirst& operator=(const ForceFirst&) = delete;
 
 	ForceFirst(const EdgeData& ed, Point p0);
 	~ForceFirst();
@@ -79,14 +75,12 @@ public:
 };
 
 //forces clockwise or counterclockwise direction of closed contour
-//makes real edges reversions
+//for open contours makes direct reverse
 class Clockwise{
 	std::unique_ptr<ReallyDirect> really_direct;
 	std::unique_ptr<ReallyRevert> really_revert;
 public:
 	Clockwise(const Clockwise&) = delete;
-	Clockwise(Clockwise&&) = delete;
-	Clockwise& operator=(const Clockwise&) = delete;
 
 	//direct = true -> clockwise;
 	//direct = false -> counterclockwise
@@ -111,8 +105,6 @@ class RevertTree{
 	std::list<std::unique_ptr<ReallyDirect>> really_direct;
 public:
 	RevertTree(const RevertTree&) = delete;
-	RevertTree(RevertTree&&) = delete;
-	RevertTree& operator=(const RevertTree&) = delete;
 
 	RevertTree(const Tree& tree);
 	~RevertTree(){}
@@ -127,6 +119,27 @@ public:
 		r.make_permanent();
 	}
 
+};
+
+//all edges which has single cell connection will be
+//reverted so that it is a left cell
+class LeftCells{
+	vector<int> reverted_edges_inds;
+	EdgeData* obj;
+public:
+	LeftCells(const LeftCells&) = delete;
+
+	LeftCells(const EdgeData& ed);
+	~LeftCells();
+
+	void make_permanent(){
+		reverted_edges_inds.clear();
+	}
+
+	static void Permanent(EdgeData& ed){
+		LeftCells r(ed);
+		r.make_permanent();
+	}
 };
 
 }}}

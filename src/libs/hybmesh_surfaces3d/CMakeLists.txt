@@ -6,12 +6,13 @@ set (HEADERS
 	surface_tree.hpp
 	serialize3d.hpp
 	treverter3d.hpp
-	fluent_export3d.hpp
-	vtk_export3d.hpp
-	gmsh_export3d.hpp
-	tecplot_export3d.hpp
-	hmg_export3d.hpp
-	hmg_import3d.hpp
+	
+	export3d_fluent.hpp
+	export3d_vtk.hpp
+	export3d_gmsh.hpp
+	export3d_tecplot.hpp
+	export3d_hm.hpp
+	import3d_hm.hpp
 )
 
 set (SOURCES
@@ -22,12 +23,13 @@ set (SOURCES
 	surface_tree.cpp
 	serialize3d.cpp
 	treverter3d.cpp
-	fluent_export3d.cpp
-	vtk_export3d.cpp
-	gmsh_export3d.cpp
-	tecplot_export3d.cpp
-	hmg_export3d.cpp
-	hmg_import3d.cpp
+
+	export3d_fluent.cpp
+	export3d_vtk.cpp
+	export3d_gmsh.cpp
+	export3d_tecplot.cpp
+	export3d_hm.cpp
+	import3d_hm.cpp
 )
 
 source_group ("Header Files" FILES ${HEADERS} ${HEADERS})

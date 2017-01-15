@@ -358,14 +358,34 @@ std::vector<C*> shvec_to_pvec(const std::vector<std::shared_ptr<C>>& inp){
 	return ret;
 }
 
-// ============ procedures for vector<A*> where A has mutable id attribute
+// ============ procedures for container<A*> where A has mutable id attribute
 template<class C>
 void enumerate_ids_pvec(const C& inp){
-	for (int i=0; i<inp.size(); ++i) inp[i]->id = i;
+	int i=0;
+	for (auto& it: inp) it->id = i++;
 }
 template<class C>
 void constant_ids_pvec(const C& inp, int val){
-	for (int i=0; i<inp.size(); ++i) inp[i]->id = val;
+	for (auto& it: inp) it->id = val;
+}
+template<class C>
+std::vector<int> get_ids(const C& inp){
+	std::vector<int> ret(inp.size());
+	int i=0;
+	for (auto& it: inp) ret[i++] = it->id;
+	return ret;
+}
+template<class C>
+void remove_by_id(C& inp, int id){
+	auto a = std::remove_if(inp.begin(), inp.end(),
+		[&id](const typename C::value_type& x){ return x->id == id; });
+	inp.resize(std::distance(a, inp.begin()));
+}
+template<class C>
+void keep_by_id(C& inp, int id){
+	auto a = std::remove_if(inp.begin(), inp.end(),
+		[&id](const typename C::value_type& x){ return x->id != id; });
+	inp.resize(std::distance(a, inp.begin()));
 }
 //class which keeps enumeration of *Data
 //and places it back on delete
@@ -393,7 +413,6 @@ struct RestoreIds{
 			for (int i=0; i<ids.size(); ++i) _deepdata[i]->id = ids[i];
 	}
 };
-
 
 
 }//namespace

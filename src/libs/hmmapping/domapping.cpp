@@ -1,16 +1,17 @@
 #include "domapping.hpp"
 #include "femassembly.hpp"
 #include "hmtimer.hpp"
-#include "debug_grid2d.h"
 #include "cont_assembler.hpp"
 #include "algos.hpp"
+#include "treverter2d.hpp"
+#include "healgrid.hpp"
+#include "finder2d.hpp"
 
 using namespace HMMap::Impl;
 
 // ========================== General DoMapping
-void DoMapping::set_grid(const GridGeom& ig){
-	GGeom::Modify::ClearAll(inpgrid);
-	GGeom::Modify::ShallowAdd(&ig, &inpgrid);
+void DoMapping::set_grid(const HM2D::GridData& ig){
+	inpgrid = ig;
 }
 void DoMapping::set_contour(const HM2D::EdgeData& ecol){
 	contdata = ecol;
@@ -19,7 +20,7 @@ void DoMapping::set_points(const vector<Point>& gridpnt, const vector<Point>& co
 	gridpoints = gridpnt;
 	contpoints = contpnt;
 }
-GridGeom DoMapping::run(HMCallback::Caller2& cb){
+HM2D::GridData DoMapping::run(HMCallback::Caller2& cb){
 	//build solution area
 	cb.step_after(5, "Boundary mapping");
 	prepare_mapped_contour();
@@ -28,7 +29,7 @@ GridGeom DoMapping::run(HMCallback::Caller2& cb){
 	prepare_grid();
 	//assemble fem problem
 	cb.step_after(15, "FEM assembling");
-	laplace.reset(new HMFem::LaplasProblem(g3));
+	laplace.reset(new HMFem::LaplasProblem(*g3));
 
 	//solve direct problems
 	//resulting u, v are functions defined in g3 at mapped_outer domain
@@ -38,14 +39,17 @@ GridGeom DoMapping::run(HMCallback::Caller2& cb){
 
 	//construct a resulting grid
 	cb.step_after(5, "Grid building");
-	GridGeom ret = GGeom::Constructor::DeepCopy(inpgrid);
+	HM2D::GridData ret;
+	HM2D::DeepCopy(inpgrid, ret);
 	//receive boundary points
-	vector<bool> is_boundary(ret.n_points(), false);
-	for (auto p: ret.get_bnd_points()) is_boundary[p->get_ind()] = true;
-	auto approx = g3->GetApprox();
+	vector<bool> is_boundary(ret.vvert.size(), false);
+	auto bp = AllVertices(HM2D::ECol::Assembler::GridBoundary(ret));
+	aa::enumerate_ids_pvec(ret.vvert);
+	for (auto p: bp) is_boundary[p->id] = true;
+	auto approx = std::make_shared<HMFem::Grid43::Approximator>(g3.get());
 	//do mappings
-	for (int i=0; i<ret.n_points(); ++i){
-		GridPoint* p = ret.get_point(i);
+	for (int i=0; i<ret.vvert.size(); ++i){
+		HM2D::Vertex* p = ret.vvert[i].get();
 		if (is_boundary[i]){
 			p->set(mcol.map_from_base(*p));
 		} else {
@@ -57,24 +61,19 @@ GridGeom DoMapping::run(HMCallback::Caller2& cb){
 
 	cb.step_after(5, "Check grid");
 	if (mcol.is_reversed()){
-		GGeom::Modify::CellModify(ret, [](Cell* c){
-				std::reverse(c->points.begin(), c->points.end());
-		});
+		for (auto e: ret.vedges) std::swap(e->left, e->right);
+		for (auto c: ret.vcells) HM2D::Contour::Reverse(c->edges);
 	}
-	if (!GGeom::Info::Check(ret)) throw HMMap::EInvalidGrid(std::move(ret));
+	if (!HM2D::Grid::Algos::Check(ret)) throw HMMap::EInvalidGrid(std::move(ret));
 
 	cb.step_after(5, "Snapping");
 	//snapping 
-	//for (auto p: ret.get_bnd_points()){
-	//        Point p2 = HM2D::EdgeData::ClosestPoint(mapped_outer, *p);
-	//        const_cast<GridPoint*>(p)->set(p2.x, p2.y);
-	//}
 	if (opt.snap == "ADD_VERTICES"){
 		for (auto& n: mapped_outer.nodes)
-			GGeom::Modify::SnapToContour(ret, n->contour, {});
+			HM2D::Grid::Algos::SnapToContour(ret, n->contour, {});
 	} else if (opt.snap == "SHIFT_VERTICES"){
 		for (auto& n: mapped_outer.nodes)
-			GGeom::Modify::ShiftToContour(ret, n->contour, {});
+			HM2D::Grid::Algos::ShiftToContour(ret, n->contour, {});
 	} else if (opt.snap != "NO"){
 		throw HMMap::MapException(std::string("Unknown snapping option - ") + opt.snap);
 	}
@@ -86,10 +85,10 @@ void DoMapping::prepare_mapped_contour(){
 	//get contours which contains given points
 	std::set<HM2D::EdgeData*> included_conts;
 	for (auto p: contpoints){
-		auto eres = HM2D::FindClosestEdge(contdata, p);
+		auto eres = HM2D::Finder::ClosestEdge(contdata, p);
 		HM2D::Edge* e = contdata[std::get<0>(eres)].get();
 		for (auto& c: allconts){
-			if (HM2D::Contains(c, e)){
+			if (HM2D::Finder::Contains(c, e)){
 				included_conts.insert(&c);
 				break;
 			}
@@ -104,14 +103,15 @@ void DoMapping::prepare_mapped_contour(){
 	mapped_outer = HM2D::Contour::Algos::Simplified(mapped_outer);
 
 	//input grid contour
-	inpgrid_outer = HM2D::Contour::Algos::Simplified(GGeom::Info::Contour(inpgrid));
+	inpgrid_outer = HM2D::Contour::Algos::Simplified(
+		HM2D::Contour::Tree::GridBoundary(inpgrid));
 
 	//build boundary mapping
 	build_mcc();
 }
 void DoMapping::prepare_grid(){
 	build_grid3();
-	g3outer = GGeom::Info::Contour(*g3);
+	g3outer = HM2D::Contour::Tree::GridBoundary(*g3);
 }
 void DoMapping::build_mcc(){
 	//mapping inpgrid_outer to mapped_outer
@@ -122,8 +122,8 @@ void DoMapping::build_mcc(){
 		Point p2 = contpoints[i];
 		auto _e1 = inpgrid_outer.alledges();
 		auto _e2 = mapped_outer.alledges();
-		int ie1 = std::get<0>(HM2D::FindClosestEdge(_e1, p1));
-		int ie2 = std::get<0>(HM2D::FindClosestEdge(_e2, p2));
+		int ie1 = std::get<0>(HM2D::Finder::ClosestEdge(_e1, p1));
+		int ie2 = std::get<0>(HM2D::Finder::ClosestEdge(_e2, p2));
 		HM2D::Edge* e1 = _e1[ie1].get();
 		HM2D::Edge* e2 = _e2[ie2].get();
 		HM2D::EdgeData* c1 = &inpgrid_outer.find_node(e1)->contour;
@@ -158,23 +158,23 @@ void DirectMapping::build_grid3(){
 			HM2D::Contour::GuaranteePoint(*copied_base_contour, pbase);
 		}
 	}
-	g3.reset(new HMFem::Grid43(
-		HMFem::AuxGrid3(inpgrid2, opt.fem_nrec, opt.fem_nmax)));
+	g3 = std::make_shared<HM2D::GridData>(
+		HMFem::AuxGrid3(inpgrid2, opt.fem_nrec, opt.fem_nmax));
 }
 void DirectMapping::solve_uv_problems(vector<double>& u, vector<double>& v){
-	u.resize(g3->n_points(), 0.0);
-	v.resize(g3->n_points(), 0.0);
+	u.resize(g3->vvert.size(), 0.0);
+	v.resize(g3->vvert.size(), 0.0);
 	HM2D::EdgeData eouter = inpgrid_outer.alledges();
 
 	// u - problem
 	laplace->ClearBC();
 	for (auto n: g3outer.nodes){
-		int ei = std::get<0>(HM2D::FindClosestEdge(eouter, *HM2D::Contour::First(n->contour)));
+		int ei = std::get<0>(HM2D::Finder::ClosestEdge(eouter, *HM2D::Contour::First(n->contour)));
 		HM2D::Edge* e = eouter[ei].get();
 		HM2D::EdgeData* c = &inpgrid_outer.find_node(e)->contour;
 		auto cmapping = mcol.find_by_base(c);
 		assert(cmapping != nullptr);
-		auto dirfunc = [cmapping](const GridPoint* p)->double{
+		auto dirfunc = [cmapping](const HM2D::Vertex* p)->double{
 			return cmapping->map_from_base(*p).x;
 		};
 		laplace->SetDirichlet(n->contour, dirfunc);
@@ -184,12 +184,12 @@ void DirectMapping::solve_uv_problems(vector<double>& u, vector<double>& v){
 	// v - problem
 	laplace->ClearBC();
 	for (auto n: g3outer.nodes){
-		int ei = std::get<0>(HM2D::FindClosestEdge(eouter, *HM2D::Contour::First(n->contour)));
+		int ei = std::get<0>(HM2D::Finder::ClosestEdge(eouter, *HM2D::Contour::First(n->contour)));
 		HM2D::Edge* e = eouter[ei].get();
 		HM2D::EdgeData* c = &inpgrid_outer.find_node(e)->contour;
 		auto cmapping = mcol.find_by_base(c);
 		assert(cmapping != nullptr);
-		auto dirfunc = [cmapping](const GridPoint* p)->double{
+		auto dirfunc = [cmapping](const HM2D::Vertex* p)->double{
 			return cmapping->map_from_base(*p).y;
 		};
 		laplace->SetDirichlet(n->contour, dirfunc);
@@ -223,23 +223,23 @@ void InverseMapping::build_grid3(){
 	}
 	
 	//build grid
-	g3.reset(new HMFem::Grid43(
-		HMFem::AuxGrid3(mapped2, opt.fem_nrec, opt.fem_nmax)));
+	g3 = std::make_shared<HM2D::GridData>(
+		HMFem::AuxGrid3(mapped2, opt.fem_nrec, opt.fem_nmax));
 }
 
 void InverseMapping::solve_uv_problems(vector<double>& u, vector<double>& v){
-	u.resize(g3->n_points(), 0.0);
-	v.resize(g3->n_points(), 0.0);
+	u.resize(g3->vvert.size(), 0.0);
+	v.resize(g3->vvert.size(), 0.0);
 	HM2D::EdgeData eouter = mapped_outer.alledges();
 
 	//u problem
 	for (auto n: g3outer.nodes){
-		int ei = std::get<0>(HM2D::FindClosestEdge(eouter, *HM2D::Contour::First(n->contour)));
+		int ei = std::get<0>(HM2D::Finder::ClosestEdge(eouter, *HM2D::Contour::First(n->contour)));
 		HM2D::Edge* e = eouter[ei].get();
 		HM2D::EdgeData* c = &mapped_outer.find_node(e)->contour;
 		auto cmapping = mcol.find_by_mapped(c);
 		assert(cmapping != 0);
-		auto dirfunc = [cmapping](const GridPoint* p)->double{
+		auto dirfunc = [cmapping](const HM2D::Vertex* p)->double{
 			return cmapping->map_from_mapped(*p).x;
 		};
 		laplace->SetDirichlet(n->contour, dirfunc);
@@ -249,12 +249,12 @@ void InverseMapping::solve_uv_problems(vector<double>& u, vector<double>& v){
 	//v problem
 	laplace->ClearBC();
 	for (auto n: g3outer.nodes){
-		int ei = std::get<0>(HM2D::FindClosestEdge(eouter, *HM2D::Contour::First(n->contour)));
+		int ei = std::get<0>(HM2D::Finder::ClosestEdge(eouter, *HM2D::Contour::First(n->contour)));
 		HM2D::Edge* e = eouter[ei].get();
 		HM2D::EdgeData* c = &mapped_outer.find_node(e)->contour;
 		auto cmapping = mcol.find_by_mapped(c);
 		assert(cmapping != 0);
-		auto dirfunc = [cmapping](const GridPoint* p)->double{
+		auto dirfunc = [cmapping](const HM2D::Vertex* p)->double{
 			return cmapping->map_from_mapped(*p).y;
 		};
 		laplace->SetDirichlet(n->contour, dirfunc);
@@ -263,9 +263,8 @@ void InverseMapping::solve_uv_problems(vector<double>& u, vector<double>& v){
 
 	
 	//swap g3 coordinates and uv
-	auto modfun = [&u, &v](GridPoint* p){
-		std::swap(p->x, u[p->get_ind()]);
-		std::swap(p->y, v[p->get_ind()]);
-	};
-	GGeom::Modify::PointModify(*g3, modfun);
+	for (int i=0; i<g3->vvert.size(); ++i){
+		std::swap(g3->vvert[i]->x, u[i]);
+		std::swap(g3->vvert[i]->y, v[i]);
+	}
 }

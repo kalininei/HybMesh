@@ -1,5 +1,4 @@
 #include "revolve_grid3d.hpp"
-#include "debug_grid2d.h"
 #include "debug3d.hpp"
 using namespace HM3D;
 
@@ -14,10 +13,9 @@ struct revolve_builder{
  
 //input data:
 	vector<double> phi;
-	const GridGeom* g2;
+	const HM2D::GridData* g2;
 	Vertex rot_vec, rot_p0;
 	int Nsurf, Nsurf_wc; //number of surfaces, number of surfaces with 3d cell layer
-	vector<::Edge> edges2;
 	vector<vector<int>> cell_edges;
 	vector<vector<bool>> cell_edges_isleft;
 	vector<double> vertex_measure;
@@ -41,7 +39,7 @@ struct revolve_builder{
 	std::map<int, vector<int>> boundary_types;
 	vector<double> edge_curvature;
 
-	revolve_builder(const GridGeom& g2d, const vector<double>& phi_deg,
+	revolve_builder(const HM2D::GridData& g2d, const vector<double>& phi_deg,
 			Point pstart, Point pend){
 		//prepare
 		_0_fill_input(g2d, phi_deg, pstart, pend);
@@ -77,7 +75,7 @@ struct revolve_builder{
 		return ret;
 	}
 	void side_boundary(std::function<int(int)>& f){
-		for (int i=0; i<edges2.size(); ++i) if (edges2[i].is_boundary()){
+		for (int i=0; i<g2->vedges.size(); ++i) if (g2->vedges[i]->is_boundary()){
 			int b = f(i);
 			auto emp = boundary_types.emplace(b, vector<int>());
 			vector<int>& inp = emp.first->second;
@@ -88,7 +86,7 @@ struct revolve_builder{
 		}
 	}
 	void afirst_boundary(std::function<int(int)>& f){
-		for (int i=0; i<g2->n_cells(); ++i){
+		for (int i=0; i<g2->vcells.size(); ++i){
 			int b = f(i);
 			auto emp = boundary_types.emplace(b, vector<int>());
 			vector<int>& inp = emp.first->second;
@@ -97,7 +95,7 @@ struct revolve_builder{
 		}
 	}
 	void alast_boundary(std::function<int(int)>& f){
-		for (int i=0; i<g2->n_cells(); ++i){
+		for (int i=0; i<g2->vcells.size(); ++i){
 			int b = f(i);
 			auto emp = boundary_types.emplace(b, vector<int>());
 			vector<int>& inp = emp.first->second;
@@ -106,7 +104,7 @@ struct revolve_builder{
 		}
 	}
 protected:
-	void _0_fill_input(const GridGeom& g2d, const vector<double>& phi_deg,
+	void _0_fill_input(const HM2D::GridData& g2d, const vector<double>& phi_deg,
 			Point pstart, Point pend){
 		g2 = &g2d;
 		phi.resize(phi_deg.size());
@@ -124,45 +122,28 @@ protected:
 		Nsurf_wc = Nsurf - 1;
 		iscomplete = false;
 		if (ISZERO(phi.back() - phi[0] - 2*M_PI)) {--Nsurf; iscomplete=true;}
-		auto es = g2d.get_edges();
-		std::copy(es.begin(), es.end(), std::back_inserter(edges2));
 		//cell->edges connectivity
-		cell_edges.resize(g2d.n_cells());
-		for (int i=0; i<edges2.size(); ++i){
-			auto& e = edges2[i];
-			if (e.cell_left >= 0) cell_edges[e.cell_left].push_back(i);
-			if (e.cell_right >= 0) cell_edges[e.cell_right].push_back(i);
-		}
-		for (int i=0; i<g2d.n_cells(); ++i){
-			auto& vec = cell_edges[i];
-			auto cell = g2d.get_cell(i);
-			vector<int> reordered(vec);
-			for (int cp=0; cp<cell->dim(); ++cp){
-				const GridPoint* p1 = cell->get_point(cp);
-				const GridPoint* p2 = cell->get_point(cp+1);
-				::Edge e(p1->get_ind(), p2->get_ind());
-				for (int k=0; k<vec.size(); ++k){
-					auto& ecomp = edges2[vec[k]];
-					if (e == ecomp){
-						reordered[cp] = vec[k];
-						break;
-					}
-				}
+		g2d.enumerate_all();
+		cell_edges.reserve(g2d.vcells.size());
+		for (auto c: g2d.vcells){
+			cell_edges.emplace_back();
+			for (auto e: c->edges){
+				cell_edges.back().push_back(e->id);
 			}
-			std::swap(vec, reordered);
 		}
+
 		//cell->edges->is_left
-		cell_edges_isleft.resize(g2d.n_cells());
-		for (int i=0; i<g2d.n_cells(); ++i){
-			cell_edges_isleft[i].resize(cell_edges[i].size());
-			for (int j=0; j<cell_edges[i].size(); ++j){
-				cell_edges_isleft[i][j] = (edges2[cell_edges[i][j]].cell_left == i);
+		cell_edges_isleft.resize(g2d.vcells.size());
+		for (int i=0; i<cell_edges_isleft.size(); ++i){
+			auto& il = cell_edges_isleft[i];
+			for (int j=0; j<cell_edges.size(); ++j){
+				il.push_back(g2d.vcells[i]->edges[j]->left.lock() == g2d.vcells[i]);
 			}
 		}
 	}
 	void _1_sort_out_2d_data(){
 		//vertices
-		vector<bool> is_normal_vertex(g2->n_points());
+		vector<bool> is_normal_vertex(g2->vvert.size());
 		double x0 = rot_p0.x, y0 = rot_p0.y;
 		std::array<double, 3> A = Point::line_eq(Point(0, 0), Point(rot_vec.x, rot_vec.y));
 		auto meas_line = [A, x0, y0](const Point& p) -> double{
@@ -170,9 +151,9 @@ protected:
 			return SIGN(d0)*d0*d0;
 		};
 		int sgn=0;
-		vertex_measure.resize(g2->n_points());
-		for (int i=0; i<g2->n_points(); ++i){
-			double m = meas_line(*g2->get_point(i));
+		vertex_measure.resize(g2->vvert.size());
+		for (int i=0; i<g2->vvert.size(); ++i){
+			double m = meas_line(*g2->vvert[i]);
 			vertex_measure[i] = m;
 			if (fabs(m) < geps*geps) {
 				is_normal_vertex[i] = false;
@@ -188,10 +169,11 @@ protected:
 		}
 	
 		//edges
-		vector<bool> is_normal_edge(edges2.size());
-		edge_type.resize(edges2.size());
-		for (int i=0; i<edges2.size(); ++i){
-			int p1 = edges2[i].p1, p2 = edges2[i].p2;
+		vector<bool> is_normal_edge(g2->vedges.size());
+		edge_type.resize(g2->vedges.size());
+		for (int i=0; i<g2->vedges.size(); ++i){
+			int p1 = g2->vedges[i]->first()->id,
+			    p2 = g2->vedges[i]->last()->id;
 			bool n1 = is_normal_vertex[p1], n2 = is_normal_vertex[p2];
 			if (!n1 && !n2){
 				is_normal_edge[i] = false;
@@ -206,7 +188,7 @@ protected:
 			}
 		}
 		//cells
-		for (int i=0; i<g2->n_cells(); ++i){
+		for (int i=0; i<g2->vcells.size(); ++i){
 			bool isnormal = true;
 			for (int j=0; j<cell_edges[i].size(); ++j){
 				if (!is_normal_edge[cell_edges[i][j]]){
@@ -225,8 +207,8 @@ protected:
 		detect_edges_revolution();
 	}
 	virtual void detect_edges_revolution(){
-		do_revolve_edge.resize(edges2.size());
-		for (int i=0; i<edges2.size(); ++i){
+		do_revolve_edge.resize(g2->vedges.size());
+		for (int i=0; i<g2->vedges.size(); ++i){
 			do_revolve_edge[i] = (edge_type[i] != 0);
 		}
 	}
@@ -249,7 +231,7 @@ protected:
 			double M32 = (1-cosa) * rot_vec.y * rot_vec.z + sina * rot_vec.x;
 			//double M33 = cosa + (1-cosa) * rot_vec.z * rot_vec.z;
 			for (int i=0; i<normal_vertex.size(); ++i){
-				auto p = g2->get_point(normal_vertex[i]);
+				auto p = g2->vvert[normal_vertex[i]];
 				double x = p->x - rot_p0.x, y = p->y - rot_p0.y, z = 0;
 				*it++ = M11 * x + M12 * y + rot_p0.x;
 				*it++ = M21 * x + M22 * y + rot_p0.y;
@@ -259,7 +241,7 @@ protected:
 		}
 		//axis vertices
 		for (int i=0; i<axis_vertex.size(); ++i){
-			auto p = g2->get_point(axis_vertex[i]);
+			auto p = g2->vvert[axis_vertex[i]];
 			*it++ = p->x;
 			*it++ = p->y;
 			*it++ = 0;
@@ -271,13 +253,13 @@ protected:
 		int Nedges = Nsurf * normal_edge.size() + axis_edge.size();
 		edges.resize(Nedges*2);
 		edge_curvature.resize(Nedges, 0.0);
-		planar_edge3.resize(Nsurf, vector<int>(edges2.size()));
+		planar_edge3.resize(Nsurf, vector<int>(g2->vedges.size()));
 		int n=0;
 		auto it = edges.begin();
 		//normal edges
 		for (int i=0; i<normal_edge.size(); ++i){
 			int ed = normal_edge[i];
-			int p1 = edges2[ed].p1, p2 = edges2[ed].p2;
+			int p1 = g2->vedges[ed]->first()->id, p2 = g2->vedges[ed]->last()->id;
 			for (int j=0; j<Nsurf; ++j){
 				int v1 = vertices3[j][p1], v2 = vertices3[j][p2];
 				*it++ = v1;
@@ -288,7 +270,7 @@ protected:
 		//axis edges
 		for (int i=0; i<axis_edge.size(); ++i){
 			int ed = axis_edge[i];
-			int p1 = edges2[ed].p1, p2 = edges2[ed].p2;
+			int p1 = g2->vedges[ed]->first()->id, p2 = g2->vedges[ed]->last()->id;
 			int v1 = vertices3[0][p1], v2 = vertices3[0][p2];
 			*it++ = v1;
 			*it++ = v2;
@@ -301,7 +283,7 @@ protected:
 		int n = edges.size() / 2;
 		edges.resize(2*n + 2*Nedges);
 		edge_curvature.resize(n+Nedges, 0);
-		perp_edge3.resize(Nsurf_wc, vector<int>(g2->n_points()));
+		perp_edge3.resize(Nsurf_wc, vector<int>(g2->vvert.size()));
 		auto it = edges.begin() + 2 * n;
 		for (int i=0; i<normal_vertex.size(); ++i){
 			int v = normal_vertex[i];
@@ -322,11 +304,11 @@ protected:
 		for (auto& v: cell_edges) sz+=(v.size() + 3);
 		faces.resize(Nsurf * sz);
 		planar_face3.resize(Nsurf, vector<int>(cell_edges.size(), -1));
-		iface.resize(Nsurf*g2->n_cells());
+		iface.resize(Nsurf*g2->vcells.size());
 		//fill
 		int n=0;
 		auto it = faces.begin();
-		for (int i=0; i<g2->n_cells(); ++i){
+		for (int i=0; i<g2->vcells.size(); ++i){
 			int ned = cell_edges[i].size();
 			for (int j=0; j<Nsurf; ++j){
 				iface[n] = it - faces.begin();
@@ -347,11 +329,11 @@ protected:
 		int oldlen = faces.size();
 		faces.resize(oldlen + Nsurf_wc*normal_edge_nn.size()*7);
 		auto it = faces.begin() + oldlen;
-		perp_face3.resize(Nsurf_wc, vector<int>(edges2.size(), -1));
+		perp_face3.resize(Nsurf_wc, vector<int>(g2->vedges.size(), -1));
 		for (int i=0; i<normal_edge_nn.size(); ++i){
 			int ed_2d = normal_edge_nn[i];
-			int pstart_2d = edges2[ed_2d].p1;
-			int pend_2d = edges2[ed_2d].p2;
+			int pstart_2d = g2->vedges[ed_2d]->first()->id;
+			int pend_2d = g2->vedges[ed_2d]->last()->id;
 			for (int j=0; j<Nsurf_wc; ++j){
 				iface[n] = it - faces.begin();
 				*it++ = 4;
@@ -373,8 +355,8 @@ protected:
 		auto it = faces.begin() + oldlen;
 		for (int i=0; i<normal_edge_n.size(); ++i){
 			int ed_2d = normal_edge_n[i];
-			int pstart_2d = edges2[ed_2d].p1;
-			int pend_2d = edges2[ed_2d].p2;
+			int pstart_2d = g2->vedges[ed_2d]->first()->id;
+			int pend_2d = g2->vedges[ed_2d]->last()->id;
 			for (int j=0; j<Nsurf_wc; ++j){
 				iface[n] = it - faces.begin();
 				*it++ = 3;
@@ -531,21 +513,23 @@ protected:
 
 class revolve_builder_no_tri: public revolve_builder{
 public:
-	revolve_builder_no_tri(const GridGeom& g2d, const vector<double>& phi_deg,
+	revolve_builder_no_tri(const HM2D::GridData& g2d, const vector<double>& phi_deg,
 			Point pstart, Point pend): revolve_builder(g2d, phi_deg, pstart, pend){}
 protected:
 	void detect_edges_revolution() override {
-		do_revolve_edge.resize(edges2.size());
-		for (int i=0; i<edges2.size(); ++i){
+		do_revolve_edge.resize(g2->vedges.size());
+		for (int i=0; i<g2->vedges.size(); ++i){
 			switch (edge_type[i]){
 				case 0: do_revolve_edge[i] = false; break;
 				case 1: do_revolve_edge[i] = true; break;
 				case 2: case 3: 
 				{
-					int c1 = edges2[i].cell_left;
-					int c2 = edges2[i].cell_right;
-					if (c1 < 0) c1 = c2;
-					if (c2 < 0) c2 = c1;
+					int c1 = g2->vedges[i]->has_left_cell() ?
+					         g2->vedges[i]->left.lock()->id :
+					         g2->vedges[i]->right.lock()->id;
+					int c2 = g2->vedges[i]->has_right_cell() ?
+					         g2->vedges[i]->right.lock()->id :
+					         g2->vedges[i]->left.lock()->id;
 					do_revolve_edge[i] = (cell_type[c1] == 1 || cell_type[c2] == 1);
 				}
 			}
@@ -560,10 +544,10 @@ protected:
 			for (int i=0; i<normal_edge_n.size(); ++i){
 				int ed_2d = normal_edge_n[i];
 				if (do_revolve_edge[ed_2d]){
-					int axisnode = (edge_type[ed_2d] == 2) ? edges2[ed_2d].p2
-					                                       : edges2[ed_2d].p1;
+					int axisnode = (edge_type[ed_2d] == 2) ? g2->vedges[ed_2d]->last()->id
+					                                       : g2->vedges[ed_2d]->first()->id;
 					if (used.emplace(axisnode).second == false) continue;
-					auto p = g2->get_point(axisnode);
+					auto p = g2->vvert[axisnode];
 					vertices.push_back(p->x);
 					vertices.push_back(p->y);
 					vertices.push_back(0);
@@ -575,7 +559,7 @@ protected:
 	}
 	void _3_fill_planar_edges() override {
 		int Nedges = 0;
-		for (int i=0; i<edges2.size(); ++i){
+		for (int i=0; i<g2->vedges.size(); ++i){
 			if (do_revolve_edge[i]) Nedges += Nsurf;
 			else {
 				if (!iscomplete){
@@ -586,13 +570,13 @@ protected:
 		}
 		edges.resize(Nedges*2);
 		edge_curvature.resize(Nedges, 0.0);
-		planar_edge3.resize(Nsurf, vector<int>(edges2.size()));
+		planar_edge3.resize(Nsurf, vector<int>(g2->vedges.size()));
 		int n=0;
 		auto it = edges.begin();
 		for (int i=0; i<normal_edge.size(); ++i){
 			int ed = normal_edge[i];
 			if (!do_revolve_edge[ed] && iscomplete) continue;
-			int p1 = edges2[ed].p1, p2 = edges2[ed].p2;
+			int p1 = g2->vedges[ed]->first()->id, p2 = g2->vedges[ed]->last()->id;
 			for (int j=0; j<Nsurf; ++j){
 				if (!do_revolve_edge[ed] && j!=0 && j!=Nsurf-1) continue;
 				int v1 = vertices3[j][p1], v2 = vertices3[j][p2];
@@ -604,7 +588,7 @@ protected:
 		//axis edges
 		if (!iscomplete) for (int i=0; i<axis_edge.size(); ++i){
 			int ed = axis_edge[i];
-			int p1 = edges2[ed].p1, p2 = edges2[ed].p2;
+			int p1 = g2->vedges[ed]->first()->id, p2 = g2->vedges[ed]->last()->id;
 			int v1 = vertices3[0][p1], v2 = vertices3[0][p2];
 			*it++ = v1;
 			*it++ = v2;
@@ -619,11 +603,11 @@ protected:
 		for (auto& v: cell_edges) sz+=(v.size() + 3);
 		faces.resize(Nsurf * sz);
 		planar_face3.resize(Nsurf, vector<int>(cell_edges.size(), -1));
-		iface.resize(Nsurf*g2->n_cells());
+		iface.resize(Nsurf*g2->vcells.size());
 		//fill
 		int n=0;
 		auto it = faces.begin();
-		for (int i=0; i<g2->n_cells(); ++i){
+		for (int i=0; i<g2->vcells.size(); ++i){
 			if (iscomplete && cell_type[i] != 1) continue;
 			int ned = cell_edges[i].size();
 			for (int j=0; j<Nsurf; ++j){
@@ -653,8 +637,8 @@ protected:
 		auto it = faces.begin() + oldlen;
 		for (int i=0; i<normal_edge_n.size(); ++i){
 			int ed_2d = normal_edge_n[i];
-			int pend_2d = edges2[ed_2d].p2;
-			int pstart_2d = edges2[ed_2d].p1;
+			int pend_2d = g2->vedges[ed_2d]->last()->id;
+			int pstart_2d = g2->vedges[ed_2d]->first()->id;
 			if (!do_revolve_edge[ed_2d]){
 				iface[n] = it-faces.begin();
 				*it++ = (iscomplete) ? Nsurf_wc : Nsurf_wc + 2;
@@ -724,17 +708,41 @@ protected:
 	}
 };
 
-shared_ptr<revolve_builder> revolve_builder_factory(const GridGeom& g2d, const vector<double>& phi_coords,
+shared_ptr<revolve_builder> revolve_builder_factory(const HM2D::GridData& g2d, const vector<double>& phi_coords,
 		Point pstart, Point pend, bool is_trian){
 	if (is_trian) return std::make_shared<revolve_builder>(revolve_builder(g2d, phi_coords, pstart, pend));
 	else return std::make_shared<revolve_builder_no_tri>(revolve_builder_no_tri(g2d, phi_coords, pstart, pend));
 }
 
+struct EdRevert{
+	HM2D::GridData* g2;
+	vector<bool> reverted_edges;
+	EdRevert(const HM2D::GridData& g2d){
+		g2 = const_cast<HM2D::GridData*>(&g2d);
+		g2d.enumerate_all();
+		reverted_edges.resize(g2d.vedges.size(), false);
+		for (int i=0; i<g2d.vedges.size(); ++i){
+			if (g2d.vedges[i]->first()->id > g2d.vedges[i]->last()->id){
+				reverted_edges[i] = true;
+			}
+		}
+		dorevert();
+	}
+	~EdRevert(){ dorevert(); }
+	void dorevert(){
+		for (int i=0; i<g2->vedges.size(); ++i){
+			if (reverted_edges[i]) g2->vedges[i]->reverse();
+		}
+	}
 };
 
-HM3D::GridData cns::RevolveGrid2D(const GridGeom& g2d, const vector<double>& phi_coords,
+};
+
+HM3D::GridData cns::RevolveGrid2D(const HM2D::GridData& g2d, const vector<double>& phi_coords,
 		Point pstart, Point pend, bool is_trian,
 		std::function<int(int)> side_bt, std::function<int(int)> bt1, std::function<int(int)> bt2){
+	//temporary revert edges of g2 so that: first()->id < last()->id for backward compatibility
+	EdRevert er(g2d);
 	//topology
 	auto dt = revolve_builder_factory(g2d, phi_coords, pstart, pend, is_trian);
 	dt->process();

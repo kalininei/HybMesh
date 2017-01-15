@@ -2,8 +2,8 @@
 #define HYBMESH_GRIDMAP_HPP
 
 #include "hmproject.h"
-#include "grid.h"
 #include "primitives2d.hpp"
+#include "hmcallback.hpp"
 
 namespace HMMap{
 
@@ -15,8 +15,8 @@ public:
 
 class EInvalidGrid: public MapException{
 public:
-	GridGeom invalid_grid;
-	EInvalidGrid(GridGeom&& g) noexcept:
+	HM2D::GridData invalid_grid;
+	EInvalidGrid(HM2D::GridData&& g) noexcept:
 		MapException("Resulting grid is not valid"),
 		invalid_grid(std::move(g)){};
 };
@@ -38,7 +38,7 @@ struct TMapGrid: public HMCallback::ExecutorBase{
 	HMCB_SET_PROCNAME("Grid mapping");
 	HMCB_SET_DEFAULT_DURATION(110);
 
-	GridGeom _run(const GridGeom& base,
+	HM2D::GridData _run(const HM2D::GridData& base,
 			const HM2D::EdgeData& area,
 			vector<Point> base_points,
 			vector<Point> mapped_points,

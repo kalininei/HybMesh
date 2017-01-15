@@ -39,9 +39,6 @@ void AddLastPoint(EdgeData& to, shared_ptr<Vertex> ed);
 //Direction is not considered
 Point InnerPoint(const EdgeData&);
 
-//->(INSIDE, BOUND, OUTSIDE). Direction is ignored.
-int WhereIs(const EdgeData&, const Point& p);
-
 // =============== local coordiantes
 //gives
 //<0>  contour length coordinate, 
@@ -75,12 +72,12 @@ vector<double> EWeights(const EdgeData&);
 //returns true if direction of eind-th edge coinsides with contour direction.
 bool CorrectlyDirectedEdge(const EdgeData& dt, int eind);
 
-//Find a point on a edges set, closest to p and place it there by splitting edge.
+//Find a point on an edges set, closest to p, and place it there by splitting edge.
 //Target edge will be removed from input vector, two new edges pasted.
 //If p already exists do nothing.
 //Returns:
 //    <0> if point was placed
-//    <1> shared point of point in dt equal to p
+//    <1> shared pointer to point in dt equal to p
 std::tuple< bool, shared_ptr<Vertex> >
 GuaranteePoint(EdgeData& dt, const Point& p);
 

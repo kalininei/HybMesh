@@ -3,7 +3,7 @@
 
 HMCallback::FunctionWithCallback<HMMap::TMapGrid> HMMap::MapGrid;
 
-GridGeom HMMap::TMapGrid::_run(const GridGeom& base,
+HM2D::GridData HMMap::TMapGrid::_run(const HM2D::GridData& base,
 		const HM2D::EdgeData& area,
 		vector<Point> base_points,
 		vector<Point> mapped_points,
@@ -24,7 +24,7 @@ GridGeom HMMap::TMapGrid::_run(const GridGeom& base,
 	dm->set_contour(area);
 	dm->set_points(base_points, mapped_points);
 	//3) build
-	GridGeom ret = dm->run(*callback);
+	HM2D::GridData ret = dm->run(*callback);
 	//4) unscale and return
 	callback->step_after(5, "Finilizing");
 	return ret;

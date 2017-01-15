@@ -22,7 +22,7 @@ public:
 	void Apply(){ ModifyAdjacents(); BuildInternals();}
 
 	//adds next grid along with connection section to g
-	void Add(shared_ptr<BGrid>& g, bool with_prev, bool with_next);
+	void Add(BGrid& g, bool with_prev, bool with_next);
 };
 
 struct PlainConnector: public MConnector{
@@ -48,7 +48,7 @@ private:
 	shared_ptr<BGrid> filler;
 	BGrid* ConnectionGrid() override { return filler.get();}
 	void BuildInternals() override;
-	void AssembleGrid(vector<ShpVector<GridPoint>>& pallpts, shared_ptr<GridPoint> cpoint);
+	void AssembleGrid(vector<ShpVector<HM2D::Vertex>>& pallpts, shared_ptr<HM2D::Vertex> cpoint);
 public:
 	RoundConnector(MappedMesher* _prev, MappedMesher* _next): MConnector(_prev, _next){};
 };

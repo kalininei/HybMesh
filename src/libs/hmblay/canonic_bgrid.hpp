@@ -148,7 +148,7 @@ public:
 		rect = r; wstart = w1; wend = w2;
 	};
 
-	vector<GridPoint*> right_points, left_points;
+	HM2D::VertexData right_points, left_points;
 	BGrid result;
 
 	//takes weight start, weight end of source line.

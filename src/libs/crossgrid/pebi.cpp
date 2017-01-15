@@ -1,35 +1,34 @@
-#include "pebi.h"
-#include "trigrid.h"
-#include "procgrid.h"
+#include "pebi.hpp"
+#include "cont_assembler.hpp"
+#include "contabs2d.hpp"
+#include "buildgrid.hpp"
+#include "healgrid.hpp"
+#include "trigrid.hpp"
+using namespace HM2D;
+using namespace HM2D::Grid;
 
 namespace{
 struct PebiBndPoint{
 	int ind;
-	shared_ptr<GridPoint> prev, next;
-	shared_ptr<GridPoint> hprev, hnext;
+	shared_ptr<Vertex> prev, next;
+	shared_ptr<Vertex> hprev, hnext;
 };
 
-std::vector<PebiBndPoint> assemble_bnd(const TriGrid& g){
+std::vector<PebiBndPoint> assemble_bnd(const GridData& g){
 	std::vector<PebiBndPoint> ret;
-	auto cont = GGeom::Info::Contour(g);
-	auto gpoints = GGeom::Info::SharePoints(g);
+	auto cont = Contour::Assembler::GridBoundary(g);
+	auto& gpoints = g.vvert;
+	aa::enumerate_ids_pvec(gpoints);
 
-	std::set<GridPoint> bp;
-	for (auto it: g.get_bnd_points()) bp.insert(*it);
-
-	for (auto c: cont.nodes){
-		auto op = HM2D::Contour::OrderedPoints(c->contour);
+	for (auto& c: cont){
+		auto op = HM2D::Contour::OrderedPoints(c);
 		for (int i=0; i<op.size()-1; ++i){
 			int im = (i==0)?op.size()-2:i-1;
-			auto fndcur = bp.find(*op[i]);
-			auto fndprev = bp.find(*op[im]);
-			auto fndnext = bp.find(*op[i+1]);
-			assert(fndcur != bp.end() && fndprev != bp.end() && fndnext != bp.end());;
-			int cur = fndcur->get_ind();
-			int prev = fndprev->get_ind();
-			int next = fndnext->get_ind();
+			int cur = op[i]->id;
+			int prev = op[im]->id;
+			int next = op[i+1]->id;
 			ret.push_back(PebiBndPoint {cur, gpoints[prev], gpoints[next]});
-			ret.back().hnext.reset(new GridPoint((*gpoints[cur]+*gpoints[next])/2.0));
+			ret.back().hnext.reset(new Vertex((*gpoints[cur]+*gpoints[next])/2.0));
 			if (i!=0) ret.back().hprev = ret.end()[-2].hnext;
 			if (i==op.size()-2) ret[ret.size()-1-i].hprev = ret.back().hnext;
 		}
@@ -37,35 +36,47 @@ std::vector<PebiBndPoint> assemble_bnd(const TriGrid& g){
 	return ret;
 }
 
-std::vector<std::vector<int>> ordered_points_cells(const TriGrid& g, std::vector<PebiBndPoint>& bnd){
-	std::vector<std::vector<int>> ret(g.n_points());
-	auto edges=g.get_edges();
-	std::vector<std::list<Edge>> point_edges(g.n_points());
-	for (auto& e: edges){
-		point_edges[e.p1].push_back(e);
-		point_edges[e.p2].push_back(e);
+std::vector<std::vector<int>> ordered_points_cells(const GridData& g, std::vector<PebiBndPoint>& bnd){
+	std::vector<std::vector<int>> ret(g.vvert.size());
+	auto& edges=g.vedges;
+	auto ve = Connectivity::VertexEdge(edges);
+	std::vector<std::list<int>> point_edges(g.vvert.size());
+	int iv=0;
+	for (auto& it: ve){
+		auto& at = point_edges[iv++];
+		for (int ie: it.eind) at.push_back(ie);
 	}
-	for (int i=0; i<g.n_points(); ++i){
+
+	g.enumerate_all();
+	for (int i=0; i<g.vvert.size(); ++i){
 		auto& pe = point_edges[i];
-		Edge estart(-1, -1);
+		Edge* estart=0;
 		//looking for boundary edge
 		for (auto it = pe.begin(); it!=pe.end(); ++it){
-			int right_cell = (it->p1 == i)?it->cell_right:it->cell_left;
-			if (right_cell < 0){ estart = *it; pe.erase(it); break; }
+			if (edges[*it]->is_boundary()){
+				estart = edges[*it].get();
+				pe.erase(it);
+				break;
+			}
 		}
 		//if no boundary edges start from first
-		if (estart.p1 == -1) {estart = pe.front(); pe.pop_front();}
-		Edge ecur = estart;
+		if (estart == 0) {estart = edges[pe.front()].get(); pe.pop_front();}
+		Edge* ecur = estart;
 		while (1){
-			int cur_cell = (ecur.p1 == i)?ecur.cell_left:ecur.cell_right;
-			if (cur_cell<0) break;
+			auto wcur_cell = (ecur->first()->id == i) ? ecur->left : ecur->right;
+			if (wcur_cell.expired()) break;
+			int cur_cell = wcur_cell.lock()->id;
 			ret[i].push_back(cur_cell);
 			//find cur_edge as edge of cur_cell which is not ecur but contains i;
 			if (pe.size() == 0) break;
 			else for (auto it=pe.begin(); it!=pe.end(); ++it){
+				auto eit = edges[*it];
 				//find edge which has a link to cur_cell
-				if (it->cell_left == cur_cell || it->cell_right == cur_cell){
-					ecur = *it; pe.erase(it); break;
+				if ((eit->has_left_cell() && eit->left.lock()->id == cur_cell) ||
+				    (eit->has_right_cell() && eit->right.lock()->id == cur_cell)){
+					ecur = edges[*it].get();
+					pe.erase(it);
+					break;
 				}
 			}
 		}
@@ -83,18 +94,17 @@ Point calc_pebi(Point p1, Point p2, Point p3){
 	auto l2 = line2p(p2.x, p2.y, p3.x, p3.y);
 	double A[] = {l1[0], l1[1], l2[0], l2[1]};
 	double det = A[0]*A[3]-A[1]*A[2];
-	if (ISZERO(det)) throw std::runtime_error("pebi error");
+	if (det==0) throw std::runtime_error("pebi builder error");
 	double B[] = {A[3]/det, -A[1]/det, -A[2]/det, A[0]/det};
 	return Point(-B[0]*l1[2]-B[1]*l2[2], -B[2]*l1[2]-B[3]*l2[2]);
 }
 
-ShpVector<GridPoint> build_pebi_pts(const TriGrid& g){
-	ShpVector<GridPoint> ret;
-	vector<vector<int>> cc = g.cell_cell();
-	auto within = [&](Point p, int cn)->bool{
-		const Cell* c=g.get_cell(cn);
-		auto &x1 = c->points[0]->x, &x2 = c->points[1]->x, &x3 = c->points[2]->x;
-		auto &y1 = c->points[0]->y, &y2 = c->points[1]->y, &y3 = c->points[2]->y;
+VertexData build_pebi_pts(const GridData& g){
+	VertexData ret;
+	vector<vector<int>> cc = Connectivity::CellCell(g.vcells);
+	auto within = [&](Point p, const std::array<Point, 3>& ptri)->bool{
+		auto &x1 = ptri[0].x, &x2 = ptri[1].x, &x3 = ptri[2].x;
+		auto &y1 = ptri[0].y, &y2 = ptri[1].y, &y3 = ptri[2].y;
 		double j11 = x2 - x1, j21 = x3 - x1;
 		double j12 = y2 - y1, j22 = y3 - y1;
 		double modj = (j22*j11 - j21*j12);
@@ -103,38 +113,44 @@ ShpVector<GridPoint> build_pebi_pts(const TriGrid& g){
 		ksieta.y = (-j12*(p.x - x1) + j11*(p.y - y1))/modj;
 		return (ksieta.x >= 0 && ksieta.x <= 1.0 && ksieta.y>=0 && ksieta.y<=1.0-ksieta.x);
 	};
-	for (int i=0; i<g.n_cells(); ++i){
-		Point p1 = *g.get_cell(i)->points[0];
-		Point p2 = *g.get_cell(i)->points[1];
-		Point p3 = *g.get_cell(i)->points[2];
-		Point p = calc_pebi(p1, p2, p3);
+	vector<std::array<Point, 3>> cellvert(g.vcells.size());
+	for (int i=0; i<g.vcells.size(); ++i){
+		const Cell* c=g.vcells[i].get();
+		auto op = Contour::OrderedPoints(c->edges);
+		cellvert[i][0] = *op[0];
+		cellvert[i][1] = *op[1];
+		cellvert[i][2] = *op[2];
+	}
+	for (int i=0; i<g.vcells.size(); ++i){
+		auto& cv = cellvert[i];
+		Point p = calc_pebi(cv[0], cv[1], cv[2]);
 
 		//bad point is point which lies far away outside parent triangle.
 		//Usually even out of area. Hence we snap it to parant triangle edge.
 		bool bad_point=true;
 		//within itself
-		if (within(p, i)) bad_point = false;
+		if (within(p, cellvert[i])) bad_point = false;
 		//within neighbours
 		if (bad_point) for (int j=0; j<cc[i].size(); ++j){
-			if (within(p, cc[i][j])) { bad_point = false; break; }
+			if (within(p, cellvert[cc[i][j]])) { bad_point = false; break; }
 		}
 		//within neighbours of neighbours
 		if (bad_point) for (int j=0; j<cc[i].size(); ++j){
 			int in = cc[i][j];
 			for (int k=0; k<cc[in].size(); ++k)
-				if (within(p, cc[in][k])) { bad_point = false; break; }
+				if (within(p, cellvert[cc[in][k]])) { bad_point = false; break; }
 			if (!bad_point) break;
 		}
 
 		if (bad_point){
-			double d1 = Point::meas_line(p, p1, p2);
-			double d2 = Point::meas_line(p, p1, p3);
-			double d3 = Point::meas_line(p, p2, p3);
-			if (d1 < d2 && d1 < d3) p = (p1 + p2)/2.0;
-			else if (d2<d1 && d2<d3) p = (p1+p3)/2.0;
-			else p = (p2+p3)/2.0;
+			double d1 = Point::meas_line(p, cv[0], cv[1]);
+			double d2 = Point::meas_line(p, cv[0], cv[2]);
+			double d3 = Point::meas_line(p, cv[1], cv[2]);
+			if (d1 < d2 && d1 < d3) p = (cv[0] + cv[1])/2.0;
+			else if (d2<d1 && d2<d3) p = (cv[0]+cv[2])/2.0;
+			else p = (cv[1]+cv[2])/2.0;
 		}
-		aa::add_shared(ret, GridPoint(p));
+		aa::add_shared(ret, Vertex(p));
 	}
 	return ret;
 }
@@ -142,9 +158,9 @@ ShpVector<GridPoint> build_pebi_pts(const TriGrid& g){
 
 }
 
-GridGeom TriToPebi(const TriGrid& g){
+GridData Constructor::TriToPebi(const GridData& g){
 	//calculate pebi points
-	ShpVector<GridPoint> pebi_points = build_pebi_pts(g);
+	ShpVector<Vertex> pebi_points = build_pebi_pts(g);
 
 	//boundary information
 	std::vector<PebiBndPoint> bnd_left_right = assemble_bnd(g);
@@ -153,41 +169,51 @@ GridGeom TriToPebi(const TriGrid& g){
 	std::vector<std::vector<int>> points_cells = ordered_points_cells(g, bnd_left_right);
 
 	//asseble points
-	ShpVector<GridPoint> rp(pebi_points.begin(), pebi_points.end());
+	VertexData rp = pebi_points;
 	for (int i=0; i<bnd_left_right.size(); ++i){
 		rp.push_back(bnd_left_right[i].hnext);
 	}
+	aa::enumerate_ids_pvec(rp);
 	//assemble cells
-	ShpVector<Cell> rc;
+	vector<vector<int>> cellvert;
 	//internal cells
-	for (int i=0; i<g.n_points(); ++i){
-		Cell* c=aa::add_shared(rc, Cell());
-		for (auto& x: points_cells[i]) c->points.push_back(pebi_points[x].get());
+	for (int i=0; i<g.vvert.size(); ++i){
+		cellvert.emplace_back();
+		auto& cc = cellvert.back();
+		for (auto& x: points_cells[i]) cc.push_back(pebi_points[x]->id);
 	}
 	//boundary segments
 	for (auto& b: bnd_left_right){
-		Cell* c = rc[b.ind].get();
-		c->points.insert(c->points.begin(), b.hnext.get());
-		c->points.push_back(b.hprev.get());
+		auto& cc = cellvert[b.ind];
+		cc.insert(cc.begin(), b.hnext->id);
+		cc.push_back(b.hprev->id);
 		double ksi;
-		if (!isOnSection(*g.get_point(b.ind), *b.hnext, *b.hprev, ksi)){
-			c->points.push_back(aa::add_shared(rp, *g.get_point(b.ind)));
+		if (!isOnSection(*g.vvert[b.ind], *b.hnext, *b.hprev, ksi)){
+			auto np = std::make_shared<Vertex>(*g.vvert[b.ind]);
+			np->id = rp.size();
+			rp.push_back(np);
+			cc.push_back(np->id);
 		}
 	}
-	
-	auto ret = GGeom::Constructor::FromData(rp, rc);
+	auto ret = Grid::Constructor::FromTab(rp, cellvert);
+
 	//post processing: collapse reversed edges which provoke сell self intersection if possible
-	std::set<const GridPoint*> bpts = g.get_bnd_points();
-	for (int i=0; i<rc.size(); ++i){
-		const Cell* c = rc[i].get();
-		for (int k=0; k<c->dim(); ++k){
-			GridPoint* p0 = const_cast<GridPoint*>(c->get_point(k));
-			GridPoint* p1 = const_cast<GridPoint*>(c->get_point(k+1));
-			int w = LinePointWhereIs(*g.get_point(i), *p0, *p1);
+	VertexData bpts = AllVertices(ECol::Assembler::GridBoundary(ret));
+	std::sort(bpts.begin(), bpts.end());
+	for (int i=0; i<cellvert.size(); ++i){
+		const Cell* c = ret.vcells[i].get();
+		for (int k=0; k<cellvert[i].size(); ++k){
+			int kn = (k == cellvert[i].size()-1) ? 0 : k+1;
+			int km = (k == 0) ? cellvert[i].size() - 1 : k-1;
+			int knn = (kn == cellvert[i].size()-1) ? 0 : kn+1;
+			auto p0 = rp[cellvert[i][k]];
+			auto p1 = rp[cellvert[i][kn]];
+			auto prev = rp[cellvert[i][km]];
+			auto next = rp[cellvert[i][knn]];
+			int w = LinePointWhereIs(*rp[i], *p0, *p1);
 			if (w != 2) continue;
-			if (bpts.find(p0) != bpts.end() || bpts.find(p1) != bpts.end()) continue;
-			GridPoint* prev = const_cast<GridPoint*>(c->get_point(c->dim()+k-1));
-			GridPoint* next = const_cast<GridPoint*>(c->get_point(k+2));
+			if (std::binary_search(bpts.begin(), bpts.end(), p0)) continue;
+			if (std::binary_search(bpts.begin(), bpts.end(), p1)) continue;
 			if (*prev == *p0 || *next == *p1) continue;
 			double ksieta[2];
 			if (SectCross(*prev, *p0, *p1, *next, ksieta)){
@@ -196,8 +222,9 @@ GridGeom TriToPebi(const TriGrid& g){
 			}
 		}
 	}
+
 	//remove short edges
-	GGeom::Repair::RemoveShortEdges(ret, 0.1);
+	Grid::Algos::RemoveShortEdges(ret, 0.1);
 	return ret;
 }
 
@@ -218,16 +245,18 @@ std::array<Point, 6> build_regular_hex(Point c, double rad, bool ox){
 	for (auto& p: ret) p = p*rad + c;
 	return ret;
 }
-void build_regular_hex(Point cnt, double rad, ShpVector<GridPoint>& pts, ShpVector<Cell>& cls){
+void build_regular_hex(Point cnt, double rad, VertexData& pts, vector<vector<int>>& cls){
 	auto ap = build_regular_hex(cnt, rad, true);
-	Cell* c = aa::add_shared(cls, Cell());
+	cls.emplace_back();
+	auto& cc = cls.back();
 	for (int i=0; i<6; ++i){
-		c->points.push_back(aa::add_shared(pts, GridPoint(ap[i])));
+		cc.push_back(pts.size());
+		pts.push_back(std::make_shared<Vertex>(ap[i]));
 	}
 }
 }
 
-GridGeom RegularHexagonal(Point cnt, double area_rad, double cr, bool strict_area){
+GridData Constructor::RegularHexagonal(Point cnt, double area_rad, double cr, bool strict_area){
 	double hy = sqrt(3)/2*cr;
 	int nmax;
 	if (!strict_area){
@@ -256,17 +285,18 @@ GridGeom RegularHexagonal(Point cnt, double area_rad, double cr, bool strict_are
 	}
 
 	//assemble grid
-	ShpVector<GridPoint> pts;
-	ShpVector<Cell> cls;
+	ShpVector<Vertex> pts;
+	vector<vector<int>> cls;
 	for (auto& p: cnts) build_regular_hex(p, cr, pts, cls);
-	GridGeom ret = GGeom::Constructor::FromData(pts, cls);
-	GGeom::Repair::Heal(ret);
+	GridData ret = Grid::Constructor::FromTab(pts, cls);
+	Grid::Algos::Heal(ret);
 	return ret;
 }
-GridGeom RegularHexagonal(Point cnt1, Point cnt2, double cr, bool strict_area){
+
+GridData Constructor::RegularHexagonal(Point cnt1, Point cnt2, double cr, bool strict_area){
 	double hy = sqrt(3)/2*cr;
-	ShpVector<GridPoint> pts;
-	ShpVector<Cell> cls;
+	ShpVector<Vertex> pts;
+	vector<vector<int>> cls;
 
 	Point curp = cnt1, pmax = cnt1;
 	int nx, ny;
@@ -293,15 +323,30 @@ GridGeom RegularHexagonal(Point cnt1, Point cnt2, double cr, bool strict_area){
 		curp.y = curp.y + hy;
 	}
 
-	GridGeom ret = GGeom::Constructor::FromData(pts, cls);
-	GGeom::Repair::Heal(ret);
+	GridData ret = Grid::Constructor::FromTab(pts, cls);
+	Grid::Algos::Heal(ret);
 	if (strict_area){
 		double xcoef = (cnt2.x - cnt1.x)/(pmax.x - cnt1.x);
 		double ycoef = (cnt2.y - cnt1.y)/(pmax.y - cnt1.y);
-		GGeom::Modify::PointModify(ret, [&](GridPoint* p){
-					p->x = (p->x - cnt1.x)*xcoef + cnt1.x;
-					p->y = (p->y - cnt1.y)*ycoef + cnt1.y;
-				});
+		for (auto& v: ret.vvert){
+			v->x = (v->x - cnt1.x)*xcoef + cnt1.x;
+			v->y = (v->y - cnt1.y)*ycoef + cnt1.y;
+		}
 	}
 	return ret;
+}
+
+HMCallback::FunctionWithCallback<Mesher::TUnstructuredPebi> Mesher::UnstructuredPebi;
+
+GridData Mesher::TUnstructuredPebi::_run(const Contour::Tree& source, const std::map<Point, double>& embedded){
+	//triangulation
+	auto cb = callback->subrange(100, 100);
+	GridData tri = UnstructuredTriangle.UseCallback(cb, source, embedded);
+	//build pebi
+	callback->step_after(10, "assembling polygons");
+	return Constructor::TriToPebi(tri);
+}
+
+GridData Mesher::TUnstructuredPebi::_run(const Contour::Tree& source){
+	return _run(source, std::map<Point, double>());
 }

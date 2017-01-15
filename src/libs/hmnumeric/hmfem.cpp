@@ -1,34 +1,36 @@
 #include "hmfem.hpp"
 #include "femassembly.hpp"
+#include "cont_assembler.hpp"
 
 using namespace HMFem;
 
-const GridPoint* LaplasProblem::get_boundary_point(const Point& p) const{
+const HM2D::Vertex* LaplasProblem::get_boundary_point(const Point& p) const{
+	int ind = get_boundary_point_index(p);
+	return grid->vvert[ind].get();
+}
+int LaplasProblem::get_boundary_point_index(const Point& p) const{
 	if (_bp.size() == 0){
-		for(auto pbp: grid->get_bnd_points()){
+		auto be = HM2D::ECol::Assembler::GridBoundary(*grid);
+		auto av = HM2D::AllVertices(be);
+		aa::enumerate_ids_pvec(grid->vvert);
+		for (auto pbp: av){
 			_bp.insert(*pbp);
 		}
 	}
 	auto fnd = _bp.find(p);
-	return grid->get_point(fnd->get_ind());
+	return fnd->id;
 }
 
-LaplasProblem::LaplasProblem(GridGeom* g):
-		grid(Grid43::Build(g)),
+LaplasProblem::LaplasProblem(const HM2D::GridData& g):
+		grid(&g),
 		laplas_mat(HMFem::Assemble::PureLaplas(*grid)),
 		solution_mat(),
-		rhs(grid->n_points(), 0.0){}
+		rhs(grid->vvert.size(), 0.0){}
 
-LaplasProblem::LaplasProblem(shared_ptr<Grid43> g):
-		grid(g),
-		laplas_mat(HMFem::Assemble::PureLaplas(*grid)),
+LaplasProblem::LaplasProblem(const HM2D::GridData& g, shared_ptr<HMMath::Mat> lap):
+		grid(&g), laplas_mat(lap),
 		solution_mat(),
-		rhs(grid->n_points(), 0.0){}
-
-LaplasProblem::LaplasProblem(shared_ptr<Grid43> g, shared_ptr<HMMath::Mat> lap):
-		grid(g), laplas_mat(lap),
-		solution_mat(),
-		rhs(grid->n_points(), 0.0){}
+		rhs(grid->vvert.size(), 0.0){}
 
 void LaplasProblem::ClearBC(){
 	_neufunc.clear();
@@ -36,21 +38,19 @@ void LaplasProblem::ClearBC(){
 	neumann_data.clear();
 	dirichlet_data.clear();
 }
-void LaplasProblem::SetDirichlet(const vector<const GridPoint*>& pts, TDirFunc f){
+void LaplasProblem::SetDirichlet(const HM2D::VertexData& pts, TDirFunc f){
 	_dirfunc.push_back(f);
 	for (auto p: pts){
-		TDirData dt {p, &_dirfunc.back()};
+		int ind = get_boundary_point_index(*p);
+		TDirData dt {ind, &_dirfunc.back()};
 		dirichlet_data.insert(dt);
 	}
 }
 void LaplasProblem::SetDirichlet(const HM2D::EdgeData& pts, TDirFunc f){
-	vector<const GridPoint*> pts2; pts2.reserve(pts.size());
-	for(auto p: HM2D::Contour::OrderedPoints(pts))
-		pts2.push_back(get_boundary_point(*p));
-	SetDirichlet(pts2, f);
+	SetDirichlet(HM2D::AllVertices(pts), f);
 }
 
-void LaplasProblem::SetNeumann(const vector<const GridPoint*>& pts, TNeuFunc f){
+void LaplasProblem::SetNeumann(const HM2D::VertexData& pts, TNeuFunc f){
 	_THROW_NOT_IMP_;
 }
 
@@ -61,19 +61,18 @@ void LaplasProblem::RebuildSolutionMatrix(){
 	//Neumann
 	for (auto& nc: neumann_data){
 		//val = (df/dn)*L/2;
-		double val = ((*nc.fun)(nc.point1, nc.point2)) * nc.dist / 2;
-		rhs[nc.point1->get_ind()] += val;
-		rhs[nc.point2->get_ind()] += val;
+		double val = ((*nc.fun)(grid->vvert[nc.index1].get(), grid->vvert[nc.index2].get())) * nc.dist / 2;
+		rhs[nc.index1] += val;
+		rhs[nc.index2] += val;
 	}
 
 	//Dirichlet. Strictly after Neumann
 	for (auto& dc: dirichlet_data){
 		//put 1 to diagonal and value to rhs
-		int ind = dc.point->get_ind();
-		double val = (*dc.fun)(dc.point);
-		solution_mat.clear_row(ind);
-		solution_mat.set(ind, ind, 1.0);
-		rhs[ind] = val;
+		double val = (*dc.fun)(grid->vvert[dc.index].get());
+		solution_mat.clear_row(dc.index);
+		solution_mat.set(dc.index, dc.index, 1.0);
+		rhs[dc.index] = val;
 	}
 
 	//solver initialization
@@ -97,29 +96,30 @@ void LaplasProblem::QuickSolve_BC(vector<double>& ans){
 	//Neumann
 	for (auto& nc: neumann_data){
 		//val = (df/dn)*L/2;
-		double val = ((*nc.fun)(nc.point1, nc.point2)) * nc.dist / 2;
-		rhs[nc.point1->get_ind()] += val;
-		rhs[nc.point2->get_ind()] += val;
+		double val = ((*nc.fun)(grid->vvert[nc.index1].get(), grid->vvert[nc.index2].get())) * nc.dist / 2;
+		rhs[nc.index1] += val;
+		rhs[nc.index2] += val;
 	}
 
 	//Dirichlet. Strictly after Neumann
 	for (auto& dc: dirichlet_data){
 		//put 1 to diagonal and value to rhs
-		int ind = dc.point->get_ind();
-		double val = (*dc.fun)(dc.point);
-		rhs[ind] = val;
+		double val = (*dc.fun)(grid->vvert[dc.index].get());
+		solution_mat.clear_row(dc.index);
+		solution_mat.set(dc.index, dc.index, 1.0);
+		rhs[dc.index] = val;
 	}
 
 	solver->Solve(rhs, ans);
 }
 
-double LaplasProblem::IntegralDfDn(const vector<const GridPoint*>& pnt,
+double LaplasProblem::IntegralDfDn(const vector<const HM2D::Vertex*>& pnt,
 		const vector<double>& f){
 	//we assume that pnt are ordered in such a way that
 	//each pair <pnt[i], pnt[i+1]> forms an edge
 	assert(pnt.size()>1 && pnt[0] != pnt.back());
 	assert( [&](){
-		auto tree = GGeom::Info::Contour(*grid);
+		auto tree = HM2D::Contour::Tree::GridBoundary(*grid);
 		shared_ptr<HM2D::Contour::Tree::TNode> c;
 		for (auto& t: tree.nodes){
 			for (auto v: HM2D::AllVertices(t->contour)){
@@ -146,12 +146,13 @@ double LaplasProblem::IntegralDfDn(const vector<const GridPoint*>& pnt,
 		}
 		return true;
 	}());
+	aa::enumerate_ids_pvec(grid->vvert);
 	
 	//assemble pure rhs
 	vector<double> r(pnt.size(), 0.0);
 	for (int i=0; i<pnt.size(); ++i){
-		const GridPoint* p1 = pnt[i];
-		r[i] = laplas_mat->RowMultVec(f, p1->get_ind());
+		const HM2D::Vertex* p1 = pnt[i];
+		r[i] = laplas_mat->RowMultVec(f, p1->id);
 	}
 	//add neumann condition to first and last rhs entries
 	//if it exists
@@ -171,7 +172,7 @@ double LaplasProblem::IntegralDfDn(const vector<const GridPoint*>& pnt,
 }
 
 double LaplasProblem::IntegralDfDn(const HM2D::EdgeData& pnt, const vector<double>& f){
-	vector<const GridPoint*> pts2; pts2.reserve(pnt.size());
+	vector<const HM2D::Vertex*> pts2; pts2.reserve(pnt.size());
 	for(auto p: HM2D::Contour::OrderedPoints(pnt))
 		pts2.push_back(get_boundary_point(*p));
 	return IntegralDfDn(pts2, f);

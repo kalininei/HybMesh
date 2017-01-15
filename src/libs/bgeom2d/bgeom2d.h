@@ -298,9 +298,18 @@ public:
 	//-> INSIDE, OUTSIDE, BOUND
 	int whereis(const Point& p) const;
 	//does this have any intersections or tangent segments with another segment
+	//returns false only if bb lies strictly outside this
 	bool has_common_points(const BoundingBox& bb) const;
 	//does this contain any part of [p1, p2] segment
 	bool contains(const Point& p1, const Point& p2) const;
+
+	//returns:
+	//0 - bb equals this
+	//1 - bb is inside this (with possible touched faces)
+	//2 - this is inside bb (with possible touched faces)
+	//3 - bb and this doesn't intersect (with possible touched faces)
+	//4 - faces of bb and this cross each other
+	int relation(const BoundingBox& bb) const;
 
 	//Filter points from container of Point*
 	template<class Container>
@@ -324,6 +333,11 @@ struct BoundingBoxFinder{
 	void addentry(const BoundingBox& e);
 	vector<int> suspects(const BoundingBox& bb) const;
 	vector<int> suspects(const Point& bb) const;
+	int nsqr() const { return (mx+1)*(my+1); }
+	const vector<int>& sqr_entries(int i) const { return data[i]; }
+	Point sqr_center(int i) const;
+	int nx() const { return mx+1; }
+	int ny() const { return my+1; }
 private:
 	double x0, y0, hx, hy;
 	int mx, my;

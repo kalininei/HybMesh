@@ -9,7 +9,7 @@ namespace ConfFem{
 class ToRect: public HMMap::Conformal::Rect{
 	// ==== data filled by constructor
 	//fem grid in path area
-	shared_ptr<HMFem::Grid43> grid;
+	shared_ptr<HM2D::GridData> grid;
 	shared_ptr<HMFem::Grid43::Approximator> approx;
 	//indexes of original points in grid
 	//order is the same with given path
@@ -24,7 +24,7 @@ class ToRect: public HMMap::Conformal::Rect{
 	double _module;
 
 	//fem grid in canonic area
-	shared_ptr<HMFem::Grid43> inv_grid;
+	shared_ptr<HM2D::GridData> inv_grid;
 	shared_ptr<HMFem::Grid43::Approximator> inv_approx;
 	//discrete mapping function to physical domain
 	vector<double> inv_u, inv_v;
@@ -59,9 +59,9 @@ public:
 class ToAnnulus: public HMMap::Conformal::Annulus{
 	//data filled by constructor
 	double _module;
-	shared_ptr<HMFem::Grid43> grid;
+	shared_ptr<HM2D::GridData> grid;
 	shared_ptr<HMFem::Grid43::Approximator> approx;
-	vector<vector<Edge>> bndedges;
+	//vector<vector<Edge>> bndedges;
 	vector<double> u, v;   //radius, phi in canonical domain
 	Point pzero;  //inner point in (x,y) with phi = 0;
 
@@ -71,9 +71,9 @@ class ToAnnulus: public HMMap::Conformal::Annulus{
 	vector<int> raz_io, raz_oi;
 
 	//fem grid in canonic area
-	shared_ptr<HMFem::Grid43> inv_grid;
+	shared_ptr<HM2D::GridData> inv_grid;
 	shared_ptr<HMFem::Grid43::Approximator> inv_approx;
-	vector<vector<Edge>> inv_bndedges;
+	//vector<vector<Edge>> inv_bndedges;
 	//discrete mapping function to physical domain
 	vector<double> inv_u, inv_v;
 

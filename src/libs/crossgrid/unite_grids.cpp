@@ -1,0 +1,301 @@
+#include "unite_grids.hpp"
+#include "tree.hpp"
+#include "treverter2d.hpp"
+#include "modgrid.hpp"
+#include "buffergrid.hpp"
+#include "algos.hpp"
+#include "wireframegrid.hpp"
+#include "constructor.hpp"
+#include "contclipping.hpp"
+#include "healgrid.hpp"
+#include "finder2d.hpp"
+using namespace HM2D;
+using namespace HM2D::Grid;
+
+HMCallback::FunctionWithCallback<Algos::TUniteGrids> Algos::UniteGrids;
+HMCallback::FunctionWithCallback<Algos::TCombineGrids> Algos::CombineGrids;
+HMCallback::FunctionWithCallback<Algos::TSubstractArea> Algos::SubstractArea;
+
+namespace{
+
+struct BoundaryShifter{
+	VertexData tarpoints;
+	vector<Point> oldcoords;
+	const CellData* cells2;
+	const Contour::Tree* tree2;
+	BoundaryShifter(const Contour::Tree& c1, const Contour::Tree& c2, const CellData& grid2, double angle0){
+		cells2 = &grid2;
+		tree2 = &c2;
+		for (auto& n1: c1.nodes)
+		for (auto& n2: c2.nodes){
+			process_pair(n1->contour, n2->contour, angle0);
+		}
+	}
+	~BoundaryShifter(){
+		for (int i=0; i<tarpoints.size(); ++i){
+			tarpoints[i]->set(oldcoords[i]);
+		}
+	}
+private:
+	void process_pair(const EdgeData& c1, const EdgeData& c2, double angle0){
+		auto crosses = HM2D::Contour::Finder::CrossAll(c1, c2);
+		for (auto& c: crosses){
+			Point p = std::get<1>(c);
+			auto crd = HM2D::Contour::CoordAt(c2, p);
+			double ksi = std::get<3>(crd);
+			//if c2 has point at intersection
+			if (!ISIN_NN(ksi, 0, 1)) continue;
+			Edge* ied = c2[std::get<2>(crd)].get();
+			shared_ptr<Vertex> p1 = ied->first();
+			shared_ptr<Vertex> p2 = ied->last();
+			if (ksi > 0.5) std::swap(p1, p2);
+			shift(p1, p2, p, angle0);
+		}
+	}
+	//no need for complicated searchers since these functions
+	//are called very rarely.
+	std::pair<Point*, Point*> sibling_points(shared_ptr<Vertex> p1){
+		std::pair<Point*, Point*> ret(0, 0);
+		for (auto n: tree2->nodes){
+			for (auto ed: n->contour)
+			if (ed->first() == p1 || ed->last() == p1){
+				if (ret.first == 0){
+					ret.first = ed->sibling(p1.get()).get();
+				} else if (ret.second == 0){
+					ret.second = ed->sibling(p1.get()).get();
+					return ret;
+				}
+			}
+			assert(ret.first == 0);
+		}
+		assert(false);
+		return ret;
+	}
+	vector<Cell*> sibling_cells(shared_ptr<Vertex> p1){
+		vector<Cell*> ret;
+		for (auto c: *cells2)
+		for (auto v: AllVertices(c->edges)){
+			if (v == p1){
+				ret.push_back(c.get());
+				break;
+			}
+		}
+		assert(ret.size()>0);
+		return ret;
+	}
+
+	bool iscorner(shared_ptr<Vertex> p1, double angle0){
+		auto sibs = sibling_points(p1);
+		double a = Angle(*sibs.first, *p1, *sibs.second)/M_PI*180;
+		return !ISIN_EE(a, 180-angle0, 180+angle0);
+	}
+
+	bool try_to_shift(shared_ptr<Vertex> p1, Point newpoint){
+		vector<Cell*> sibs = sibling_cells(p1);
+		bool ret = true;
+		Point old(*p1);
+		p1->set(newpoint);
+		for (auto c: sibs){
+			if (std::get<0>(Contour::Finder::SelfCross(c->edges))){
+				ret = false;
+				break;
+			}
+		}
+		if (ret == true){
+			tarpoints.push_back(p1);
+			oldcoords.push_back(old);
+		} else {
+			p1->set(old);
+		}
+		return ret;
+	}
+
+	void shift(shared_ptr<Vertex> p1, shared_ptr<Vertex> p2,
+			Point newpoint, double a0){
+		if (iscorner(p1, a0)) p1 = nullptr;
+		if (iscorner(p2, a0)) p2 = nullptr;
+		if (!p1 && !p2) return;
+		if (p1 && try_to_shift(p1, newpoint)) return;
+		if (p2) try_to_shift(p2, newpoint);
+	}
+};
+
+int tree_highest_level(const Contour::Tree& tree){
+	int ret = -1;
+	for (auto& n: tree.nodes){
+		if (n->level>ret) ret = n->level;
+	}
+	return ret;
+}
+
+Contour::Tree root_nodes_tree(const Contour::Tree& tree){
+	Contour::Tree ret;
+	for (auto& n: tree.nodes) if (n->level == 0){
+		ret.add_detached_contour(n->contour);
+	}
+	for (auto& n: ret.nodes){
+		n->level = 0;
+	}
+	return ret;
+}
+
+}
+
+GridData Algos::TUniteGrids::_run(const GridData& base, const GridData& sec, const OptUnite& opt){
+	callback->step_after(10, "Boundary analyzing", 5, 2);
+	//----- contours assembling
+	Contour::Tree contbase = Contour::Tree::GridBoundary(base);
+	Contour::Tree contsec = Contour::Tree::GridBoundary(sec);
+	Contour::R::RevertTree rev1(contbase);
+	Contour::R::RevertTree rev2(contsec);
+	GridData ret = base;
+	Contour::Tree contret = contbase;
+
+	//---- find contours intersection points and place gsec nodes there
+	callback->subprocess_step_after(3);
+	std::unique_ptr<BoundaryShifter> bsh;
+	if (opt.preserve_bp){
+		bsh.reset(new BoundaryShifter(contbase, contsec, sec.vcells, opt.angle0));
+	}
+	callback->subprocess_fin();
+
+	//---- if secondary holes are empty -> remove secondary top level area from main grid
+	auto cb1 = callback->bottom_line_subrange(10);
+	if (opt.empty_holes){
+		if (tree_highest_level(contsec) > 0){
+			auto t0 = root_nodes_tree(contsec);
+			ret = SubstractArea.UseCallback(cb1, ret, t0, true);
+			contret = Contour::Tree::GridBoundary(ret);
+		}
+	}
+
+	//---- combine grids without using buffers
+	auto cb2 = callback->bottom_line_subrange(50);
+	ret = CombineGrids.UseCallback(cb2, ret, sec);
+	if (opt.buffer_size < geps) return ret;
+	vector<GridData> sg = SplitData(ret);
+
+	//----- fill buffer
+	callback->step_after(20, "Filling buffer", sg.size()*contsec.bound_contours().size());
+	for (int i=0; i<sg.size(); ++i)
+	for (auto n: contsec.bound_contours()){
+		callback->subprocess_step_after(1);
+		EdgeData& csec = n->contour;
+		Impl::BufferGrid bg(sg[i], csec, opt.buffer_size, opt.preserve_bp, opt.angle0);
+		bg.update_original(opt.filler);
+	}
+	callback->subprocess_fin();
+
+	//----- merge
+	callback->step_after(10, "Final merging");
+	ret.clear();
+	for (int i=0; i<sg.size(); ++i){
+		Grid::Algos::MergeTo(sg[i], ret);
+	}
+
+	return ret;
+}
+
+GridData Algos::TCombineGrids::_run(const GridData& g1, const GridData& g2){
+	//1) build grids contours
+	callback->step_after(10, "Building graphs");
+	Contour::Tree c1 = Contour::Tree::GridBoundary(g1);
+	Contour::Tree c2 = Contour::Tree::GridBoundary(g2);
+	//2) input data to wireframe format
+	Impl::PtsGraph w1(g1);
+	Impl::PtsGraph w2(g2);
+	//3) cut outer grid with inner grid contour
+	callback->step_after(30, "Overlay procedures", 2, 1);
+	w1 = Impl::PtsGraph::cut(w1, c2, INSIDE);
+	//4) overlay grids
+	callback->subprocess_step_after(1);
+	w2 = Impl::PtsGraph::overlay(w1, w2);
+	//5) build single connected grid
+	callback->step_after(30, "Assembling grid");
+	GridData ret = w1.togrid();
+	//6) filter out all cells which lie outside gmain and gsec contours
+	//if gmain and gsec are not simple structures
+	callback->step_after(30, "Simplifications");
+	auto intersect = HM2D::Contour::Clip::Union(c1, c2);
+	bool issimple = true;
+	if (intersect.nodes.size() != intersect.roots().size()){ issimple = false; }
+	if (!issimple){
+		RemoveCells(ret, intersect, OUTSIDE);
+	}
+	//7) get rid of hanging + non-significant + boundary nodes
+	//   They appear if boundaries of gmain and gsec partly coincide
+	Grid::Algos::SimplifyBoundary(ret, 0);
+	return ret;
+}
+
+namespace{
+
+vector<Contour::Tree> split_tree(const Contour::Tree& area, const GridData& g, bool is_inner){
+	Contour::Tree rt = Contour::Tree::DeepCopy(area, 1);
+	rt.remove_detached();
+	//force is_inner=false by addition new contour to c
+	if (is_inner == true){
+		auto bbox = HM2D::BBox(g.vvert, 1.);
+		EdgeData bcont = HM2D::Contour::Constructor::FromPoints(
+			{bbox.xmin,bbox.ymin, bbox.xmax,bbox.ymin,
+			 bbox.xmax,bbox.ymax, bbox.xmin,bbox.ymax}, true);
+		rt.add_detached_contour(bcont);
+		for (auto& n: rt.roots()){
+			n->parent = rt.nodes.back();
+			rt.nodes.back()->children.push_back(n);
+		}
+		for (auto& n: rt.nodes) n->level+=1;
+	}
+	//crop
+	vector<Contour::Tree> ret = Contour::Tree::CropLevel01(rt);
+
+	return ret;
+}
+
+}
+GridData Algos::TSubstractArea::_run(const GridData& g1, const Contour::Tree& area, bool is_inner){
+	callback->step_after(5, "Domains processing");
+	Contour::Tree gcont = Contour::Tree::GridBoundary(g1);
+	vector<Contour::Tree> tarea = split_tree(area, g1, is_inner);
+	
+	vector<GridData> gg;
+	callback->step_after(85, "Substraction", tarea.size()*7);
+	for (int i=0; i<tarea.size(); ++i){
+		//building a graph
+		callback->subprocess_step_after(1);
+		Impl::PtsGraph graph(g1);
+
+		//add contour edges
+		callback->subprocess_step_after(1);
+		for (auto& n: tarea[i].nodes){
+			graph.add_edges(n->contour);
+		}
+
+		//exclude edges
+		callback->subprocess_step_after(1);
+		graph.exclude_area(gcont, OUTSIDE);
+
+		callback->subprocess_step_after(1);
+		graph.exclude_area(tarea[i], OUTSIDE);
+
+		callback->subprocess_step_after(1);
+		gg.push_back(graph.togrid());
+	
+		//remove elements which can present in the grid due
+		//to outer contour exclusion
+		callback->subprocess_step_after(1);
+		if (tarea[i].nodes.size()>1) Algos::RemoveCells(gg.back(), tarea[i], OUTSIDE);
+
+		callback->subprocess_step_after(1);
+		Algos::RemoveCells(gg.back(), gcont, OUTSIDE);
+	}
+	callback->subprocess_fin();
+
+	//assembling the result
+	callback->step_after(10, "Assembling the result");
+	for (int i=1; i<gg.size(); ++i){
+		Algos::ShallowAdd(gg[i], gg[0]);
+	}
+
+	return gg[0];
+}

@@ -1,11 +1,13 @@
 #include "canonic_bgrid.hpp"
 #include "hmtimer.hpp"
-#include "procgrid.h"
 #include "constructor.hpp"
 #include "algos.hpp"
 #include "treverter2d.hpp"
 #include "cont_assembler.hpp"
 #include "treverter2d.hpp"
+#include "buildgrid.hpp"
+#include "healgrid.hpp"
+#include "finder2d.hpp"
 
 #define USE_ANALYTICAL_MAPPINGS false
 
@@ -170,12 +172,12 @@ MappedRect::Factory(HM2D::EdgeData& left, HM2D::EdgeData& right,
 		Point vecp2 = HM2D::Contour::WeightPoint(bottom, 0.51);
 		Vect v=vecp2-vecp1; vecSetLen(v, 100); v=vecRotate(v, M_PI/2);
 		auto perp = HM2D::Contour::Constructor::FromPoints({vecp1, vecp1+v});
-		auto crres = HM2D::Contour::Algos::Cross(perp, cellipse);
+		auto crres = HM2D::Contour::Finder::Cross(perp, cellipse);
 		assert(std::get<0>(crres));
 		Point cpoint = std::get<1>(crres);
 		//get distances
-		double hleft = std::get<1>(HM2D::FindClosestEdge(bottom, *HM2D::Contour::Last(left2)));
-		double hright = std::get<1>(HM2D::FindClosestEdge(bottom, *HM2D::Contour::Last(right2)));
+		double hleft = std::get<1>(HM2D::Finder::ClosestEdge(bottom, *HM2D::Contour::Last(left2)));
+		double hright = std::get<1>(HM2D::Finder::ClosestEdge(bottom, *HM2D::Contour::Last(right2)));
 		//weight from left
 		HM2D::EdgeData top1;
 		if (!ISEQ(hleft, h)){
@@ -211,11 +213,11 @@ GEOMETRY_RESULT_CHECK:
 	if (top.size() > 0){
 		//no crosses for bottom,
 		//cross at the end point for left, right
-		auto cr1 = HM2D::Contour::Algos::Cross(bottom, top);
+		auto cr1 = HM2D::Contour::Finder::Cross(bottom, top);
 		if (std::get<0>(cr1) == true) goto GEOMETRY_FAILED;
-		auto cr2 = HM2D::Contour::Algos::Cross(left2, top);
+		auto cr2 = HM2D::Contour::Finder::Cross(left2, top);
 		if (std::get<0>(cr2) && !ISEQ(std::get<2>(cr2), 1.0)) goto GEOMETRY_FAILED;
-		auto cr3 = HM2D::Contour::Algos::Cross(right2, top);
+		auto cr3 = HM2D::Contour::Finder::Cross(right2, top);
 		if (std::get<0>(cr3) && !ISEQ(std::get<2>(cr3), 1.0)) goto GEOMETRY_FAILED;
 		//all checks were passed
 		return Factory(left2, right2, bottom, top, femn, use_rect_approx);
@@ -541,15 +543,15 @@ void MappedMesher::Fill(TBotPart bottom_partitioner, TVertPart vertical_partitio
 		[](vector<double>& x, vector<double>& y){ return x.size() < y.size(); })->size();
 
 	//4) build regular grid and get vector of bottom side points
-	GridGeom g4 = GGeom::Constructor::RectGrid01(isz-1, jsz-1);
-	ShpVector<GridPoint> botpts;
-	for (auto p: GGeom::Info::BoundaryPoints(g4)){
+	HM2D::GridData g4 = HM2D::Grid::Constructor::RectGrid01(isz-1, jsz-1);
+	ShpVector<HM2D::Vertex> botpts;
+	for (auto p: AllVertices(HM2D::ECol::Assembler::GridBoundary(g4))){
 		if (ISZERO(p->y)) botpts.push_back(p);
 	}
 	//5) fill layer weights and feature
-	std::map<const Cell*, int> lweights;
+	std::map<const HM2D::Cell*, int> lweights;
 	shared_ptr<int> pfeat(new int());
-	std::map<const Cell*, shared_ptr<int>> feat;
+	std::map<const HM2D::Cell*, shared_ptr<int>> feat;
 	int k = 0;
 	for (int j = 0; j<jsz-1; ++j){
 		for (int i=0; i<isz-1; ++i){
@@ -561,15 +563,15 @@ void MappedMesher::Fill(TBotPart bottom_partitioner, TVertPart vertical_partitio
 				case 4: w = jsz-1-j; break;
 				default: assert(false);
 			}
-			lweights[g4.get_cell(k)] = w;
-			feat[g4.get_cell(k)] = pfeat;
+			lweights[g4.vcells[k].get()] = w;
+			feat[g4.vcells[k].get()] = pfeat;
 			++k;
 		}
 	}
 	//6) save boundary points
-	vector<std::weak_ptr<GridPoint>> wleft, wright, wtop, wbot;
+	vector<std::weak_ptr<HM2D::Vertex>> wleft, wright, wtop, wbot;
 	{
-		auto shp = GGeom::Info::SharePoints(g4);
+		auto& shp = g4.vvert;
 		for (int i=0; i<isz; ++i){
 			wbot.push_back(shp[i]);
 			wtop.push_back(shp[isz*(jsz-1)+i]);
@@ -587,57 +589,61 @@ void MappedMesher::Fill(TBotPart bottom_partitioner, TVertPart vertical_partitio
 		right_indicies.push_back(j*isz + isz - 1);
 	}
 	for (int i: left_indicies){
-		left_points.push_back(g4.get_point(i));
+		left_points.push_back(g4.vvert[i]);
 	}
 	for (int i: right_indicies){
-		right_points.push_back(g4.get_point(i));
+		right_points.push_back(g4.vvert[i]);
 	}
 	//7) delete unused cells
-	vector<const Cell*> ucells;
 	int kc = 0;
 	for (int j=0; j<jsz-1; ++j){
 		for (int i=0; i<isz-1; ++i){
 			if (vlines[i].size() < j+2 || vlines[i+1].size() < j+2){
-				ucells.push_back(g4.get_cell(kc));
-				auto fnd1 = lweights.find(ucells.back());
-				auto fnd2 = feat.find(ucells.back());
+				auto c = g4.vcells[kc].get();
+				auto fnd1 = lweights.find(c);
+				auto fnd2 = feat.find(c);
 				if (fnd1 != lweights.end()) lweights.erase(fnd1);
 				if (fnd2 != feat.end()) feat.erase(fnd2);
+				g4.vcells[kc] = nullptr;
 			}
 			++kc;
 		}
 	}
-	GGeom::Modify::RemoveCells(g4, ucells);
+	HM2D::VertexData ptmps = g4.vvert;
+	HM2D::Grid::Algos::RestoreFromCells(g4);
+
 	//8.1) Remove deleted points from left/right
-	auto _bp = g4.get_bnd_points();
+	aa::constant_ids_pvec(left_points, -1);
+	aa::constant_ids_pvec(right_points, -1);
+	aa::constant_ids_pvec(g4.vvert, 0);
 	auto s1 = std::remove_if(left_points.begin(), left_points.end(),
-		[&_bp](const GridPoint* p){ return _bp.find(p) == _bp.end(); });
-	left_points.resize(s1 - left_points.begin());
+		[](const shared_ptr<HM2D::Vertex>& p){ return p->id == -1; });
 	auto s2 = std::remove_if(right_points.begin(), right_points.end(),
-		[&_bp](const GridPoint* p){ return _bp.find(p) == _bp.end(); });
+		[](const shared_ptr<HM2D::Vertex>& p){ return p->id == -1; });
+	left_points.resize(s1 - left_points.begin());
 	right_points.resize(s2 - right_points.begin());
 
 	//9) weight coordinates
 	for_each(bpart.begin(), bpart.end(), [&](double& x){ x = rect->bot2conf(x); });
 	double hx = 1.0/(isz-1);
 	double hy = 1.0/(jsz-1);
-	auto toweights = [&](GridPoint* p){
+	for (int it=0; it<g4.vvert.size(); ++it){
+		auto p = g4.vvert[it].get();
 		int i = lround(p->x/hx), j = lround(p->y/hy);
 		assert(i<bpart.size());
 		assert(i<vlines.size());
 		assert(j<vlines[i].size());
 		p->set(bpart[i], vlines[i][j]);
-	};
-	GGeom::Modify::PointModify(g4, toweights);
+	}
 	for (int i=0; i<vlines.size(); ++i){
 		if (!ISEQ(vlines[i].back(), 1.0)) wtop[i].reset();
 	}
 	
 	//10) modify points using mapping
-	vector<Point*> ap(g4.n_points());
-	for (int i=0; i<g4.n_points(); ++i) ap[i] = g4.get_point(i);
+	vector<Point*> ap(g4.vvert.size());
+	for (int i=0; i<g4.vvert.size(); ++i) ap[i] = g4.vvert[i].get();
 	HM2D::VertexData mp = rect->MapToReal(ap);
-	for (int i=0; i<g4.n_points(); ++i) ap[i]->set(*mp[i]);
+	for (int i=0; i<g4.vvert.size(); ++i) ap[i]->set(*mp[i]);
 
 	//10) all bt points should present in g4 (e.g. for IGNORE_ALL stepping)
 	if (HM2D::Contour::IsOpen(bt) && ISZERO(wstart)) for (int i=0; i<wleft.size(); ++i){
@@ -666,41 +672,33 @@ void MappedMesher::Fill(TBotPart bottom_partitioner, TVertPart vertical_partitio
 	}
 
 	//bottom contour
-	vector<GridPoint*> ppbot;
-	for (auto p: botpts) ppbot.push_back(p.get());
-	GGeom::Modify::SnapToContour(g4, bt, ppbot); 
+	HM2D::Grid::Algos::SnapToContour(g4, bt, botpts);
 	//left and right only if they coincide with physical boundaries
 	if (HM2D::Contour::IsOpen(bt)){
 		if (wbot_start == 0.0){ 
-			ppbot.clear();
-			for (auto p: left_points){
-				ppbot.push_back(p);
-			}
 			//reversing so that snapping contour have grid on its left side
 			HM2D::EdgeData lc;
 			HM2D::DeepCopy(rect->LeftContour(), lc);
 			HM2D::Contour::R::ReallyRevert::Permanent(lc);
-			GGeom::Modify::SnapToContour(g4, lc, ppbot); 
+			HM2D::Grid::Algos::SnapToContour(g4, lc, left_points); 
 			//!!! here we have to refill left_points array but until now
 			//there was no need in this because grids with curved left/right
 			//contours are not used by complicated connectors.
 			//This could be changed in future and this procedure should be written
 		}
 		if (wbot_end == 1.0){
-			ppbot.clear();
-			for (auto p: right_points){ ppbot.push_back(p); }
 			//no need to reverse because grid lies to the left from RightContour
-			GGeom::Modify::SnapToContour(g4, rect->RightContour(), ppbot); 
+			HM2D::Grid::Algos::SnapToContour(g4, rect->RightContour(), right_points); 
 		}
 	}
 
 	//11) copy to results
-	GGeom::Modify::ShallowAdd(&g4, &result);
-	GGeom::Repair::Heal(result);
+	result = BGrid::MoveFrom2(std::move(g4));
+	HM2D::Grid::Algos::Heal(result);
 
 	//12) fill weights
-	result.AddWeights(lweights);
-	result.AddSourceFeat(feat);
+	result.add_weights(lweights);
+	result.add_source_feat(feat);
 }
 
 HM2D::EdgeData MappedMesher::LeftContour(){

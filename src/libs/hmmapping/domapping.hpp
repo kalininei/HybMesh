@@ -9,20 +9,20 @@ namespace HMMap{namespace Impl{
 
 struct DoMapping{
 	DoMapping(const HMMap::Options& _opt, bool reversed):
-		opt(_opt), inpgrid(GGeom::Constructor::EmptyGrid()), mcol(reversed){}
+		opt(_opt), mcol(reversed){}
 	
 	// ====== set input
-	void set_grid(const GridGeom& ig);
+	void set_grid(const HM2D::GridData& ig);
 	void set_contour(const HM2D::EdgeData& ecol);
 	void set_points(const vector<Point>& gridpnt, const vector<Point>& contpnt);
 
 	// ====== main procedure
 	//uses 100 units of cb
-	GridGeom run(HMCallback::Caller2& cb);
+	HM2D::GridData run(HMCallback::Caller2& cb);
 protected:
 	// ====== main data
 	HMMap::Options opt;
-	GridGeom inpgrid;
+	HM2D::GridData inpgrid;
 	HM2D::EdgeData contdata;
 	vector<Point> gridpoints;
 	vector<Point> contpoints;
@@ -32,7 +32,7 @@ protected:
 	HM2D::Contour::Tree mapped_outer;
 	HM2D::Contour::Tree inpgrid_outer;
 	//those are filled by prepare_grid and its subroutines
-	shared_ptr<HMFem::Grid43> g3;   //triangle grid
+	shared_ptr<HM2D::GridData> g3;   //triangle grid
 	HM2D::Contour::Tree g3outer;  //triangle grid borders
 	shared_ptr<HMFem::LaplasProblem> laplace; //laplace problem
 
@@ -65,19 +65,19 @@ private:
 
 struct DoMapping2{
 	DoMapping2(const HMMap::Options& _opt, bool reversed):
-		opt(_opt), inpgrid(GGeom::Constructor::EmptyGrid()), mcol(reversed){}
+		opt(_opt), mcol(reversed){}
 	
 	// ====== set input
-	void set_grid(const GridGeom& ig);
+	void set_grid(const HM2D::GridData& ig);
 	void set_contour(const HM2D::EdgeData& ecol);
 	void set_points(const vector<Point>& gridpnt, const vector<Point>& contpnt);
 
 	// ====== main procedure
-	GridGeom run();
+	HM2D::GridData run();
 private:
 	// ====== main data
 	HMMap::Options opt;
-	GridGeom inpgrid;
+	HM2D::GridData inpgrid;
 	HM2D::EdgeData contdata;
 	vector<Point> gridpoints;
 	vector<Point> contpoints;
@@ -87,7 +87,7 @@ private:
 	HM2D::Contour::Tree mapped_outer;
 	HM2D::Contour::Tree inpgrid_outer;
 	//those are filled by prepare_grid and its subroutines
-	shared_ptr<HMFem::Grid43> g3;   //triangle grid within mapped_outer
+	shared_ptr<HM2D::GridData> g3;   //triangle grid within mapped_outer
 	HM2D::Contour::Tree g3outer;  //triangle grid borders
 	shared_ptr<HMFem::LaplasProblem> laplace; //laplace problem
 

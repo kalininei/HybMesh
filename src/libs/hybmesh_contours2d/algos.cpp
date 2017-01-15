@@ -3,6 +3,8 @@
 #include "contabs2d.hpp"
 #include "cont_assembler.hpp"
 #include "treverter2d.hpp"
+#include "finder2d.hpp"
+
 using namespace HM2D;
 using Contour::Tree;
 namespace cal = HM2D::Contour::Algos;
@@ -219,7 +221,7 @@ void eal::MergePoints(EdgeData& ecol){
 	vector<bool> isactive(pe.size(), true);
 	for (int i=0; i<pe.size(); ++i)
 	for (int j=0; j<i; ++j) if (isactive[j]){
-		if (Point::meas(*pe[i].v, *pe[j].v) < geps*geps){
+		if (*pe[i].v == *pe[j].v){
 			shadows[j].push_back(i);
 			isactive[i] = false;
 			break;
@@ -243,70 +245,6 @@ void eal::MergePoints(EdgeData& ecol){
 	std::swap(newedge, ecol);
 }
 
-namespace{
-vector<std::tuple<bool, Point, double, double>>
-cross_core(const EdgeData& c1, const EdgeData& c2, bool is1){
-	vector<std::tuple<bool, Point, double, double>> retv;
-	auto bb1 = HM2D::BBox(c1), bb2 = HM2D::BBox(c2);
-	if (!bb1.has_common_points(bb2)) return retv;
-
-	VertexData op1 = Contour::OrderedPoints(c1);
-	VertexData op2 = Contour::OrderedPoints(c2);
-
-	auto lens1 = ELengths(c1), lens2 = ELengths(c2);
-	double flen1 = std::accumulate(lens1.begin(), lens1.end(), 0.0);
-	double flen2 = std::accumulate(lens2.begin(), lens2.end(), 0.0);
-
-	auto addcross = [&](Point p, double w1, double w2){
-		retv.push_back(std::make_tuple(true, p, w1, w2));
-	};
-	double ksieta[2];
-	double L1=0.0, L2=0.0;
-	for (int i=0; i<op1.size()-1; ++i){
-		L2 = 0;
-		for (int j=0; j<op2.size()-1; ++j){
-			SectCross(*op1[i], *op1[i+1], *op2[j], *op2[j+1], ksieta);
-			if (ksieta[0]>-geps && ksieta[0]<1+geps && ksieta[1]>-geps && ksieta[1]<1+geps){
-				addcross(
-					Point::Weigh(*op1[i], *op1[i+1], ksieta[0]),
-					(L1 + lens1[i]*ksieta[0])/flen1,
-					(L2 + lens2[j]*ksieta[1])/flen2
-				);
-				if (is1) return retv;
-			}
-			L2+=lens2[j];
-		}
-		L1 += lens1[i];
-	}
-	if (retv.size() < 2) return retv;
-
-	//clear doublicates
-	TCoordSet w1;
-	vector<std::tuple<bool, Point, double, double>> ret;
-	for (auto& v: retv){
-		if (w1.find(std::get<2>(v)) == w1.end()){
-			w1.insert(std::get<2>(v));
-			ret.push_back(v);
-		}
-	}
-	if (ret.size() == 1) return ret;
-
-	return ret;
-}
-}
-
-std::tuple<bool, Point, double, double>
-cal::Cross(const EdgeData& c1, const EdgeData& c2){
-	auto retv = cross_core(c1, c2, true);
-	if (retv.size() == 0) return std::make_tuple(false, Point(0,0), 0.0, 0.0);
-	else return retv[0];
-}
-
-vector<std::tuple<bool, Point, double, double>>
-cal::CrossAll(const EdgeData& c1, const EdgeData& c2){
-	return cross_core(c1, c2, false);
-}
-
 vector<int> cal::SortOutPoints(const EdgeData& t1, const vector<Point>& pnt){
 	Contour::Tree tree;
 	tree.add_contour(t1);
@@ -325,7 +263,7 @@ vector<int> cal::SortOutPoints(const Tree& t1, const vector<Point>& pnt){
 	lvwithin = [&lvwithin](const ShpVector<Tree::TNode>& lv, Point& p, int& a){
 		int indwithin = -1;
 		for (int i=0; i<lv.size(); ++i){
-			int rs = WhereIs(lv[i]->contour, p);
+			int rs = Contour::Finder::WhereIs(lv[i]->contour, p);
 			if (rs == BOUND){ a = -2; return; }
 			else if (rs == INSIDE) { indwithin = i; break; }
 		}
@@ -387,4 +325,37 @@ Vect cal::SmoothedDirection2(const EdgeData& c, const Point* p, int direction, d
 	if (direction == -1) ret *= -1;
 	vecNormalize(ret);
 	return ret;
+}
+
+void cal::RemovePoints(EdgeData& data, vector<int> ipnt){
+	std::sort(ipnt.begin(), ipnt.end());
+	bool is_closed = Contour::IsClosed(data);
+	ipnt.resize(std::unique(ipnt.begin(), ipnt.end()) - ipnt.begin());
+	while (ipnt.size()>0){
+		int in = ipnt.back();
+		ipnt.resize(ipnt.size()-1);
+
+		if (is_closed && in == 0){
+			auto ed0 = data.back();
+			auto ed1 = data[0];
+			shared_ptr<Edge> newe(new Edge(*ed0));
+			newe->vertices[1] = (ed1->first() == ed0->last()) ? ed1->last()
+			                                                  : ed1->first();
+			data.back() = newe;
+			data.erase(data.begin());
+		} else if (!is_closed && in == data.size()){
+			data.resize(data.size()-1);
+		} else if (!is_closed && in == 0){
+			data.erase(data.begin());
+		} else {
+			assert(in>0 && in<data.size());
+			auto ed0 = data[in-1];
+			auto ed1 = data[in];
+			shared_ptr<Edge> newe(new Edge(*ed0));
+			newe->vertices[1] = (ed1->first() == ed0->last()) ? ed1->last()
+			                                                  : ed1->first();
+			data[in-1] = newe;
+			data.erase(data.begin()+in);
+		}
+	}
 }

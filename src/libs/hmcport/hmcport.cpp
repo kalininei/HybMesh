@@ -1,13 +1,16 @@
 #include "hmcport.h"
-#include "grid.h"
 #include "hmblay.hpp"
-#include "procgrid.h"
 #include "hmmapping.hpp"
 #include "hmtesting.hpp"
 #include "hmcallback.hpp"
-#include "debug_grid2d.h"
 #include "hmxmlreader.hpp"
 #include "contclipping.hpp"
+#include "buildgrid.hpp"
+#include "contabs2d.hpp"
+#include "unite_grids.hpp"
+#include "modgrid.hpp"
+#include "infogrid.hpp"
+#include "finder2d.hpp"
 
 namespace{
 int silent2_function(const char*, const char*, double, double){
@@ -42,7 +45,8 @@ void free_boundary_names(BoundaryNamesStruct* s){
 
 Grid* grid_construct(int Npts, int Ncells, double* pts, int* cells){
 	try{
-		return new GridGeom(Npts, Ncells, pts, cells);
+		return new HM2D::GridData(std::move(
+			HM2D::Grid::Constructor::FromRaw(Npts, Ncells, pts, cells, -1)));
 	} catch (const std::exception &e){
 		std::cout<<"crossgrid error: "<<e.what()<<std::endl;
 		return NULL;
@@ -50,30 +54,34 @@ Grid* grid_construct(int Npts, int Ncells, double* pts, int* cells){
 }
 
 int grid_npoints(Grid* g){
-	return static_cast<GridGeom*>(g)->n_points();
+	return static_cast<HM2D::GridData*>(g)->vvert.size();
 }
 
 int grid_ncells(Grid* g){
-	return static_cast<GridGeom*>(g)->n_cells();
+	return static_cast<HM2D::GridData*>(g)->vcells.size();
 }
-int grid_cellsdim(Grid* g){
-	return static_cast<GridGeom*>(g)->n_cellsdim();
+int grid_cellsdim(Grid* grid){
+	int ret = 0;
+	auto g = static_cast<HM2D::GridData*>(grid);
+	for (int i=0; i<g->vcells.size(); ++i) ret += g->vcells[i]->edges.size();
+	return ret;
 }
 
 void grid_get_points_cells(Grid* g, double* pts, int* cells){
-	auto gg=static_cast<GridGeom*>(g);
+	auto gg=static_cast<HM2D::GridData*>(g);
 	//points
-	if (pts!=0) for (int i=0; i<gg->n_points(); ++i){
-		auto p = gg->get_point(i);
+	if (pts!=0) for (int i=0; i<gg->vvert.size(); ++i){
+		auto p = gg->vvert[i];
 		*pts++ = p->x;
 		*pts++ = p->y;
 	}
 	//cells
-	if (cells!=0) for (int i=0; i<gg->n_cells(); ++i){
-		auto c = gg->get_cell(i);
-		*cells++ = c->dim();
-		for (int j=0; j<c->dim(); ++j){
-			*cells++ = c->get_point(j)->get_ind();
+	aa::enumerate_ids_pvec(gg->vvert);
+	if (cells!=0) for (int i=0; i<gg->vcells.size(); ++i){
+		auto c = gg->vcells[i];
+		*cells++ = c->edges.size();
+		for (auto p: HM2D::Contour::OrderedPoints(c->edges)){
+			*cells++ = p->id;
 		}
 	}
 }
@@ -93,48 +101,43 @@ void grid_get_edges_info(Grid* grd, int* Npnt, int* Neds, int* Ncls,
 		int** ed_pt,
 		int** cls_dims,
 		int** cls_eds){
-	GridGeom* g = static_cast<GridGeom*>(grd);
-	auto eds = g->get_edges();
+	HM2D::GridData* g = static_cast<HM2D::GridData*>(grd);
 	//fill counts
-	*Npnt = g->n_points();
-	*Ncls = g->n_cells();
-	*Neds = eds.size();
+	*Npnt = g->vvert.size();
+	*Ncls = g->vcells.size();
+	*Neds = g->vedges.size();
 	//allocate arrays
 	*pts = new double[2 * (*Npnt)];
 	*ed_pt = new int[2 * (*Neds)];
 	*cls_dims = new int[*Ncls];
-	*cls_eds = new int[g->n_cellsdim()];
+	*cls_eds = new int[grid_cellsdim(grd)];
 	//fill points
 	double* p_pts = *pts;
-	for (int i=0; i<g->n_points(); ++i){
-		*p_pts++ = g->get_point(i)->x;
-		*p_pts++ = g->get_point(i)->y;
+	for (int i=0; i<g->vvert.size(); ++i){
+		*p_pts++ = g->vvert[i]->x;
+		*p_pts++ = g->vvert[i]->y;
 	}
 	//fill edges
 	std::map<std::pair<int, int>, int> nd_eds;
 	int* p_eds = *ed_pt;
-	auto eit = eds.begin();
-	for (size_t i=0; i<eds.size(); ++i){
-		auto& e = *eit++;
-		*p_eds++ = e.p1;
-		*p_eds++ = e.p2;
-		nd_eds.emplace(std::make_pair(e.p1, e.p2), i);
+	aa::enumerate_ids_pvec(g->vvert);
+	for (size_t i=0; i<g->vedges.size(); ++i){
+		auto& e = g->vedges[i];
+		*p_eds++ = e->first()->id;
+		*p_eds++ = e->last()->id;
+		nd_eds.emplace(std::make_pair(*(p_eds-2), *(p_eds-1)), i);
 	}
 	//fill elements dimensions
 	int* p_cdim = *cls_dims;
-	for (int i=0; i<g->n_cells(); ++i){
-		*p_cdim++ = g->get_cell(i)->dim();
+	for (int i=0; i<g->vcells.size(); ++i){
+		*p_cdim++ = g->vcells[i]->edges.size();
 	}
 	//fill cell->edges array
+	aa::enumerate_ids_pvec(g->vedges);
 	int* p_ced = *cls_eds;
-	for (int i=0; i<g->n_cells(); ++i){
-		auto c = g->get_cell(i);
-		for (int j=0; j<c->dim(); ++j){
-			int pprev = c->get_point(j-1)->get_ind();
-			int pcur = c->get_point(j)->get_ind();
-			if (pprev>pcur) std::swap(pprev, pcur);
-			*p_ced++ = nd_eds[std::make_pair(pprev, pcur)];
-		}
+	for (auto c: g->vcells)
+	for (auto e: c->edges){
+		*p_ced++ = e->id;
 	}
 }
 
@@ -148,29 +151,47 @@ void grid_free_edges_info(double** pts, int** ed_pt, int** cls_dims, int** cls_e
 }
 
 int grid_get_edge_cells(Grid* g, int* Neds, int** ed_cell, int* ed_pt){
-	auto ed = static_cast<GridGeom*>(g)->get_edges();
+	auto gg = static_cast<HM2D::GridData*>(g);
+	gg->enumerate_all();
+	auto& ed = gg->vedges;
 	*Neds = ed.size();
 	*ed_cell = new int[*Neds];
 	int *ec = *ed_cell;
 	int ret = 1;
 	if (ed_pt == 0){
 		for (auto& e: ed){
-			*ec++ = e.cell_left;
-			*ec++ = e.cell_right;
+			if (e->has_left_cell()) *ec++ = e->left.lock()->id;
+			else *ec++ = -1;
+			if (e->has_right_cell()) *ec++ = e->right.lock()->id;
+			else *ec++ = -1;
 		}
 	} else {
+		auto vertedge = HM2D::Connectivity::VertexEdge(gg->vedges);
+		int it=0;
+		for (auto& ve: vertedge) ve.v->id = it++;
 		for (int i=0; i<*Neds; ++i){
-			int p1 = ed_pt[2*i], p2 = ed_pt[2*i+1];
-			auto fnd = ed.find(Edge(p1, p2));
-			if (fnd != ed.end()){
-				if (p1 == fnd->p1){
-					*ec++ = fnd->cell_left;
-					*ec++ = fnd->cell_right;
-				} else {
-					*ec++ = fnd->cell_right;
-					*ec++ = fnd->cell_left;
+			int p1 = gg->vvert[ed_pt[2*i]]->id, p2 = gg->vvert[ed_pt[2*i+1]]->id;
+			HM2D::Edge* fnd = 0;
+			for (auto e: vertedge[p1].eind){
+				if (gg->vedges[e]->first()->id == p1 && gg->vedges[e]->last()->id == p2){
+					fnd = gg->vedges[e].get(); break;
 				}
-				ed.erase(fnd);
+				if (gg->vedges[e]->last()->id == p1 && gg->vedges[e]->first()->id == p2){
+					fnd = gg->vedges[e].get(); break;
+				}
+			}
+			if (fnd != 0){
+				if (p1 == fnd->first()->id){
+					if (fnd->has_left_cell()) *ec++ = fnd->left.lock()->id;
+					else *ec++ = -1;
+					if (fnd->has_right_cell()) *ec++ = fnd->right.lock()->id;
+					else *ec++ = -1;
+				} else {
+					if (fnd->has_right_cell()) *ec++ = fnd->right.lock()->id;
+					else *ec++ = -1;
+					if (fnd->has_left_cell()) *ec++ = fnd->left.lock()->id;
+					else *ec++ = -1;
+				}
 			} else {
 				//invalid edge->points connectivity
 				ret = 0;
@@ -187,7 +208,7 @@ void grid_free_edge_cells(int** ed_cell){
 
 
 void grid_free(Grid* g){
-	if (g!=NULL) delete static_cast<GridGeom*>(g);
+	if (g!=NULL) delete static_cast<HM2D::GridData*>(g);
 }
 
 Grid* cross_grids(Grid* gbase, Grid* gsecondary, double buffer_size, int preserve_bp, int eh, double angle0, int algo){
@@ -196,38 +217,30 @@ Grid* cross_grids(Grid* gbase, Grid* gsecondary, double buffer_size, int preserv
 
 Grid* cross_grids_wcb(Grid* gbase, Grid* gsecondary, double buffer_size,
 		int preserve_bp, int empty_holes, double angle0, int algo, hmcport_callback cb_fun){
+	HM2D::GridData* g0 = static_cast<HM2D::GridData*>(gbase);
+	HM2D::GridData* g1 = static_cast<HM2D::GridData*>(gsecondary);
+	ScaleBase sc = HM2D::Scale01(g0->vvert, 1.0 + sqrt(2.0)/100.0 + sqrt(3.0)/1000.0);
+	HM2D::Scale(g1->vvert, sc);
+	HM2D::GridData* ret;
 	try{
-		if (gbase == NULL || gsecondary == NULL)
-			throw std::runtime_error("nullptr grid data");
-		auto ret = GridGeom::cross_grids(
-				static_cast<GridGeom*>(gbase),
-				static_cast<GridGeom*>(gsecondary),
-				buffer_size, 0.5, (preserve_bp==1),
-				(empty_holes==1), angle0, algo, cb_fun);
-		return ret;
+		HM2D::Grid::Algos::OptUnite opt;
+		opt.buffer_size = buffer_size/sc.L;
+		opt.preserve_bp = (bool)preserve_bp;
+		opt.empty_holes = (bool)empty_holes;
+		opt.angle0 = angle0;
+		opt.filler = algo;
+		auto gret = HM2D::Grid::Algos::UniteGrids.WithCallback(cb_fun, *g0, *g1, opt);
+		HM2D::Unscale(gret.vvert, sc);
+		ret = new HM2D::GridData(std::move(gret));
 	} catch (const std::exception &e) {
 		std::cout<<"crossgrid error: "<<e.what()<<std::endl;
-		return 0;
+		ret = 0;
 	}
+
+	HM2D::Unscale(g0->vvert, sc);
+	HM2D::Unscale(g1->vvert, sc);
+	return ret;
 }
-
-//Cont* contour_construct(int Npts, int Ned, double* pts, int* edges){
-//        auto p = vector<Point>();
-//        auto e = vector<int>(edges, edges+2*Ned);
-//        for (int i=0; i<Npts; ++i){
-//                p.push_back(Point(pts[2*i], pts[2*i+1]));
-//        }
-//        try{
-//                return new PointsContoursCollection(p, e);
-//        } catch (const std::exception &e){
-//                std::cout<<"crossgrid error: "<<e.what()<<std::endl;
-//                return 0;
-//        }
-//}
-
-//void cont_free(Cont* c){
-//        delete c;
-//}
 
 Grid* grid_exclude_cont(Grid* grd, void* cont, int is_inner){
 	return grid_exclude_cont_wcb(grd, cont, is_inner, silent2_function);
@@ -235,47 +248,49 @@ Grid* grid_exclude_cont(Grid* grd, void* cont, int is_inner){
 
 Grid* grid_exclude_cont_wcb(Grid* grd, void* cont, int is_inner,
 		hmcport_callback cb_fun){
+	HM2D::GridData* g0 = static_cast<HM2D::GridData*>(grd);
+	HM2D::EdgeData* e0 = static_cast<HM2D::EdgeData*>(cont);
+	//non g0 vertices
+	HM2D::VertexData e0nog0;
+	aa::constant_ids_pvec(HM2D::AllVertices(*e0), 1);
+	aa::constant_ids_pvec(g0->vvert, 0);
+	for (auto v: HM2D::AllVertices(*e0)) if (v->id == 1) e0nog0.push_back(v);
+	//scaling
+	ScaleBase sc = HM2D::Scale01(g0->vvert, 1.0 + sqrt(2.0)/100.0 + sqrt(3.0)/1000.0);
+	HM2D::Scale(e0nog0, sc);
+	HM2D::GridData* ret;
 	try{
-		HM2D::EdgeData* pnt = static_cast<HM2D::EdgeData*>(cont);
-		PointsContoursCollection pcc(*pnt);
-		auto ret = GridGeom::grid_minus_cont(
-				static_cast<GridGeom*>(grd), &pcc,
-				is_inner!=0, cb_fun);
-		return ret;
+		auto tree = HM2D::Contour::Tree::Assemble(*e0);
+		HM2D::GridData gret = HM2D::Grid::Algos::SubstractArea.WithCallback(
+			cb_fun,
+			*g0, tree, is_inner!=0);
+		HM2D::Unscale(gret.vvert, sc);
+		ret = new HM2D::GridData(std::move(gret));
 	} catch (const std::exception &e){
 		std::cout<<"grid_exclude_cont error: "<<e.what()<<std::endl;
-		return 0;
-	}
-}
-
-int simplify_grid_boundary(Grid* grd, double angle){
-	GridGeom* g = static_cast<GridGeom*>(grd);
-	ScaleBase sc = g->do_scale();
-	int ret = 1;
-	try{
-		angle = angle/180*M_PI;
-		if (angle<-geps || angle>M_PI+geps) throw std::runtime_error("invalid angle");
-		GGeom::Modify::SimplifyBoundary(*g, angle);
 		ret = 0;
-	} catch (const std::exception &e){
-		std::cout<<"simplify_grid_boundary error: "<<e.what()<<std::endl;
 	}
-	g->undo_scale(sc);
+	//unscaling
+	HM2D::Unscale(g0->vvert, sc);
+	HM2D::Unscale(e0nog0, sc);
 	return ret;
 }
 
-//void add_contour_bc(Cont* src, Cont* tar, int* vsrc, int* vtar, int def){
-//        try{
-//                auto src1 = static_cast<PointsContoursCollection*>(src);
-//                auto tar1 = static_cast<PointsContoursCollection*>(tar);
-//                vector<int> cor = PointsContoursCollection::edge_correlation(*src1, *tar1);
-//                for (int i=0; i<tar1->n_edges(); ++i){
-//                        vtar[i] =  (cor[i]>=0) ? vsrc[cor[i]] : def;
-//                }
-//        } catch (const std::exception &e){
-//                std::cout<<"crossgrid error: "<<e.what()<<std::endl;
-//        }
-//}
+int simplify_grid_boundary(Grid* grd, double angle){
+	HM2D::GridData* g = static_cast<HM2D::GridData*>(grd);
+	ScaleBase sc = HM2D::Scale01(g->vvert);
+	int ret = 1;
+	try{
+		if (angle<-geps || angle>180+geps) throw std::runtime_error("invalid angle");
+		HM2D::Grid::Algos::SimplifyBoundary(*g, angle);
+		ret = 0;
+	} catch (const std::exception &e){
+		std::cout<<"simplify_grid_boundary error: "<<e.what()<<std::endl;
+		ret = 1;
+	}
+	HM2D::Unscale(g->vvert, sc);
+	return ret;
+}
 
 void* create_ecollection_container(int Npts, double* pts, int Nedgs, int* edges){
 	try{
@@ -324,7 +339,7 @@ void* domain_clip(void* c1, void* c2, int oper, int simplify){
 			HM2D::VertexData allpnt(pnt1);
 			allpnt.insert(allpnt.end(), pnt2.begin(), pnt2.end());
 			for (auto p: allpnt){
-				auto fnd = HM2D::FindClosestEdge(res.alledges(), *p);
+				auto fnd = HM2D::Finder::ClosestEdge(res.alledges(), *p);
 				if (std::get<0>(fnd)>=0 && std::get<1>(fnd)<geps && 
 						std::get<2>(fnd) > geps && std::get<2>(fnd) < 1-geps){
 					auto e = res.alledges()[std::get<0>(fnd)].get();
@@ -391,7 +406,7 @@ int set_ecollection_bc(void* src, void* tar, int def, int* vsrc, int* vtar){
 		for (int i=0; i<etar->size(); ++i){
 			vtar[i] = def;
 			Point cpoint = etar->at(i)->center();
-			auto ce = HM2D::FindClosestEdge(*esrc, cpoint);
+			auto ce = HM2D::Finder::ClosestEdge(*esrc, cpoint);
 			if (fabs(std::get<1>(ce)) < 1e-3){
 				int ied = std::get<0>(ce);
 				double m1 = Point::meas_line(*etar->at(i)->first(),
@@ -432,9 +447,9 @@ int set_ecollection_bc_force(void* src, void* tar, int* vsrc, int* vtar, int alg
 			while (it!=unused.end()){
 				HM2D::Edge* e = *it;
 				HM2D::EdgeData& cont = stree.nodes[i]->contour;
-				auto fnd1 = HM2D::FindClosestEdge(cont, *e->first());
-				auto fnd2 = HM2D::FindClosestEdge(cont, *e->last());
-				auto fndc = HM2D::FindClosestEdge(cont, e->center());
+				auto fnd1 = HM2D::Finder::ClosestEdge(cont, *e->first());
+				auto fnd2 = HM2D::Finder::ClosestEdge(cont, *e->last());
+				auto fndc = HM2D::Finder::ClosestEdge(cont, e->center());
 				//1) if all 3 edge points lie on contour return bc from center
 				if (ISZERO(std::get<1>(fnd1)) && ISZERO(std::get<1>(fnd2)) && ISZERO(std::get<1>(fndc))){
 					ans[e] = cont[std::get<0>(fndc)].get();
@@ -450,7 +465,7 @@ int set_ecollection_bc_force(void* src, void* tar, int* vsrc, int* vtar, int alg
 						double w2 = std::get<1>(HM2D::Contour::CoordAt(cont, *e->last()));
 						if (HM2D::Contour::IsOpen(cont)){
 							Point p = HM2D::Contour::WeightPoint(cont, (w1+w2)/2.0);
-							r = cont[std::get<0>(HM2D::FindClosestEdge(cont, p))].get();
+							r = cont[std::get<0>(HM2D::Finder::ClosestEdge(cont, p))].get();
 						} else {
 							//for closed contour we have to consider two points and
 							//choose one that is closer to edge center
@@ -462,9 +477,9 @@ int set_ecollection_bc_force(void* src, void* tar, int* vsrc, int* vtar, int alg
 							double meas_var1 = Point::meas(pvar1, e->center());
 							double meas_var2 = Point::meas(pvar2, e->center());
 							if (meas_var1 < meas_var2){
-								r = cont[std::get<0>(HM2D::FindClosestEdge(cont, pvar1))].get();
+								r = cont[std::get<0>(HM2D::Finder::ClosestEdge(cont, pvar1))].get();
 							} else {
-								r = cont[std::get<0>(HM2D::FindClosestEdge(cont, pvar2))].get();
+								r = cont[std::get<0>(HM2D::Finder::ClosestEdge(cont, pvar2))].get();
 							}
 						}
 					}
@@ -478,7 +493,7 @@ int set_ecollection_bc_force(void* src, void* tar, int* vsrc, int* vtar, int alg
 		//3) for all remaining cells get closest edge from source collection
 		if (algo>2){
 			for (auto e: unused){
-				auto ce = HM2D::FindClosestEdge(*src_col, e->center());
+				auto ce = HM2D::Finder::ClosestEdge(*src_col, e->center());
 				ans[e] = (*src_col)[std::get<0>(ce)].get();
 			}
 		}
@@ -545,13 +560,13 @@ double ecollection_area(void* ecol){
 //}
 
 double grid_area(Grid* g){
-	return static_cast<GridGeom*>(g)->area();
+	return HM2D::Grid::Area(*static_cast<HM2D::GridData*>(g));
 }
 
 int report_skewness(void* grid, double threshold, double* max_skew, int* max_skew_cell,
 		int* bad_cells_num, int* bad_indicies, double* bad_skew){
 	try{
-		vector<double> sc = GGeom::Info::Skewness(*static_cast<GridGeom*>(grid));
+		vector<double> sc = HM2D::Grid::Skewness(*static_cast<HM2D::GridData*>(grid));
 		*max_skew = 0.0;
 		*max_skew_cell = -1;
 		*bad_cells_num = 0;
@@ -623,7 +638,7 @@ Grid* boundary_layer_grid_wcb(int N, BoundaryLayerGridOption* popt,
 				inp.bnd_step_basis.push_back(std::make_pair(Point(inp.end), opt.step_end));
 			}
 		}
-		GridGeom* ret = new GridGeom(HMBlay::BuildBLayerGrid(vinp));
+		HM2D::GridData* ret = new HM2D::GridData(HMBlay::BuildBLayerGrid(vinp));
 		return ret;
 	} catch (const std::exception &e){
 		std::cout<<"Boundary layer builder error: "<<e.what()<<std::endl;
@@ -635,10 +650,10 @@ Grid* build_grid_mapping(void* base_grid, void* target_contour,
 		int Npnt, double* pbase, double* ptarget,
 		int snap_method, int algo, int reversed,
 		int return_invalid, hmcport_callback cb){
-	GridGeom* g = static_cast<GridGeom*>(base_grid);
+	HM2D::GridData* g = static_cast<HM2D::GridData*>(base_grid);
 	HM2D::EdgeData* col = static_cast<HM2D::EdgeData*>(target_contour);
 	//scaling
-	ScaleBase bscale = g->do_scale();
+	ScaleBase bscale = HM2D::Scale01(g->vvert);
 	ScaleBase cscale = HM2D::Scale01(*col);
 	Grid* ret = 0;
 	try{
@@ -659,24 +674,24 @@ Grid* build_grid_mapping(void* base_grid, void* target_contour,
 			case 1: opt.algo = "direct-laplace"; break;
 			case 2: opt.algo = "inverse-laplace"; break;
 		}
-		GridGeom ans = HMMap::MapGrid.WithCallback(cb, *g, *col, p1, p2, (reversed==1), opt);
-		ans.undo_scale(cscale);
-		ret = new GridGeom(std::move(ans));
+		HM2D::GridData ans = HMMap::MapGrid.WithCallback(cb, *g, *col, p1, p2, (reversed==1), opt);
+		HM2D::Unscale(ans.vvert, cscale);
+		ret = new HM2D::GridData(std::move(ans));
 	} catch (HMMap::EInvalidGrid &e){
 		if (!return_invalid){
 			std::cout<<e.what()<<std::endl;
 			ret = 0;
 		} else{
 			std::cout<<"Ignored error: "<<e.what()<<std::endl;
-			e.invalid_grid.undo_scale(cscale);
-			ret = new GridGeom(std::move(e.invalid_grid));
+			HM2D::Unscale(e.invalid_grid.vvert, cscale);
+			ret = new HM2D::GridData(std::move(e.invalid_grid));
 		}
 	} catch (const std::exception &e){
 		std::cout<<e.what()<<std::endl;
 		ret = 0;
 	}
 	//unscaling
-	g->undo_scale(bscale);
+	HM2D::Unscale(g->vvert, bscale);
 	HM2D::Unscale(*col, cscale);
 	return ret;
 }

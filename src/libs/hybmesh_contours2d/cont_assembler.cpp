@@ -8,6 +8,7 @@
 using namespace HM2D;
 using namespace HM2D::Contour;
 namespace cns = HM2D::Contour::Assembler;
+namespace ens = HM2D::ECol::Assembler;
 
 namespace {
 
@@ -394,38 +395,65 @@ EdgeData cns::Contour1(const VertexData& pnt, bool force_closed){
 	return ret;
 }
 
-vector<EdgeData> cns::QuickSeparate(const EdgeData& ecol){
-	auto ee = Connectivity::EdgeEdge(ecol);
-	vector<bool> used(ecol.size(), false);
-	auto use = [&used, &ee](int ind, vector<int>& lst, std::stack<int>& s){
-		if (used[ind] != true){
-			used[ind] = true;
-			lst.push_back(ind);
-			for (int eadj: ee[ind])
-				if (used[eadj] == false) s.push(eadj);
+EdgeData cns::GridBoundary1(const GridData& g){
+	return SimpleContours(ens::GridBoundary(g))[0];
+}
+
+vector<EdgeData> cns::GridBoundary(const GridData& g){
+	EdgeData ae = ens::GridBoundary(g);
+	auto sc = SimpleContours(ae);
+	vector<EdgeData> ret;
+	vector<EdgeData> opens;
+	for (auto& s: sc){
+		if (IsClosed(s)){
+			ret.push_back(std::move(s));
+		} else {
+			opens.push_back(std::move(s));
 		}
+	}
+	if (opens.size() == 0) return ret;
+
+	//connect open contours which end edges have same adjacent cell
+	auto ecell = [](const EdgeData& ed, bool isfirst)->shared_ptr<Cell>{
+		shared_ptr<Edge> e0 = (isfirst) ? ed[0] : ed.back();
+		assert(e0->has_left_cell() != e0->has_right_cell());
+		return (e0->has_left_cell()) ? e0->left.lock()
+		                             : e0->right.lock();
 	};
-
-	vector<vector<int>> edgeslist;
-	while (1){
-		int ifnd = std::find(used.begin(), used.end(), false) - used.begin();
-		if (ifnd == used.size()) break;
-		edgeslist.emplace_back();
-		auto& lst =edgeslist.back();
-		std::stack<int> su; su.push(ifnd);
-		while (su.size() > 0){
-			int t = su.top(); su.pop();
-			use(t, lst, su);
+	for (int i=0; i<opens.size(); ++i) if (opens[i].size()>0){
+		EdgeData proc(std::move(opens[i])); opens[i].clear();
+		auto lc = ecell(proc, false);
+		while (IsOpen(proc)){
+			bool found = false;
+			for (int j=i+1; j<opens.size(); ++j) if (opens[j].size()>0){
+				auto c0 = ecell(opens[j], true);
+				auto c1 = ecell(opens[j], false);
+				assert(c0 != c1);
+				if (c1 == lc){
+					Contour::Reverse(opens[j]);
+					std::swap(c0, c1);
+				}
+				if (c0 == lc){
+					proc.insert(proc.end(), opens[j].begin(), opens[j].end());
+					opens[j].clear();
+					lc = c1;
+					found = true; break;
+				}
+			}
+			if (found == false){
+				throw std::runtime_error(
+					"Failed to assemble grid contour");
+			}
 		}
+		ret.push_back(std::move(proc));
 	}
-	if (edgeslist.size() == 1) return {ecol};
 
-	vector<EdgeData> ret(edgeslist.size());
-	for (int i=0; i<edgeslist.size(); ++i){
-		ret[i].resize(edgeslist[i].size());
-		for (int j=0; j<edgeslist[i].size(); ++j){
-			ret[i][j] = ecol[edgeslist[i][j]];
-		}
-	}
+	return ret;
+}
+
+EdgeData ens::GridBoundary(const GridData& g){
+	EdgeData ret;
+	std::copy_if(g.vedges.begin(), g.vedges.end(), std::back_inserter(ret),
+		[](const shared_ptr<Edge>& e){ return e->is_boundary(); });
 	return ret;
 }

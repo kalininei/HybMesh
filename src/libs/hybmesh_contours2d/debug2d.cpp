@@ -3,7 +3,7 @@
 #include "debug2d.hpp"
 #include "constructor.hpp"
 #include <fstream>
-#include "vtk_export2d.hpp"
+#include "export2d_vtk.hpp"
 
 using namespace HM2D;
 

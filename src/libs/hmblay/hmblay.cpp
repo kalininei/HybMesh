@@ -2,15 +2,11 @@
 #include <memory>
 #include "bgrid.hpp"
 
-int hmblay_ping(int a){
-	return 2*a;
-}
-
 using namespace HMBlay::Impl;
 
 // ========================= Main Algo
-GridGeom HMBlay::BuildBLayerGrid(const vector<HMBlay::Input>& orig_opt){
-	if (orig_opt.size() == 0) return GridGeom(0, 0, 0, 0);
+HM2D::GridData HMBlay::BuildBLayerGrid(const vector<HMBlay::Input>& orig_opt){
+	if (orig_opt.size() == 0) return HM2D::GridData();
 	//0) check input
 	for (auto& o: orig_opt){
 		if (o.edges == 0 || o.edges->size() == 0){
@@ -42,15 +38,16 @@ GridGeom HMBlay::BuildBLayerGrid(const vector<HMBlay::Input>& orig_opt){
 	ShpVector<BGrid> gg;
 	for (auto& seq: seqvec){
 		auto a = BGrid::MeshSequence(seq);
-		gg.push_back(a);
+		gg.emplace_back(new BGrid(std::move(a)));
 	}
 
 	//6) impose boundary grids
 	auto impres = BGrid::ImposeBGrids(gg);
 
 	//7) to original size
-	impres->undo_scale(*opt[0].get_scaling());
+	HM2D::Unscale(impres.vvert, *opt[0].get_scaling());
 
-	return GridGeom::sum({impres.get()});
+	HM2D::GridData ret(std::move(impres));
+	return ret;
 }
 

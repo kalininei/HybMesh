@@ -3,6 +3,7 @@
 #include "partition01.hpp"
 #include "cont_assembler.hpp"
 #include "treverter2d.hpp"
+#include "finder2d.hpp"
 
 using namespace HM2D;
 using namespace HM2D::Contour;
@@ -94,7 +95,7 @@ struct Conditions2D{
 
 	//returns step size and weight
 	std::pair<double, double> cond_for_contour(int i, const Point& p){
-		auto cle = FindClosestEdge(contcond[i], p);
+		auto cle = HM2D::Finder::ClosestEdge(contcond[i], p);
 		double dist = std::get<1>(cle);
 		if (dist > influence_dist) return std::make_pair(1.0, 0.0);
 		double h = contcond[i][std::get<0>(cle)]->length();
@@ -327,7 +328,19 @@ EdgeData partition_with_keepit(A& step, const EdgeData& contour,
 		const VertexData& keepit){
 	Vlist keep_sorted = build_sorted_pnt(contour, keepit);
 	//call core procedure
-	return partition_core(step, contour, keep_sorted);
+	auto ret=partition_core(step, contour, keep_sorted);
+
+	//all keepit points should present in result if they were in contour
+	assert( [&](){
+			for (auto p: keepit){
+				if (!HM2D::Finder::Contains(contour, p.get())) continue;
+				if (!HM2D::Finder::Contains(ret, p.get())) return false;
+			}
+			return true;
+		}()
+	);
+
+	return ret;
 }
 }//namespace
 

@@ -1,7 +1,6 @@
 #ifndef HYBMESH_HMCPORT_GRID3D_H
 #define HYBMESH_HMCPORT_GRID3D_H
 
-#include "crossgrid.h"
 #include "hmcport.h"
 #include "cport_grid2d.h"
 

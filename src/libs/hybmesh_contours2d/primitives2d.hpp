@@ -38,7 +38,10 @@ struct Edge{
 	shared_ptr<Vertex> last() const { return vertices[1]; }
 	bool has_right_cell() const { return !right.expired(); }
 	bool has_left_cell() const { return !left.expired(); }
+	bool no_right_cell() const { return right.expired(); }
+	bool no_left_cell() const { return left.expired(); }
 	bool is_boundary() const { return left.expired() || right.expired(); }
+	bool is_inner() const { return !is_boundary(); }
 	double measure() const { return Point::meas(*vertices[0], *vertices[1]); }
 	double length() const { return sqrt(measure()); }
 	bool connected_to(const Edge& e2) const{
@@ -72,8 +75,6 @@ struct Cell{
 	// ===== Features
 	//first vertex is common to last and first edge
 	ShpVector<Vertex> sorted_vertices() const;
-	//signed area. should be positive for valid cells
-	double area() const;
 	//number of edges, vertices
 	std::tuple<int, int> n_ev() const;
 
@@ -98,19 +99,16 @@ struct GridData{
 	void enumerate_all() const;
 };
 
-//deep copy procedures
+//deep copy procedures: 
 void DeepCopy(const VertexData& from, VertexData& to);
 void DeepCopy(const EdgeData& from, EdgeData& to, int level=1);
 void DeepCopy(const CellData& from, CellData& to, int level=2);
 void DeepCopy(const GridData& from, GridData& to, int level=2);
 
-//contains procedures: returns data object or nullptr
-shared_ptr<Vertex> Contains(const VertexData& data, const Point* pnt);
-shared_ptr<Vertex> Contains(const EdgeData& data, const Point* pnt);
-shared_ptr<Edge> Contains(const EdgeData& data, const Edge* ed);
-shared_ptr<Vertex> Contains(const CellData& data, const Point* pnt);
-shared_ptr<Edge> Contains(const CellData& data, const Edge* ed);
-shared_ptr<Cell> Contains(const CellData& data, const Cell* c);
+//split procedures
+vector<EdgeData> SplitData(const EdgeData& data);
+vector<CellData> SplitData(const CellData& data);
+vector<GridData> SplitData(const GridData& data);
 
 //extract procedures
 VertexData AllVertices(const EdgeData& from);
@@ -122,30 +120,16 @@ std::tuple<VertexData, EdgeData> AllPrimitives(const CellData& from);
 double Length(const EdgeData&);
 vector<double> ELengths(const EdgeData&);
 
-//closest edge-> returns 
-//<0> edge index, -1 if dt is empty
-//<1> distance,
-//<2> weight of closest point within edge.
-std::tuple<int, double, double>
-FindClosestEdge(const EdgeData& dt, const Point& p);
-
-//closest point lying on edge
-Point FindClosestEPoint(const EdgeData& dt, const Point& p);
-
-//pointer to closest point:
-//<0> - point index
-//<1> - squared distance to point
-std::tuple<int, double> FindClosestNode(const VertexData& dt, const Point& p);
-
-
 BoundingBox BBox(const VertexData&, double eps=0.);
 BoundingBox BBox(const EdgeData&, double eps=0.);
 BoundingBox BBox(const CellData&, double eps=0.);
 
-ScaleBase Scale01(EdgeData&);
-ScaleBase Scale01(VertexData&);
+ScaleBase Scale01(EdgeData&, double a=1);
+ScaleBase Scale01(VertexData&, double a=1);
 void Scale(EdgeData&, const ScaleBase& sc);
+void Scale(VertexData&, const ScaleBase& sc);
 void Unscale(EdgeData&, const ScaleBase& sc);
+void Unscale(VertexData&, const ScaleBase& sc);
 
 }
 

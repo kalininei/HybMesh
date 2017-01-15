@@ -1,10 +1,10 @@
 #include "hmproject.h"
 #include "cport_grid3d.h"
-#include "grid.h"
 #include "hmgrid3d.hpp"
 #include "bgeom3d.h"
 #include "treverter3d.hpp"
 #include "tscaler.hpp"
+#include "contabs2d.hpp"
 
 using HM3D::Ser::Grid;
 
@@ -82,22 +82,30 @@ namespace{
 struct SideBndFunctor{
 	std::vector<int> edge_bc;
 
-	SideBndFunctor(const GridGeom& g, const Grid2DBoundaryStruct& bnd,
+	SideBndFunctor(const HM2D::GridData& g, const Grid2DBoundaryStruct& bnd,
 			int algo, int sidebnd){
-		std::set<Edge> set_eds = g.get_edges();
-		edge_bc.resize(set_eds.size(), sidebnd);
+		edge_bc.resize(g.vedges.size(), sidebnd);
 		if (algo == 0){
 			return;
 		} else if (algo == 1){
-			std::vector<Edge> eds(set_eds.begin(), set_eds.end());
+			auto vertedges = HM2D::Connectivity::VertexEdge(g.vedges);
+			int k=0;
+			for (auto& ve: vertedges) ve.v->id = k++;
+			aa::enumerate_ids_pvec(g.vedges);
 			for (int i=0; i<bnd.n; ++i){
-				int p1 = bnd.edge_start_nodes[i];
-				int p2 = bnd.edge_end_nodes[i];
-				Edge e(p1, p2);
-				auto gindex_fnd = std::find(eds.begin(), eds.end(), e);
-				assert(gindex_fnd != eds.end());
-				int gindex = gindex_fnd - eds.begin();
-				edge_bc[gindex] = bnd.btypes[i];
+				int p1 = g.vvert[bnd.edge_start_nodes[i]]->id;
+				int p2 = g.vvert[bnd.edge_end_nodes[i]]->id;
+				HM2D::Edge* efnd = 0;
+				for (auto ei: vertedges[p1].eind){
+					auto e = g.vedges[ei];
+					if ((e->first()->id == p1 && e->last()->id == p2) ||
+					    (e->last()->id == p1 && e->first()->id == p2)){
+						efnd = e.get(); break;
+					}
+				}
+				if (efnd == 0) throw std::runtime_error("edge was not found");
+				int index = efnd->id;
+				edge_bc[index] = bnd.btypes[i];
 			}
 		} else {
 			throw std::runtime_error("invalid side bc algorithm");
@@ -114,7 +122,7 @@ CPortGrid3D* grid2_sweep_z(const Grid* g, const Grid2DBoundaryStruct* bc,
 		int algo_top, int* btop,
 		int algo_bot, int* bbot,
 		int algo_side, int bside){
-	const GridGeom* gg = static_cast<const GridGeom*>(g);
+	const HM2D::GridData* gg = static_cast<const HM2D::GridData*>(g);
 	HM3D::Ser::Grid* ret = NULL;
 	try{
 		vector<double> z(zvals, zvals+nz);
@@ -146,8 +154,8 @@ CPortGrid3D* grid2_revolve(Grid* g, double* vec, int n_phi, double* phi,
 		int b1, int b2, int is_trian){
 	CPortGrid3D* ret = NULL;
 	//Scale
-	GridGeom* grid = static_cast<GridGeom*>(g);
-	ScaleBase sc = grid->do_scale();
+	HM2D::GridData* grid = static_cast<HM2D::GridData*>(g);
+	ScaleBase sc = HM2D::Scale01(grid->vvert);
 	Point pstart(vec[0], vec[1]), pend(vec[2], vec[3]);
 	sc.scale(pstart); sc.scale(pend);
 	try{
@@ -163,7 +171,7 @@ CPortGrid3D* grid2_revolve(Grid* g, double* vec, int n_phi, double* phi,
 		if (ret != NULL) {free_grid3d(ret); ret = NULL; }
 	}
 	//Unscale
-	grid->undo_scale(sc);
+	HM2D::Unscale(grid->vvert, sc);
 	//return
 	return ret;
 }

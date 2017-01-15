@@ -1,58 +1,51 @@
 #ifndef HYBMESH_BGRID_HPP
 #define HYBMESH_BGRID_HPP
 
-#include "grid.h"
 #include "options.hpp"
 #include "extpath.hpp"
+#include "primitives2d.hpp"
 
 namespace HMBlay{
 namespace Impl{
 
-class BGrid: public GridGeom{
-protected:
-	typedef HM2D::EdgeData Pth;
-	typedef HM2D::Edge Ed;
-
+class BGrid: public HM2D::GridData{
 	static ExtPath AssembleExtendedPath(vector<Options*>& data);
-	static shared_ptr<BGrid> NoSelfIntersections(shared_ptr<BGrid> g, const HM2D::EdgeData& source);
-	static shared_ptr<BGrid> MeshFullPath(const ExtPath& p);
+	static BGrid NoSelfIntersections(BGrid& g, const HM2D::EdgeData& source);
+	static BGrid MeshFullPath(const ExtPath& p);
 
-	//remove cells overriden to include deletion of features
-	void remove_cells(const vector<int>& bad_cells) override;
 public:
+	//includes deletion of features, edges and vertices
+	void remove_cells(const vector<int>& bad_cells);
 	//adds cell to the end of cell list.
 	//gets features (weight, source_feat) from same_feat_cell
-	void ShallowAddCell(shared_ptr<Cell> c, const Cell* same_feat_cell=0);
-	void ShallowAddNode(shared_ptr<GridPoint> p) { points.push_back(p); set_indicies(); }
-	void ShallowAddNodes(const ShpVector<GridPoint>& p) {
-		std::copy(p.begin(), p.end(), std::back_inserter(points));
-		set_indicies();
-	}
+	//!!! does not add edges and vertices.
+	void add_cell(shared_ptr<HM2D::Cell> c, const HM2D::Cell* same_feat_cell=0);
+	void add_grid(const BGrid& g);
 
 	//Removes all source features
-	void RemoveFeatures(const Cell* c);
+	void remove_features(const HM2D::Cell* c);
 
 	//index of layer starting from source
 	//used for bgrid imposition to calculate cell priority
-	std::map<const Cell*, int> weight;
-	int get_weight(const Cell* c){
+	std::map<const HM2D::Cell*, int> weight;
+	int get_weight(const HM2D::Cell* c){
 		auto fnd = weight.find(c);
 		return (fnd == weight.end()) ? 1e3 : fnd->second;
 	}
-	int get_weight(int i){ return get_weight(get_cell(i)); }
-	void AddWeights(const std::map<const Cell*, int>& w);
+	int get_weight(int i){ return get_weight(vcells[i].get()); }
+	void add_weights(const std::map<const HM2D::Cell*, int>& w);
 
 	//all cells which were created from the same source
 	//has unique address at source_feat. Value by itself doesn't matter.
-	//Cells are considered to belong to same source if
+	//HM2D::Cells are considered to belong to same source if
 	//source_feat[c1].get() == source_feat[c2].get()
-	std::map<const Cell*, shared_ptr<int>> source_feat;
-	void AddSourceFeat(const std::map<const Cell*, shared_ptr<int>>& f);
+	std::map<const HM2D::Cell*, shared_ptr<int>> source_feat;
+	void add_source_feat(const std::map<const HM2D::Cell*, shared_ptr<int>>& f);
 
-	bool is_from_source(const Cell* c1) const{
+	bool is_from_source(const HM2D::Cell* c1) const{
 		return source_feat.find(c1) != source_feat.end();
 	}
-	bool is_from_same_source(const Cell* c1, const Cell* c2) const{
+	bool is_from_same_source(const HM2D::Cell* c1, const HM2D::Cell* c2) const{
 		auto fnd1 = source_feat.find(c1);
 		auto fnd2 = source_feat.find(c2);
 		if (fnd1 == source_feat.end() || 
@@ -60,14 +53,14 @@ public:
 		else return (fnd1->second.get() == fnd2->second.get());
 	}
 	bool is_from_same_source (int i1, int i2) const{
-		return is_from_same_source(get_cell(i1), get_cell(i2));
+		return is_from_same_source(vcells[i1].get(), vcells[i2].get());
 	}
 	
-	void ShallowAdd(const BGrid& g);
 	
-	static shared_ptr<BGrid> MeshSequence(vector<Options*>& data);
-	static shared_ptr<BGrid> ImposeBGrids(ShpVector<BGrid>& gg);
-
+	static BGrid MeshSequence(vector<Options*>& data);
+	static BGrid ImposeBGrids(ShpVector<BGrid>& gg);
+	static shared_ptr<BGrid> MoveFrom1(HM2D::GridData&& gg);
+	static BGrid MoveFrom2(HM2D::GridData&& gg);
 };
 
 

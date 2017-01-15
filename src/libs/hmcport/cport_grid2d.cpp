@@ -1,25 +1,26 @@
 #include "hmproject.h"
 #include "cport_grid2d.h"
-#include "grid.h"
-#include "fluent_export_grid2d.hpp"
-#include "tecplot_export_grid2d.hpp"
-#include "vtk_export_grid2d.hpp"
-#include "procgrid.h"
 #include "hmmapping.hpp"
-#include "trigrid.h"
+#include "trigrid.hpp"
+#include "pebi.hpp"
 #include "hmblay.hpp"
-#include "pebi.h"
-#include "hmg_export_grid2d.hpp"
-#include "hmg_import_grid2d.hpp"
 #include "cont_assembler.hpp"
+#include "contabs2d.hpp"
+#include "healgrid.hpp"
+#include "finder2d.hpp"
+
+#include "export2d_fluent.hpp"
+#include "export2d_tecplot.hpp"
+#include "export2d_hm.hpp"
+#include "import2d_hm.hpp"
 
 
 namespace{
-GridGeom* togrid(void* g){
-	return static_cast<GridGeom*>(g);
+HM2D::GridData* togrid(void* g){
+	return static_cast<HM2D::GridData*>(g);
 }
-const GridGeom* togrid(const void* g){
-	return static_cast<const GridGeom*>(g);
+const HM2D::GridData* togrid(const void* g){
+	return static_cast<const HM2D::GridData*>(g);
 }
 }
 
@@ -45,23 +46,31 @@ void free_grid2_boundary_types(Grid2DBoundaryStruct* p){
 }
 
 namespace{
-vector<int> construct_bindex(const Grid2DBoundaryStruct* bstr, const GridGeom& g){
-	std::set<Edge> eds_set = g.get_edges();
-	std::vector<Edge> eds(eds_set.begin(), eds_set.end());
-	std::vector<int> bindex(eds.size(), -1);
+vector<int> construct_bindex(const Grid2DBoundaryStruct* bstr, const HM2D::GridData& g){
+	auto vertedges = HM2D::Connectivity::VertexEdge(g.vedges);
+	int k=0;
+	for (auto& ve: vertedges) ve.v->id = k++;
+	std::vector<int> bindex(g.vedges.size(), -1);
+	aa::enumerate_ids_pvec(g.vedges);
 	for (int i=0; i<bstr->n; ++i){
-		int p1 = bstr->edge_start_nodes[i];
-		int p2 = bstr->edge_end_nodes[i];
-		Edge e(p1, p2);
-		auto fnd = std::find(eds.begin(), eds.end(), e);
-		assert(fnd != eds.end());
-		int index = fnd - eds.begin();
+		int p1 = g.vvert[bstr->edge_start_nodes[i]]->id;
+		int p2 = g.vvert[bstr->edge_end_nodes[i]]->id;
+		HM2D::Edge* efnd = 0;
+		for (auto ei: vertedges[p1].eind){
+			auto e = g.vedges[ei];
+			if ((e->first()->id == p1 && e->last()->id == p2) ||
+			    (e->last()->id == p1 && e->first()->id == p2)){
+				efnd = e.get(); break;
+			}
+		}
+		if (efnd == 0) throw std::runtime_error("edge was not found");
+		int index = efnd->id;
 		bindex[index] = bstr->btypes[i];
 	}
 	return bindex;
 }
 
-GGeom::Export::BFun construct_bnames(const BoundaryNamesStruct* bnames){
+HM2D::Export::BNamesFun construct_bnames(const BoundaryNamesStruct* bnames){
 	std::map<int, std::string> bnames_map;
 	if (bnames != NULL) for (int i=0; i<bnames->n; ++i){
 		bnames_map[bnames->values[i]] = std::string(bnames->names[i]);
@@ -80,12 +89,12 @@ int export_msh_grid(const Grid* grid, const char* fname,
 		const BoundaryNamesStruct* bnames,
 		int n_periodic,
 		int* data_periodic){
-	const GridGeom* g = togrid(grid);
+	const HM2D::GridData* g = togrid(grid);
 	try {
 		vector<int> bindex = construct_bindex(bstr, *g);
 		auto fnames = construct_bnames(bnames);
 		//3 construct periodic data
-		GGeom::Export::PeriodicData pd;
+		HM2D::Export::PeriodicData pd;
 		for (int i=0; i<n_periodic; ++i){
 			int b1 = *data_periodic++;
 			int b2 = *data_periodic++;
@@ -93,7 +102,7 @@ int export_msh_grid(const Grid* grid, const char* fname,
 			pd.add_data(b1, b2, is_rev);
 		}
 		//4 call function
-		GGeom::Export::GridMSH(*g, fname, bindex, fnames, pd);
+		HM2D::Export::GridMSH(*g, fname, bindex, fnames, pd);
 		return 0;
 	} catch (std::runtime_error &e){
 		std::cout<<e.what()<<std::endl;
@@ -104,12 +113,12 @@ int export_msh_grid(const Grid* grid, const char* fname,
 int export_tecplot_grid(const Grid* grid, const char* fname,
 		const Grid2DBoundaryStruct* bstr,
 		const BoundaryNamesStruct* bnames){
-	const GridGeom* g = togrid(grid);
+	const HM2D::GridData* g = togrid(grid);
 	try{
 		vector<int> bindex = construct_bindex(bstr, *g);
 		auto fnames = construct_bnames(bnames);
 		//call function
-		GGeom::Export::GridTecplot(*g, fname, bindex, fnames);
+		HM2D::Export::GridTecplot(*g, fname, bindex, fnames);
 		return 0;
 	} catch (std::runtime_error &e){
 		std::cout<<e.what()<<std::endl;
@@ -124,7 +133,7 @@ void* custom_rectangular_grid(int algo, void* left, void* bot,
 	HM2D::EdgeData* _bot1 = static_cast<HM2D::EdgeData*>(bot);
 	HM2D::EdgeData* _right1 = static_cast<HM2D::EdgeData*>(right);
 	HM2D::EdgeData* _top1 = static_cast<HM2D::EdgeData*>(top);
-	GridGeom* ret = 0;
+	HM2D::GridData* ret = 0;
 	//scale
 	ScaleBase sc = HM2D::Scale01(*_left1);
 	HM2D::Scale(*_bot1, sc);
@@ -137,32 +146,32 @@ void* custom_rectangular_grid(int algo, void* left, void* bot,
 		HM2D::EdgeData top1 = HM2D::Contour::Assembler::SimpleContours(*_top1)[0];
 		//assemble grid
 		if (algo == 0){
-			ret = new GridGeom(HMMap::LinearRectGrid(left1, bot1, right1, top1));
+			ret = new HM2D::GridData(HMMap::LinearRectGrid(left1, bot1, right1, top1));
 		} else if (algo == 1){
-			ret = new GridGeom(HMMap::LaplaceRectGrid.WithCallback(
+			ret = new HM2D::GridData(HMMap::LaplaceRectGrid.WithCallback(
 				cb, left1, bot1, right1, top1, "inverse-laplace"));
 		} else if (algo == 2){
-			ret = new GridGeom(HMMap::LaplaceRectGrid.WithCallback(
+			ret = new HM2D::GridData(HMMap::LaplaceRectGrid.WithCallback(
 				cb, left1, bot1, right1, top1, "direct-laplace"));
 		} else if (algo == 3){
-			ret = new GridGeom(HMMap::OrthogonalRectGrid.WithCallback(
+			ret = new HM2D::GridData(HMMap::OrthogonalRectGrid.WithCallback(
 				cb, left1, bot1, right1, top1));
 		} else if (algo == 4){
-			ret = new GridGeom(HMMap::LinearTFIRectGrid(
+			ret = new HM2D::GridData(HMMap::LinearTFIRectGrid(
 				left1, bot1, right1, top1));
 		} else if (algo == 5){
-			ret = new GridGeom(HMMap::CubicTFIRectGrid(
+			ret = new HM2D::GridData(HMMap::CubicTFIRectGrid(
 				left1, bot1, right1, top1, {her_w[0], her_w[1], her_w[2], her_w[3]}));
 		} else throw std::runtime_error("unknown algorithm");
-		ret->undo_scale(sc);
+		HM2D::Unscale(ret->vvert, sc);
 	} catch (HMMap::EInvalidGrid &e){
 		if (!return_invalid){
 			std::cout<<e.what()<<std::endl;
 			ret = 0;
 		} else{
 			std::cout<<"Ignored error: "<<e.what()<<std::endl;
-			e.invalid_grid.undo_scale(sc);
-			ret = new GridGeom(std::move(e.invalid_grid));
+			HM2D::Unscale(e.invalid_grid.vvert, sc);
+			ret = new HM2D::GridData(std::move(e.invalid_grid));
 		}
 	} catch (std::runtime_error &e){
 		std::cout<<e.what()<<std::endl;
@@ -177,7 +186,7 @@ void* custom_rectangular_grid(int algo, void* left, void* bot,
 }
 
 Grid* circ4grid(int algo, double* center, double rad, double step, double sqrside, double outer_refinement){
-	GridGeom* ret = NULL;
+	HM2D::GridData* ret = NULL;
 	try{
 		double n = 2*M_PI*rad/step;
 		int n1 = round(n/8.0);
@@ -189,11 +198,11 @@ Grid* circ4grid(int algo, double* center, double rad, double step, double sqrsid
 			case 3: stralgo="orthogonal-rect"; break;
 			default: throw std::runtime_error("unknown algorithm");
 		};
-		ret = new GridGeom(HMMap::Circ4Prototype(Point(0, 0), 1.0, 8*n1,
+		ret = new HM2D::GridData(HMMap::Circ4Prototype(Point(0, 0), 1.0, 8*n1,
 			stralgo, sqrside, outer_refinement));
 		//unscale
 		ScaleBase sc(center[0], center[1], rad);
-		ret->undo_scale(sc);
+		HM2D::Unscale(ret->vvert, sc);
 		return ret;
 	} catch (std::runtime_error &e){
 		std::cout<<e.what()<<std::endl;
@@ -203,34 +212,37 @@ Grid* circ4grid(int algo, double* center, double rad, double step, double sqrsid
 }
 
 void* triangulate_domain(void* domain, void* constr, int nemb, double* emb, int algo){
-	GridGeom* ret = NULL;
+	using namespace HM2D::Mesher;
+	HM2D::GridData* ret = NULL;
 	HM2D::EdgeData* dom = static_cast<HM2D::EdgeData*>(domain);
-	HM2D::EdgeData* con = (constr==0)?0:static_cast<HM2D::EdgeData*>(constr);
+	HM2D::EdgeData* con = static_cast<HM2D::EdgeData*>(constr);
 
 	ScaleBase sc = HM2D::Scale01(*dom);
 	if (con!=0) HM2D::Scale(*con, sc);
-	std::vector<double> ep;
+	std::map<Point, double> ep;
 	for (int i=0; i<nemb; ++i){
-		ep.push_back((emb[3*i+0]-sc.p0.x)/sc.L);
-		ep.push_back((emb[3*i+1]-sc.p0.y)/sc.L);
-		ep.push_back(emb[3*i+2]/sc.L);
+		Point p(emb[3*i], emb[3*i+1]);
+		sc.scale(p);
+		ep.emplace(p, emb[3*i+2]/sc.L);
 	}
 	try{
 		auto etree = HM2D::Contour::Tree::Assemble(*dom);
-		auto tree = etree;
-		tree.remove_detached();
-		if (tree.nodes.size() == 0)
+		if (etree.roots().size() == 0)
 			throw std::runtime_error("Failed to find bounding contour");
 
-		ShpVector<HM2D::EdgeData> cc;
 		vector<HM2D::EdgeData> cas;
 		if (con!=0) cas = HM2D::Contour::Assembler::AllContours(*con);
-		for (int i=0; i<cas.size(); ++i) aa::add_shared(cc, cas[i]);
+		for (auto& c: cas){ etree.add_detached_contour(c); }
 
-		if (algo == 0) ret = new TriGrid(TriGrid(tree, cc, ep));
-		else if (algo == 1) ret = new GridGeom(QuadGrid(tree, cc, ep));
-
-		ret->undo_scale(sc);
+		HM2D::GridData gret;
+		switch (algo){
+			case 0: gret = UnstructuredTriangle(etree, ep); break;
+			case 1: gret = UnstructuredTriangleRecomb(etree, ep); break;
+			default: throw std::runtime_error("unknown unstructured fill algorithm");
+				
+		};
+		HM2D::Unscale(gret.vvert, sc);
+		ret = new HM2D::GridData(std::move(gret));
 	} catch (std::runtime_error &e){
 		std::cout<<e.what()<<std::endl;
 		if (ret!=0) delete ret;
@@ -242,34 +254,27 @@ void* triangulate_domain(void* domain, void* constr, int nemb, double* emb, int 
 }
 
 void* pebi_fill(void* domain, void* constr, int nemb, double* emb){
-	GridGeom* ret = NULL;
+	HM2D::GridData* ret = NULL;
 	HM2D::EdgeData* dom = static_cast<HM2D::EdgeData*>(domain);
 	HM2D::EdgeData* con = (constr==0)?0:static_cast<HM2D::EdgeData*>(constr);
 
 	ScaleBase sc = HM2D::Scale01(*dom);
 	if (con!=0) HM2D::Scale(*con, sc);
-	std::vector<double> ep;
+	std::map<Point, double> ep;
 	for (int i=0; i<nemb; ++i){
-		ep.push_back((emb[3*i+0]-sc.p0.x)/sc.L);
-		ep.push_back((emb[3*i+1]-sc.p0.y)/sc.L);
-		ep.push_back(emb[3*i+2]/sc.L);
+		Point p(emb[3*i], emb[3*i+1]);
+		sc.scale(p);
+		ep.emplace(p, emb[3*i+2]/sc.L);
 	}
 	try{
 		auto tree = HM2D::Contour::Tree::Assemble(*dom);
-		tree.remove_detached();
 
-		if (tree.nodes.size() == 0)
+		if (tree.roots().size() == 0)
 			throw std::runtime_error("Failed to find bounding contour");
 
-		ShpVector<HM2D::EdgeData> cc;
-		vector<HM2D::EdgeData> cas;
-		if (con!=0) cas = HM2D::Contour::Assembler::AllContours(*con);
-		for (int i=0; i<cas.size(); ++i) aa::add_shared(cc, cas[i]);
-
-		TriGrid g3 = TriGrid(tree, cc, ep);
-		ret = new GridGeom(TriToPebi(g3));
-
-		ret->undo_scale(sc);
+		HM2D::GridData gret = HM2D::Mesher::UnstructuredPebi(tree, ep);
+		HM2D::Unscale(gret.vvert, sc);
+		ret = new HM2D::GridData(std::move(gret));
 	} catch (std::runtime_error &e){
 		std::cout<<e.what()<<std::endl;
 		if (ret!=0) delete ret;
@@ -281,13 +286,14 @@ void* pebi_fill(void* domain, void* constr, int nemb, double* emb){
 }
 
 void* convex_cells(void* input_grid, double an){
-	GridGeom* ret = NULL;
+	HM2D::GridData* ret=0;
 	try{
-		GridGeom* inp = static_cast<GridGeom*>(input_grid);
-		ret = new GridGeom(GGeom::Constructor::DeepCopy(*inp));
-		ScaleBase sc = ret->do_scale();
-		GGeom::Repair::NoConcaveCells(*ret, an/180.0*M_PI);
-		ret->undo_scale(sc);
+		HM2D::GridData* inp = static_cast<HM2D::GridData*>(input_grid);
+		ret = new HM2D::GridData();
+		HM2D::DeepCopy(*inp, *ret);
+		ScaleBase sc = HM2D::Scale01(ret->vvert);
+		HM2D::Grid::Algos::NoConcaveCells(*ret, an);
+		HM2D::Unscale(ret->vvert, sc);
 		return ret;
 	} catch (std::runtime_error &e){
 		std::cout<<e.what()<<std::endl;
@@ -298,7 +304,7 @@ void* convex_cells(void* input_grid, double an){
 
 void* stripe_grid(void* input_contour, int npart, double* part, int tip_algo, 
 		void** bot, void** left, void** top, void** right, hmcport_callback cb){
-	GridGeom* ret = NULL;
+	HM2D::GridData* ret = NULL;
 	auto ecol = static_cast<HM2D::EdgeData*>(input_contour);
 	ScaleBase sc = HM2D::Scale01(*ecol);
 	HM2D::EdgeData cbot, cright, cleft, ctop;
@@ -307,14 +313,14 @@ void* stripe_grid(void* input_contour, int npart, double* part, int tip_algo,
 		for (auto& x: spart) x/=sc.L;
 		Point bl, br, tr, tl;
 		HM2D::EdgeData ic = HM2D::Contour::Assembler::Contour1(*ecol, ecol->at(0)->first().get());
-		ret = new GridGeom(HMBlay::BuildStripeGrid.WithCallback(cb, ic, spart, tip_algo, bl, br, tr, tl));
+		ret = new HM2D::GridData(HMBlay::BuildStripeGrid.WithCallback(cb, ic, spart, tip_algo, bl, br, tr, tl));
 
-		auto gc = GGeom::Info::Contour(*ret);
+		auto gc = HM2D::Contour::Tree::GridBoundary(*ret);
 		auto av = HM2D::AllVertices(gc.alledges());
-		auto bl2 = av[std::get<0>(HM2D::FindClosestNode(av, bl))].get();
-		auto br2 = av[std::get<0>(HM2D::FindClosestNode(av, br))].get();
-		auto tl2 = av[std::get<0>(HM2D::FindClosestNode(av, tl))].get();
-		auto tr2 = av[std::get<0>(HM2D::FindClosestNode(av, tr))].get();
+		auto bl2 = av[std::get<0>(HM2D::Finder::ClosestPoint(av, bl))].get();
+		auto br2 = av[std::get<0>(HM2D::Finder::ClosestPoint(av, br))].get();
+		auto tl2 = av[std::get<0>(HM2D::Finder::ClosestPoint(av, tl))].get();
+		auto tr2 = av[std::get<0>(HM2D::Finder::ClosestPoint(av, tr))].get();
 
 		if (bl != br){
 			auto& cont = gc.nodes[0]->contour;
@@ -334,7 +340,7 @@ void* stripe_grid(void* input_contour, int npart, double* part, int tip_algo,
 		if (ret!=0) delete ret;
 		return NULL;
 	}
-	ret->undo_scale(sc);
+	HM2D::Unscale(ret->vvert, sc);
 
 	auto s1 = new HM2D::EdgeData();
 	HM2D::DeepCopy(cbot, *s1);
@@ -354,24 +360,25 @@ void* stripe_grid(void* input_contour, int npart, double* part, int tip_algo,
 }
 
 void* regular_hex_grid(double* area, int area_type, double cell_rad, int strict_area){
+	using namespace HM2D::Grid::Constructor;
 	try{
 		ScaleBase sc;
-		GridGeom* ret = NULL;
+		HM2D::GridData* ret = NULL;
 		if (area_type == 0){
 			sc = BoundingBox(area[0], area[1], area[2], area[3]).to_scale();
-			ret = new GridGeom(RegularHexagonal(
+			ret = new HM2D::GridData(RegularHexagonal(
 				Point(0, 0),
 				Point((area[2]-area[0])/sc.L, (area[3]-area[1])/sc.L),
 				cell_rad/sc.L, (bool)strict_area));
 		} else if (area_type == 1){
 			sc = ScaleBase(area[0], area[1], area[2]);
-			ret = new GridGeom(RegularHexagonal(
+			ret = new HM2D::GridData(RegularHexagonal(
 				Point(0, 0),
 				area[2]/sc.L,
 				cell_rad/sc.L,
 				(bool)strict_area));
 		} else {throw std::runtime_error("unknown algo");}
-		ret->undo_scale(sc);
+		HM2D::Unscale(ret->vvert, sc);
 		return ret;
 	} catch (std::runtime_error& e){
 		std::cout<<e.what()<<std::endl;
@@ -383,8 +390,8 @@ void* gwriter_create(const char* gname, void* grid, void* awriter, void* subnode
 	try{
 		HMXML::ReaderA* wr = static_cast<HMXML::ReaderA*>(awriter);
 		HMXML::Reader* sn = static_cast<HMXML::ReaderA*>(subnode);
-		GridGeom* g = static_cast<GridGeom*>(grid);
-		auto ret = new GGeom::Export::GridWriter(*g, wr, sn, gname, fmt);
+		HM2D::GridData* g = static_cast<HM2D::GridData*>(grid);
+		auto ret = new HM2D::Export::GridWriter(*g, wr, sn, gname, fmt);
 		return ret;
 	} catch (std::runtime_error& e){
 		std::cout<<e.what()<<std::endl;
@@ -393,12 +400,12 @@ void* gwriter_create(const char* gname, void* grid, void* awriter, void* subnode
 }
 
 void gwriter_free(void* gwriter){
-	delete static_cast<GGeom::Export::GridWriter*>(gwriter);
+	delete static_cast<HM2D::Export::GridWriter*>(gwriter);
 }
 
 int gwriter_add_defined_field(void* gwriter, const char* field){
 	try{
-		auto gw = static_cast<GGeom::Export::GridWriter*>(gwriter);
+		auto gw = static_cast<HM2D::Export::GridWriter*>(gwriter);
 		std::string f(field);
 		if (f == "cell_edges" || f == "cell-edges") gw->AddCellEdgeConnectivity();
 		else if (f == "cell_vertices" || f == "cell-vertices") gw->AddCellVertexConnectivity();
@@ -411,7 +418,7 @@ int gwriter_add_defined_field(void* gwriter, const char* field){
 }
 int gwriter_add_edge_field(void* gwriter, const char* fieldname, void* field, int fsize, const char* type){
 	try{
-		auto gw = static_cast<GGeom::Export::GridWriter*>(gwriter);
+		auto gw = static_cast<HM2D::Export::GridWriter*>(gwriter);
 		std::string fn(fieldname);
 		std::string tpstr(type);
 		if (tpstr == "int"){
@@ -449,7 +456,7 @@ void* greader_create(void* awriter, void* subnode, char* outname){
 		if (nm.size()>1000) throw std::runtime_error("grid name is too long: " + nm);
 		strcpy(outname, nm.c_str());
 		//reader
-		GGeom::Import::GridReader* ret = new GGeom::Import::GridReader(wr, sn);
+		HM2D::Import::GridReader* ret = new HM2D::Import::GridReader(wr, sn);
 		return ret;
 	} catch (std::runtime_error& e){
 		std::cout<<e.what()<<std::endl;
@@ -458,13 +465,13 @@ void* greader_create(void* awriter, void* subnode, char* outname){
 }
 
 void* greader_getresult(void* rd){
-	auto reader = static_cast<GGeom::Import::GridReader*>(rd);
+	auto reader = static_cast<HM2D::Import::GridReader*>(rd);
 	return reader->result.release();
 }
 
 void* greader_read_edge_field(void* rd, const char* fieldname, const char* type){
 	try{
-		auto reader = static_cast<GGeom::Import::GridReader*>(rd);
+		auto reader = static_cast<HM2D::Import::GridReader*>(rd);
 		std::string fname(fieldname);
 		std::string tpname(type);
 		void* ret = NULL;
@@ -496,5 +503,5 @@ void* greader_read_edge_field(void* rd, const char* fieldname, const char* type)
 }
 
 void greader_free(void* greader){
-	delete (GGeom::Import::GridReader*)greader;
+	delete (HM2D::Import::GridReader*)greader;
 }

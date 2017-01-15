@@ -241,22 +241,10 @@ int BoundingBox::whereis(const Point& p) const{
 
 bool BoundingBox::has_common_points(const BoundingBox& bb) const{
 	auto res=BoundingBox({*this, bb});
-	auto sum=BoundingBox(0,0,lenx()+bb.lenx(), leny()+bb.leny());
 	//if one lies outside the other
-	if (ISGREATER(res.lenx(), sum.lenx()) ||
-		ISGREATER(res.leny(), sum.leny())) return false;
-
-	//if one lies inside the other
-	//if (ISEQ(lenx(), res.lenx()) && ISEQ(leny(), res.lenx())){
-	//        return whereis(Point(bb.xmin, bb.ymin)) == INSIDE &&
-	//                whereis(Point(bb.xmax, bb.ymax)) == INSIDE;
-	//}
-	//if (ISEQ(bb.lenx(), res.lenx()) && ISEQ(bb.leny(), res.leny())){
-	//        return bb.whereis(Point(xmin, ymin)) == INSIDE &&
-	//                bb.whereis(Point(xmax, ymax)) == INSIDE;
-	//}
-	//has intersections
-	return true;
+	if (ISGREATER(res.lenx(), lenx()+bb.lenx()) ||
+		ISGREATER(res.leny(), leny()+bb.leny())) return false;
+	else return true;
 }
 
 bool BoundingBox::contains(const Point& p1, const Point& p2) const{
@@ -274,6 +262,29 @@ bool BoundingBox::contains(const Point& p1, const Point& p2) const{
 vector<Point> BoundingBox::FourPoints() const{
 	return { Point(xmin, ymin), Point(xmax, ymin),
 		Point(xmax, ymax), Point(xmin, ymax) };
+}
+
+int BoundingBox::relation(const BoundingBox& bb) const{
+	auto pos1Dex = [](double x, double a, double b)->int{
+		if (ISLOWER(x, a)) return -2;
+		if (ISGREATER(x, b)) return 2;
+		if (ISEQ(x, a)) return -1;
+		if (ISEQ(x, b)) return 1;
+		return 0;
+	};
+	int x1 = pos1Dex(xmin, bb.xmin, bb.xmax);
+	if (x1 >= 1) return 3;
+	int x2 = pos1Dex(xmax, bb.xmin, bb.xmax);
+	if (x2 <= -1) return 3;
+	int y1 = pos1Dex(ymin, bb.ymin, bb.ymax);
+	if (y1 >= 1) return 3;
+	int y2 = pos1Dex(ymax, bb.ymin, bb.ymax);
+	if (y2 <= -1) return 3;
+
+	if (x1 == -1  && x2 == 1 && y1 == -1 && y2 == 1) return 0;
+	if (x1 <= -1 && x2 >= 1 && y1 <= -1 && y2 >= 1) return 1;
+	if (x1 >= -1 && x2 <=1 && y1 >= -1 && y2 <= 1) return 2;
+	return 4;
 }
 
 BoundingBoxFinder::BoundingBoxFinder(const BoundingBox& area, double L){
@@ -353,3 +364,10 @@ void BoundingBoxFinder::addsuspects(int ix, int iy, vector<int>& ret) const{
 	ret.resize(ret.size()+sz);
 	std::copy(data[gi].begin(), data[gi].end(), ret.end()-sz);
 }
+
+Point BoundingBoxFinder::sqr_center(int i) const{
+	int ix = i % nx();
+	int iy = i / nx();
+	return Point(x0 + (0.5 + ix)*hx, y0 + (0.5 + iy)*hy);
+}
+

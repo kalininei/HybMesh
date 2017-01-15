@@ -1,7 +1,6 @@
 #include <unordered_map>
 #include "hmproject.h"
 #include "cport_cont2d.h"
-#include "hmc_imex.hpp"
 #include "primitives2d.hpp"
 #include "contour.hpp"
 #include "tree.hpp"
@@ -10,9 +9,10 @@
 #include "cont_assembler.hpp"
 #include "algos.hpp"
 #include "treverter2d.hpp"
+#include "finder2d.hpp"
 #include "constructor.hpp"
-#include "hmc_imex.hpp"
-
+#include "export2d_hm.hpp"
+#include "import2d_hm.hpp"
 
 namespace{
 HM2D::EdgeData* to_ecol(void* g){
@@ -165,12 +165,12 @@ void* contour_partition(void* cont, int* btypes, int algo,
 		if (start_point){
 			Point *p1, *p2;
 			auto _av1 = HM2D::AllVertices(ext.alledges());
-			auto _f1 = HM2D::FindClosestNode(_av1, start);
+			auto _f1 = HM2D::Finder::ClosestPoint(_av1, start);
 			p1 = _av1[std::get<0>(_f1)].get();
 			HM2D::EdgeData cn = ext.find_node(p1)->contour;
 			if (end_point){
 				auto _av2 = HM2D::AllVertices(cn);
-				auto _f2 = HM2D::FindClosestNode(_av2, end);
+				auto _f2 = HM2D::Finder::ClosestPoint(_av2, end);
 				p2 = _av2[std::get<0>(_f2)].get();
 			} else if (HM2D::Contour::IsClosed(cn)) p2 = p1;
 			else {
@@ -199,7 +199,7 @@ void* contour_partition(void* cont, int* btypes, int algo,
 		//keep points
 		for (int i=0; i<n_keep_pts; ++i){
 			auto _ae = ext.alledges();
-			HM2D::Edge* efnd = _ae[std::get<0>(HM2D::FindClosestEdge(_ae, kp[i]))].get();
+			HM2D::Edge* efnd = _ae[std::get<0>(HM2D::Finder::ClosestEdge(_ae, kp[i]))].get();
 			HM2D::EdgeData* cont = &ext.find_node(efnd)->contour;
 			auto gp = HM2D::Contour::GuaranteePoint(*cont, kp[i]);
 			keep_points.push_back(std::get<1>(gp));
@@ -210,7 +210,7 @@ void* contour_partition(void* cont, int* btypes, int algo,
 			for (auto& cond: cconts)
 			for (int i=0; i<ext.nodes.size(); ++i){
 				HM2D::EdgeData& cont = ext.nodes[i]->contour;
-				auto cres = HM2D::Contour::Algos::CrossAll(cont, cond);
+				auto cres = HM2D::Contour::Finder::CrossAll(cont, cond);
 				for (auto cross: cres){
 					auto gp = HM2D::Contour::GuaranteePoint(cont, std::get<1>(cross));
 					keep_points.push_back(std::get<1>(gp));
@@ -370,7 +370,7 @@ void* matched_partition(void* cont, int ncond, void** conds, int npts, double* p
 			}
 			//set cross points
 			for (auto& cond: conditions){
-				auto cr = HM2D::Contour::Algos::CrossAll(icont, cond);
+				auto cr = HM2D::Contour::Finder::CrossAll(icont, cond);
 				for (auto& icr: cr){
 					Point p = std::get<1>(icr);
 					auto p1 = std::get<1>(HM2D::Contour::GuaranteePoint(icont, p));
@@ -443,7 +443,7 @@ int extract_contour(void* source, int npnts, double* pnts, const char* method, v
 		HM2D::EdgeData* src=nullptr;
 		double mind = 1e32;
 		for (auto& c: et){
-			auto ce1 = HM2D::FindClosestEdge(*ss, p0[0]);
+			auto ce1 = HM2D::Finder::ClosestEdge(*ss, p0[0]);
 			if (std::get<0>(ce1) >= 0)
 			if (std::get<1>(ce1) < mind){
 				mind = std::get<1>(ce1);
@@ -474,7 +474,7 @@ int extract_contour(void* source, int npnts, double* pnts, const char* method, v
 		} else {
 			auto sv = HM2D::AllVertices(*src);
 			for (int i=0; i<p0.size(); ++i){
-				auto fndc = HM2D::FindClosestNode(sv, p0[i]);
+				auto fndc = HM2D::Finder::ClosestPoint(sv, p0[i]);
 				p1[i] = sv[std::get<0>(fndc)].get();
 			}
 		}
@@ -712,14 +712,12 @@ int separate_contour(void* cont, int* btypes, int* Nretc, void*** retc, int* Nre
 }
 
 int quick_separate_contour(void* cont, int* btypes, int* Nretc, void*** retc, int* Nretb, int** retb){
-	typedef HM2D::EdgeData TECol;
-	typedef HM2D::EdgeData TECont;
-	TECol* inp = static_cast<TECol*>(cont);
+	HM2D::EdgeData* inp = static_cast<HM2D::EdgeData*>(cont);
 	int r = 0;
 	try{
 		for (int i=0; i<inp->size(); ++i) (*inp)[i]->id = btypes[i];
-		vector<TECol> sep = HM2D::Contour::Assembler::QuickSeparate(*inp);
-		vector<TECont> sepr(sep.size());
+		vector<HM2D::EdgeData> sep = HM2D::SplitData(*inp);
+		vector<HM2D::EdgeData> sepr(sep.size());
 		for (int i=0; i<sep.size(); ++i){
 			HM2D::DeepCopy(sep[i], sepr[i]);
 		}
@@ -734,7 +732,7 @@ int quick_separate_contour(void* cont, int* btypes, int* Nretc, void*** retc, in
 		}
 		(*retc) = new void*[sepr.size()];
 		for (int i=0; i<sepr.size(); ++i){
-			(*retc)[i] = new TECont(std::move(sepr[i]));
+			(*retc)[i] = new HM2D::EdgeData(std::move(sepr[i]));
 		}
 		r = 1;
 	} catch (std::exception &e){

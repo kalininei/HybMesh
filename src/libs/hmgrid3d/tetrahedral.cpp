@@ -117,7 +117,7 @@ void GridFromModel(GModel& m, HM3D::GridData& ret){
 			} else {
 				throw std::runtime_error("unsupported gmsh element type");
 			}
-			aa::add_shared(ret.vcells, HM3D::Cell());
+			ret.vcells.push_back(std::make_shared<HM3D::Cell>());
 		}
 	}
 	while (ret.vvert.size() > 0 && ret.vvert.back() == nullptr)
@@ -131,7 +131,8 @@ void GridFromModel(GModel& m, HM3D::GridData& ret){
 	//faces && edges: Takes 50% of function exec time;
 	int numed = 0;
 	for (auto& f: transface){
-		auto nf = aa::add_shared(ret.vfaces, HM3D::Face());
+		ret.vfaces.push_back(std::make_shared<HM3D::Face>());
+		auto nf = ret.vfaces.back().get();
 		f.gface=ret.vfaces.back();
 		for (int i=0; i<f.ptsnums.size(); ++i){
 			int inext = (i+1)%f.ptsnums.size();

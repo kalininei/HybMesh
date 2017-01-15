@@ -1,26 +1,33 @@
-#include "wireframegrid.h"
-#include "addalgo.hpp"
+#include "wireframegrid.hpp"
 #include <algorithm>
 #include <numeric>
-#include "assert.h"
-#include "intrusion.h"
-#include "procgrid.h"
+#include "cont_assembler.hpp"
+#include "modgrid.hpp"
+#include "buildgrid.hpp"
+#include "algos.hpp"
+#include "trigrid.hpp"
+#include "finder2d.hpp"
+
+using namespace HM2D;
+using namespace HM2D::Grid;
+using namespace HM2D::Grid::Impl;
 
 //constructors
-PtsGraph::PtsGraph(const GridGeom& g2){
+PtsGraph::PtsGraph(const GridData& g2){
 	//nodes
-	nodes.reserve(g2.n_points());
-	for (int i=0; i<g2.n_points(); ++i){
-		nodes.push_back(Point(*g2.get_point(i)));
+	nodes.reserve(g2.vvert.size());
+	for (int i=0; i<g2.vvert.size(); ++i){
+		nodes.push_back(*g2.vvert[i]);
 	}
 	//edges
-	auto eds = g2.get_edges();
-	lines.reserve(eds.size());
-	for (auto e: eds){
-		lines.push_back(GraphLine(e.p1, e.p2));
+	aa::enumerate_ids_pvec(g2.vvert);
+	lines.reserve(g2.vedges.size());
+	for (auto e: g2.vedges){
+		lines.push_back(GraphLine(e->vertices[0]->id, e->vertices[1]->id));
 	}
 }
 
+/*
 PtsGraph::PtsGraph(const ContoursCollection& cc){
 	for (auto c: cc.contours_list()){
 		for (int i=0; i<c.n_points(); ++i){
@@ -44,6 +51,7 @@ PtsGraph::PtsGraph(const PContour& c){
 		}
 	}
 }
+*/
 
 PtsGraph::PtsGraph(const HM2D::EdgeData& cc){
 	auto av = HM2D::AllVertices(cc);
@@ -147,9 +155,16 @@ struct tgCell{
 	void add(tgHalfEdge* h) { he.push_back(h); }
 	tgHalfEdge* lasthe() const{ return *he.rbegin(); };
 	double Area() const{
-		PContour cnt;
-		for (auto e: he) cnt.add_point(e->first);
-		return cnt.area();
+		double ret = 0;
+		auto itcur = std::next(he.begin());
+		auto itlast = std::prev(he.end());
+		Point* p1 = (*he.begin())->first;
+		while (itcur != itlast){
+			Point* p2 = (*itcur++)->first;
+			Point* p3 = (*itcur)->first;
+			ret += triarea(*p1, *p2, *p3);
+		}
+		return ret;
 	}
 };
 
@@ -182,15 +197,17 @@ void build_tg(const vector<Point>& pts, const vector<GraphLine>& lines,
 		++ind;
 	}
 }
-
-GridGeom formgrid(const vector<tgPoint>& P, const vector<tgHalfEdge>& HE,
-		const vector<tgCell*>& cell_inner, const vector<tgCell*>& cell_outer)
-{
-	vector<Edge> ed2(HE.size()/2);
+struct TEdge{
+	int p1, p2, cell_left, cell_right;
+	void set_p(int a, int b){ p1 = a; p2 = b; if (p2<p1) std::swap(p1, p2);}
+};
+GridData formgrid(const vector<tgPoint>& P, const vector<tgHalfEdge>& HE,
+                  const vector<tgCell*>& cell_inner, const vector<tgCell*>& cell_outer){
+	vector<TEdge> ed2(HE.size()/2);
 	//edges (points connectivity)
 	for (auto& e: HE) if (e.direction){
 		int ind1=e.first->origindex, ind2=e.last->origindex;
-		ed2[e.origindex]=Edge(ind1, ind2);
+		ed2[e.origindex].set_p(ind1, ind2);
 	}
 	//edges cells connectivity
 	//inner cells
@@ -236,104 +253,113 @@ GridGeom formgrid(const vector<tgPoint>& P, const vector<tgHalfEdge>& HE,
 	}
 	vector<double> raw_pnt;
 	for (auto& p: P){ raw_pnt.push_back(p.x); raw_pnt.push_back(p.y); }
-	return GridGeom(raw_pnt.size()/2, cell_inner.size(), &raw_pnt[0], &cells_nodes[0]);
+	return Grid::Constructor::FromRaw(raw_pnt.size()/2, cell_inner.size(), &raw_pnt[0], &cells_nodes[0], -1);
 }
 }//namespace
 
-
-GridGeom PtsGraph::togrid() const{
+GridData PtsGraph::togrid() const{
 	//assemble subgraphs each of which can be
 	//processed to a single connected grid
 	auto subs = SubGraph::build(*this);
 
 	//assemble single connected grids for each sub graph
-	vector<GridGeom> grids; grids.reserve(subs.size());
+	vector<GridData> grids;
 	for (auto& s: subs) grids.push_back(s.togrid());
 
 	//if only a single grid exists return it
-	if (grids.size() == 1) return GridGeom::sum(grids);
+	if (grids.size() == 1) return grids[0];
 
 	//assembling system of outer contours
 	HM2D::Contour::Tree cont;
 	for (int i=0; i<grids.size(); ++i){
-		auto c1 = GGeom::Info::Contour(grids[i]);
-		for (int j=0; j<c1.nodes.size(); ++j){
-			cont.add_contour(c1.nodes[j]->contour);
+		auto cvec = Contour::Assembler::GridBoundary(grids[i]);
+		for (int j=0; j<cvec.size(); ++j){
+			cont.add_contour(std::move(cvec[i]));
 		}
 	}
 
 	//if no inner contours make a summation
-	if (cont.roots().size() == cont.nodes.size()) return GridGeom::sum(grids);
+	if (cont.roots().size() == cont.nodes.size()){
+		for (int i=1; i<grids.size(); ++i){
+			Grid::Algos::ShallowAdd(grids[i], grids[0]);
+		}
+		return grids[0];
+	}
 
-	//some grids lay within cells of parent grids. We need the intrusion algo.
+	//some grids lie within cells of parent grids. We need the intrusion algo.
 	return PtsGraph::intrusion_algo(grids);
 }
 
-GridGeom PtsGraph::intrusion_algo(const vector<GridGeom>& g){
-	//1 divide grids into subgrids
-	vector<GridGeom> grids; grids.reserve(10*g.size());
-	for (auto& it: g){
-		auto sg = GGeom::Modify::SubGrids(it);
-		if (sg.size() == 1){ 
-			grids.push_back(std::move(sg[0]));
-		} else {
-			for (int i=0; i<sg.size(); ++i){
-				GGeom::Modify::ReallocatePrimitives(sg[i]);
-				grids.push_back(std::move(sg[i]));
-			}
+namespace{
+void intrude(GridData& where, const GridData& what){
+	if (where.vcells.size() == 0) {
+		where = what;
+		return;
+	}
+	//find a 'where' cell which contains what grid
+	int ipar=-1;
+	for (int i=0; i<where.vcells.size(); ++i){
+		int pos = Contour::Finder::WhereIs(where.vcells[i]->edges, *what.vvert[0]);
+		assert(pos != BOUND);
+		if (pos == INSIDE){
+			ipar = i; break;
 		}
 	}
-	//2 assemble tree for each singly connected grid
-	HM2D::Contour::Tree concol;
-	for (int i=0; i<grids.size(); ++i){
-		auto c1 = GGeom::Info::Contour(grids[i]);
-		for (int j=0; j<c1.nodes.size(); ++j){
-			concol.add_contour(c1.nodes[j]->contour);
-		}
-	}
-	
-	//set of level, parent_index, child_index
-	std::set<std::tuple<int, int, int>> lpc;
-	for (int i=0; i<concol.nodes.size(); ++i){
-		int level = concol.nodes[i]->level;
-		if (level == 0) continue;
-		auto parent_cont = concol.nodes[i]->parent;
-		int parent = -1;
-		for (int j=0; j<concol.nodes.size(); ++j){
-			if (concol.nodes[j] == parent_cont.lock()){
-				parent = j;
-				break;
-			}
-		}
-		assert(parent != -1);
-		lpc.insert(std::make_tuple(level, parent, i));
-	}
-	//moving from the highest level of nesting
-	int parent=-1;
-	vector<int> childs;
-	auto intrude = [&](){
-		std::vector<GridGeom*> cg;
-		for (auto i: childs) cg.push_back(&grids[i]);
-		GridForIntrusion::intrude_grids(grids[parent], cg);
-	};
-	for (auto it=lpc.rbegin(); it!=lpc.rend(); ++it){
-		auto itnext = it; ++itnext;
-		parent = std::get<1>(*it);
-		childs.push_back(std::get<2>(*it));
-		if (itnext == lpc.rend() || std::get<1>(*itnext) != parent){
-			intrude();
-			parent=-1; childs.clear();
-		}
-	}
+	assert(ipar != -1);
 
-	//assemble first level grids
-	vector<GridGeom*> lev0;
-	for (int i=0; i<concol.nodes.size(); ++i) if (concol.nodes[i]->level == 0){
-		lev0.push_back(&grids[i]);
+	//build triangulation contour
+	Contour::Tree what_cont = Contour::Tree::GridBoundary(what);
+	Contour::Tree tree;
+	tree.add_contour(where.vcells[ipar]->edges);
+	for (auto& n: what_cont.roots()){
+		tree.add_contour(std::move(n->contour));
 	}
-	return GridGeom::sum(lev0);
+	GridData g3 = Mesher::UnstructuredTriangle(tree);
+
+	//merging
+	Grid::Algos::RemoveCells(where, {ipar});
+	Grid::Algos::ShallowAdd(what, where);
+	Grid::Algos::MergeTo(g3, where);
+}
 }
 
+GridData PtsGraph::intrusion_algo(const vector<GridData>& grids){
+	vector<Contour::Tree> trees;
+	for (auto& g: grids) trees.push_back(Contour::Tree::GridBoundary(g));
+
+	//assemle common contour
+	Contour::Tree tree;
+	for (auto& t: trees)
+	for (auto& n: t.nodes){
+		//all input grids do not contain holes because
+		//they were assembled from wireframe grid
+		assert(n->level == 0);
+		tree.add_contour(std::move(n->contour));
+	}
+	//grid index from tree node pointer
+	std::map<Contour::Tree::TNode*, int> gind;
+	for (int i=0; i<grids.size(); ++i){
+		aa::constant_ids_pvec(grids[i].vvert, i);
+	}
+	for (auto n: tree.nodes){
+		gind.emplace(n.get(), n->contour[0]->vertices[0]->id);
+	}
+
+	//assemble grid moving from lowest level of nesting
+	GridData ret;
+	std::function<void(Contour::Tree::TNode*)>
+	add = [&](Contour::Tree::TNode* gc){
+		auto& g = grids[gind[gc]];
+		intrude(ret, g);
+		for (auto c: gc->children){
+			add(c.lock().get());
+		}
+	};
+	for (auto& n: tree.roots()) add(n.get());
+	return ret;
+}
+
+/*
 HM2D::EdgeData PtsGraph::toecollection() const{
 	HM2D::EdgeData ret;
 	HM2D::VertexData pcol;
@@ -345,7 +371,7 @@ HM2D::EdgeData PtsGraph::toecollection() const{
 	}
 	return ret;
 }
-
+*/
 vector<vector<int>> PtsGraph::lines_lines_tab() const{
 	vector<vector<int>> pts_lines(nodes.size());
 	for (int i=0; i<lines.size(); ++i){
@@ -380,7 +406,6 @@ vector<SubGraph> SubGraph::build(const PtsGraph& p){
 	};
 	return ret;
 }
-
 //Recursive algorithm fails with stack overflow on debug mode in Windows (MinGW 64 at least).
 //Don't think it's a big problem but it's better to avoid recursion here.
 void SubGraph::lines_sort_out(int iline, std::vector<int>& lines_usage, std::list<int>& result,
@@ -401,7 +426,7 @@ void SubGraph::lines_sort_out(int iline, std::vector<int>& lines_usage, std::lis
 	while (it != result.end()) { add_siblings(*it); ++it; }
 }
 
-GridGeom SubGraph::togrid() const{
+GridData SubGraph::togrid() const{
 	vector<tgPoint> P;
 	vector<tgHalfEdge> HEdges;
 	vector<tgCell> VC;
@@ -465,7 +490,6 @@ std::tuple<
 
 	return ret;
 };
-
 // =============================== PtsGraphAccel
 PtsGraphAccel::PtsGraphAccel(PtsGraph& g, const Point& pmin, const Point& pmax, double e) noexcept:
 		eps(e), epsPnt(e,e), ip(Tind2Proc(Naux, Naux)), G(&g), nodecomp(e), ndfinder(nodecomp)
@@ -633,31 +657,33 @@ void PtsGraph::delete_unused_points(){
 	}
 }
 
-PtsGraph PtsGraph::cut(const PtsGraph& wmain, const ContoursCollection& conts, int dir){
-	auto ccut = PtsGraph(conts);
+PtsGraph PtsGraph::cut(const PtsGraph& wmain, const Contour::Tree& conts, int dir){
+	auto ccut = PtsGraph(conts.alledges());
 	//get the imposition: wmain + conts
 	auto ires = impose(wmain, ccut, geps);
 	PtsGraph& pg = std::get<0>(ires);
 	//filter lines which lie within bad region
 	//using the position of line center point
-	/* bad algorithm because of the short edges problem
-	std::vector<Point> line_cnt = pg.center_line_points();
-	auto flt = conts.filter_points_i(line_cnt);
-	std::vector<int>& badi = (dir==INSIDE) ? std::get<0>(flt) : std::get<2>(flt);
-	std::set<int> bad_lines(badi.begin(), badi.end());
-	*/
 
+	//bad algorithm because of the short edges problem
+	//std::vector<Point> line_cnt = pg.center_line_points();
+	//auto flt = conts.filter_points_i(line_cnt);
+	//std::vector<int>& badi = (dir==INSIDE) ? std::get<0>(flt) : std::get<2>(flt);
+	//std::set<int> bad_lines(badi.begin(), badi.end());
+	
 	//TODO: need better algorithm
 	std::vector<bool> is_on_conts(pg.nodes.size(), false);
 	for (auto a: std::get<1>(ires)) is_on_conts[a] = true;
 	for (int i=0; i<pg.nodes.size(); ++i) if (std::get<2>(ires)[i] >= 0.0) is_on_conts[i] = true;
 
 	std::vector<Point> line_cnt = pg.center_line_points();
-	auto flt = conts.filter_points_i(line_cnt);
+	std::vector<int> flt = Contour::Algos::SortOutPoints(conts, line_cnt);
 	std::vector<int> ptypes(line_cnt.size(), 1); //1 - good, 2 - bad, 3 - bnd
-	for(auto a: std::get<1>(flt)) ptypes[a] = 3;
-	if (dir == INSIDE) for (auto a: std::get<0>(flt)) ptypes[a] = 2;
-	else for (auto a: std::get<2>(flt)) ptypes[a] = 2;
+	for (int i=0; i<flt.size(); ++i){
+		if (flt[i] == BOUND) ptypes[i] = 3;
+		if (dir == INSIDE && flt[i] == INSIDE) ptypes[i] = 2;
+		if (dir == OUTSIDE && flt[i] == OUTSIDE) ptypes[i] = 2;
+	}
 	std::set<int> bad_lines;
 	for (int i=0; i<line_cnt.size(); ++i){
 		if (ptypes[i]==1) continue;
@@ -667,14 +693,14 @@ PtsGraph PtsGraph::cut(const PtsGraph& wmain, const ContoursCollection& conts, i
 		int p1_type, p2_type;
 		if (is_on_conts[p1]) p1_type = 3;
 		else{
-			int r1 = conts.is_inside(pg.nodes[p1]);
+			int r1 = conts.whereis(pg.nodes[p1]);
 			if (r1 == INSIDE) p1_type =  (dir == INSIDE) ? 2 : 1;
 			else if (r1 == OUTSIDE) p1_type = (dir == INSIDE) ? 1 : 2;
 			else {p1_type = 3;}
 		}
 		if (is_on_conts[p2]) p2_type = 3;
 		else{
-			int r1 = conts.is_inside(pg.nodes[p2]);
+			int r1 = conts.whereis(pg.nodes[p2]);
 			if (r1 == INSIDE) p2_type =  (dir == INSIDE) ? 2 : 1;
 			else if (r1 == OUTSIDE) p2_type = (dir == INSIDE) ? 1 : 2;
 			else {p2_type = 3;}
@@ -690,17 +716,20 @@ PtsGraph PtsGraph::cut(const PtsGraph& wmain, const ContoursCollection& conts, i
 	return pg;
 }
 
-void PtsGraph::add_edges(const PContour& c){
+void PtsGraph::add_edges(const EdgeData& c){
 	PtsGraph pgr(c);
 	auto ires = std::get<0>(impose(*this, pgr, geps));
 	nodes = ires.nodes;
 	lines = ires.lines;
 }
 
-void PtsGraph::exclude_area(const ContoursCollection& cont, int dir){
+void PtsGraph::exclude_area(const Contour::Tree& cont, int dir){
 	std::vector<Point> line_cnt = center_line_points();
-	auto flt = cont.filter_points_i(line_cnt);
-	std::vector<int>& badi = (dir==INSIDE) ? std::get<0>(flt) : std::get<2>(flt);
+	vector<int> flt = Contour::Algos::SortOutPoints(cont, line_cnt);
+	std::vector<int> badi;
+	for (int i=0; i<flt.size(); ++i){
+		if (flt[i] == dir) badi.push_back(i);
+	}
 	std::set<int> bad_lines(badi.begin(), badi.end());
 	exclude_lines(bad_lines);
 };
