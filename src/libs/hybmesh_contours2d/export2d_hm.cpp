@@ -185,7 +185,7 @@ void Export::GridWriter::AddCellVertexConnectivity(){
 		auto cell = grid->vcells[i];
 		data[i].resize(cell->edges.size());
 		auto op = Contour::OrderedPoints(cell->edges);
-		for (int j=0; j<op.size(); ++j){
+		for (int j=0; j<op.size()-1; ++j){
 			data[i][j] = op[j]->id;
 		}
 	}

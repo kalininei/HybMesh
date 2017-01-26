@@ -45,15 +45,15 @@ void PlainConnector::ModifyAdjacents() {
 
 // ================================= Acute
 void AcuteConnector::BuildInternals(){
-	//small triangle is found at intersection of first level cells
+	//small triangle is calculated at intersection of first level cells
 	//it is used to fill acute corner.
 	//1) find two cells which contain corner point
 	Point pc = *HM2D::Contour::Last(prev->rect->BottomContour());
 	auto get_cell = [](BGrid& g, Point& pc)->const HM2D::Cell*{
 		for (auto& c: g.vcells)
 		for (auto& e: c->edges){
-			if (e->first().get() == &pc) return c.get();
-			if (e->last().get() == &pc) return c.get();
+			if (*e->first() == pc) return c.get();
+			if (*e->last() == pc) return c.get();
 		}
 		return 0;
 	};
@@ -79,9 +79,6 @@ void AcuteConnector::BuildInternals(){
 	filler->weight[filler->vcells[0].get()] = 0;
 };
 
-namespace{
-bool pntless(const Point* p1, const Point* p2){ return *p1 < *p2; }
-}
 void AcuteConnector::ModifyAdjacents(){
 	//point of intersection to grid point
 	auto crosses = HM2D::Contour::Finder::CrossAll(prev->rect->TopContour(),

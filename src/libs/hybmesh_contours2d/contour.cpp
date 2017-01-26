@@ -1,5 +1,7 @@
 #include "contour.hpp"
 #include "finder2d.hpp"
+#include "treverter2d.hpp"
+#include "debug2d.hpp"
 using namespace HM2D;
 using namespace HM2D::Contour;
 namespace hc = HM2D::Contour;
@@ -67,6 +69,11 @@ VertexData hc::OrderedPoints(const EdgeData& cont){
 		return ret;
 	}
 }
+VertexData hc::OrderedPoints1(const EdgeData& cont){
+	auto ret = OrderedPoints(cont);
+	if (ret[0] == ret.back()) ret.resize(ret.size()-1);
+	return ret;
+}
 
 VertexData hc::UniquePoints(const EdgeData& ed){
 	auto op = OrderedPoints(ed);
@@ -75,6 +82,11 @@ VertexData hc::UniquePoints(const EdgeData& ed){
 	for (int i=1; i<op.size(); ++i){
 		if (*op[i] != *ret.back()) ret.push_back(op[i]);
 	}
+	return ret;
+}
+VertexData hc::UniquePoints1(const EdgeData& ed){
+	auto ret = UniquePoints(ed);
+	if (ret[0] == ret.back()) ret.pop_back();
 	return ret;
 }
 
@@ -196,94 +208,58 @@ void Contour::AddLastPoint(EdgeData& to, std::shared_ptr<Vertex> p){
 }
 
 namespace {
+Point midp(const VertexData& up){
+	Point ret(*up[0]);
+	for (int i=1; i<up.size(); ++i){ ret += *up[i]; }
+	return ret/(up.size());
+}
+bool inside_tri(Point p, Point t1, Point t2, Point t3){
+	p-=t1; t2-=t1; t3-=t1;
+	double modj = (t3.y*t2.x - t3.x*t2.y);
+	assert(modj>geps*geps);
+	double ksi = ( t3.y*(p.x) - t3.x*(p.y));
+	double eta = (-t2.y*(p.x) + t2.x*(p.y));
+	return (ksi>0 && ksi<modj && eta>0 && eta<modj-ksi);
+}
 Point inner_point_core(const EdgeData& c){
-	auto up = UniquePoints(c);
-	up.resize(up.size()-1);
-	assert(up.size()>=3);
-	//c is closed inner contour
-	//1) build vector from first point of c along the median
-	//   of respective angle
-	std::array<const Point*, 3> tri {up.back().get(), up[0].get(), up[1].get()};
-	//this is a workaround if contour has doubled points
-	int iedge1 = 1, iedge2 = up.size()-1;
+	auto up = UniquePoints1(c);
+	//triangle
+	if (up.size() == 3){ return midp(up); }
+	//find best convex triangle
+	vector<double> triareas(up.size());
+	for (int i=0; i<up.size(); ++i){
+		int ip = (i==0) ? up.size()-1 : i-1;
+		int in = (i==up.size()-1) ? 0 : i+1;
+		triareas[i] = triarea(*up[ip], *up[i], *up[in]);
+	}
+	//if convex polygon return average point
+	if (std::all_of(triareas.begin(), triareas.end(), [](double a){ return a>-geps*geps; })){
+		return midp(up);
+	}
+	//else find closest point to best convex vertex lying within its triangle
+	Point pbest;
+	double mbest=std::numeric_limits<double>::max();
+	int iconv = std::max_element(triareas.begin(), triareas.end())-triareas.begin();
+	if (iconv == 0) std::rotate(up.begin(), up.end()-1, up.end());
+	else std::rotate(up.begin(), up.begin()+iconv-1, up.end());
+	for (int i=3; i<up.size(); ++i){
+		if (inside_tri(*up[i], *up[0], *up[1], *up[2])){
+			double m = Point::meas(*up[1], *up[i]);
+			if (m<mbest){ mbest = m; pbest = *up[i]; }
+		}
+	}
 
-	//degenerate cases
-	int trieq = 0;
-	if (*tri[0] == *tri[1]) trieq+=1;
-	if (*tri[0] == *tri[2]) trieq+=2;
-	switch (trieq){
-		case 1: return Point::Weigh(*tri[0], *tri[2], 0.5);
-		case 2: return Point::Weigh(*tri[0], *tri[1], 0.5);
-		case 3: return *tri[0];
-	}
-	
-	double area3 = triarea(*tri[0], *tri[1], *tri[2]);
-	Vect v;
-	if (fabs(area3)<geps*geps){
-		//perpendicular to first edge
-		v = Vect(-tri[2]->y+tri[1]->y, tri[2]->x-tri[1]->x);
-	} else {
-		//median point - tri[1]
-		Point cp = Point::Weigh(*tri[0], *tri[2], 0.5);
-		v = cp - *tri[1];
-		if (area3 < 0) v *= -1;
-	}
-	//2) make this vector longer then the contour size
-	BoundingBox box = HM2D::BBox(up, 0);
-	double len = (box.lenx() + box.leny());
-	vecSetLen(v, len);
-	//3) find first cross point of vector and contour
-	Point a0 = *up[0];
-	Point a1 = a0 + v;
-	double ksieta[2];
-	//using iedge1, iedge2 which are normally equal to 1 and size()-1
-	//until doubled points are found
-	Point best_cross;
-	double minksi = std::numeric_limits<double>::max();
-	int ilimit=iedge1 - 1;
-	//looking for cross going forward
-	for (int i=iedge1; i<iedge2; ++i){
-		Point b0 = *up[i];
-		Point b1 = *up[i+1];
-		SectCrossWRenorm(a0, a1, b0, b1, ksieta);
-		if (ksieta[0]>geps && ksieta[1]>-geps && ksieta[1]<1+geps){
-			minksi = ksieta[0];
-			best_cross = Point::Weigh(b0, b1, ksieta[1]);
-			ilimit = i;
-			break;
-		}
-	}
-	//looking for cross going backward
-	for (int i=iedge2-1; i>ilimit; --i){
-		Point b0 = *up[i];
-		Point b1 = *up[i+1];
-		SectCrossWRenorm(a0, a1, b0, b1, ksieta);
-		if (ksieta[0]>geps && ksieta[1]>-geps && ksieta[1]<1+geps){
-			if (ksieta[0] < minksi){
-				minksi = ksieta[0];
-				best_cross = Point::Weigh(b0, b1, ksieta[1]);
-			}
-			break;
-		}
-	}
-	
-	assert(minksi < std::numeric_limits<double>::max() - 1.0);
-	return Point::Weigh(a0, best_cross, 0.5);
+	if (mbest == std::numeric_limits<double>::max()) return Point::Weigh(*up[0], *up[2], 0.5);
+	else return Point::Weigh(pbest, *up[1], 0.5);
 }
 }//inner_point
 
 Point Contour::InnerPoint(const EdgeData& ed){
 	assert(Contour::IsClosed(ed));
-	assert(ed.size()>1);
-	double a = Contour::Area(ed);
-	if (fabs(a)<geps*geps){
-		//chose arbitrary point on the edge
-		return Point::Weigh(*ed[0]->first(), *ed[0]->last(), 0.543);
-	} else if (a<0){
-		EdgeData c2 = ed;
-		Reverse(c2);
-		return inner_point_core(c2);
-	} else return inner_point_core(ed);
+	if (ed.size() == 2) return ed[0]->center();
+	assert(ed.size()>2);
+	Contour::R::Clockwise rr(ed, false);
+	return inner_point_core(ed);
 }
 
 std::tuple<bool, shared_ptr<Vertex>>
@@ -417,3 +393,32 @@ THROW:
 		throw std::runtime_error("Impossible to unite non-connected contours");
 	}
 }
+
+void hc::SplitEdge(EdgeData& cont, int iedge, const vector<Point>& pts){
+	if (pts.size() == 0) return;
+	assert(IsContour(cont));
+	bool iscor = CorrectlyDirectedEdge(cont, iedge);
+	if (!iscor) cont[iedge]->reverse();
+
+	VertexData pp(pts.size()+2);
+	pp[0] = cont[iedge]->vertices[0];
+	pp.back() = cont[iedge]->vertices[1];
+	for (int i=1; i<pp.size()-1; ++i){
+		pp[i] = std::make_shared<Vertex>(pts[i-1]);
+	}
+
+	cont[iedge]->vertices[1] = pp[1];
+	EdgeData newed(pts.size());
+	for (int i=0; i<pts.size(); ++i){
+		newed[i] = std::make_shared<Edge>(*cont[iedge]);
+		newed[i]->vertices[0] = pp[i+1];
+		newed[i]->vertices[1] = pp[i+2];
+	}
+	cont.insert(cont.begin()+iedge+1, newed.begin(), newed.end());
+
+	if (!iscor){
+		for (auto it=cont.begin()+iedge; it!=cont.begin()+iedge+pts.size()+1; ++it){
+			(*it)->reverse();
+		}
+	}
+};

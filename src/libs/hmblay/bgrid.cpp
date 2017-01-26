@@ -6,6 +6,7 @@
 #include "contclipping.hpp"
 #include "debug2d.hpp"
 #include "healgrid.hpp"
+#include "modgrid.hpp"
 
 using namespace HMBlay::Impl;
 
@@ -124,7 +125,7 @@ BGrid BGrid::MeshSequence(vector<Options*>& data){
 
 BGrid BGrid::NoSelfIntersections(BGrid& g, const HM2D::EdgeData& source){
 	//does grid have intersections
-	if (!HM2D::Grid::Algos::Check(g)) return g;
+	if (HM2D::Grid::Algos::Check(g)) return g;
 	//else do imposition on the basis of cells weights
 	auto wfun = [&](const HM2D::Cell* c){
 		int w = g.get_weight(c);
@@ -178,9 +179,8 @@ void BGrid::remove_cells(const vector<int>& bad_cells){
 	for (int ic: bad_cells){
 		weight.erase(vcells[ic].get());
 		source_feat.erase(vcells[ic].get());
-		vcells[ic] = nullptr;
 	}
-	HM2D::Grid::Algos::RestoreFromCells(*this);
+	HM2D::Grid::Algos::RemoveCells(*this, bad_cells);
 }
 
 void BGrid::add_grid(const BGrid& g){

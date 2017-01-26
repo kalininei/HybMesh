@@ -107,7 +107,7 @@ void test03(){
 }
 
 void test04(){
-	std::cout<<"04. Conformal mapping to rectangle: FEM vs SCPACK"<<std::endl;
+	std::cout<<"04. Conformal mapping to rectangle: FEM vs. SCPACK"<<std::endl;
 	int sz1 = 13;
 	auto r1 = HM2D::Contour::Constructor::Circle(sz1, 10, Point(0,0));
 	auto inp1 = HMMap::Conformal::Rect::FactoryInput(r1, {0, sz1/4, sz1/2, 3*sz1/4});
@@ -146,7 +146,7 @@ void test04(){
 }
 
 void test05(){
-	std::cout<<"05. Conformal mapping to annulus: FEM vs DSCPACK"<<std::endl;
+	std::cout<<"05. Conformal mapping to annulus: FEM vs. DSCPACK"<<std::endl;
 
 	auto top = HM2D::Contour::Constructor::Circle(12, 1.5, Point(10,0.1));
 	auto bot = HM2D::Contour::Constructor::Circle(5, 0.4, Point(10.5,0.2));
@@ -343,10 +343,10 @@ void test10(){
 		HM2D::Export::GridVTK(g2, "g2.vtk");
 		HM2D::Export::GridVTK(g3, "g3.vtk");
 		HM2D::Export::GridVTK(g4, "g4.vtk");
-		add_file_check(5891876269123787812U, "g1.vtk", "linear algo");
-		add_file_check(11915288752093428457U, "g2.vtk", "laplace algo");
-		add_file_check(2894475605549726641U, "g3.vtk", "orthogonal-circ algo");
-		add_file_check(11434565844711044662U, "g4.vtk", "orthogonal-rect algo");
+		add_file_check(15903419327826768668U, "g1.vtk", "linear algo");
+		add_file_check(7968599338814609544U, "g2.vtk", "laplace algo");
+		add_file_check(6805025905648782307U, "g3.vtk", "orthogonal-circ algo");
+		add_file_check(14747674935011048887U, "g4.vtk", "orthogonal-rect algo");
 	}
 	{
 		HM2D::GridData g1 = HMMap::Circ4Prototype(Point(0, 0), 1.0, 24, "laplace", 1.0, 1.0);
@@ -354,15 +354,15 @@ void test10(){
 		auto sk = HM2D::Grid::Skewness(g1);
 		auto maxel = std::max_element(sk.begin(), sk.end());
 		add_check(ISZERO(*maxel - 0.5), "skewness");
-		add_file_check(4015375048829588252U, "g1.vtk", "no refinement, side = 1.0*rad");
+		add_file_check(13271040584486753269U, "g1.vtk", "no refinement, side = 1.0*rad");
 
 		HM2D::GridData g2 = HMMap::Circ4Prototype(Point(3, 1), 2.0, 24, "laplace", 1.0, 0.3);
-		HM2D::Export::GridVTK(g2, "g1.vtk");
-		add_file_check(17078135237454258052U, "g1.vtk", "with refinement, side = 1.0*rad");
+		HM2D::Export::GridVTK(g2, "g2.vtk");
+		add_file_check(1042103010747200583U, "g2.vtk", "with refinement, side = 1.0*rad");
 
 		HM2D::GridData g3 = HMMap::Circ4Prototype(Point(-3, 1), 0.2, 80, "laplace", 0.5, 1.0);
-		HM2D::Export::GridVTK(g3, "g1.vtk");
-		add_file_check(14945723505508438707U, "g1.vtk", "side = 0.5*rad");
+		HM2D::Export::GridVTK(g3, "g3.vtk");
+		add_file_check(2561153484233905875U, "g3.vtk", "side = 0.5*rad");
 	}
 }
 

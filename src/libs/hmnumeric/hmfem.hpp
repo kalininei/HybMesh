@@ -64,6 +64,7 @@ public:
 	//boundary conditions: using vector of grid points
 	void ClearBC();
 	void SetDirichlet(const HM2D::VertexData& pts, TDirFunc f);
+	void SetDirichlet(const vector<int>& pts, TDirFunc f);
 	void SetNeumann(const HM2D::VertexData& pts, TNeuFunc f);
 
 	//using contours which shear points with grid.

@@ -40,7 +40,7 @@ struct PtsGraph{
 	//create 2D grid on the basis of current wireframe
 	//all boundary edges has an adjacent cell with index=-1.
 	GridData togrid() const;
-	EdgeData toecollection() const;
+	EdgeData toedges() const;
 
 	//imposes contour edges.
 	void add_edges(const EdgeData&);

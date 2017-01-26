@@ -229,7 +229,12 @@ UniqueInserter<C> unique_container_inserter(C& vec){
 template<class C, class V>
 C shp_find(C first, C last, V* data){
 	return std::find_if(first, last,
-		[&data](std::shared_ptr<V> a){ return a.get() == data; });
+		[&data](const std::shared_ptr<V>& a){ return a.get() == data; });
+}
+template<class C, class V>
+int shpvec_ifind(const C& container, V* data){
+	return std::find_if(container.begin(), container.end(),
+		[&data](const std::shared_ptr<V>& a){ return a.get() == data; }) - container.begin();
 }
 
 // ===== PtrContainerIndexing
@@ -379,13 +384,13 @@ template<class C>
 void remove_by_id(C& inp, int id){
 	auto a = std::remove_if(inp.begin(), inp.end(),
 		[&id](const typename C::value_type& x){ return x->id == id; });
-	inp.resize(std::distance(a, inp.begin()));
+	inp.resize(std::distance(inp.begin(), a));
 }
 template<class C>
 void keep_by_id(C& inp, int id){
 	auto a = std::remove_if(inp.begin(), inp.end(),
 		[&id](const typename C::value_type& x){ return x->id != id; });
-	inp.resize(std::distance(a, inp.begin()));
+	inp.resize(std::distance(inp.begin(), a));
 }
 //class which keeps enumeration of *Data
 //and places it back on delete
@@ -399,8 +404,7 @@ struct RestoreIds{
 	//could be reallocated/destructed between constructing and destructing of this object
 	//In the latter case this object restores ids of old pvec objects anyway
 	RestoreIds(const C& pvec, bool deepcopy=false): _shallowdata(&pvec){
-		ids.resize(pvec.size());
-		for (int i=0; i<pvec.size(); ++i) ids[i] = pvec[i]->id;
+		ids = get_ids(pvec);
 		if (deepcopy){
 			_deepdata.resize(pvec.size());
 			for (int i=0; i<pvec.size(); ++i) _deepdata[i] = pvec[i];

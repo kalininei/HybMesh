@@ -87,9 +87,9 @@ Tree Tree::Assemble(const FaceData& idata){
 	return ret;
 }
 
-vector<Tree> Tree::crop_level1() const{
+vector<Tree> Tree::CropLevel01(const Tree& tree){
 	vector<Tree> ret;
-	for (auto nd: nodes) if (nd->level>=0 && nd->level % 2 == 0) {
+	for (auto nd: tree.nodes) if (nd->isouter()) {
 		ret.push_back(Tree());
 		auto& st = ret.back();
 		st.nodes.reserve(1 + nd->children.size());

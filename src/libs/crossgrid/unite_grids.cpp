@@ -38,7 +38,16 @@ struct BoundaryShifter{
 	}
 private:
 	void process_pair(const EdgeData& c1, const EdgeData& c2, double angle0){
+		//calculate crosses
 		auto crosses = HM2D::Contour::Finder::CrossAll(c1, c2);
+		//mark all c2 points which already equal c1 vertices
+		auto c1v = AllVertices(c1), c2v = AllVertices(c2);
+		Finder::VertexMatch vm(c1v);
+		aa::constant_ids_pvec(c2v, 0);
+		for (auto& v: c2v){
+			if (vm.find(*v)) v->id = 1;
+		}
+		//loop over all crosses
 		for (auto& c: crosses){
 			Point p = std::get<1>(c);
 			auto crd = HM2D::Contour::CoordAt(c2, p);
@@ -48,7 +57,14 @@ private:
 			Edge* ied = c2[std::get<2>(crd)].get();
 			shared_ptr<Vertex> p1 = ied->first();
 			shared_ptr<Vertex> p2 = ied->last();
+
+			//do not move points which already equal c1 vertices
+			if (p1->id == 1) p1 = nullptr;
+			if (p2->id == 1) p2 = nullptr;
+			if (!p1 && !p2) continue;
+
 			if (ksi > 0.5) std::swap(p1, p2);
+			aa::RestoreIds<VertexData> rr(c2v);
 			shift(p1, p2, p, angle0);
 		}
 	}
@@ -112,8 +128,8 @@ private:
 
 	void shift(shared_ptr<Vertex> p1, shared_ptr<Vertex> p2,
 			Point newpoint, double a0){
-		if (iscorner(p1, a0)) p1 = nullptr;
-		if (iscorner(p2, a0)) p2 = nullptr;
+		if (p1 && iscorner(p1, a0)) p1 = nullptr;
+		if (p2 && iscorner(p2, a0)) p2 = nullptr;
 		if (!p1 && !p2) return;
 		if (p1 && try_to_shift(p1, newpoint)) return;
 		if (p2) try_to_shift(p2, newpoint);
@@ -154,7 +170,7 @@ GridData Algos::TUniteGrids::_run(const GridData& base, const GridData& sec, con
 	//---- find contours intersection points and place gsec nodes there
 	callback->subprocess_step_after(3);
 	std::unique_ptr<BoundaryShifter> bsh;
-	if (opt.preserve_bp){
+	if (!opt.preserve_bp){
 		bsh.reset(new BoundaryShifter(contbase, contsec, sec.vcells, opt.angle0));
 	}
 	callback->subprocess_fin();
@@ -188,8 +204,8 @@ GridData Algos::TUniteGrids::_run(const GridData& base, const GridData& sec, con
 
 	//----- merge
 	callback->step_after(10, "Final merging");
-	ret.clear();
-	for (int i=0; i<sg.size(); ++i){
+	ret = std::move(sg[0]);
+	for (int i=1; i<sg.size(); ++i){
 		Grid::Algos::MergeTo(sg[i], ret);
 	}
 
@@ -209,7 +225,7 @@ GridData Algos::TCombineGrids::_run(const GridData& g1, const GridData& g2){
 	w1 = Impl::PtsGraph::cut(w1, c2, INSIDE);
 	//4) overlay grids
 	callback->subprocess_step_after(1);
-	w2 = Impl::PtsGraph::overlay(w1, w2);
+	w1 = Impl::PtsGraph::overlay(w1, w2);
 	//5) build single connected grid
 	callback->step_after(30, "Assembling grid");
 	GridData ret = w1.togrid();

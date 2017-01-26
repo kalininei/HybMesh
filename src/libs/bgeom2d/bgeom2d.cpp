@@ -344,6 +344,20 @@ vector<int> BoundingBoxFinder::suspects(const Point& bb) const{
 		get_xstart(bb.x), get_xend(bb.x),
 		get_ystart(bb.y), get_yend(bb.y));
 }
+vector<int> BoundingBoxFinder::sqrs(const BoundingBox& bb) const{
+	vector<int> ret;
+	for (int j=get_ystart(bb.ymin); j<=get_yend(bb.ymax); ++j)
+	for (int i=get_xstart(bb.xmin); i<=get_xend(bb.xmax); ++i)
+		ret.push_back(j*(mx+1)+i);
+	return ret;
+}
+vector<int> BoundingBoxFinder::sqrs_by_entry(int e) const{
+	vector<int> ret;
+	for (int i=0; i<nsqr(); ++i)
+	if (std::find(data[i].begin(), data[i].end(), e) != data[i].end())
+		ret.push_back(i);
+	return ret;
+}
 
 vector<int> BoundingBoxFinder::allsuspects(int x0, int x1, int y0, int y1) const{
 	vector<int> ret;

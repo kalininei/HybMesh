@@ -3,7 +3,10 @@
 
 source ../../src/libs/dbgscripts/hmout.gdb
 
-file ./hmblay_test
+file ./hmmapping_test
+
 set breakpoint pending on
-b grid.cpp:526
+b healgrid.cpp:251
 run
+
+source ../../src/libs/dbgscripts/skiplist

@@ -254,7 +254,7 @@ shared_ptr<HMMath::Mat> GlobAssembly(const HM2D::GridData& grid,
 	aa::enumerate_ids_pvec(grid.vvert);
 	shared_ptr<HMMath::Mat> ret(new HMMath::Mat());
 	for (int i=0; i<grid.vcells.size(); ++i){
-		HM2D::VertexData pp = HM2D::Contour::OrderedPoints(grid.vcells[i]->edges);
+		HM2D::VertexData pp = HM2D::Contour::OrderedPoints1(grid.vcells[i]->edges);
 		shared_ptr<HMMath::LocMat> A = fun(pp);
 		vector<int> pind(pp.size());
 		std::transform(pp.begin(), pp.end(), pind.begin(), 

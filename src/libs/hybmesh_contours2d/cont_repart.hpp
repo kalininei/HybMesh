@@ -5,7 +5,7 @@
 
 namespace HM2D{namespace Contour{ namespace Algos{
 
-//takes contours and makes partition by creating vertex points of so that:
+//takes contours and makes partition by creating vertex points so that:
 //1) all sections were less than h
 //2) all subsegments points lie in a diamond built
 //   on first and last points with angle=cirt_angle at it

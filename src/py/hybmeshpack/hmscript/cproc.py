@@ -561,7 +561,7 @@ def partition_segment(start, end, hstart, hend, hinternal=[]):
 
           .. code-block:: python
 
-             hybmesh.partition_segment(1, 2, 0.1, 0.5)
+             hybmeshpack.hmscript.partition_segment(1, 2, 0.1, 0.5)
              >>> [1.0, 1.1238348, 1.309012, 1.585923, 2.0]
 
           Shows division of [1, 2] segment with approximate 0.1
@@ -569,7 +569,7 @@ def partition_segment(start, end, hstart, hend, hinternal=[]):
 
           .. code-block:: python
 
-             hybmesh.partition_segment(1, 2, 0.1, 0.1, [1.5, 0.4])
+             hybmeshpack.hmscript.partition_segment(1, 2, 0.1, 0.1, [1.5, 0.4])
              >>> [1.0, 1.1082238, 1.3278488, 1.672151, 1.891776, 2.0]
 
 

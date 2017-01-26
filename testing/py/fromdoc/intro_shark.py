@@ -166,7 +166,8 @@ if not hm.skewness(shark)['ok']:
 hm.export_grid_vtk(shark, "shark.vtk")
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-if not hm.skewness(shark)['ok']:
+if not hm.skewness(shark, 0.75)['ok']:
+    print hm.skewness(shark)
     raise Exception
 if not hm.info_grid(shark)['cell_types'].keys() == [3, 4]:
     raise Exception

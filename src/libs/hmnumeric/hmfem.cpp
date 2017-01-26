@@ -46,6 +46,13 @@ void LaplasProblem::SetDirichlet(const HM2D::VertexData& pts, TDirFunc f){
 		dirichlet_data.insert(dt);
 	}
 }
+void LaplasProblem::SetDirichlet(const vector<int>& pts, TDirFunc f){
+	_dirfunc.push_back(f);
+	for (auto ind: pts){
+		TDirData dt {ind, &_dirfunc.back()};
+		dirichlet_data.insert(dt);
+	}
+}
 void LaplasProblem::SetDirichlet(const HM2D::EdgeData& pts, TDirFunc f){
 	SetDirichlet(HM2D::AllVertices(pts), f);
 }

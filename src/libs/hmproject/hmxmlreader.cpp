@@ -599,10 +599,3 @@ int ReaderA::TNumContent::code(std::string s) const{
 }
 
 
-namespace{
-//This object is used to invoke xmlCleanupParser() at the end of the library utilization
-//in order to prevent memory leaks.
-struct CleanUp{
-	~CleanUp(){ xmlCleanupParser(); }
-} cleanup;
-}//namespace

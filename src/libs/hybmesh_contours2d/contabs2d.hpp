@@ -12,6 +12,9 @@ struct VertexEdgeR{
 	size_t size() const { return eind.size(); }
 };
 vector<VertexEdgeR> VertexEdge(const EdgeData& data);
+vector<VertexEdgeR> VertexEdge(const EdgeData& data, const VertexData& vdata);
+vector<VertexEdgeR> VertexEdgeSorted(const EdgeData& data);
+vector<VertexEdgeR> VertexEdgeSorted(const EdgeData& data, const VertexData& vdata);
 
 vector<vector<int>> EdgeEdge(const EdgeData& data);
 
@@ -21,6 +24,7 @@ struct VertexCellR{
 	size_t size() const { return cind.size(); }
 };
 vector<VertexCellR> VertexCell(const CellData& data);
+vector<VertexCellR> VertexCell(const CellData& data, const VertexData& vdata);
 
 vector<vector<int>> CellCell(const CellData& data);
 

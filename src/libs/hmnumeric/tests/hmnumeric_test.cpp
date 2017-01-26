@@ -10,7 +10,13 @@
 #include "constructor.hpp"
 #include "trigrid.hpp"
 #include "finder2d.hpp"
+#include "infogrid.hpp"
 using HMTesting::add_check;
+
+double maxskew(const HM2D::GridData& g){
+	auto s = HM2D::Grid::Skewness(g);
+	return *max_element(s.begin(), s.end());
+}
 
 void test01(){
 	std::cout<<"01. fem in square"<<std::endl;
@@ -137,6 +143,8 @@ void test03(){
 			return (fpoint(-0.7, 0) && fpoint(-0.69, 0) && fpoint(-0.68,0) && fpoint(-0.67,0)
 				&& fpoint(-0.3, 0) && ans1.vvert.size() < 1200);
 		}(), "non-touching constraint");
+		add_check(maxskew(ans1)<0.95, "non-touching, skewness check");
+		HM2D::Export::GridVTK(ans1, "g1.vtk");
 	}
 	{
 		auto sqrcont = HM2D::Contour::Constructor::FromPoints({0,0, 1,0, 1,1, 0,1}, true);
@@ -162,6 +170,7 @@ void test03(){
 				return true;
 			}()
 			, "touching coarse constraint");
+		add_check(maxskew(ans1)<0.95, "coarse, touching, skewness check");
 	}
 	{
 		auto sqrcont = HM2D::Contour::Constructor::FromPoints({0,0, 1,0, 1,1, 0,1}, true);
@@ -175,6 +184,8 @@ void test03(){
 		HM2D::GridData ans1 = HMFem::AuxGrid3(tree,
 				vector<HM2D::EdgeData> {lineconst2}, 500, 100000);
 		add_check(ans1.vvert.size() < 800, "touching fine constraint");
+		add_check(maxskew(ans1)<0.95, "fine, touching, skewness check");
+		HM2D::Export::GridVTK(ans1, "g1.vtk");
 	}
 };
 

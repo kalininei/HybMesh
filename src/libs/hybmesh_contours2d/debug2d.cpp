@@ -100,27 +100,18 @@ void Debug::geogebra_ecollection(const EdgeData& ecol){
 }
 
 
-double Debug::hash(const EdgeData& ecol){
-	double sum;
-	int i=0;
-	for (auto e: ecol){
-		auto vert1 = e->first();
-		auto vert2 = e->last();
-		sum += 0.333*sin(i*vert1->x+3);
-		sum -= 0.333*cos(i*vert1->y+4);
-		sum += 0.333*sin(i*vert2->x+5);
-		sum -= 0.333*cos(i*vert2->y+6);
-		++i;
-	}
-	return sum;
-}
-
 VertexData Debug::allvertices(const EdgeData& c){
 	VertexData ret;
 	for (auto e: c){
 		ret.push_back(e->first());
 		ret.push_back(e->last());
 	}
+	return aa::no_duplicates(ret);
+}
+EdgeData Debug::alledges(const CellData& cells){
+	EdgeData ret;
+	for (auto c: cells)
+	for (auto e: c->edges) ret.push_back(e);
 	return aa::no_duplicates(ret);
 }
 
@@ -152,6 +143,91 @@ void Debug::save_vertices_vtk(const VertexData& c){
 	aa::RestoreIds<VertexData> r1(c);
 
 	HM2D::Export::VerticesVTK(c, "_dbgout.vtk");
+}
+void Debug::save_vertices_vtk(const EdgeData& c){
+	auto av = allvertices(c);
+	save_vertices_vtk(av);
+}
+
+void Debug::save_grid_vtk(const GridData& c){
+	aa::RestoreIds<VertexData> r1(c.vvert);
+	aa::RestoreIds<EdgeData> r2(c.vedges);
+	aa::RestoreIds<CellData> r3(c.vcells);
+
+	HM2D::Export::GridVTK(c, "_dbgout.vtk");
+}
+
+void Debug::save_cells_vtk(const CellData& data){
+	std::map<int, weak_ptr<Cell>> oldleft;
+	std::map<int, weak_ptr<Cell>> oldright;
+
+	GridData grid;
+	grid.vcells.reserve(data.size());
+	std::copy_if(data.begin(), data.end(),
+			std::back_inserter(grid.vcells),
+			[](shared_ptr<Cell> c){ return c!=nullptr; });
+	grid.vedges = alledges(grid.vcells);
+	grid.vvert = allvertices(grid.vedges);
+
+	aa::RestoreIds<VertexData> r1(grid.vvert);
+	aa::RestoreIds<EdgeData> r2(grid.vedges);
+	aa::RestoreIds<CellData> r3(grid.vcells);
+
+	for (auto e: grid.vedges){
+		if (e->has_left_cell()) e->left.lock()->id = 1;
+		if (e->has_right_cell()) e->right.lock()->id = 1;
+	}
+	aa::constant_ids_pvec(data, 0);
+	for (int i=0; i<grid.vedges.size(); ++i){
+		auto& e = grid.vedges[i];
+		if (e->has_left_cell() && e->left.lock()->id == 1){
+			oldleft.emplace(i, e->left);
+			e->left.reset();
+		}
+		if (e->has_right_cell() && e->right.lock()->id == 1){
+			oldright.emplace(i, e->right);
+			e->right.reset();
+		}
+	}
+
+	save_grid_vtk(grid);
+
+	for (auto& it: oldright){
+		grid.vedges[it.first]->right = it.second;
+	}
+	for (auto& it: oldleft){
+		grid.vedges[it.first]->left = it.second;
+	}
+
+}
+
+void Debug::save_cells_vtk_id(const CellData& data){
+	save_cells_vtk(data);
+	std::ofstream fs("_dbgout.vtk", std::ios::app);
+	fs<<"CELL_DATA "<<data.size()<<std::endl;
+	fs<<"SCALARS id int 1"<<std::endl;
+	fs<<"LOOKUP_TABLE default"<<std::endl;
+	for (int i=0; i<data.size(); ++i) fs<<data[i]->id<<std::endl;
+}
+void Debug::save_edges_vtk_id(const EdgeData& data){
+	save_edges_vtk(data);
+	std::ofstream fs("_dbgout.vtk", std::ios::app);
+	fs<<"CELL_DATA "<<data.size()<<std::endl;
+	fs<<"SCALARS id int 1"<<std::endl;
+	fs<<"LOOKUP_TABLE default"<<std::endl;
+	for (int i=0; i<data.size(); ++i) fs<<data[i]->id<<std::endl;
+}
+void Debug::save_vertices_vtk_id(const VertexData& data){
+	save_vertices_vtk(data);
+	std::ofstream fs("_dbgout.vtk", std::ios::app);
+	fs<<"CELL_DATA "<<data.size()<<std::endl;
+	fs<<"SCALARS id int 1"<<std::endl;
+	fs<<"LOOKUP_TABLE default"<<std::endl;
+	for (int i=0; i<data.size(); ++i) fs<<data[i]->id<<std::endl;
+}
+void Debug::save_vertices_vtk_id(const EdgeData& data){
+	auto av = allvertices(data);
+	save_vertices_vtk_id(av);
 }
 
 #endif

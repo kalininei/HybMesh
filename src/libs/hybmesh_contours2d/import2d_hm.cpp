@@ -98,6 +98,30 @@ void Import::GridReader::fill_result(){
 			ng.vedges[i]->right = ng.vcells[c2];
 		}
 	}
+	//sort cells->edges tables
+	aa::enumerate_ids_pvec(ng.vvert);
+	for (int i=0; i<Nc; ++i){
+		auto& c = ng.vcells[i];
+		vector<int> p1(c->edges.size());
+		vector<int> p2(c->edges.size());
+		for (int j=0; j<c->edges.size(); ++j){
+			p1[j] = c->edges[j]->pfirst()->id;
+			p2[j] = c->edges[j]->plast()->id;
+			if (c->edges[j]->left.lock()!=c){
+				std::swap(p1[j], p2[j]);
+			}
+		}
+		for (int j=1; j<c->edges.size(); ++j){
+			int p1s = p2[j-1];
+			int jfnd = std::find(p1.begin()+j, p1.end(), p1s) - p1.begin();
+			if (jfnd != j){
+				if (jfnd >= p1.size()) throw std::runtime_error("Invalid grid geometry");
+				std::swap(c->edges[j], c->edges[jfnd]);
+				std::swap(p1[j], p1[jfnd]);
+				std::swap(p2[j], p2[jfnd]);
+			}
+		}
+	}
 	result.reset(new GridData(std::move(ng)));
 }
 std::vector<Import::GridReader::TFieldInfo> Import::GridReader::edges_fields(){

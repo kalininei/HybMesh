@@ -10,7 +10,7 @@ std::vector<int> subgraph(std::vector<bool>& used,
 	used[i1] = true;
 	int uu = 0;
 	while (uu<ret.size()){
-		for (auto a: graph[uu]) if (!used[a]){
+		for (auto a: graph[ret[uu]]) if (!used[a]){
 			ret.push_back(a);
 			used[a] = true;
 		}

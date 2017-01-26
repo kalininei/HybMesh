@@ -19,6 +19,10 @@ VertexData UniquePoints(const EdgeData&);
 //the last point for closed contours
 //for open contours includes first and last points by default
 VertexData CornerPoints(const EdgeData&);
+
+//same as ordered points but do not double last point for closed contours
+VertexData OrderedPoints1(const EdgeData&);
+VertexData UniquePoints1(const EdgeData&);
 //same as corner_points but doubles end points for closed contours
 VertexData CornerPoints1(const EdgeData&);
 
@@ -80,6 +84,12 @@ bool CorrectlyDirectedEdge(const EdgeData& dt, int eind);
 //    <1> shared pointer to point in dt equal to p
 std::tuple< bool, shared_ptr<Vertex> >
 GuaranteePoint(EdgeData& dt, const Point& p);
+
+//splits edge by addition of sequence of inner points.
+//Additions will be done using the direction of the whole contour (not the directin of edge).
+//iedge will be conserved and shrinked by the pts[0] point.
+//pts.size() new edges will be added
+void SplitEdge(EdgeData& cont, int iedge, const vector<Point>& pts);
 
 }};
 

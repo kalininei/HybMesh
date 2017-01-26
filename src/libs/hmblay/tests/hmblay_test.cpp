@@ -13,8 +13,13 @@
 
 using HMTesting::add_check;
 
+double maxskew(const HM2D::GridData& grid){
+	auto s = HM2D::Grid::Skewness(grid);
+	return *max_element(s.begin(), s.end());
+}
+
 void test01(){
-	std::cout<<"01. Boundary Layers grid from circle"<<std::endl;
+	std::cout<<"01. Boundary layer grids from circle"<<std::endl;
 	std::string cn;
 	// 1. Build Edges Collection 
 	auto col = HM2D::Contour::Constructor::Circle(8, 2.0, Point(0, 0));
@@ -30,39 +35,43 @@ void test01(){
 	inp.straight_angle = 300;
 	inp.start = inp.end = Point(0,0);
 	//3. Calculations
-	cn = "Outer full circle";
-	HM2D::GridData Ans1 = HMBlay::BuildBLayerGrid({inp});
-	add_check(Ans1.vvert.size() == 32 &&
-		  Ans1.vcells.size() == 24 &&
-		  fabs(HM2D::Grid::Area(Ans1) - 23.35)<0.1, cn);
-
-	cn = "Inner full circle";
-	inp.direction = HMBlay::DirectionFromString("INNER");
-	HM2D::GridData Ans2 = HMBlay::BuildBLayerGrid({inp});
-	add_check(Ans2.vvert.size() == 32 &&
-		  Ans2.vcells.size() == 24 &&
-		  fabs(HM2D::Grid::Area(Ans2) - 10.903)<0.1, cn);
-
-	cn = "long edges";
-	auto col2 = HM2D::Contour::Constructor::Circle(16, 3.0, Point(0, 0));
-	HMBlay::Input inp2;
-	inp2.edges = &col2;
-	inp2.direction = HMBlay::DirectionFromString("OUTER");
-	inp2.bnd_step_method = HMBlay::MethFromString("KEEP_SHAPE");
-	inp2.partition = {0.0, 0.01, 0.02, 0.03, 0.04};
-	inp2.bnd_step = 0.01;
-	inp2.start=inp2.end=Point(0,0);
-	HM2D::GridData Ans3 = HMBlay::BuildBLayerGrid({inp2});
-	add_check( [&]()->bool{
-		//points should lie strictly on the source contour
-		auto gcont = HM2D::Contour::Tree::GridBoundary(Ans3);
-		HM2D::EdgeData& inner = gcont.roots()[0]->children[0].lock()->contour;
-		for (auto pt: HM2D::AllVertices(inner)){
-			double dist = std::get<4>(HM2D::Contour::CoordAt(col2, *pt));
-			if (!ISZERO(dist)) {return false;}
-		}
-		return true;
-	}(), cn);
+	{
+		cn = "Outer full circle";
+		HM2D::GridData Ans1 = HMBlay::BuildBLayerGrid({inp});
+		add_check(Ans1.vvert.size() == 32 &&
+			  Ans1.vcells.size() == 24 &&
+			  fabs(HM2D::Grid::Area(Ans1) - 23.35)<0.1, cn);
+	}
+	{
+		cn = "Inner full circle";
+		inp.direction = HMBlay::DirectionFromString("INNER");
+		HM2D::GridData Ans2 = HMBlay::BuildBLayerGrid({inp});
+		add_check(Ans2.vvert.size() == 32 &&
+			  Ans2.vcells.size() == 24 &&
+			  fabs(HM2D::Grid::Area(Ans2) - 10.903)<0.1, cn);
+	}
+	{
+		cn = "long edges";
+		auto col2 = HM2D::Contour::Constructor::Circle(16, 3.0, Point(0, 0));
+		HMBlay::Input inp2;
+		inp2.edges = &col2;
+		inp2.direction = HMBlay::DirectionFromString("OUTER");
+		inp2.bnd_step_method = HMBlay::MethFromString("KEEP_SHAPE");
+		inp2.partition = {0.0, 0.01, 0.02, 0.03, 0.04};
+		inp2.bnd_step = 0.01;
+		inp2.start=inp2.end=Point(0,0);
+		HM2D::GridData Ans3 = HMBlay::BuildBLayerGrid({inp2});
+		add_check( [&]()->bool{
+			//points should lie strictly on the source contour
+			auto gcont = HM2D::Contour::Tree::GridBoundary(Ans3);
+			HM2D::EdgeData& inner = gcont.roots()[0]->children[0].lock()->contour;
+			for (auto pt: HM2D::AllVertices(inner)){
+				double dist = std::get<4>(HM2D::Contour::CoordAt(col2, *pt));
+				if (!ISZERO(dist)) {return false;}
+			}
+			return true;
+		}(), cn);
+	}
 }
 
 void test02(){
@@ -78,31 +87,32 @@ void test02(){
 	inp.acute_angle = inp.right_angle = 0.0;
 	inp.straight_angle = 300;
 	inp.start = inp.end = Point(0,0);
-
-	std::string cn("8-side polygon with outer layer");
 	auto col1 = HM2D::Contour::Constructor::Circle(8, 1.3, Point(2, 2));
 	inp.edges = &col1;
-	HM2D::GridData Ans1 = HMBlay::BuildBLayerGrid({inp});
-
-	vector<double> area1;
-	for(int i = 2*Ans1.vcells.size()/3+1; i<Ans1.vcells.size(); ++i)
-		area1.push_back(HM2D::Contour::Area(Ans1.vcells[i]->edges));
-	//maximum outer element is no more then two times bigger then minimum
-	double mina1 = *(std::min_element(area1.begin(), area1.end()));
-	double maxa1 = *(std::max_element(area1.begin(), area1.end()));
-	add_check(mina1>0 && maxa1/mina1<2.4, cn);
-
-	cn = std::string("8-side polygon with inner layer");
-	inp.direction = HMBlay::DirectionFromString("INNER");
-	inp.partition = {0.0, 0.02, 0.08, 0.2};
-	HM2D::GridData Ans2 = HMBlay::BuildBLayerGrid({inp});
-	vector<double> area2;
-	for(int i = 0; i<Ans2.vcells.size()/3; ++i)
-		area2.push_back(HM2D::Contour::Area(Ans2.vcells[i]->edges));
-	//maximum outer element is bigger not more then two times then minimum
-	double mina2 = *(std::min_element(area2.begin(), area2.end()));
-	double maxa2 = *(std::max_element(area2.begin(), area2.end()));
-	add_check(mina2>0 && maxa2/mina2<2.4, cn);
+	{
+		std::string cn("8-side polygon with outer layer");
+		HM2D::GridData Ans1 = HMBlay::BuildBLayerGrid({inp});
+		vector<double> area1;
+		for(int i = 2*Ans1.vcells.size()/3+1; i<Ans1.vcells.size(); ++i)
+			area1.push_back(HM2D::Contour::Area(Ans1.vcells[i]->edges));
+		//maximum outer element is no more then two times bigger then minimum
+		double mina1 = *(std::min_element(area1.begin(), area1.end()));
+		double maxa1 = *(std::max_element(area1.begin(), area1.end()));
+		add_check(mina1>0 && maxa1/mina1<2.4, cn);
+	}
+	{
+		std::string cn = std::string("8-side polygon with inner layer");
+		inp.direction = HMBlay::DirectionFromString("INNER");
+		inp.partition = {0.0, 0.02, 0.08, 0.2};
+		HM2D::GridData Ans2 = HMBlay::BuildBLayerGrid({inp});
+		vector<double> area2;
+		for(int i = 0; i<Ans2.vcells.size()/3; ++i)
+			area2.push_back(HM2D::Contour::Area(Ans2.vcells[i]->edges));
+		//maximum outer element is no more than two times larger than minimum
+		double mina2 = *(std::min_element(area2.begin(), area2.end()));
+		double maxa2 = *(std::max_element(area2.begin(), area2.end()));
+		add_check(mina2>0 && maxa2/mina2<2.4, cn);
+	}
 };
 
 
@@ -434,16 +444,20 @@ void test11(){
 	inp1.end = Point(0,1.5);
 	inp1.partition = {0, 0.01, 0.05, 0.1, 0.15, 0.2};
 
-	HM2D::GridData Ans1 = HMBlay::BuildBLayerGrid({inp1});
-	int badskew1=0;
-	for (double s: HM2D::Grid::Skewness(Ans1)) {if (s>0.7) ++badskew1;}
-	add_check(Ans1.vcells.size() > 550 && Ans1.vvert.size() > 590 && badskew1==1, "Mesh1");
-
-	inp1.partition = {0, 0.01, 0.02, 0.05, 0.1, 0.15, 0.2};
-	HM2D::GridData Ans2 = HMBlay::BuildBLayerGrid({inp1});
-	int badskew2=0;
-	for (double s: HM2D::Grid::Skewness(Ans2)) {if (s>0.7) ++badskew2;}
-	add_check(Ans2.vcells.size() > 700 && Ans2.vvert.size() > 720 && badskew2==1, "Mesh2");
+	{
+		HM2D::GridData Ans1 = HMBlay::BuildBLayerGrid({inp1});
+		int badskew1=0;
+		for (double s: HM2D::Grid::Skewness(Ans1)) {if (s>0.7) ++badskew1;}
+		add_check(Ans1.vcells.size() > 550 && Ans1.vvert.size() > 590 && badskew1==1, "Mesh1");
+		HM2D::Export::GridVTK(Ans1, "g1.vtk");
+	}
+	{
+		inp1.partition = {0, 0.01, 0.02, 0.05, 0.1, 0.15, 0.2};
+		HM2D::GridData Ans2 = HMBlay::BuildBLayerGrid({inp1});
+		int badskew2=0;
+		for (double s: HM2D::Grid::Skewness(Ans2)) {if (s>0.7) ++badskew2;}
+		add_check(Ans2.vcells.size() > 700 && Ans2.vvert.size() > 720 && badskew2==1, "Mesh2");
+	}
 
 };
 
@@ -525,8 +539,8 @@ void test13(){
 	auto gr3 = HM2D::Grid::Algos::UniteGrids.ToCout(gr2, g2, opt);
 	opt.buffer_size = 0.2;
 	opt.empty_holes = true;
-	auto gr4 = HM2D::Grid::Algos::UniteGrids(gr3, g3, opt);
-	
+	auto gr4 = HM2D::Grid::Algos::UniteGrids.ToCout(gr3, g3, opt);
+	add_check(maxskew(gr4)<0.8, "skewness check");
 }
 
 HM2D::GridData grid_minus_cont(HM2D::GridData& g, const HM2D::EdgeData& cont){
@@ -577,8 +591,9 @@ void test14(){
 	HM2D::GridData b1 = grid_minus_cont(basgrid1, HM2D::Contour::Assembler::GridBoundary1(g1));
 	HM2D::Grid::Algos::OptUnite opt(0.03);
 	HM2D::GridData gr1 = HM2D::Grid::Algos::UniteGrids.ToCout(b1, g1, opt); 
-	HM2D::Grid::Algos::SimplifyBoundary(gr1, M_PI/4);
-	add_check(fabs(HM2D::Grid::Area(gr1) - 0.955398)<1e-5, "Square with curved boundary");
+	HM2D::Grid::Algos::SimplifyBoundary(gr1, 45);
+	add_check(fabs(HM2D::Grid::Area(gr1) - 0.955398)<1e-5 &&
+		  maxskew(gr1)<0.7, "Square with curved boundary");
 
 	//reentrant
 	vector<Point> pc2;
@@ -600,26 +615,27 @@ void test14(){
 	HM2D::GridData b2 = grid_minus_cont(basgrid2, HM2D::Contour::Assembler::GridBoundary1(g2));
 	HM2D::Grid::Algos::OptUnite opt2(0.03);
 	HM2D::GridData gr2 = HM2D::Grid::Algos::UniteGrids.ToCout(b2, g2, opt2);
-	HM2D::Grid::Algos::SimplifyBoundary(gr2, M_PI/4);
+	HM2D::Grid::Algos::SimplifyBoundary(gr2, 45);
 	add_check(fabs(HM2D::Grid::Area(gr2) - 6.26758)<1e-5, "Reentrant area with a hole");
 
 	//acute angle
-	auto c3 = HM2D::Contour::Constructor::FromPoints({0,0, 5,0, 0,1.5}, true);
-	HMBlay::Input inp2;
-	inp2.bnd_step_method = HMBlay::MethFromString("KEEP_SHAPE");
-	inp2.direction = HMBlay::DirectionFromString("INNER");
-	inp2.edges = &c3;
-	inp2.bnd_step = 0.07;
-	inp2.force_conformal = true;
-	inp2.start = inp2.end = Point(0,0);
-	inp2.partition = {0, 0.02, 0.05, 0.1, 0.15, 0.2};
-	HM2D::GridData g3 = HMBlay::BuildBLayerGrid({inp2});
-	HM2D::GridData basgrid3 = HM2D::Grid::Constructor::RectGrid(Point(-0.1, -0.1), Point(4.5, 2), 80 , 40);
-	HM2D::Grid::Algos::OptUnite opt3(0.03, true);
-	HM2D::GridData r3 = HM2D::Grid::Algos::UniteGrids.ToCout(basgrid3, g3, opt3);
-	HM2D::GridData gr3 = grid_minus_cont(r3, c3);
-	add_check(fabs(HM2D::Grid::Area(gr3) - 3.75)<1e-5, "Closed tringle with acute angle");
-	
+	{
+		auto c3 = HM2D::Contour::Constructor::FromPoints({0,0, 5,0, 0,1.5}, true);
+		HMBlay::Input inp2;
+		inp2.bnd_step_method = HMBlay::MethFromString("KEEP_SHAPE");
+		inp2.direction = HMBlay::DirectionFromString("INNER");
+		inp2.edges = &c3;
+		inp2.bnd_step = 0.07;
+		inp2.force_conformal = true;
+		inp2.start = inp2.end = Point(0,0);
+		inp2.partition = {0, 0.02, 0.05, 0.1, 0.15, 0.2};
+		HM2D::GridData g3 = HMBlay::BuildBLayerGrid({inp2});
+		HM2D::GridData basgrid3 = HM2D::Grid::Constructor::RectGrid(Point(-0.1, -0.1), Point(4.5, 2), 80 , 40);
+		HM2D::Grid::Algos::OptUnite opt3(0.03, true);
+		HM2D::GridData r3 = HM2D::Grid::Algos::UniteGrids.ToCout(basgrid3, g3, opt3);
+		HM2D::GridData gr3 = grid_minus_cont(r3, c3);
+		add_check(fabs(HM2D::Grid::Area(gr3) - 3.75)<1e-5, "Closed tringle with acute angle");
+	}
 };
 
 void test15(){
@@ -663,12 +679,12 @@ void test16(){
 	//simplify boundary tests
 	HM2D::GridData bgrid2;
 	HM2D::DeepCopy(bgrid, bgrid2);
-	HM2D::Grid::Algos::SimplifyBoundary(bgrid2, M_PI);
+	HM2D::Grid::Algos::SimplifyBoundary(bgrid2, 180);
 	add_check(bgrid2.vvert.size() == 52, "full simplification of bgrid");
 
 	HM2D::GridData bgrid4;
 	HM2D::DeepCopy(bgrid, bgrid4);
-	HM2D::Grid::Algos::SimplifyBoundary(bgrid4, M_PI/4.0);
+	HM2D::Grid::Algos::SimplifyBoundary(bgrid4, 45);
 	add_check(bgrid4.vvert.size()==56, "simplification with angle=pi/4");
 
 	HM2D::GridData bgrid5;
@@ -685,8 +701,8 @@ void test16(){
 	double arinit = HM2D::Grid::Area(gcirc);
 	add_check(ISEQ(arinit, HM2D::Grid::Area(impgrid)), "imposition with non-simplified bgrid: area");
 	add_check(ISEQ(arinit, HM2D::Grid::Area(impgrid1)), "imposition with simplified bgrid: area");
-	HM2D::Grid::Algos::SimplifyBoundary(impgrid, M_PI/4.0);
-	HM2D::Grid::Algos::SimplifyBoundary(impgrid1, M_PI/4.0);
+	HM2D::Grid::Algos::SimplifyBoundary(impgrid, 45);
+	HM2D::Grid::Algos::SimplifyBoundary(impgrid1, 45);
 	add_check((fabs(1.99894 - HM2D::Grid::Area(impgrid))<1e-4), "area1 after simplification");
 	add_check(ISEQ(arinit, HM2D::Grid::Area(impgrid1)), "area2 after simplification. Keep all cell non-degenerate");
 	

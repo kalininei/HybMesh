@@ -97,8 +97,8 @@ GridData hgc::Circle(Point p0, double rad, int narc, int nrad, bool tri_center){
 	} else {
 		tmp.emplace_back(new Vertex(p0));
 		for (int i=0; i<narc; ++i){
-			int ind1 = ret.vvert.size() - narc - 1 + i;
-			int ind2 = (i == narc - 1) ? ret.vvert.size() - narc - 1
+			int ind1 = ret.vvert.size() - narc + i;
+			int ind2 = (i == narc - 1) ? ret.vvert.size() - narc
 			                           : ind1 + 1;
 			cellvert.emplace_back();
 			cellvert.back().push_back(ind1);
@@ -189,12 +189,19 @@ GridData hgc::FromTab(VertexData&& vert, const vector<vector<int>>& cell_vert){
 		if (lc>=0) r.vedges[i]->left = r.vcells[lc];
 		if (rc>=0) r.vedges[i]->right = r.vcells[rc];
 	}
+
 	//get rid of unused vertices
-	aa::constant_ids_pvec(r.vvert, 0);
-	for (int i: edge_p1p2){ r.vvert[i]->id = 1; }
-	auto rm = std::remove_if(r.vvert.begin(), r.vvert.end(),
-			[](const shared_ptr<Vertex>& v){return v->id == 0;});
-	r.vvert.resize(rm - r.vvert.begin());
+	for (int i=0; i<r.vvert.size(); ++i){
+		if (r.vvert[i] != nullptr) r.vvert[i]->id = 0;
+	}
+	for (int i: edge_p1p2){
+		assert(r.vvert[i]!=nullptr);
+		r.vvert[i]->id = 1;
+	}
+	r.vvert.resize(std::remove_if(r.vvert.begin(), r.vvert.end(),
+	                              [](const shared_ptr<Vertex>& v){return v == nullptr;}) -
+	               r.vvert.begin());
+	aa::remove_by_id(r.vvert, 0);
 
 	return r;
 }

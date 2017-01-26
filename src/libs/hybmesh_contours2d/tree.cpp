@@ -11,7 +11,7 @@ double Tree::area() const{
 	double ret = 0;
 	for (auto& n: nodes) if (n->isbound()){
 		double a = fabs(Contour::Area(n->contour));
-		if (n->level % 2 == 0) ret += a;
+		if (n->isouter()) ret += a;
 		else ret -= a;
 	}
 	return ret;
@@ -54,7 +54,7 @@ ShpVector<Tree::TNode> Tree::bound_contours() const{
 ShpVector<Contour::Tree::TNode> Contour::Tree::roots() const{
 	ShpVector<TNode> ret;
 	std::for_each(nodes.begin(), nodes.end(), 
-		[&](shared_ptr<TNode> nd){ if (nd->level==0) ret.push_back(nd); }
+		[&](shared_ptr<TNode> nd){ if (nd->isroot()) ret.push_back(nd); }
 	);
 	return ret;
 }
@@ -108,6 +108,15 @@ void Tree::add_contour(EdgeData&& c){
 }
 void Tree::add_detached_contour(EdgeData&& c){
 	nodes.emplace_back(new TNode(std::move(c), -1));
+}
+void Tree::remove_contour(TNode* n){
+	int i = aa::shpvec_ifind(nodes, n);
+	assert(i<nodes.size());
+	for (auto ch: n->children){
+		ch.lock()->parent = n->parent;
+	}
+	nodes.erase(nodes.begin()+i);
+	update_topology();
 }
 
 void Contour::Tree::update_topology(){
@@ -276,7 +285,7 @@ Tree Tree::GridBoundary(const GridData& data){
 
 vector<Tree> Tree::CropLevel01(const Tree& data){
 	vector<Tree> ret;
-	for (auto& n: data.nodes) if (n->isbound() && n->level % 2 == 0){
+	for (auto& n: data.nodes) if (n->isouter()){
 		ret.emplace_back();
 		auto& t = ret.back();
 		t.nodes.push_back(std::make_shared<TNode>(n->contour, 0));

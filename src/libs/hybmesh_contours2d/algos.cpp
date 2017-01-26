@@ -69,14 +69,42 @@ vector<int> break_by_angle(const VertexData& points, int istart, int iend,
 	return ret;
 }
 
-}
+auto to_keep(Edge* e0, Edge* e1, double angle, double a0, bool id_nobreak)->bool{
+	return (id_nobreak && e0->id != e1->id) ||
+		angle < 180 - a0 || angle > 180 + a0;
+};
+
+
+void reset_start_for_closed(EdgeData& c, vector<double>& a, double a0, bool id_nobreak){
+	if (c.size()<3) return;
+	int istart = 0;
+	int icur = 0;
+	Edge* eprev = c.back().get();
+	while (icur != c.size()){
+		if (to_keep(eprev, c[icur].get(), a[icur], a0, id_nobreak)){
+			istart = icur;
+			break;
+		} else {
+			eprev = c[icur++].get();
+		}
+	}
+	//revert data
+	if (istart != 0){
+		std::rotate(c.begin(), c.begin()+istart, c.end());
+		a.pop_back();
+		std::rotate(a.begin(), a.begin()+istart, a.end());
+		a.push_back(a[0]);
+	}
+};
+
+};
 
 EdgeData eal::Simplified(const EdgeData& ecol, double degree_angle, bool id_nobreak){
 	EdgeData ret;
 	if (degree_angle < 0) {
 		DeepCopy(ecol, ret, 0);
 		return ret;
-	}
+	} else if (degree_angle == 0){ degree_angle = geps/M_PI*180.; }
 
 	vector<EdgeData> sc = Contour::Assembler::SimpleContours(ecol);
 	for (auto& c: sc){
@@ -87,13 +115,13 @@ EdgeData eal::Simplified(const EdgeData& ecol, double degree_angle, bool id_nobr
 		}
 		if (Contour::IsClosed(c)){
 			angles[0] = angles.back() = Angle(*op.end()[-2], *op[0], *op[1])/M_PI*180;
+			reset_start_for_closed(c, angles, degree_angle, id_nobreak);
+			op = Contour::OrderedPoints(c);
 		}
 		vector<int> significant_points(1, 0);
 		//1 break at ids and sharp angles
 		for (int i=1; i<op.size()-1; ++i){
-			if ( (id_nobreak && c[i-1]->id != c[i]->id) ||
-			      angles[i] < 180 - degree_angle ||
-			      angles[i] > 180 + degree_angle)
+			if (to_keep(c[i-1].get(), c[i].get(), angles[i], degree_angle, id_nobreak))
 				significant_points.push_back(i);
 		}
 		significant_points.push_back(op.size()-1);
@@ -328,19 +356,31 @@ Vect cal::SmoothedDirection2(const EdgeData& c, const Point* p, int direction, d
 }
 
 void cal::RemovePoints(EdgeData& data, vector<int> ipnt){
-	std::sort(ipnt.begin(), ipnt.end());
 	bool is_closed = Contour::IsClosed(data);
+	std::sort(ipnt.begin(), ipnt.end());
+	auto f = std::upper_bound(ipnt.begin(), ipnt.end(), data.size()+1);
+	ipnt.resize(f-ipnt.begin());
+	if (ipnt.size() == 0) return;
+	if (is_closed && ipnt.back() == data.size()) ipnt.insert(ipnt.begin(), 0);
 	ipnt.resize(std::unique(ipnt.begin(), ipnt.end()) - ipnt.begin());
+	auto connect_edges = [](Edge* ed0, Edge* ed1)->shared_ptr<Edge>{
+		shared_ptr<Edge> newe(new Edge(*ed0));
+		if (ed0->last() == ed1->first()){
+			newe->vertices[1] = ed1->last();
+		} else if (ed0->last() == ed1->last()){
+			newe->vertices[1] = ed1->first();
+		} else if (ed0->first() == ed1->first()){
+			newe->vertices[0] = ed1->last();
+		} else {
+			newe->vertices[0] = ed1->first();
+		}
+		return newe;
+	};
 	while (ipnt.size()>0){
 		int in = ipnt.back();
 		ipnt.resize(ipnt.size()-1);
-
 		if (is_closed && in == 0){
-			auto ed0 = data.back();
-			auto ed1 = data[0];
-			shared_ptr<Edge> newe(new Edge(*ed0));
-			newe->vertices[1] = (ed1->first() == ed0->last()) ? ed1->last()
-			                                                  : ed1->first();
+			shared_ptr<Edge> newe = connect_edges(data.back().get(), data[0].get());
 			data.back() = newe;
 			data.erase(data.begin());
 		} else if (!is_closed && in == data.size()){
@@ -349,11 +389,7 @@ void cal::RemovePoints(EdgeData& data, vector<int> ipnt){
 			data.erase(data.begin());
 		} else {
 			assert(in>0 && in<data.size());
-			auto ed0 = data[in-1];
-			auto ed1 = data[in];
-			shared_ptr<Edge> newe(new Edge(*ed0));
-			newe->vertices[1] = (ed1->first() == ed0->last()) ? ed1->last()
-			                                                  : ed1->first();
+			shared_ptr<Edge> newe = connect_edges(data[in-1].get(), data[in].get());
 			data[in-1] = newe;
 			data.erase(data.begin()+in);
 		}

@@ -22,6 +22,8 @@ void reflect_and_merge(HM2D::GridData& g, Point p1, Point p2){
 		p->x = A[0] * r.x + A[1] * r.y + p1.x;
 		p->y = A[2] * r.x + A[3] * r.y + p1.y;
 	}
+	for (auto& e: g2.vedges){ std::swap(e->left, e->right); }
+	for (auto& c: g2.vcells){ std::reverse(c->edges.begin(), c->edges.end()); }
 	HM2D::Grid::Algos::MergeTo(g2, g);
 }
 

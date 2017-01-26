@@ -501,9 +501,9 @@ ne = hm.info_contour(line12t)['Nedges']
 line12b = hm.partition_contour(line12b, "const", nedges=ne)
 g107 = hm.add_custom_rect_grid(
     "inverse_laplace", line1, line12b, line2, line12t)
-
 g10 = hm.unite_grids(
     g101, [(g, 0) for g in [g102, g103, g104, g105, g106, g107]])
+
 
 excont = hm.create_contour([c[44], p1, [2423, 734], p4, c[49], c[44]])
 g1 = hm.exclude_contours(g1, excont, "inner")
@@ -585,4 +585,8 @@ g = hm.unite_grids(g, [(g14, 10)])
 
 hm.export_grid_vtk([g], "a.vtk")
 hm.export_contour_vtk([g], "b.vtk")
+if not hm.skewness(g, 0.999)['ok']:
+    print "<<<<<<<<<<<< Grid contains degenerate cells"
+    print hm.skewness(g, 0.999)
+    raise Exception
 hm.export_grid_msh(g, "rrj2.msh")

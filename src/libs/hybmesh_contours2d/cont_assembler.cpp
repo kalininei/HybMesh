@@ -350,6 +350,7 @@ EdgeData assemble_core(const EdgeData& con, int estart, int eend){
 
 //Assemble single contour from shattered edges starting from given points of collection edges
 EdgeData cns::Contour1(const EdgeData& col, const Point* pnt_start, const Point* pnt_end){
+	if (pnt_start == 0) pnt_start = col[0]->pfirst();
 	auto ret = get_contour_by_pts(col, pnt_start, pnt_end);
 	if (pnt_end == 0) return ret;
 	else return ShrinkContour(ret, pnt_start, pnt_end);
@@ -399,55 +400,92 @@ EdgeData cns::GridBoundary1(const GridData& g){
 	return SimpleContours(ens::GridBoundary(g))[0];
 }
 
-vector<EdgeData> cns::GridBoundary(const GridData& g){
-	EdgeData ae = ens::GridBoundary(g);
-	auto sc = SimpleContours(ae);
-	vector<EdgeData> ret;
-	vector<EdgeData> opens;
+namespace{
+EdgeData try_to_assemble(const EdgeData& ae, vector<EdgeData>& closed){
+	EdgeData opens;
+	auto sc = cns::SimpleContours(ae);
 	for (auto& s: sc){
 		if (IsClosed(s)){
-			ret.push_back(std::move(s));
+			closed.push_back(std::move(s));
 		} else {
-			opens.push_back(std::move(s));
+			opens.insert(opens.end(), s.begin(), s.end());
 		}
 	}
-	if (opens.size() == 0) return ret;
+	return opens;
+}
+void ed_connect(EdgeData& to, EdgeData& from){
+	to.insert(to.end(), from.begin(), from.end());
+	from.clear();
+}
+void connect_opens_by_cells(EdgeData& to, EdgeData& from){
+	if (from.size()==0 || to.size()==0) return;
+	auto acell = [](Edge* e)->Cell*{
+		return e->has_left_cell() ? e->left.lock().get()
+		                          : e->right.lock().get();
+	};
+
+	if (Last(to) == First(from) &&
+	    acell(to.back().get()) == acell(from[0].get())){
+		return ed_connect(to, from);
+	} else if (Last(to) == Last(from) &&
+	           acell(to.back().get()) == acell(from.back().get())){
+		Reverse(from);
+		return ed_connect(to, from);
+	} else if (First(to) == First(from) &&
+	           acell(to[0].get()) == acell(from[0].get())){
+		Reverse(to);
+		return ed_connect(to, from);
+	} else if (First(to) == Last(from) &&
+	           acell(to[0].get()) == acell(from.back().get())){
+		Reverse(to); Reverse(from);
+		return ed_connect(to, from);
+	}
+}
+};
+
+vector<EdgeData> cns::GridBoundary(const GridData& g){
+	EdgeData ae = ens::GridBoundary(g);
+	vector<EdgeData> ret;
+	//doing multiple times since each loop may result
+	//in new connected closed contour
+	while (1){
+		int aesize = ae.size();
+		ae = try_to_assemble(ae, ret);
+		//nothing to connect
+		if (ae.size() == 0) return ret;
+		//we did everything we could here
+		if (ae.size() == aesize) break;
+	}
+	vector<EdgeData> opens = SimpleContours(ae);
 
 	//connect open contours which end edges have same adjacent cell
-	auto ecell = [](const EdgeData& ed, bool isfirst)->shared_ptr<Cell>{
-		shared_ptr<Edge> e0 = (isfirst) ? ed[0] : ed.back();
-		assert(e0->has_left_cell() != e0->has_right_cell());
-		return (e0->has_left_cell()) ? e0->left.lock()
-		                             : e0->right.lock();
-	};
-	for (int i=0; i<opens.size(); ++i) if (opens[i].size()>0){
-		EdgeData proc(std::move(opens[i])); opens[i].clear();
-		auto lc = ecell(proc, false);
-		while (IsOpen(proc)){
-			bool found = false;
-			for (int j=i+1; j<opens.size(); ++j) if (opens[j].size()>0){
-				auto c0 = ecell(opens[j], true);
-				auto c1 = ecell(opens[j], false);
-				assert(c0 != c1);
-				if (c1 == lc){
-					Contour::Reverse(opens[j]);
-					std::swap(c0, c1);
-				}
-				if (c0 == lc){
-					proc.insert(proc.end(), opens[j].begin(), opens[j].end());
-					opens[j].clear();
-					lc = c1;
-					found = true; break;
-				}
-			}
-			if (found == false){
-				throw std::runtime_error(
-					"Failed to assemble grid contour");
-			}
+	while (1){
+		int openssize = opens.size();
+		for (int i=0; i<opens.size(); ++i)
+		for (int j=i+1; j<opens.size(); ++j){
+			connect_opens_by_cells(opens[i], opens[j]);
 		}
-		ret.push_back(std::move(proc));
+		auto it = opens.begin();
+		while (it != opens.end()){
+			if (it->size() == 0) { it = opens.erase(it); }
+			else if (IsClosed(*it)){
+				ret.push_back(std::move(*it));
+				it = opens.erase(it);
+			} else ++it;
+		}
+		if (opens.size() == 0) return ret;
+		if (opens.size() == openssize) break;
 	}
-
+	
+	//use brute force for all others
+	ae = opens[0];
+	for (int i=1; i<opens.size(); ++i){
+		ae.insert(ae.end(), opens[i].begin(), opens[i].end());
+	}
+	opens = AllContours(ae);
+	for (int i=0; i<opens.size(); ++i) if (IsClosed(opens[i])){
+		ret.push_back(std::move(opens[i]));
+	}
 	return ret;
 }
 

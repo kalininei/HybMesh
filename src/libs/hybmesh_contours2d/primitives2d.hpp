@@ -36,6 +36,8 @@ struct Edge{
 	//==== Features
 	shared_ptr<Vertex> first() const { return vertices[0]; }
 	shared_ptr<Vertex> last() const { return vertices[1]; }
+	Vertex* pfirst() const { return vertices[0].get(); }
+	Vertex* plast() const { return vertices[1].get(); }
 	bool has_right_cell() const { return !right.expired(); }
 	bool has_left_cell() const { return !left.expired(); }
 	bool no_right_cell() const { return right.expired(); }

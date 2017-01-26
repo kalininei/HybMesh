@@ -22,8 +22,8 @@ for f in files:
     dimple = hm.import_grid_gmsh(dpath + f)
     # hm.export_grid_vtk(cn, "a.vtk")
     # hm.export_grid_vtk(dimple, "b.vtk")
-    # hm.export_grid_hmg(cn, "a.hmg", fmt="bin")
-    # hm.export_grid_hmg(dimple, "b.hmg", fmt="bin")
+    if f == '002.msh':
+        hm.export_grid_hmg([cn, dimple], "tmp.hmg", fmt="bin")
     cn = hm.unite_grids(cn, [(dimple, dm_bufsize)], False, False, 0, "4")
 
 hm.export_grid_vtk(cn, "g1.vtk")

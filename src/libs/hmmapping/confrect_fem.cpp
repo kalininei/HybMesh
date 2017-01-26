@@ -6,6 +6,7 @@
 #include "algos.hpp"
 #include "contabs2d.hpp"
 #include "finder2d.hpp"
+#include "treverter2d.hpp"
 
 #define FEM_NMAX 1000000
 #define APPROX_PART 200
@@ -255,6 +256,108 @@ HM2D::EdgeData ToAnnulus::SteepestDescentUCurve(){
 	return cont;
 }
 
+namespace{
+HM2D::CellData get_inside_cells(const HM2D::CellData& cd, const BoundingBox& bb){
+	HM2D::CellData ret;
+	for (auto c: cd){
+		auto cbb = HM2D::BBox(c->edges);
+		if (bb.has_common_points(HM2D::BBox(c->edges))) ret.push_back(c);
+	}
+	return ret;
+}
+
+HM2D::EdgeData get_eline(const HM2D::EdgeData& from, const HM2D::EdgeData& what){
+	HM2D::EdgeData ret;
+	auto bb = HM2D::BBox(from);
+	BoundingBoxFinder finder(bb, bb.maxlen()/30);
+	for (auto e: what) finder.addentry(BoundingBox(*e->pfirst(), *e->plast()));
+	for (auto e: from){
+		BoundingBox bb1(*e->pfirst(), *e->plast());
+		for (auto isus: finder.suspects(bb1)){
+			auto& e1 = what[isus];
+			if (Point::meas_section(*e->pfirst(), *e1->pfirst(), *e1->plast()) > geps*geps)
+				continue;
+			if (Point::meas_section(*e->plast(), *e1->pfirst(), *e1->plast()) > geps*geps)
+				continue;
+			ret.push_back(e);
+			break;
+		}
+	}
+	ret = HM2D::Contour::Assembler::Contour1(ret);
+	HM2D::Contour::R::ForceFirst::Permanent(ret, *HM2D::Contour::First(what));
+	assert(*HM2D::Contour::Last(ret) == *HM2D::Contour::Last(what));
+	return ret;
+}
+
+vector<HM2D::Edge*> sortout_below_edges(const HM2D::EdgeData& ecol,
+		vector<int>& vadj, int r1, int r2){
+	//find first razor
+	auto ir1 = std::find(vadj.begin(), vadj.end(), r1);
+	assert(ir1 != vadj.end());
+	std::rotate(vadj.begin(), ir1, vadj.end());
+	auto ir2 = vadj.begin()+1;
+	if (r2 >= 0){
+		//find second razor
+		ir2 = std::find(vadj.begin()+1, vadj.end(), r2);
+	} else {
+		//find next boundary + 1
+		while(ir2!=vadj.end()){
+			++ir2;
+			if (ecol[*(ir2-1)]->is_boundary()) break;
+		}
+	}
+
+	//assemble return
+	vector<HM2D::Edge*> ret;
+	for (auto it = vadj.begin()+1; it!=ir2; ++it){
+		ret.push_back(ecol[*it].get());
+	}
+	return ret;
+}
+
+void rip_cells(HM2D::CellData& cells, HM2D::EdgeData& eorig, HM2D::EdgeData& enew){
+	//eorig was really directed, enew is its exact deepcopy. 
+	auto ae = HM2D::AllEdges(cells);
+	auto av = HM2D::AllVertices(cells);
+	auto porig = HM2D::Contour::OrderedPoints1(eorig);
+	auto pnew = HM2D::Contour::OrderedPoints1(enew);
+	//change edges vertices connected to razor
+	auto vedconnect = HM2D::Connectivity::VertexEdgeSorted(ae, porig);
+	aa::enumerate_ids_pvec(ae);
+	aa::constant_ids_pvec(av,-1);
+	aa::enumerate_ids_pvec(porig);
+	for (int i=0; i<porig.size(); ++i){
+		auto& ved = vedconnect[i];
+		vector<HM2D::Edge*> below;// = sortout_below_edges();
+		if (i == 0){
+			std::reverse(ved.eind.begin(), ved.eind.end());
+			below = sortout_below_edges(ae, ved.eind, eorig[0]->id, -1);
+		} else if (i==porig.size()-1){
+			below = sortout_below_edges(ae, ved.eind, eorig.back()->id, -1);
+		} else{
+			below = sortout_below_edges(ae, ved.eind, eorig[i-1]->id, eorig[i]->id);
+		}
+		for (auto& e: below){
+			if (e->pfirst()->id>=0) e->vertices[0] = pnew[e->pfirst()->id];
+			else e->vertices[1] = pnew[e->plast()->id];
+		}
+	}
+
+	//change edges of cells which has right razor edges
+	for (int i=0; i<eorig.size(); ++i){
+		auto e = eorig[i];
+		auto cr = e->right.lock();
+		int ifnd = aa::shpvec_ifind(cr->edges, e.get());
+		assert(ifnd<cr->edges.size());
+
+		cr->edges[ifnd] = enew[i];
+		enew[i]->right = cr;
+
+		eorig[i]->right.reset();
+		enew[i]->left.reset();
+	}
+}
+}
 
 void ToAnnulus::BuildGrid2(const vector<Point>& outer_path,
 		const vector<Point>& inner_path, int n,
@@ -272,52 +375,21 @@ void ToAnnulus::BuildGrid2(const vector<Point>& outer_path,
 	//1) assemble doubly-connected contour
 	grid = std::make_shared<HM2D::GridData>(
 		HMFem::AuxGrid3(ct, vector<HM2D::EdgeData> {razor}, n, FEM_NMAX));
-	//2) rip double-connected contour by razor polyline
-	//2.1) get points which lie on razor
-	std::map<const HM2D::Vertex*, double> razor_points;
-	std::map<const HM2D::Vertex*, shared_ptr<HM2D::Vertex>> m12;
-	auto razorbox = HM2D::BBox(razor, geps);
-	for (int i=0; i<grid->vvert.size(); ++i){
-		auto& v = *grid->vvert[i];
-		if (razorbox.whereis(v) == OUTSIDE) continue;
-		auto cr = HM2D::Contour::CoordAt(razor, v);
-		if (ISZERO(std::get<4>(cr))){
-			razor_points.emplace(&v, std::get<0>(cr));
-			//double razor points and add em to grid
-			auto np = std::make_shared<HM2D::Vertex>(v);
-			grid->vvert.push_back(np);
-			m12.emplace(&v,  np);
-		}
-	}
 
-	//2.3) change razor->razor2 for cells which lie to the right
-	aa::constant_ids_pvec(grid->vvert, 0);
-	for (auto& m: m12){
-		m.first->id = 1;
-		m.second->id = 2;
-	}
-	vector<HM2D::Edge*> razor_edges;
-	for (auto& e: grid->vedges){
-		if (e->first()->id == 1 && e->last()->id == 1){
-			double d1 = razor_points[e->first().get()];
-			double d2 = razor_points[e->last().get()];
-			if (d1 > d2) e->reverse();
-			razor_edges.push_back(e.get());
-		}
-	}
-	for (auto& e: razor_edges){
-		auto rc = e->right.lock();
-		auto ne = std::make_shared<HM2D::Edge>(*e);
-		e->right.reset();
-		ne->left.reset();
-		for (auto& re: rc->edges){
-			if (re.get() == e) re = ne;
-			for (auto& v: re->vertices) if (v->id == 1){
-				v = m12[v.get()];
-			}
-		}
-		grid->vedges.push_back(ne);
-	}
+	//2) rip double-connected grid by razor polyline
+	//extract razor contour using grid primitives
+	HM2D::CellData suspcells = get_inside_cells(grid->vcells, HM2D::BBox(razor));
+	HM2D::EdgeData urazor_edges = get_eline(HM2D::AllEdges(suspcells), razor);
+	//HM2D::Contour::R::ReallyDirect::Permanent(urazor_edges);
+	HM2D::EdgeData vrazor_edges;
+	HM2D::DeepCopy(urazor_edges, vrazor_edges);
+	//rip by urazor_edges open contour
+	rip_cells(suspcells, urazor_edges, vrazor_edges);
+	//add to grid
+	HM2D::VertexData urazor_points = HM2D::Contour::OrderedPoints1(urazor_edges);
+	HM2D::VertexData vrazor_points = HM2D::Contour::OrderedPoints1(vrazor_edges);
+	grid->vedges.insert(grid->vedges.end(), vrazor_edges.begin(), vrazor_edges.end());
+	grid->vvert.insert(grid->vvert.end(), vrazor_points.begin(), vrazor_points.end());
 
 	//3) origs
 	HM2D::EdgeData ct2 = HM2D::Contour::Assembler::GridBoundary1(*grid);
@@ -327,9 +399,7 @@ void ToAnnulus::BuildGrid2(const vector<Point>& outer_path,
 	inner_origs = aa::get_ids(cmatch.find(inner_path));
 	outer_origs = aa::get_ids(cmatch.find(outer_path));
 	//4) inner/outer
-	// grid has doubled points at razor sides.
-	// therefore cmatch doesn't represent all grid boundary points.
-	// hence we use __bp instead of _bp.
+	// take into account that grid has doubled points at razor sides
 	inner.clear(); outer.clear();
 	for (auto v: allp){
 		auto fnd1 = HM2D::Finder::ClosestEdge(*outerc, *v);
@@ -345,13 +415,13 @@ void ToAnnulus::BuildGrid2(const vector<Point>& outer_path,
 	}
 	//5) razor io/oi
 	raz_io.clear(); raz_oi.clear();
-	for (auto m: m12){
-		raz_io.push_back(m.first->id);
-		raz_oi.push_back(m.second->id);
+	for (int i=0; i<urazor_points.size(); ++i){
+		raz_io.push_back(urazor_points[i]->id);
+		raz_oi.push_back(vrazor_points[i]->id);
 	}
+
 	//6) approx
-	approx = std::make_shared<HMFem::Grid43::Approximator>(
-		grid.get(), 40);
+	approx = std::make_shared<HMFem::Grid43::Approximator>(grid.get(), 40);
 }
 
 void ToAnnulus::DoMapping(){
@@ -360,8 +430,8 @@ void ToAnnulus::DoMapping(){
 	//laplas problem for v
 	auto vlaplas = HMFem::LaplasProblem(*grid, lap);
 	//dirichlet: 2*pi on razor_oi, zero on razor_io
-	vlaplas.SetDirichlet(ExtractPoints(*grid, raz_io), [](const HM2D::Vertex*){return 0.0;});
-	vlaplas.SetDirichlet(ExtractPoints(*grid, raz_oi), [](const HM2D::Vertex*){return 2.0*M_PI;});
+	vlaplas.SetDirichlet(raz_io, [](const HM2D::Vertex*){return 0.0;});
+	vlaplas.SetDirichlet(raz_oi, [](const HM2D::Vertex*){return 2.0*M_PI;});
 	//solution
 	v.resize(grid->vvert.size(), 0.0);
 	vlaplas.Solve(v);
@@ -369,8 +439,8 @@ void ToAnnulus::DoMapping(){
 	//laplas problem for u
 	auto ulaplas = HMFem::LaplasProblem(*grid, lap);
 	//dirichlet: 1 on top, _module on bot
-	ulaplas.SetDirichlet(ExtractPoints(*grid, outer), [](const HM2D::Vertex*){return 1;});
-	ulaplas.SetDirichlet(ExtractPoints(*grid, inner), [&](const HM2D::Vertex*){return _module;});
+	ulaplas.SetDirichlet(outer, [](const HM2D::Vertex*){return 1;});
+	ulaplas.SetDirichlet(inner, [&](const HM2D::Vertex*){return _module;});
 	//solution
 	u.resize(grid->vvert.size(), 0.0);
 	ulaplas.Solve(u);

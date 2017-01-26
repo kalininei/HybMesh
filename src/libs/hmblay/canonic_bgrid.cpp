@@ -671,8 +671,6 @@ void MappedMesher::Fill(TBotPart bottom_partitioner, TVertPart vertical_partitio
 		}
 	}
 
-	//bottom contour
-	HM2D::Grid::Algos::SnapToContour(g4, bt, botpts);
 	//left and right only if they coincide with physical boundaries
 	if (HM2D::Contour::IsOpen(bt)){
 		if (wbot_start == 0.0){ 
@@ -696,7 +694,10 @@ void MappedMesher::Fill(TBotPart bottom_partitioner, TVertPart vertical_partitio
 	result = BGrid::MoveFrom2(std::move(g4));
 	HM2D::Grid::Algos::Heal(result);
 
-	//12) fill weights
+	//12) snap to bottom contour
+	HM2D::Grid::Algos::SnapToContour(result, bt, {});
+
+	//13) fill weights
 	result.add_weights(lweights);
 	result.add_source_feat(feat);
 }

@@ -103,6 +103,8 @@ private:
 			vector<vector<Point>>& lost);
 	void adopt_contour(HM2D::EdgeData& cont, double h,
 			vector<vector<Point>>& lost);
+	void adopt_complicated_connections(HM2D::Contour::Tree& cont,
+			vector<vector<Point>>& lost);
 	void input(const HM2D::Contour::Tree& _tree, const vector<HM2D::EdgeData>& _constraints);
 	vector<Point*> gather_section(const vector<Point*>& ordered, int start, double h);
 

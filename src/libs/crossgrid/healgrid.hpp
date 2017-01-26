@@ -27,8 +27,8 @@ void Heal(GridData& from);
 //recalculates vvert and vedges with respect to it;
 void RestoreFromCells(GridData&);
 
-//angle 0 - minimum not-allowed angle
-void NoConcaveCells(GridData& grid, double angle0=180);
+//angle0 - minimum not-allowed angle
+void NoConcaveCells(GridData& grid, double angle0=180, bool ignore_bnd=false);
 
 
 void RemoveShortEdges(GridData& grid, double ref_len);

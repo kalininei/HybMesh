@@ -7,6 +7,7 @@
 #include "buildgrid.hpp"
 #include "modgrid.hpp"
 #include "finder2d.hpp"
+#include "constructor.hpp"
 #include "Gmsh.h"
 #include "GModel.h"
 #include "MVertex.h"
@@ -122,32 +123,215 @@ Contour::Tree Mesher::PrepareSource(const EdgeData& source, double defsize){
 	return PrepareSource(tree, defsize);
 }
 
-EdgeData Mesher::RepartSourceById(const EdgeData& source){
-	EdgeData ret;
-	auto it = source.begin();
-	VertexData keep_pts;
-	for (auto v: AllVertices(source)) if (v->id == 1){
-		keep_pts.push_back(v);
+namespace{
+
+std::map<double, double> build_map01(double sz0, double sz1){
+	assert(sz0>0 && sz1>0);
+	std::map<double, double> ret;
+	ret[0] = sz0; ret[1] = sz1;
+	return ret;
+}
+
+std::map<double, double> fill_map_keys(double contlen, double szend,
+		const vector<std::pair<Point, double>>& src, int nmax){
+	double minsz;
+	if (szend>=0) minsz=szend;
+	else minsz = src[0].second;
+	for (int i=0; i<src.size(); ++i){
+		if (src[i].second < minsz) minsz = src[i].second;
 	}
-	while (it != source.end()){
+	int n = 0.5 * contlen / minsz;
+	if (n < 5) n = 5;
+	if (n > nmax) n = nmax;
+	std::map<double, double> ret;
+	for (int i=0; i<n+1; ++i){
+		ret.emplace(double(i)/n,  0);
+	}
+	return ret;
+}
+
+bool not_intersect(Point p1, Point p2, const EdgeData& cont){
+	p1 = Point::Weigh(p1, p2, 0.001);
+	p2 = Point::Weigh(p1, p2, 0.999);
+	auto c2 = Contour::Constructor::FromPoints({p1, p2});
+	return !std::get<0>(Contour::Finder::Cross(cont, c2));
+}
+
+bool is_valueble(Point p1, const EdgeData& cont){
+	auto c = Contour::CoordAt(cont, p1);
+	return ISIN_NN(std::get<1>(c), 0, 1);
+}
+
+void find_closest(const EdgeData& cont, const Point& p, const vector<std::pair<Point, double>>& src,
+		double& dist, double& sz){
+	dist = 1e200; sz = 1e200; Point pbest;
+	auto ce = Finder::ClosestEdge(cont, p);
+	Point *p1 = cont[std::get<0>(ce)]->pfirst();
+	Point *p2 = cont[std::get<0>(ce)]->plast();
+	if (!Contour::CorrectlyDirectedEdge(cont, std::get<0>(ce))){
+		std::swap(p1, p2);
+	}
+	for (auto& s: src){
+		if (LinePointWhereIs(s.first, *p1, *p2) == 0){
+			double d = Point::meas(p, s.first);
+			if (d < dist &&
+			    not_intersect(p, s.first, cont)){
+				pbest = s.first;
+				dist = d;
+				sz = s.second;
+			}
+		}
+	}
+
+	if (dist != 1e200 && is_valueble(pbest, cont)){
+		dist = sqrt(dist);
+	} else { dist = -1; sz = -1; }
+}
+
+double amean(double l0, double sz0, double l1, double sz1){
+	return (l0*sz1 + l1*sz0)/(l0+l1);
+}
+double amean(double l0, double sz0, double l1, double sz1, double l2, double sz2){
+	return ((l1+l2)*sz0 + (l0+l2)*sz1 + (l0+l1)*sz2)/(l0+l1+l2)/2.;
+}
+double calculate_len_at(const EdgeData& cont, const Point& p, double l0, double sz0, double l1, double sz1,
+		const vector<std::pair<Point, double>>& src){
+	if (ISZERO(l0)) return sz0;
+	if (ISZERO(l1)) return sz1;
+	double d, s;
+	find_closest(cont, p, src, d, s);
+	if (d<0) return amean(l0, sz0, l1, sz1);
+	if (ISZERO(d)) return d;
+	//if one point is far away
+	if (d>l0+l1) return amean(l0, sz0, l1, sz1);
+	//if (d<l0 && l0<l1) return amean(l0, sz0, d, s);
+	//if (d<l1 && l1<l0) return amean(l1, sz1, d, s);
+	//calc weights
+	return amean(l0, sz0, l1, sz1, d, s);
+}
+
+double calculate_len_at(const EdgeData& cont, const Point& p, const vector<std::pair<Point, double>>& src){
+	double d, s;
+	find_closest(cont, p, src, d, s);
+	return s;
+}
+
+std::map<double, double> build_weights(const EdgeData& cont, double sz0, double sz1,
+		const vector<std::pair<Point, double>>& src){
+	if (src.size() == 0) return build_map01(sz0, sz1);
+	double len = HM2D::Length(cont);
+	auto ret = fill_map_keys(len, std::min(sz0, sz1), src, 100);
+
+	vector<double> w;
+	for (auto& r: ret) w.push_back(r.first);
+	vector<Point> points = Contour::WeightPoints(cont, w);
+	if (sz0 >=0){
+		ret.begin()->second = sz0;
+		ret.rbegin()->second = sz1;
+		auto it = std::next(ret.begin());
+		for (int i=1; i<ret.size()-1; ++i, ++it){
+			it->second = calculate_len_at(cont, points[i],
+				it->first*len, sz0, (1-it->first)*len, sz1,
+				src);
+		}
+	} else {
+		auto it = ret.begin();
+		for (int i=0; i<points.size(); ++i){
+			it->second = calculate_len_at(cont, points[i], src);
+			if ((*it++).second < 0) ret.erase(std::prev(it));
+		}
+	}
+	return ret;
+};
+
+EdgeData repart_cont(const EdgeData& cont, double sz0, double sz1, 
+		const VertexData& keep_pts,
+		const vector<std::pair<Point, double>>& src){
+	std::map<double, double> weights = build_weights(cont, sz0, sz1, src);
+	return Contour::Algos::WeightedPartition(weights, cont, keep_pts);
+}
+
+vector<std::pair<Point, double>> sort_out_sources(const EdgeData& source,
+		const vector<std::pair<Point, double>>& input){
+	aa::RestoreIds<EdgeData> rr(source);
+
+	vector<Point> pp(input.size());
+	for (int i=0; i<input.size(); ++i) pp[i] = input[i].first;
+	vector<int> srt = Contour::Algos::SortOutPoints(source, pp);
+	vector<std::pair<Point, double>> ret;
+	for (int i=0; i<srt.size(); ++i) if (srt[i] != OUTSIDE){
+		ret.push_back(input[i]);
+	}
+	return ret;
+}
+
+VertexData assemble_keep_pts(const EdgeData& source){
+	VertexData keep_pts;
+	for (auto e: source) if (e->id != 1){
+		if (e->pfirst()->id == 1) {
+			keep_pts.push_back(e->first());
+			e->pfirst()->id = 0;
+		}
+		if (e->plast()->id == 1) {
+			keep_pts.push_back(e->last());
+			e->plast()->id = 0;
+		}
+	}
+	return keep_pts;
+}
+
+EdgeData start_from_id1(const EdgeData& source){
+	EdgeData src2 = source;
+	for (auto it = src2.begin(); it != src2.end(); ++it){
+		if ((*it)->id == 1){
+			std::rotate(src2.begin(), it, src2.end());
+			break;
+		}
+	}
+	return src2;
+}
+};
+
+EdgeData Mesher::RepartSourceById(const EdgeData& source,
+		const vector<std::pair<Point, double>>& size_src){
+	assert(Contour::IsClosed(source));
+	Contour::R::Clockwise cc(source, false);
+	EdgeData ret;
+	//if nothing to part return deepcopy
+	if (std::all_of(source.begin(), source.end(), [](const shared_ptr<Edge>& e){
+			return e->id == 1; })){
+		DeepCopy(source, ret, 0);
+		return ret;
+	}
+	//keep pts
+	VertexData keep_pts = assemble_keep_pts(source);
+
+	//sort out only those size_src which lie inside source
+	vector<std::pair<Point, double>>
+	size_src2 = sort_out_sources(source, size_src);
+
+	//find any edge with id = 1 to start assembling from it
+	EdgeData src2 = start_from_id1(source);
+
+	//start partition
+	auto it = src2.begin();
+	while (it != src2.end()){
 		if ((*it)->id == 1){
 			ret.push_back(std::make_shared<Edge>(**it));
 			++it;
 		} else {
 			auto itprev = it;
-			if (it == source.begin()) itprev = std::prev(source.end());
-			else --itprev;
 			EdgeData group;
 			do{
 				group.push_back(*it++);
-			} while (it != source.end() && (*it)->id != 1);
-			auto itnext = it;
-			if (itnext == source.end()) itnext = source.begin();
-			std::map<double, double> weights;
-			weights.emplace(0, (*itprev)->length());
-			weights.emplace(1, (*itnext)->length());
-			EdgeData repart = Contour::Algos::WeightedPartition(weights, group,
-					keep_pts);
+			} while (it != src2.end() && (*it)->id != 1);
+			//start/end sizes
+			double sz0=-1, sz1=-1;
+			if (itprev != src2.begin()) sz0 = (*(itprev-1))->length();
+			if (it != src2.end()) sz1 = (*it)->length();
+			else sz1 = (*src2.begin())->length();
+			//repartition
+			EdgeData repart = repart_cont(group, sz0, sz1, keep_pts, size_src2);
 			ret.insert(ret.end(), repart.begin(), repart.end());
 		}
 	}
@@ -189,7 +373,7 @@ vector<Contour::Tree> build_cropped(const Contour::Tree& source){
 	for (auto& n: source.detached_contours()){
 		constrbb.push_back(HM2D::BBox(n->contour));
 	}
-	for (auto& n: source.nodes) if (n->level % 2 == 0){
+	for (auto& n: source.nodes) if (n->isouter()){
 		//root
 		ret.emplace_back();
 		auto& t = ret.back();
@@ -200,24 +384,14 @@ vector<Contour::Tree> build_cropped(const Contour::Tree& source){
 		}
 		//constraints for this subtree: quick bounding box check only
 		if (constrbb.size()==0) continue;
-		
 		vector<BoundingBox> nbb;
 		for (int i=0; i<t.nodes.size(); ++i){
-			nbb.push_back(BBox(n->contour));
+			nbb.push_back(BBox(t.nodes[i]->contour));
 		}
-
 		int ic = 0;
 		for (auto& n: source.detached_contours()){
 			auto& cbb = constrbb[ic++];
-			int rel = cbb.relation(nbb[0]);
-			if (rel == 3) continue;
-
-			for (int i=1; i<t.nodes.size(); ++i){
-				rel = cbb.relation(nbb[i]);
-				if (rel == 2) break;
-			}
-			if (rel == 2) continue;
-
+			if (cbb.relation(nbb[0]) == 3) continue;
 			t.nodes.push_back(n);
 		}
 	}
@@ -288,6 +462,9 @@ GFace* assemble_face(GModel& m, const Contour::Tree& tree, vector<vector<GEdge*>
 	for (auto& p: embedded){
 		if (tree.whereis(p.first) != INSIDE) continue;
 		auto added = m.addVertex(p.first.x, p.first.y, 0, p.second);
+		auto mv = new MVertex(p.first.x, p.first.y, 0, added);
+		added->mesh_vertices.push_back(mv);
+		added->points.push_back(new MPoint(mv));
 		fc->addEmbeddedVertex(added);
 	}
 
@@ -337,11 +514,14 @@ GridData gmsh_fill(const Contour::Tree& tree, const std::map<Point, double>& emb
 
 	auto ae = tree.alledges();
 	auto av = AllVertices(ae);
+	//enumeration will be used in fill_model_with_1d procedure
 	aa::enumerate_ids_pvec(ae);
 	aa::enumerate_ids_pvec(av);
 
-	//size
-	double h = 2*HM2D::BBox(tree.alledges()).lendiag();
+	//to prevent creating new boundary nodes
+	//default size passed to gmsh is bigger than any edge length.
+	//not sure if i need it since i explicitly define 1d mesh.
+	double h = 2*HM2D::BBox(av).lendiag();
 
 	cb.step_after(10, "Fill 1D mesh");
 	vector<GEdge*> g_edges_heap(ae.size(), 0);
@@ -377,26 +557,27 @@ GridData gmsh_builder(const Contour::Tree& source, const std::map<Point, double>
 	HM2D::Contour::R::RevertTree rt(source);
 
 	vector<Contour::Tree> trees = build_cropped(source);
-	GridData ret;
 
+	vector<GridData> gg;
 	for (int i=0; i<trees.size(); ++i){
-		auto cb = callback->subrange(85./trees.size(), 100.);
-		if (i == 0) ret = gmsh_fill(trees[i], embedded, algo, *cb);
-		else {
-			GridData sg = gmsh_fill(trees[i], embedded, algo, *cb);
-			std::copy(sg.vvert.begin(), sg.vvert.end(), std::back_inserter(ret.vvert));
-			std::copy(sg.vedges.begin(), sg.vedges.end(), std::back_inserter(ret.vedges));
-			std::copy(sg.vcells.begin(), sg.vcells.end(), std::back_inserter(ret.vcells));
-		}
+		auto cb = callback->subrange(80./trees.size(), 100.);
+		gg.push_back(gmsh_fill(trees[i], embedded, algo, *cb));
 	}
 
-	callback->step_after(5, "Finalizing");
+	callback->step_after(10, "Finalizing");
 	//adjust rotation
+	for (auto ret: gg)
 	for (int i=0; i<ret.vcells.size(); ++i){
 		if (Contour::Area(ret.vcells[i]->edges) < 0){
 			Contour::Reverse(ret.vcells[i]->edges);
 		}
 	}
+	GridData ret = std::move(gg[0]);
+	//make a summation with merging
+	for (int i=1; i<gg.size(); ++i){
+		Grid::Algos::MergeBoundaries(gg[i], ret);
+	}
+	//merge equal boundary points
 	return ret;
 }
 
@@ -411,28 +592,28 @@ GridData Mesher::TUnstructuredTriangle::_run(const Contour::Tree& source){
 }
 
 namespace{
-
 void recomb_heal(GridData& grid){
 	auto process = [&](int ic1, int ic2, int n1, int n2){
 		Cell* c1 = grid.vcells[ic1].get();
 		Cell* c2 = grid.vcells[ic2].get();
-		Contour::R::ReallyDirect::Permanent(c1->edges);
-		Contour::R::ReallyRevert::Permanent(c2->edges);
-		int loc1 = -1, loc2 = -1;
+		Contour::Reverse(c2->edges);
+		auto op1 = Contour::OrderedPoints1(c1->edges);
+		auto op2 = Contour::OrderedPoints1(c2->edges);
+		int loc1=-1, loc2=-1;
 		for (int j=0; j<c1->edges.size(); ++j){
-			if (c1->edges[j]->vertices[0]->id == n1){
+			if (op1[j]->id == n1){
 				loc1 = j; break;
 			}
 		}
 		for (int j=0; j<c2->edges.size(); ++j){
-			if (c2->edges[j]->vertices[0]->id == n1){
+			if (op2[j]->id == n1){
 				loc2 = j; break;
 			}
 		}
 		assert(loc1 >= 0 && loc2 >= 0);
-		assert(c1->edges[loc1]->vertices[1]->id == n2);
 		std::rotate(c2->edges.begin(), c2->edges.begin()+loc2, c2->edges.end());
-		c1->edges.insert(c1->edges.begin()+loc1+1, c2->edges.begin()+1, c2->edges.end()-1);
+		c1->edges.erase(c1->edges.begin()+loc1);
+		c1->edges.insert(c1->edges.begin()+loc1, c2->edges.begin(), c2->edges.end()-1);
 		grid.vcells[ic2]=nullptr;
 		Grid::Algos::RestoreFromCells(grid);
 		return !std::get<0>(Contour::Finder::SelfCross(c1->edges));
@@ -489,14 +670,39 @@ void guarantee_edges(GridData& grid, const EdgeData& edges){
 	}
 	if (force_edges.size() == 0) return;
 
-	//get cell index for each split pair
-	//and local indicies
-	vector<int> icells, lnode1, lnode2;
+	//remove all cell edges which cross force_edges
 	aa::constant_ids_pvec(grid.vvert, -1);
 	for (int i=0; i<force_edges.size(); ++i){
 		force_edges[i].first->id = i;
 		force_edges[i].second->id = i;
 	}
+	vector<int> bad_edges;
+	auto bb = HM2D::BBox(grid.vvert);
+	BoundingBoxFinder gefinder(bb, bb.maxlen()/3);
+	for (auto& e: grid.vedges){
+		gefinder.addentry(BoundingBox(*e->pfirst(), *e->plast()));
+	}
+	for (auto& fe: force_edges){
+		for (auto isus: gefinder.suspects(BoundingBox(*fe.first, *fe.second))){
+			auto& e = grid.vedges[isus];
+			double ksieta[2];
+			if (e->pfirst()->id >=0 || e->plast()->id >=0) continue;
+			if (SectCross(*fe.first, *fe.second, *e->pfirst(), *e->plast(), ksieta)){
+				bad_edges.push_back(isus);
+			}
+			
+		}
+	}
+	Grid::Algos::RemoveEdges(grid, bad_edges);
+	
+	//get cell index for each split pair
+	//and local indicies
+	aa::constant_ids_pvec(grid.vvert, -1);
+	for (int i=0; i<force_edges.size(); ++i){
+		force_edges[i].first->id = i;
+		force_edges[i].second->id = i;
+	}
+	vector<int> icells, lnode1, lnode2;
 	for (int ic=0; ic<grid.vcells.size(); ++ic) if (grid.vcells[ic]->edges.size()>3){
 		auto op = Contour::OrderedPoints(grid.vcells[ic]->edges);
 		for (int i=0; i<op.size()-3; ++i){
@@ -522,8 +728,8 @@ void guarantee_edges(GridData& grid, const EdgeData& edges){
 			Grid::Algos::SplitCell(grid, icells[i], lnode1[i], lnode2[i]);
 		}
 	}
+	Grid::Algos::CutCellDims(grid, 4);
 }
-
 };
 
 GridData Mesher::TUnstructuredTriangleRecomb::_run(const Contour::Tree& source, const std::map<Point, double>& embedded){
@@ -537,7 +743,9 @@ GridData Mesher::TUnstructuredTriangleRecomb::_run(const Contour::Tree& source, 
 	//since this feature can be not satisfied after recombination.
 	EdgeData ec;
 	for (auto n: source.nodes) if (n->isdetached()){
-		ec.insert(ec.end(), n->contour.begin(), n->contour.end());
+		for (auto e: n->contour){
+			if (source.whereis(e->center()) == INSIDE) ec.push_back(e);
+		}
 	}
 	guarantee_edges(ret, ec);
 	

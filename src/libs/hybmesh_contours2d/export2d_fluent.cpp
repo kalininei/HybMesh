@@ -35,25 +35,25 @@ struct FaceData{
 		return 0;
 	}
 
-	static vector<FaceData> to(const GridData& gg, vector<int>& bndindex, vector<Edge>& edges, hme::BNamesFun bnames, hme::PeriodicData pd){
+	static vector<FaceData> to(GridData& gg, vector<int>& bndindex, hme::BNamesFun bnames, hme::PeriodicData pd){
 		// ==== renumber edges according to boundary types
 		std::map<int, vector<int>> bmap;
-		for (int i=0; i<edges.size(); ++i){
+		for (int i=0; i<gg.vedges.size(); ++i){
 			int bt = std::numeric_limits<int>::min();
-			if (edges[i].is_boundary()) bt = bndindex[i];
+			if (gg.vedges[i]->is_boundary()) bt = bndindex[i];
 			auto emp = bmap.emplace(bt, vector<int>());
 			emp.first->second.push_back(i);
 		}
 		vector<int> new_bndindex; new_bndindex.reserve(bndindex.size());
-		vector<Edge> new_edges; new_edges.reserve(new_edges.size());
+		EdgeData new_edges; new_edges.reserve(new_edges.size());
 		for (auto& m: bmap){
 			for (int ind: m.second){
 				new_bndindex.push_back(bndindex[ind]);
-				new_edges.push_back(edges[ind]);
+				new_edges.push_back(gg.vedges[ind]);
 			}
 		}
 		std::swap(bndindex, new_bndindex);
-		std::swap(edges, new_edges);
+		std::swap(gg.vedges, new_edges);
 
 		// ==== fill return array
 		vector<FaceData> ret(1);
@@ -65,11 +65,11 @@ struct FaceData{
 		fdcur->zone_name = "interior";
 		fdcur->zone_type = 2;
 		fdcur->boundary_name = "default-interior";
-		while (!edges[icur].is_boundary() && icur<edges.size()) ++icur;
+		while (!gg.vedges[icur]->is_boundary() && icur<gg.vedges.size()) ++icur;
 		fdcur->iend = icur;
 		fdcur->n = fdcur->iend - fdcur->istart;
 		//boundary faces
-		while (icur < edges.size()){
+		while (icur < gg.vedges.size()){
 			ret.emplace_back();
 			fdcur = &ret.back();
 			fdcur->istart = icur;
@@ -88,7 +88,7 @@ struct FaceData{
 				fdcur->zone_type = 3;
 			}
 			fdcur->zone_index = (++ret.rbegin())->zone_index + 1;
-			while(icur<edges.size() && bndindex[icur] == fdcur->boundary_index) ++icur;
+			while(icur<gg.vedges.size() && bndindex[icur] == fdcur->boundary_index) ++icur;
 			fdcur->iend = icur;
 			fdcur->n = fdcur->iend - fdcur->istart;
 		}
@@ -108,7 +108,7 @@ char msh_cell_type(const Cell& c){
 
 }
 
-std::vector<int> hme::PeriodicData::assemble(const GridData& g, vector<Edge>& edge, const vector<int>& bindex) const {
+std::vector<int> hme::PeriodicData::assemble(GridData& g, const vector<int>& bindex) const {
 	if (size() == 0) return {};
 	//all periodic boundary types to single array
 	std::vector<int> btypes;
@@ -118,11 +118,10 @@ std::vector<int> hme::PeriodicData::assemble(const GridData& g, vector<Edge>& ed
 	std::vector<Edge*> bnd_edges;
 	std::vector<int> bnd_edges_indicies;
 	std::vector<int> bnd_edges_btp;
-	for (auto i=0; i<edge.size(); ++i){
-		if (!edge[i].is_boundary()) continue;
+	for (auto i=0; i<g.vedges.size(); ++i) if (g.vedges[i]->is_boundary()){
 		int bt = bindex[i];
 		if (std::find(btypes.begin(), btypes.end(), bt) != btypes.end()){
-			bnd_edges.push_back(&edge[i]);
+			bnd_edges.push_back(g.vedges[i].get());
 			bnd_edges_indicies.push_back(i);
 			bnd_edges_btp.push_back(bt);
 		}
@@ -194,8 +193,8 @@ std::vector<int> hme::PeriodicData::assemble(const GridData& g, vector<Edge>& ed
 		int gi;
 		for (gi=0; gi<bnd_edges.size(); ++gi){
 			auto e = bnd_edges[gi];
-			if (e->first().get() != v1 && e->first().get() != v2) continue;
-			if (e->last().get() != v1 && e->last().get() != v2) continue;
+			if (*e->first() != *v1 && *e->first() != *v2) continue;
+			if (*e->last() != *v1 && *e->last() != *v2) continue;
 			break;
 		}
 		assert(gi<bnd_edges.size());
@@ -225,27 +224,29 @@ std::vector<int> hme::PeriodicData::assemble(const GridData& g, vector<Edge>& ed
 	return ret;
 }
 
-void hme::GridMSH(const GridData& g, std::string fn, vector<int> bndindex, hme::BNamesFun bnames, PeriodicData pd){
+void hme::GridMSH(const GridData& gg, std::string fn, vector<int> bndindex, hme::BNamesFun bnames, PeriodicData pd){
 	//Zones:
 	//1    - verticies default
 	//2    - fluid for cells
 	//3    - default interior
 	//4..N - bc's faces
 	
+	//make a deep copy of grid since some data order changes will be made.
+	GridData g;
+	HM2D::DeepCopy(gg, g);
+
 	//Needed data
 	vector<char> ctypes(g.vcells.size());
 	for (int i=0; i<g.vcells.size(); ++i) ctypes[i] = msh_cell_type(*g.vcells[i]);
 	char cell_common_type = get_common_type(ctypes.begin(), ctypes.end());
 
-	vector<Edge> edges;
-	for (auto e: g.vedges) edges.push_back(*e);
-	bndindex.resize(edges.size(), 0);
+	bndindex.resize(g.vedges.size(), 0);
 
 	//edges will be resorted
 	vector<FaceData> face_data;
-	face_data = FaceData::to(g, bndindex, edges, bnames, pd);
+	face_data = FaceData::to(g, bndindex, bnames, pd);
 	//edges will be reverted if necessary
-	vector<int> periodic_relations = pd.assemble(g, edges, bndindex);
+	vector<int> periodic_relations = pd.assemble(g, bndindex);
 
 	std::ofstream fs(fn);
 	fs.precision(16);
@@ -272,7 +273,7 @@ void hme::GridMSH(const GridData& g, std::string fn, vector<int> bndindex, hme::
 	}
 
 	//Faces: Zones 3+it
-	fs<<"(13 (0 1 "<<to_hex(edges.size())<<" 0))\n";
+	fs<<"(13 (0 1 "<<to_hex(g.vedges.size())<<" 0))\n";
 	aa::enumerate_ids_pvec(g.vcells);
 	aa::enumerate_ids_pvec(g.vvert);
 	int iface = 0;
@@ -282,7 +283,7 @@ void hme::GridMSH(const GridData& g, std::string fn, vector<int> bndindex, hme::
 		fs<<to_hex(fd.zone_type)<<" 2)(\n";
 
 		for (int i=fd.istart; i<fd.iend; ++i){
-			auto& ed = edges[iface++];
+			auto& ed = *g.vedges[iface++];
 			int ip1 = ed.first()->id;
 			int ip2 = ed.last()->id;
 			int ic1 = ed.has_left_cell() ? ed.left.lock()->id : -1;

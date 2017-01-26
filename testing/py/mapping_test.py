@@ -139,7 +139,6 @@ g1 = hm.add_custom_rect_grid(
     left_line_part, bottom_line_part,
     right_line_part2, top_line_part)
 hm.export_grid_vtk(g1, "g1.vtk")
-check_ascii_file(17821553111849423570, "g1.vtk")
 check(hm.info_contour(g1)['btypes'] == {1: 5, 2: 45, 3: 45, 7: 5})
 
 print "laplace rectangular grid with linear input"
@@ -167,14 +166,14 @@ g1 = hm.add_custom_rect_grid(
     left_line_part, bottom_line_part,
     None, top_line_part2)
 hm.export_grid_vtk(g1, "g1.vtk")
-check_ascii_file(377131515854867128, "g1.vtk")
+check_ascii_file(16985162519033738007, "g1.vtk")
 check(hm.info_contour(g1)['btypes'] == {8: 45, 1: 40, 2: 45})
 
 g1 = hm.add_custom_rect_grid(
     "orthogonal",
     top_line_part2, left_line_part, bottom_line_part, None)
 hm.export_grid_vtk(g1, "g1.vtk")
-check_ascii_file(9446471624717174963, "g1.vtk")
+check_ascii_file(17680407579251078528, "g1.vtk")
 check(hm.info_contour(g1)['btypes'] == {8: 45, 1: 40, 2: 45})
 
 left_line_part2 = hm.partition_contour(
@@ -184,19 +183,17 @@ g1 = hm.add_custom_rect_grid(
     "direct_laplace",
     top_line_part2, left_line_part2, None, None)
 hm.export_grid_vtk(g1, "g1.vtk")
-check_ascii_file(7773196169542579268, "g1.vtk")
+check_ascii_file(8646985382005859307, "g1.vtk")
 check(hm.info_contour(g1)['btypes'] == {8: 90, 1: 52})
 
-hm.export_grid_vtk(g1, "g1.vtk")
-hm.export_contour_vtk(g1, "c1.vtk")
 
 print "circ4grid"
 g1 = hm.add_circ_rect_grid([10, 10], 10, 1, algo="laplace")
 hm.export_grid_vtk(g1, "g1.vtk")
-check_ascii_file(11741953394189746279, "g1.vtk")
+check_ascii_file(15941694762539007875, "g1.vtk")
 g1 = hm.add_circ_rect_grid([10, 10], 10, 1, algo="orthogonal_circ")
-hm.export_grid_vtk(g1, "g1.vtk")
-check_ascii_file(3918411268704139177, "g1.vtk")
+hm.export_grid_vtk(g1, "g2.vtk")
+check_ascii_file(16442454580617227043, "g2.vtk")
 
 print "examples for 'Map grid' documentation"
 hm.remove_all()

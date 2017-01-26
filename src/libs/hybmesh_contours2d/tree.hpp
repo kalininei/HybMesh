@@ -16,8 +16,12 @@ struct Tree{
 		TNode():level(0){}
 		TNode(const EdgeData& s, int level=0): contour(s), level(level){}
 		TNode(EdgeData&& s, int level=0): contour(std::move(s)), level(level){}
-		bool isdetached(){ return level<0; }
-		bool isbound(){ return level>=0; }
+
+		bool isdetached()const{ return level<0; }
+		bool isbound()const{ return level>=0; }
+		bool isroot()const{ return level==0; }
+		bool isouter()const{ return level % 2 == 0;}
+		bool isinner()const{ return level % 2 == 1;}
 	};
 	ShpVector<TNode> nodes;
 
@@ -34,6 +38,7 @@ struct Tree{
 	void add_detached_contour(const EdgeData& cont);
 	void add_contour(EdgeData&& cont);
 	void add_detached_contour(EdgeData&& cont);
+	void remove_contour(TNode* n);
 
 	//using node->parents calculate children and nesting level
 	void update_topology();

@@ -136,7 +136,7 @@ protected:
 		cell_edges_isleft.resize(g2d.vcells.size());
 		for (int i=0; i<cell_edges_isleft.size(); ++i){
 			auto& il = cell_edges_isleft[i];
-			for (int j=0; j<cell_edges.size(); ++j){
+			for (int j=0; j<cell_edges[i].size(); ++j){
 				il.push_back(g2d.vcells[i]->edges[j]->left.lock() == g2d.vcells[i]);
 			}
 		}
@@ -396,6 +396,7 @@ protected:
 				//face->cell connectivity
 				add_lface_adj(n, planar_face3[j][icell2d]);
 				add_rface_adj(n, planar_face3[j+1][icell2d]);
+				assert(eds.size()==isleft.size());
 				for (int k=0; k<eds.size(); ++k){
 					if (isleft[k]){
 						add_rface_adj(n, perp_face3[j][eds[k]]);

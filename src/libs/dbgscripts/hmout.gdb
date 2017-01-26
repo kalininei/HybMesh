@@ -2,16 +2,20 @@ define contvtk
 	call HM2D::Debug::save_edges_vtk($arg0)
 end
 
-define pntvtk
+define vertvtk
 	call HM2D::Debug::save_vertices_vtk($arg0)
 end
 
+define cellvtk
+	call HM2D::Debug::save_cells_vtk($arg0)
+end
+
 define gridvtk
-	if $argc ==1
-		call GGeom::Debug::save_vtk($arg0, "_dbgout.vtk")
-	else
-		call GGeom::Debug::save_vtk($arg0, $arg1)
-	end
+	call HM2D::Debug::save_grid_vtk($arg0)
+end
+
+define wfvtk
+	call HM2D::Grid::Debug::save_wf_vtk($arg0)
 end
 
 define ppvec
@@ -102,14 +106,3 @@ define gg_ecol
 		call HMCont2D::Debug::geogebra_ecollection($arg3)
 	end
 end
-
-
-skip file /usr/include/c++/4.8/functional
-skip file /usr/include/c++/4.8/bits/shared_ptr_base.h
-skip file /usr/include/c++/4.8/bits/stl_algo.h
-skip file /usr/include/c++/4.8/bits/stl_iterator.h
-skip file /usr/include/c++/4.8/bits/allocator.h
-skip file /usr/include/c++/4.8/bits/stl_vector.h
-skip file /usr/include/c++/4.8/tuple
-skip file /usr/include/c++/4.8/array
-#skip file /usr/include/c++/4.8/bits/shared_ptr.h

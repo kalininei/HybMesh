@@ -12,6 +12,25 @@
 #include "infogrid.hpp"
 using namespace HMTesting;
 
+void old_numering(HM2D::GridData& g){
+	aa::enumerate_ids_pvec(g.vvert);
+	std::map<std::pair<int, int>, int> eds;
+	for (int i=0; i<g.vedges.size(); ++i){
+		auto ed = std::make_pair(g.vedges[i]->pfirst()->id, g.vedges[i]->plast()->id);
+		if (ed.first > ed.second){
+			std::swap(ed.first, ed.second);
+			g.vedges[i]->reverse();
+		}
+		eds.emplace(ed, i);
+	}
+	HM2D::EdgeData newe(g.vedges.size());
+	int ic=0;
+	for (auto& it: eds){
+		newe[ic++] = g.vedges[it.second];
+	}
+	std::swap(g.vedges, newe);
+};
+
 void test01(){
 	std::cout<<"1. export cuboid to vtk"<<std::endl;
 	auto g1 = HM3D::Constructor::Cuboid({0, 0, 0}, 1, 2, 5, 3, 3, 3);
@@ -61,11 +80,12 @@ void test03(){
 	}
 	{
 		auto g2d = HM2D::Grid::Constructor::RectGrid01(6, 3);
+		old_numering(g2d);
 		auto g3d = HM3D::Constructor::SweepGrid2D(g2d, {0, 0.1, 0.2, 0.5},
 				[](int i){ return 1; },
 				[](int i){ return 2; },
 				[](int i){ return i+3; });
-		HM3D::Export::GridMSH(g3d, "g1.msh",
+		HM3D::Export::GridMSH(g3d, "g2.msh",
 				[](int i)->std::string{
 					switch (i){
 						case 1: return std::string("bottom");
@@ -73,35 +93,40 @@ void test03(){
 						default: return std::string("side") + std::to_string(i);
 					};
 				});
-		add_file_check(7968177351678915047U, "g1.msh", "cuboid from sweep with custom boundaries");
+		add_file_check(7968177351678915047U, "g2.msh", "cuboid from sweep with custom boundaries");
 	}
 	{
 		auto g1 = HM2D::Grid::Constructor::Circle(Point(0, 0), 1, 4, 2, true);
 		HM2D::CellData cd {g1.vcells[0], g1.vcells[4]};
 		auto g2 = HM2D::Grid::Constructor::InvokeGrid::Permanent(cd);
+		old_numering(g2);
 		auto g3d = HM3D::Constructor::SweepGrid2D(g2, {0, 0.1});
-		HM3D::Export::GridMSH(g3d, "g1.msh");
-		add_file_check(3132562703476878584U, "g1.msh", "mixed hex/wedge cells");
+		HM3D::Export::GridMSH(g3d, "g3.msh");
+		add_file_check(3132562703476878584U, "g3.msh", "mixed hex/wedge cells");
 	}
 	{
 		auto g1 = HM2D::Grid::Constructor::Circle(Point(0, 0), 1, 5, 2, false);
 		HM2D::CellData cd {g1.vcells[5]};
 		auto g2 = HM2D::Grid::Constructor::InvokeGrid::Permanent(cd);
+		old_numering(g2);
 		auto g3d = HM3D::Constructor::SweepGrid2D(g2, {0, 0.1});
-		HM3D::Export::GridMSH(g3d, "g1.msh");
-		add_file_check(1811066807055341946U, "g1.msh", "single pentagon prism cell");
+		HM3D::Export::GridMSH(g3d, "g4.msh");
+		add_file_check(1811066807055341946U, "g4.msh", "single pentagon prism cell");
 	}
 	{
 		auto g1 = HM2D::Grid::Constructor::RectGrid01(20, 30);
+		old_numering(g1);
 		auto g2 = HM2D::Grid::Constructor::Circle(Point(0.721, 0.682), 0.465, 24, 10, false);
+		old_numering(g2);
 		auto g3 = HM2D::Grid::Algos::UniteGrids(g1, g2, HM2D::Grid::Algos::OptUnite());
+		old_numering(g3);
 		auto g3d = HM3D::Constructor::SweepGrid2D(g3, {0, 0.1, 0.2, 0.3, 0.5},
 				[](int){return 1;}, [](int){return 2;},
 				[&g3](int e)->int{
 					Point pc = g3.vedges[e]->center();
 					return (pc.x<=1+1e-12 && pc.y<=1+1e-12) ? 3 : 4;
 				});
-		HM3D::Export::GridMSH(g3d, "g1.msh",
+		HM3D::Export::GridMSH(g3d, "g5.msh",
 				[](int i)->std::string{
 					switch (i){
 						case 1: return "bottom";
@@ -111,7 +136,7 @@ void test03(){
 						default: return "unknown";
 					}
 				});
-		add_file_check(4247503388199499266U, "g1.msh", "mesh with polyhedra cells");
+		add_file_check(4247503388199499266U, "g5.msh", "mesh with polyhedra cells");
 	}
 }
 
@@ -119,6 +144,7 @@ void test04(){
 	std::cout<<"4. Fluent export with periodic surfaces"<<std::endl;
 	{
 		auto g2d = HM2D::Grid::Constructor::RectGrid({0.0, 0.1, 1.0}, {0.0, 0.3, 1.0});
+		old_numering(g2d);
 		auto g3d = HM3D::Constructor::SweepGrid2D(g2d, {0.0, 0.2, 1.0});
 		HM3D::Export::PeriodicData pd;
 		pd.add_condition(1, 2, HM3D::Vertex(0, 0, 0), HM3D::Vertex(0, 0, 1), true);
@@ -162,9 +188,8 @@ void test04(){
 
 		pd.add_condition(1, 2, HM3D::Vertex(0, 0, 3), HM3D::Vertex(0, 0, 4), true);
 		pd.add_condition(3, 4, HM3D::Vertex(0, 0, 3), HM3D::Vertex(10, 0, 3), true);
-		HM3D::Export::GridMSH.Silent(g3d, "g2.msh", pd);
-		add_file_check(15045081833867360121U, "g2.msh", "multiple periodic");
-
+		HM3D::Export::GridMSH(g3d, "g2.msh", pd);
+		add_file_check(4771476334321374110U, "g2.msh", "multiple periodic");
 	}
 };
 
@@ -172,12 +197,14 @@ void test05(){
 	std::cout<<"5. Tecplot export"<<std::endl;
 	{
 		auto g2d = HM2D::Grid::Constructor::RectGrid01(1, 1);
+		old_numering(g2d);
 		auto g3d = HM3D::Constructor::SweepGrid2D(g2d, {0.0, 0.5});
 		HM3D::Export::GridTecplot.Silent(g3d, "g1.dat");
 		add_file_check(1831833575709478659U, "g1.dat", "single cell grid");
 	}
 	{
 		auto g2d = HM2D::Grid::Constructor::Circle(Point(0, 0), 10, 30, 10, false);
+		old_numering(g2d);
 		auto g3d = HM3D::Constructor::SweepGrid2D(g2d, {1.0, 1.2, 1.4, 1.6, 1.7, 1.8, 1.9, 2.0});
 		HM3D::Export::GridTecplot.Silent(g3d, "g1.dat");
 		add_file_check(17626851046985520587U, "g1.dat", "polyhedral grid");
@@ -190,6 +217,7 @@ void test06(){
 	using HM3D::Constructor::RevolveGrid2D;
 	std::cout<<"6. Solid of revolution"<<std::endl;
 	auto g2d = HM2D::Grid::Constructor::RectGrid(Point(1,0), Point(2,1), 1, 1);
+	old_numering(g2d);
 	auto bc0 = [](int){return 0;};
 	{
 		HM3D::GridData g3d = RevolveGrid2D(g2d, {0, 90}, Point(0, 0), Point(0, 1), true, bc0, bc0, bc0);
@@ -210,20 +238,25 @@ void test06(){
 	}
 	{
 		auto h2d = HM2D::Grid::Constructor::RectGrid(Point(0, 0), Point(2, 1), 2, 1);
+		old_numering(h2d);
 		auto g3d = RevolveGrid2D(h2d, {0, 90}, Point(0, 0), Point(0, 1), true);
 		HM3D::Export::GridTecplot.Silent(g3d, "g1.dat");
 		add_file_check(8233442907809870919U, "g1.dat", "with contact, incomplete");
 	}
 	{
 		auto h2d = HM2D::Grid::Constructor::RectGrid(Point(0, 0), Point(2, 1), 4, 3);
+		old_numering(h2d);
 		auto g3d = RevolveGrid2D(h2d, {0, 90, 110, 180, 250, 330, 360}, Point(0, 0), Point(0, 1), true);
 		HM3D::Export::GridTecplot.Silent(g3d, "g1.dat");
 		add_file_check(5490115627065179709U, "g1.dat", "with contact, complete");
 	}
 	{
 		auto g1 = HM2D::Grid::Constructor::RectGrid(Point(0, 0), Point(10, 10), 10, 10);
+		old_numering(g1);
 		auto g2 = HM2D::Grid::Constructor::RectGrid(Point(0, 5), Point(10, 6), 5, 1);
+		old_numering(g2);
 		auto g3 = HM2D::Grid::Algos::UniteGrids(g1, g2, HM2D::Grid::Algos::OptUnite());
+		old_numering(g3);
 		auto g3d = RevolveGrid2D(g3, {0, 10, 20, 30}, Point(0, 0), Point(0, 1), true);
 		HM3D::Export::GridTecplot.Silent(g3d, "g1.dat");
 		add_file_check(12980710001405184230U, "g1.dat", "hanging nodes near axis to tecplot");
@@ -237,18 +270,21 @@ void test07(){
 	std::cout<<"7. Solid of revolution, merging centeral cells"<<std::endl;
 	{
 		auto g2d = HM2D::Grid::Constructor::RectGrid(Point(1,0), Point(2,1), 1, 1);
+		old_numering(g2d);
 		auto g3d = RevolveGrid2D(g2d, {0, 45, 90}, Point(1, 0), Point(1, 1), false);
 		HM3D::Export::GridTecplot.Silent(g3d, "g1.dat");
 		add_file_check(13398422286724743124U, "g1.dat", "single cell, without center trian, incomplete");
 	}
 	{
 		auto g2d = HM2D::Grid::Constructor::RectGrid(Point(1,0), Point(2,1), 1, 1);
+		old_numering(g2d);
 		auto g3d = RevolveGrid2D(g2d, {20, 45, 90, 160, 270, 300, 380}, Point(1, 0), Point(1, 1), false);
 		HM3D::Export::GridTecplot.Silent(g3d, "g1.dat");
 		add_file_check(6994418583934313116U, "g1.dat", "single cell, without center trian, complete");
 	}
 	{
 		auto h2d = HM2D::Grid::Constructor::RectGrid(Point(0, 0), Point(2, 1), 2, 1);
+		old_numering(h2d);
 		auto g3d = RevolveGrid2D(h2d, {0, 10, 20, 30, 40, 50}, Point(0, 0), Point(0, 1), false);
 		HM3D::Export::GridTecplot.Silent(g3d, "g1.dat");
 		add_file_check(11881236001573517783U, "g1.dat", "multiple cells, with trian, complete");
@@ -257,6 +293,7 @@ void test07(){
 		double p[] = {0, 0, 1, 0, 0, 1};
 		int c[] = {0, 1, 2};
 		auto g1 = HM2D::Grid::Constructor::FromRaw(3, 1, p, c, 3);
+		old_numering(g1);
 		auto g2 = RevolveGrid2D(g1, {0, 45, 90}, Point(0,0), Point(0,1), false);
 		HM3D::Export::GridTecplot.Silent(g2, "g1.dat");
 		add_file_check(10167032458429566145U, "g1.dat", "no tri with single axis triangle");
@@ -265,17 +302,22 @@ void test07(){
 		double p[] = {1, 0, 1, 1, 0, 1};
 		int c[] = {0, 1, 2};
 		auto g1 = HM2D::Grid::Constructor::FromRaw(3, 1, p, c, 3);
+		old_numering(g1);
 		auto g2 = RevolveGrid2D(g1, {0, 45, 90}, Point(0,0), Point(0,1), false);
 		HM3D::Export::GridTecplot.Silent(g2, "g1.dat");
 		add_file_check(11550191908304285294U, "g1.dat", "no tri, single off axis triangle");
 	}
 	{
-		double p[] = {0, 0, 1, 0, 0, 1,
-		              1, 0, 1, 1, 0, 1,
-		              0, 0, 0, -2, 1, -2, 1, 0};
-		int c[] = {3, 0, 1, 2, 3, 3, 4, 5, 4, 6, 7, 8, 9};
+		double p[] = {0, 0,  1, 0,  0, 1,
+		              1, 0,  1, 1,  0, 1,
+		              0, 0,  0, -2,  1, -2,  1, 0};
+		int c[] = {3, 0, 1, 2, 
+		           3, 3, 4, 5,
+		           4, 6, 7, 8, 9};
 		auto g1 = HM2D::Grid::Constructor::FromRaw(10, 3, p, c, -1);
+		old_numering(g1);
 		HM2D::Grid::Algos::Heal(g1);
+		old_numering(g1);
 
 		auto g2 = RevolveGrid2D(g1, {0, 45, 90}, Point(0,0), Point(0,1), false);
 		HM3D::Export::GridTecplot.Silent(g2, "g1.dat");

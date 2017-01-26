@@ -252,7 +252,7 @@ protected:
 public:
 	double xmin, xmax, ymin, ymax;
 
-	BoundingBox():xmin(0), xmax(1), ymin(0), ymax(1){}
+	BoundingBox():xmin(0), xmax(0), ymin(0), ymax(0){}
 	BoundingBox(double x0, double y0, double x1, double y1):xmin(x0), xmax(x1), ymin(y0), ymax(y1){}
 	BoundingBox(const vector<BoundingBox>&, double e=0.0);
 	BoundingBox(const Point& p1, const Point& p2, double e=0.0);
@@ -263,6 +263,7 @@ public:
 		std::is_base_of<Point, typename Iter::value_type>::value,
 		BoundingBox
 	>::type Build(Iter first, Iter last){
+		if (first == last) return BoundingBox();
 		BoundingBox ret(first->x, first->y, first->x, first->y);
 		while (first!=last) {ret.WidenWithPoint(&*first); ++first;}
 		return ret;
@@ -272,6 +273,7 @@ public:
 		!std::is_base_of<Point, typename Iter::value_type>::value,
 		BoundingBox
 	>::type Build(Iter first, Iter last, double e=0.){
+		if (first == last) return BoundingBox();
 		BoundingBox ret((*first)->x, (*first)->y, (*first)->x, (*first)->y);
 		while (first!=last) {ret.WidenWithPoint(**first); ++first;}
 		ret.widen(e);
@@ -333,11 +335,17 @@ struct BoundingBoxFinder{
 	void addentry(const BoundingBox& e);
 	vector<int> suspects(const BoundingBox& bb) const;
 	vector<int> suspects(const Point& bb) const;
+
+	//data access
+	vector<int> sqrs(const BoundingBox& bb) const;
+	vector<int> sqrs_by_entry(int e) const;
 	int nsqr() const { return (mx+1)*(my+1); }
 	const vector<int>& sqr_entries(int i) const { return data[i]; }
-	Point sqr_center(int i) const;
 	int nx() const { return mx+1; }
 	int ny() const { return my+1; }
+	Point sqr_center(int i) const;
+	Point pmin() const { return Point(x0, y0); }
+	Point pmax() const { return Point(x0 + hx*nx(), y0 + hy*ny()); }
 private:
 	double x0, y0, hx, hy;
 	int mx, my;

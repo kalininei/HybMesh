@@ -62,7 +62,7 @@ and impose them onto a regular quadrangle substrate grid. Result is shown in fig
 
 
 Now we'll illustrate usage of Hybmesh for finite volume grid generation.
-Such grids can contain arbitrary cells (regular hexagonal cells are preferred).
+Such grids can contain arbitrary cells (regular polygons are preferred).
 Well sites should lie in the centers of cells. Location of fracture contour
 depends on numerical algorithm. We will place it to the cell centers too (as it would
 be if this is a horizontal well contour).

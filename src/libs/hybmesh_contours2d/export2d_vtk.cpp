@@ -84,9 +84,9 @@ void Export::GridVTK(const GridData& g, std::string fn){
 	for (int i=0;i<g.vcells.size();++i){
 		auto c = g.vcells[i];
 		fs<<c->edges.size()<<"  ";
-		for (auto p: HM2D::Contour::OrderedPoints(c->edges)){
-			fs<<p->id<<" ";
-		}
+		auto op = HM2D::Contour::OrderedPoints(c->edges);
+		op.resize(op.size()-1);
+		for (auto p: op){ fs<<p->id<<" "; }
 		fs<<std::endl;
 	}
 	fs<<"CELL_TYPES  "<<g.vcells.size()<<std::endl;

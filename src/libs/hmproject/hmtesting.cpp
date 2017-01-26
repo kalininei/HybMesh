@@ -125,8 +125,8 @@ void HMTesting::add_file_check(size_t hash, std::string fn, std::string info){
 	int fc = FAILED_CHECKS;
 	add_check(h1 == hash, info);
 	if (fc != FAILED_CHECKS){
-		std::cout<<"\t\tcurrent file hash = "<<h1<<std::endl;
-		std::cout<<"\t\tinput file hash   = "<<hash<<std::endl;
+		std::cout<<"\t\tcurrent file hash = "<<h1<<'U'<<std::endl;
+		std::cout<<"\t\tinput file hash   = "<<hash<<'U'<<std::endl;
 	}
 }
 

@@ -1,0 +1,12 @@
+skip file /usr/include/c++/4.8/functional
+skip file /usr/include/c++/4.8/bits/shared_ptr_base.h
+skip file /usr/include/c++/4.8/bits/stl_algo.h
+skip file /usr/include/c++/4.8/bits/stl_iterator.h
+skip file /usr/include/c++/4.8/bits/allocator.h
+skip file /usr/include/c++/4.8/bits/stl_vector.h
+skip file /usr/include/c++/4.8/bits/stl_map.h
+skip file /usr/include/c++/4.8/tuple
+skip file /usr/include/c++/4.8/array
+skip file /usr/include/c++/4.8/bits/move.h
+skip file /usr/include/c++/4.8/bits/shared_ptr.h
+skip file /usr/include/c++/4.8/bits/stl_tree.h

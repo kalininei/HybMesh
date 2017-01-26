@@ -27,32 +27,6 @@ PtsGraph::PtsGraph(const GridData& g2){
 	}
 }
 
-/*
-PtsGraph::PtsGraph(const ContoursCollection& cc){
-	for (auto c: cc.contours_list()){
-		for (int i=0; i<c.n_points(); ++i){
-			nodes.push_back(Point(*c.get_point(i)));
-			if (i<c.n_points()-1){
-				lines.push_back(GraphLine(nodes.size()-1, nodes.size()));
-			} else {
-				lines.push_back(GraphLine(nodes.size()-1, nodes.size()-c.n_points()));
-			}
-		}
-	}
-}
-
-PtsGraph::PtsGraph(const PContour& c){
-	for (int i=0; i<c.n_points(); ++i){
-		nodes.push_back(Point(*c.get_point(i)));
-		if (i<c.n_points()-1){
-			lines.push_back(GraphLine(nodes.size()-1, nodes.size()));
-		} else {
-			lines.push_back(GraphLine(nodes.size()-1, nodes.size()-c.n_points()));
-		}
-	}
-}
-*/
-
 PtsGraph::PtsGraph(const HM2D::EdgeData& cc){
 	auto av = HM2D::AllVertices(cc);
 	aa::enumerate_ids_pvec(av);
@@ -68,9 +42,6 @@ auto PtsGraph::_impose_impl(const PtsGraph& main_graph, const PtsGraph& imp_grap
 	auto& cross_nodes=std::get<2>(ret);
 
 	// === Acceleration initialization
-	////this guarantees that points in G will not change their addresses
-	////on push_back invocation. This is important due to ndfinder implementation details.
-	//G.nodes.reserve(main_graph.Nnodes()+imp_graph.Nnodes());
 	//find rectangle which contains all nodes
 	Point top1 = Point::GetTop(main_graph.nodes.begin(), main_graph.nodes.end());
 	Point bot1 = Point::GetBot(main_graph.nodes.begin(), main_graph.nodes.end());
@@ -109,7 +80,7 @@ auto PtsGraph::_impose_impl(const PtsGraph& main_graph, const PtsGraph& imp_grap
 }
 
 auto PtsGraph::impose(const PtsGraph& main_graph, const PtsGraph& imp_graph, double eps) -> impResT{
-	//TODO: parallel implementation
+	//parallel implementation?
 	return _impose_impl(main_graph, imp_graph, eps);
 }
 
@@ -199,6 +170,7 @@ void build_tg(const vector<Point>& pts, const vector<GraphLine>& lines,
 }
 struct TEdge{
 	int p1, p2, cell_left, cell_right;
+	TEdge():p1(-1), p2(-1), cell_left(-1), cell_right(-1){}
 	void set_p(int a, int b){ p1 = a; p2 = b; if (p2<p1) std::swap(p1, p2);}
 };
 GridData formgrid(const vector<tgPoint>& P, const vector<tgHalfEdge>& HE,
@@ -267,6 +239,7 @@ GridData PtsGraph::togrid() const{
 	for (auto& s: subs) grids.push_back(s.togrid());
 
 	//if only a single grid exists return it
+	if (grids.size() == 0) return GridData();
 	if (grids.size() == 1) return grids[0];
 
 	//assembling system of outer contours
@@ -274,7 +247,7 @@ GridData PtsGraph::togrid() const{
 	for (int i=0; i<grids.size(); ++i){
 		auto cvec = Contour::Assembler::GridBoundary(grids[i]);
 		for (int j=0; j<cvec.size(); ++j){
-			cont.add_contour(std::move(cvec[i]));
+			cont.add_contour(std::move(cvec[j]));
 		}
 	}
 
@@ -291,7 +264,9 @@ GridData PtsGraph::togrid() const{
 }
 
 namespace{
-void intrude(GridData& where, const GridData& what){
+void intrude(GridData& where, vector<const GridData*> vwhat){
+	GridData what;
+	for (auto it: vwhat) Algos::ShallowAdd(*it, what);
 	if (where.vcells.size() == 0) {
 		where = what;
 		return;
@@ -305,7 +280,10 @@ void intrude(GridData& where, const GridData& what){
 			ipar = i; break;
 		}
 	}
-	assert(ipar != -1);
+	if (ipar == -1){
+		//another root
+		return Algos::ShallowAdd(what, where);
+	}
 
 	//build triangulation contour
 	Contour::Tree what_cont = Contour::Tree::GridBoundary(what);
@@ -347,20 +325,24 @@ GridData PtsGraph::intrusion_algo(const vector<GridData>& grids){
 
 	//assemble grid moving from lowest level of nesting
 	GridData ret;
-	std::function<void(Contour::Tree::TNode*)>
-	add = [&](Contour::Tree::TNode* gc){
-		auto& g = grids[gind[gc]];
-		intrude(ret, g);
-		for (auto c: gc->children){
-			add(c.lock().get());
+	std::function<void(WpVector<Contour::Tree::TNode>)>
+	add = [&](WpVector<Contour::Tree::TNode> gc){
+		if (gc.size() == 0) return;
+		vector<const GridData*> g;
+		for (auto it: gc){
+			Contour::Tree::TNode* ptr = it.lock().get();
+			g.push_back(&grids[gind[ptr]]);
 		}
+		intrude(ret, g);
+		for (auto it: gc) add(it.lock()->children); 
 	};
-	for (auto& n: tree.roots()) add(n.get());
+	WpVector<Contour::Tree::TNode> roots;
+	for (auto& n: tree.roots()) roots.emplace_back(n);
+	add(roots);
 	return ret;
 }
 
-/*
-HM2D::EdgeData PtsGraph::toecollection() const{
+HM2D::EdgeData PtsGraph::toedges() const{
 	HM2D::EdgeData ret;
 	HM2D::VertexData pcol;
 	for (auto& p: nodes) pcol.push_back(std::make_shared<HM2D::Vertex>(p));
@@ -371,7 +353,7 @@ HM2D::EdgeData PtsGraph::toecollection() const{
 	}
 	return ret;
 }
-*/
+
 vector<vector<int>> PtsGraph::lines_lines_tab() const{
 	vector<vector<int>> pts_lines(nodes.size());
 	for (int i=0; i<lines.size(); ++i){

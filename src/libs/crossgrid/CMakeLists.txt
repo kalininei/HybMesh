@@ -9,6 +9,7 @@ set (HEADERS
 	modgrid.hpp
 	infogrid.hpp
 	wireframegrid.hpp
+	debug_grid2d.hpp
 )
 
 set (SOURCES
@@ -21,6 +22,7 @@ set (SOURCES
 	modgrid.cpp
 	infogrid.cpp
 	wireframegrid.cpp
+	debug_grid2d.cpp
 )
 
 source_group ("Header Files" FILES ${HEADERS} ${HEADERS})

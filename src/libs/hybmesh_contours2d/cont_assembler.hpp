@@ -18,7 +18,7 @@ vector<EdgeData> SimpleContours(const EdgeData& input);
 //Assemble single contour from shattered edges starting from given points of collection edges
 //resulting direction is arbitrary.
 //Use ShrinkContour if col is known to be a contour.
-EdgeData Contour1(const EdgeData& col, const Point* pnt_start, const Point* pnt_end=0);
+EdgeData Contour1(const EdgeData& col, const Point* pnt_start=0, const Point* pnt_end=0);
 
 //from consequent list of points
 EdgeData Contour1(const VertexData& pnt, bool force_closed=false);

@@ -45,6 +45,23 @@ void free_boundary_names(BoundaryNamesStruct* s){
 
 Grid* grid_construct(int Npts, int Ncells, double* pts, int* cells){
 	try{
+		//check rotation
+		int icell = 0;
+		int nc=0;
+		while (nc<Ncells){
+			int n = cells[icell++];
+			double area=0;
+			double* p0 = pts+2*cells[icell];
+			for (int j=1; j<n-1; ++j){
+				double* p1 = pts+2*cells[icell+j];
+				double* p2 = pts+2*cells[icell+j+1];
+				area += (p1[0]-p0[0])*(p2[1]-p0[1]);
+				area -= (p1[1]-p0[1])*(p2[0]-p0[0]);
+			}
+			if (area<0) std::reverse(cells+icell, cells+icell+n); 
+			icell+=n;
+			++nc;
+		}
 		return new HM2D::GridData(std::move(
 			HM2D::Grid::Constructor::FromRaw(Npts, Ncells, pts, cells, -1)));
 	} catch (const std::exception &e){
@@ -80,9 +97,9 @@ void grid_get_points_cells(Grid* g, double* pts, int* cells){
 	if (cells!=0) for (int i=0; i<gg->vcells.size(); ++i){
 		auto c = gg->vcells[i];
 		*cells++ = c->edges.size();
-		for (auto p: HM2D::Contour::OrderedPoints(c->edges)){
-			*cells++ = p->id;
-		}
+		auto op = HM2D::Contour::OrderedPoints(c->edges);
+		op.resize(op.size()-1);
+		for (auto p: op){ *cells++ = p->id; }
 	}
 }
 

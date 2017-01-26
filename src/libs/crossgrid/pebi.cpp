@@ -39,7 +39,7 @@ std::vector<PebiBndPoint> assemble_bnd(const GridData& g){
 std::vector<std::vector<int>> ordered_points_cells(const GridData& g, std::vector<PebiBndPoint>& bnd){
 	std::vector<std::vector<int>> ret(g.vvert.size());
 	auto& edges=g.vedges;
-	auto ve = Connectivity::VertexEdge(edges);
+	auto ve = Connectivity::VertexEdge(edges, g.vvert);
 	std::vector<std::list<int>> point_edges(g.vvert.size());
 	int iv=0;
 	for (auto& it: ve){
@@ -54,9 +54,13 @@ std::vector<std::vector<int>> ordered_points_cells(const GridData& g, std::vecto
 		//looking for boundary edge
 		for (auto it = pe.begin(); it!=pe.end(); ++it){
 			if (edges[*it]->is_boundary()){
-				estart = edges[*it].get();
-				pe.erase(it);
-				break;
+				auto ed = edges[*it].get();
+				if ((ed->first()->id == i && ed->has_left_cell()) ||
+				    (ed->last()->id == i && ed->has_right_cell())){
+					estart = ed;
+					pe.erase(it);
+					break;
+				}
 			}
 		}
 		//if no boundary edges start from first
@@ -67,9 +71,10 @@ std::vector<std::vector<int>> ordered_points_cells(const GridData& g, std::vecto
 			if (wcur_cell.expired()) break;
 			int cur_cell = wcur_cell.lock()->id;
 			ret[i].push_back(cur_cell);
+			size_t pesize = pe.size();
+			if (pesize == 0) break;
 			//find cur_edge as edge of cur_cell which is not ecur but contains i;
-			if (pe.size() == 0) break;
-			else for (auto it=pe.begin(); it!=pe.end(); ++it){
+			for (auto it=pe.begin(); it!=pe.end(); ++it){
 				auto eit = edges[*it];
 				//find edge which has a link to cur_cell
 				if ((eit->has_left_cell() && eit->left.lock()->id == cur_cell) ||
@@ -79,6 +84,7 @@ std::vector<std::vector<int>> ordered_points_cells(const GridData& g, std::vecto
 					break;
 				}
 			}
+			assert(pe.size() == pesize-1);
 		}
 	}
 

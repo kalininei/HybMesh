@@ -6,8 +6,39 @@
 #include "contabs2d.hpp"
 #include "finder2d.hpp"
 #include "treverter2d.hpp"
+#include "infogrid.hpp"
 using namespace HM2D;
 using namespace HM2D::Grid;
+
+void Algos::UniqueRearrange(GridData& from){
+	auto _vless = [](const shared_ptr<Vertex>& a, const shared_ptr<Vertex>& b){
+				return *a < *b; };
+	auto _eless = [](const shared_ptr<Edge>& a, const shared_ptr<Edge>& b){
+				return a->pfirst()->id < b->pfirst()->id; };
+	auto _cless = [](const shared_ptr<Cell>& a, const shared_ptr<Cell>& b){
+				return a->edges[0]->id < b->edges[0]->id; };
+	//vertices
+	std::sort(from.vvert.begin(), from.vvert.end(), _vless);
+	//edges
+	aa::enumerate_ids_pvec(from.vvert);
+	for (auto& e: from.vedges){
+		if (e->first()->id > e->last()->id) e->reverse();
+	}
+	std::sort(from.vedges.begin(), from.vedges.end(), _eless);
+	//cells
+	aa::enumerate_ids_pvec(from.vedges);
+	for (auto& c: from.vcells){
+		int imin=0;
+		int vmin=c->edges[0]->id;
+		for (int i=1; i<c->edges.size(); ++i){
+			if (c->edges[i]->id < vmin){
+				imin = i; vmin = c->edges[i]->id;
+			}
+		}
+		std::rotate(c->edges.begin(), c->edges.begin()+imin, c->edges.end());
+	}
+	std::sort(from.vcells.begin(), from.vcells.end(), _cless);
+}
 
 //adds non-repeating (by pointer) vertices, edges and cells
 void Algos::ShallowAdd(const GridData& from, GridData& to){
@@ -35,181 +66,9 @@ void Algos::ShallowAdd(const GridData& from, GridData& to){
 			});
 }
 
-namespace{
-//returns list of fully outer b indicies
-std::vector<int> filter_by_bbox(const vector<BoundingBox>& b, const BoundingBox& bbox){
-	std::vector<int> ret;
-	for (int i=0; i<b.size(); ++i){
-		if (!bbox.has_common_points(b[i])) ret.push_back(i);
-	}
-	return ret;
-}
-vector<int> fill_group(int first, vector<bool>& used, int nx, int ny){
-	std::array<int, 4> adj;
-	auto fill_adj = [&nx, &ny, &adj](int i){
-		int ix = i % nx;
-		int iy = i / nx;
-		adj[0] = (ix != 0) ? (iy*nx+ix-1) : -1;
-		adj[1] = (ix != nx-1) ? (iy*nx+ix+1) : -1;
-		adj[2] = (iy != 0) ? ((iy-1)*nx+ix) : -1;
-		adj[3] = (iy != ny-1) ? ((iy+1)*nx+ix) : -1;
-	};
-
-	vector<int> ret(1, first); used[first] = true;
-	int uu=0;
-	while (uu<ret.size()){
-		fill_adj(ret[uu]);
-		for (auto a: adj) if (a != -1 && !used[a]){
-			ret.push_back(a);
-			used[a] = true;
-		}
-		++uu;
-	}
-
-	return ret;
-}
-
-vector<vector<int>> squares_group(const BoundingBoxFinder& fn, const vector<int>& tp){
-	vector<bool> used(tp.size(), false);
-	vector<vector<int>> ret;
-	for (int i=0; i<tp.size(); ++i) if (tp[i] != -1) used[i] = true;
-
-	while (1){
-		int first = std::find(used.begin(), used.end(), false)-used.begin();
-		if (first >= used.size()) break;
-		ret.push_back(fill_group(first, used, fn.nx(), fn.ny()));
-	}
-
-	return ret;
-}
-
-vector<int> define_squares_positions(const BoundingBoxFinder& bf,
-		const Contour::Tree& tree, const EdgeData& tree_edges){
-	//0 - inactive, 1 - inside, 2 - outside, 3 - undefined
-	vector<int> ret(bf.nsqr(), -1);
-
-	//set undefined to those which contains tree edges
-	for (auto e: tree_edges){
-		for (int i: bf.suspects(BoundingBox(*e->first(), *e->last()))){
-			ret[i] = 3;
-		}
-	}
-
-	//set inactive to those which do not contain any grid cells
-	for (int i=0; i<bf.nsqr(); ++i) if (bf.sqr_entries(i).size() == 0){
-		ret[i] = 0;
-	}
-
-	//group all left squares
-	vector<vector<int>> groups = squares_group(bf, ret);
-
-	//get feature for each group
-	vector<Point> gpoints;
-	for (auto& g: groups){
-		gpoints.push_back(bf.sqr_center(g[0]));
-	}
-	vector<int> gf = Contour::Algos::SortOutPoints(tree, gpoints);
-	for (int i=0; i<groups.size(); ++i){
-		for (auto ib: groups[i]) ret[ib] = gf[i];
-	}
-
-	return ret;
-}
-
-}
-
-CellData Algos::ExtractCells(const GridData& grid, const Contour::Tree& domain, int what){
-	//all good cells will be stored in ret
-	CellData ret;
-	//tree simplification
-	Contour::Tree nt = Contour::Algos::Simplified(domain);
-	EdgeData nted = nt.alledges();
-	//calculate bounding boxes for all cells
-	vector<BoundingBox> gridbb(grid.vcells.size());
-	for (int i=0; i<grid.vcells.size(); ++i){
-		gridbb[i] = BBox(grid.vcells[i]->edges);
-	}
-
-	//leave only those cells which lie inside domain box
-	auto bbox2 = HM2D::BBox(nted);
-	std::vector<int> outercells = filter_by_bbox(gridbb, bbox2);
-	aa::constant_ids_pvec(grid.vcells, 0);
-	for (auto i: outercells) grid.vcells[i]->id=1;
-	CellData icells;
-	std::copy_if(grid.vcells.begin(), grid.vcells.end(), std::back_inserter(icells),
-			[](const shared_ptr<Cell>& c){ return c->id == 0; });
-	VertexData ivert=AllVertices(icells);
-
-	//add excluded cells to result if we want to exclude inner domain area
-	if (what == OUTSIDE)
-	std::copy_if(grid.vcells.begin(), grid.vcells.end(), std::back_inserter(ret),
-			[](const shared_ptr<Cell>& c){ return c->id == 1; });
-
-	//build finder
-	BoundingBox bbox({HM2D::BBox(ivert), bbox2});
-	BoundingBoxFinder bfinder(bbox, bbox.maxlen()/50);
-	aa::enumerate_ids_pvec(grid.vcells);
-	for (auto c: icells){
-		bfinder.addentry(gridbb[c->id]);
-	}
-
-	//get square positions
-	//0 - inactive, 1 - inside, 2 - outside, 3 - undefined
-	vector<int> sqrpos = define_squares_positions(bfinder, nt, nted);
-
-	//fill cell ids
-	for (int i=0; i<sqrpos.size(); ++i) if (sqrpos[i] == 1 || sqrpos[i] == 2){
-		for (int k: bfinder.sqr_entries(i)) icells[k]->id = sqrpos[i];
-	}
-	for (int i=0; i<sqrpos.size(); ++i) if (sqrpos[i] == 3){
-		for (int k: bfinder.sqr_entries(i)) icells[k]->id = 3;
-	}
-
-	//add good cells to result
-	int goodid = (what == INSIDE) ? 1 : 2;
-	std::copy_if(grid.vcells.begin(), grid.vcells.end(), std::back_inserter(ret),
-			[&goodid](const shared_ptr<Cell>& c){ return c->id == goodid; });
-
-	//leave only undefined cells
-	aa::keep_by_id(icells, 3);
-	ivert = AllVertices(icells);
-
-	//Sorting vertices
-	vector<Point> pivert(ivert.size());
-	for (int i=0; i<ivert.size(); ++i) pivert[i].set(*ivert[i]);
-	vector<int> srt = Contour::Algos::SortOutPoints(nt, pivert);
-	for (int i=0; i<ivert.size(); ++i) ivert[i]->id = srt[i];
-
-	//analyzing undefined cells
-	CellData bndcells;
-	int badid = (what == INSIDE) ? OUTSIDE : INSIDE;
-	for (auto c: icells){
-		bool allbnd = true;
-		for (auto e: c->edges)
-		for (auto v: e->vertices){
-			if (v->id == badid) goto BADCELL;
-			if (allbnd && v->id != BOUND) allbnd = false;
-		}
-		//if all points lie on boundary
-		if (allbnd){ 
-			bndcells.push_back(c);
-			goto BADCELL;
-		}
-		ret.push_back(c);
-	BADCELL:
-		continue;
-	}
-	//analyzing cells with all points lying on boundary
-	for (auto c: bndcells){
-		Point p = Contour::InnerPoint(c->edges);
-		int pos = nt.whereis(p);
-		if (pos == what) ret.push_back(c);
-	}
-
-	return ret;
-}
-
-void Algos::RemoveCells(GridData& grid, const vector<int>& icells){
+void Algos::RemoveCells(GridData& grid, vector<int> icells){
+	std::sort(icells.begin(), icells.end());
+	icells.resize(std::unique(icells.begin(), icells.end()) - icells.begin());
 	//remove not used cells
 	CellData notused;
 	for (int i: icells) notused.push_back(grid.vcells[i]);
@@ -240,6 +99,12 @@ void Algos::RemoveCells(GridData& grid, const vector<int>& icells){
 	}
 	aa::remove_by_id(grid.vvert, 1);
 }
+void Algos::RemoveCellsById(GridData& grid, int id){
+	std::vector<int> badcells;
+	for (int i=0; i<grid.vcells.size(); ++i)
+	if (grid.vcells[i]->id == id) badcells.push_back(i);
+	RemoveCells(grid, badcells);
+}
 
 void Algos::RemoveCells(GridData& grid, const Contour::Tree& domain, int what){
 	CellData goodcells;
@@ -249,25 +114,69 @@ void Algos::RemoveCells(GridData& grid, const Contour::Tree& domain, int what){
 	RestoreFromCells(grid);
 }
 
+void Algos::MergeBoundaries(const GridData& from, GridData& to){
+	//== force 'from' boundary nodes lying on 'to' boundary to 'to'
+	//assembling boundaries
+	auto bvfrom = AllVertices(ECol::Assembler::GridBoundary(from));
+	auto bedto = ECol::Assembler::GridBoundary(to);
+	auto bbox = HM2D::BBox(bedto);
+	//quick search for 'to' boundary edges
+	BoundingBoxFinder tofinder(bbox, bbox.maxlen()/30.);
+	for (auto e: bedto){
+		tofinder.addentry(BoundingBox(*e->pfirst(), *e->plast()));
+	}
+	for (auto v: bvfrom){
+		double ksi;
+		for (auto ecand: tofinder.suspects(*v)){
+			auto e = bedto[ecand].get();
+			//if 'from' vertex equals 'to' vertex ignore it.
+			//It will be splitted in MergeTo procedure
+			if (*v == *e->pfirst() || *v == *e->plast()) break;
+			isOnSection(*v, *e->pfirst(), *e->plast(), ksi);
+			//if 'from' vertex lie in the middle of 'to' edge
+			//split 'to' edge by this vertex
+			if (ISIN_NN(ksi, 0, 1)){
+				aa::enumerate_ids_pvec(to.vedges);
+				SplitEdge(to, e->id, {*v}, true);
+				bedto.push_back(to.vedges.back());
+				tofinder.addentry(BoundingBox(*to.vedges.back()->pfirst(),
+				                              *to.vedges.back()->plast()));
+			}
+		}
+	}
+	MergeTo(from, to);
+}
+
 void Algos::MergeTo(const GridData& from, GridData& to){
 	auto bedfrom = ECol::Assembler::GridBoundary(from);
 	auto bedto = ECol::Assembler::GridBoundary(to);
+	auto bvfrom = AllVertices(bedfrom);
+	auto bvto = AllVertices(bedto);
 
 	//equal vertices
-	auto to_vertedge = Connectivity::VertexEdge(bedto);
-	Finder::VertexMatch finder(AllVertices(bedfrom));
-	aa::constant_ids_pvec(bedfrom, 0);
-	aa::constant_ids_pvec(bedto, 0);
+	auto to_vertedge = Connectivity::VertexEdge(to.vedges, bvto);
+	Finder::VertexMatch finder(bvfrom);
+	aa::constant_ids_pvec(bvfrom, 0);
+	aa::constant_ids_pvec(bvto, 0);
+	//change all equal vertices in 'to' grid to their 'from' pointers.
 	for (auto& ve: to_vertedge){
 		auto fndres = finder.find(*ve.v);
 		if (!fndres) continue;
 		for (auto ei: ve.eind){
-			auto toe = bedto[ei];
+			auto toe = to.vedges[ei];
 			if (toe->vertices[0] == ve.v) toe->vertices[0] = fndres;
 			if (toe->vertices[1] == ve.v) toe->vertices[1] = fndres;
 		}
 		fndres->id = 1;
 	}
+
+	//!!! 'from' should not contain duplicated boundary nodes
+	assert([&](){
+		for (auto& v: bvfrom){
+			if (v != finder.find(*v)) return false;
+		}
+		return true;
+	}());
 
 	//suspicious edges
 	EdgeData to_susp, from_susp; 
@@ -308,14 +217,28 @@ void Algos::MergeTo(const GridData& from, GridData& to){
 	};
 	std::sort(to_susp.begin(), to_susp.end(), esortkey0);
 	std::sort(from_susp.begin(), from_susp.end(), esortkey1);
-	assert([&](){
-			if (to_susp.size() != from_susp.size()) return false;
-			for (int i=0; i<to_susp.size(); ++i){
-				if (to_susp[i]->first() != from_susp[i]->last()) return false;
-				if (to_susp[i]->last() != from_susp[i]->first()) return false;
+	//force matching
+	for (int i=0; i<to_susp.size(); ++i){
+		assert(i<from_susp.size());
+		auto& eto = to_susp[i];
+		int j = i;
+		while (j<from_susp.size()){
+			auto& efrom = from_susp[j];
+			if (efrom->pfirst() == eto->plast() &&
+			    efrom->plast() == eto->pfirst()){
+				break;
 			}
-			return true;
-		}());
+			++j;
+		}
+		if (j==from_susp.size()){
+			to_susp.erase(to_susp.begin() + i);
+			--i;
+		} else if (j!=i){
+			from_susp.erase(from_susp.begin()+i, from_susp.begin()+j);
+		}
+	}
+	if (from_susp.size()>to_susp.size()) from_susp.resize(to_susp.size());
+	assert(to_susp.size() == from_susp.size());
 
 	//remove zero sized edges
 	for (auto e: zedges){
@@ -342,71 +265,97 @@ void Algos::MergeTo(const GridData& from, GridData& to){
 	//add and reassemble
 	to.vcells.insert(to.vcells.end(), from.vcells.begin(), from.vcells.end());
 	RestoreFromCells(to);
-	
 }
+
+namespace{
+
+vector<bool> mark_segments(const EdgeData& seg, double angle){
+	//seg contour was really directed
+	vector<bool> ret(seg.size());
+	VertexData keep_pts = AllVertices(ECol::Algos::Simplified(seg, angle));
+	//edges starting with keep_pts -> id = 1; else id = 0;
+	for (int i=0; i<seg.size(); ++i){
+		auto e = seg[i];
+		if (Finder::Contains(keep_pts, e->pfirst())) ret[i]=true;
+		else ret[i]=false;
+	}
+	return ret;
+}
+
+//marks all unused boundaries with -1;
+void simplify_boundary(Cell* cell, double angle){
+	HM2D::Contour::R::ReallyDirect rd(cell->edges);
+	//1) connect boundary edges
+	vector<HM2D::EdgeData> be;
+	for (auto e: cell->edges) if (e->is_boundary()){
+		if (be.size() == 0 ||
+		    be.back().back()->plast() != e->pfirst()){
+			be.emplace_back();
+		}
+		be.back().push_back(e);
+	}
+	//check first last connection
+	if (be.size()>1 && be[0][0]->pfirst() == be.back().back()->plast()){
+		std::copy(be[0].begin(), be[0].end(), std::back_inserter(
+				be.back()));
+		std::swap(be[0], be.back());
+		be.resize(be.size()-1);
+	}
+	//2) do simplifications
+	vector<vector<bool>> keepbe;
+	for (auto& it: be) keepbe.push_back(mark_segments(it, angle));
+
+	//3) mark unused with id=-1
+	aa::enumerate_ids_pvec(cell->edges);
+	for (int i=0; i<be.size(); ++i)
+	for (int j=0; j<be[i].size(); ++j){
+		if (!keepbe[i][j]) cell->edges[be[i][j]->id]->id = -1;
+	}
+	//4) check resulting contour
+	VertexData tp;
+	for (auto& e: cell->edges) if (e->id != -1){
+		tp.push_back(e->first());
+	}
+	EdgeData newc = Contour::Assembler::Contour1(tp, true);
+	if (newc.size() < 3 ||
+	    std::get<0>(Contour::Finder::SelfCross(newc)) ||
+	    Contour::Area(newc) < 0){
+		//simplification is invalid
+		aa::constant_ids_pvec(cell->edges, 1);
+		return;
+	} else {
+		//move vertices of valid edges
+		tp.push_back(tp[0]);
+		int iv=0;
+		for (auto& e: cell->edges) if (e->id !=-1){
+			e->vertices[1] = tp[++iv];
+		}
+	}
+}
+
+};
 
 void Algos::SimplifyBoundary(GridData& grid, double angle){
 	//list of cells which have more then two boundary edges
 	vector<Cell*> bcells;
-	vector<bool> added(grid.vcells.size(), false);
+	vector<int> used(grid.vcells.size(), 0);
 	aa::enumerate_ids_pvec(grid.vcells);
 	for (auto e: grid.vedges) if (e->is_boundary()){
 		auto c = (e->has_left_cell()) ? e->left.lock()
 		                              : e->right.lock();
-		if (added[c->id]) bcells.push_back(c.get());
-		else added[c->id] = true;
+		++used[c->id];
+		if (used[c->id] == 2) bcells.push_back(c.get());
 	}
-
-	//get sequence of edges to connect
-	vector<EdgeData> toconnect;
+	//do simplifications
 	for (auto c: bcells){
-		EdgeData bed;
-		for (auto e: c->edges) if (e->is_boundary())
-			bed.push_back(e);
-		vector<EdgeData> sc = Contour::Assembler::SimpleContours(bed);
-		for (auto bcont: sc) if (bcont.size() > 1){
-			EdgeData simp = ECol::Algos::Simplified(bcont, angle);
-			VertexData keep_pnt(AllVertices(simp));
-			auto op = Contour::OrderedPoints(bcont);
-			if (keep_pnt.size() == op.size()) continue;
-			EdgeData* addto = 0;
-			for (int i=0; i<op.size()-1; ++i){
-				if (Finder::Contains(keep_pnt, op[i].get())){
-					toconnect.emplace_back();
-					addto = &toconnect.back();
-				}
-				addto->push_back(bcont[i]);
-			}
-		}
+		simplify_boundary(c, angle);
+		aa::remove_by_id(c->edges, -1);
 	}
-	//connect edges
-	aa::constant_ids_pvec(grid.vedges, 1);
-	aa::constant_ids_pvec(grid.vvert, 1);
-	for (auto& it: toconnect) if (it.size()>1){
-		//remove all connect edges except first one
-		Contour::R::LeftCells::Permanent(it);
-		auto c = it[0]->left.lock();
-		EdgeData olde = c->edges;
-		EdgeData be(it.begin()+1, it.end());
-		auto r = std::remove_if(c->edges.begin(), c->edges.end(),
-			[&be](shared_ptr<Edge> e){ return Finder::Contains(be, e.get()) != nullptr; });
-		c->edges.resize(r - c->edges.end());
-		it[0]->vertices[1] = it.back()->vertices[1];
-		//if cell has self crosses revert all changes back
-		if (std::get<0>(Contour::Finder::SelfCross(c->edges))){
-			it[0]->vertices[1] = it[1]->vertices[0];
-			c->edges = olde;
-		} else 
-		//else mark all deleted points and edges with zeros
-		for (int i=1; i<it.size(); ++i){
-			it[i]->vertices[0]->id = 0;
-			it[i]->id = 0;
-		}
-	}
-	//remove unused
-	aa::remove_by_id(grid.vvert, 0);
-	aa::remove_by_id(grid.vedges, 0);
+	//remove unused primitives
+	RestoreFromCells(grid);
 }
+
+
 namespace{
 //here we use cont which was already really directed
 //in a counterclockwise direction
@@ -414,8 +363,7 @@ int find_worst_vertex(const EdgeData& cont){
 	vector<double> angles(cont.size());
 	for (int i=0; i<cont.size(); ++i){
 		int ip = (i==0) ? cont.size()-1 : i-1;
-		double a = Angle(*cont[ip]->first(), *cont[i]->first(), *cont[i]->last());
-		angles[i] = fabs(M_PI-a);
+		angles[i] = Angle(*cont[ip]->first(), *cont[i]->first(), *cont[i]->last());
 	}
 	return std::max_element(angles.begin(), angles.end()) - angles.begin();
 }
@@ -447,7 +395,7 @@ int find_best_connection(const EdgeData& cont, int n){
 		double ian = Angle(*cont[np]->first(), *cont[n]->first(), *cont[ii]->first());
 		if (ian >= 2*a0) continue;
 		double diff = fabs(a0-ian);
-		if (diff<nrm){nrm=diff; ret=i;}
+		if (diff<nrm){nrm=diff; ret=ii;}
 	}
 	return ret;
 }
@@ -477,6 +425,7 @@ bool Algos::SplitCell(GridData& grid, int icell, int lnode1, int lnode2){
 	                     oldcell->edges.begin()+lnode2);
 	oldcell->edges.insert(oldcell->edges.begin()+lnode1, newedge);
 	newcell->edges = vector<shared_ptr<Edge>>(gc.begin()+lnode1, gc.begin()+lnode2);
+	for (auto& e: newcell->edges) e->left = newcell; 
 	newcell->edges.push_back(newedge);
 	
 	//add to return
@@ -503,7 +452,7 @@ bool Algos::SplitEdge(GridData& grid, int iedge, const vector<Point>& apoints, b
 	}
 	//build new edges
 	EdgeData newedges(apoints.size()+1);
-	for (int i=0; i<apoints.size(); ++i){
+	for (int i=0; i<apoints.size()+1; ++i){
 		newedges[i].reset(new Edge(*ed));
 		newedges[i]->vertices[0] = vert[i];
 		newedges[i]->vertices[1] = vert[i+1];
@@ -556,4 +505,33 @@ void Algos::CutCellDims(GridData& grid, int maxdim){
 		}
 	}
 
+}
+
+void Algos::RemoveEdges(GridData& grid, vector<int> iedges){
+	std::sort(iedges.begin(), iedges.end());
+	iedges.resize(std::unique(iedges.begin(), iedges.end()) - iedges.begin());
+	std::vector<int> badcells;
+	aa::enumerate_ids_pvec(grid.vcells);
+	for (auto ie: iedges){
+		auto& e = grid.vedges[ie];
+		auto cl = e->left.lock();
+		auto cr = e->right.lock();
+		if (cl==nullptr) badcells.push_back(cr->id);
+		else if (cr==nullptr) badcells.push_back(cl->id);
+		else{
+			badcells.push_back(cr->id);
+			int iloc_left = aa::shpvec_ifind(cl->edges, e.get());
+			int iloc_right = aa::shpvec_ifind(cr->edges, e.get());
+			std::rotate(cl->edges.begin(), cl->edges.begin()+iloc_left+1, cl->edges.end());
+			std::rotate(cr->edges.begin(), cr->edges.begin()+iloc_right+1, cr->edges.end());
+			cl->edges.resize(cl->edges.size()-1);
+			cl->edges.insert(cl->edges.end(), cr->edges.begin(), cr->edges.end()-1);
+			e->left.reset();
+			for (int i=0; i<cl->edges.size(); ++i){
+				if (cl->edges[i]->left.lock()==cr) cl->edges[i]->left = cl;
+				else if (cl->edges[i]->right.lock()==cr) cl->edges[i]->right = cl;
+			}
+		}
+	}
+	RemoveCells(grid, badcells);
 }

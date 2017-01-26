@@ -125,15 +125,17 @@ Finder::EdgeFinder::find(Vertex* v1, Vertex* v2){
 
 // ================== VertexFinder
 Finder::VertexMatch::VertexMatch(const VertexData& vd): srt(vd){
-	std::sort(srt.begin(), srt.end(), std::owner_less<shared_ptr<Vertex>>());
+	auto _less = [](const shared_ptr<Vertex>& p1,
+			const shared_ptr<Vertex>& p2)->bool{
+		return *p1 < *p2;
+	};
+	std::sort(srt.begin(), srt.end(), _less);
 }
-namespace{
-bool shpp_less(const shared_ptr<Vertex>& p1, const Point& p2){
-	return *p1 < p2;
-}
-};
 shared_ptr<Vertex> Finder::VertexMatch::find(const Point& p){
-	auto fnd = std::lower_bound(srt.begin(), srt.end(), p, shpp_less);
+	auto _less = [](const shared_ptr<Vertex>& p1, const Point& p2)->bool{
+		return *p1 < p2;
+	};
+	auto fnd = std::lower_bound(srt.begin(), srt.end(), p, _less);
 	if (fnd != srt.end() && **fnd == p) return *fnd;
 	else return nullptr;
 }
@@ -149,7 +151,7 @@ int Contour::Finder::WhereIs(const EdgeData& ed, const Point& p){
 	//whereis for contour trees uses this routine
 	//passing all tree edges as 'ed'.
 	//Hence 'ed' is not always a closed contour.
-	//assert(IsClosed(ed));
+	assert(!IsContour(ed) || IsClosed(ed));
 	auto bbox = BBox(ed, 0);
 	if (bbox.whereis(p) == OUTSIDE) return OUTSIDE;
 
@@ -251,14 +253,14 @@ Contour::Finder::SelfCross(const EdgeData& c1){
 	bool closed = IsClosed(c1);
 
 	for (int i=0; i<c1.size(); ++i)
-	for (int j=i+1; j<c1.size(); ++j){
+	for (int j=i+2; j<c1.size(); ++j){
 		if (closed && i==0 && j==c1.size()-1) continue;
 		SectCross(*c1[i]->first(), *c1[i]->last(),
 		          *c1[j]->first(), *c1[j]->last(), ksi);
 		if (ISIN_EE(ksi[0], 0, 1) && ISIN_EE(ksi[1], 0, 1))
 			return std::make_tuple(
-				true, Point::Weigh(*c1[i]->first(),
-				                   *c1[i]->last(), ksi[0]),
+				true, Point::Weigh(*c1[i]->pfirst(),
+				                   *c1[i]->plast(), ksi[0]),
 				ksi[0], ksi[1]);
 	}
 	return std::make_tuple(false, Point(0, 0), 0., 0.);

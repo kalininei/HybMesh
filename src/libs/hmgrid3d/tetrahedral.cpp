@@ -372,7 +372,7 @@ HM3D::GridData TUnstructuredTetrahedral::_run(const FaceData& source,
 	Surface::Tree stree = Surface::Tree::Assemble(source);
 	if (stree.roots().size() == 0) throw std::runtime_error("No closed surfaces found");
 	//cropped trees
-	vector<Surface::Tree> trees = stree.crop_level1();
+	vector<Surface::Tree> trees = Surface::Tree::CropLevel01(stree);
 	//conditional surfaces
 	FaceData cond;
 	if (sinner.size() > 0) _THROW_NOT_IMP_;

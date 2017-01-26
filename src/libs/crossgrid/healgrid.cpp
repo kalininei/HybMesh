@@ -5,6 +5,7 @@
 #include "cont_assembler.hpp"
 #include "contabs2d.hpp"
 #include "finder2d.hpp"
+#include "contclipping.hpp"
 
 using namespace HM2D;
 using namespace HM2D::Grid;
@@ -98,8 +99,11 @@ struct _ShiftSnapPreCalc{
 void Algos::SnapToContour(GridData& grid, const HM2D::EdgeData& cont,
 		const VertexData& snap_nodes){
 	assert(Contour::IsContour(cont));
+	//LeftCells reverter has index based algorithm. All new edges will be
+	//added to the end of grid.vedges so it is save to used grid.vedges as
+	//input data to the reverter.
 	Contour::R::LeftCells grev(grid.vedges);
-	Contour::R::Clockwise contrev(cont, false);
+	Contour::R::ReallyDirect contrev(cont);
 
 	auto proc = _ShiftSnapPreCalc(grid, cont, snap_nodes);
 	aa::enumerate_ids_pvec(grid.vedges);
@@ -176,13 +180,86 @@ void Algos::ShiftToContour(GridData& grid, const HM2D::EdgeData& cont,
 	}
 }
 
-bool Algos::Check(const GridData& g){
+namespace{
+bool check_cells(const GridData& g, double& sumarea){
+	//check cell-by-cell
+	sumarea = 0;
 	for (auto c: g.vcells){
 		if (!Contour::IsContour(c->edges) || Contour::IsOpen(c->edges)) return false;
 		if (std::get<0>(Contour::Finder::SelfCross(c->edges))) return false;
-		if (Contour::Area(c->edges) <= 0) return false;
+		double a = Contour::Area(c->edges);
+		if (a <= 0) return false;
+		sumarea += a;
 	}
 	return true;
+}
+
+bool check_edges_intersections(const GridData& g){
+	auto bb = HM2D::BBox(g.vvert);
+	BoundingBoxFinder bfinder(bb, bb.maxlen()/40);
+	vector<BoundingBox> ebb(g.vedges.size());
+	for (int i=0; i<g.vedges.size(); ++i){
+		ebb[i] = BoundingBox(*g.vedges[i]->pfirst(), *g.vedges[i]->plast());
+		bfinder.addentry(ebb[i]);
+	}
+	double ksieta[2];
+	for (int i=0; i<g.vedges.size(); ++i)
+	for (int isus: bfinder.suspects(ebb[i])) if (isus > i){
+		auto& e0 = g.vedges[i];
+		auto& e1 = g.vedges[isus];
+		if (e0->pfirst() == e1->pfirst() || e0->pfirst() == e1->plast()) continue;
+		if (e0->plast() == e1->pfirst() || e0->plast() == e1->plast()) continue;
+		if (SectCross(*e0->pfirst(), *e0->plast(), *e1->pfirst(), *e1->plast(), ksieta)){
+			return false;
+		}
+	}
+	return true;
+}
+};
+
+bool Algos::Check(const GridData& g){
+	double sumarea = 0;
+	if (!check_cells(g, sumarea)) return false;
+
+	//check areas
+	auto conts = HM2D::Contour::Assembler::GridBoundary(g);
+	for (auto& c: conts) if (Contour::IsOpen(c)) return false;
+	double tarea = 0;
+	vector<EdgeData*> inners, outers;
+	for (auto& c: conts){
+		double ar = Contour::Area(c);
+		int tt = 0;
+		if (!(ar>0)) tt+=1;
+		if (!Contour::CorrectlyDirectedEdge(c, 0)) tt+=2;
+		if (!c[0]->has_left_cell()) tt += 4;
+		switch (tt){
+			case 0: case 5: case 6: case 3: ar = fabs(ar); break;
+			case 4: case 1: case 2: case 7: ar = -fabs(ar); break;
+		}
+		tarea += ar;
+		if (ar > 0) outers.push_back(&c);
+		else inners.push_back(&c);
+	}
+	if (fabs(sumarea - tarea) > geps) return false;
+	if (outers.size() == 0) return false;
+
+	Contour::Tree sumtree;
+	sumtree.add_contour(std::move(*outers[0]));
+	for (int i=1; i<outers.size(); ++i){
+		sumtree = Contour::Clip::Union(sumtree, *outers[i]);
+	}
+	for (int i=0; i<inners.size(); ++i){
+		sumtree = Contour::Clip::Difference(sumtree, *inners[i]);
+	}
+	double tarea2 = sumtree.area();
+	if (fabs(sumarea - tarea2) > geps) return false;
+
+	if (fabs(sumarea - tarea) < geps*geps &&
+	    fabs(sumarea - tarea2) < geps*geps) return true;
+	
+	//check edge-by-edge because inconcistency between areas
+	//may occur as a result of numerical errors
+	return check_edges_intersections(g);
 }
 
 namespace{
@@ -206,16 +283,27 @@ void remove_unused_prims(GridData& from){
 
 //merges coincident vertices, checks rotation
 void Algos::Heal(GridData& from){
-	//rotation
+	//fix rotation
 	for (int i=0; i<from.vcells.size(); ++i){
-		if (Contour::Area(from.vcells[i]->edges) < 0){
-			Contour::Reverse(from.vcells[i]->edges);
+		auto& c = from.vcells[i];
+		auto& ec = c->edges;
+		if (Contour::Area(ec) < 0){ Contour::Reverse(ec); }
+		//fix left-right cell connections
+		for (int j=0; j<ec.size(); ++j){
+			bool iscor = Contour::CorrectlyDirectedEdge(ec, j);
+			if (iscor) ec[j]->left = c;
+			else ec[j]->right = c;
 		}
 	}
 
+	auto _less = [](const shared_ptr<Vertex>& p1,
+			const shared_ptr<Vertex>& p2)->bool{
+		return *p1 < *p2;
+	};
+
 	//--- merge congruent vertices
 	VertexData av = from.vvert;
-	std::sort(av.begin(), av.end(), std::owner_less<shared_ptr<Vertex>>());
+	std::sort(av.begin(), av.end(), _less);
 	auto ur = std::unique(av.begin(), av.end(),
 		[](const shared_ptr<Vertex>& a, const shared_ptr<Vertex>& b)
 			{return *a == *b; });
@@ -228,8 +316,7 @@ void Algos::Heal(GridData& from){
 	for (auto& e: from.vedges)
 	for (auto& v: e->vertices){
 		if (v->id == 0) {
-			v = *std::lower_bound(av.begin(), av.end(), v,
-				std::owner_less<shared_ptr<Vertex>>());
+			v = *std::lower_bound(av.begin(), av.end(), v, _less);
 			v->id = 2;
 		}
 	}
@@ -261,7 +348,7 @@ void Algos::Heal(GridData& from){
 
 	EdgeData change1, change2;
 	auto it = psus_sorted.begin();
-	while (it != std::prev(psus_sorted.end())){
+	while (it!= psus_sorted.end() && it != std::prev(psus_sorted.end())){
 		auto v1 = *it++;
 		auto v2 = *it;
 		if (less_tppp(v1, v2)) continue;
@@ -319,9 +406,9 @@ void Algos::RestoreFromCells(GridData& g){
 	auto av = AllVertices(ae);
 
 	aa::constant_ids_pvec(ae, 0);
-	aa::constant_ids_pvec(av, 0);
-	aa::constant_ids_pvec(g.vcells, 1);
 	aa::constant_ids_pvec(g.vedges, 1);
+	aa::constant_ids_pvec(av, 0);
+	aa::constant_ids_pvec(g.vvert, 1);
 
 	std::copy_if(ae.begin(), ae.end(), std::back_inserter(g.vedges),
 		[](shared_ptr<Edge> e){ return e->id == 0; });
@@ -349,7 +436,9 @@ void Algos::RemoveShortEdges(GridData& grid, double ref_len){
 	}
 	//3) collapse short edges
 	aa::enumerate_ids_pvec(grid.vcells);
-	for (auto e: grid.vedges) if (e->is_inner()){
+	vector<int> badedges;
+	for (int i=0; i<grid.vedges.size(); ++i) if (grid.vedges[i]->is_inner()){
+		auto& e = grid.vedges[i];
 		double elen = e->length();
 		if (elen > csz[e->left.lock()->id]) continue;
 		if (elen > csz[e->right.lock()->id]) continue;
@@ -363,27 +452,30 @@ void Algos::RemoveShortEdges(GridData& grid, double ref_len){
 		}
 		else if (isbnd1 && !isbnd2) p2->set(*p1);
 		else if (!isbnd1 && isbnd2) p1->set(*p2);
+		badedges.push_back(i);
 	}
 	
 	//4) merge points
 	Heal(grid);
 }
 
-void Algos::NoConcaveCells(GridData& grid, double angle0){
+void Algos::NoConcaveCells(GridData& grid, double angle0, bool ignore_bnd){
 	angle0 = angle0/180*M_PI;
 	for (int i=0; i<grid.vcells.size(); ++i){
 		if (grid.vcells[i]->edges.size()<4) continue;
 		auto op = Contour::OrderedPoints(grid.vcells[i]->edges);
 		auto opprev = op.end()[-2];
-		for (int i=0; i<op.size()-1; ++i){
-			double ang = Angle(*opprev, *op[i], *op[i+1]);
+		for (int j=0; j<op.size()-1; ++j){
+			if (ignore_bnd && grid.vcells[i]->edges[j]->is_boundary())
+				continue;
+			double ang = Angle(*opprev, *op[j], *op[j+1]);
 			if (ISEQGREATER(ang, angle0)){
-				if (SplitCell(grid, i)){
+				if (SplitCell(grid, i, j)){
 					--i;
 					goto NEXT;
 				}
 			}
-			opprev = op[i];
+			opprev = op[j];
 		}
 	NEXT:
 		continue;

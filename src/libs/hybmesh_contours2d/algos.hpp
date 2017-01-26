@@ -21,7 +21,7 @@ enum class OffsetTp{
 };
 
 //takes into account direction of source and sign of delta:
-//all positives -> offsets to the left etc.
+//offsets to the right side if delta>0.
 Tree Offset(const EdgeData& source, double delta, OffsetTp tp);
 //forces singly connected output contour. tp = CLOSED_POLY or OPEN_ROUND
 EdgeData Offset1(const EdgeData& source, double delta);

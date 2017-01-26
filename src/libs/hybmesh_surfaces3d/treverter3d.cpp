@@ -85,11 +85,11 @@ void Revert::reverse_direction(){
 RevertTree::RevertTree(const Tree& srf){
 	obj = const_cast<Tree*>(&srf);
 	for (auto& n: obj->nodes){
-		if (n->isopen()) openrevs.emplace_back(new Revert(n->surface));
+		if (n->isdetached()) openrevs.emplace_back(new Revert(n->surface));
 		else closedrevs.emplace_back(new Revert(n->surface));
 	}
 	int k=0;
-	for (auto& n: obj->nodes) if (n->isclosed()){
+	for (auto& n: obj->nodes) if (n->isbound()){
 		auto& r = closedrevs[k++];
 		double volume = Surface::Volume(n->surface);
 		if (volume < 0 && n->level % 2 == 0) r->reverse_direction();

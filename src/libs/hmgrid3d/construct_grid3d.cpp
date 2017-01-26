@@ -216,7 +216,7 @@ GridData cns::SweepGrid2D(const HM2D::GridData& g, const vector<double>& zcoords
 				for (int k: cell_edges2d[j]){
 					auto f1 = zfaces[k + n2e*i];
 					c->faces.push_back(f1);
-					bool isleft = (e2d[k]->left.lock()->id == j);
+					bool isleft = (e2d[k]->has_left_cell() && e2d[k]->left.lock()->id == j);
 					if (isleft) f1->left = c;
 					else f1->right = c;
 				}

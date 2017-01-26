@@ -6,6 +6,7 @@
 #include "modgrid.hpp"
 #include "trigrid.hpp"
 #include "finder2d.hpp"
+#include "constructor.hpp"
 
 using namespace HMFem;
 
@@ -13,26 +14,24 @@ void Grid43::AddSegments(HM2D::GridData& grid, const vector<vector<Point>>& pts)
 	if (pts.size()==0) return;
 
 	//find grid nodes
-	HM2D::EdgeData be = HM2D::ECol::Assembler::GridBoundary(grid);
-	HM2D::VertexData bp = HM2D::AllVertices(be);
+	HM2D::Finder::VertexMatch vfnd(grid.vvert);
 	aa::enumerate_ids_pvec(grid.vvert);
 	vector<std::tuple<HM2D::Vertex*,
 	                  HM2D::Vertex*,
 	                  vector<Point>>> ppsplit;
 	for (int i=0; i<pts.size(); ++i){
 		auto& pe = pts[i];
-		auto fnd1 = std::find_if(bp.begin(), bp.end(),
-				[&pe](shared_ptr<HM2D::Vertex>& p){ return *p == pe[0]; });
-		auto fnd2 = std::find_if(bp.begin(), bp.end(),
-				[&pe](shared_ptr<HM2D::Vertex>& p){ return *p == pe.back(); });
-		assert(fnd1 != bp.end() && fnd2 != bp.end());
-		ppsplit.emplace_back((*fnd1).get(), (*fnd2).get(),
+		shared_ptr<HM2D::Vertex> fnd1 = vfnd.find(pe[0]);
+		shared_ptr<HM2D::Vertex> fnd2 = vfnd.find(pe.back());
+		assert(fnd1 != nullptr && fnd2 != nullptr);
+		ppsplit.emplace_back(fnd1.get(), fnd2.get(),
 			vector<Point>(pts[i].begin()+1, pts[i].end()-1));
 	}
+
 	//find edges
 	vector<std::pair<HM2D::Edge*,
 	                 vector<Point>>> esplit;
-	HM2D::Finder::EdgeFinder efnd(be);
+	HM2D::Finder::EdgeFinder efnd(grid.vedges);
 	for (auto& pp: ppsplit){
 		auto fres = efnd.find(std::get<0>(pp), std::get<1>(pp));
 		assert(std::get<0>(fres));
@@ -51,18 +50,26 @@ void Grid43::AddSegments(HM2D::GridData& grid, const vector<vector<Point>>& pts)
 	}
 	//grid back to triangle
 	HM2D::Grid::Algos::CutCellDims(grid, 3);
+
+	//all cells are triangle
+	assert([grid](){
+		for (auto c: grid.vcells){
+			if (c->edges.size() != 3) return false;
+		}
+		return true;
+	}());
 }
 
 Grid43::Approximator::Approximator(const HM2D::GridData* g, int n): grid(g){
 	auto bbox = HM2D::BBox(g->vcells);
-	int L = bbox.maxlen()/n;
+	double L = bbox.maxlen()/n;
 	cfinder.reset(new BoundingBoxFinder(bbox, L));
-	int ic = g->vcells.size();
-	icellvert.resize(ic);
-	cellvert.resize(ic);
-	is3.resize(ic, true);
-	for (int i=0; i<ic; ++i){
-		auto op = HM2D::Contour::OrderedPoints(g->vcells[i]->edges);
+	int nc = g->vcells.size();
+	icellvert.resize(nc);
+	cellvert.resize(nc);
+	is3.resize(nc, true);
+	for (int ic=0; ic<nc; ++ic){
+		auto op = HM2D::Contour::OrderedPoints1(g->vcells[ic]->edges);
 		auto bb = HM2D::BBox(op);
 		cfinder->addentry(bb);
 		if (op.size() < 3 || op.size() > 4) throw std::runtime_error(
@@ -76,7 +83,7 @@ Grid43::Approximator::Approximator(const HM2D::GridData* g, int n): grid(g){
 		}
 	}
 	aa::enumerate_ids_pvec(g->vvert);
-	for (int i=0; i<ic; ++i){
+	for (int ic=0; ic<nc; ++ic){
 		icellvert[ic][0] = cellvert[ic][0]->id;
 		icellvert[ic][1] = cellvert[ic][1]->id;
 		icellvert[ic][2] = cellvert[ic][2]->id;
@@ -404,6 +411,105 @@ void TAuxGrid3::adopt_boundary(HM2D::Contour::Tree& tree, double h,
 	for (auto n: tree.nodes) adopt_contour(n->contour, h, lost);
 }
 
+namespace{
+void adopt_lost(int ilost, vector<vector<Point>>& veclost, Point& ret){
+	vector<Point>& lost = veclost[ilost];
+	//find closest point amoung lost internals
+	int iclosest = 1;
+	double mclosest = Point::meas(lost[iclosest], ret);
+	for (int i=2; i<lost.size()-1; ++i){
+		double m1 = Point::meas(lost[i], ret);
+		if (m1<mclosest){ iclosest = i; mclosest = m1; }
+	}
+	//lost index at which it will be divided
+	int idiv=-1;
+	double edge_meas = Point::meas(lost[0], lost.back());
+	if (mclosest < 0.04 * edge_meas){
+		//if distance between closest lost and ret is less than 0.2*edge_length
+		//move ret point to lost points
+		ret = lost[iclosest]; 
+		idiv = iclosest;
+	} else {
+		//place ret to veclost points.
+		//We hope they are sorted (is it guaranteed ???).
+		HM2D::EdgeData contlost = HM2D::Contour::Constructor::FromPoints(lost);
+		HM2D::Contour::GuaranteePoint(contlost, ret);
+		lost.clear();
+		for (auto p: HM2D::Contour::OrderedPoints1(contlost)) {
+			lost.push_back(*p);
+			if (*p == ret) idiv = lost.size();
+		}
+	}
+	if (idiv<1 && idiv > lost.size()-2){
+	} else if (idiv == 1){
+		lost.erase(lost.begin());
+	} else if (idiv == lost.size()-2){
+		lost.resize(lost.size()-1);
+	} else {
+		vector<Point> newlost(lost.begin()+idiv, lost.end());
+		lost = vector<Point>(lost.begin(), lost.begin() + idiv + 1);
+		if (newlost.size()>2) veclost.push_back(newlost);
+	}
+	if (lost.size()<3){ veclost.erase(veclost.begin()+ilost); }
+}
+
+Point divide_edge(const HM2D::Edge* ed, vector<vector<Point>>& lost){
+	//if this edge exists amoung lost points, restore it from those points
+	Point p1 = *ed->first(), p2 = *ed->last();
+	Point ret = ed->center();
+	for (int i=0; i<lost.size(); ++i){
+		if ((p1 == lost[i][0] && p2 == lost[i].back()) ||
+		    (p2 == lost[i][0] && p1 == lost[i].back())){
+			adopt_lost(i, lost, ret);
+			break;
+		}
+	}
+	return ret;
+}
+};
+
+void TAuxGrid3::adopt_complicated_connections(HM2D::Contour::Tree& tree,
+		vector<vector<Point>>& lost){
+	//this searhes all complicated connections (more than 2 edges for vertex)
+	//and checks for smooth section lengths transitions. If one edge is
+	//3 or more times shorter than any sibling edge, divides this edge
+	//All simple connections are guaranteed to be smooth as a result of adopt_contour procedure.
+	HM2D::EdgeData cont = tree.alledges();
+	
+	//get complicated connections with bad size transitions
+	vector<HM2D::Connectivity::VertexEdgeR> ae;
+	vector<vector<double>> alens;
+	for (auto& it: HM2D::Connectivity::VertexEdge(cont)){
+		if (it.size()<3) continue;
+		std::vector<double> lens;
+		for (auto ei: it.eind) lens.push_back(cont[ei]->length());
+		if (*max_element(lens.begin(), lens.end()) >
+				*min_element(lens.begin(), lens.end())*3.5){
+			ae.push_back(it);
+			alens.push_back(lens);
+		}
+	}
+	if (ae.size() == 0) return;
+
+	std::set<int> div_edges;
+	//find edges which has to be divided
+	for (int i=0; i<ae.size(); ++i){
+		double h = *min_element(alens[i].begin(), alens[i].end()) * 3.5;
+		for (int j=0; j<alens[i].size(); ++j){
+			if (alens[i][j]>h) div_edges.insert(ae[i].eind[j]);
+		}
+	}
+	//divide
+	for (auto de: div_edges) {
+		auto node = tree.find_node(cont[de].get());
+		Point pnew = divide_edge(cont[de].get(), lost);
+		aa::enumerate_ids_pvec(node->contour);
+		HM2D::Contour::SplitEdge(node->contour, cont[de]->id, {pnew});
+	}
+	//check once more time
+	return adopt_complicated_connections(tree, lost);
+}
+
 HM2D::GridData HMFem::TAuxGrid3::_run(const HM2D::Contour::Tree& _tree,
 		const vector<HM2D::EdgeData>& _constraints,
 		int nrec, int nmax){
@@ -417,12 +523,15 @@ HM2D::GridData HMFem::TAuxGrid3::_run(const HM2D::Contour::Tree& _tree,
 	vector<vector<Point>> lost_points;
 	adopt_boundary(tree, CORRECTION_FACTOR*hest, lost_points);
 	for (auto c: constraints) adopt_contour(*c, CORRECTION_FACTOR*hest, lost_points);
-	for (auto c: constraints){
-		tree.add_detached_contour(std::move(*c));
+	for (auto c: constraints) tree.add_detached_contour(std::move(*c));
+	if (tree.detached_contours().size() > 0){
+		auto ae = tree.alledges();
+		HM2D::ECol::Algos::MergePoints(ae);
+		assert(ae.size() == tree.alledges().size());
+		adopt_complicated_connections(tree, lost_points);
 	}
-	//3)
+	//3) Triangulation
 	auto subcaller = callback->bottom_line_subrange(60);
-	tree = HM2D::Mesher::PrepareSource(tree, 10*CORRECTION_FACTOR*hest);
 	auto ret = HM2D::Mesher::UnstructuredTriangle.UseCallback(subcaller, tree);
 	if (ret.vvert.size() > nmax) { clear(); throw std::runtime_error("Failed to build auxiliary triangle grid");}
 	if (lost_points.size() == 0) return ret;

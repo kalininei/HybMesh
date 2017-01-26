@@ -8,6 +8,7 @@
 #include "trigrid.hpp"
 #include "healgrid.hpp"
 #include "finder2d.hpp"
+#include "modgrid.hpp"
 
 using namespace HMBlay::Impl;
 
@@ -197,6 +198,9 @@ void TriAreaModify(HM2D::Contour::Tree& tree, const BGrid& og){
 }
 
 //removes all grid area outside the closed cont
+//here we do not care about correctness of grid structure.
+//There is no use because resulting grid can contain self-intersecting cells
+//and should be fixed anyway.
 void PurgeGrid(BGrid& grid, const HM2D::EdgeData& cont){
 	assert(HM2D::Contour::IsClosed(cont));
 	bool innercont = HM2D::Contour::Area(cont) > 0;
@@ -275,15 +279,19 @@ const HM2D::EdgeData* ClosedSource(const HM2D::EdgeData* src, const BGrid* grid)
 	auto closedsrc = new HM2D::EdgeData();
 	HM2D::DeepCopy(*src, *closedsrc);
 	//assemble grid area
-	vector<HM2D::EdgeData> contvec = HM2D::Contour::Assembler::GridBoundary(*grid);
+	vector<HM2D::EdgeData> contvec;
+	for (auto& g: HM2D::SplitData(*grid)){
+		auto nc = HM2D::Contour::Assembler::GridBoundary(g);
+		for (auto& c: nc) contvec.push_back(std::move(c));
+	}
 	auto ar = HM2D::Contour::Clip::Union(contvec);
 	HM2D::Contour::Clip::Heal(ar);
 
-	//function to detect if section shortened by 4% intersects 
+	//function to detect if section shortened by 0.1% intersects 
 	//grid area. Shortage is needed to make end points negligible.
 	auto goodline = [&ar, &closedsrc](Point& p1, Point& p2)->bool{
-		auto w1 = std::make_shared<HM2D::Vertex>(Point::Weigh(p1, p2, 0.02));
-		auto w2 = std::make_shared<HM2D::Vertex>(Point::Weigh(p1, p2, 0.98));
+		auto w1 = std::make_shared<HM2D::Vertex>(Point::Weigh(p1, p2, 0.001));
+		auto w2 = std::make_shared<HM2D::Vertex>(Point::Weigh(p1, p2, 0.999));
 		HM2D::EdgeData wcont;
 		wcont.emplace_back(new HM2D::Edge(w1, w2));
 		//check cross with a source lint
@@ -387,11 +395,101 @@ void IntersectCellsInfo2(const BGrid& grid,
 	}
 }
 
+int find_hanging(const HM2D::EdgeData& cont){
+	auto op = HM2D::Contour::OrderedPoints(cont);
+
+	for (auto a: op) a->id = 1;
+	for (auto a: HM2D::Contour::CornerPoints(cont)) a->id = 0;
+
+	for (int i=0; i<op.size(); ++i){
+		if (cont[i]->is_boundary()) continue;
+		if (op[i]->id == 1) return i;
+	}
+
+	return -1;
+}
+
+int place_perpendicular(HM2D::GridData& g, int icell, int& n){
+	auto& cont = g.vcells[icell]->edges;
+	auto contp = HM2D::Contour::OrderedPoints(cont);
+	int np = (n == 0) ? cont.size()-1 : n-1;
+	int nn = (n == cont.size()-1) ? 0 : n+1;
+	double a0 = Angle(*contp[np], *contp[n], *contp[nn])/2.0;
+	Point vp = vecRotate(*contp[nn] - *contp[n], a0) + *contp[n];
+
+	double ksieta[2];
+	for (int i=n+2; i<=cont.size()+n-2; ++i){
+		int ii = i % cont.size();
+		auto pp1 = *contp[ii];
+		auto pp2 = *contp[ii+1];
+
+		SectCross(pp1, pp2, *contp[n], vp, ksieta);
+		if (ISEQLOWER(ksieta[1], 0)) continue;
+		else if (ISIN_EE(ksieta[0], 0., 0.1) || ISIN_EE(ksieta[0], 0.9, 1.))
+			//better to use simple algorithm here
+			return -1;
+		else if (ISIN_NN(ksieta[0], 0, 1)){
+			//place a node
+			Point p = Point::Weigh(pp1, pp2, ksieta[0]);
+			bool sres = HM2D::Grid::Algos::SplitEdge(g, cont[ii]->id, {p});
+			if (sres) {
+				g.vedges.back()->id = g.vedges.size()-1;
+				if (ii<n) n+=1;
+				return ii+1;
+			} else return -1;
+		}
+	}
+	return -1;
+}
+
+void hanging_analyze(BGrid& grid, int icell){
+	auto c = grid.vcells[icell];
+	if (c->edges.size()<5) return;
+
+	int j1 = find_hanging(c->edges);
+	if (j1 < 0) return;
+	int j2 = place_perpendicular(grid, icell, j1);
+	if (j2 < 0) return;
+	//analyze adjacent cell to which we have added new node
+	//if it goes before current cell.
+	auto adjcell = c->edges[j2]->left.lock() == c ? c->edges[j2]->right
+	                                              : c->edges[j2]->left;
+	if (!adjcell.expired() && adjcell.lock()->id < icell)
+		hanging_analyze(grid, adjcell.lock()->id);
+
+	//split current grid
+	bool sres = HM2D::Grid::Algos::SplitCell(grid, icell, j1, j2);
+	if (!sres) return;
+	grid.vcells.back()->id = grid.vcells.size()-1;
+
+	//analyze current cell once more
+	return hanging_analyze(grid, icell);
+};
+
+void NoHangingNodes(BGrid& grid){
+	//first try to get rid of hanging nodes in boundary layer
+	//rectangular cells using perpendiculars
+	aa::enumerate_ids_pvec(grid.vcells);
+	aa::enumerate_ids_pvec(grid.vedges);
+
+	for (int i=0; i<grid.vcells.size(); ++i){
+		hanging_analyze(grid, i);
+	}
+	
+	//run simple algorithm to be sure
+	HM2D::Grid::Algos::NoConcaveCells(grid, 180, true);
+};
+
 void NonIntersectingGrid(BGrid& grid,
 		std::list<const HM2D::Cell*>& to_delete,
 		std::list<const HM2D::Cell*>& to_keep){
+	HM2D::CellData _storage = grid.vcells;
 	aa::enumerate_ids_pvec(grid.vcells);
 	grid.remove_cells(aa::get_ids(to_delete));
+	//since input grid was geometrically incorrect
+	//remove_cells procedure may remove needed primitives.
+	//here we restore them
+	HM2D::Grid::Algos::RestoreFromCells(grid);
 
 	//build an area from deleted cells
 	auto delarea = AreaFromCells(to_delete, to_keep);
@@ -404,11 +502,10 @@ void NonIntersectingGrid(BGrid& grid,
 	auto fillg = HM2D::Mesher::UnstructuredTriangle(delarea);
 
 	//add triangle grid and return
-	grid.add_grid(BGrid::MoveFrom2(std::move(fillg)));
+	HM2D::Grid::Algos::MergeBoundaries(fillg, grid);
 
 	//heal grid, get rid of hanging nodes
-	HM2D::Grid::Algos::Heal(grid);
-	HM2D::Grid::Algos::NoConcaveCells(grid, 180);
+	NoHangingNodes(grid);
 }
 
 }
@@ -594,6 +691,7 @@ void HMBlay::Impl::BGridImpose(BGrid& grid,
 	const HM2D::EdgeData* src = ClosedSource(&source, &grid);
 
 	//2) remove cells or their parts which lie to the right side of source
+	//   resulting grid contains doubled primitives !!!
 	PurgeGrid(grid, *src);
 
 	//don't need it anymore
@@ -603,7 +701,7 @@ void HMBlay::Impl::BGridImpose(BGrid& grid,
 	//   returns two sets of intersecting cells: those which should be deleted and keeped
 	std::list<const HM2D::Cell*> to_delete, to_keep;
 	IntersectCellsInfo2(grid, to_delete, to_keep, prifun);
-	if (to_delete.size() == 0) return;
+	if (to_delete.size() == 0) {HM2D::Grid::Algos::Heal(grid); return; }
 	
 	//4) build a grid: non-intersecting cells + to_keep_cells + triangled to_delete area
 	NonIntersectingGrid(grid, to_delete, to_keep);
