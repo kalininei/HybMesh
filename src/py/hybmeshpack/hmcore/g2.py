@@ -1,428 +1,437 @@
 import ctypes as ct
-from . import libhmcport, list_to_c
-from hybmeshpack.basic.geom import Point2 as Point2
-from hybmeshpack.gdata.grid2 import Grid2 as Grid2
+from . import cport
+from proc import (ccall, ccall_cb, list_to_c, free_cside_array, move_to_static,
+                  CBoundaryNames, concat, supplement)
 
 
-def grid_to_c(g):
-    " return c pointer to a python grid"
-    npt = g.n_points()
-    ncls = g.n_cells()
-    #fill points
-    c_pnt = (ct.c_double * (2 * npt))()
-    for i, p in enumerate(g.points):
-        c_pnt[2 * i] = p.x
-        c_pnt[2 * i + 1] = p.y
-    #fill cells
-    cls_a = g.cells_nodes_connect()
-    cls_a_num = len(cls_a)
-    for ce in cls_a:
-        cls_a_num += len(ce)
-    c_cls = (ct.c_int * cls_a_num)()
-    ind = 0
-    for ce in cls_a:
-        c_cls[ind] = len(ce)
-        for i in range(1, len(ce) + 1):
-            c_cls[ind + i] = ce[i - 1]
-        ind += (len(ce) + 1)
-    return libhmcport.grid_construct(
-        ct.c_int(npt), ct.c_int(ncls), c_pnt, c_cls)
+def dims(obj):
+    ret = (ct.c_int * 3)()
+    ccall(cport.g2_dims, obj, ret)
+    return list(ret)
 
 
-def free_c_grid(cgrid):
-    libhmcport.grid_free(cgrid)
+def area(obj):
+    ret = ct.c_double(0)
+    ccall(cport.g2_area, obj, ct.byref(ret))
+    return ret.value
 
 
-def grid_from_c(c_gr):
-    "builds a grid from a c object"
-    #c types
-    ct_pint = ct.POINTER(ct.c_int)
-    ct_ppint = ct.POINTER(ct.POINTER(ct.c_int))
-    ct_pd = ct.POINTER(ct.c_double)
-    ct_ppd = ct.POINTER(ct.POINTER(ct.c_double))
-    #c data allocation
-    npt, ned, ncl = ct.c_int(), ct.c_int(), ct.c_int()
-    pt, ed, cdims, ced = ct_pd(), ct_pint(), ct_pint(), ct_pint()
-    #call c function
-    libhmcport.grid_get_edges_info.argtypes = [
-        ct.c_void_p, ct_pint, ct_pint,
-        ct_pint, ct_ppd, ct_ppint, ct_ppint, ct_ppint]
-    libhmcport.grid_get_edges_info(
-        c_gr, ct.byref(npt), ct.byref(ned),
-        ct.byref(ncl), ct.byref(pt), ct.byref(ed),
-        ct.byref(cdims), ct.byref(ced))
-    # ---- construct grid
-    ret = Grid2()
-    #points
-    it = iter(pt)
-    for i in range(npt.value):
-        ret.points.append(Point2(next(it), next(it)))
-    #edges
-    it = iter(ed)
-    for i in range(ned.value):
-        ret.edges.append([next(it), next(it)])
-    #cells
-    it1, it2 = iter(cdims), iter(ced)
-    for i in range(ncl.value):
-        ied = [next(it2) for j in range(next(it1))]
-        ret.cells.append(ied)
-    #free c memory
-    libhmcport.grid_free_edges_info.argtypes = [ct_ppd, ct_ppint, ct_ppint,
-                                                ct_ppint]
-    libhmcport.grid_free_edges_info(ct.byref(pt), ct.byref(ed),
-                                    ct.byref(cdims), ct.byref(ced))
-    return ret
+def bnd_dims(obj):
+    ret = (ct.c_int * 2)()
+    ccall(cport.g2_bnd_dims, obj, ret)
+    return list(ret)
 
 
-def grid_from_hmxml(reader, subnode):
-    """ returns (python side grid, its name in hmxml file)"""
-    greader, c_g = 0, 0
-    try:
-        name = ct.create_string_buffer(1000)
-        greader = libhmcport.greader_create(reader, subnode, name)
-        if greader == 0:
-            raise Exception("Failed to assemble a grid")
-        # read grid
-        c_g = libhmcport.greader_getresult(greader)
-        g = grid_from_c(c_g)
-        g.build_contour()
-
-        # read boundary types
-        libhmcport.greader_read_edge_field.restype = ct.POINTER(ct.c_int)
-        bnd = libhmcport.greader_read_edge_field(
-            greader, "__boundary_types__", "int")
-        if bnd:
-            for i in range(g.n_edges()):
-                if bnd[i] != 0:
-                    g.bt[i] = bnd[i]
-            libhmcport.free_int_array(bnd)
-        return g, str(name.value)
-    except:
-        raise
-    finally:
-        free_c_grid(c_g) if c_g != 0 else None
-        libhmcport.greader_free(greader) if greader != 0 else None
+def bnd_length(obj):
+    ret = ct.c_double()
+    ccall(cport.g2_bnd_length, obj, ct.byref(ret))
+    return ret.value
 
 
-def get_skewness(grid, threshold):
+def skewness(obj, threshold):
     """ reports skewness of the grid ->
            {'max_skew': float, 'max_skew_cell': int,
             'bad_cells': [cell indicies: int],
             'bad_skew': [cell skew: float]}
         returns {} if error
     """
-    cgrid = grid_to_c(grid)
+    maxskew = ct.c_double()
+    maxskewindex = ct.c_int()
+    badnum = ct.c_int()
+    badindex = ct.POINTER(ct.c_int)()
+    badvals = ct.POINTER(ct.c_double)()
 
-    ms = ct.c_double()
-    msc = ct.c_int()
-    num_bs = ct.c_int()
-    bc = (ct.c_int * grid.n_cells())()
-    bs = (ct.c_double * grid.n_cells())()
-    cret = libhmcport.report_skewness(
-        cgrid, ct.c_double(threshold),
-        ct.byref(ms), ct.byref(msc), ct.byref(num_bs),
-        bc, bs)
-    free_c_grid(cgrid)
+    ccall(cport.g2_skewness, obj,
+          ct.byref(maxskew), ct.byref(maxskewindex),
+          ct.byref(badnum), ct.byref(badindex), ct.byref(badvals))
+
     ret = {}
-    if (cret != 0):
-        return ret
+    ret['max_skew'] = maxskew.value
+    ret['max_skew_cell'] = maxskewindex.value
+    ret['bad_cells'] = badindex[:badnum.value]
+    ret['bad_skew'] = badvals[:badnum.value]
 
-    ret['max_skew'] = ms.value
-    ret['max_skew_cell'] = msc.value
-    ret['bad_cells'] = []
-    ret['bad_skew'] = []
+    free_cside_array(badindex, int)
+    free_cside_array(badvals, float)
+    return ret
 
-    for i in range(num_bs.value):
-        ret['bad_cells'].append(bc[i])
-        ret['bad_skew'].append(bs[i])
+
+def deepcopy(obj):
+    ret = ct.c_void_p()
+    ccall(cport.g2_deepcopy, obj, ct.byref(ret))
+    return ret
+
+
+def free_grid2(obj):
+    ccall(cport.g2_free, obj)
+
+
+def concatenate(objs):
+    objs = list_to_c(objs, "void*")
+    nobjs = ct.c_int(len(objs))
+    ret = ct.c_void_p()
+    ccall(cport.g2_concatenate, nobjs, objs, ct.byref(ret))
+    return ret
+
+
+def move(obj, dx, dy):
+    dx = (ct.c_double * 2)(dx, dy)
+    ccall(cport.g2_move, obj, dx)
+
+
+def scale(obj, xpc, ypc, px, py):
+    p0 = (ct.c_double * 2)(px, py)
+    pc = (ct.c_double * 2)(xpc, ypc)
+    ccall(cport.g2_scale, obj, pc, p0)
+
+
+def reflect(obj, x0, y0, x1, y1):
+    v0 = (ct.c_double * 2)(x0, y0)
+    v1 = (ct.c_double * 2)(x1, y1)
+    ccall(cport.g2_reflect, obj, v0, v1)
+
+
+def rotate(obj, x0, y0, angle):
+    p0 = (ct.c_double * 2)(x0, y0)
+    a = ct.c_double(angle)
+    ccall(cport.g2_rotate, obj, p0, a)
+
+
+def set_bnd(obj, bndlist, for_all_edges):
+    nb = dims(obj)[1] if for_all_edges else bnd_dims(obj)[1]
+    bndlist = list_to_c(supplement(bndlist, nb), int)
+    nbndlist = ct.c_int(nb)
+    for_all_edges = ct.c_int(for_all_edges)
+    ccall(cport.g2_set_bnd, obj, nbndlist, bndlist, for_all_edges)
+
+
+def extract_contour(obj):
+    ret = ct.c_void_p()
+    ccall(cport.g2_extract_contour, ct.byref(ret))
+    return ret
+
+
+def raw_data(obj, what):
+    ret = None
+    d = dims(obj)
+    if what == 'btypes':
+        ret = (ct.c_int * d[1])()
+        ccall(cport.g2_tab_btypes, obj, ret)
+    elif what == 'vertices':
+        ret = ((ct.c_double * 2) * d[0])()
+        ccall(cport.g2_tab_vertices, obj, ret)
+    elif what == 'edge-vert':
+        ret = ((ct.c_int * 2) * d[1])()
+        ccall(cport.g2_tab_edgevert, obj, ret)
+    elif what == 'cellsizes':
+        ret = (ct.c_int * d[2])()
+        ccall(cport.g2_tab_cellsizes, obj, ret)
+    elif what == 'cell-vert':
+        nret, ret2 = ct.c_int, ct.POINTER(ct.c_int)
+        ccall(cport.g2_tab_cellvert, obj, ct.byref(nret), ct.byref(ret2))
+        ret = move_to_static(nret, ret2, int)
+    elif what == 'cell-edge':
+        nret, ret2 = ct.c_int, ct.POINTER(ct.c_int)
+        ccall(cport.g2_tab_celledge, obj, ct.byref(nret), ct.byref(ret2))
+        ret = move_to_static(nret, ret2, int)
+    elif what == 'centers':
+        ret = ((ct.c_double * d[2]) * 2)()
+        ccall(cport.g2_tab_centers, obj, ret)
+    elif what == 'bedges':
+        nret, ret2 = ct.c_int, ct.POINTER(ct.c_int)
+        ccall(cport.g2_tab_bedges, obj, ct.byref(nret), ct.byref(ret2))
+        ret = move_to_static(nret, ret2, int)
+    else:
+        raise ValueError('unknown what: %s' % what)
+    return ret
+
+
+def point_by_index(obj, index):
+    ret = ct.c_int()
+    ccall(cport.g2_point_at, obj, ct.c_int(index), ct.byref(ret))
+    return ret.value
+
+
+def closest_points(obj, pts, proj):
+    npts = ct.c_int(len(pts))
+    pts = list_to_c(concat(pts), 'float')
+    ret = (ct.c_double * len(pts))()
+    if proj == "vertex":
+        proj = ct.c_int(0)
+    elif proj == "edge":
+        proj = ct.c_int(1)
+    else:
+        raise ValueError
+    ccall(cport.g2_closest_points, obj, npts, pts, proj, ret)
+    it = iter(ret)
+    return [[a, b] for a, b in zip(it, it)]
+
+
+def from_points_edges(points, eds):
+    """ eds = [[p0, p1, cleft, cright, btype], ....] """
+    npoints = ct.c_int(len(points))
+    points = list_to_c(concat(points), float)
+    neds = ct.c_int(len(eds))
+    eds = list_to_c(concat(eds), int)
+    ret = ct.c_void_p()
+
+    ccall(cport.g2_from_points_edges, npoints, points, neds, eds,
+          ct.byref(ret))
 
     return ret
 
 
-def boundary_types_to_c(grid):
-    """ returns pointer to c-structure which holdes boundary types
-    for input grid. This structure is only actual for current grid
-    state and should be freed after usage
+def from_points_cells(points, cls, bedges):
     """
-    nd1, nd2, bt = [], [], []
-    for cont in grid.boundary_contours():
-        for e in cont:
-            ebnd = grid.get_edge_bnd(e)
-            nd1.append(grid.edges[e][0])
-            nd2.append(grid.edges[e][1])
-            bt.append(ebnd)
-    c1 = list_to_c(nd1, int)
-    c2 = list_to_c(nd2, int)
-    c3 = list_to_c(bt, int)
-    n = ct.c_int(len(nd1))
-    return libhmcport.set_grid2_boundary_types(n, c1, c2, c3)
-
-
-def free_boundary_types(bt):
-    """ frees memory allocated by boundary_types_to_c procedure """
-    libhmcport.free_grid2_boundary_types(bt)
-
-
-def custom_rectangular_grid(algo, c_left, c_bot, c_right, c_top, c_herw,
-                            invalid, cb):
-    """ algo: one of ['linear', 'inverse_laplace',
-                      'direct_laplace', 'orthogonal']
-        c_*: c allocated contours.
-        returns c allocated 2d grid or raises
-        After procedure points coordinates of c_* data may be changed.
+    cls = [[p1, p2, p3, ...], [p1, p2, ....]]
+    bedges: [[p1, p2, btype], ...]
     """
-    if algo == 'linear':
-        c_algo = ct.c_int(0)
-    elif algo == 'inverse_laplace':
-        c_algo = ct.c_int(1)
-    elif algo == 'direct_laplace':
-        c_algo = ct.c_int(2)
-    elif algo == 'orthogonal':
-        c_algo = ct.c_int(3)
-    elif algo == 'linear_tfi':
-        c_algo = ct.c_int(4)
-    elif algo == 'hermite_tfi':
-        c_algo = ct.c_int(5)
-    else:
-        raise ValueError("Invalid custom rectangular grid algo")
+    npoints = ct.c_int(len(points))
+    points = list_to_c(concat(points), float)
+    ncells = ct.c_int(len(cls))
+    cellsizes = list_to_c(map(len, cls), int)
+    cellvert = list_to_c(concat(cls), int)
+    nbedges = ct.c_int(len(bedges))
+    bedges = list_to_c(concat(bedges), int)
+    ret = ct.c_void_p()
 
-    args = (c_algo, c_left, c_bot, c_right, c_top, c_herw,
-            ct.c_int(1 if invalid else 0))
-    cb.initialize(libhmcport.custom_rectangular_grid, args)
-    cb.execute_command()
-    res = cb.get_result()
-    if res == 0:
-        raise Exception('Custom rectangular grid builder failed')
-    return res
+    ccall(cport.g2_from_points_cells, npoints, points,
+          ncells, cellsizes, cellvert,
+          nbedges, bedges, ct.byref(ret))
 
-
-def to_msh(c_g, fname, c_btypes, c_bnames, c_periodic):
-    c_fname = fname.encode('utf-8')
-    if c_periodic is not None:
-        n_periodic = ct.c_int(len(c_periodic) / 3)
-    else:
-        n_periodic = ct.c_int(0)
-
-    args = (c_g, c_fname, c_btypes, c_bnames, n_periodic, c_periodic)
-    res = libhmcport.export_msh_grid(*args)
-
-    if res != 0:
-        raise Exception("msh 2d grid export failed")
-
-
-def to_tecplot(c_g, fname, c_btypes, c_bnames):
-    c_fname = fname.encode('utf-8')
-    args = (c_g, c_fname, c_btypes, c_bnames)
-    res = libhmcport.export_tecplot_grid(*args)
-    if res != 0:
-        raise Exception("tecplot 2d grid export failed")
-
-
-def unite_grids(c_g1, c_g2, buf, fix_bnd, empty_holes, an0, filler, cb):
-    """ adds g2 to g1. Returns new c-grid.
-        cb -- Callback.CB_CANCEL2 callback object
-
-        raises Exception if failed
-    """
-    c_buf = ct.c_double(buf)
-    c_an0 = ct.c_double(an0)
-    c_fix = ct.c_int(1) if fix_bnd else ct.c_int(0)
-    c_eh = ct.c_int(1) if empty_holes else ct.c_int(0)
-    if filler == '4':
-        c_algo = ct.c_int(1)
-    else:
-        c_algo = ct.c_int(0)
-    args = (c_g1, c_g2, c_buf, c_fix, c_eh, c_an0, c_algo)
-
-    libhmcport.cross_grids_wcb.restype = ct.c_void_p
-    cb.initialize(libhmcport.cross_grids_wcb, args)
-    cb.execute_command()
-    ret = cb.get_result()
-
-    #if result was obtained (no errors, no cancel)
-    if ret != 0 and ret is not None:
-        return ret
-    else:
-        raise Exception("unite_grids failed")
-
-
-def grid_excl_cont(c_grd, c_cnt, is_inner, cb):
-    """ ->c_grid
-        Returns a c-grid with excluded contour area (inner or outer)
-        raises if fails
-    """
-    c_isinner = ct.c_int(1 if is_inner else 0)
-    args = (c_grd, c_cnt, c_isinner)
-
-    cb.initialize(libhmcport.grid_exclude_cont_wcb, args)
-    cb.execute_command()
-    res = cb.get_result()
-    if res != 0:
-        return res
-    else:
-        raise Exception("Grid exclusion failed")
-
-
-def circ4grid(algo, c_p0, rad, step, sqrside, rcoef):
-    """ -> c_grid or raise """
-    if algo == "linear":
-        c_algo = ct.c_int(0)
-    elif algo == "laplace":
-        c_algo = ct.c_int(1)
-    elif algo == "orthogonal_circ":
-        c_algo = ct.c_int(2)
-    elif algo == "orthogonal_rect":
-        c_algo = ct.c_int(3)
-    else:
-        raise ValueError("Unknown algorithm")
-
-    res = libhmcport.circ4grid(
-        c_algo, c_p0, ct.c_double(rad),
-        ct.c_double(step), ct.c_double(sqrside),
-        ct.c_double(rcoef))
-
-    if res != 0:
-        return res
-    else:
-        raise Exception("Quadrangular grid in circular area "
-                        "grid builder failed")
-
-
-def map_grid(c_grid, c_cont, c_gpoints, c_cpoints, snap, algo,
-             is_reversed, return_invalid, cb):
-    """maps grid on cont using gpoints, cpoints as basis.
-       snap = "no", "add_vertices", "shift_vertices"
-       algo = "inverse_laplace", "direct_laplace"
-       bt = "from_grid", "from_contour"
-    """
-    n = ct.c_int(len(c_gpoints) / 2)
-    # snap
-    s = ct.c_int(0)
-    if snap == "add_vertices":
-        s = ct.c_int(2)
-    elif snap == "shift_vertices":
-        s = ct.c_int(3)
-    elif snap == "no":
-        s = ct.c_int(1)
-    # algo
-    a = ct.c_int(0)
-    if algo == "direct_laplace":
-        a = ct.c_int(1)
-    elif algo == "inverse_laplace":
-        a = ct.c_int(2)
-    #reversed
-    isrev = ct.c_int(1 if is_reversed else 0)
-    #invalid
-    inv = ct.c_int(1 if return_invalid else 0)
-
-    args = (c_grid, c_cont, n, c_gpoints, c_cpoints, s, a, isrev, inv)
-    cb.initialize(libhmcport.build_grid_mapping, args)
-    cb.execute_command()
-    cret = cb.get_result()
-    if cret == 0:
-        raise Exception("Grid mapping failed")
-    else:
-        return cret
-
-
-def unstructed_fill(c_dom, c_con, c_emb, tp):
-    """tp='3', '4', 'pebi' for triangulation, quadrangulation, voronoi.
-       returns c grid
-    """
-    ret = 0
-    nemb = ct.c_int(len(c_emb) / 3) if c_emb is not None else ct.c_int(0)
-    if tp == '3':
-        algo = ct.c_int(0)
-        ret = libhmcport.triangulate_domain(c_dom, c_con, nemb, c_emb, algo)
-    elif tp == '4':
-        algo = ct.c_int(1)
-        ret = libhmcport.triangulate_domain(c_dom, c_con, nemb, c_emb, algo)
-    elif tp == 'pebi':
-        ret = libhmcport.pebi_fill(c_dom, c_con, nemb, c_emb)
-
-    if ret == 0:
-        raise Exception("Unstructured grid building failed")
-    else:
-        return ret
-
-
-def convex_cells(c_grid, an):
-    ret = libhmcport.convex_cells(c_grid, ct.c_double(an))
-    if ret == 0:
-        raise Exception("Removing concave cells failed")
-    else:
-        return ret
-
-
-def stripe_grid(c_cont, c_p, algo, cb):
-    if algo == 'no':
-        algo = ct.c_int(0)
-    elif algo == 'radial':
-        algo = ct.c_int(1)
-
-    bot, left = ct.c_void_p(), ct.c_void_p()
-    top, right = ct.c_void_p(), ct.c_void_p()
-    n_p = ct.c_int(len(c_p))
-    args = (c_cont, n_p, c_p, algo,
-            ct.byref(bot), ct.byref(left), ct.byref(top), ct.byref(right))
-    cb.initialize(libhmcport.stripe_grid, args)
-    cb.execute_command()
-    ret = cb.get_result()
-    if ret == 0:
-        raise Exception("Stripe grid building failed")
-    return ret, [bot, right, top, left]
-
-
-def regular_hex_grid(area, rad, strict):
-    c_area = list_to_c(area, float)
-    c_rad = ct.c_double(rad)
-    c_algo = ct.c_int(1) if len(area) == 3 else ct.c_int(0)
-    c_strict = ct.c_int(1 if strict else 0)
-    ret = libhmcport.regular_hex_grid(c_area, c_algo, c_rad, c_strict)
-    if ret == 0:
-        raise Exception("Regular hexagonal grid")
     return ret
 
 
-def gwriter_create(gridname, c_g, c_writer, c_sub, fmt):
-    ret = libhmcport.gwriter_create(gridname, c_g, c_writer, c_sub, fmt)
-    if ret == 0:
-        raise Exception("Error writing grid to hmg")
-    else:
-        return ret
+def build_rect_grid(xdata, ydata, bnds):
+    nx = ct.c_int(len(xdata))
+    xdata = list_to_c(xdata, float)
+    ny = ct.c_int(len(ydata))
+    ydata = list_to_c(ydata, float)
+    bnds = list_to_c(supplement(bnds, 4), 'int')
+    ret = ct.c_void_p()
+    ccall(cport.g2_rect_grid, nx, xdata, ny, ydata, bnds, ct.byref(ret))
+    return ret
 
 
-def gwriter_add_edge_field(c_gwriter, fname, fieldtype, c_field):
-    ret = 0
-    if fieldtype == "int":
-        ret = libhmcport.gwriter_add_edge_field(
-            c_gwriter, fname, ct.cast(c_field, ct.c_void_p),
-            ct.c_int(len(c_field)), "int")
-    elif fieldtype == "char":
-        ret = libhmcport.gwriter_add_edge_field(
-            c_gwriter, fname, ct.cast(c_field, ct.c_void_p),
-            ct.c_int(len(c_field)), "char")
-    elif fieldtype == "double":
-        ret = libhmcport.gwriter_add_edge_field(
-            c_gwriter, fname, ct.cast(c_field, ct.c_void_p),
-            ct.c_int(len(c_field)), "double")
-    elif fieldtype == "float":
-        ret = libhmcport.gwriter_add_edge_field(
-            c_gwriter, fname, ct.cast(c_field, ct.c_void_p),
-            ct.c_int(len(c_field)), "float")
-    if ret == 0:
-        raise Exception("Error writing edge field to a grid")
-    else:
-        return ret
+def build_circ_grid(p0, rdata, adata, istrian, bnd):
+    p0 = list_to_c(p0, float)
+    nr = ct.c_int(len(rdata))
+    rdata = list_to_c(rdata, float)
+    na = ct.c_int(len(adata))
+    adata = list_to_c(adata, float)
+    istrian = ct.c_int(istrian)
+    bnd = ct.c_int(bnd)
+    ret = ct.c_void_p()
+    ccall(cport.g2_circ_grid, p0, nr, rdata, na, adata, istrian, bnd,
+          ct.byref(ret))
+    return ret
 
 
-def gwriter_add_field(c_gwriter, f):
-    ret = libhmcport.gwriter_add_defined_field(c_gwriter, f)
-    if ret == 0:
-        raise Exception("Error writing " + f + "field to a grid")
-    else:
-        return ret
+def build_ring_grid(p0, rdata, adata, bnds):
+    p0 = list_to_c(p0, float)
+    nr = ct.c_int(len(rdata))
+    rdata = list_to_c(rdata, float)
+    na = ct.c_int(len(adata))
+    adata = list_to_c(adata, float)
+    bnds = list_to_c(supplement(bnds, 2), int)
+    ret = ct.c_void_p()
+    ccall(cport.g2_ring_grid, p0, nr, rdata, na, adata, bnds, ct.byref(ret))
+    return ret
 
 
-def free_gwriter(c_gwriter):
-    libhmcport.gwriter_free(c_gwriter)
+def build_tri_grid(verts, nedge, bnds):
+    verts = list_to_c(concat(verts), float)
+    nedge = ct.c_int(nedge)
+    bnds = list_to_c(supplement(bnds, 3), int)
+    ret = ct.c_void_p()
+    ccall(cport.g2_tri_grid, verts, nedge, bnds, ct.by_ref(ret))
+    return ret
+
+
+def regular_hex_grid(area, crad, strict):
+    area = list_to_c(area, float)
+    crad = ct.c_double(crad)
+    areatype = "hex" if len(area) == 3 else "rect"
+    strict = ct.c_int(strict)
+    ret = ct.c_void_p()
+    ccall(cport.g2_hex_grid, areatype, area, crad, strict, ct.byref(ret))
+    return ret
+
+
+def unstructed_fill(domain, constraint, embpts, filler):
+    nembpts = ct.c_int(len(embpts))
+    embpts = list_to_c(concat(embpts), float)
+    ret = ct.c_void_p()
+    ccall(cport.g2_unstructured_fill, domain, constraint,
+          nembpts, embpts, filler, ct.byref(ret))
+    return ret
+
+
+def custom_rectangular_grid(algo, left, bottom, right, top,
+                            herw, rinvalid, cb):
+    herw = list_to_c(supplement(herw, 4), float)
+    rinvalid = ct.c_int(rinvalid)
+    ret = ct.c_void_p()
+    ccall_cb(cport.g2_custom_rect_grid, cb,
+             algo, left, bottom, right, top,
+             herw, rinvalid, ct.byref(ret))
+    return ret
+
+
+def circ4grid(algo, p0, rad, step, sqrside, rcoef):
+    p0 = list_to_c(p0, float)
+    rad = ct.c_double(rad)
+    step = ct.c_double(step)
+    sqrside = ct.c_double(sqrside)
+    rcoef = ct.c_double(rcoef)
+    ret = ct.c_void_p()
+    ccall(cport.g2_circ4grid, algo, p0, rad, step, sqrside, rcoef,
+          ct.byref(ret))
+    return ret
+
+
+def stripe_grid(obj, partition, tipalgo, bnd, cb):
+    npartition = ct.c_int(len(partition))
+    partition = list_to_c(partition, float)
+    bnd = list_to_c(supplement(bnd, 4), int)
+    ret = ct.c_void_p()
+    ccall_cb(cport.g2_stripe_grid, cb,
+             npartition, partition, tipalgo, bnd, ct.byref(ret))
+    return ret
+
+
+def map_grid(base_obj, target_obj, base_points, target_points,
+             snap, bt_from_contour, algo, is_reversed, rinvalid, cb):
+    npoints = min(len(base_points), len(target_points))
+    base_points = base_points[:npoints]
+    target_points = target_points[:npoints]
+    npoints = ct.c_int(npoints)
+    base_points = list_to_c(concat(base_points), float)
+    target_points = list_to_c(concat(target_points), float)
+    bt_from_contour = ct.c_int(bt_from_contour)
+    is_reversed = ct.c_int(is_reversed)
+    rinvalid = ct.c_int(rinvalid)
+    ret = ct.c_void_p()
+
+    ccall_cb(cport.g2_map_grid, cb, base_obj, target_obj,
+             npoints, base_points, target_points,
+             snap, bt_from_contour, algo, is_reversed, rinvalid)
+    return ret
+
+
+def simplify_grid_boundary(obj, angle):
+    angle = ct.c_double(angle)
+    ret = ct.c_void_p()
+    ccall(cport.g2_simplify_bnd, obj, angle, ct.byref(ret))
+    return ret
+
+
+def convex_cells(obj, angle):
+    angle = ct.c_double(angle)
+    ret = ct.c_void_p()
+    ccall(cport.g2_convect_cells, obj, angle, ct.byref(ret))
+    return ret
+
+
+def grid_excl_cont(obj, isinner, cb):
+    isinner = ct.c_int(isinner)
+    ret = ct.c_void_p()
+    ccall_cb(cport.g2_exclude_cont, cb, obj, ct.byref(ret))
+    return ret
+
+
+def unite_grids(obj1, obj2, buf, fixbnd, emptyholes, angle0, filler, cb):
+    buf = ct.c_double(buf)
+    fixbnd = ct.c_int(fixbnd)
+    emptyholes = ct.c_int(emptyholes)
+    angle0 = ct.c_double(angle0)
+    ret = ct.c_void_p()
+    ccall_cb(cport.g2_unite_grids, cb,
+             obj1, obj2, buf, fixbnd, emptyholes, angle0, filler)
+    return ret
+
+
+def to_msh(obj, fname, btypes, per_data, cb=None):
+    fname = fname.encode('utf-8')
+    btypes = CBoundaryNames(btypes)
+    n_per_data = ct.c_int(len(per_data) / 3)
+    per_data = list_to_c(per_data, 'int')
+    ccall(cport.g2_to_msh, obj, fname, btypes, n_per_data, per_data)
+
+
+def to_tecplot(obj, fname, btypes, cb=None):
+    fname = fname.encode('utf-8')
+    btypes = CBoundaryNames(btypes)
+    ccall(cport.g2_to_tecplot, obj, fname, btypes)
+
+
+def to_hm(doc, node, obj, name, fmt, afields, cb=None):
+    name = name.encode('utf-8')
+    naf = ct.c_int(len(afields))
+    af = (ct.c_char_p * len(afields))()
+    for i in range(len(afields)):
+        af[i] = afields[i].encode('utf-8')
+    ccall(cport.g2_to_hm, doc, node, obj, name, fmt, naf, af)
+
+
+def boundary_layer_grid(opt, cb=None):
+    """ ->grid2.
+        opt - options dictionary object.
+              Same as gridcom.BuildBoundaryGrid options['opt'] dictionary
+              except for 'source' field is a proper Contour2.cdata object.
+              All fields must be filled
+        cb - callback of CB_CANCEL2 type
+    """
+    # prepare c input data
+    class COptStruct(ct.Structure):
+        def __init__(self, opt_entry):
+            self.cont = opt_entry['source']
+            n = len(opt_entry['partition'])
+            self.Npartition = ct.c_int(n)
+            self.partition = (ct.c_double * n)(*opt_entry['partition'])
+            self.direction = ct.c_char_p(
+                {1: 'LEFT', -1: 'RIGHT'}[opt_entry['direction']])
+            self.mesh_cont = ct.c_char_p({
+                0: 'NO', 1: 'KEEP_ORIGIN', 2: 'KEEP_SHAPE', 3: 'IGNORE_ALL',
+                4: "INCREMENTAL",
+            }[opt_entry['mesh_cont']])
+            self.mesh_cont_step = ct.c_double(opt_entry['mesh_cont_step'])
+            self.start = (ct.c_double * 2)(opt_entry['start'].x,
+                                           opt_entry['start'].y)
+            self.end = (ct.c_double * 2)(opt_entry['end'].x,
+                                         opt_entry['end'].y)
+            self.force_conformal = ct.c_int(
+                1 if opt_entry['force_conf'] else 0)
+            self.angle_range = (ct.c_double * 4)(
+                opt_entry['algo_acute'],
+                opt_entry['algo_right'],
+                opt_entry['algo_straight'],
+                opt_entry['algo_reentr'])
+            self.step_start = ct.c_double(opt_entry['step_start'])
+            self.step_end = ct.c_double(opt_entry['step_end'])
+
+        _fields_ = [
+            ('cont', ct.c_void_p),
+            ('Npartition', ct.c_int),
+            ('partition', ct.POINTER(ct.c_double)),
+            ('direction', ct.c_char_p),
+            ('mesh_cont', ct.c_char_p),
+            ('mesh_cont_step', ct.c_double),
+            ('start', ct.c_double * 2),
+            ('end', ct.c_double * 2),
+            ('force_conformal', ct.c_int),
+            ('angle_range', ct.c_double * 4),
+            ('step_start', ct.c_double),
+            ('step_end', ct.c_double),
+        ]
+
+    # 2) build array of c structures
+    nopt = ct.c_int(len(opt))
+    c_opt_type = COptStruct * len(opt)
+    c_opt = c_opt_type()
+    for i, co in enumerate(opt):
+        c_opt[i] = COptStruct(co)
+
+    ret = ct.c_void_p()
+    ccall_cb(cport.g2_boundary_layer, cb, nopt, c_opt, ct.byref(ret))
+    return ret

@@ -2,7 +2,7 @@ import traceback
 import sys
 from hybmeshpack import progdata
 import ctypes as ct
-from hybmeshpack.hmcore import libhmcport
+from hybmeshpack.hmcore.proc import cport, ccall
 
 
 def check(cond):
@@ -32,10 +32,11 @@ def check_ascii_file(test_hash, fname, opt=""):
     if opt == "linux":
         if not sys.platform.startswith('linux'):
             return
-    c_fname = fname.encode('utf-8')
-    libhmcport.get_ascii_file_hash.restype = ct.c_size_t
-    r = libhmcport.get_ascii_file_hash(c_fname)
-    check(r == test_hash)
-    if r != test_hash:
+    fname = fname.encode('utf-8')
+    ret = ct.c_size_t
+    ccall(cport.get_ascii_file_hash, fname, ret)
+    ret = ret.value
+    check(ret == test_hash)
+    if ret != test_hash:
         print "\tinput file hash:", test_hash
-        print "\treal file hash: ", r
+        print "\treal file hash: ", ret

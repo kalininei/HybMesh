@@ -1,221 +1,168 @@
 import ctypes as ct
-from . import libhmcport, list_to_c
+from . import cport
+import g2
+from proc import (ccall, ccall_cb, list_to_c, concat, supplement,
+                  CBoundaryNames)
 
 
-def extrude_call(c_grid, c_btypes, c_zvals, c_bbot, c_btop, bsides):
-    """ makes extrusion:
-    c_grid: pointer to grid structure get by grid_to_c
-    c_btypes: boundary types for c_grid get by boundary_types_to_c
-    c_zvals: ctypes.c_double array of z values for extrusion
-    c_bbot, c_btop: ctypes.c_int array of resulting boundary types
-                    at z=min, z=max surface.
-                    Their length could equal number of grid cells or 1.
-                    The latter gives same boundary type for whole surface
-    c_bsides: integer btype  at side surface or None
-              int -> takes bc from c_btypes
-              None -> constant value for whole surface
-    returns Grid3 c pointer or None if failed
-    """
-    bot_algo = 0 if len(c_bbot) == 1 else 1
-    top_algo = 0 if len(c_btop) == 1 else 1
-    if bsides is None:
-        side_algo = 1
-        bsides = 1
-    else:
-        side_algo = 0
-
-    ret = libhmcport.grid2_sweep_z(c_grid, c_btypes,
-                                   ct.c_int(len(c_zvals)), c_zvals,
-                                   ct.c_int(top_algo), c_btop,
-                                   ct.c_int(bot_algo), c_bbot,
-                                   ct.c_int(side_algo), ct.c_int(bsides))
-    if ret == 0:
-        return None
-    else:
-        return ret
+def free_grid3(obj):
+    ccall(cport.g3_free, obj)
 
 
-def grid3_from_c(cdata):
-    from hybmeshpack.gdata.grid3 import Grid3
-    return Grid3(cdata)
+def deepcopy(obj):
+    ret = ct.c_void_p()
+    ccall(cport.g3_deepcopy, obj, ct.byref(ret))
+    return ret
 
 
-def free_g3(c_g3):
-    libhmcport.free_grid3d(c_g3)
+def concatenate(objs):
+    objs = list_to_c(objs, "void*")
+    nobjs = ct.c_int(len(objs))
+    ret = ct.c_void_p()
+    ccall(cport.g3_concatenate, nobjs, objs, ct.byref(ret))
+    return ret
 
 
-def dims(c_g3):
-    " -> [nvertices, nedges, nfaces, ncells] "
+def dims(obj):
     ret = (ct.c_int * 4)()
-    libhmcport.grid3_dims(c_g3, ret)
-    return [ret[0], ret[1], ret[2], ret[3]]
+    ccall(cport.g3_dims, obj, ret)
+    return list(ret)
 
 
-def grid_from_hmxml(reader, subnode, cb):
-    greader, c_g = 0, 0
-    try:
-        name = ct.create_string_buffer(1000)
-
-        args = (reader, subnode, name)
-        cb.initialize(libhmcport.g3reader_create, args)
-        cb.execute_command()
-        greader = ct.c_void_p(cb.get_result())
-
-        if not greader:
-            raise Exception("Failed to assemble a grid")
-
-        # get grid
-        c_g = libhmcport.g3reader_getresult(greader)
-        g = grid3_from_c(c_g)
-
-        return g, str(name.value)
-    except:
-        raise
-    finally:
-        libhmcport.g3reader_free(greader) if greader != 0 else None
+def bnd_dims(obj):
+    ret = (ct.c_int * 3)()
+    ccall(cport.g3_bnd_dims, obj, ret)
+    return list(ret)
 
 
-def to_vtk(c_g, fname, cb):
-    c_fname = fname.encode('utf-8')
-    args = (c_g, c_fname)
-
-    cb.initialize(libhmcport.export_vtk_grid3, args)
-    cb.execute_command()
-
-    res = ct.c_int(cb.get_result())
-
-    if res.value != 0:
-        raise Exception("VTK export failed")
+def move(obj, dx, dy, dz):
+    dx = (ct.c_double * 3)(dx, dy, dz)
+    ccall(cport.g3_move, obj, dx)
 
 
-def surface_to_vtk(c_g, fname, cb):
-    c_fname = fname.encode('utf-8')
-    args = (c_g, c_fname)
-
-    cb.initialize(libhmcport.export_surface_vtk_grid3, args)
-    cb.execute_command()
-
-    res = ct.c_int(cb.get_result())
-
-    if res.value != 0:
-        raise Exception("VTK surface export failed")
+def scale(obj, xpc, ypc, zpc, px, py, pz):
+    p0 = (ct.c_double * 3)(px, py, pz)
+    pc = (ct.c_double * 3)(xpc, ypc, zpc)
+    ccall(cport.g3_scale, obj, pc, p0)
 
 
-def revolve_call(c_g, c_vec, c_phi, c_btypes, b1, b2, tri_center):
-    """ Makes 2d grid revolution:
-    c_g - 2d grid on c side
-    c_vec - [x0, y0, x1, y1] c-side array which defines vector of rotation
-    c_phi - c-side array of angular partition [0]==[-1] for full revolution
-    c_btypes - boundary types of 2d grid on c-side
-    b1, b2 - integers defining boundary types of c_phi[0], c_phi[-1] surfaces
-    tri_ceneter  - boolean, defining wheher to triangulate center
-    returns 3d grid as a c-side pointer
+def raw_data(obj, what):
+    ret = None
+    d = dims(obj)
+    if what == 'btypes':
+        ret = (ct.c_int * d[2])()
+        ccall(cport.g3_tab_btypes, obj, ret)
+    else:
+        raise Exception('unknown what: %s' % what)
+    return ret
+
+
+def point_by_index(obj, index):
+    ret = (ct.c_double * 3)()
+    ccall(cport.g3_point_at, obj, ct.c_int(index), ct.byref(ret))
+    return list(ret)
+
+
+def volume(obj):
+    ret = ct.c_double()
+    ccall(cport.g3_volume, obj, ct.byref(ret))
+    return ret.value
+
+
+def bnd_area(obj):
+    ret = ct.c_double()
+    ccall(cport.g3_bnd_area, obj, ret)
+    return ret.value
+
+
+def extract_surface(obj):
+    ret = ct.c_void_p()
+    ccall(cport.g3_extract_surface, ct.byref(ret))
+    return ret
+
+
+def extrude(g2obj, zvals, bbot, btop, bside=None):
+    d2 = g2.dims(g2obj)
+    nzvals = ct.c_int(len(zvals))
+    zvals = list_to_c(zvals, float)
+    bbot = list_to_c(supplement(bbot, d2[2]), int)
+    btop = list_to_c(supplement(btop, d2[2]), int)
+    bside = ct.c_int(bside if bside is not None else -1)
+    ret = ct.c_void_p()
+    ccall(cport.g3_extrude, g2obj, nzvals, zvals, bbot, btop, bside,
+          ct.by_ref(ret))
+    return ret
+
+
+def revolve(g2obj, vec, phivals, center_tri, bt1, bt2):
+    vec = list_to_c(concat(vec), float)
+    nphivals = ct.c_int(len(phivals))
+    phivals = list_to_c(phivals, float)
+    center_tri = ct.c_int(center_tri)
+    bt1 = ct.c_int(bt1)
+    bt2 = ct.c_int(bt2)
+    ret = ct.c_void_p()
+    ccall(cport.g3_revolve, g2obj, vec, nphivals, phivals,
+          center_tri, bt1, bt2, ct.byref(ret))
+    return ret
+
+
+def tetrahedral_fill(sobjs, constrs, pts, pt_sizes, cb):
+    nsobjs = ct.c_int(len(sobjs))
+    sobjs = list_to_c(sobjs, 'void*')
+    nconstrs = ct.c_int(len(constrs))
+    constrs = list_to_c(constrs, 'void*')
+    npts = ct.c_int(len(pts))
+    pts = list_to_c(concat(pts), float)
+    pt_sizes = list_to_c(pt_sizes, float)
+    ret = ct.c_void_p()
+    ccall_cb(cport.g3_tetrahedral_fill, cb,
+             nsobjs, sobjs, nconstrs, constrs, npts, pts, pt_sizes,
+             ct.byref(ret))
+    return ret
+
+
+def to_msh(obj, fname, btypes, per_data, cb=None):
+    """ per_data : [bnd_per-0, bnd_shadow-0,
+                    pnt_per-0 as [x, y, z], pnt_shadow-0, ...]
     """
-    args = (c_g, c_vec, ct.c_int(len(c_phi)), c_phi, c_btypes,
-            ct.c_int(b1), ct.c_int(b2),
-            ct.c_int(1 if tri_center else 0))
-    res = libhmcport.grid2_revolve(*args)
-    if res == 0:
-        raise Exception("Grid revolution failed")
-    return res
+    fname = fname.encode('utf-8')
+    btypes = CBoundaryNames(btypes)
+    n_per_data = ct.c_int(len(per_data) / 4)
+    it = iter(per_data)
+    tmp = []
+    while 1:
+        try:
+            tmp.append(next(it))
+            tmp.append(next(it))
+            tmp.extend(next(it))
+            tmp.extend(next(it))
+        except StopIteration:
+            break
+    per_data = list_to_c(per_data, float)
+    ccall_cb(cport.g3_to_msh, cb, obj, fname, btypes, n_per_data, per_data)
 
 
-def to_msh(c_g, fname, c_bnames, c_periodic, cb):
-    c_fname = fname.encode('utf-8')
-    if c_periodic is not None:
-        n_periodic = ct.c_int(len(c_periodic) / 8)
-    else:
-        n_periodic = ct.c_int(0)
-
-    args = (c_g, c_fname, c_bnames, n_periodic, c_periodic)
-    cb.initialize(libhmcport.export_msh_grid3, args)
-    cb.execute_command()
-
-    res = cb.get_result()
-
-    if res != 0:
-        raise Exception("msh 3d grid export failed")
+def to_tecplot(obj, fname, btypes, cb=None):
+    fname = fname.encode('utf-8')
+    btypes = CBoundaryNames(btypes)
+    ccall_cb(cport.g3_to_tecplot, cb, obj, fname, btypes)
 
 
-def to_gmsh(c_g, fname, c_bnames, cb):
-    c_fname = fname.encode('utf-8')
-
-    args = (c_g, c_fname, c_bnames)
-    cb.initialize(libhmcport.export_gmsh_grid3, args)
-    cb.execute_command()
-
-    res = cb.get_result()
-
-    if res != 0:
-        raise Exception("msh 3d grid export failed")
+def to_vtk(obj, fname, cb):
+    fname = fname.encode('utf-8')
+    ccall_cb(cport.g3_to_vtk, cb, obj, fname)
 
 
-def to_tecplot(c_g, fname, c_bnames, cb):
-    c_fname = fname.encode('utf-8')
-    args = (c_g, c_fname, c_bnames)
-    cb.initialize(libhmcport.export_tecplot_grid3, args)
-    cb.execute_command()
-    res = cb.get_result()
-    if res != 0:
-        raise Exception("tecplot 3d grid export failed")
+def surface_to_vtk(obj, fname, cb):
+    fname = fname.encode('utf-8')
+    ccall_cb(cport.g3_surface_to_vtk, cb, obj, fname)
 
 
-def gwriter_create(gridname, c_g, c_writer, c_sub, fmt):
-    ret = libhmcport.g3writer_create(gridname, c_g, c_writer, c_sub, fmt)
-    if ret == 0:
-        raise Exception("Error writing grid3d to hmg")
-    else:
-        return ret
-
-
-def gwriter_add_field(c_gwriter, f):
-    ret = libhmcport.g3writer_add_defined_field(c_gwriter, f)
-    if ret == 0:
-        raise Exception("Error writing " + f + "field to a grid 3d")
-    else:
-        return ret
-
-
-def free_gwriter(c_gwriter):
-    libhmcport.g3writer_free(c_gwriter)
-
-
-def tetrahedral_fill(slist, constrlist, p, psize, cb):
-    plen = max(len(p) / 3, len(psize))
-    c_p = list_to_c(p, float)
-    c_ps = list_to_c(psize, float)
-    c_slist = list_to_c(slist, "void*")
-    c_constrlist = list_to_c(constrlist, "void*")
-    c_ret = ct.c_void_p()
-
-    args = (
-        ct.c_int(len(slist)), c_slist,
-        ct.c_int(len(constrlist)), c_constrlist,
-        ct.c_int(plen), c_p, c_ps, ct.byref(c_ret))
-
-    cb.initialize(libhmcport.tetrahedral_fill, args)
-    cb.execute_command()
-    r = cb.get_result()
-
-    if r == 0:
-        raise Exception("Tetrahedral fill failed")
-    else:
-        return c_ret
-
-
-def gvolume(c_g):
-    c_v = ct.c_double()
-    r = libhmcport.grid3_volume(c_g, ct.byref(c_v))
-    if r == 0:
-        raise Exception("grid volume calculation failed")
-    else:
-        return c_v.value
-
-
-def merge(cg1, cg2):
-    cret = ct.c_void_p()
-    r = libhmcport.grid3_merge(cg1, cg2, ct.byref(cret))
-    if r == 0:
-        raise Exception("grids 3d merge failed")
-    else:
-        return cret
+def to_hm(doc, node, obj, name, fmt, afields, cb):
+    name = name.encode('utf-8')
+    naf = ct.c_int(len(afields))
+    af = (ct.c_char_p * len(afields))()
+    for i in range(len(afields)):
+        af[i] = afields[i].encode('utf-8')
+    ccall_cb(cport.g3_to_hm, cb, doc, node, obj, name, fmt, naf, af)

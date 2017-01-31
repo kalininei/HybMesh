@@ -1,12 +1,12 @@
+import basic
 from hybmeshpack.hmcore import s3 as s3core
-from hybmeshpack.hmcore import g3 as g3core
 
 
-class _AbstractSurface3(object):
+class AbstractSurface3(basic.GeomObject3):
     def __init__(self):
-        pass
+        super(AbstractSurface3, self).__init__()
 
-    def n_points(self):
+    def n_vertices(self):
         raise NotImplementedError
 
     def n_edges(self):
@@ -15,27 +15,53 @@ class _AbstractSurface3(object):
     def n_faces(self):
         raise NotImplementedError
 
-    def btypes(self):
-        raise NotImplementedError
-
-    def deepcopy(self):
-        raise NotImplementedError
+    def raw_data(self, what):
+        """ -> ctypes arrays
+        what = 'btypes' -> [b0, b1, b2, ...]
+        """
+        return self.surface3()._raw_data(what)
 
     def surface3(self):
-        "returns Surface3 object"
+        "returns Surface3 object: self or deepcopied"
         raise NotImplementedError
 
-    def volume(self):
+    def area(self):
         raise NotImplementedError
 
 
-class Surface3(_AbstractSurface3):
+class Surface3(AbstractSurface3):
     def __init__(self, cdata):
         super(Surface3, self).__init__()
         # pointer to data stored at c-side
         self.cdata = cdata
 
-    def n_points(self):
+    def __del__(self):
+        if self.cdata:
+            s3core.free_surface3(self.cdata)
+
+    def _raw_data(self, what):
+        return s3core.raw_data(self.cdata, what)
+
+    # overriden from GeomObject
+    def deepcopy(self):
+        c = s3core.deepcopy(self.cdata)
+        return Surface3(c)
+
+    def move(self, dx, dy, dz):
+        s3core.move(self.cdata, dx, dy, dz)
+
+    def scale(self, xpc, ypc, zpc, x0, y0, z0):
+        s3core.scale(self.cdata, xpc, ypc, zpc, x0, y0, z0)
+
+    def point_at(self, index):
+        return s3core.point_by_index(index)
+
+    # overriden from GeomObject3
+    def volume(self):
+        return s3core.volume(self.cdata)
+
+    # overriden from AbstractSurface
+    def n_vertices(self):
         return s3core.dims(self.cdata)[0]
 
     def n_edges(self):
@@ -44,54 +70,8 @@ class Surface3(_AbstractSurface3):
     def n_faces(self):
         return s3core.dims(self.cdata)[2]
 
-    def btypes(self):
-        return s3core.btypes(self.cdata)
-
-    def __del__(self):
-        if self.cdata:
-            s3core.free_srf3(self.cdata)
-
-    def shallow_separate(self):
-        slist = s3core.extract_subsurfaces(self.cdata)
-        ret = []
-        for s in slist:
-            ret.append(Surface3(s))
-        return ret
-
     def surface3(self):
         return self
 
-    def volume(self):
-        return s3core.svolume(self.cdata)
-
-
-class GridSurface(_AbstractSurface3):
-    def __init__(self, g):
-        super(GridSurface, self).__init__()
-        self.cgrid = g.cdata
-
-    def __del__(self):
-        # cgrid is owned by Grid3 hence do nothing
-        pass
-
-    def n_points(self):
-        return s3core.dims(grid=self.cgrid)[0]
-
-    def n_edges(self):
-        return s3core.dims(grid=self.cgrid)[1]
-
-    def n_faces(self):
-        return s3core.dims(grid=self.cgrid)[2]
-
-    def btypes(self):
-        return s3core.btypes(grid=self.cgrid)
-
-    def deepcopy(self):
-        cp = s3core.extract_grid3_surface(self.cgrid)
-        return Surface3(cp)
-
-    def surface3(self):
-        return self.deepcopy()
-
-    def volume(self):
-        return g3core.gvolume(self.cgrid)
+    def area(self):
+        return s3core.area(self.cdata)

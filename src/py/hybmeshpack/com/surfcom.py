@@ -1,15 +1,13 @@
-import objcom
-import command
+import addremove
+import comopt as co
+from hybmeshpack.hmcore import s3 as s3core
+from hybmeshpack.gdata.srf3 import Surface3
 
 
-class Grid3BndToSurface(objcom.AbstractAddRemove):
+class Grid3BndToSurface(addremove.AbstractAddRemove):
     'Copy grid boundary to user surface structure'
 
     def __init__(self, arg):
-        if "surf_name" not in arg:
-            arg["surf_name"] = "Surface1"
-        if "separate" not in arg:
-            arg['separate'] = False
         super(Grid3BndToSurface, self).__init__(arg)
 
     def doc(self):
@@ -17,20 +15,16 @@ class Grid3BndToSurface(objcom.AbstractAddRemove):
 
     @classmethod
     def _arguments_types(cls):
-        return {'grid_name': command.BasicOption(str),
-                'surf_name': command.BasicOption(str),
-                'separate': command.BoolOption(),
+        return {'name': co.BasicOption(str, None),
+                'grid_name': co.BasicOption(str),
+                'separate': co.BoolOption(False),
                 }
 
-    def _addrem_objects(self):
-        try:
-            g = self.grid3_by_name(self.options['grid_name'])
-            s = [g.surface().deepcopy()]
-            ret = []
-            if self.options['separate']:
-                s = s[0].shallow_separate()
-            for it in s:
-                ret.append((self.options['surf_name'], it))
-            return [], [], [], [], [], [], ret, []
-        except Exception as e:
-            raise command.ExecutionError(str(e), self, e)
+    def _addrem_surface3(self):
+        g = self.grid3_by_name(self.get_option('grid_name'))
+        s = [g.surface().surface3()]
+        if self.get_option('separate'):
+            s = s3core.quick_separate(s.cdata)
+            s = [Surface3(it) for it in s]
+
+        return [(it, self.get_option('name')) for it in s], []

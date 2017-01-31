@@ -1,165 +1,100 @@
 "contour commands"
-import copy
-import math
-import hybmeshpack.basic.proc as bp
-from hybmeshpack.basic.geom import Point2
-import hybmeshpack.gdata.contour2 as contour2
-from hybmeshpack.hmcore import c2 as c2core
-from hybmeshpack import hmcore
-from unite_grids import add_bc_from_cont
 import command
-import objcom
+import comopt
+import addremove
+from hybmeshpack.gdata.cont2 import Contour2
+from hybmeshpack.hmcore import c2 as c2core
+import math
+import copy
 
 
-class AddRectCont(objcom.AbstractAddRemove):
+class AddRectCont(addremove.AbstractAddRemove):
     "Add rectangular contour"
     def __init__(self, argsdict):
-        if 'name' not in argsdict:
-            argsdict['name'] = "Contour1"
-        if 'bnds' not in argsdict or len(argsdict['bnds']) == 0:
-            argsdict['bnds'] = [0, 0, 0, 0]
-        if len(argsdict['bnds']) < 4:
-            b = argsdict['bnds'][-1]
-            for i in range(4 - len(argsdict['bnds'])):
-                argsdict['bnds'].append(b)
         super(AddRectCont, self).__init__(argsdict)
 
     @classmethod
     def _arguments_types(cls):
-        return {'name': command.BasicOption(str),
-                'p0': command.Point2Option(),
-                'p1': command.Point2Option(),
-                'bnds': command.ListOfOptions(command.BasicOption(int)),
+        return {'name': comopt.BasicOption(str, None),
+                'p0': comopt.Point2Option(),
+                'p1': comopt.Point2Option(),
+                'bnds': comopt.ListOfOptions(command.BasicOption(int),
+                                             [0, 0, 0, 0]),
                 }
 
-    def doc(self):
-        return "Add rectangular contour"
-
-    def _addrem_objects(self):
-        c = contour2.ClosedContour2()
-        op0, op1 = self.options['p0'], self.options['p1']
-        b = self.options['bnds']
-        p0, p1 = op0, Point2(op1.x, op0.y)
-        p2, p3 = op1, Point2(op0.x, op1.y)
-        c.append_points([p0, p1, p2, p3], b)
-        return [], [], [(self.options['name'], c)]
+    def _addrem_contour2(self):
+        p0, p1 = self.get_option('p0'), self.get_option('p1')
+        pts = [p0[0], p0[1], p1[0], p0[1], p1[0], p1[1], p0[0], p1[1]]
+        bnds = self.get_option('bnds')
+        c = c2core.build_from_points(pts, True, bnds)
+        return [(Contour2(c), self.get_option('name'))], []
 
 
-class AddCircCont(objcom.AbstractAddRemove):
+class AddCircCont(addremove.AbstractAddRemove):
     "Add circular contour"
     def __init__(self, argsdict):
-        if 'name' not in argsdict:
-            argsdict['name'] = "Contour1"
-        if 'bnd' not in argsdict:
-            argsdict['bnd'] = 0
         super(AddCircCont, self).__init__(argsdict)
 
     @classmethod
     def _arguments_types(cls):
-        return {'name': command.BasicOption(str),
-                'p0': command.Point2Option(),
-                'rad': command.BasicOption(float),
-                'na': command.BasicOption(int),
-                'bnd': command.BasicOption(int),
+        return {'name': comopt.BasicOption(str, None),
+                'p0': comopt.Point2Option(),
+                'rad': comopt.BasicOption(float),
+                'na': comopt.BasicOption(int),
+                'bnd': comopt.BasicOption(int, 0),
                 }
 
-    def doc(self):
-        return "Add circlular contour"
-
-    def _addrem_objects(self):
-        c = contour2.ClosedContour2()
-        op0 = self.options['p0']
-        b = self.options['bnd']
-        rad = self.options['rad']
-        na = self.options['na']
+    def _addrem_contour2(self):
+        op0 = self.get_option('p0')
+        b = self.get_option('bnd')
+        rad = self.get_option('rad')
+        na = self.get_option('na')
         astep = 2 * math.pi / na
         pts = []
         for i in range(na):
             angle = i * astep
-            pts.append(Point2(op0.x + rad * math.cos(angle),
-                              op0.y + rad * math.sin(angle)))
-        c.append_points(pts, [b] * len(pts))
-        return [], [], [(self.options['name'], c)], []
+            pts.extend([op0[0] + rad * math.cos(angle),
+                        op0[1] + rad * math.sin(angle)])
+        c = c2core.build_from_points(pts, True, [b])
+        return [(Contour2(c), self.get_option('name'))], []
 
 
-class GridBndToContour(objcom.AbstractAddRemove):
+class GridBndToContour(addremove.AbstractAddRemove):
     'Copy grid boundary to user contour'
 
     def __init__(self, arg):
-        if "cont_name" not in arg:
-            arg["cont_name"] = "Contour1"
-        if "simplify" not in arg:
-            arg['simplify'] = False
-        if "separate" not in arg:
-            arg['separate'] = False
         super(GridBndToContour, self).__init__(arg)
-        self.simp_command = None
-
-    def doc(self):
-        return "Copy boundary from %s" % self.options['grid_name']
 
     @classmethod
     def _arguments_types(cls):
-        return {'grid_name': command.BasicOption(str),
-                'cont_name': command.BasicOption(str),
-                'simplify': command.BoolOption(),
-                'separate': command.BoolOption(),
+        return {'grid_name': comopt.BasicOption(str),
+                'cont_name': comopt.BasicOption(str, None),
+                'simplify': comopt.BoolOption(True),
+                'separate': comopt.BoolOption(False),
                 }
 
-    def _addrem_objects(self):
-        #copy contour
-        try:
-            g = self.receiver.get_grid(name=self.options['grid_name'])[2]
-        except:
-            raise command.ObjectNotFound(self.options['grid_name'])
-        src = g.cont
-        cont = contour2.Contour2.create_from_abstract(src)
-        return [], [], [(self.options['cont_name'], cont)], []
-
-    def _exec(self):
-        r = super(GridBndToContour, self)._exec()
-        nm = self._get_added_names()[1][0]
-        #simplify and separate
-        if self.options['simplify'] or self.options['separate']:
-            sarg = {'separate': self.options['separate'],
-                    'simplify': self.options['simplify'],
-                    'names': [nm],
-                    'new_names': [nm],
-                    'keep_src': False,
-                    'angle': 0.0}
-            self.simp_command = SimplifyContours(sarg)
-            if not self.simp_command.do(self.receiver):
-                self.simp_command = None
-        return r
-
-    def _clear(self):
-        self.simp_command = None
-        super(GridBndToContour, self)._clear()
-
-    def _undo(self):
-        if self.simp_command:
-            self.simp_command._undo()
-        super(GridBndToContour, self)._undo()
-
-    def _redo(self):
-        super(GridBndToContour, self)._undo()
-        if self.simp_command:
-            self.simp_command._redo()
+    def _addrem_contour2(self):
+        gn = self.get_option('grid_name')
+        cn = self.get_option('cont_name')
+        if cn is None:
+            cn = gn + '_contour'
+        simp = self.get_option('simplify')
+        sep = self.get_option('separate')
+        cc = self.get_grid_by_name(gn).contour().contour2()
+        if simp:
+            c2core.simplify(cc.cdata, 0., True)
+        if sep:
+            cc = c2core.quick_separate(cc.cdata)
+            for i, c in enumerate(cc):
+                cc[i] = (cn, Contour2(c))
+        else:
+            cc = [(cn, cc)]
+        return cc, []
 
 
-class SimplifyContours(objcom.AbstractAddRemove):
-    'Separate and simplify user contour'
+class SimplifyContours(addremove.AbstractAddRemove):
+    'Separate/simplify user contours'
     def __init__(self, arg):
-        if 'new_names' not in arg:
-            arg['new_names'] = ['Contour1'] * len(arg['names'])
-        if 'separate' not in arg:
-            arg['separate'] = False
-        if 'simplify' not in arg:
-            arg['simplify'] = False
-        if 'keep_src' not in arg:
-            arg['keep_src'] = True
-        if 'angle' not in arg:
-            arg['angle'] = 1.0
         super(SimplifyContours, self).__init__(arg)
 
     @classmethod
@@ -172,66 +107,48 @@ class SimplifyContours(objcom.AbstractAddRemove):
             angle - minimum acute angle between edges lines
                     after simplification (deg)
             separate - separate contour to ones with not-connected geometry
-            keep_src - keep source contours after procedure
         """
-        return {'names': command.ListOfOptions(command.BasicOption(str)),
-                'new_names': command.ListOfOptions(command.BasicOption(str)),
-                'simplify': command.BoolOption(),
-                'separate': command.BoolOption(),
-                'angle': command.BasicOption(float),
-                'keep_src': command.BoolOption(),
+        return {'names': comopt.ListOfOptions(command.BasicOption(str)),
+                'new_names': comopt.ListOfOptions(command.BasicOption(str),
+                                                  []),
+                'separate': comopt.BoolOption(False),
+                'simplify': comopt.BoolOption(True),
+                'angle': comopt.BasicOption(float, 1.0),
                 }
 
-    def doc(self):
-        return "Simplify contours: %s" % ' '.join(self.conts)
-
-    def _addrem_objects(self):
-        simp, sep, an, keep, nnames = \
-            [self.options[x] for x in
-             ['simplify', 'separate', 'angle', 'keep_src', 'new_names']]
-        added, removed = [], []
-
+    def _addrem_contour(self):
+        simp, sep, an, names, nnames = \
+            [self.get_option(x) for x in ['simplify', 'separate',
+                                          'angle', 'names', 'new_names']]
+        if len(nnames) < names:
+            for i, n in enumerate(names):
+                if i >= len(nnames):
+                    nnames.append(n)
+        added = []
         #make copies
-        for i, nm in enumerate(self.options['names']):
-            try:
-                cont = self.receiver.get_ucontour(name=nm)[2]
-                if not keep:
-                    removed.append(nm)
-            except KeyError:
-                cont = self.receiver.get_grid(name=nm)[2].cont
-
-            added.append(
-                (nnames[i], contour2.Contour2.create_from_abstract(cont)))
+        for i, nm in enumerate(names):
+            cont = self.receiver.get_any_contour(nm).deepcopy()
+            added.append((cont, nnames[i]))
 
         #simplify
         if simp:
-            for i in range(len(added)):
-                cc = added[i][1].simplify(an)
-                if cc is not None:
-                    added[i] = (added[i][0], cc)
+            for c in added:
+                c2core.simplify(c[0].cdata, an, True)
 
         #separate
         if sep:
             newadded = []
-            for i in range(len(added)):
-                sep = added[i][1].separate()
-                if sep is None:
-                    newadded.append(added[i])
-                else:
-                    for s in sep:
-                        newadded.append((added[i][0], s))
+            for c in added:
+                for cc in c2core.quick_separate(c[0].cdata):
+                    newadded.append((Contour2(cc), c[1]))
             added = newadded
 
-        return [], [], added, removed
+        return added, []
 
 
-class UniteContours(objcom.AbstractAddRemove):
-    "unite contours to single contour with complicated connection"
+class UniteContours(addremove.AbstractAddRemove):
+    "Unite contours"
     def __init__(self, arg):
-        if 'keep_src' not in arg:
-            arg['keep_src'] = True
-        if "name" not in arg:
-            arg["name"] = "Contour1"
         super(UniteContours, self).__init__(arg)
 
     def doc(self):
@@ -239,197 +156,87 @@ class UniteContours(objcom.AbstractAddRemove):
 
     @classmethod
     def _arguments_types(cls):
-        """
-            name - united contour name
-            sources - names of contours to unite
-            keep_src - whether to keep or remove source contours
-        """
-        return {'name': command.BasicOption(str),
-                'sources': command.ListOfOptions(command.BasicOption(str)),
-                'keep_src': command.BoolOption(),
+        return {'name': comopt.BasicOption(str, None),
+                'sources': comopt.ListOfOptions(command.BasicOption(str)),
                 }
 
-    def _addrem_objects(self):
-        conts = []
-        for n in self.options['sources']:
-            conts.append(self.any_cont_by_name(n))
-        c_conts, ret = [], 0
-        try:
-            for c in conts:
-                c_conts.append(c2core.cont2_to_c(c))
-            ret, rparents = c2core.unite_contours(c_conts)
-            newcont = c2core.cont2_from_c(ret)
+    def _addrem_contour(self):
+        nm = self.get_option('name')
+        src = self.get_option('sources')
 
-            bcmap = [[0, r] for r in rparents]
-            for ic, c in enumerate(conts[:-1]):
-                for b in bcmap:
-                    if b[0] == ic and b[1] >= c.n_edges():
-                        b[0] += 1
-                        b[1] -= c.n_edges()
+        scont = []
+        for s in src:
+            scont.append(self.get_any_contour(s))
+        pscont = [c.cdata for c in scont]
+        newcont = c2core.unite_contours(pscont)
 
-            ebnd = {}
-            for i in range(newcont.n_edges()):
-                b = conts[bcmap[i][0]].edge_bnd(bcmap[i][1])
-                if b != 0:
-                    ebnd[i] = b
-            newcont.set_edge_bnd(ebnd)
-        except Exception as e:
-            raise command.ExecutionError("Contour union failed", self, e)
-        finally:
-            for c in c_conts:
-                c2core.free_cont2(c)
-            if ret != 0:
-                c2core.free_cont2(ret)
-        ac = [(self.options['name'], newcont)]
-
-        #remove
-        rc = []
-        if not self.options['keep_src']:
-            for c in self.options['sources']:
-                if c in self.receiver.contours2:
-                    rc.append(c)
-        return [], [], ac, rc
+        return [(newcont, nm)], []
 
 
-class DecomposeContour(objcom.AbstractAddRemove):
-    'Separate and simplify user contour'
+class DecomposeContour(addremove.AbstractAddRemove):
+    'Decompose contour'
     def __init__(self, arg):
-        if "name" not in arg:
-            arg["name"] = "Contour1"
         super(DecomposeContour, self).__init__(arg)
 
     @classmethod
     def _arguments_types(cls):
-        """ name - new contours name prefix
-            source - source contour
-        """
-        return {'name': command.BasicOption(str),
-                'source': command.BasicOption(str),
+        return {'name': comopt.BasicOption(str, None),
+                'source': comopt.BasicOption(str),
                 }
 
-    def _addrem_objects(self):
-        src = self.options['source']
-        cret, cself = [], 0
-        try:
-            cont = self.any_cont_by_name(src)
-            cself = c2core.cont2_to_c(cont)
-            btypes = [cont.edge_bnd(i) for i in range(cont.n_edges())]
-            cret, newbtypes = c2core.full_separate_contour(cself, btypes)
-            ret = []
-            k = 0
-            for c in cret:
-                ret.append(c2core.cont2_from_c(c))
-                for i in range(ret[-1].n_edges()):
-                    b = newbtypes[k]
-                    k += 1
-                    if b > 0:
-                        ret[-1].bnds[i] = b
-        except:
-            raise
-        finally:
-            for c in cret:
-                c2core.free_cont2(c)
-            if cself != 0:
-                c2core.free_cont2(cself)
-
-        ret = [(self.options['name'], r) for r in ret]
-        return [], [], ret, []
+    def _addrem_contour(self):
+        s = self.get_any_contour(self.get_option('source'))
+        nm = self.get_option('name')
+        nc = c2core.decompose_contour(s.cdata)
+        return [Contour2(nc), nm], []
 
 
 class EditBoundaryType(command.Command):
     "Add/edit/remove boundary type"
     def __init__(self, arg):
-        a = copy.deepcopy(arg)
-        if 'remindex' not in a:
-            a['remindex'] = None
-        if 'index' not in a:
-            a['index'] = None
-        if 'name' not in a:
-            a['name'] = 'boundary1'
-        if 'color' not in a:
-            a['color'] = [0, 0, 0]
-        super(EditBoundaryType, self).__init__(a)
-        self._backup1 = None
-        self._backup2 = None
+        super(EditBoundaryType, self).__init__(arg)
+        self.bu = None
 
     @classmethod
     def _arguments_types(cls):
-        """ (int remindex, int index, str name, (char)*3 color)
+        """ (int remindex, int index, str name)
 
             removes boundary with index remindex and
-            sets new boundary (index, name, color).
+            sets new boundary (index, name).
             remindex=None if nothing to delete.
-            index=None if nothing to set.
-            name, color could be default
+            index=None, name=None if nothing to set.
+            if index exists it will be overriden
+            if name exists it will be changed
         """
-        return {'remindex': command.BasicOption(int),
-                'index': command.BasicOption(int),
-                'name': command.BasicOption(str),
-                'color': command.ListOfOptions(command.BasicOption(int))
+        return {'remindex': comopt.BasicOption(int, None),
+                'index': comopt.BasicOption(int, None),
+                'name': comopt.BasicOption(str, None),
                 }
 
     def doc(self):
         return "Edit boundary type"
 
     def _exec(self):
-        try:
-            ri, i, n, c = [self.options[x] for x in ['remindex', 'index',
-                                                     'name', 'color']]
-            #1 remove
-            if ri is not None:
-                self._backup1 = copy.deepcopy(
-                    self.receiver.boundary_types.get(index=ri))
-                self.receiver.boundary_types.rem_bnd(ri)
-            #2 set
-            if i is not None:
-                try:
-                    self._backup2 = copy.deepcopy(
-                        self.receiver.boundary_types.get(index=i))
-                except KeyError:
-                    self._backup2 = None
-                self.receiver.boundary_types.set_bnd(i, n, c)
-            return True
-        except Exception as e:
-            raise command.ExecutionError(str(e), self, e)
+        self.bu = copy.deepcopy(self.receiver.zone_types)
+        remi = self.get_option('remindex')
+        addi = self.get_option('index')
+        addn = self.get_option('name')
+        if remi is not None:
+            self.receiver.remove_zone_type(remi)
+        if addi is not None or addn is not None:
+            self.receiver.set_zone_type(addi, addn)
+        return True
 
     def _clear(self):
-        self._backup1 = None
-        self._backup2 = None
+        self.bu = None
 
     def _undo(self):
-        if self.options['index'] is not None:
-            self.receiver.boundary_types.rem_bnd(self.options['index'])
-        if self._backup2 is not None:
-            self.receiver.boundary_types.set_bnd(
-                self._backup2.index, self._backup2.name, self._backup2.color)
-        if self._backup1 is not None:
-            self.receiver.boundary_types.set_bnd(
-                self._backup1.index, self._backup1.name, self._backup1.color)
+        self.receiver.zone_types = self.bu
+        self.receiver._znames_pool = self.bu._names_pool
         self._clear()
 
     def _redo(self):
         self._exec()
-
-
-class BoundaryPickerOption(command.BasicOption):
-    def __init__(self):
-        super(BoundaryPickerOption, self).__init__()
-
-    def serial(self, v):
-        'before writing'
-        a = copy.deepcopy(v)
-        for k, v in a.items():
-            if k != 'name':
-                a[k] = bp.compress_int_list(a[k])
-        return a
-
-    def unserial(self, s):
-        'after reading'
-        a = copy.deepcopy(s)
-        for k, v in a.items():
-            if k != 'name':
-                a[k] = bp.int_list_from_compress(a[k])
-        return a
 
 
 class SetBTypeToContour(command.Command):
@@ -441,8 +248,7 @@ class SetBTypeToContour(command.Command):
         self.new_bnd = []
 
     def doc(self):
-        return "Set boundary types to contours: " + \
-            ', '.join([x.name for x in self.conts_opts])
+        return "Set boundary types to contours"
 
     @classmethod
     def _arguments_types(cls):
@@ -455,27 +261,20 @@ class SetBTypeToContour(command.Command):
                 {...}, ....
             ]
         """
-        return {'btypes': command.ListOfOptions(BoundaryPickerOption())}
+        return {'btypes': comopt.ListOfOptions(comopt.BoundaryPickerOption())}
 
     def _exec(self):
-        for co in self.options['btypes']:
-            bu = {}
-            new = {}
-            try:
-                cont = self.receiver.get_any_contour(co['name'])
-            except:
-                raise command.ObjectNotFound(co['name'])
-            #fill new and backup dicts
-            for b, ei in co.items():
-                if b != 'name':
-                    for e in ei:
-                        #backup
-                        bu[e] = cont.edge_bnd(e)
-                        #command
-                        new[e] = b
-            #evalution
-            self.new_bnd.append(new)
-            self.backup_bnd.append(bu)
+        self._clear()
+        for co in self.get_option('btypes'):
+            cont = self.any_acont_by_name(co['name'])
+            oldbnd = list(cont.raw_data('btypes'))
+            newbnd = copy.deepcopy(oldbnd)
+            for k, v in co.iteritems():
+                if isinstance(k, int):
+                    for it in v:
+                        newbnd[it] = k
+            self.backup_bnd.append(oldbnd)
+            self.new_bnd.append(newbnd)
         self._redo()
         return True
 
@@ -484,26 +283,17 @@ class SetBTypeToContour(command.Command):
         self.new_bnd = []
 
     def _undo(self):
-        for co, bu in zip(self.options['btypes'], self.backup_bnd):
-            cont = self.receiver.get_any_contour(co['name'])
-            cont.add_edge_bnd(bu)
+        for co, b in zip(self.get_option('btypes'), self.oldbnd):
+            self.any_acont_by_name(co['name']).set_bnd(b)
 
     def _redo(self):
-        for co, new in zip(self.options['btypes'], self.new_bnd):
-            cont = self.receiver.get_any_contour(co['name'])
-            cont.add_edge_bnd(new)
+        for co, b in zip(self.get_option('btypes'), self.newbnd):
+            self.any_acont_by_name(co['name']).set_bnd(b)
 
 
-class CreateContour(objcom.AbstractAddRemove):
+class CreateContour(addremove.AbstractAddRemove):
     'Manually enter contour points'
     def __init__(self, argsdict):
-        if "name" not in argsdict:
-            argsdict["name"] = "Contour1"
-        if "bnds" not in argsdict:
-            argsdict["bnds"] = 0
-        if not isinstance(argsdict["bnds"], list):
-            argsdict["bnds"] =\
-                [argsdict["bnds"]] * (len(argsdict["points"]) - 1)
         super(CreateContour, self).__init__(argsdict)
 
     def doc(self):
@@ -511,32 +301,23 @@ class CreateContour(objcom.AbstractAddRemove):
 
     @classmethod
     def _arguments_types(cls):
-        return {'name': command.BasicOption(str),
-                'points': command.ListOfOptions(command.Point2Option()),
-                'bnds': command.ListOfOptions(command.BasicOption(int)),
+        return {'name': comopt.BasicOption(str, None),
+                'points': comopt.ListOfOptions(comopt.Point2Option()),
+                'bnds': comopt.ListOfOptions(comopt.BasicOption(int), []),
                 }
 
-    def _addrem_objects(self):
-        pt = self.options["points"]
-        eds = [[i, i + 1] for i in range(len(pt) - 1)]
-        p0 = self.options["points"][0]
-        plast = self.options["points"][-1]
-        if p0.x == plast.x and p0.y == plast.y:
-            eds[-1][1] = 0
-            pt = pt[:-1]
-        cont = contour2.Contour2.create_from_point_set(
-            pt, eds, self.options["bnds"])
-        return [], [], [(self.options["name"], cont)], []
+    def _addrem_contour(self):
+        points = []
+        for p in self.get_option('points'):
+            points.extend(p)
+        c = c2core.build_from_points(points, False, self.get_option('bnds'))
+        return [(Contour2(c), self.get_option('name'))], []
 
 
-class CreateSpline(objcom.AbstractAddRemove):
+class CreateSpline(addremove.AbstractAddRemove):
     " Creates spline"
 
     def __init__(self, argsdict):
-        if "name" not in argsdict:
-            argsdict["name"] = "Contour1"
-        if "bnds" not in argsdict:
-            argsdict["bnds"] = 0
         super(CreateSpline, self).__init__(argsdict)
 
     def doc(self):
@@ -544,41 +325,25 @@ class CreateSpline(objcom.AbstractAddRemove):
 
     @classmethod
     def _arguments_types(cls):
-        return {'name': command.BasicOption(str),
-                'points': command.ListOfOptions(command.Point2Option()),
-                'bnds': command.ListOfOptions(command.BasicOption(int)),
-                'nedges': command.BasicOption(int),
+        return {'name': comopt.BasicOption(str, None),
+                'points': comopt.ListOfOptions(comopt.Point2Option()),
+                'bnds': comopt.ListOfOptions(comopt.BasicOption(int), []),
+                'nedges': comopt.BasicOption(int, 100),
                 }
 
-    def _addrem_objects(self):
-        so = self.options
-        # copy to c
-        plist = []
-        for p in so['points']:
-            plist.extend([p.x, p.y])
-        cplist = hmcore.list_to_c(plist, float)
-        c_bt = hmcore.list_to_c(so['bnds'], int)
-        # 4. call c procedure
-        c_ret = 0
-        try:
-            c_ret, c_bnd = c2core.spline(cplist, c_bt, so['nedges'])
-            ret = c2core.cont2_from_c(c_ret, c_bnd)
-            return [], [], [(so["name"], ret)], []
-        except Exception as e:
-            raise command.ExecutionError("Spline builder error", self, e)
-        finally:
-            if c_ret != 0:
-                c2core.free_cont2(c_ret)
+    def _addrem_contour(self):
+        pts = []
+        for p in self.get_option('points'):
+            pts.extend(p)
+        c = c2core.spline(pts, self.get_option('bnds'),
+                          self.get_option('nedges'))
+        return [(Contour2(c), self.get_option('name'))], []
 
 
-class ClipDomain(objcom.AbstractAddRemove):
+class ClipDomain(addremove.AbstractAddRemove):
     'Domain clipping operation'
 
     def __init__(self, argsdict):
-        if "name" not in argsdict:
-            argsdict["name"] = "Contour1"
-        if "simplify" not in argsdict:
-            argsdict["simplify"] = True
         super(ClipDomain, self).__init__(argsdict)
 
     def doc(self):
@@ -586,51 +351,27 @@ class ClipDomain(objcom.AbstractAddRemove):
 
     @classmethod
     def _arguments_types(cls):
-        return {'name': command.BasicOption(str),
-                'c1': command.BasicOption(str),
-                'c2': command.BasicOption(str),
-                'oper': command.BasicOption(str),
-                'simplify': command.BasicOption(bool),
+        return {'name': comopt.BasicOption(str, None),
+                'c1': comopt.BasicOption(str),
+                'c2': comopt.BasicOption(str),
+                'oper': comopt.BasicOption(str),
+                'simplify': comopt.BoolOption(True),
                 }
 
     def _addrem_objects(self):
-        cont1 = self.receiver.get_any_contour(self.options['c1'])
-        cont2 = self.receiver.get_any_contour(self.options['c2'])
-        cc1 = c2core.cont2_to_c(cont1)
-        cc2 = c2core.cont2_to_c(cont2)
-        if self.options['oper'] == 'union':
-            op = 1
-        elif self.options['oper'] == 'difference':
-            op = 2
-        elif self.options['oper'] == 'intersection':
-            op = 3
-        elif self.options['oper'] == 'xor':
-            op = 4
-        else:
-            raise Exception("Invalid operation %s" % str(self.options['oper']))
-        cres = c2core.clip_domain(cc1, cc2, op, self.options['simplify'])
-        if cres is not None:
-            res = c2core.cont2_from_c(cres)
-            add_bc_from_cont(res, cont1, cres, cc1)
-            add_bc_from_cont(res, cont2, cres, cc2)
-            c2core.free_cont2(cres)
-        else:
-            res = None
-        c2core.free_cont2(cc1)
-        c2core.free_cont2(cc2)
-
-        if res is not None:
-            return [], [], [(self.options["name"], res)], []
-        else:
-            return [], [], [], []
+        c1 = self.any_cont_by_name(self.get_option('c1'))
+        c2 = self.any_cont_by_name(self.get_option('c2'))
+        op = self.get_option('oper')
+        c3 = c2core.clip_domain(c1.cdata, c2.cdata, op)
+        if self.get_option('simplify'):
+            c2core.simplify(c3, 0, True)
+        return [(Contour2(c3), self.get_option('name'))], []
 
 
-class PartitionContour(objcom.AbstractAddRemove):
+class PartitionContour(addremove.AbstractAddRemove):
     'Partition contour operation'
 
     def __init__(self, argsdict):
-        if "name" not in argsdict:
-            argsdict["name"] = "Contour1"
         super(PartitionContour, self).__init__(argsdict)
 
     def doc(self):
@@ -638,64 +379,44 @@ class PartitionContour(objcom.AbstractAddRemove):
 
     @classmethod
     def _arguments_types(cls):
-        return {'name': command.BasicOption(str),
-                'algo': command.BasicOption(str),
-                'step': command.ListOfOptions(command.BasicOption(float)),
-                'angle0': command.BasicOption(float),
-                'base': command.BasicOption(str),
-                'keepbnd': command.BoolOption(),
-                'nedges': command.NoneOr(command.BasicOption(int)),
-                'crosses': command.ListOfOptions(command.BasicOption(str)),
-                'start': command.NoneOr(command.Point2Option()),
-                'end': command.NoneOr(command.Point2Option()),
-                'keep_pts': command.ListOfOptions(command.Point2Option())
+        return {'name': comopt.BasicOption(str, None),
+                'algo': comopt.BasicOption(str),
+                'step': comopt.ListOfOptions(comopt.BasicOption(float)),
+                'angle0': comopt.BasicOption(float, 1.),
+                'base': comopt.BasicOption(str),
+                'keepbnd': comopt.BoolOption(True),
+                'nedges': comopt.NoneOr(comopt.BasicOption(int), None),
+                'crosses': comopt.ListOfOptions(comopt.BasicOption(str), []),
+                'start': comopt.NoneOr(comopt.Point2Option(), None),
+                'end': comopt.NoneOr(comopt.Point2Option(), None),
+                'keep_pts': comopt.ListOfOptions(comopt.Point2Option(), [])
                 }
 
     def _addrem_objects(self):
-        so = self.options
-        # 1. find contour
-        cont = self.any_cont_by_name(so['base'])
-        # 2. get boundary types array
-        bt = []
-        for i in range(cont.n_edges()):
-            bt.append(cont.edge_bnd(i))
-        # 3. copy to c
-        c_cont = c2core.cont2_to_c(cont)
-        c_bt = hmcore.list_to_c(bt, int)
-        c_step = hmcore.list_to_c(so['step'], float)
-        # 4. copy crosses conditions
-        c_crosses = []
-        for nm in so['crosses']:
-            c = self.any_cont_by_name(nm)
-            c_crosses.append(c2core.cont2_to_c(c))
-        # 5. call c procedure
-        try:
-            c_ret, c_bnd = c2core.contour_partition(c_cont, c_bt, c_step,
-                                                    so['algo'],
-                                                    so['angle0'],
-                                                    so['keepbnd'],
-                                                    so['nedges'],
-                                                    c_crosses,
-                                                    so['keep_pts'],
-                                                    so['start'],
-                                                    so['end'])
-            ret = c2core.cont2_from_c(c_ret, c_bnd)
-            c2core.free_cont2(c_ret)
-            return [], [], [(so["name"], ret)], []
-        except Exception as e:
-            raise command.ExecutionError("Contour partition error", self, e)
-        finally:
-            c2core.free_cont2(c_cont)
-            for c in c_crosses:
-                c2core.free_cont2(c)
+        c = self.any_cont_by_name(self.get_option('base'))
+        algo = self.get_option('algo')
+        step = self.get_option('step')
+        a0 = self.get_option('angle0')
+        keepbnd = self.get_option('keepbnd')
+        ned = self.get_option('nedges')
+        crosses_cont = []
+        for nm in self.get_option('crosses'):
+            crosses_cont.append(self.any_cont_by_name(nm))
+        crosses = []
+        for cr in crosses_cont:
+            crosses.append(cr.cdata)
+        keeppts = self.get_option('keep_pts')
+        start = self.get_option('start')
+        end = self.get_option('end')
+        ret = c2core.contour_partition(c.cdata, step, algo, a0, keepbnd,
+                                       ned, crosses, keeppts, start, end)
+        return [(Contour2(ret), self.get_option('name'))], []
 
 
-class MatchedPartition(objcom.AbstractAddRemove):
+class MatchedPartition(addremove.AbstractAddRemove):
     'Partition contour operation with condtitions'
 
     def __init__(self, argsdict):
-        if "name" not in argsdict:
-            argsdict["name"] = "Contour1"
         super(MatchedPartition, self).__init__(argsdict)
 
     def doc(self):
@@ -703,130 +424,78 @@ class MatchedPartition(objcom.AbstractAddRemove):
 
     @classmethod
     def _arguments_types(cls):
-        return {'name': command.BasicOption(str),
+        return {'name': command.BasicOption(str, None),
                 'base': command.BasicOption(str),
-                'cconts': command.ListOfOptions(command.BasicOption(str)),
+                'cconts': command.ListOfOptions(command.BasicOption(str), []),
                 'step': command.BasicOption(float),
-                'angle0': command.BasicOption(float),
+                'angle0': command.BasicOption(float, 1.),
                 'infdist': command.BasicOption(str),
-                'cpts': command.ListOfOptions(command.BasicOption(float)),
-                'power': command.BasicOption(float)
+                'cpts': command.ListOfOptions(command.BasicOption(float), []),
+                'power': command.BasicOption(float, 2.)
                 }
 
     def _addrem_objects(self):
-        so = self.options
-        # 1. find contour
-        cont = self.any_cont_by_name(so['base'])
-        conds = []
-        for s in so['cconts']:
-            conds.append(self.any_cont_by_name(s))
-        c_cont, c_ret, c_conds = 0, 0, []
-        try:
-            c_cont = c2core.cont2_to_c(cont)
-            for c in conds:
-                c_conds.append(c2core.cont2_to_c(c))
-            c_rp = c2core.list_to_c(so['cpts'], float)
-            c_ret = c2core.matched_partition(c_cont, c_conds, c_rp,
-                                             so['step'],
-                                             so['infdist'],
-                                             so['power'],
-                                             so['angle0'])
-            ret = c2core.cont2_from_c(c_ret)
-            add_bc_from_cont(ret, cont, c_ret, c_cont, force=3)
-
-            return [], [], [(so["name"], ret)], []
-        except Exception as e:
-            raise command.ExecutionError("Contour partition error", self, e)
-        finally:
-            c2core.free_cont2(c_ret) if c_ret != 0 else None
-            c2core.free_cont2(c_cont) if c_cont != 0 else None
-            for c in c_conds:
-                c2core.free_cont2(c)
+        c = self.any_cont_by_name(self.get_option('base'))
+        ccond, c_ccond = [], []
+        for it in self.get_option('cconts'):
+            ccond.append(self.any_cont_by_name(it))
+            c_ccond.append(ccond[-1].cdata)
+        cpts = self.get_option('cpts')
+        step = self.get_option('step')
+        infdist = self.get_option('infdist')
+        power = self.get_option('power')
+        a0 = self.get_option('angle0')
+        c_ret = c2core.matched_partition(c.cdata, c_ccond, cpts, step,
+                                         infdist, power, a0)
+        return [(Contour2(c_ret), self.get_option('name'))], []
 
 
-class ExtractContour(objcom.AbstractAddRemove):
+class ExtractSubcontours(addremove.AbstractAddRemove):
+    "Extract subcontours"
     def __init__(self, arg):
-        if "name" not in arg:
-            arg["name"] = "Contour1"
-        super(ExtractContour, self).__init__(arg)
-
-    def doc(self):
-        return "Extract contour from source"
+        super(ExtractSubcontours, self).__init__(arg)
 
     @classmethod
     def _arguments_types(cls):
-        return {'name': command.BasicOption(str),
-                'src': command.BasicOption(str),
-                'plist': command.ListOfOptions(command.Point2Option()),
-                'project_to': command.BasicOption(str)
+        return {'name': comopt.BasicOption(str, None),
+                'src': comopt.BasicOption(str),
+                'plist': comopt.ListOfOptions(comopt.Point2Option()),
+                'project_to': comopt.BasicOption(str, 'vertex')
                 }
 
     def _addrem_objects(self):
-        so = self.options
-        cont = self.any_cont_by_name(so['src'])
-
-        c_cont, c_ret = 0, []
-        try:
-            c_cont = c2core.cont2_to_c(cont)
-            c_ret = c2core.extract_contour(c_cont,
-                                           so['plist'],
-                                           so['project_to'])
-            ret = []
-            for r in c_ret:
-                tret = c2core.cont2_from_c(r)
-                add_bc_from_cont(tret, cont, r, c_cont, force=3)
-                ret.append(tret)
-
-            return [], [], [(so["name"], r) for r in ret], []
-        except Exception as e:
-            raise command.ExecutionError("ExtractContour error", self, e)
-        finally:
-            for r in c_ret:
-                c2core.free_cont2(r)
-            c2core.free_cont2(c_cont) if c_cont != 0 else None
+        c = self.any_cont_by_name(self.get_option('src'))
+        plist = self.get_option('plist')
+        if self.get_option('project_to') == 'vertex':
+            plist = c2core.closest_points(plist, 'vertex')
+        elif self.get_option('project_to') == 'line':
+            plist = c2core.closest_points(plist, 'edge')
+        elif self.get_option('project_to') == 'corner':
+            c2 = c.deepcopy()
+            c2core.simplify(c2.cdata, 0., False)
+            plist = c2core.closest_points(plist, 'vertex')
+        ret = c2core.extract_subcontours(c.cdata, plist)
+        rr = [(Contour2(it), self.get_option('name')) for it in ret]
+        return rr, []
 
 
-class ConnectSubcontours(objcom.AbstractAddRemove):
+class ConnectSubcontours(addremove.AbstractAddRemove):
     def __init__(self, arg):
-        if "name" not in arg:
-            arg["name"] = "Contour1"
         super(ConnectSubcontours, self).__init__(arg)
 
     @classmethod
     def _arguments_types(cls):
-        return {'name': command.BasicOption(str),
+        return {'name': command.BasicOption(str, None),
                 'src': command.ListOfOptions(command.BasicOption(str)),
-                'fix': command.ListOfOptions(command.BasicOption(int)),
-                'close': command.BasicOption(str),
-                'shiftnext': command.BoolOption()
+                'fix': command.ListOfOptions(command.BasicOption(int), []),
+                'close': command.BasicOption(str, 'no'),
+                'shiftnext': command.BoolOption(False)
                 }
 
     def _addrem_objects(self):
-        so = self.options
-        conts = []
-        for c in so['src']:
-            conts.append(self.any_cont_by_name(c))
-
-        c_cont, c_ret = [], 0
-        try:
-            for c in conts:
-                c_cont.append(c2core.cont2_to_c(c))
-            c_ret = c2core.connect_subcontours(
-                c_cont, so['fix'], so['close'], so['shiftnext'])
-            ret = c2core.cont2_from_c(c_ret)
-            k = 0
-            ebnd = {}
-            for c in conts:
-                for i in range(c.n_edges()):
-                    b = c.edge_bnd(i)
-                    if b != 0:
-                        ebnd[k] = b
-                    k += 1
-            ret.set_edge_bnd(ebnd)
-            return [], [], [(so["name"], ret)], []
-        except Exception as e:
-            raise command.ExecutionError("ExtractContour error", self, e)
-        finally:
-            for r in c_cont:
-                c2core.free_cont2(r)
-            c2core.free_cont2(c_ret) if c_ret != 0 else None
+        c = self.any_cont_by_name(self.get_option('src'))
+        fx = self.get_option('fix')
+        close = self.get_option('close')
+        shift = self.get_option('shiftnext')
+        ret = c2core.connect_subcontours(c.cdata, fx, close, shift)
+        return [(Contour2(ret), self.get_option('name'))], []

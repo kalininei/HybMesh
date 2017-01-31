@@ -1,28 +1,24 @@
-import objcom
-import command
-from hybmeshpack import hmcore as hmcore
-from hybmeshpack.hmcore import g2 as g2core
+import addremove
 from hybmeshpack.hmcore import g3 as g3core
+from hybmeshpack.gdata.grid3 import Grid3
+import comopt as co
 
 
-class NewGrid3DCommand(objcom.AbstractAddRemove):
+class NewGrid3DCommand(addremove.AbstractAddRemove):
     "Command with a new grid addition"
     def __init__(self, argsdict):
-        if "name" not in argsdict:
-            argsdict["name"] = "Grid3D_1"
         super(NewGrid3DCommand, self).__init__(argsdict)
 
-    def _addrem_objects(self):
-        #backup info
+    def _addrem_grid3(self):
         g = self._build_grid()
         if g is not None:
-            return [], [], [], [], [(self.options['name'], g)], []
+            return [(Grid3(g), self.get_option('name'))], []
         else:
-            return [], [], [], [], [], []
+            return [], []
 
     #function for overloading
     def _build_grid(self):
-        '-> grid3.Grid3'
+        '-> grid3.Grid3.cdata pointer'
         raise NotImplementedError
 
 
@@ -43,82 +39,48 @@ class ExtrudeZ(NewGrid3DCommand):
                    starting from bottom to top
         zvals is strictly increasing
         """
-        return {'name': command.BasicOption(str),
-                'base': command.BasicOption(str),
-                'zvals': command.ListOfOptions(command.BasicOption(float)),
-                'bbot': command.ListCompressedOption(),
-                'btop': command.ListCompressedOption(),
-                'bside': command.NoneOr(command.BasicOption(int))
+        return {'name': co.BasicOption(str),
+                'base': co.BasicOption(str),
+                'zvals': co.ListOfOptions(co.BasicOption(float)),
+                'bbot': co.ListCompressedOption([0]),
+                'btop': co.ListCompressedOption([0]),
+                'bside': co.NoneOr(co.BasicOption(int), None)
                 }
 
     def _build_grid(self):
-        so = self.options
-        # 0) get grid
-        grid = self.grid_by_name(so['base'])
-        # 1) grid to c
-        c_grid = g2core.grid_to_c(grid)
-        # 2) vectors
-        c_zvals = hmcore.list_to_c(so['zvals'], float)
-        c_bbot = hmcore.list_to_c(so['bbot'], int)
-        c_btop = hmcore.list_to_c(so['btop'], int)
-        # 3) side boundary conditions
-        c_btypes = g2core.boundary_types_to_c(grid)
-        bsides = so['bside']
-        # 4) call main function
-        try:
-            c_return = g3core.extrude_call(c_grid, c_btypes,
-                                           c_zvals, c_bbot, c_btop,
-                                           bsides)
-            if c_return is None:
-                raise command.ExecutionError("Extrusion failed", self)
-            return g3core.grid3_from_c(c_return)
-        finally:
-            g2core.free_c_grid(c_grid)
-            g2core.free_boundary_types(c_btypes)
+        g2 = self.grid_by_name(self.get_option('base'))
+        return g3core.extrude(g2.cdata,
+                              self.get_option('zvals'),
+                              self.get_option('bbot'),
+                              self.get_option('btop'),
+                              self.get_option('bside'))
 
 
 class Revolve(NewGrid3DCommand):
-    "revolution around a defined axis"
+    "Revolution of 2d grid"
 
     def __init__(self, argsdict):
         super(Revolve, self).__init__(argsdict)
 
     @classmethod
     def _arguments_types(cls):
-        return {'name': command.BasicOption(str),
-                'base': command.BasicOption(str),
-                'p1': command.Point2Option(),
-                'p2': command.Point2Option(),
-                'phi': command.ListOfOptions(command.BasicOption(float)),
-                'bt1': command.BasicOption(int),
-                'bt2': command.BasicOption(int),
-                'center_tri': command.BoolOption()
+        return {'name': co.BasicOption(str, None),
+                'base': co.BasicOption(str),
+                'p1': co.Point2Option(),
+                'p2': co.Point2Option(),
+                'phi': co.ListOfOptions(co.BasicOption(float)),
+                'bt1': co.BasicOption(int, 0),
+                'bt2': co.BasicOption(int, 0),
+                'center_tri': co.BoolOption(True)
                 }
 
     def _build_grid(self):
-        so = self.options
-        c_grid, c_btypes = 0, 0
-        try:
-            # 0) get grid
-            grid = self.grid_by_name(so['base'])
-            # 1) grid to c
-            c_grid = g2core.grid_to_c(grid)
-            # 2) vectors
-            c_phivals = hmcore.list_to_c(so['phi'], float)
-            v = [so['p1'].x, so['p1'].y, so['p2'].x, so['p2'].y]
-            c_vector = hmcore.list_to_c(v, float)
-            # 3) side boundary conditions
-            c_btypes = g2core.boundary_types_to_c(grid)
-            # 4) call main function
-            c_return = g3core.revolve_call(
-                c_grid, c_vector, c_phivals, c_btypes,
-                so['bt1'], so['bt2'], so['center_tri'])
-            return g3core.grid3_from_c(c_return)
-        except Exception as e:
-            raise command.ExecutionError("Revolution failed", self, e)
-        finally:
-            g2core.free_c_grid(c_grid) if c_grid != 0 else None
-            g2core.free_boundary_types(c_btypes) if c_btypes != 0 else None
+        g2 = self.grid_by_name(self.get_option('base'))
+        vec = [self.get_option('p1'), self.get_option('p2')]
+        return g3core.revolve(g2.cdata, vec, self.get_option('phi'),
+                              self.get_option('center_tri'),
+                              self.get_option('bt1'),
+                              self.get_option('bt2'))
 
 
 class TetrahedralFill(NewGrid3DCommand):
@@ -127,35 +89,20 @@ class TetrahedralFill(NewGrid3DCommand):
 
     @classmethod
     def _arguments_types(cls):
-        return {'name': command.BasicOption(str),
-                'source': command.ListOfOptions(command.BasicOption(str)),
-                'pts': command.ListOfOptions(command.BasicOption(float)),
-                'pts_size': command.ListOfOptions(command.BasicOption(float)),
-                'constr': command.ListOfOptions(command.BasicOption(str))
+        return {'name': co.BasicOption(str, None),
+                'source': co.ListOfOptions(co.BasicOption(str)),
+                'constr': co.ListOfOptions(co.BasicOption(str), []),
+                'pts': co.ListOfOptions(co.Point3Option(), []),
+                'pts_size': co.ListOfOptions(co.BasicOption(float), []),
                 }
 
     def _build_grid(self):
-        so = self.options
-        try:
-            # 0) get source surfaces
-            surf = []
-            for s in so['source']:
-                surf.append(self.any_surface_by_name(s).surface3())
-            # 1) get constraint surfaces
-            constr = []
-            for s in so['constr']:
-                constr.append(self.any_surface_by_name(s).surface3())
-            # 2) call main function
-            cb = self.ask_for_callback()
-            c_return = g3core.tetrahedral_fill(
-                [x.cdata for x in surf],
-                [x.cdata for x in constr],
-                so['pts'], so['pts_size'], cb)
-            return g3core.grid3_from_c(c_return)
-        except Exception as e:
-            raise command.ExecutionError("Tetrahedral meshing failed", self, e)
-        finally:
-            pass
+        src = map(self.any_surface_by_name, self.get_option('source'))
+        constr = map(self.any_surface_by_name, self.get_option('constr'))
+        cb = self.ask_for_callback()
+        return g3core.tetrahedral_fill(
+            [x.cdata for x in src], [x.cdata for x in constr],
+            self.get_option('pts'), self.get_option('pts_size'), cb)
 
 
 class Merge(NewGrid3DCommand):
@@ -164,16 +111,12 @@ class Merge(NewGrid3DCommand):
 
     @classmethod
     def _arguments_types(cls):
-        return {'name': command.BasicOption(str),
-                'src1': command.BasicOption(str),
-                'src2': command.BasicOption(str),
+        return {'name': co.BasicOption(str, None),
+                'src1': co.BasicOption(str),
+                'src2': co.BasicOption(str),
                 }
 
     def _build_grid(self):
-        so = self.options
-        # get grid
-        g1 = self.grid3_by_name(so['src1'])
-        g2 = self.grid3_by_name(so['src2'])
-        # call main function
-        c_return = g3core.merge(g1.cdata, g2.cdata)
-        return g3core.grid3_from_c(c_return)
+        g1 = self.grid3_by_name(self.get_option('src1'))
+        g2 = self.grid3_by_name(self.get_option('src2'))
+        return g3core.merge(g1.cdata, g2.cdata)

@@ -1,9 +1,8 @@
-from hybmeshpack import com, gdata
-import hybmeshpack.com.flow  # NOQA
+from hybmeshpack.com.flow import CommandFlow
 
 
 # global flow and data
-flow = com.flow.CommandFlow()
+flow = CommandFlow()
 
 
 class ExecError(Exception):
@@ -21,11 +20,19 @@ class ExportError(Exception):
         mes = _ainfo
         super(ExportError, self).__init__(mes)
 
-from proto import *   # NOQA
-from inout import *  # NOQA
-from gproc import *  # NOQA
-from cproc import *  # NOQA
-from oper import *  # NOQA
-from info import *  # NOQA
+from generalfun import *  # NOQA
+
+from exportfun import *  # NOQA
+from importfun import *  # NOQA
+
+from o2info import *  # NOQA
+from c2construct import *   # NOQA
+from c2oper import *  # NOQA
+from g2construct import *  # NOQA
+from g2oper import *  # NOQA
+
+from o3info import *  # NOQA
+from o3construct import *  # NOQA
+from o3oper import *  # NOQA
 
 import _dbg  # NOQA

@@ -1,0 +1,122 @@
+*********************************** generalfun.py
+0) general geometry functions
+copy_geom()                                                                   
+move_geom()                                                        
+scale_geom()                                                                  
+rotate_geom()                                                       
+reflect_geom()                                                                
+remove_geom()                                                            
+remove_all()                                                             
+remove_all_but()                                                
+
+3) flow manipulation functions
+check_compatibility()     
+registered_contours()
+registered_grids()   
+registered_surfaces()
+registered_grids3d() 
+registered_btypes()  
+add_boundary_type()
+
+************************************* exportfun.py
+1) export functions
+export_grid_hmg()
+export_grid_vtk()
+export_grid_msh()
+export_grid_gmsh()
+export_grid_tecplot()
+export_contour_hmc()
+export_contour_vtk()
+export_contour_tecplot()
+export3d_grid_hmg()
+export3d_grid_vtk()
+export3d_grid_gmsh()
+export3d_grid_msh()
+export3d_grid_tecplot()
+export3d_surface_hmc()
+export_all_hmd()
+save_project()
+
+
+************************************** importfun.py
+2) import functions: importfun.py
+import_grid_hmg()
+import_grid_msh()
+import_grid_gmsh()
+import_contour_hmc()
+import3d_grid_hmg()
+import3d_surface_hmc()
+import_all_hmd()
+load_project()
+
+************************************** g2construct.py
+4) grid2 constructors
+add_unf_rect_grid()   
+add_unf_circ_grid()   
+add_unf_ring_grid()   
+add_unf_hex_grid()    
+add_triangle_grid()   
+add_custom_rect_grid()
+add_circ_rect_grid()  
+stripe()
+triangulate_domain()
+pebi_fill()         
+build_boundary_grid()
+
+************************************** c2construct.py
+5) contour2 constructors
+create_contour()       
+create_spline_contour()
+add_rect_contour()     
+add_circ_contour()     
+add_circ_contour2()    
+add_circ_contour3()    
+grid_bnd_to_contour()
+extract_subcontours() 
+
+************************************* g2oper.py
+6) grid2 modifications and operations
+unite_grids()
+exclude_contours()
+map_grid()
+heal_grid() 
+
+************************************ c2oper.py
+7) contour2 modifications and operations
+set_boundary_type()
+simplify_contour()
+unite_contours()
+clip_domain()   
+partition_contour()   
+matched_partition()   
+partition_segment()   
+decompose_contour()   
+connect_subcontours() 
+
+************************************ o2info.py
+11) 2d geometry information
+info_grid()
+info_contour()             
+skewness()                
+domain_area()             
+pick_contour()            
+get_point()               
+
+************************************** o3construct.py
+8) grid3 constructors
+extrude_grid()
+revolve_grid()
+tetrahedral_fill()
+
+9) surface3 constructors
+grid3_bnd_to_surface()
+
+************************************ o3oper.py
+10) grid3 modifications and operations
+merge_grids3()  
+
+************************************ o3info.py
+12) 3d geometry information
+info_grid3d()   
+info_surface()  
+domain_volume()           

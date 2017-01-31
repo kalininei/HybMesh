@@ -2,7 +2,6 @@
 import time
 import copy
 import sys
-from collections import OrderedDict
 
 
 class AbstractSender(object):
@@ -69,15 +68,6 @@ class EmbException(Exception):
         print ''.join(EmbException.estack(exc))
 
 
-
-
-class DefaultCallBack(object):
-    """ basic implementation of callback
-        Flushes progress to stdout
-    """
-    pass
-
-
 def exectime(method):
     "decorator for execution time measuring"
     def timed(*args, **kw):
@@ -136,115 +126,6 @@ def multifield_list(nd, dim):
             ret.append(lst[:dim])
             lst = lst[dim:]
         return ret
-
-
-def unique_name(stem, nms):
-    """ ->str. Returns unique name on the basis of stem which
-        doesn't present in nms list
-    """
-    if stem not in nms:
-        return stem
-    else:
-        #find last non digit
-        index = len(stem) - 1
-        while stem[index].isdigit() and index >= 0:
-            index -= 1
-        if index < 0:
-            raise Exception("Invalid name")
-        if index < len(stem) - 1:
-            i = int(stem[index + 1:])
-            stem = stem[:index + 1]
-        else:
-            i = 0
-        i += 1
-        #find the unique name
-        while stem + str(i) in nms:
-            i += 1
-        return stem + str(i)
-
-
-class NamedList(OrderedDict):
-    """ Presents modified collection.OrderedDict class.
-        It changes the value of the string key (adds number to the end)
-        if it was already presented in key list. F.e.
-            a = NamedList([("A",1)])
-            a["A"]=2; a["A"]=3
-        Leads to {"A":1, "A1":2, "A2":3} dictionary
-    """
-    def __setitem__(self, key, value):
-        ' Sets NamedList[key] = val behavior '
-        key = unique_name(key, self.keys())
-        OrderedDict.__setitem__(self, key, value)
-
-    def change_value(self, key, value):
-        """ Changes value for specified key.
-        Default behaviour of OrderedDict.__setitem__
-        """
-        OrderedDict.__setitem__(self, key, value)
-
-    def change_key(self, key_old, key_new):
-        ' Changes the key string without breaking the order '
-        if (key_new == key_old or key_old not in self):
-            return
-        key_new = unique_name(key_new, self.keys())
-        restored = []
-        while len(self) > 0:
-            (k, v) = self.popitem()
-            if (k == key_old):
-                OrderedDict.__setitem__(self, key_new, v)
-                break
-            else:
-                restored.append((k, v))
-        for (k, v) in reversed(restored):
-            OrderedDict.__setitem__(self, k, v)
-
-    def get_by_index(self, ind):
-        '-> (key, value). Get kv pair for certain index '
-        try:
-            return self.items()[ind]
-        except IndexError:
-            raise IndexError(str(ind) + " is not in NamedList")
-
-    def get_by_value(self, val):
-        ' -> (index, key) for certain value . '
-        try:
-            ind = self.values().index(val)
-            return ind, self.keys()[ind]
-        except ValueError:
-            raise ValueError(str(val) + " is not in NamedList")
-
-    def get_by_key(self, key):
-        ' -> (index, value) for certain key '
-        try:
-            ind = self.keys().index(key)
-            return ind, self.values()[ind]
-        except ValueError:
-            raise KeyError(str(key) + " is not in NamedList")
-
-    def get(self, ind=None, key=None, val=None):
-        '-> (index, key, value). Get full entry information'
-        if ind is not None:
-            key, val = self.get_by_index(ind)
-        elif key is not None:
-            ind, val = self.get_by_key(key)
-        elif val is not None:
-            ind, key = self.get_by_value(val)
-        return ind, key, val
-
-    #places (key, value) in a certain position
-    def insert(self, ind, key, value):
-        'inserts key, value at the specified position'
-        key = unique_name(key, self.keys())
-        restored = []
-        k = len(self) - ind
-        #remove all entries after ind
-        for i in range(k):
-            restored.append(self.popitem())
-        #add current item
-        OrderedDict.__setitem__(self, key, value)
-        #add all removed items
-        for (k, v) in reversed(restored):
-            OrderedDict.__setitem__(self, k, v)
 
 
 def _compress_core(lst, cmpfun, outfun):
@@ -339,15 +220,6 @@ def int_list_from_compress(s):
     return ret
 
 
-def find(f, seq):
-    """Return first item in sequence where f(item) == True or None"""
-    for item in seq:
-        if f(item):
-            return item
-    else:
-        return None
-
-
 def dict_readbool(d, key, defval):
     """ -> bool or defval
         read a value from dictionary which is supposed to be str(bool).
@@ -358,18 +230,8 @@ def dict_readbool(d, key, defval):
     else:
         return defval
 
+
 def set_if_no(dic, key, val):
     'set dic[key] if it is empty'
     if key not in dic:
         dic[key] = val
-
-
-if __name__ == '__main__':
-    lst = NamedList()
-    lst['a'] = 1
-    lst['b'] = 2
-    lst['c'] = 3
-    lst['c'] = 4
-    
-    print lst
-    print lst.get_by_key('ff')

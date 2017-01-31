@@ -1,108 +1,84 @@
 import ctypes as ct
-from . import libhmcport, free_cside_array
+from . import cport
+from proc import ccall, ccall_cb, free_cside_array, list_to_c
 
 
-def surface_from_c(cdata):
-    from hybmeshpack.gdata.srf3 import Surface3
-    return Surface3(cdata)
+def deepcopy(obj):
+    ret = ct.c_void_p()
+    ccall(cport.s3_deepcopy, obj, ct.byref(ret))
+    return ret
 
 
-def free_srf3(c_s3):
-    libhmcport.free_srf3(c_s3)
+def free_surf3(obj):
+    ccall(cport.s3_free, obj)
 
 
-def dims(surf=None, grid=None):
-    " -> [nvertices, nedges, nfaces] "
+def area(obj):
+    ret = ct.c_double()
+    ccall(cport.s3_area, obj, ct.byref(ret))
+    return ret.value
+
+
+def volume(obj):
+    ret = ct.c_double()
+    ccall(cport.s3_volume, obj, ct.byref(ret))
+    return ret.value
+
+
+def dims(obj):
     ret = (ct.c_int * 3)()
-    if surf is not None:
-        libhmcport.surf3_dims(surf, ret)
-    elif grid is not None:
-        libhmcport.grid3_surface_dims(grid, ret)
-    else:
-        return [0, 0, 0]
-    return [ret[0], ret[1], ret[2]]
+    ccall(cport.s3_dims, obj, ret)
+    return list(ret)
 
 
-def btypes(surf=None, grid=None):
-    " -> [btype for each surface] "
-    cret = (ct.c_int * dims(surf, grid)[2])()
-    r = 0
-    if surf is not None:
-        r = libhmcport.surf3_btypes(surf, cret)
-    elif grid is not None:
-        r = libhmcport.grid3_surface_btypes(grid, cret)
-    if r == 0:
-        raise Exception("failed to read boundary types of surface")
-    ret = []
-    for i in range(len(cret)):
-        ret.append(cret[i])
+def move(obj, dx, dy, dz):
+    dx = (ct.c_double * 3)(dx, dy, dz)
+    ccall(cport.s3_move, obj, dx)
+
+
+def scale(obj, xpc, ypc, zpc, px, py, pz):
+    p0 = (ct.c_double * 3)(px, py, pz)
+    pc = (ct.c_double * 3)(xpc, ypc, zpc)
+    ccall(cport.s3_scale, obj, pc, p0)
+
+
+def quick_separate(obj):
+    nret = ct.c_int(0)
+    ret = ct.POINTER(ct.c_void_p)()
+
+    ccall(cport.s3_quick_separate, obj, ct.byref(nret), ct.byref(ret))
+    ret2 = []
+    for i in range(nret.value):
+        ret2.append(ret[i])
+    free_cside_array(ret, 'void*')
+    return ret2
+
+
+def concatenate(objs):
+    objs = list_to_c(objs, "void*")
+    nobjs = ct.c_int(len(objs))
+    ret = ct.c_void_p()
+    ccall(cport.s3_concatenate, nobjs, objs, ct.byref(ret))
     return ret
 
 
-def extract_grid3_surface(c_g3):
-    "-> c pointer to deep copied surface"
-    ret = libhmcport.extract_grid3_surface(c_g3)
-    if ret == 0:
-        raise Exception("Failed to extract grid surface")
+def raw_data(obj, what):
+    ret = None
+    d = dims(obj)
+    if what == 'btypes':
+        ret = (ct.c_int * d[2])()
+        ccall(cport.s3_tab_btypes, obj, ret)
+    else:
+        raise Exception('unknown what: %s' % what)
     return ret
 
 
-def extract_subsurfaces(c_s3):
-    "-> c pointers to shallow copied surfaces"
-    c_ret = ct.POINTER(ct.c_void_p)()
-    c_num = ct.c_int()
-    r = libhmcport.extract_subsurfaces(c_s3, ct.byref(c_num), ct.byref(c_ret))
-    if r == 0:
-        raise Exception("Failed to extract subsurfaces")
-    ret = []
-    for i in range(c_num.value):
-        ret.append(c_ret[i])
-    free_cside_array(c_ret, "void*")
-    return ret
+def point_by_index(obj, index):
+    ret = (ct.c_double * 3)()
+    ccall(cport.s3_point_at, obj, ct.c_int(index), ct.byref(ret))
+    return list(ret)
 
 
-def surface_from_hmxml(reader, subnode):
-    sreader, c_s = 0, 0
-    try:
-        name = ct.create_string_buffer(1000)
-
-        libhmcport.s3reader_create.restype = ct.c_void_p
-        sreader = libhmcport.s3reader_create(reader, subnode, name)
-        if not sreader:
-            raise Exception("Failed to read a surface")
-        c_s = libhmcport.s3reader_getresult(sreader)
-        s = surface_from_c(c_s)
-        return s, str(name.value)
-    except:
-        raise
-    finally:
-        libhmcport.s3reader_free(sreader) if sreader != 0 else None
-
-
-def swriter_create(sname, c_s, c_writer, c_sub, fmt):
-    ret = libhmcport.s3writer_create(sname, c_s, c_writer, c_sub, fmt)
-    if ret == 0:
-        raise Exception("Error writing surface to hmc")
-    else:
-        return ret
-
-
-def swriter_add_field(c_swriter, f):
-    ret = libhmcport.g3writer_add_defined_field(c_swriter, f)
-    if ret == 0:
-        raise Exception("Error writing " + f + "field to a surface")
-    else:
-        return ret
-
-
-def free_swriter(c_swriter):
-    libhmcport.s3writer_free(c_swriter)
-
-
-def svolume(c_g):
-    c_v = ct.c_double()
-    r = libhmcport.surf3_volume(c_g, ct.byref(c_v))
-    if r == 0:
-        raise Exception("surface volume calculation failed")
-    else:
-        return c_v.value
+def to_hm(doc, node, obj, name, fmt, cb):
+    name = name.encode('utf-8')
+    ccall_cb(cport.s3_to_hm, cb, doc, node, obj, name, fmt)

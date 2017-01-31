@@ -1,7 +1,7 @@
 import command
 import hybmeshpack.basic.proc as bp
 import hybmeshpack.basic.interf as interf
-from hybmeshpack.gdata import Framework
+from hybmeshpack.gdata.framework import Framework
 
 
 class CommandFlow(bp.AbstractSender):
@@ -22,22 +22,16 @@ class CommandFlow(bp.AbstractSender):
         #commands[i <= startposition] cannot be undone
         self._startpos = 0
         #receiver: gdata.Framework.framework
-        self.set_receiver(Framework())
+        self.receiver = Framework()
         #default communication with user
-        self.set_interface(interf.BasicInterface())
+        self.interface = interf.BasicInterface()
 
     def set_interface(self, interface):
-        self._interface = interface
-        self._interface.set_flow(self)
-
-    def get_interface(self):
-        return self._interface
+        self.interface = interface
+        self.interface.set_flow(self)
 
     def set_receiver(self, rec):
-        self._receiver = rec
-
-    def get_receiver(self):
-        return self._receiver
+        self.receiver = rec
 
     def com_count(self):
         "->int. Number of commands"
@@ -87,11 +81,11 @@ class CommandFlow(bp.AbstractSender):
             cmd = self._commands[self._curpos]
             self._send_message(self.BEFORE_EXECUTION, com=cmd)
             try:
-                res = cmd.do(self._receiver)
+                res = cmd.do(self.receiver)
             except command.ExecutionError as ke:
-                self._interface.error_handler().known_execution_error(ke)
+                self.interface.error_handler().known_execution_error(ke)
             except Exception as e:
-                self._interface.error_handler().unknown_execution_error(e, cmd)
+                self.interface.error_handler().unknown_execution_error(e, cmd)
 
             if res:
                 self._send_message(self.SUCCESS_EXECUTION, com=cmd)
@@ -133,13 +127,13 @@ class CommandFlow(bp.AbstractSender):
         self._startpos = 0
         for c in self._commands:
             c.reset()
-        self._receiver.to_zero_state()
+        self.receiver.to_zero_state()
         self._send_message(self.TO_ZERO_STATE)
 
     def make_checkpoint(self):
         "returns a checkpoint copy of the current command flow"
         ret = CommandFlow(self._collection)
-        ret._receiver = self._receiver.deep_copy()
+        ret.receiver = self.receiver.deepcopy()
         ret._curpos = self._curpos
         ret._startpos = self._curpos
         factory = self._collection._factory
@@ -172,7 +166,7 @@ class FlowCollection(object):
     def set_actual_flow(self, flow_name):
         ' sets flow with flow_name as active '
         self._actFlow = self._flows[flow_name]
-        self._actFlow._receiver.view_update()
+        self._actFlow.receiver.view_update()
         for s in self._actflow_subscriber:
             s.actual_flow_changed(flow_name)
 
@@ -218,24 +212,6 @@ class FlowCollection(object):
     def rename_flow(self, oldname, newname):
         self._flows.change_key(oldname, newname)
 
-# def xml_load(self, fname):
-#     ' fills object from xml file '
-#     xmlnode = ET.parse(fname).getroot()
-#     self.__load_states(xmlnode)
-
-# def xml_save(self, fname):
-#     ' saves all flows to a xml file '
-#     outp = ET.Element("ComGridProject")
-#     self.__save_states(outp)
-#     bp.xmlindent(outp)
-#     tree = ET.ElementTree(outp)
-#     try:
-#         tree.write(fname, xml_declaration=True, encoding='utf-8')
-#     except Exception as e:
-#         import traceback
-#         traceback.print_exc()
-#         self._send_message(self.ERROR, text='Export failure: %s' % str(e))
-
     #function which are called from CommandFlow
     def _new_receiver(self):
         ' returns new empty unconnected framework '
@@ -248,34 +224,3 @@ class FlowCollection(object):
         """
         new_flow = self._actFlow.make_checkpoint()
         self._flows[flow_name] = new_flow
-
-    #private functions
-    # def __save_states(self, xmlnode):
-    #     ' saves all flows to a xml ElementTree.Element '
-    #     flcol = ET.SubElement(xmlnode, "FLOWS")
-    #     for (nm, f) in self._flows.items():
-    #         fl = ET.SubElement(flcol, "FLOW")
-    #         fl.attrib['name'] = nm
-    #         if f is self._actFlow:
-    #             fl.set("active", "1")
-    #         f.save_state(fl)
-
-    # def __load_states(self, xmlnode):
-    #     """ Loads flows from ElementTree.Element.
-    #         All existing flows will be lost.
-    #     """
-    #     #clear all current flows
-    #     self._flows.clear()
-    #     #add new flows
-    #     lst = xmlnode.findall("FLOWS/FLOW")
-    #     #read flow information
-    #     actual_name = lst[0].attrib["name"]
-    #     for fxml in lst:
-    #         nf = CommandFlow(self)
-    #         nf.load_state(fxml)
-    #         nm = fxml.attrib["name"]
-    #         self._flows[nm] = nf
-    #         if ("active" in fxml.attrib):
-    #             actual_name = nm
-
-    #     self.set_actual_flow(actual_name)
