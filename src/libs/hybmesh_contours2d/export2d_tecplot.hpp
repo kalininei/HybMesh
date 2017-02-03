@@ -5,9 +5,9 @@
 
 namespace HM2D{ namespace Export{ 
 
-void GridTecplot(const GridData& g, std::string fn, vector<int> bndindex);
+void GridTecplot(const GridData& g, std::string fn);
 
-void GridTecplot(const GridData& g, std::string fn, vector<int> bndindex, BNamesFun bnames);
+void GridTecplot(const GridData& g, std::string fn, BNamesFun bnames);
 
 }}
 

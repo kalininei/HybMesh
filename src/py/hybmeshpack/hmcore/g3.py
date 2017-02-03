@@ -77,7 +77,7 @@ def bnd_area(obj):
 
 def extract_surface(obj):
     ret = ct.c_void_p()
-    ccall(cport.g3_extract_surface, ct.byref(ret))
+    ccall(cport.g3_extract_surface, obj, ct.byref(ret))
     return ret
 
 
@@ -122,6 +122,12 @@ def tetrahedral_fill(sobjs, constrs, pts, pt_sizes, cb):
     return ret
 
 
+def merge(obj1, obj2, cb=None):
+    ret = ct.c_void_p()
+    call_cb(cport.g3_merge, cb, obj1, obj2, ct.byref(ret))
+    return ret
+
+
 def to_msh(obj, fname, btypes, per_data, cb=None):
     """ per_data : [bnd_per-0, bnd_shadow-0,
                     pnt_per-0 as [x, y, z], pnt_shadow-0, ...]
@@ -152,6 +158,12 @@ def to_tecplot(obj, fname, btypes, cb=None):
 def to_vtk(obj, fname, cb):
     fname = fname.encode('utf-8')
     ccall_cb(cport.g3_to_vtk, cb, obj, fname)
+
+
+def to_gmsh(obj, fname, btypes, cb=None):
+    fname = fname.encode('utf-8')
+    btypes = CBoundaryNames(btypes)
+    ccall_cb(cport.g3_to_gmsh, cb, obj, fname, btypes)
 
 
 def surface_to_vtk(obj, fname, cb):

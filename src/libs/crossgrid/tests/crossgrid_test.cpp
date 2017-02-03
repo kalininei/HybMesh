@@ -1,5 +1,6 @@
 #include "hmtesting.hpp"
-#include "hmcport.h"
+#include "cport_grid2d.h"
+#include "cport_cont2d.h"
 #include "trigrid.hpp"
 #include "pebi.hpp"
 #include "constructor.hpp"
@@ -22,12 +23,14 @@ using HMTesting::add_check;
 using HMTesting::add_file_check;
 using HMTesting::add_filesize_check;
 
+int nocb(const char*, const char*, double, double){ return 0; }
+
 double maxskew(const HM2D::GridData& g){
 	vector<double> s=HM2D::Grid::Skewness(g);
 	return *max_element(s.begin(), s.end());
 }
 
-std::pair<int, int> number_of_nonconv_cells(Grid* g){
+std::pair<int, int> number_of_nonconv_cells(void* g){
 	if (g==NULL) return std::make_pair(-1, -1);
 	//-> non-convex cells, cells with hanging nodes
 	auto res = std::make_pair(0, 0);
@@ -40,12 +43,17 @@ std::pair<int, int> number_of_nonconv_cells(Grid* g){
 		return ax*by-ay*bx;
 	};
 
-	double* pts; int *cls;
-	int nc = grid_ncells(g);
-	grid_get_points_cells2(g, &pts, &cls);
-	int* c1 = cls;
-	for (int i=0; i<nc; ++i){
-		int n = *c1++;
+	int dims[3];
+	g2_dims(g, dims);
+
+	int *cz=new int[dims[2]], *cls=0, clssize=0;
+	double* pts=new double[dims[0]*2];
+	g2_tab_cellsizes(g, cz);
+	g2_tab_cellvert(g, &clssize, &cls);
+	g2_tab_vertices(g, pts);
+	int* c1=cls;
+	for (int i=0; i<dims[2]; ++i){
+		int n = cz[i];
 		if (n<3) { throw std::runtime_error("cell with <3 nodes"); }
 		if (n==3){ c1+=3; continue; }
 		bool is_nonconv = false;
@@ -64,13 +72,40 @@ std::pair<int, int> number_of_nonconv_cells(Grid* g){
 	}
 	
 	delete[] pts;
+	delete[] cz;
 	delete[] cls;
 	return res;
 }
 
-bool check_convexity(Grid* g, int nconv_cells, int hang_cells){
+bool check_convexity(void* g, int nconv_cells, int hang_cells){
 	auto r = number_of_nonconv_cells(g);
 	return (r.first == nconv_cells && r.second == hang_cells);
+}
+void* grid_construct(int npoints, int ncells, double* points, int* cells){
+	int* cellsizes = new int[ncells];
+	int* it=cells;
+	int sum=0;
+	for (int i=0; i<ncells; ++i){
+		cellsizes[i] = *it;
+		sum += cellsizes[i];
+		it += cellsizes[i];
+	}
+	int* cellvert = new int[sum];
+	it = cells;
+	int* it2 = cellvert;
+	for (int i=0; i<ncells; ++i){
+		int n = *it++;
+		for (int j=0; j<n; ++j){
+			*it2++ = *it++;
+		}
+	}
+	void* ret;
+	g2_from_points_cells(
+		npoints, points, ncells, cellsizes, cellvert,
+		0, 0, &ret);
+	delete[] cellsizes;
+	delete[] cellvert;
+	return ret;
 }
 
 void test0(){
@@ -157,34 +192,39 @@ void test1(){
 	std::cout<<"1. grid creation and communication"<<std::endl;
 	double points[] = {0,0, 1,0, 1,1, 0,1, 1,0.5};
 	int cells[] = {3,0,1,4, 4,0,4,2,3};
-	Grid* g = grid_construct(5,2,points,cells);
-	add_check(grid_npoints(g)==5, "number of points");
-	add_check(grid_ncells(g)==2, "number of cells");
-	grid_free(g);
+	void* g = grid_construct(5,2,points,cells);
+	int dims[3];
+	g2_dims(g, dims);
+	add_check(dims[0]==5, "number of points");
+	add_check(dims[2]==2, "number of cells");
+	g2_free(g);
 }
 
 void test2(){
 	std::cout<<"2. merging two grids. Secondary grid lies within the main"<<std::endl;
 	HM2D::GridData gmain = HM2D::Grid::Constructor::RectGrid01(10, 10);
 	HM2D::GridData gsec = HM2D::Grid::Constructor::RectGrid(Point(0.3, 0.3), Point(0.6, 0.6), 30, 30);
-	Grid* res = cross_grids(&gmain, &gsec, 0.05, 1, 0, 0, 0);
-	grid_free(res);
+	void* res;
+	g2_unite_grids(&gmain, &gsec, 0.05, 1, 0, 0, 0, &res, nocb);
+	g2_free(res);
 }
 
 void test3(){
 	std::cout<<"3. merging two grids. Secondary grid crosses area of the main"<<std::endl;
 	HM2D::GridData gmain = HM2D::Grid::Constructor::RectGrid(Point(0, 0), Point(1, 1), 10, 10);
 	HM2D::GridData gsec = HM2D::Grid::Constructor::RectGrid(Point(0.3, -0.1), Point(0.6, 0.2), 30, 30);
-	Grid* res = cross_grids(&gmain, &gsec, 0.15, 1, 0, 0, 0);
-	grid_free(res);
+	void* res;
+	g2_unite_grids(&gmain, &gsec, 0.15, 1, 0, 0, 0, &res, nocb);
+	g2_free(res);
 }
 
 void test4(){
 	std::cout<<"4. Secondary grid covers the corner of main"<<std::endl;
 	HM2D::GridData gmain = HM2D::Grid::Constructor::RectGrid(Point(0, 0), Point(1, 1), 10, 10);
 	HM2D::GridData gsec = HM2D::Grid::Constructor::RectGrid(Point(-0.3, -0.3), Point(0.5, 0.5), 30, 30);
-	Grid* res = cross_grids(&gmain, &gsec, 0.2, 1, 0, 0, 0);
-	grid_free(res);
+	void* res;
+	g2_unite_grids(&gmain, &gsec, 0.2, 1, 0, 0, 0, &res, nocb);
+	g2_free(res);
 }
 
 void test5(){
@@ -197,13 +237,14 @@ void test5(){
 		3,1,0,4,  3,4,0,3,  3,0,2,3,  3,1,2,0,
 		4,1,4,8,5,  4,8,4,3,7,  4,3,2,6,7,  4,1,5,6,2
 	};
-	Grid* gsec  = grid_construct(9, 8, pnt2, cls2);
+	void* gsec  = grid_construct(9, 8, pnt2, cls2);
 
-	Grid* res = cross_grids(&gmain, gsec, 2.0, 1, 0, 0, 0);
+	void* res;
+	g2_unite_grids(&gmain, gsec, 2.0, 1, 0, 0, 0, &res, nocb);
 	add_check(ISEQ(HM2D::Grid::Area(*static_cast<HM2D::GridData*>(res)), 100), "area check");
 
-	grid_free(gsec);
-	grid_free(res);
+	g2_free(gsec);
+	g2_free(res);
 }
 
 void test6(){
@@ -211,14 +252,15 @@ void test6(){
 	HM2D::GridData gmain = HM2D::Grid::Constructor::RectGrid(Point(0, 0), Point(1, 1), 10, 10);
 	HM2D::GridData gsec = HM2D::Grid::Constructor::RectGrid(Point(0.5, 0.5), Point(0.6, 0.6), 30, 30);
 
-	Grid* res = cross_grids(&gmain, &gsec, 0.3, 1, 0, 0, 0);
-	grid_free(res);
+	void* res;
+	g2_unite_grids(&gmain, &gsec, 0.3, 1, 0, 0, 0, &res, nocb);
+	g2_free(res);
 
-	res = cross_grids(&gmain, &gsec, 0.3, 1, 0, 0, 0);
-	grid_free(res);
+	g2_unite_grids(&gmain, &gsec, 0.3, 1, 0, 0, 0, &res, nocb);
+	g2_free(res);
 
-	res = cross_grids(&gmain, &gsec, 0.3, 1, 0, 0, 0);
-	grid_free(res);
+	g2_unite_grids(&gmain, &gsec, 0.3, 1, 0, 0, 0, &res, nocb);
+	g2_free(res);
 
 }
 
@@ -229,16 +271,23 @@ void test7(){
 	HM2D::GridData gsec2 = HM2D::Grid::Constructor::RectGrid(Point(1, 1), Point(2, 2), 10, 10);
 	HM2D::GridData gsec3 = HM2D::Grid::Constructor::RectGrid(Point(2, 1.05), Point(3, 2.05), 10, 10);
 
-	Grid* res = cross_grids(&gmain, &gsec, 0.2, 1, 0, 0, 0);
-	Grid* res2 = cross_grids(res, &gsec2, 0.2, 1, 0, 0, 0);
-	Grid* res3 = cross_grids(res2, &gsec3, 0.2, 1, 0, 0, 0);
-	add_check(grid_npoints(res)==242 && grid_ncells(res)==200, "merge non crossing");
-	add_check(grid_npoints(res2)==361 && grid_ncells(res2)==300, "merge grids with congruent point");
-	add_check(grid_npoints(res3)>482 && grid_ncells(res3)>400, "merge grids with tangent edges");
+	void *res, *res2, *res3;
+	g2_unite_grids(&gmain, &gsec, 0.2, 1, 0, 0, 0, &res, nocb);
+	g2_unite_grids(res, &gsec2, 0.2, 1, 0, 0, 0, &res2, nocb);
+	g2_unite_grids(res2, &gsec3, 0.2, 1, 0, 0, 0, &res3, nocb);
+
+	int dim[3], dim2[3], dim3[3];
+	g2_dims(res, dim);
+	g2_dims(res2, dim2);
+	g2_dims(res3, dim3);
+	add_check(dim[0]==242 && dim[2]==200, "merge non crossing");
+	add_check(dim2[0]==361 && dim2[2]==300, "merge grids with congruent point");
+	add_check(dim3[0]>482 && dim3[2]>400, "merge grids with tangent edges");
 	HM2D::Export::GridVTK(*static_cast<HM2D::GridData*>(res3), "g3.vtk");
-	grid_free(res);
-	grid_free(res2);
-	grid_free(res3);
+
+	g2_free(res);
+	g2_free(res2);
+	g2_free(res3);
 }
 
 void test8(){
@@ -247,22 +296,29 @@ void test8(){
 	HM2D::GridData gsec = HM2D::Grid::Constructor::RectGrid(Point(4, 0), Point(5, 1), 10, 10);
 	HM2D::GridData gsec2 = HM2D::Grid::Constructor::RectGrid(Point(-0.5, 0.3), Point(5.5, 0.6), 100, 10);
 
-	Grid* res = cross_grids(&gmain, &gsec, 0.2, 1, 0, 0, 0);
-	Grid* res2 = cross_grids(res, &gsec2, 0.2, 1, 0, 0, 0);
+	void *res, *res2;
+	g2_unite_grids(&gmain, &gsec, 0.2, 1, 0, 0, 0, &res, nocb);
+	g2_unite_grids(res, &gsec2, 0.2, 1, 0, 0, 0, &res2, nocb);
 	add_check(check_convexity(res2, 0, 4), "hanging nodes number");
-	grid_free(res);
-	grid_free(res2);
+	g2_free(res);
+	g2_free(res2);
 }
 
 void test9(){
 	std::cout<<"9. Boundary points control"<<std::endl;
 	HM2D::GridData gmain = HM2D::Grid::Constructor::RectGrid( Point(0, 0), Point(7, 7), 7, 7);
 	HM2D::GridData gsec = HM2D::Grid::Constructor::RectGrid( Point(2.5, -1), Point(4.99, 1), 30, 30);
-	Grid* res = cross_grids(&gmain, &gsec, 0.2, 1, 0, 0, 0);
-	Grid* res2 = cross_grids(&gmain, &gsec, 0.2, 0, 0, 0, 0);
-	std::vector<double> pts(grid_npoints(res)*2), pts2(grid_npoints(res2)*2);
-	grid_get_points_cells(res, &pts[0], 0);
-	grid_get_points_cells(res2, &pts2[0], 0);
+	void* res, *res2;
+	g2_unite_grids(&gmain, &gsec, 0.2, 1, 0, 0, 0, &res, nocb);
+	g2_unite_grids(&gmain, &gsec, 0.2, 0, 0, 0, 0, &res2, nocb);
+	int dim[3], dim2[3];
+	g2_dims(res, dim);
+	g2_dims(res2, dim2);
+	std::vector<double> pts(dim[0]*2), pts2(dim2[0]*2);
+
+	g2_tab_vertices(res, &pts[0]);
+	g2_tab_vertices(res2, &pts2[0]);
+
 	auto find_pt = [](double x, double y, const std::vector<double>& p)->bool{
 		auto it = p.begin();
 		while (it!=p.end()){
@@ -274,8 +330,8 @@ void test9(){
 	};
 	add_check(find_pt(5, 0, pts), "boundary point was set");
 	add_check(!find_pt(5, 0, pts2), "boundary point was ignored");
-	grid_free(res);
-	grid_free(res2);
+	g2_free(res);
+	g2_free(res2);
 }
 
 void test10(){
@@ -283,11 +339,12 @@ void test10(){
 	HM2D::GridData gmain = HM2D::Grid::Constructor::RectGrid(Point(0,0), Point(1,1), 10, 10);
 	HM2D::GridData gsec = HM2D::Grid::Constructor::RectGrid(Point(0.31,-0.3), Point(0.695,0.5), 10, 10);
 
-	Grid* res = cross_grids(&gmain, &gsec, 1.0, 1, 0, 0, 0);
-	Grid* res2 = cross_grids(&gmain, &gsec, 1.0, 0, 0, 0, 0);
+	void* res, *res2;
+	g2_unite_grids(&gmain, &gsec, 1.0, 1, 0, 0, 0, &res, nocb);
+	g2_unite_grids(&gmain, &gsec, 1.0, 0, 0, 0, 0, &res2, nocb);
 
-	grid_free(res);
-	grid_free(res2);
+	g2_free(res);
+	g2_free(res2);
 }
 
 void test11(){
@@ -297,11 +354,14 @@ void test11(){
 	std::vector<double> pts_sec = {0.2, -0.2, 0.8, -0.2, 
 		0.8, 0.2, 0.2, 0.2, 0.3, -0.1, 0.7, -0.1, 0.7, 0.1, 0.3, 0.1};
 	std::vector<int> cls_sec = {4,0,1,5,4, 4,1,2,6,5, 4,6,2,3,7, 4,3,0,4,7};
-	Grid* gsec = grid_construct(8, 4, &pts_sec[0], &cls_sec[0]);
-	Grid* res = cross_grids(&gmain, gsec, 0, 0, 0, 0, 0);
-	add_check(grid_npoints(res) == 125 && grid_ncells(res) == 96, "resulting topology");
-	grid_free(gsec);
-	grid_free(res);
+	void *gsec, *res;
+	gsec = grid_construct(8, 4, &pts_sec[0], &cls_sec[0]);
+	g2_unite_grids(&gmain, gsec, 0, 0, 0, 0, 0, &res, nocb);
+	int dim[3];
+	g2_dims(res, dim);
+	add_check(dim[0] == 125 && dim[2] == 96, "resulting topology");
+	g2_free(gsec);
+	g2_free(res);
 }
 
 void test12(){
@@ -312,25 +372,26 @@ void test12(){
 		0.8, 0.2, 0.2, 0.2, 0.3, -0.1, 0.7, -0.1, 0.7, 0.1, 0.3, 0.1};
 	for (size_t i=1; i<pts_sec.size(); i+=2) pts_sec[i]+=0.5;
 	std::vector<int> cls_sec = {4,0,1,5,4, 4,1,2,6,5, 4,6,2,3,7, 4,3,0,4,7};
-	Grid* gsec = grid_construct(8, 4, &pts_sec[0], &cls_sec[0]);
-	Grid* res = cross_grids(&gmain, gsec, 0.2, 1, 0, 0, 0);
+	void *gsec, *res;
+	gsec = grid_construct(8, 4, &pts_sec[0], &cls_sec[0]);
+	g2_unite_grids(&gmain, gsec, 0.2, 1, 0, 0, 0, &res, nocb);
 	//frontal
 	//add_check(grid_ncells(res) == 132 && grid_npoints(res) == 99, "resulting topology");
 	//Delaunay
 	//add_check(grid_ncells(res) == 122 && grid_npoints(res) == 94, "resulting topology");
 
 	add_check(maxskew(*static_cast<HM2D::GridData*>(res))<0.8, "skewness check");
-	grid_free(gsec);
-	grid_free(res);
+	g2_free(gsec);
+	g2_free(res);
 }
 
 void test13(){
 	std::cout<<"13. Big data processing"<<std::endl;
 	HM2D::GridData gmain = HM2D::Grid::Constructor::RectGrid(Point(0,0), Point(1,1), 100, 100);
 	HM2D::GridData gsec = HM2D::Grid::Constructor::RectGrid(Point(-2, 0), Point(-1, 1), 10, 10);
-	Grid* res = cross_grids(&gmain, &gsec, 0.2, 1, 0, 0, 0);
-
-	grid_free(res);
+	void *res;
+	g2_unite_grids(&gmain, &gsec, 0.2, 1, 0, 0, 0, &res, nocb);
+	g2_free(res);
 }
 
 void test14(){
@@ -345,21 +406,28 @@ void test14(){
 		};
 		auto c = HM2D::ECol::Constructor::FromRaw(8, 8, pts, edges);
 
-		auto res1 = grid_exclude_cont(&g, &c, true);
-		auto res2 = grid_exclude_cont(&g, &c, false);
-		add_check(grid_ncells(res1) == 138 && grid_npoints(res1) == 184, "outer resulting topology");
-		add_check(grid_ncells(res2) == 35 && grid_npoints(res2) == 55, "inner resulting topology");
+		void *res1, *res2;
+		g2_exclude_cont(&g, &c, true, &res1, nocb);
+		g2_exclude_cont(&g, &c, false, &res2, nocb);
+		int dim1[3], dim2[3];
+		g2_dims(res1, dim1);
+		g2_dims(res2, dim2);
+		add_check(dim1[2] == 138 && dim1[0] == 184, "outer resulting topology");
+		add_check(dim2[2] == 35 && dim2[0] == 55, "inner resulting topology");
 		
-		grid_free(res1);
-		grid_free(res2);
+		g2_free(res1);
+		g2_free(res2);
 	}
 	{
 		HM2D::GridData g = HM2D::Grid::Constructor::RectGrid01(10, 12);
 		auto c = HM2D::Contour::Constructor::FromPoints({0, 0.5, 0.5, 0, 1.1, 0.5, 0.5, 1.1}, true);
-		void* res3 = grid_exclude_cont(&g, &c, true);
+		void *res3;
+		g2_exclude_cont(&g, &c, true, &res3, nocb);
 		HM2D::Export::GridVTK(*static_cast<HM2D::GridData*>(res3), "res3.vtk");
-		add_check(grid_ncells(res3) == 67 && grid_npoints(res3) == 102, "cut contour touches grid contour");
-		grid_free(res3);
+		int dim[3];
+		g2_dims(res3, dim);
+		add_check(dim[2] == 67 && dim[0] == 102, "cut contour touches grid contour");
+		g2_free(res3);
 	}
 }
 
@@ -370,64 +438,74 @@ void test15(){
 	int edges[] = { 0,1, 1,2, 2,3, 3,0 };
 	auto c = HM2D::ECol::Constructor::FromRaw(4, 4, points, edges);
 
-	auto res = grid_exclude_cont(&g, &c, true);
-	add_check(grid_ncells(res) == 100 && grid_npoints(res) == 121, "fully inside");
-	grid_free(res);
+	void* res;
+	g2_exclude_cont(&g, &c, true, &res, nocb);
+	int dim[3];
+	g2_dims(res, dim);
+	add_check(dim[2] == 100 && dim[0] == 121, "fully inside");
+	g2_free(res);
 
-	res = grid_exclude_cont(&g, &c, false);
-	add_check(grid_ncells(res) == 0 && grid_npoints(res) == 0, "fully outside");
-	grid_free(res); 
+	g2_exclude_cont(&g, &c, false, &res, nocb);
+	g2_dims(res, dim);
+	add_check(dim[2] == 0 && dim[0] == 0, "fully outside");
+	g2_free(res); 
 
 	double points2[] = {
 		0.03,0.03, 0.04,0.03, 0.04,0.04, 0.03,0.04
 	};
 	c = HM2D::ECol::Constructor::FromRaw(4, 4, points2, edges);
-	res = grid_exclude_cont(&g, &c, false);
-	add_check(grid_ncells(res) == 1 && grid_npoints(res) == 4, "inner contour within cell");
-	grid_free(res);
+	g2_exclude_cont(&g, &c, false, &res, nocb);
+	g2_dims(res, dim);
+	add_check(dim[2] == 1 && dim[0] == 4, "inner contour within cell");
+	g2_free(res);
 
-	res = grid_exclude_cont(&g, &c, true);
-	add_check(ISZERO(grid_area(res) - grid_area(&g) + ecollection_area(&c)), "outer contour within cell (intrusion)");
+	g2_exclude_cont(&g, &c, true, &res, nocb);
+	double arres, arg, arecol;
+	g2_area(res, &arres);
+	g2_area(&g, &arg);
+	c2_area(&c, &arecol);
+	add_check(ISZERO(arres - arg + arecol), "outer contour within cell (intrusion)");
 	HM2D::Export::GridVTK(*static_cast<HM2D::GridData*>(res), "g1.vtk");
-	grid_free(res);
+	g2_free(res);
 }
 
 void test16(){
-	std::cout<<"16. Contours edges correlation"<<std::endl;
-	double p1[] = {
-		0,0, 4,2, 4,4, 0,6,
-		1,2, 1,4, 3,4, 2,1
-	};
-	double p2[] = {
-		1,2, 2,3, 3,4, 1,3.5, 1,4,
-		0,6, 6,3, 0,0
-	};
-	int e1[] = {
-		0,7, 2,1, 0,3, 4,5, 2,3, 6,5, 6,4, 1,7
-	};
-	int e2[] = {
-		7,6, 5,6, 2,1, 2,4, 0,1, 0,3, 4,3, 5,7
-	};
-	auto c1 = HM2D::ECol::Constructor::FromRaw(8, 8, p1, e1);
-	auto c2 = HM2D::ECol::Constructor::FromRaw(8, 8, p2, e2);
-	int v1[] = {0,1,2,3,4,5,6,7};
-	int v2[] = {0,0,0,0,0,0,0,0};
-	int ans[] = {7,4,6,5,6,3,3,2};
+	//std::cout<<"16. Contours edges correlation"<<std::endl;
+	//double p1[] = {
+	//        0,0, 4,2, 4,4, 0,6,
+	//        1,2, 1,4, 3,4, 2,1
+	//};
+	//double p2[] = {
+	//        1,2, 2,3, 3,4, 1,3.5, 1,4,
+	//        0,6, 6,3, 0,0
+	//};
+	//int e1[] = {
+	//        0,7, 2,1, 0,3, 4,5, 2,3, 6,5, 6,4, 1,7
+	//};
+	//int e2[] = {
+	//        7,6, 5,6, 2,1, 2,4, 0,1, 0,3, 4,3, 5,7
+	//};
+	//auto c1 = HM2D::ECol::Constructor::FromRaw(8, 8, p1, e1);
+	//auto c2 = HM2D::ECol::Constructor::FromRaw(8, 8, p2, e2);
+	//int v1[] = {0,1,2,3,4,5,6,7};
+	//int v2[] = {0,0,0,0,0,0,0,0};
+	//int ans[] = {7,4,6,5,6,3,3,2};
 	
-	set_ecollection_bc_force(&c1, &c2, v1, v2, 3);
+	//set_ecollection_bc_force(&c1, &c2, v1, v2, 3);
 	
-	bool good=true;
-	for (int i=0; i<8; ++i) if (v2[i]!=ans[i]) good=false;
-	add_check(good, "check vector values");
+	//bool good=true;
+	//for (int i=0; i<8; ++i) if (v2[i]!=ans[i]) good=false;
+	//add_check(good, "check vector values");
 }
 
 void test17(){
 	std::cout<<"17. Large scale differences"<<std::endl;
 	HM2D::GridData bigg = HM2D::Grid::Constructor::RectGrid(Point(-20, -10), Point(100, 10), 12, 2);
 	HM2D::GridData smallg = HM2D::Grid::Constructor::RectGrid(Point(0, 0), Point(0.1, 0.1), 10, 10);
-	Grid* unig = cross_grids(&bigg, &smallg, 0.2, 1, 0, 0, 0);
+	void* unig;
+	g2_unite_grids(&bigg, &smallg, 0.2, 1, 0, 0, 0, &unig, nocb);
 
-	grid_free(unig);
+	g2_free(unig);
 }
 
 void test18(){
@@ -437,47 +515,61 @@ void test18(){
 	auto g = HM2D::Grid::Constructor::RectGrid(Point(-2, -2), Point(6, 4), 30, 30);
 
 	//1) excluding one by one
-	auto g2 = grid_exclude_cont(&g, &c1, 1);
-	auto g3 = grid_exclude_cont(g2, &c2, 1);
-	add_check(grid_ncells(g3) == 869 && grid_npoints(g3)==962, "one by one exclusion");
+	void *g2, *g3;
+	g2_exclude_cont(&g, &c1, 1, &g2, nocb);
+	g2_exclude_cont(g2, &c2, 1, &g3, nocb);
+	int dim[3];
+	g2_dims(g3, dim);
+	add_check(dim[2] == 869 && dim[0]==962, "one by one exclusion");
 
 	//2) simultaneous exclusion
 	c2.insert(c2.end(), c1.begin(), c1.end());
-	auto g4 = grid_exclude_cont(&g, &c2, 1);
-	add_check(grid_ncells(g4) == 869 && grid_npoints(g4)==962, "simulataneous exclusion");
+	void *g4;
+	g2_exclude_cont(&g, &c2, 1, &g4, nocb);
+	g2_dims(g4, dim);
+	add_check(dim[2] == 869 && dim[0]==962, "simulataneous exclusion");
 
-	grid_free(g2);
-	grid_free(g3);
-	grid_free(g4);
+	g2_free(g2);
+	g2_free(g3);
+	g2_free(g4);
 }
 
 void test19(){
 	std::cout<<"19. No hanging nodes"<<std::endl;
 	auto g1 = HM2D::Grid::Constructor::RectGrid01(10, 10);
 	auto g2 = HM2D::Grid::Constructor::RectGrid(Point(0.5, 0.3), Point(1.5, 0.65), 13, 10);
-	auto g3 = cross_grids(&g1, &g2, 0.1, 0, 0, 0, 0); 
+	void *g3;
+	g2_unite_grids(&g1, &g2, 0.1, 0, 0, 0, 0, &g3, nocb);
 	add_check(check_convexity(g3, 0, 0), "no hanging nodes check");
-	grid_free(g3);
+	g2_free(g3);
 };
 
 void test20(){
 	std::cout<<"20. Empty holes"<<std::endl;
 	auto g1 = HM2D::Grid::Constructor::RectGrid01(6, 6);
 	auto c1 = HM2D::Contour::Constructor::Circle(10, 0.3, Point(0.5, 0.5));
-	auto g2 = grid_exclude_cont(&g1, &c1, 1);
+	void *g2;
+	g2_exclude_cont(&g1, &c1, 1, &g2, nocb);
 
 	auto g3 = HM2D::Grid::Constructor::RectGrid(Point(0.45, 0.45), Point(0.55, 0.55), 3, 3);
-	auto g4 = cross_grids(g2, &g3, 0, 0, 0, 0, 0);
+	void* g4;
+	g2_unite_grids(g2, &g3, 0, 0, 0, 0, 0, &g4, nocb);
 
 	auto g5 = HM2D::Grid::Constructor::RectGrid(Point(-5, -5), Point(5, 5), 19, 21);
-	auto g6 = cross_grids(&g5, g4, 0.1, 0, 1, 0, 0);
+	void* g6;
+	g2_unite_grids(&g5, g4, 0.1, 0, 1, 0, 0, &g6, nocb);
 
-	double a = grid_area(&g5)-ecollection_area(&c1)+grid_area(&g3);
-	add_check( fabs(grid_area(g6) - a) < 1e-6, "resulting grid with a hole");
+	double a5, a1, a3, a6;
+	g2_area(&g5, &a5);
+	g2_area(&g3, &a3);
+	c2_area(&c1, &a1);
+	g2_area(g6, &a6);
+	double a = a5-a1+a3;
+	add_check( fabs(a6 - a) < 1e-6, "resulting grid with a hole");
 
-	grid_free(g2);
-	grid_free(g4);
-	grid_free(g6);
+	g2_free(g2);
+	g2_free(g4);
+	g2_free(g6);
 };
 
 namespace{
@@ -618,17 +710,15 @@ void test23(){
 		else if (ISEQ(x, 1) || ISEQ(y, 1) || ISZERO(x) || ISZERO(y)) return 2;
 		else return 3;
 	};
-	auto build_bcond = [](HM2D::GridData& g, std::function<int(double, double)> fun)->std::vector<int>{
-		vector<int> bcond; 
+	auto build_bcond = [](HM2D::GridData& g, std::function<int(double, double)> fun){
 		for (const auto& e: g.vedges){
 			int val = 0;
 			if (e->is_boundary()){
 				auto pc = e->center();
 				val = fun(pc.x, pc.y);
 			}
-			bcond.push_back(val);
+			e->boundary_type = val;
 		}
-		return bcond;
 	};
 	auto bfun2 = [](double x, double y)->int{
 		if (ISZERO(x) && y<=0.5) return 1;
@@ -643,16 +733,16 @@ void test23(){
 		HM2D::Grid::Algos::OptUnite uopt;
 		uopt.empty_holes = true; uopt.angle0 = 10;
 		HM2D::GridData g3 = HM2D::Grid::Algos::UniteGrids(g1, g2, uopt);
-		auto bcond = build_bcond(g3, bfun1);
+		build_bcond(g3, bfun1);
 
 		HM2D::Export::GridVTK(g3, "g1.vtk");
-		HM2D::Export::BoundaryVTK(g3, "c1.vtk", bcond);
+		HM2D::Export::BoundaryVTK(g3, "c1.vtk");
 		add_file_check(12480458951093668814U, "g1.vtk", "grid to vtk");
 		add_file_check(9640670790211601721U, "c1.vtk", "grid contour to vtk");
 
 		bool hasfailed = false;
 		try{
-			HM2D::Export::GridMSH(g3, "g1.msh", bcond);
+			HM2D::Export::GridMSH(g3, "g1.msh");
 		} catch (...){
 			hasfailed = true;
 		}
@@ -663,29 +753,29 @@ void test23(){
 		uopt.empty_holes = true; 
 		uopt.preserve_bp=false; uopt.angle0=30;
 		auto g3 = HM2D::Grid::Algos::UniteGrids(g1, g2, uopt);
-		auto bcond = build_bcond(g3, bfun1);
+		build_bcond(g3, bfun1);
 		HM2D::Export::GridVTK(g3, "g1.vtk");
-		HM2D::Export::GridMSH(g3, "g1.msh", bcond);
+		HM2D::Export::GridMSH(g3, "g1.msh");
 		add_file_check(17424596082284710940U, "g1.msh", "grid to fluent");
 
-		HM2D::Export::GridMSH(g3, "g2.msh", bcond, [](int i){ return (i==2)?"sqr":"circ";});
+		HM2D::Export::GridMSH(g3, "g2.msh", [](int i){ return (i==2)?"sqr":"circ";});
 		add_file_check(2210112131490853668U, "g2.msh", "grid to fluent with bnd names");
 	}
 	{
 		auto g3 = HM2D::Grid::Constructor::RectGrid01(4, 4);
-		auto bcond = build_bcond(g3, bfun2);
+		build_bcond(g3, bfun2);
 		HM2D::Export::PeriodicData dt;
 
 		dt.clear(); dt.add_data(1, 2, false);
-		HM2D::Export::GridMSH(g3, "g1.msh", bcond, dt);
+		HM2D::Export::GridMSH(g3, "g1.msh", dt);
 		add_file_check(10436800471085896365U, "g1.msh", "fluent simple direct periodic");
 
 		dt.clear(); dt.add_data(1, 2, true);
-		HM2D::Export::GridMSH(g3, "g2.msh", bcond, dt);
+		HM2D::Export::GridMSH(g3, "g2.msh", dt);
 		add_file_check(5529949316670468060U, "g2.msh", "fluent simple reversed periodic");
 
 		dt.add_data(3, 4, true);
-		HM2D::Export::GridMSH(g3, "g3.msh", bcond, dt);
+		HM2D::Export::GridMSH(g3, "g3.msh", dt);
 		add_file_check(6149640790734922004U, "g3.msh", "fluent with 2 periodic boundaries");
 	}
 	{
@@ -693,11 +783,11 @@ void test23(){
 		HM2D::Grid::Algos::OptUnite uopt(0.1);
 		uopt.empty_holes=true; uopt.preserve_bp=true;
 		auto g3 = HM2D::Grid::Algos::UniteGrids(g1, g4, uopt);
-		auto bcond = build_bcond(g3, bfun2);
+		build_bcond(g3, bfun2);
 		HM2D::Export::PeriodicData dt;
 		dt.add_data(1, 2, true);
 		dt.add_data(3, 4, true);
-		HM2D::Export::GridMSH(g3, "g1.msh", bcond, [](int i)->std::string{
+		HM2D::Export::GridMSH(g3, "g1.msh", [](int i)->std::string{
 					if (i==1 || i==2) return "periodic-short";
 					if (i==3 || i==4) return "periodic-long";
 					return "no-periodic";

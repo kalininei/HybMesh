@@ -58,7 +58,9 @@ void RemovePoints(EdgeData& data, vector<int> ipnt);
 namespace ECol{ namespace Algos{
 //Does simplifications of simple contours assembled from ecol shattered edges.
 //makes deep copies of input edges (not points).
-EdgeData Simplified(const EdgeData& ecol, double degree_angle, bool no_break_at_id_change=false);
+//if angle<0 returns everything back making copies of edges but not points.
+EdgeData Simplified(const EdgeData& ecol, double degree_angle, bool no_break_at_bt_change=false,
+		const VertexData& keep={});
 
 //deep copies everything
 EdgeData NoCrosses(const EdgeData& ecol);

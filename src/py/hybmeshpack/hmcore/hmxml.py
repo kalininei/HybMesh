@@ -85,7 +85,7 @@ def purged_string(doc):
         without CONTOUR2D, GRID2D, GRID3D elements
     """
     ret = ct.c_char_p()
-    ccall(cport.hmxml_purged_string, ct.byref(ret))
+    ccall(cport.hmxml_purged_string, doc, ct.byref(ret))
     out = str(ret.value)
     free_cside_array(ret, "char")
     return out

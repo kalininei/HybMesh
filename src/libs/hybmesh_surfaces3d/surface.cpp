@@ -59,25 +59,9 @@ void connect_faces(int fc, const vector<vector<int>>& ff, vector<bool>& used, ve
 }
 }
 
-vector<FaceData> hs::AllSubSurfaces(const FaceData& s){
-	vector<vector<int>> face_face = Connectivity::FaceFace(s);
-	vector<bool> used_faces(s.size(), false);
-	vector<ShpVector<Face>> ret;
-	while (1){
-		auto fnd = std::find(used_faces.begin(), used_faces.end(), false);
-		if (fnd == used_faces.end()) break;
-		vector<int> fc;
-		connect_faces(fnd-used_faces.begin(), face_face, used_faces, fc);
-		ret.push_back(ShpVector<Face>());
-		ret.back().reserve(fc.size());
-		for (int i: fc) ret.back().push_back(s[i]);
-	}
-	return ret;
-}
-
 FaceData hs::SubSurface(const FaceData& s, const Vertex* v){
 	//subdivide
-	vector<FaceData> subd = AllSubSurfaces(s);
+	vector<FaceData> subd = HM3D::SplitData(s);
 	//find part which contains v
 	for (auto& fvec: subd){
 		auto av = AllVertices(fvec);
@@ -403,7 +387,7 @@ vector<FaceData> hs::ExtractSmooth(const FaceData& s, double angle){
 
 	vector<FaceData> ret1;
 	for (auto& r: ret){
-		vector<FaceData> ss = Surface::AllSubSurfaces(r);
+		vector<FaceData> ss = HM3D::SplitData(r);
 		ret1.resize(ret1.size()+ss.size());
 		for (int i=0; i<ss.size(); ++i){
 			std::swap(ret1[ret1.size()-ss.size()+i], ss[i]);

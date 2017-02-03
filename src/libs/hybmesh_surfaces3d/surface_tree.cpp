@@ -5,7 +5,7 @@ using namespace HM3D::Surface;
 
 Tree Tree::Assemble(const FaceData& idata){
 	// !!! only bounding box check here
-	vector<FaceData> data = Surface::AllSubSurfaces(idata);
+	vector<FaceData> data = HM3D::SplitData(idata);
 	vector<FaceData*> closed;
 	vector<BoundingBox3D> closed_bboxes;
 	vector<FaceData*> open;

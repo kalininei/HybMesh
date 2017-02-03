@@ -69,19 +69,26 @@ vector<int> break_by_angle(const VertexData& points, int istart, int iend,
 	return ret;
 }
 
-auto to_keep(Edge* e0, Edge* e1, double angle, double a0, bool id_nobreak)->bool{
-	return (id_nobreak && e0->id != e1->id) ||
-		angle < 180 - a0 || angle > 180 + a0;
+auto to_keep(Edge* e0, Edge* e1, double angle, double a0, bool bt_nobreak,
+		const VertexData& keep)->bool{
+	if (bt_nobreak && e0->boundary_type != e1->boundary_type) return true;
+	if (angle < 180 - a0 || angle > 180 + a0) return true;
+	Vertex* v0 = e0->pfirst();
+	if (e1->pfirst() != v0 && e1->plast() != v0)
+		v0 = e0->plast();
+	if (Finder::Contains(keep, v0)) return true;
+	return false;
 };
 
 
-void reset_start_for_closed(EdgeData& c, vector<double>& a, double a0, bool id_nobreak){
+void reset_start_for_closed(EdgeData& c, vector<double>& a, double a0, bool bt_nobreak,
+		const VertexData& keep){
 	if (c.size()<3) return;
 	int istart = 0;
 	int icur = 0;
 	Edge* eprev = c.back().get();
 	while (icur != c.size()){
-		if (to_keep(eprev, c[icur].get(), a[icur], a0, id_nobreak)){
+		if (to_keep(eprev, c[icur].get(), a[icur], a0, bt_nobreak, keep)){
 			istart = icur;
 			break;
 		} else {
@@ -99,7 +106,8 @@ void reset_start_for_closed(EdgeData& c, vector<double>& a, double a0, bool id_n
 
 };
 
-EdgeData eal::Simplified(const EdgeData& ecol, double degree_angle, bool id_nobreak){
+EdgeData eal::Simplified(const EdgeData& ecol, double degree_angle, bool bt_nobreak,
+		const VertexData& keep){
 	EdgeData ret;
 	if (degree_angle < 0) {
 		DeepCopy(ecol, ret, 0);
@@ -115,13 +123,14 @@ EdgeData eal::Simplified(const EdgeData& ecol, double degree_angle, bool id_nobr
 		}
 		if (Contour::IsClosed(c)){
 			angles[0] = angles.back() = Angle(*op.end()[-2], *op[0], *op[1])/M_PI*180;
-			reset_start_for_closed(c, angles, degree_angle, id_nobreak);
+			reset_start_for_closed(c, angles, degree_angle, bt_nobreak, keep);
 			op = Contour::OrderedPoints(c);
 		}
 		vector<int> significant_points(1, 0);
 		//1 break at ids and sharp angles
 		for (int i=1; i<op.size()-1; ++i){
-			if (to_keep(c[i-1].get(), c[i].get(), angles[i], degree_angle, id_nobreak))
+			if (to_keep(c[i-1].get(), c[i].get(), angles[i], degree_angle, 
+						bt_nobreak, keep))
 				significant_points.push_back(i);
 		}
 		significant_points.push_back(op.size()-1);

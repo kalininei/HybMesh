@@ -28,10 +28,13 @@ struct Options{
 
 	std::string snap;   //NO, ADD_VERTICES, SHIFT_VERTICES
 	std::string algo;   //direct-laplace, inverse-laplace
+	bool btypes_from_contour; //or from grid
 
-	Options(std::string _algo="inverse-laplace", std::string _snap="NO"):
+	Options(std::string _algo="inverse-laplace", std::string _snap="NO",
+			bool btypes_from_contour=true):
 		fem_nmax(100000), fem_nmin(100), fem_nrec(1000),
-		snap(_snap), algo(_algo){}
+		snap(_snap), algo(_algo),
+		btypes_from_contour(btypes_from_contour){}
 };
 
 struct TMapGrid: public HMCallback::ExecutorBase{

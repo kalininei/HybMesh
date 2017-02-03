@@ -9,14 +9,14 @@ std::string default_bfun(int i){
 }
 }
 
-void Export::GridTecplot(const GridData& g, std::string fn, vector<int> bndindex, BNamesFun bnames){
+void Export::GridTecplot(const GridData& g, std::string fn, BNamesFun bnames){
 	//prepare data
 	//edges
 	auto& eds = g.vedges;
 	//bzones
 	std::map<int, vector<Edge*>> bzones;
-	for (int i=0; i<eds.size(); ++i) if (bndindex[i]>=0){
-		int b = bndindex[i];
+	for (int i=0; i<eds.size(); ++i) if (eds[i]->boundary_type>=0){
+		int b = eds[i]->boundary_type;
 		auto emp = bzones.emplace(b, vector<Edge*>());
 		emp.first->second.push_back(eds[i].get());
 	}
@@ -65,6 +65,6 @@ void Export::GridTecplot(const GridData& g, std::string fn, vector<int> bndindex
 }
 
 
-void Export::GridTecplot(const GridData& g, std::string fn, vector<int> bndindex){
-	return GridTecplot(g, fn, bndindex, default_bfun);
+void Export::GridTecplot(const GridData& g, std::string fn){
+	return GridTecplot(g, fn, default_bfun);
 }

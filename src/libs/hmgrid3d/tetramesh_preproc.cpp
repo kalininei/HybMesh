@@ -77,7 +77,7 @@ void SurfacePreprocess::assemble_bnd_grid(){
 	for (int i=0; i<decomposed_surfs.size(); ++i){
 		int jmax = decomposed_surfs[i].size();
 		for (int j=0; j<jmax; ++j){
-			auto sd = Surface::AllSubSurfaces(decomposed_surfs[i][j]);
+			auto sd = HM3D::SplitData(decomposed_surfs[i][j]);
 			assert(sd.size() > 0);
 			if (sd.size() < 2) continue;
 			decomposed_surfs[i][j] = sd[0];

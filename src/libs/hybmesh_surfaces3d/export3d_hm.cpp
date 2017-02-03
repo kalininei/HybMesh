@@ -2,8 +2,22 @@
 #include "export3d_vtk.hpp"
 
 using namespace HM3D;
-
 Export::GridWriter::GridWriter(const Ser::Grid& g,
+		HMXML::ReaderA* writer,
+		HMXML::Reader* subnode,
+		std::string gridname, std::string tp){
+	fill(g, writer, subnode, gridname, tp);
+
+}
+Export::GridWriter::GridWriter(const GridData& g,
+		HMXML::ReaderA* writer,
+		HMXML::Reader* subnode,
+		std::string gridname, std::string tp){
+	_storage.reset(new Ser::Grid(g));
+	fill(*_storage, writer, subnode, gridname, tp);
+}
+
+void Export::GridWriter::fill(const Ser::Grid& g,
 		HMXML::ReaderA* writer,
 		HMXML::Reader* subnode,
 		std::string gridname, std::string tp){
@@ -112,6 +126,19 @@ void Export::GridWriter::AddLinFemConnectivity(){
 
 // ========================= SurfaceWriter
 Export::SurfaceWriter::SurfaceWriter(const Ser::Surface& s,
+		HMXML::ReaderA* writer,
+		HMXML::Reader* subnode,
+		std::string surfname, std::string tp){
+	_fill(s, writer, subnode, surfname, tp);
+}
+Export::SurfaceWriter::SurfaceWriter(const FaceData& s,
+		HMXML::ReaderA* writer,
+		HMXML::Reader* subnode,
+		std::string surfname, std::string tp){
+	_storage.reset(new Ser::Surface(s));
+	_fill(*_storage, writer, subnode, surfname, tp);
+}
+void Export::SurfaceWriter::_fill(const Ser::Surface& s,
 		HMXML::ReaderA* writer,
 		HMXML::Reader* subnode,
 		std::string surfname, std::string tp){

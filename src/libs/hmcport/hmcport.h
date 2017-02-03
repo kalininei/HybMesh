@@ -3,33 +3,41 @@
 
 #include <stddef.h>
 
+#define HMSUCCESS 1
+#define HMERROR 0
+
+//all interface c-functions return HMSUCCESS/HMERROR state values
 extern "C"{
 
-typedef void Grid;
+//callback arguments: procedure name,
+//                    subprocedure name,
+//                    [0, 1] procedure done,
+//                    [0, 1] subprocedure done
+//         returns:   HMCallback::OK (=0) to proceed with operation
+//                    HMCallback::Cancel (=1) to cancel operation
 typedef int (*hmcport_callback)(const char*, const char*, double, double);
 
 //calculates ascii file hash
 //all floating points in file will be rounded to 0.00 before calculating hash
 //so file with content "0.711 23.00000001" would have same hash as "0.71 23"
-size_t get_ascii_file_hash(const char* fn);
+int get_ascii_file_hash(const char* fn, size_t* ret);
 
 //frees array allocated on c-side by new[] commands
-void free_int_array(int* a);
-void free_double_array(double* a);
-void free_char_array(char* a);
-void free_voidp_array(void** a);
+int free_int_array(int* a);
+int free_double_array(double* a);
+int free_char_array(char* a);
+int free_voidp_array(void** a);
 
+// structure representing boundary-index->boundary-name dictionary
 struct BoundaryNamesStruct{
 	int n;
-	int* values;
-	const char** names;
+	int* index;
+	const char** name;
 };
-BoundaryNamesStruct* set_boundary_names(int n, const char**, int* vals);
-void free_boundary_names(BoundaryNamesStruct* s);
+const char* get_boundary_name(const BoundaryNamesStruct*, int index);
 
 
-
-
+/*
 // === grid management
 Grid* grid_construct(int Npts, int Ncells, double* pts, int* cells);
 //grid structures count
@@ -210,6 +218,7 @@ int hmxml_query(void* node, const char* q, int* num, void** ans);
 int hmxml_change_basenode(void* node, const char* q);
 char* hmxml_purged_string(void* node);
 
+*/
 }; //extern C
 
 

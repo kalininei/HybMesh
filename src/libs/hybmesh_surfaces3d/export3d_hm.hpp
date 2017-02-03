@@ -10,6 +10,10 @@ struct GridWriter{
 		HMXML::ReaderA* writer,
 		HMXML::Reader* subnode,
 		std::string gridname, std::string tp);
+	GridWriter(const GridData& g,
+		HMXML::ReaderA* writer,
+		HMXML::Reader* subnode,
+		std::string gridname, std::string tp);
 
 	template<class A>
 	void AddVertexData(std::string fieldname, const A& data, bool binary);
@@ -27,6 +31,12 @@ struct GridWriter{
 
 	template<class A> bool is_binary(){return false;}
 private:
+	shared_ptr<Ser::Grid> _storage;
+	void fill(const Ser::Grid& g,
+		HMXML::ReaderA* writer,
+		HMXML::Reader* subnode,
+		std::string gridname, std::string tp);
+
 	virtual void data_changed(){}
 	template<class A>
 	static void add_field(HMXML::Reader& subnode, std::string fieldname, const vector<A>& data,
@@ -80,6 +90,10 @@ struct SurfaceWriter{
 		HMXML::ReaderA* writer,
 		HMXML::Reader* subnode,
 		std::string surfname, std::string tp);
+	SurfaceWriter(const FaceData& s,
+		HMXML::ReaderA* writer,
+		HMXML::Reader* subnode,
+		std::string surfname, std::string tp);
 
 	template<class A>
 	void AddVertexData(std::string fieldname, const A& data, bool binary);
@@ -92,6 +106,12 @@ struct SurfaceWriter{
 
 	template<class A> bool is_binary(){return false;}
 private:
+	shared_ptr<Ser::Surface> _storage;
+	void _fill(const Ser::Surface& s,
+		HMXML::ReaderA* writer,
+		HMXML::Reader* subnode,
+		std::string surfname, std::string tp);
+
 	virtual void data_changed(){}
 	template<class A>
 	static void add_field(HMXML::Reader& subnode, std::string fieldname, const vector<A>& data,

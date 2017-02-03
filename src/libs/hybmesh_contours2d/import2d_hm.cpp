@@ -58,26 +58,11 @@ Import::WOwner::WOwner(std::string fn, std::string name){
 	if (!greader) throw std::runtime_error("grid "+name+" was not found");
 }
 
-Import::GridReader::GridReader(HMXML::ReaderA* reader, HMXML::Reader* subnode):preader(reader), pgreader(subnode){
-	fill_result();
-}
-void Import::GridReader::fill_result(){
-	//read dimensions
-	pgreader->value_int("N_VERTICES", Nv, true);
-	pgreader->value_int("N_EDGES", Ne, true);
-	pgreader->value_int("N_CELLS", Nc, true);
-	//read vertices
-	Reader tmp = pgreader->find_by_path("VERTICES/COORDS", true);
-	vector<double> vert = preader->read_num_content(tmp, 2*Nv).vec<double>();
-	//read edges
-	tmp = pgreader->find_by_path("EDGES/VERT_CONNECT", true);
-	vector<int> edgevert = preader->read_num_content(tmp, 2*Ne).vec<int>();
-	tmp = pgreader->find_by_path("EDGES/CELL_CONNECT", true);
-	vector<int> edgecell = preader->read_num_content(tmp, 2*Ne).vec<int>();
-	for (auto i: edgevert) if (i>=Nv || i<0) throw std::runtime_error("Edge-Vertex connectivity contains illegal vertex index");
-	for (auto i: edgecell) if (i>=Nc) throw std::runtime_error("Edge-Cell connectivity contains illegal cell index");
-
-	//constructing a grid
+GridData Import::GridFromTabs(const vector<double> vert, const vector<int>& edgevert,
+		const vector<int>& edgecell){
+	int Nv = vert.size()/2;
+	int Nc = *std::max_element(edgecell.begin(), edgecell.end())+1;
+	int Ne = edgevert.size()/2;
 	GridData ng;
 	for (int i=0; i<Nv; ++i){
 		ng.vvert.push_back(std::make_shared<Vertex>(vert[2*i], vert[2*i+1]));
@@ -122,6 +107,30 @@ void Import::GridReader::fill_result(){
 			}
 		}
 	}
+	return ng;
+}
+
+Import::GridReader::GridReader(HMXML::ReaderA* reader, HMXML::Reader* subnode):preader(reader), pgreader(subnode){
+	fill_result();
+}
+void Import::GridReader::fill_result(){
+	//read dimensions
+	pgreader->value_int("N_VERTICES", Nv, true);
+	pgreader->value_int("N_EDGES", Ne, true);
+	pgreader->value_int("N_CELLS", Nc, true);
+	//read vertices
+	Reader tmp = pgreader->find_by_path("VERTICES/COORDS", true);
+	vector<double> vert = preader->read_num_content(tmp, 2*Nv).vec<double>();
+	//read edges
+	tmp = pgreader->find_by_path("EDGES/VERT_CONNECT", true);
+	vector<int> edgevert = preader->read_num_content(tmp, 2*Ne).vec<int>();
+	tmp = pgreader->find_by_path("EDGES/CELL_CONNECT", true);
+	vector<int> edgecell = preader->read_num_content(tmp, 2*Ne).vec<int>();
+	for (auto i: edgevert) if (i>=Nv || i<0) throw std::runtime_error("Edge-Vertex connectivity contains illegal vertex index");
+	for (auto i: edgecell) if (i>=Nc) throw std::runtime_error("Edge-Cell connectivity contains illegal cell index");
+
+	//constructing a grid
+	GridData ng = Import::GridFromTabs(vert, edgevert, edgecell);
 	result.reset(new GridData(std::move(ng)));
 }
 std::vector<Import::GridReader::TFieldInfo> Import::GridReader::edges_fields(){

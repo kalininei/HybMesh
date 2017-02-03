@@ -171,6 +171,7 @@ struct ScaleBase3{
 	ScaleBase3(double x0=0, double y0=0, double z0=0, double L=1): p0(x0, y0, z0), L(L){}
 	void scale(Point3& p) const  {p-=p0; p/=L; }
 	void unscale(Point3& p) const  {p*=L; p+=p0; }
+
 	//scale and unscale procedures
 	//inscribes all points into [0, a]x[0, a]x[0, a] cube
 	template<class PContainer>

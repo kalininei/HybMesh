@@ -2,85 +2,79 @@
 #define HYBMESH_HMCPORT_GRID3D_H
 
 #include "hmcport.h"
-#include "cport_grid2d.h"
 
 extern "C"{
 
-typedef void CPortGrid3D;  //Ser::Grid*
+int g3_move(void* obj, double* dx);
+int g3_scale(void* obj, double* pc, double* p0);
+int g3_point_at(void* obj, int index, double* ret);
+
+int g3_deepcopy(void* obj, void** ret);
+int g3_concatenate(int nobjs, void** objs, void** ret);
 
 //====== destructor
-void free_grid3d(CPortGrid3D*);
+int g3_free(void* obj);
 
 //====== information
 //n_vert, n_edges, n_faces, n_cells
-void grid3_dims(const CPortGrid3D*, int*);
+int g3_dims(void* obj, int*);
 
 //n_vert, n_edges, n_faces
-void grid3_surface_dims(const CPortGrid3D*, int* dims);
+int g3_bnd_dims(void* obj, int* dims);
 
-//returns 0 on fail and 1 on success
 //fills ret array with 'number of boundary faces' values
-int grid3_surface_btypes(const CPortGrid3D* s3, int* ret);
+int g3_tab_btypes(void* obj, int* ret);
+
+//boundary area
+int g3_bnd_area(void* obj, double* ret);
+
+//creates surface out of grid boundary
+int g3_extract_surface(void* obj, void** ret);
 
 //volume
-int grid3_volume(const CPortGrid3D*, double* ret);
+int g3_volume(void* obj, double* ret);
 
 //merge coincident primitives
-int grid3_merge(const CPortGrid3D*, const CPortGrid3D*, CPortGrid3D**);
+int g3_merge(void* obj1, void* obj2, void** ret, hmcport_callback cb);
 
 
 //====== sweep constructors
 //construct by sweep in z direction
-//algo_top/algo_bot = 0 - constant value taken from btop[0]
-//                  = 1 - variable for each face from i-th cell as btop[i]
-//algo_side = 0 - constant taken from bside
-//            1 - take value from boundary struct
-CPortGrid3D* grid2_sweep_z(const CPortGrid3D* g, const Grid2DBoundaryStruct* bc,
-		int nz, double* zvals,
-		int algo_top, int* btop,
-		int algo_bot, int* bbot,
-		int algo_side, int bside);
+//btop, bbot = boundary types for each 2d cell of btop and bbot boundaries
+//bside value for side boundary (-1 to take values from 2d grid)
+int g3_extrude(void* obj, int nz, double* zvals,
+		int*  btop, int* bbot,
+		int bside, void** ret);
 
 //vec - [x0, y0, x1, y1] array defining vector of rotation
 //phi[n_phi] - increasing vector of angular partition (degree)
 //b1, b2 - boundary types for surfaces at minimum and maximum phi's
 //is_trian (bool) - whether to triangulate center cell
 //return NULL if failed
-CPortGrid3D* grid2_revolve(Grid* g, double* vec, int n_phi, double* phi,
-		Grid2DBoundaryStruct* bc,
-		int b1, int b2, int is_trian);
+int g3_revolve(void* obj, double* vec, int n_phi, double* phi,
+		int is_trian, int b1, int b2, void** ret);
 
 
 //======= unstructured fill
 //0 on fail
-int tetrahedral_fill(int nsurf, void** surf,
+int g3_tetrahedral_fill(int nsurf, void** surf,
 		int nconstr, void** constr,
 		int npts, double* pcoords, double* psizes,
-		void** ret,
-		hmcport_callback cb);
+		void** ret, hmcport_callback cb);
 
 
 //====== exporters
-//returns 0 on success
-int export_vtk_grid3(const CPortGrid3D* grid, const char* fname, hmcport_callback f2);
-int export_surface_vtk_grid3(const CPortGrid3D* grid, const char* fname, hmcport_callback f2);
-int export_msh_grid3(const CPortGrid3D* grid, const char* fname, const BoundaryNamesStruct* bnames,
+int g3_to_vtk(void* obj, const char* fname, hmcport_callback f2);
+int g3_surface_to_vtk(void* obj, const char* fname, hmcport_callback f2);
+int g3_to_msh(void* obj, const char* fname, BoundaryNamesStruct bnames,
 		int n_periodic, double* data_periodic, hmcport_callback f2);
-int export_gmsh_grid3(const CPortGrid3D* grid, const char* fname, const BoundaryNamesStruct* bnames,
+int g3_to_gmsh(void* obj, const char* fname, BoundaryNamesStruct bnames,
 		hmcport_callback f2);
-int export_tecplot_grid3(const CPortGrid3D* grid, const char* fname, const BoundaryNamesStruct* bnames,
+int g3_to_tecplot(void* obj, const char* fname, BoundaryNamesStruct bnames,
 		hmcport_callback f2);
-
-
-//returns not null on succes
-void* g3writer_create(const char* gname, CPortGrid3D* grid, void* awriter,
-		void* subnode, const char* fmt);
-void g3writer_free(void* gwriter);
-int g3writer_add_defined_field(void* gwriter, const char* field);
-void* g3reader_create(void* awriter, void* subnode, char* outname, hmcport_callback f2);
-CPortGrid3D* g3reader_getresult(void* rd);
-void g3reader_free(void* greader);
-
+int g3_to_hm(void* doc, void* node, void* obj, const char* name, const char* fmt,
+		int naf, const char** af,
+		hmcport_callback f2);
 }
 
 #endif

@@ -220,25 +220,30 @@ void test06(){
 	old_numering(g2d);
 	auto bc0 = [](int){return 0;};
 	{
-		HM3D::GridData g3d = RevolveGrid2D(g2d, {0, 90}, Point(0, 0), Point(0, 1), true, bc0, bc0, bc0);
+		for (auto e: g2d.vedges) e->boundary_type = 0;
+		HM3D::GridData g3d = RevolveGrid2D(g2d, {0, 90}, Point(0, 0), Point(0, 1),
+				true, 0, 0);
 		HM3D::Export::GridTecplot.Silent(g3d, "g1.dat");
 		add_file_check(16088294825526263046U, "g1.dat", "single cell, distant, incomplete");
 	}
 	{
-		auto g3d = RevolveGrid2D(g2d, {0, 90, 180, 270, 360}, Point(0, 0), Point(0, 1), true,
-				bc0, bc0, bc0);
+		for (auto e: g2d.vedges) e->boundary_type = 0;
+		auto g3d = RevolveGrid2D(g2d, {0, 90, 180, 270, 360}, Point(0, 0), Point(0, 1),
+				true, 0, 0);
 		HM3D::Export::GridTecplot.Silent(g3d, "g1.dat");
 		add_file_check(8732440237994901672U, "g1.dat", "single cell, distant, complete");
 	}
 	{
-		auto g3d = RevolveGrid2D(g2d, {0, 90, 100}, Point(0, 0), Point(0, 1), true,
-				[](int i){ return i; }, [](int){return 10;}, [](int){return 20;});
+		for (int i=0; i<g2d.vedges.size(); ++i) g2d.vedges[i]->boundary_type = i;
+		auto g3d = RevolveGrid2D(g2d, {0, 90, 100}, Point(0, 0), Point(0, 1),
+				true, 10, 20);
 		HM3D::Export::GridTecplot.Silent(g3d, "g1.dat");
 		add_file_check(3859847262675033285U, "g1.dat", "single cell, distant, incomplete, with bc");
 	}
 	{
 		auto h2d = HM2D::Grid::Constructor::RectGrid(Point(0, 0), Point(2, 1), 2, 1);
 		old_numering(h2d);
+		for (auto& e: h2d.vedges) e->boundary_type = 1;
 		auto g3d = RevolveGrid2D(h2d, {0, 90}, Point(0, 0), Point(0, 1), true);
 		HM3D::Export::GridTecplot.Silent(g3d, "g1.dat");
 		add_file_check(8233442907809870919U, "g1.dat", "with contact, incomplete");
@@ -246,6 +251,7 @@ void test06(){
 	{
 		auto h2d = HM2D::Grid::Constructor::RectGrid(Point(0, 0), Point(2, 1), 4, 3);
 		old_numering(h2d);
+		for (auto& e: h2d.vedges) e->boundary_type = 1;
 		auto g3d = RevolveGrid2D(h2d, {0, 90, 110, 180, 250, 330, 360}, Point(0, 0), Point(0, 1), true);
 		HM3D::Export::GridTecplot.Silent(g3d, "g1.dat");
 		add_file_check(5490115627065179709U, "g1.dat", "with contact, complete");
@@ -257,6 +263,7 @@ void test06(){
 		old_numering(g2);
 		auto g3 = HM2D::Grid::Algos::UniteGrids(g1, g2, HM2D::Grid::Algos::OptUnite());
 		old_numering(g3);
+		for (auto& e: g3.vedges) e->boundary_type = 1;
 		auto g3d = RevolveGrid2D(g3, {0, 10, 20, 30}, Point(0, 0), Point(0, 1), true);
 		HM3D::Export::GridTecplot.Silent(g3d, "g1.dat");
 		add_file_check(12980710001405184230U, "g1.dat", "hanging nodes near axis to tecplot");

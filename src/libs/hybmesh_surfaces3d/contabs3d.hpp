@@ -35,6 +35,8 @@ vector<EdgeFaceExtendedR> EdgeFaceExtended(const FaceData& data);
 vector<vector<int>> FaceFace(const FaceData& data);
 vector<vector<int>> FaceFace(const vector<EdgeFaceR>& edge_face, int nfaces);
 
+//Cell->Cell
+vector<vector<int>> CellCell(const CellData& data);
 
 
 }}

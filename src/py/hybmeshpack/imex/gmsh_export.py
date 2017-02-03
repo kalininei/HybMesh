@@ -1,4 +1,5 @@
 import itertools
+from hybmeshpack.hmcore import g3 as g3core
 
 
 def _write_list_to_file(lst, fname):
@@ -20,7 +21,7 @@ def _check_for_34_grid(grid):
     return c3, c4
 
 
-def grid2(fname, grid, btypes=None, cb=None):
+def grid2(fname, grid, btypes={}, cb=None):
     c3, c4 = _check_for_34_grid(grid)
     out = []
     out.append("$MeshFormat")
@@ -38,10 +39,7 @@ def grid2(fname, grid, btypes=None, cb=None):
     for v in raw_bt:
         if v not in bdict:
             try:
-                if v == 0:
-                    nm = "default_boundary"
-                else:
-                    nm = btypes[v]
+                nm = btypes[v]
             except:
                 nm = "".join(["boundary", str(v)])
             bdict[v] = nm
@@ -82,3 +80,8 @@ def grid2(fname, grid, btypes=None, cb=None):
     out.append("$EndElements")
 
     _write_list_to_file(out, fname)
+
+
+def grid3(fname, grid, btypes={}, cb=None):
+    """ btypes: {bindex: bname} """
+    g3core.to_gmsh(grid.cdata, fname, btypes, cb)

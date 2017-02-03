@@ -74,9 +74,9 @@ struct revolve_builder{
 		}
 		return ret;
 	}
-	void side_boundary(std::function<int(int)>& f){
+	void side_boundary(){
 		for (int i=0; i<g2->vedges.size(); ++i) if (g2->vedges[i]->is_boundary()){
-			int b = f(i);
+			int b = g2->vedges[i]->boundary_type;
 			auto emp = boundary_types.emplace(b, vector<int>());
 			vector<int>& inp = emp.first->second;
 			for (int j=0; j<Nsurf_wc; ++j){
@@ -85,18 +85,18 @@ struct revolve_builder{
 			}
 		}
 	}
-	void afirst_boundary(std::function<int(int)>& f){
+	void afirst_boundary(int f){
 		for (int i=0; i<g2->vcells.size(); ++i){
-			int b = f(i);
+			int b = f;
 			auto emp = boundary_types.emplace(b, vector<int>());
 			vector<int>& inp = emp.first->second;
 			int find = planar_face3[0][i];
 			if (find >= 0) inp.push_back(find);
 		}
 	}
-	void alast_boundary(std::function<int(int)>& f){
+	void alast_boundary(int f){
 		for (int i=0; i<g2->vcells.size(); ++i){
-			int b = f(i);
+			int b = f;
 			auto emp = boundary_types.emplace(b, vector<int>());
 			vector<int>& inp = emp.first->second;
 			int find = planar_face3[Nsurf-1][i];
@@ -741,14 +741,14 @@ struct EdRevert{
 
 HM3D::GridData cns::RevolveGrid2D(const HM2D::GridData& g2d, const vector<double>& phi_coords,
 		Point pstart, Point pend, bool is_trian,
-		std::function<int(int)> side_bt, std::function<int(int)> bt1, std::function<int(int)> bt2){
+		int bt1, int bt2){
 	//temporary revert edges of g2 so that: first()->id < last()->id for backward compatibility
 	EdRevert er(g2d);
 	//topology
 	auto dt = revolve_builder_factory(g2d, phi_coords, pstart, pend, is_trian);
 	dt->process();
 	//boundary condition
-	dt->side_boundary(side_bt);
+	dt->side_boundary();
 	if (!dt->iscomplete){
 		dt->afirst_boundary(bt1);
 		dt->alast_boundary(bt2);

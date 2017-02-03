@@ -154,8 +154,18 @@ EdgeData Connect(const EdgeData& data, Vertex v);
 vector<double> Volumes(const CellData& cd);
 double SumVolumes(const CellData& cd);
 
-void Unscale2D(VertexData& v, const ScaleBase& sc);
+//split procedures
+vector<FaceData> SplitData(const FaceData& data);
+vector<CellData> SplitData(const CellData& data);
+vector<GridData> SplitData(const GridData& data);
 
+//scaling procedures
+ScaleBase3 Scale01(VertexData&, double a=1);
+ScaleBase3 Scale01(FaceData&, double a=1);
+void Scale(VertexData&, const ScaleBase3& sc);
+void Scale(FaceData&, const ScaleBase3& sc);
+void Unscale(VertexData&, const ScaleBase3& sc);
+void Unscale(FaceData&, const ScaleBase3& sc);
 
 }
 

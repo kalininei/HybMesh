@@ -79,8 +79,10 @@ def add_unf_circ_grid(p0, rad=1.0, na=8, nr=4, coef=1.0, is_trian=True,
     :param bool is_trian: True if center cell should be triangulated
 
     :param float-or-list-of-floats custom_rads:
+        user defined radious partition
 
     :param float-or-list-of-floats custom_archs:
+        user defined arch partition
 
     :param int bnd: boundary type for outer contour
 
@@ -93,6 +95,7 @@ def add_unf_circ_grid(p0, rad=1.0, na=8, nr=4, coef=1.0, is_trian=True,
     If **custom_rads** is given as a single value it will be used
     as a constant step along radial axis hence **nr** and **coef** arguments
     will be ignored. If it is given as a list of increasing values
+    starting from zero
     then it is parsed as explicit radius partition. Hence the
     last entry of this list will be the radius of the resulting grid
     and **rad** parameter will also be ignored.
@@ -148,7 +151,7 @@ def add_unf_ring_grid(p0, radinner, radouter,
        * ``coef > 1``: refinement towards center of circle
        * ``0 < coef < 1``: refinement towards outer arc
 
-    :param int-or-list-of-int: boundary types for inner and outer
+    :param int-or-list-of-int bnd: boundary types for inner and outer
        ring boundaries
 
     :return: created grid identifier

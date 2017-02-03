@@ -41,7 +41,7 @@ def skewness(obj, threshold):
     badindex = ct.POINTER(ct.c_int)()
     badvals = ct.POINTER(ct.c_double)()
 
-    ccall(cport.g2_skewness, obj,
+    ccall(cport.g2_skewness, obj, threshold,
           ct.byref(maxskew), ct.byref(maxskewindex),
           ct.byref(badnum), ct.byref(badindex), ct.byref(badvals))
 
@@ -100,14 +100,13 @@ def rotate(obj, x0, y0, angle):
 def set_bnd(obj, bndlist, for_all_edges):
     nb = dims(obj)[1] if for_all_edges else bnd_dims(obj)[1]
     bndlist = list_to_c(supplement(bndlist, nb), int)
-    nbndlist = ct.c_int(nb)
     for_all_edges = ct.c_int(for_all_edges)
-    ccall(cport.g2_set_bnd, obj, nbndlist, bndlist, for_all_edges)
+    ccall(cport.g2_set_btypes, obj, bndlist, for_all_edges)
 
 
 def extract_contour(obj):
     ret = ct.c_void_p()
-    ccall(cport.g2_extract_contour, ct.byref(ret))
+    ccall(cport.g2_extract_contour, obj, ct.byref(ret))
     return ret
 
 
@@ -127,18 +126,18 @@ def raw_data(obj, what):
         ret = (ct.c_int * d[2])()
         ccall(cport.g2_tab_cellsizes, obj, ret)
     elif what == 'cell-vert':
-        nret, ret2 = ct.c_int, ct.POINTER(ct.c_int)
+        nret, ret2 = ct.c_int(), ct.POINTER(ct.c_int)()
         ccall(cport.g2_tab_cellvert, obj, ct.byref(nret), ct.byref(ret2))
         ret = move_to_static(nret, ret2, int)
     elif what == 'cell-edge':
-        nret, ret2 = ct.c_int, ct.POINTER(ct.c_int)
+        nret, ret2 = ct.c_int(), ct.POINTER(ct.c_int)()
         ccall(cport.g2_tab_celledge, obj, ct.byref(nret), ct.byref(ret2))
         ret = move_to_static(nret, ret2, int)
     elif what == 'centers':
         ret = ((ct.c_double * d[2]) * 2)()
         ccall(cport.g2_tab_centers, obj, ret)
     elif what == 'bedges':
-        nret, ret2 = ct.c_int, ct.POINTER(ct.c_int)
+        nret, ret2 = ct.c_int(), ct.POINTER(ct.c_int)()
         ccall(cport.g2_tab_bedges, obj, ct.byref(nret), ct.byref(ret2))
         ret = move_to_static(nret, ret2, int)
     else:
@@ -244,7 +243,7 @@ def build_tri_grid(verts, nedge, bnds):
     nedge = ct.c_int(nedge)
     bnds = list_to_c(supplement(bnds, 3), int)
     ret = ct.c_void_p()
-    ccall(cport.g2_tri_grid, verts, nedge, bnds, ct.by_ref(ret))
+    ccall(cport.g2_tri_grid, verts, nedge, bnds, ct.byref(ret))
     return ret
 
 
@@ -295,7 +294,7 @@ def stripe_grid(obj, partition, tipalgo, bnd, cb):
     partition = list_to_c(partition, float)
     bnd = list_to_c(supplement(bnd, 4), int)
     ret = ct.c_void_p()
-    ccall_cb(cport.g2_stripe_grid, cb,
+    ccall_cb(cport.g2_stripe_grid, cb, obj,
              npartition, partition, tipalgo, bnd, ct.byref(ret))
     return ret
 
@@ -314,8 +313,8 @@ def map_grid(base_obj, target_obj, base_points, target_points,
     ret = ct.c_void_p()
 
     ccall_cb(cport.g2_map_grid, cb, base_obj, target_obj,
-             npoints, base_points, target_points,
-             snap, bt_from_contour, algo, is_reversed, rinvalid)
+             npoints, base_points, target_points, snap,
+             bt_from_contour, algo, is_reversed, rinvalid, ct.byref(ret))
     return ret
 
 
@@ -329,14 +328,14 @@ def simplify_grid_boundary(obj, angle):
 def convex_cells(obj, angle):
     angle = ct.c_double(angle)
     ret = ct.c_void_p()
-    ccall(cport.g2_convect_cells, obj, angle, ct.byref(ret))
+    ccall(cport.g2_convex_cells, obj, angle, ct.byref(ret))
     return ret
 
 
-def grid_excl_cont(obj, isinner, cb):
+def grid_excl_cont(obj, cont, isinner, cb):
     isinner = ct.c_int(isinner)
     ret = ct.c_void_p()
-    ccall_cb(cport.g2_exclude_cont, cb, obj, ct.byref(ret))
+    ccall_cb(cport.g2_exclude_cont, cb, obj, cont, isinner, ct.byref(ret))
     return ret
 
 
@@ -347,7 +346,8 @@ def unite_grids(obj1, obj2, buf, fixbnd, emptyholes, angle0, filler, cb):
     angle0 = ct.c_double(angle0)
     ret = ct.c_void_p()
     ccall_cb(cport.g2_unite_grids, cb,
-             obj1, obj2, buf, fixbnd, emptyholes, angle0, filler)
+             obj1, obj2, buf, fixbnd, emptyholes, angle0, filler,
+             ct.byref(ret))
     return ret
 
 
@@ -355,7 +355,7 @@ def to_msh(obj, fname, btypes, per_data, cb=None):
     fname = fname.encode('utf-8')
     btypes = CBoundaryNames(btypes)
     n_per_data = ct.c_int(len(per_data) / 3)
-    per_data = list_to_c(per_data, 'int')
+    per_data = list_to_c(per_data, int)
     ccall(cport.g2_to_msh, obj, fname, btypes, n_per_data, per_data)
 
 

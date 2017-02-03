@@ -80,6 +80,9 @@ vector<vector<A>> EColReader::read_vecfield(HMXML::Reader& rd, int num){
 }
 
 // ===================================== Grid
+GridData GridFromTabs(const vector<double> vert, const vector<int>& edgevert,
+		const vector<int>& edgecell);
+
 struct GridReader{
 	GridReader(HMXML::ReaderA* preader, HMXML::Reader* subnode);
 	std::unique_ptr<GridData> result;

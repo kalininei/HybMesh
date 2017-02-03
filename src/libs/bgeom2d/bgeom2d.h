@@ -155,11 +155,11 @@ struct ScaleBase{
 		return doscale(cont.begin(), cont.end());
 	}
 	template<class FirstIter, class LastIter>
-	static ScaleBase doscale(FirstIter start, LastIter end) noexcept{
+	static ScaleBase doscale(FirstIter start, LastIter end, double a=1.0) noexcept{
 		if (start >= end) return ScaleBase();
 		auto p0 = Point::GetBot(start, end);
 		auto pdif = Point::GetTop(start, end) - p0;
-		double L = std::max(pdif.x, pdif.y);
+		double L = std::max(pdif.x, pdif.y) / a;
 		ScaleBase ret(p0.x, p0.y, L);
 		ret.scale(start, end);
 		return ret;

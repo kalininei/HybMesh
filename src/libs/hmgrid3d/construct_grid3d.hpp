@@ -29,6 +29,15 @@ HM3D::GridData SweepGrid2D(const HM2D::GridData& g2d, const vector<double>& zcoo
 		std::function<int(int)> bottom_bt,     //(g2d cell index) -> boundary type
 		std::function<int(int)> top_bt,        //(g2d cell index) -> boundary type
 		std::function<int(int)> side_bt);      //(g2d edge index) -> boundary type
+HM3D::GridData SweepGrid2D(const HM2D::GridData& g2d, const vector<double>& zcoords,
+		std::function<int(int)> bottom_bt,     //(g2d cell index) -> boundary type
+		std::function<int(int)> top_bt);       //(g2d cell index) -> boundary type
+		                                       //side boundary type will be taken from g2d
+HM3D::GridData SweepGrid2D(const HM2D::GridData& g2d, const vector<double>& zcoords,
+		std::function<int(int)> bottom_bt,     //(g2d cell index) -> boundary type
+		std::function<int(int)> top_bt,        //(g2d cell index) -> boundary type
+		int side_bt);                          //constant side boundary type
+
 
 }}
 

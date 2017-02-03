@@ -18,6 +18,9 @@ struct TGridGMSH: public HMCallback::ExecutorBase{
 	void _run(const Ser::Grid& g, std::string fn);
 	void _run(const Ser::Grid& g, std::string fn, BFun func);
 
+	void _run(const GridData& a, std::string b){ return _run(Ser::Grid(a), b); }
+	void _run(const GridData& a, std::string b, BFun c) { return _run(Ser::Grid(a), b, c); }
+
 };
 extern HMCallback::FunctionWithCallback<TGridGMSH> GridGMSH;
 

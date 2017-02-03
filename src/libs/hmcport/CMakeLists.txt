@@ -1,15 +1,18 @@
 #library file
 set (HEADERS
 	hmcport.h
+	cport_hmxml.h
 	cport_grid2d.h
 	cport_grid3d.h
 	cport_cont2d.h
 	cport_surface3d.h
+	c2cpp_helper.hpp
 	tscaler.hpp
 )
 
 set (SOURCES
 	hmcport.cpp
+	cport_hmxml.cpp
 	cport_grid2d.cpp
 	cport_grid3d.cpp
 	cport_cont2d.cpp

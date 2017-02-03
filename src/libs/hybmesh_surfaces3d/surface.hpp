@@ -17,9 +17,8 @@ double Volume(const FaceData& fc);
 FaceData GridSurface(const HM3D::GridData& g);
 std::map<int, FaceData> GridSurfaceBType(const HM3D::GridData& g);
 
-//subsurfaces
+//subsurface
 FaceData SubSurface(const FaceData& s, const Vertex* v);
-vector<FaceData> AllSubSurfaces(const FaceData& s);
 
 //extract smooth surface sections with normal deviations less than angle(deg)
 vector<FaceData> ExtractSmooth(const FaceData& s, double angle);

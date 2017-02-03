@@ -112,20 +112,7 @@ vector<EdgeData> SplitData(const EdgeData& data);
 vector<CellData> SplitData(const CellData& data);
 vector<GridData> SplitData(const GridData& data);
 
-//extract procedures
-VertexData AllVertices(const EdgeData& from);
-VertexData AllVertices(const CellData& from);
-EdgeData AllEdges(const CellData& from);
-std::tuple<VertexData> AllPrimitives(const EdgeData& from);
-std::tuple<VertexData, EdgeData> AllPrimitives(const CellData& from);
-
-double Length(const EdgeData&);
-vector<double> ELengths(const EdgeData&);
-
-BoundingBox BBox(const VertexData&, double eps=0.);
-BoundingBox BBox(const EdgeData&, double eps=0.);
-BoundingBox BBox(const CellData&, double eps=0.);
-
+//scaling procedures
 ScaleBase Scale01(EdgeData&, double a=1);
 ScaleBase Scale01(VertexData&, double a=1);
 void Scale(EdgeData&, const ScaleBase& sc);
@@ -133,6 +120,21 @@ void Scale(VertexData&, const ScaleBase& sc);
 void Unscale(EdgeData&, const ScaleBase& sc);
 void Unscale(VertexData&, const ScaleBase& sc);
 
+//build bounding box
+BoundingBox BBox(const VertexData&, double eps=0.);
+BoundingBox BBox(const EdgeData&, double eps=0.);
+BoundingBox BBox(const CellData&, double eps=0.);
+
+//extract procedures
+VertexData AllVertices(const EdgeData& from);
+VertexData AllVertices(const CellData& from);
+EdgeData AllEdges(const CellData& from);
+std::tuple<VertexData> AllPrimitives(const EdgeData& from);
+std::tuple<VertexData, EdgeData> AllPrimitives(const CellData& from);
+
+//lengths
+double Length(const EdgeData&);
+vector<double> ELengths(const EdgeData&);
 }
 
 #endif

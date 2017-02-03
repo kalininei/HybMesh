@@ -56,19 +56,12 @@ def rotate(obj, x0, y0, angle):
 
 
 def build_from_points(pts, force_closed, bnds):
-    if len(pts) == 0:
-        return None
-    pts = concat(pts)
-    if force_closed and (pts[0][0] != pts[-1][0] or pts[0][1] != pts[-1][1]):
-        pts.extend(pts[:2])
-
-    ned = len(pts) / 2
-    bnds = supplement(bnds, ned)
-
+    bnds = list_to_c(supplement(bnds, len(pts)), int)
+    force_closed = ct.c_int(force_closed)
+    npts = ct.c_int(len(pts))
+    pts = list_to_c(concat(pts))
     ret = ct.c_void_p()
-    pts = list_to_c(pts, float)
-    bnds = list_to_c(bnds, int)
-    ccall(cport.c2_frompoints, pts, bnds, ct.byref(ret))
+    ccall(cport.c2_frompoints, npts, pts, bnds, force_closed, ct.byref(ret))
     return ret
 
 
@@ -193,7 +186,7 @@ def connect_subcontours(objs, fx, close, shift):
     nfx = ct.c_int(len(fx))
     shift = ct.c_int(shift)
     ret = ct.c_void_p()
-    ccall(cport.c2_connect_subcontours, nobjs, objs, nfx, fx, shift,
+    ccall(cport.c2_connect_subcontours, nobjs, objs, nfx, fx, shift, close,
           ct.byref(ret))
     return ret
 

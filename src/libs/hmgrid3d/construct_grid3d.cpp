@@ -116,6 +116,21 @@ GridData cns::SweepGrid2D(const HM2D::GridData& g, const vector<double>& zcoords
 			[](int){ return 3; });
 }
 
+HM3D::GridData cns::SweepGrid2D(const HM2D::GridData& g2d, const vector<double>& zcoords,
+		std::function<int(int)> bottom_bt,
+		std::function<int(int)> top_bt){
+	return SweepGrid2D(g2d, zcoords, bottom_bt, top_bt,
+			[&g2d](int i){ return g2d.vedges[i]->boundary_type; });
+}
+
+HM3D::GridData cns::SweepGrid2D(const HM2D::GridData& g2d, const vector<double>& zcoords,
+		std::function<int(int)> bottom_bt,
+		std::function<int(int)> top_bt,
+		int side_bt){
+	return SweepGrid2D(g2d, zcoords, bottom_bt, top_bt,
+			[side_bt](int){ return side_bt; });
+}
+
 GridData cns::SweepGrid2D(const HM2D::GridData& g, const vector<double>& zcoords,
 		std::function<int(int)> bottom_bt,
 		std::function<int(int)> top_bt,

@@ -3,6 +3,7 @@
 #include "debug3d.hpp"
 #include "contabs3d.hpp"
 #include "surface.hpp"
+#include "hmgraph.hpp"
 
 using namespace HM3D;
 
@@ -491,10 +492,60 @@ void HM3D::DeepCopy(const GridData& from, GridData& to, int level){
 	for (auto& f: c->faces) f = to.vfaces[f->id];
 }
 
-void HM3D::Unscale2D(VertexData& vd, const ScaleBase& sc){
-	for (auto& v: vd){
-		v->x = (v->x * sc.L) + sc.p0.x;
-		v->y = (v->y * sc.L) + sc.p0.y;
-		v->z = (v->z * sc.L);
+ScaleBase3 HM3D::Scale01(VertexData& obj, double a1){
+	return ScaleBase3::doscale(obj, 1);
+}
+ScaleBase3 HM3D::Scale01(FaceData& obj, double a){
+	auto av = AllVertices(obj);
+	return Scale01(av, a);
+}
+void HM3D::Scale(VertexData& obj, const ScaleBase3& sc){
+	sc.scale(obj.begin(), obj.end());
+}
+void HM3D::Scale(FaceData& obj, const ScaleBase3& sc){
+	auto av = AllVertices(obj);
+	Scale(av, sc);
+}
+void HM3D::Unscale(VertexData& obj, const ScaleBase3& sc){
+	sc.unscale(obj.begin(), obj.end());
+}
+void HM3D::Unscale(FaceData& obj, const ScaleBase3& sc){
+	auto av = AllVertices(obj);
+	Unscale(av, sc);
+}
+vector<FaceData> HM3D::SplitData(const FaceData& data){
+	vector<vector<int>> ff = Connectivity::FaceFace(data);
+	vector<vector<int>> sg = HMMath::Graph::SplitGraph(ff);
+	vector<FaceData> ret;
+	for (auto& g: sg){
+		ret.emplace_back();
+		for (auto& gg: g){
+			ret.back().push_back(data[gg]);
+		}
 	}
+	return ret;
+}
+
+vector<CellData> HM3D::SplitData(const CellData& data){
+	vector<vector<int>> cc = Connectivity::CellCell(data);
+	vector<vector<int>> sg = HMMath::Graph::SplitGraph(cc);
+	vector<CellData> ret;
+	for (auto& g: sg){
+		ret.emplace_back();
+		for (auto& gg: g){
+			ret.back().push_back(data[gg]);
+		}
+	}
+	return ret;
+}
+
+vector<GridData> HM3D::SplitData(const GridData& data){
+	vector<CellData> c = SplitData(data.vcells);
+	vector<GridData> ret(c.size());
+	for (int i=0; i<c.size(); ++i){
+		ret[i].vcells = std::move(c[i]);
+		ret[i].vedges = AllEdges(ret[i].vcells);
+		ret[i].vvert = AllVertices(ret[i].vedges);
+	}
+	return ret;
 }

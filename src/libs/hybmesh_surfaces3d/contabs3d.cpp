@@ -66,3 +66,16 @@ vector<vector<int>> ct::FaceFace(const vector<EdgeFaceR>& edge_face, int nfaces)
 	}
 	return ret;
 }
+
+vector<vector<int>> ct::CellCell(const CellData& data){
+	vector<vector<int>> ret(data.size());
+	auto af = AllFaces(data);
+	aa::enumerate_ids_pvec(data);
+	for (auto f: af) if (!f->is_boundary()){
+		auto c1 = f->left.lock()->id;
+		auto c2 = f->right.lock()->id;
+		ret[c1].push_back(c2);
+		ret[c2].push_back(c1);
+	}
+	return ret;
+}
