@@ -34,6 +34,14 @@ EdgeData Tree::alledges() const {
 	return ret;
 };
 
+EdgeData Tree::alledges_bound() const {
+	EdgeData ret;
+	for (auto& n: bound_contours()){
+		ret.insert(ret.end(), n->contour.begin(), n->contour.end());
+	}
+	return ret;
+};
+
 void Tree::remove_detached(){
 	auto s = std::remove_if(nodes.begin(), nodes.end(), [&](shared_ptr<TNode> nd){
 			return nd->isdetached(); });

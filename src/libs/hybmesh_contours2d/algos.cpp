@@ -39,7 +39,11 @@ Tree cal::Simplified(const Tree& t1){
 
 EdgeData cal::Simplified(const EdgeData& cont){
 	auto p = CornerPoints(cont);
-	return Assembler::Contour1(p, IsClosed(cont));
+	EdgeData ret = Assembler::Contour1(p, IsClosed(cont));
+	auto op = OrderedPoints(cont);
+	aa::enumerate_ids_pvec(op);
+	for (auto& e: ret) e->boundary_type = cont[e->pfirst()->id]->boundary_type;
+	return ret;
 }
 
 namespace{
@@ -79,7 +83,6 @@ auto to_keep(Edge* e0, Edge* e1, double angle, double a0, bool bt_nobreak,
 	if (Finder::Contains(keep, v0)) return true;
 	return false;
 };
-
 
 void reset_start_for_closed(EdgeData& c, vector<double>& a, double a0, bool bt_nobreak,
 		const VertexData& keep){
@@ -151,7 +154,7 @@ EdgeData eal::Simplified(const EdgeData& ecol, double degree_angle, bool bt_nobr
 				int j1 = bba[j];
 				int j2 = bba[j+1];
 				ret.push_back(std::make_shared<Edge>(op[j1], op[j2]));
-				ret.back()->id = c[j]->id;
+				ret.back()->boundary_type = c[j]->boundary_type;
 			}
 		}
 	}
@@ -402,5 +405,54 @@ void cal::RemovePoints(EdgeData& data, vector<int> ipnt){
 			data[in-1] = newe;
 			data.erase(data.begin()+in);
 		}
+	}
+}
+
+vector<int> cal::BTypesFromWeights(const EdgeData& cont, const vector<double>& w){
+	assert(Contour::IsContour(cont));
+	vector<int> ret;
+	vector<double> ew = HM2D::Contour::EWeights(cont);
+
+	auto wbegin = w.begin();
+	for (int i=0; i<ew.size(); ++i){
+		auto fnd = std::upper_bound(wbegin, w.end(), ew[i]);
+		if (fnd != w.begin()) --fnd;
+		wbegin = fnd;
+		ret[i] = cont[fnd - w.begin()]->boundary_type;
+	}
+
+	assert(cont.size() == ret.size());
+	return ret;
+}
+
+void eal::AssignBTypes(const EdgeData& from, EdgeData& to){
+	//if all from edges have same bt
+	vector<int> bt(from.size());
+	for (int i=0; i<from.size(); ++i) bt[i] = from[i]->boundary_type;
+	if (all_of(bt.begin(), bt.end(), [&bt](int a){ return a == bt[0]; })){
+		for (auto& e: to) e->boundary_type = bt[0];
+	}
+	//using custom Finder::ClosestEdge implementation
+	//to use epsilon comparison instead of '<'. 
+	//This is done to guarantee that amoung all equal distanced 'from'
+	//edges the first one will be taken.
+	for (auto& e: from){
+		Point p = e->center();
+		double mindist = std::numeric_limits<double>::max();
+		int imin = -1;
+
+		for (int i=0; i<to.size(); ++i){
+			double meas = Point::meas_section(p, *to[i]->pfirst(), *to[i]->plast());
+			if (meas < geps * geps){
+				e->boundary_type = to[i]->boundary_type;
+				break;
+			}
+			meas = sqrt(meas);
+			if (meas < mindist - geps){
+				imin = i;
+				mindist = meas;
+			}
+		}
+		e->boundary_type = to[imin]->boundary_type;
 	}
 }

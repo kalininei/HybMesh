@@ -174,8 +174,9 @@ void Export::SurfaceWriter::_fill(const Ser::Surface& s,
 	std::vector<int> bt = s.btypes();
 	int minv = *std::min_element(bt.begin(), bt.end());
 	int maxv = *std::max_element(bt.begin(), bt.end());
-	if (minv == maxv && minv == 0) return;
-	if (minv >-128 && maxv < 128){
+	if (minv == maxv && minv == 0) {
+		//pass
+	} else if (minv >-128 && maxv < 128){
 		std::vector<char> btchar(bt.begin(), bt.end());
 		AddFaceData("__boundary_types__", btchar, is_binary<char>());
 	} else {

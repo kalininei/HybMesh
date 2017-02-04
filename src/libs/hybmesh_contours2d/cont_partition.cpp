@@ -4,6 +4,7 @@
 #include "cont_assembler.hpp"
 #include "treverter2d.hpp"
 #include "finder2d.hpp"
+#include "algos.hpp"
 
 using namespace HM2D;
 using namespace HM2D::Contour;
@@ -246,24 +247,28 @@ std::map<double, double> build_substep(std::map<double, double> step,
 //build a new contour based on input contour begin/end points
 template<class A>
 EdgeData partition_core(A& step, const EdgeData& contour){
+	//get weights
 	vector<double> w = partition_new_points_w(step, contour);
-	if (w.size() == 2){
-		EdgeData ret;
-		ret.emplace_back(new Edge{First(contour), Last(contour)});
-		return ret;
-	}
-	if (w.size()<2){
-		partition_core(step, contour);
-	}
+	assert(w.size() >= 2);
+
+	//Construct new contour taking first and last point from old contour
 	vector<double> w2(w.begin()+1, w.end()-1);
 	vector<Point> wp = WeightPoints(contour, w2);
-	//Construct new contour
 	VertexData cpoints;
 	cpoints.push_back(First(contour));
 	std::transform(wp.begin(), wp.end(), std::back_inserter(cpoints),
 			[](const Point& x){ return std::make_shared<Vertex>(x); });
 	cpoints.push_back(Last(contour));
-	return Assembler::Contour1(cpoints);
+	EdgeData ret = Assembler::Contour1(cpoints);
+
+	//assign boundary type
+	vector<double> wcenters(w.size()-1);
+	for (int i=0; i<w.size()-1; ++i) wcenters[i] = (w[i] + w[i+1])/2.;
+	vector<int> bt = HM2D::Contour::Algos::BTypesFromWeights(contour, wcenters);
+	for (int i=0; i<ret.size(); ++i){
+		ret[i]->boundary_type = bt[i];
+	}
+	return ret;
 }
 
 template<class A>

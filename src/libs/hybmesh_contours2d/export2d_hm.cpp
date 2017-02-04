@@ -55,6 +55,21 @@ Export::EColWriter::EColWriter(const EdgeData& c,
 	ewriter = cwriter.new_child("EDGES");
 	auto vconnectwriter = ewriter.new_child("VERT_CONNECT");
 	writer->set_num_content(edgeconnect, vconnectwriter, is_binary<int>());
+
+	//boundary types
+	vector<int> bt(c.size(), 0);
+	for (int i=0; i<c.size(); ++i) bt[i] = c[i]->boundary_type;
+	//calculate min and max to select best storage type
+	int minv = *std::min_element(bt.begin(), bt.end());
+	int maxv = *std::max_element(bt.begin(), bt.end());
+	if (minv == maxv && minv == 0){
+		//pass
+	} else if (minv >-128 && maxv < 128){
+		std::vector<char> btchar(bt.begin(), bt.end());
+		AddEdgeData("__boundary_types__", btchar, is_binary<char>());
+	} else {
+		AddEdgeData("__boundary_types__", bt, is_binary<int>());
+	}
 }
 
 
@@ -175,6 +190,21 @@ Export::GridWriter::GridWriter(const GridData& g,
 
 	//cells
 	cwriter = gwriter.new_child("CELLS");
+
+	//boundary types
+	vector<int> bt(g.vedges.size(), 0);
+	for (int i=0; i<g.vedges.size(); ++i) bt[i] = g.vedges[i]->boundary_type;
+	//calculate min and max to select best storage type
+	int minv = *std::min_element(bt.begin(), bt.end());
+	int maxv = *std::max_element(bt.begin(), bt.end());
+	if (minv == maxv && minv == 0){
+		//pass
+	} else if (minv >-128 && maxv < 128){
+		std::vector<char> btchar(bt.begin(), bt.end());
+		AddEdgeData("__boundary_types__", btchar, is_binary<char>());
+	} else {
+		AddEdgeData("__boundary_types__", bt, is_binary<int>());
+	}
 }
 
 void Export::GridWriter::AddCellVertexConnectivity(){

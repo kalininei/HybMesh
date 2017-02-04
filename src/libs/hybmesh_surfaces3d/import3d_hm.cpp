@@ -68,7 +68,7 @@ Import::GridReader::TFieldInfo::TFieldInfo(HMXML::Reader& field){
 HMCallback::FunctionWithCallback<Import::TReadHMC> Import::ReadHMC;
 
 std::unique_ptr<Import::SurfaceReader> Import::TReadHMC::_run(HMXML::ReaderA* reader, HMXML::Reader* subnode){
-	callback->silent_step_after(50, "Reading data", 3);
+	callback->silent_step_after(50, "Reading data", 4);
 	std::unique_ptr<Import::SurfaceReader> ret(new SurfaceReader(reader, subnode));
 	//read dimensions
 	ret->psreader->value_int("N_VERTICES", ret->Nv, true);
@@ -90,15 +90,16 @@ std::unique_ptr<Import::SurfaceReader> Import::TReadHMC::_run(HMXML::ReaderA* re
 	tmp = ret->psreader->find_by_path("FACES/EDGE_CONNECT", true);
 	vector<vector<int>> faceedge = ret->preader->read_num_content(tmp, ret->Nf).vecvec<int>();
 
-	//constructing serialized grid
-	ret->result.reset(new Ser::Surface());
-	vector<int> btypes(ret->Nf, 0);
 	//boundary conditions
+	callback->subprocess_step_after(1);
+	vector<int> btypes(ret->Nf, 0);
 	try{
 		btypes = ret->read_faces_field<int>("__boundary_types__");
 	} catch (const XmlElementNotFound&){
 	}
 
+	//constructing serialized grid
+	ret->result.reset(new Ser::Surface());
 	callback->step_after(50, "Assembling surface");
 	ret->result->fill_from_serial(vert, edgevert, faceedge, btypes);
 

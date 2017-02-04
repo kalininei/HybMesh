@@ -9,6 +9,7 @@
 #include "contclipping.hpp"
 #include "healgrid.hpp"
 #include "finder2d.hpp"
+#include "cont_assembler.hpp"
 using namespace HM2D;
 using namespace HM2D::Grid;
 
@@ -217,30 +218,47 @@ GridData Algos::TCombineGrids::_run(const GridData& g1, const GridData& g2){
 	callback->step_after(10, "Building graphs");
 	Contour::Tree c1 = Contour::Tree::GridBoundary(g1);
 	Contour::Tree c2 = Contour::Tree::GridBoundary(g2);
+
 	//2) input data to wireframe format
 	Impl::PtsGraph w1(g1);
 	Impl::PtsGraph w2(g2);
+
 	//3) cut outer grid with inner grid contour
 	callback->step_after(30, "Overlay procedures", 2, 1);
 	w1 = Impl::PtsGraph::cut(w1, c2, INSIDE);
+
 	//4) overlay grids
 	callback->subprocess_step_after(1);
 	w1 = Impl::PtsGraph::overlay(w1, w2);
+
 	//5) build single connected grid
 	callback->step_after(30, "Assembling grid");
 	GridData ret = w1.togrid();
+
 	//6) filter out all cells which lie outside gmain and gsec contours
 	//if gmain and gsec are not simple structures
-	callback->step_after(30, "Simplifications");
+	callback->step_after(25, "Simplifications");
 	auto intersect = HM2D::Contour::Clip::Union(c1, c2);
 	bool issimple = true;
 	if (intersect.nodes.size() != intersect.roots().size()){ issimple = false; }
 	if (!issimple){
 		RemoveCells(ret, intersect, OUTSIDE);
 	}
+
 	//7) get rid of hanging + non-significant + boundary nodes
 	//   They appear if boundaries of gmain and gsec partly coincide
 	Grid::Algos::SimplifyBoundary(ret, 0);
+
+	//8) boundary types
+	callback->step_after(5, "Assign boundary types");
+	//placing second (overlaid) grid edges first to guarantee
+	//them to be found before first (base) grid edges if they are equal.
+	EdgeData ic1 = c1.alledges();
+	EdgeData ic2 = c2.alledges();
+	ic2.insert(ic2.end(), ic1.begin(), ic1.end());
+	EdgeData rc = HM2D::ECol::Assembler::GridBoundary(ret);
+	HM2D::ECol::Algos::AssignBTypes(ic2, rc);
+
 	return ret;
 }
 
@@ -308,10 +326,20 @@ GridData Algos::TSubstractArea::_run(const GridData& g1, const Contour::Tree& ar
 	callback->subprocess_fin();
 
 	//assembling the result
-	callback->step_after(10, "Assembling the result");
+	callback->step_after(5, "Assembling the result");
 	for (int i=1; i<gg.size(); ++i){
 		Algos::ShallowAdd(gg[i], gg[0]);
 	}
+
+	callback->step_after(5, "Assign boundary types");
+	//place area boundary before grid boundary to
+	//guarantee higher priority of area edges.
+	EdgeData cd = area.alledges_bound();
+	EdgeData gd = HM2D::ECol::Assembler::GridBoundary(g1);
+	cd.insert(cd.end(), gd.begin(), gd.end());
+	EdgeData rd = HM2D::ECol::Assembler::GridBoundary(gg[0]);
+	HM2D::ECol::Algos::AssignBTypes(cd, rd);
+
 
 	return gg[0];
 }

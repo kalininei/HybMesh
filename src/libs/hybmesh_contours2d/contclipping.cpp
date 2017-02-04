@@ -6,6 +6,35 @@
 namespace ci = HM2D::Contour::Clip;
 using namespace ci;
 
+namespace {
+TRet assign_btypes(const ECont& c1, const ECont& c2, TRet&& ret){
+	ECont ac = c1;
+	ac.insert(ac.end(), c2.begin(), c2.end());
+	ECont ae = ret.alledges();
+	HM2D::ECol::Algos::AssignBTypes(ac, ae);
+	return ret;
+}
+TRet assign_btypes(const vector<ECont>& c1, TRet&& ret){
+	if (c1.size() == 0) return ret;
+	ECont ac = c1[0];
+	for (int i=1; i<c1.size(); ++i){
+		ac.insert(ac.end(), c1[i].begin(), c1[i].end());
+	}
+	ECont ae = ret.alledges();
+	HM2D::ECol::Algos::AssignBTypes(ac, ae);
+	return ret;
+}
+TRet assign_btypes(const ECont& c1, const vector<ECont>& c2, TRet&& ret){
+	ECont ac = c1;
+	for (int i=0; i<c2.size(); ++i){
+		ac.insert(ac.end(), c2[i].begin(), c2[i].end());
+	}
+	ECont ae = ret.alledges();
+	HM2D::ECol::Algos::AssignBTypes(ac, ae);
+	return ret;
+}
+};
+
 //#define USE_LIBCLIPPER_FOR_CLIPPING
 
 #ifdef USE_LIBCLIPPER_FOR_CLIPPING //using libclipper
@@ -13,17 +42,23 @@ using namespace ci;
 //two contours. direction is not taken into account
 TRet ci::Intersection(const ECont& c1, const ECont& c2){
 	vector<Impl::ClipperPath> p1{c1}, p2{c2};
-	return Impl::ClipperPath::Intersect(p1, p2, false, false);
+	return assign_btypes(
+		c1, c2,
+		Impl::ClipperPath::Intersect(p1, p2, false, false));
 }
 
 TRet ci::Union(const ECont& c1, const ECont& c2){
 	vector<Impl::ClipperPath> p1{c1}, p2{c2};
-	return Impl::ClipperPath::Union(p1, p2, false, false);
+	return assign_btypes(
+		c1, c2,
+		Impl::ClipperPath::Union(p1, p2, false, false));
 }
 
 TRet ci::Difference(const ECont& c1, const ECont& c2){
 	vector<Impl::ClipperPath> p1{c1}, p2{c2};
-	return Impl::ClipperPath::Substruct(p1, p2, false, false);
+	return assign_btypes(
+		c1, c2,
+		Impl::ClipperPath::Substruct(p1, p2, false, false));
 }
 
 
@@ -35,17 +70,21 @@ TRet ci::Intersection(const ETree& c1, const ECont& c2){
 TRet ci::Union(const ETree& c1, const ECont& c2){
 	vector<Impl::ClipperPath> p1, p2{c2};
 	for (auto& n: c1.nodes){
-		p1.push_back(Impl::ClipperPath(*n));
+		p1.push_back(Impl::ClipperPath(n->contour));
 	}
-	return Impl::ClipperPath::Union(p1, p2, true, false);
+	return assign_btypes(
+		c1.alledges(), c2,
+		Impl::ClipperPath::Union(p1, p2, true, false));
 }
 
 TRet ci::Difference(const ETree& c1, const ECont& c2){
 	vector<Impl::ClipperPath> p1, p2{c2};
 	for (auto& n: c1.nodes){
-		p1.push_back(Impl::ClipperPath(*n));
+		p1.push_back(Impl::ClipperPath(n->contour));
 	}
-	return Impl::ClipperPath::Substruct(p1, p2, true, false);
+	return assign_btypes(
+		c1.alledges(), c2,
+		Impl::ClipperPath::Substruct(p1, p2, true, false));
 }
 
 TRet ci::Difference(const ECont& c1, const ETree& c2){
@@ -77,30 +116,35 @@ TRet ci::Union(const vector<ECont>& cont){
 	if (cont.size() == 0) return TRet();
 	vector<Impl::ClipperPath> p1, zero;
 	for (auto& c: cont) p1.push_back(Impl::ClipperPath(c));
-	return Impl::ClipperPath::Union(p1, zero, false, false);
+	return assign_btypes(
+		cont,
+		Impl::ClipperPath::Union(p1, zero, false, false));
 }
 
 TRet ci::Difference(const ETree& c1, const vector<ECont>& cont){
 	if (cont.size() == 0) return TRet::DeepCopy(c1);
 	vector<Impl::ClipperPath> p1, p2;
-	for (auto& c: c1.nodes) p1.push_back(Impl::ClipperPath(*c));
+	for (auto& c: c1.nodes) p1.push_back(Impl::ClipperPath(c->contour));
 	for (auto& c: cont) p2.push_back(Impl::ClipperPath(c));
-	return Impl::ClipperPath::Substruct(p1, p2, true, false);
+	return assign_btypes(
+		c1.alledges(), cont,
+		Impl::ClipperPath::Substruct(p1, p2, true, false));
 }
 
 void ci::Heal(TRet& c1){
 	//make union to connect adjacent areas if they have appeared
-	if (c1.cont_count() > 1){
+	if (c1.nodes.size() > 1){
 		vector<Impl::ClipperPath> p1, zero;
-		for (auto& c: c1.nodes) p1.push_back(Impl::ClipperPath(*c));
+		for (auto& c: c1.nodes) p1.push_back(Impl::ClipperPath(c->contour));
 		c1 = Impl::ClipperPath::Union(p1, zero, true, false);
 	}
 	//remove zero length edges
 	for (auto& path: c1.nodes){
-		auto pts = path->corner_points();
-		if (path->size() < 3){ 
+		auto& cont = path->contour;
+		auto pts = HM2D::Contour::CornerPoints(cont);
+		if (cont.size() < 3){ 
 			//invalid contour. Will be removed.
-			path->data.resize(2);
+			cont.resize(2);
 			continue;
 		}
 		//doubled points
@@ -122,19 +166,14 @@ void ci::Heal(TRet& c1){
 		aa::remove_entries(pts, not_needed);
 		not_needed.clear();
 		//wright simplified contour
-		auto c = HMCont2D::Constructor::ContourFromPoints(pts, true);
-		path->data = c.data;
+		auto c = HM2D::Contour::Assembler::Contour1(pts, true);
+		path->contour = c;
 	}
 	//remove invalid contours
-	std::set<int> not_needed;
-	for (int i=0; i<c1.cont_count(); ++i)
-		if (c1.nodes[i]->size()<3) not_needed.insert(i);
-	aa::remove_entries(c1.nodes, not_needed);
-	//updates topology
-	c1.UpdateTopology();
-	//refill data
-	c1.data.clear();
-	for (auto& n: c1.nodes) std::copy(n->begin(), n->end(), std::back_inserter(c1.data));
+	std::set<HM2D::Contour::Tree::TNode*> not_needed;
+	for (int i=0; i<c1.nodes.size(); ++i)
+		if (c1.nodes[i]->contour.size()<3) not_needed.insert(c1.nodes[i].get());
+	for (auto n: not_needed) c1.remove_contour(n);
 }
 
 #else //same using gpc
@@ -142,33 +181,45 @@ void ci::Heal(TRet& c1){
 //two contours. direction is not taken into account
 TRet ci::Intersection(const ECont& c1, const ECont& c2){
 	Impl::GpcTree p1(c1), p2(c2);
-	return Impl::GpcTree::Intersect(p1, p2).ToContourTree();
+	return assign_btypes(
+		c1, c2,
+		Impl::GpcTree::Intersect(p1, p2).ToContourTree());
 }
 
 TRet ci::Union(const ECont& c1, const ECont& c2){
 	Impl::GpcTree p1(c1), p2(c2);
-	return Impl::GpcTree::Union(p1, p2).ToContourTree();
+	return assign_btypes(
+		c1, c2,
+		Impl::GpcTree::Union(p1, p2).ToContourTree());
 }
 
 TRet ci::Difference(const ECont& c1, const ECont& c2){
 	Impl::GpcTree p1(c1), p2(c2);
-	return Impl::GpcTree::Substract(p1, p2).ToContourTree();
+	return assign_btypes(
+		c1, c2,
+		Impl::GpcTree::Substract(p1, p2).ToContourTree());
 }
 
 //tree and contour: contours direction is not taken into account
 TRet ci::Intersection(const ETree& c1, const ECont& c2){
 	Impl::GpcTree p1(c1), p2(c2);
-	return Impl::GpcTree::Intersect(p1, p2).ToContourTree();
+	return assign_btypes(
+		c1.alledges(), c2,
+		Impl::GpcTree::Intersect(p1, p2).ToContourTree());
 }
 
 TRet ci::Union(const ETree& c1, const ECont& c2){
 	Impl::GpcTree p1(c1), p2(c2);
-	return Impl::GpcTree::Union(p1, p2).ToContourTree();
+	return assign_btypes(
+		c1.alledges(), c2,
+		Impl::GpcTree::Union(p1, p2).ToContourTree());
 }
 
 TRet ci::Difference(const ETree& c1, const ECont& c2){
 	Impl::GpcTree p1(c1), p2(c2);
-	return Impl::GpcTree::Substract(p1, p2).ToContourTree();
+	return assign_btypes(
+		c1.alledges(), c2,
+		Impl::GpcTree::Substract(p1, p2).ToContourTree());
 }
 
 TRet ci::Difference(const ECont& c1, const ETree& c2){
@@ -178,22 +229,30 @@ TRet ci::Difference(const ECont& c1, const ETree& c2){
 //two trees
 TRet ci::Intersection(const ETree& c1, const ETree& c2){
 	Impl::GpcTree p1(c1), p2(c2);
-	return Impl::GpcTree::Intersect(p1, p2).ToContourTree();
+	return assign_btypes(
+		c1.alledges(), c2.alledges(),
+		Impl::GpcTree::Intersect(p1, p2).ToContourTree());
 }
 
 TRet ci::Union(const ETree& c1, const ETree& c2){
 	Impl::GpcTree p1(c1), p2(c2);
-	return Impl::GpcTree::Union(p1, p2).ToContourTree();
+	return assign_btypes(
+		c1.alledges(), c2.alledges(),
+		Impl::GpcTree::Union(p1, p2).ToContourTree());
 }
 
 TRet ci::Difference(const ETree& c1, const ETree& c2){
 	Impl::GpcTree p1(c1), p2(c2);
-	return Impl::GpcTree::Substract(p1, p2).ToContourTree();
+	return assign_btypes(
+		c1.alledges(), c2.alledges(),
+		Impl::GpcTree::Substract(p1, p2).ToContourTree());
 }
 
 TRet ci::XOR(const ETree& c1, const ETree& c2){
 	Impl::GpcTree p1(c1), p2(c2);
-	return Impl::GpcTree::Xor(p1, p2).ToContourTree();
+	return assign_btypes(
+		c1.alledges(), c2.alledges(),
+		Impl::GpcTree::Xor(p1, p2).ToContourTree());
 }
 
 
@@ -210,7 +269,9 @@ TRet ci::Union(const vector<ECont>& cont){
 	for (int i=1; i<cont.size(); ++i){
 		p1[0] = Impl::GpcTree::Union(p1[0], p1[i]);
 	}
-	return p1[0].ToContourTree();
+	return assign_btypes(
+		cont,
+		p1[0].ToContourTree());
 }
 
 TRet ci::Difference(const ETree& c1, const vector<ECont>& cont){
@@ -220,7 +281,9 @@ TRet ci::Difference(const ETree& c1, const vector<ECont>& cont){
 		Impl::GpcTree g(c);
 		p1 = Impl::GpcTree::Substract(p1, g);
 	}
-	return p1.ToContourTree();
+	return assign_btypes(
+		c1.alledges(), cont,
+		p1.ToContourTree());
 }
 
 void ci::Heal(TRet& c1){

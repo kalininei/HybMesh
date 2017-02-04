@@ -166,9 +166,10 @@ public:
 	void Fill(TBotPart bottom_partitioner, TVertPart vertical_partitioner, int source);
 
 	//returns grid boundaries as shallow copy
-	HM2D::EdgeData LeftContour();
-	HM2D::EdgeData RightContour();
-	
+	HM2D::EdgeData LeftContour() { return _gleft; }
+	HM2D::EdgeData RightContour() { return _gright; }
+private:
+	HM2D::EdgeData _gleft, _gright, _gbot;
 };
 
 

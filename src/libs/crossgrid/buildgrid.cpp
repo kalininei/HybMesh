@@ -46,6 +46,40 @@ GridData hgc::RectGrid(const vector<double>& part_x, const vector<double>& part_
 	return hgc::FromRaw(Npts, Ncls, &points[0], &cells[0], 4);
 }
 
+HM2D::EdgeData hgc::RectGridBottom(const GridData& gd){
+	HM2D::EdgeData ret;
+	for (auto& c: gd.vcells){
+		if (c->edges[0]->is_boundary())
+			ret.push_back(c->edges[0]);
+		else break;
+	}
+	return ret;
+}
+HM2D::EdgeData hgc::RectGridRight(const GridData& gd){
+	HM2D::EdgeData ret;
+	for (auto& c: gd.vcells){
+		if (c->edges[1]->is_boundary())
+			ret.push_back(c->edges[1]);
+	}
+	return ret;
+}
+HM2D::EdgeData hgc::RectGridTop(const GridData& gd){
+	HM2D::EdgeData ret;
+	for (auto& c: gd.vcells){
+		if (c->edges[2]->is_boundary())
+			ret.push_back(c->edges[2]);
+	}
+	return ret;
+}
+HM2D::EdgeData hgc::RectGridLeft(const GridData& gd){
+	HM2D::EdgeData ret;
+	for (auto& c: gd.vcells){
+		if (c->edges[3]->is_boundary())
+			ret.push_back(c->edges[3]);
+	}
+	return ret;
+}
+
 GridData hgc::Ring(Point p0, double rad1, double rad2, int narc, int nrad){
 	assert(rad1>rad2);
 	vector<double> pts;

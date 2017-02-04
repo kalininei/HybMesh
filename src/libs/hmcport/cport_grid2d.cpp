@@ -525,6 +525,12 @@ int g2_custom_rect_grid(const char* algo, void* left, void* bottom, void* right,
 		HM2D::EdgeData bot2 = HM2D::Contour::Assembler::SimpleContours(*bot1)[0];
 		HM2D::EdgeData right2 = HM2D::Contour::Assembler::SimpleContours(*right1)[0];
 		HM2D::EdgeData top2 = HM2D::Contour::Assembler::SimpleContours(*top1)[0];
+		//deep copy because builder procedures shift nodes
+		HM2D::EdgeData left3, bot3, right3, top3;
+		HM2D::DeepCopy(left2, left3);
+		HM2D::DeepCopy(bot2, bot3);
+		HM2D::DeepCopy(right2, right3);
+		HM2D::DeepCopy(top2, top3);
 		//assemble grid
 		HM2D::GridData ret_;
 		switch (std::map<const char*, int>{
@@ -535,27 +541,27 @@ int g2_custom_rect_grid(const char* algo, void* left, void* bottom, void* right,
 			{"linear_tfi", 5},
 			{"hermite_tfi", 6} }[algo]){
 		case 1: 
-			ret_ = HMMap::LinearRectGrid(left2, bot2, right2, top2);
+			ret_ = HMMap::LinearRectGrid(left3, bot3, right3, top3);
 			break;
 		case 2: 
 			ret_ = HMMap::LaplaceRectGrid.WithCallback(
-				cb, left2, bot2, right2, top2, "inverse-laplace");
+				cb, left3, bot3, right3, top3, "inverse-laplace");
 			break;
 		case 3:
 			ret_ = HMMap::LaplaceRectGrid.WithCallback(
-				cb, left2, bot2, right2, top2, "direct-laplace");
+				cb, left3, bot3, right3, top3, "direct-laplace");
 			break;
 		case 4:
 			ret_ = HMMap::OrthogonalRectGrid.WithCallback(
-				cb, left2, bot2, right2, top2);
+				cb, left3, bot3, right3, top3);
 			break;
 		case 5:
 			ret_ = HMMap::LinearTFIRectGrid(
-				left2, bot2, right2, top2);
+				left3, bot3, right3, top3);
 			break;
 		case 6:
 			ret_ = HMMap::CubicTFIRectGrid(
-				left2, bot2, right2, top2,
+				left3, bot3, right3, top3,
 				{herw[0], herw[1], herw[2], herw[3]});
 			break;
 		default:

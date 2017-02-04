@@ -8,6 +8,7 @@
 #include "healgrid.hpp"
 #include "buildgrid.hpp"
 #include "finder2d.hpp"
+#include "treverter2d.hpp"
 
 HMCallback::FunctionWithCallback<HMMap::TOrthogonalRectGrid> HMMap::OrthogonalRectGrid;
 HMCallback::FunctionWithCallback<HMMap::TLaplaceRectGrid> HMMap::LaplaceRectGrid;
@@ -15,11 +16,12 @@ HMCallback::FunctionWithCallback<HMMap::TLaplaceRectGrid> HMMap::LaplaceRectGrid
 namespace{
 
 HM2D::EdgeData deepcopy(const HM2D::EdgeData& cont, bool isrev){
-	HM2D::VertexData p1 = HM2D::Contour::OrderedPoints(cont);
-	vector<Point> p2(p1.size());
-	for (int i=0; i<p1.size(); ++i) p2[i].set(p1[i]->x, p1[i]->y);
-	if (isrev) std::reverse(p2.begin(), p2.end());
-	return HM2D::Contour::Constructor::FromPoints(p2);
+	HM2D::EdgeData ret;
+	HM2D::DeepCopy(cont, ret);
+	if (isrev) HM2D::Contour::R::ReallyRevert::Permanent(ret);
+	else HM2D::Contour::R::ReallyDirect::Permanent(ret);
+
+	return ret;
 }
 
 bool has_self_cross(const HM2D::EdgeData& cont){
@@ -82,7 +84,7 @@ double connect_vec_points(const HM2D::VertexData& left, const HM2D::VertexData& 
 	for (int i=0; i<rw.size(); ++i){
 		*right[i] += (right_move1 * (1.0-rw[i]) + right_move2 * rw[i]);
 	}
-	//if bot_move and top_move are equal than moving top is better
+	//using 1.001 because if bot_move and top_move are equal than moving top is better
 	return 1.001*vecLen(bot_move) + vecLen(top_move) +
 		vecLen(right_move1) + vecLen(right_move2);
 }
@@ -114,15 +116,27 @@ double tryopt(int opt, const HM2D::EdgeData& _left, const HM2D::EdgeData& _bot,
 
 vector<HM2D::EdgeData> modify_contours(int opt, HM2D::EdgeData& left, HM2D::EdgeData& bot,
 		HM2D::EdgeData& right, HM2D::EdgeData& top){
+	ShpVector<HM2D::Contour::R::ReallyRevert> rr;
+	ShpVector<HM2D::Contour::R::ReallyDirect> rd;
+
+	if (opt & 1) rr.emplace_back(new HM2D::Contour::R::ReallyRevert(left));
+	else rd.emplace_back(new HM2D::Contour::R::ReallyDirect(left));
+
+	if (opt & 2) rr.emplace_back(new HM2D::Contour::R::ReallyRevert(right));
+	else rd.emplace_back(new HM2D::Contour::R::ReallyDirect(right));
+
+	if (opt & 4) rr.emplace_back(new HM2D::Contour::R::ReallyRevert(top));
+	else rd.emplace_back(new HM2D::Contour::R::ReallyDirect(top));
+
+	if (opt & 8) rr.emplace_back(new HM2D::Contour::R::ReallyRevert(left));
+	else rd.emplace_back(new HM2D::Contour::R::ReallyDirect(left));
+
 	HM2D::VertexData leftp=HM2D::Contour::OrderedPoints(left);
 	HM2D::VertexData botp=HM2D::Contour::OrderedPoints(bot);
 	HM2D::VertexData rightp=HM2D::Contour::OrderedPoints(right);
 	HM2D::VertexData topp = HM2D::Contour::OrderedPoints(top);
-	if (opt & 1) std::reverse(leftp.begin(), leftp.end());
-	if (opt & 2) std::reverse(rightp.begin(), rightp.end());
-	if (opt & 4) std::reverse(topp.begin(), topp.end());
-	if (opt & 8) std::reverse(botp.begin(), botp.end());
 	connect_vec_points(leftp, botp, rightp, topp);
+
 	//calculate area and swap roles if needed
 	HM2D::VertexData closed;
 	closed.insert(closed.end(), leftp.rbegin()+1, leftp.rend());
@@ -133,19 +147,18 @@ vector<HM2D::EdgeData> modify_contours(int opt, HM2D::EdgeData& left, HM2D::Edge
 	assert(fabs(area)>geps*geps);
 
 	//assemble result
-	vector<HM2D::EdgeData> ret;
+	vector<HM2D::EdgeData> ret(4);
 	if (area > 0){
-		ret.push_back(HM2D::Contour::Assembler::Contour1(leftp));
-		ret.push_back(HM2D::Contour::Assembler::Contour1(botp));
-		ret.push_back(HM2D::Contour::Assembler::Contour1(rightp));
-		ret.push_back(HM2D::Contour::Assembler::Contour1(topp));
+		HM2D::DeepCopy(left, ret[0], 0);
+		HM2D::DeepCopy(bot, ret[1], 0);
+		HM2D::DeepCopy(right, ret[2], 0);
+		HM2D::DeepCopy(top, ret[3], 0);
 	} else {
-		std::reverse(botp.begin(), botp.end());
-		std::reverse(topp.begin(), topp.end());
-		ret.push_back(HM2D::Contour::Assembler::Contour1(rightp));
-		ret.push_back(HM2D::Contour::Assembler::Contour1(botp));
-		ret.push_back(HM2D::Contour::Assembler::Contour1(leftp));
-		ret.push_back(HM2D::Contour::Assembler::Contour1(topp));
+		HM2D::Contour::R::ReallyRevert r1(bot), r2(top);
+		HM2D::DeepCopy(right, ret[0], 0);
+		HM2D::DeepCopy(bot, ret[1], 0);
+		HM2D::DeepCopy(left, ret[2], 0);
+		HM2D::DeepCopy(top, ret[3], 0);
 	}
 	return ret;
 }
@@ -182,6 +195,11 @@ void check_direction(HM2D::GridData& ret){
 	if (!HM2D::Grid::Algos::Check(ret)) throw HMMap::EInvalidGrid(std::move(ret));
 }
 
+void set_bt(const HM2D::EdgeData& from, const HM2D::EdgeData& to){
+	for (int i=0; i<to.size(); ++i)
+		to[i]->boundary_type = from[i]->boundary_type;
+};
+
 }
 
 HM2D::GridData HMMap::LinearRectGrid(HM2D::EdgeData& _left, HM2D::EdgeData& _bot,
@@ -198,6 +216,13 @@ HM2D::GridData HMMap::LinearRectGrid(HM2D::EdgeData& _left, HM2D::EdgeData& _bot
 	
 	//build grid main grid connectivity
 	HM2D::GridData ret = HM2D::Grid::Constructor::RectGrid01(bot.size(), left.size());
+
+	//boundary types. use structured data given by RectGrid01 procedure.
+	set_bt(bot, HM2D::Grid::Constructor::RectGridBottom(ret));
+	set_bt(top, HM2D::Grid::Constructor::RectGridTop(ret));
+	set_bt(left, HM2D::Grid::Constructor::RectGridLeft(ret));
+	set_bt(right, HM2D::Grid::Constructor::RectGridRight(ret));
+
 	//shift nodes
 	auto allnodes = ret.vvert;
 	int k=0;
@@ -218,7 +243,6 @@ HM2D::GridData HMMap::LinearRectGrid(HM2D::EdgeData& _left, HM2D::EdgeData& _bot
 				if (!iscr) throw std::runtime_error("failed to find section cross");
 				*p = Point::Weigh(*lp, *rp, ksieta[0]);
 			}
-
 		}
 	}
 	check_direction(ret);
@@ -246,7 +270,7 @@ HM2D::GridData HMMap::TOrthogonalRectGrid::_run(HM2D::EdgeData& _left, HM2D::Edg
 	bool left_basic = (HM2D::Contour::First(left) == HM2D::Contour::First(_left) ||
 			   HM2D::Contour::First(left) == HM2D::Contour::Last(_left));
 
-	auto subcaller = callback->bottom_line_subrange(80);
+	auto subcaller = callback->bottom_line_subrange(70);
 	HMMap::Conformal::Options opt;
 	opt.use_scpack = false;
 	opt.use_rect_approx = false;
@@ -257,7 +281,7 @@ HM2D::GridData HMMap::TOrthogonalRectGrid::_run(HM2D::EdgeData& _left, HM2D::Edg
 	HM2D::GridData ret = HM2D::Grid::Constructor::RectGrid01(bot.size(), lsz);
 
 	//grid to conformal rectangle
-	callback->step_after(10, "Map grid", 2, 1);
+	callback->step_after(15, "Map grid", 2, 1);
 	vector<Point> xpts = cmap->MapToRectangle(topp(HM2D::Contour::OrderedPoints(bot)));
 	vector<Point> ypts = left_basic ? cmap->MapToRectangle(topp(HM2D::Contour::OrderedPoints(left)))
 	                                : cmap->MapToRectangle(topp(HM2D::Contour::OrderedPoints(right)));
@@ -274,6 +298,21 @@ HM2D::GridData HMMap::TOrthogonalRectGrid::_run(HM2D::EdgeData& _left, HM2D::Edg
 	vector<Point> physpnt = cmap->MapToPolygon(gpnt);
 	for (int i=0; i<ret.vvert.size(); ++i){
 		ret.vvert[i]->set(physpnt[i]);
+	}
+
+	//boundary types
+	callback->step_after(5, "Assign boundary types");
+	set_bt(bot, HM2D::Grid::Constructor::RectGridBottom(ret));
+	auto to = HM2D::Grid::Constructor::RectGridTop(ret);
+	HM2D::ECol::Algos::AssignBTypes(top, to);
+	if (left_basic){
+		set_bt(left, HM2D::Grid::Constructor::RectGridLeft(ret));
+		to = HM2D::Grid::Constructor::RectGridRight(ret);
+		HM2D::ECol::Algos::AssignBTypes(right, to);
+	} else {
+		set_bt(right, HM2D::Grid::Constructor::RectGridRight(ret));
+		to = HM2D::Grid::Constructor::RectGridLeft(ret);
+		HM2D::ECol::Algos::AssignBTypes(left, to);
 	}
 
 	callback->step_after(5, "Grid check");
@@ -360,6 +399,10 @@ HM2D::GridData HMMap::FDMLaplasRectGrid(HM2D::EdgeData& _left, HM2D::EdgeData& _
 	for (int i=0; i<ret.vvert.size(); ++i){
 		ret.vvert[i]->set(xcoords[i], ycoords[i]);
 	}
+	set_bt(bot, HM2D::Grid::Constructor::RectGridBottom(ret));
+	set_bt(top, HM2D::Grid::Constructor::RectGridTop(ret));
+	set_bt(left, HM2D::Grid::Constructor::RectGridLeft(ret));
+	set_bt(right, HM2D::Grid::Constructor::RectGridRight(ret));
 
 	check_direction(ret);
 	return ret;
@@ -400,6 +443,12 @@ HM2D::GridData HMMap::TLaplaceRectGrid::_run(HM2D::EdgeData& left, HM2D::EdgeDat
 	auto recttop = weight_contour(top1, false, true);
 	HM2D::GridData base = HMMap::LinearRectGrid(rectleft, rectbot, rectright, recttop);
 
+	//boundary types for base
+	set_bt(bot, HM2D::Grid::Constructor::RectGridBottom(base));
+	set_bt(top, HM2D::Grid::Constructor::RectGridTop(base));
+	set_bt(left, HM2D::Grid::Constructor::RectGridLeft(base));
+	set_bt(right, HM2D::Grid::Constructor::RectGridRight(base));
+
 	//map grid base and mapped points
 	callback->step_after(10, "Boundary mapping");
 	vector<Point> base_pnt;
@@ -428,6 +477,7 @@ HM2D::GridData HMMap::TLaplaceRectGrid::_run(HM2D::EdgeData& left, HM2D::EdgeDat
 	//options
 	HMMap::Options opt(algo);
 	opt.fem_nrec = 1.5*(left1.size()+1)*(bot1.size()+1);
+	opt.btypes_from_contour = false;
 
 	//calculate
 	auto subcaller = callback->bottom_line_subrange(80);
@@ -486,6 +536,13 @@ HM2D::GridData HMMap::LinearTFIRectGrid(HM2D::EdgeData& left, HM2D::EdgeData& bo
 		HM2D::Vertex*  p3 = UV.vvert[i].get();
 		p1->set(*p1 + *p2 - *p3);
 	}
+
+	//boundary types
+	set_bt(bot, HM2D::Grid::Constructor::RectGridBottom(U));
+	set_bt(top, HM2D::Grid::Constructor::RectGridTop(U));
+	set_bt(left, HM2D::Grid::Constructor::RectGridLeft(U));
+	set_bt(right, HM2D::Grid::Constructor::RectGridRight(U));
+
 	check_direction(U);
 	return U;
 }
@@ -597,6 +654,12 @@ HM2D::GridData HMMap::CubicTFIRectGrid(HM2D::EdgeData& left, HM2D::EdgeData& bot
 		auto& p3 = UV.vvert[i];
 		p1->set(*p1 + *p2 - *p3);
 	}
+
+	//boundary types
+	set_bt(bot, HM2D::Grid::Constructor::RectGridBottom(U));
+	set_bt(top, HM2D::Grid::Constructor::RectGridTop(U));
+	set_bt(left, HM2D::Grid::Constructor::RectGridLeft(U));
+	set_bt(right, HM2D::Grid::Constructor::RectGridRight(U));
 
 	check_direction(U);
 	return U;

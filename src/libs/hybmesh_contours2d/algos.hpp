@@ -52,6 +52,8 @@ Vect SmoothedDirection2(const EdgeData& c, const Point* p, int direction, double
 //It will keep all features of the edge previous to deleted point
 void RemovePoints(EdgeData& data, vector<int> ipnt);
 
+//get boundary types from contour coordinate
+vector<int> BTypesFromWeights(const EdgeData&, const vector<double>&);
 }}
 
 // ============================ algorithms for shattered edges collections
@@ -67,6 +69,8 @@ EdgeData NoCrosses(const EdgeData& ecol);
 
 void MergePoints(EdgeData& ecol);
 
+//set 'to' boundary types from closest 'from' edges.
+void AssignBTypes(const EdgeData& from, EdgeData& to);
 }}
 
 

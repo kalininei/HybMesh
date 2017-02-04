@@ -77,6 +77,14 @@ HM2D::GridData DoMapping::run(HMCallback::Caller2& cb){
 	} else if (opt.snap != "NO"){
 		throw HMMap::MapException(std::string("Unknown snapping option - ") + opt.snap);
 	}
+
+	//boundary types: now they are inherited from input grid as
+	//a result of deepcopy procedure. if contour btype is needed use force assignment
+	if (opt.btypes_from_contour){
+		auto rc = HM2D::ECol::Assembler::GridBoundary(ret);
+		HM2D::ECol::Algos::AssignBTypes(contdata, rc);
+	}
+	
 	return ret;
 }
 void DoMapping::prepare_mapped_contour(){

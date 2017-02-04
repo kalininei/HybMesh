@@ -30,6 +30,7 @@ struct Tree{
 	ShpVector<TNode> detached_contours() const;
 	ShpVector<TNode> bound_contours() const;
 	EdgeData alledges() const;
+	EdgeData alledges_bound() const;
 	shared_ptr<TNode> find_node(const Point* p) const;
 	shared_ptr<TNode> find_node(const Edge* p) const;
 

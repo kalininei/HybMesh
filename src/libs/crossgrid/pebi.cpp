@@ -4,6 +4,7 @@
 #include "buildgrid.hpp"
 #include "healgrid.hpp"
 #include "trigrid.hpp"
+#include "algos.hpp"
 using namespace HM2D;
 using namespace HM2D::Grid;
 
@@ -231,6 +232,12 @@ GridData Constructor::TriToPebi(const GridData& g){
 
 	//remove short edges
 	Grid::Algos::RemoveShortEdges(ret, 0.1);
+
+	//assign boundary types
+	auto outbnd = HM2D::ECol::Assembler::GridBoundary(ret);
+	auto inpbnd = HM2D::ECol::Assembler::GridBoundary(g);
+	HM2D::ECol::Algos::AssignBTypes(inpbnd, outbnd);
+	
 	return ret;
 }
 

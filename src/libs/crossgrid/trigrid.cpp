@@ -8,6 +8,7 @@
 #include "modgrid.hpp"
 #include "finder2d.hpp"
 #include "constructor.hpp"
+#include "cont_assembler.hpp"
 #include "Gmsh.h"
 #include "GModel.h"
 #include "MVertex.h"
@@ -488,7 +489,7 @@ void fill_model_with_2d_recomb(GModel& m, GFace* fc){
 	fc->meshAttributes.recombine = 1.0;
 	m.mesh(2);
 
-	// if all nodes of quad grid are still trianlge than most likely builder
+	// if all nodes of quad grid are still trianlge then most likely builder
 	// has failed. So we use another algorithm
 	bool has4=false;
 	for (int en=0; en<fc->getNumMeshElements(); ++en){
@@ -544,8 +545,17 @@ GridData gmsh_fill(const Contour::Tree& tree, const std::map<Point, double>& emb
 	else fill_model_with_2d_recomb(m, gf);
 	NanSignalHandler::StartCheck();
 
-	cb.step_after(30, "Assemble mesh");
-	return GridFromModel(m);
+	cb.step_after(25, "Assemble mesh");
+	GridData ret = GridFromModel(m);
+
+	cb.step_after(5, "Assign boundary types");
+	EdgeData gbnd = HM2D::ECol::Assembler::GridBoundary(ret);
+	EdgeData cbnd;
+	for (auto& n: tree.bound_contours())
+		cbnd.insert(cbnd.end(), n->contour.begin(), n->contour.end());
+	HM2D::ECol::Algos::AssignBTypes(cbnd, gbnd);
+
+	return ret;
 }
 
 //uses 100 units of callback

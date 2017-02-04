@@ -544,10 +544,10 @@ void MappedMesher::Fill(TBotPart bottom_partitioner, TVertPart vertical_partitio
 
 	//4) build regular grid and get vector of bottom side points
 	HM2D::GridData g4 = HM2D::Grid::Constructor::RectGrid01(isz-1, jsz-1);
-	ShpVector<HM2D::Vertex> botpts;
-	for (auto p: AllVertices(HM2D::ECol::Assembler::GridBoundary(g4))){
-		if (ISZERO(p->y)) botpts.push_back(p);
-	}
+	_gbot = HM2D::Grid::Constructor::RectGridBottom(g4);
+	_gleft = HM2D::Grid::Constructor::RectGridLeft(g4);
+	_gright = HM2D::Grid::Constructor::RectGridRight(g4);
+	//ShpVector<HM2D::Vertex> botpts = AllVertices(botcont);
 	//5) fill layer weights and feature
 	std::map<const HM2D::Cell*, int> lweights;
 	shared_ptr<int> pfeat(new int());
@@ -622,6 +622,15 @@ void MappedMesher::Fill(TBotPart bottom_partitioner, TVertPart vertical_partitio
 		[](const shared_ptr<HM2D::Vertex>& p){ return p->id == -1; });
 	left_points.resize(s1 - left_points.begin());
 	right_points.resize(s2 - right_points.begin());
+	//8.2) Remove deleted edges from _gleft/_gright/_gbot
+	aa::constant_ids_pvec(_gleft, 0);
+	aa::constant_ids_pvec(_gright, 0);
+	aa::constant_ids_pvec(_gbot, 0);
+	aa::constant_ids_pvec(g4.vedges, 1);
+	aa::keep_by_id(_gleft, 1);
+	aa::keep_by_id(_gright, 1);
+	aa::keep_by_id(_gbot, 1);
+
 
 	//9) weight coordinates
 	for_each(bpart.begin(), bpart.end(), [&](double& x){ x = rect->bot2conf(x); });
@@ -700,16 +709,9 @@ void MappedMesher::Fill(TBotPart bottom_partitioner, TVertPart vertical_partitio
 	//13) fill weights
 	result.add_weights(lweights);
 	result.add_source_feat(feat);
-}
 
-HM2D::EdgeData MappedMesher::LeftContour(){
-	HM2D::VertexData lp;
-	for (auto p: left_points) lp.push_back(std::make_shared<HM2D::Vertex>(*p));
-	return HM2D::Contour::Assembler::Contour1(lp, false);
-}
-
-HM2D::EdgeData MappedMesher::RightContour(){
-	HM2D::VertexData rp;
-	for (auto p: right_points) rp.push_back(std::make_shared<HM2D::Vertex>(*p));
-	return HM2D::Contour::Assembler::Contour1(rp, false);
+	//14) assign boundary types
+	HM2D::ECol::Algos::AssignBTypes(rect->BottomContour(), _gbot);
+	HM2D::ECol::Algos::AssignBTypes(rect->LeftContour(), _gleft);
+	HM2D::ECol::Algos::AssignBTypes(rect->RightContour(), _gright);
 }

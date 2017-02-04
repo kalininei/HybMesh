@@ -18,9 +18,16 @@ void Import::EColReader::fill_result(){
 	tmp = pgreader->find_by_path("EDGES/VERT_CONNECT", true);
 	vector<int> edgevert = preader->read_num_content(tmp, 2*Ne).vec<int>();
 	for (auto i: edgevert) if (i>=Nv || i<0) throw std::runtime_error("Edge-Vertex connectivity contains illegal vertex index");
+	//read bt
+	vector<int> btypes(Ne, 0);
+	try{
+		btypes = read_edges_field<int>("__boundary_types__");
+	} catch (const XmlElementNotFound&){}
 	
 	result.reset(new EdgeData);
 	*result = HM2D::ECol::Constructor::FromRaw(Nv, Ne, &vert[0], &edgevert[0]);
+
+	for (int i=0; i<Ne; ++i) (*result)[i]->boundary_type = btypes[i];
 }
 std::vector<Import::EColReader::TFieldInfo> Import::EColReader::edges_fields(){
 	std::vector<EColReader::TFieldInfo> ret;
@@ -128,10 +135,18 @@ void Import::GridReader::fill_result(){
 	vector<int> edgecell = preader->read_num_content(tmp, 2*Ne).vec<int>();
 	for (auto i: edgevert) if (i>=Nv || i<0) throw std::runtime_error("Edge-Vertex connectivity contains illegal vertex index");
 	for (auto i: edgecell) if (i>=Nc) throw std::runtime_error("Edge-Cell connectivity contains illegal cell index");
-
+	//read bt
+	vector<int> btypes(Ne, 0);
+	try{
+		btypes = read_edges_field<int>("__boundary_types__");
+	} catch (const XmlElementNotFound&){}
+	
 	//constructing a grid
 	GridData ng = Import::GridFromTabs(vert, edgevert, edgecell);
 	result.reset(new GridData(std::move(ng)));
+
+	//assigm bt
+	for (int i=0; i<Ne; ++i) (*result).vedges[i]->boundary_type = btypes[i];
 }
 std::vector<Import::GridReader::TFieldInfo> Import::GridReader::edges_fields(){
 	std::vector<GridReader::TFieldInfo> ret;

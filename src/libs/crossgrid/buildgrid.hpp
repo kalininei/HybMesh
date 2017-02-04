@@ -9,6 +9,12 @@ namespace HM2D{ namespace Grid{ namespace Constructor{
 GridData RectGrid01(int Nx, int Ny);
 GridData RectGrid(Point p0, Point p1, int Nx, int Ny);
 GridData RectGrid(const vector<double>& part_x, const vector<double>& part_y);
+//procedures return sequental (x:0->1, y:0->1)
+//boundary edges of grids built by RectGrid procedures.
+HM2D::EdgeData RectGridBottom(const GridData& gd);
+HM2D::EdgeData RectGridRight(const GridData& gd);
+HM2D::EdgeData RectGridTop(const GridData& gd);
+HM2D::EdgeData RectGridLeft(const GridData& gd);
 
 //rad1 > rad2
 GridData Ring(Point p0, double rad1, double rad2, int narc, int nrad);
