@@ -185,10 +185,16 @@ bool check_cells(const GridData& g, double& sumarea){
 	//check cell-by-cell
 	sumarea = 0;
 	for (auto c: g.vcells){
-		if (!Contour::IsContour(c->edges) || Contour::IsOpen(c->edges)) return false;
-		if (std::get<0>(Contour::Finder::SelfCross(c->edges))) return false;
+		if (!Contour::IsContour(c->edges) || Contour::IsOpen(c->edges)){
+			return false;
+		}
+		if (std::get<0>(Contour::Finder::SelfCross(c->edges))){
+			return false;
+		}
 		double a = Contour::Area(c->edges);
-		if (a <= 0) return false;
+		if (a <= 0){
+			return false;
+		}
 		sumarea += a;
 	}
 	return true;
@@ -196,7 +202,7 @@ bool check_cells(const GridData& g, double& sumarea){
 
 bool check_edges_intersections(const GridData& g){
 	auto bb = HM2D::BBox(g.vvert);
-	BoundingBoxFinder bfinder(bb, bb.maxlen()/40);
+	BoundingBoxFinder bfinder(bb, bb.maxlen()/50);
 	vector<BoundingBox> ebb(g.vedges.size());
 	for (int i=0; i<g.vedges.size(); ++i){
 		ebb[i] = BoundingBox(*g.vedges[i]->pfirst(), *g.vedges[i]->plast());
@@ -242,23 +248,12 @@ bool Algos::Check(const GridData& g){
 	}
 	if (fabs(sumarea - tarea) > geps) return false;
 	if (outers.size() == 0) return false;
+	if (outers.size() < 2 && fabs(sumarea - tarea) < geps*geps) return true;
 
-	Contour::Tree sumtree;
-	sumtree.add_contour(std::move(*outers[0]));
-	for (int i=1; i<outers.size(); ++i){
-		sumtree = Contour::Clip::Union(sumtree, *outers[i]);
-	}
-	for (int i=0; i<inners.size(); ++i){
-		sumtree = Contour::Clip::Difference(sumtree, *inners[i]);
-	}
-	double tarea2 = sumtree.area();
-	if (fabs(sumarea - tarea2) > geps) return false;
-
-	if (fabs(sumarea - tarea) < geps*geps &&
-	    fabs(sumarea - tarea2) < geps*geps) return true;
-	
-	//check edge-by-edge because inconcistency between areas
-	//may occur as a result of numerical errors
+	//we can not relay only on sum-cell-areas == sum-bound-areas check
+	//because grid can contain independant overlapping parts.
+	//To treat the latter case we have to explicitly calculate edge intersections.
+	//(... maybe check for bound intersections will be enough for most cases?)
 	return check_edges_intersections(g);
 }
 
@@ -287,12 +282,19 @@ void Algos::Heal(GridData& from){
 	for (int i=0; i<from.vcells.size(); ++i){
 		auto& c = from.vcells[i];
 		auto& ec = c->edges;
-		if (Contour::Area(ec) < 0){ Contour::Reverse(ec); }
+		if (Contour::Area(ec) < 0){
+			Contour::Reverse(ec);
+		}
 		//fix left-right cell connections
 		for (int j=0; j<ec.size(); ++j){
 			bool iscor = Contour::CorrectlyDirectedEdge(ec, j);
-			if (iscor) ec[j]->left = c;
-			else ec[j]->right = c;
+			if (iscor){
+				if (ec[j]->right.lock() == c) std::swap(ec[j]->right, ec[j]->left);
+				else ec[j]->left = c;
+			} else {
+				if (ec[j]->left.lock() == c) std::swap(ec[j]->right, ec[j]->left);
+				else ec[j]->right = c;
+			}
 		}
 	}
 

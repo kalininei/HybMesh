@@ -55,14 +55,15 @@ def grid2(fname, grid, btypes={}, cb=None):
     out.append("$EndPhysicalNames")
     # nodes
     out.append("$Nodes")
-    out.append(str(grid.n_points()))
+    out.append(str(grid.n_vertices()))
     for i, p in enumerate(raw_vert):
         out.append(' '.join([str(i + 1), str(p[0]), str(p[1]), "0.0"]))
     out.append("$EndNodes")
     # cells elements
     out.append("$Elements")
+    out.append(str(len(raw_cellsize) + len(raw_boundary)))
     it = iter(raw_cellvert)
-    for sz in raw_cellsize:
+    for i, sz in enumerate(raw_cellsize):
         etp = "2" if sz == 3 else "3"
         sit = itertools.islice(it, sz)
         nind = ' '.join(map(lambda x: str(x + 1), sit))

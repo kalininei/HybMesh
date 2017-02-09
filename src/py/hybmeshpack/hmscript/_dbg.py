@@ -33,8 +33,8 @@ def check_ascii_file(test_hash, fname, opt=""):
         if not sys.platform.startswith('linux'):
             return
     fname = fname.encode('utf-8')
-    ret = ct.c_size_t
-    ccall(cport.get_ascii_file_hash, fname, ret)
+    ret = ct.c_size_t()
+    ccall(cport.get_ascii_file_hash, fname, ct.byref(ret))
     ret = ret.value
     check(ret == test_hash)
     if ret != test_hash:

@@ -48,10 +48,9 @@ class AddUnfRectGrid(NewGridCommand):
     def _build_grid(self):
         xdata, ydata = self.get_option('custom_x'), self.get_option('custom_y')
         bnds = self.get_option('bnds')
-        bgeom.build_seg(self.get_option('p0')[0], self.get_option('p1')[0],
-                        self.get_option('nx'), xdata)
-        bgeom.build_seg(self.get_option('p0')[1], self.get_option('p1')[1],
-                        self.get_option('ny'), ydata)
+        p0, p1 = self.get_option('p0'), self.get_option('p1')
+        bgeom.build_seg(p0[0], p1[0], self.get_option('nx'), xdata)
+        bgeom.build_seg(p0[1], p1[1], self.get_option('ny'), ydata)
         return g2core.build_rect_grid(xdata, ydata, bnds)
 
 
@@ -77,11 +76,15 @@ class AddCustomRectGrid(NewGridCommand):
         c = [self.get_option(n) for n in ['left', 'bot', 'right', 'top']]
         c = [self.any_cont_by_name(x) if x is not None else None
              for x in c]
+        if c[2] is None:
+            c[2] = c[0].deepcopy()
+        if c[3] is None:
+            c[3] = c[1].deepcopy()
         cc = [x.cdata if x is not None else None for x in c]
         cb = self.ask_for_callback()
         return g2core.custom_rectangular_grid(
             self.get_option('algo'), cc[0], cc[1], cc[2], cc[3],
-            self.get_option('herw'), self.get_option('return_invalid'), cb)
+            self.get_option('her_w'), self.get_option('return_invalid'), cb)
 
 
 class AddCirc4Grid(NewGridCommand):
@@ -132,13 +135,16 @@ class AddUnfCircGrid(NewGridCommand):
         rad = self.get_option('rad')
         # radius segmentation calculation
         if len(rdata) == 0:
-            rdata = bgeom.div_range(0, rad, self.get_option('coef'))
+            rdata = bgeom.div_range(
+                0, rad, self.get_option('nr'), self.get_option('coef'))
         else:
+            if len(rdata) > 1 and rdata[0] != 0:
+                rdata.insert(0, 0.0)
             bgeom.build_seg(0, rad, self.get_option('nr'), rdata)
         # arc segmentation calculation
         if len(adata) < 2:
             if len(adata) == 1:
-                adata[0] /= (2. * math.pi * rad)
+                adata[0] = adata[0] / rdata[-1] / math.pi * 180.
             bgeom.build_seg(0., 360, self.get_option('na'), adata)
         else:
             amx = adata[-1] - adata[0]
@@ -158,7 +164,7 @@ class AddUnfHexGrid(NewGridCommand):
     @classmethod
     def _arguments_types(cls):
         return {'name': co.BasicOption(str, None),
-                'area': co.ListOfOptions(command.BasicOption(float)),
+                'area': co.ListOfOptions(co.BasicOption(float)),
                 'crad': co.BasicOption(float),
                 'strict': co.BoolOption(False),
                 }
@@ -263,8 +269,8 @@ class UniteGrids(addremove.AbstractAddRemove):
         'name, buf - dictionary'
         def __init__(self):
             super(UniteGrids.Option, self).__init__(
-                name=command.BasicOption(str),
-                buf=command.BasicOption(float),
+                name=co.BasicOption(str),
+                buf=co.BasicOption(float),
             )
 
     @classmethod
@@ -367,10 +373,8 @@ class BuildBoundaryGrid(NewGridCommand):
             if end points are None changes them to actual values
             and adds options for multiply connected domains
         """
-        op['source'] = self.any_cont_by_name(op['source'])
-
         # separate contour
-        sep = c2core.quick_separate(op['source'])
+        sep = c2core.quick_separate(op['source'].cdata)
         sep = [Contour2(s) for s in sep]
 
         # if end points are None:
@@ -388,7 +392,8 @@ class BuildBoundaryGrid(NewGridCommand):
                     newops.append(copy.deepcopy(op))
                     op['source'] = _t
                     addto = newops[-1]
-                addto['source'] = s
+                # addto['source'] = s
+                addto['source'] = op['source']
                 addto['start'] = copy.deepcopy(p0)
                 addto['end'] = copy.deepcopy(p1)
             if op['start'] is None or op['end'] is None:
@@ -396,13 +401,12 @@ class BuildBoundaryGrid(NewGridCommand):
                     "cannot find correct source for boundary grid", self)
 
         # if points coincide find closest subcontour
-        elif op['start'].x == op['end'].x and op['start'].y == op['end'].y:
+        elif op['start'][0] == op['end'][0] and op['start'][1] == op['end'][1]:
             subcont = closest_contour(sep, op['start'])
             p0, p1 = subcont.end_points()
             if p0 != p1:
                 op['start'] = p0
                 op['end'] = p1
-            op['source'] = subcont
 
         return newops
 
@@ -415,11 +419,18 @@ class BuildBoundaryGrid(NewGridCommand):
     def _build_grid(self):
         cb = self.ask_for_callback()
         arg = copy.deepcopy(self.get_option('opt'))
+        usedconts = {}
+        for op in arg:
+            nm = op['source']
+            if nm not in usedconts:
+                usedconts[nm] = self.any_cont_by_name(nm)
+            op['source'] = usedconts[nm]
+
         self.__adjust_arg(arg)
         cont = [a['source'] for a in arg]
         for a, b in zip(arg, cont):
-            a['source'] = cont.cdata
-        return g2core.boundary_layer_grid(cb, arg)
+            a['source'] = b.cdata
+        return g2core.boundary_layer_grid(arg, cb)
 
 
 class HealGrid(addremove.AbstractAddRemove):
@@ -453,13 +464,13 @@ class HealGrid(addremove.AbstractAddRemove):
     def _addrem_grid2(self):
         g = self.grid2_by_name(self.get_option('name'))
         orig = g
-        if self.options['simp_bnd'] >= 0:
-            g = self.__simplify_bnd(g)
-        if self.options['convex'] >= 0:
-            g = self.__convex_cells(g)
+        if self.get_option('simp_bnd') >= 0:
+            g = self.__simplify_bnd(g, self.get_option('simp_bnd'))
+        if self.get_option('convex') >= 0:
+            g = self.__convex_cells(g, self.get_option('convex'))
 
         if g != orig:
-            return [(g, self.get_option['name'])], [self.get_option('name')]
+            return [(g, self.get_option('name'))], [self.get_option('name')]
         else:
             return [], []
 
@@ -505,7 +516,7 @@ class MapGrid(NewGridCommand):
                               self.get_option('algo'),
                               self.get_option('is_reversed'),
                               self.get_option('return_invalid'), cb)
-        return Grid2(ret)
+        return ret
 
 
 class UnstructuredFillArea(NewGridCommand):
@@ -525,10 +536,18 @@ class UnstructuredFillArea(NewGridCommand):
 
     def _build_grid(self):
         # unite domain and constraints
-        fulldom = Contour2(c2core.unite_contours(self.get_option('domain')))
+        domc, domcc = [], []
+        for n in self.get_option('domain'):
+            domc.append(self.any_cont_by_name(n))
+            domcc.append(domc[-1].cdata)
+        fulldom = Contour2(c2core.unite_contours(domcc))
+
+        conc, concc = [], []
         if len(self.get_option('constr')) > 0:
-            fullconst = Contour2(
-                c2core.unite_contours(self.get_option('constr')))
+            for n in self.get_option('constr'):
+                conc.append(self.any_cont_by_name(n))
+                concc.append(conc[-1].cdata)
+            fullconst = Contour2(c2core.unite_contours(concc))
         else:
             fullconst = Contour2.empty()
 

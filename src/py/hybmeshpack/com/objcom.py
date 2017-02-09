@@ -47,7 +47,7 @@ class RenameGeom(command.Command):
         return False
 
     def _exec(self):
-        self.renamed_object = self.receiver.get_object(self.option('oldname'))
+        self.renamed_object = self.any_object_by_name(self.option('oldname'))
         return self._change_name(self.get_option('newname'))
 
     def _clear(self):
@@ -75,7 +75,7 @@ class RemoveGeom(addremove.AbstractAddRemove):
     def _addrem_objects(self):
         g2names, c2names, g3names, s3names = [], [], [], []
         for n in self.get_option('names'):
-            ob = self.get_object(n)
+            ob = self.any_object_by_name(n)
             if isinstance(ob, gdata.cont2.Contour2):
                 c2names.append(n)
             elif isinstance(ob, gdata.srf3.Surface3):
@@ -106,11 +106,8 @@ class RemoveAll(command.Command):
 
     def _exec(self):
         self.bu = self.receiver.backup_copy()
-        self.receiver.grids2.clear()
-        self.receiver.contours2.clear()
-        self.receiver.grids3.clear()
-        self.receiver.surfaces3.clear()
-        self.receiver.boundary_types.clear()
+        self.receiver.to_zero_state()
+        return True
 
     def _clear(self):
         self.bu = None
@@ -142,7 +139,7 @@ class MoveGeom(command.Command):
 
     def _move(self, dx, dy, dz):
         for n in self.get_option('names'):
-            self.receiver.get_object(n).move(dx, dy, dz)
+            self.any_object_by_name(n).move(dx, dy, dz)
 
     def _exec(self):
         dx = self.get_option('dx')
@@ -222,9 +219,9 @@ class ScaleGeom(command.Command):
                 }
 
     def _scale(self, px, py, pz):
-        p0 = self.get_options('p0')
-        for n in self.get_options('names'):
-            self.receiver.get_object(n).scale(px, py, pz, p0[0], p0[1], p0[2])
+        p0 = self.get_option('p0')
+        for n in self.get_option('names'):
+            self.any_object_by_name(n).scale(px, py, pz, p0[0], p0[1], p0[2])
         return True
 
     def _exec(self):
@@ -285,6 +282,7 @@ class CopyGeom(addremove.AbstractAddRemove):
 
     def __init__(self, argsdict):
         super(CopyGeom, self).__init__(argsdict)
+        self.__odered = []
 
     @classmethod
     def _arguments_types(cls):
@@ -295,21 +293,52 @@ class CopyGeom(addremove.AbstractAddRemove):
     def doc(self):
         return "Copy objects: " + ", ".join(self.options['names'])
 
+    def odered_output(self):
+        g2, c2 = self.added_grids2(), self.added_contours2()
+        g3, s3 = self.added_grids3(), self.added_surfaces3()
+        ret = []
+        for ob in self.__odered:
+            if ob == 'c2':
+                ret.append(c2[0])
+                del c2[0]
+            elif ob == 's3':
+                ret.append(s3[0])
+                del s3[0]
+            elif ob == 'g2':
+                ret.append(g2[0])
+                del g2[0]
+            elif ob == 'g3':
+                ret.append(g3[0])
+                del g3[0]
+            else:
+                raise command.ExecutionError(
+                    "Unknown object", self)
+        return ret
+
     def _addrem_objects(self):
         g2, c2, g3, s3 = [], [], [], []
+        self.__odered = []
         for n in self.get_option('names'):
-            ob = self.get_object(n)
+            ob = self.any_object_by_name(n)
             cp = (ob.deepcopy(), n + '_copy')
             if isinstance(ob, gdata.cont2.Contour2):
+                self.__odered.append('c2')
                 c2.append(cp)
             elif isinstance(ob, gdata.srf3.Surface3):
+                self.__odered.append('s3')
                 s3.append(cp)
             elif isinstance(ob, gdata.grid2.Grid2):
+                self.__odered.append('g2')
                 g2.append(cp)
             elif isinstance(ob, gdata.grid3.Grid3):
+                self.__odered.append('g3')
                 g3.append(cp)
             else:
                 raise command.ExecutionError(
                     "Unknown object %" % str(ob), self)
 
         return g2, [], c2, [], g3, [], s3, []
+
+    def _clear(self):
+        self._odered = []
+        return super(CopyGeom, self)._clear()

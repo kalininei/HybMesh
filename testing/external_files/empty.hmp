@@ -2,13 +2,13 @@
 <HybMeshData>
   <FLOW>
     <COMMANDS>
-      <COM name="Start">
+      <COM current="1" name="Start">
         <LINE/>
       </COM>
     </COMMANDS>
     <STATE>
       <BTYPE index="0">
-        <NAME>None</NAME>
+        <NAME>default-boundary</NAME>
       </BTYPE>
     </STATE>
   </FLOW>

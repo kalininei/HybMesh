@@ -1,4 +1,4 @@
-import hybmeshpack.basic as bp
+import hybmeshpack.basic.proc as bp
 import copy
 
 
@@ -95,7 +95,7 @@ class SubDictOption(BasicOption):
 
 
 class Point2Option(BasicOption):
-    def __init__(self, default):
+    def __init__(self, default=no_default):
         super(Point2Option, self).__init__(None, default)
 
     def serial(self, v):
@@ -106,7 +106,7 @@ class Point2Option(BasicOption):
 
 
 class Point3Option(BasicOption):
-    def __init__(self, default):
+    def __init__(self, default=no_default):
         super(Point3Option, self).__init__(None, default)
 
     def serial(self, v):
@@ -117,7 +117,7 @@ class Point3Option(BasicOption):
 
 
 class BoolOption(BasicOption):
-    def __init__(self, default):
+    def __init__(self, default=no_default):
         super(BoolOption, self).__init__(bool, default)
 
     def serial(self, v):
@@ -131,7 +131,7 @@ class BoolOption(BasicOption):
 
 
 class ListCompressedOption(BasicOption):
-    def __init__(self, default):
+    def __init__(self, default=no_default):
         super(ListCompressedOption, self).__init__(None, default)
 
     def serial(self, v):
@@ -143,7 +143,7 @@ class ListCompressedOption(BasicOption):
 
 class BoundaryPickerOption(BasicOption):
     """
-    {'name': contour name,
+    {
       bnd_type1: [list of edges indicies],
       bnd_type2: [list of edges indicies], ...}
     """
@@ -154,14 +154,12 @@ class BoundaryPickerOption(BasicOption):
         'before writing'
         a = copy.deepcopy(v)
         for k, v in a.items():
-            if k != 'name':
-                a[k] = bp.compress_int_list(a[k])
+            a[k] = bp.compress_int_list(a[k])
         return a
 
     def unserial(self, s):
         'after reading'
         a = copy.deepcopy(s)
         for k, v in a.items():
-            if k != 'name':
-                a[k] = bp.int_list_from_compress(a[k])
+            a[k] = bp.int_list_from_compress(a[k])
         return a

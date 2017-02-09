@@ -22,7 +22,7 @@ def info_grid(gid):
     """
     grid = flow.receiver.get_grid2(gid)
     ret = {}
-    ret['Nnodes'] = grid.n_points()
+    ret['Nnodes'] = grid.n_vertices()
     ret['Ncells'] = grid.n_cells()
     ret['Nedges'] = grid.n_edges()
     ret['cell_types'] = grid.cell_types_info()
@@ -49,7 +49,7 @@ def info_contour(cid):
     """
     cont = flow.receiver.get_any_contour(cid).contour2()
     ret = {}
-    ret['Nnodes'] = cont.n_points()
+    ret['Nnodes'] = cont.n_vertices()
     ret['Nedges'] = cont.n_edges()
 
     sep = [Contour2(s) for s in c2core.quick_separate(cont.cdata)]
@@ -141,7 +141,9 @@ def pick_contour(pnt, contlist=[]):
     This procedure does not take 2d grid contours into account.
     """
     conts = map(flow.receiver.get_any_contour, contlist)
-    return closest_contour(conts)
+    cc = closest_contour(conts, pnt)
+    ind = conts.index(cc)
+    return contlist[ind]
 
 
 def skewness(gid, threshold=0.7):

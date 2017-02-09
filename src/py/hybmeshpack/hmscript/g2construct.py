@@ -157,6 +157,8 @@ def add_unf_ring_grid(p0, radinner, radouter,
     :return: created grid identifier
 
     """
+    if radinner > radouter:
+        radinner, radouter = radouter, radinner
     bnd = bnd[:2] if isinstance(bnd, list) else [bnd, bnd]
     c = com.gridcom.AddUnfRingGrid({
         "p0": p0,
@@ -289,8 +291,8 @@ def add_custom_rect_grid(algo, left, bottom, right=None, top=None,
     c = com.gridcom.AddCustomRectGrid(args)
     try:
         flow.exec_command(c)
-        return c.added_grids2[0]
-    except Exception:
+        return c.added_grids2()[0]
+    except:
         raise ExecError('custom rectangular grid')
 
 
@@ -643,11 +645,13 @@ def build_boundary_grid(opts):
             d['mesh_cont'] = 4
         else:
             raise ValueError("Invalid bnd_stepping: " + str(op.bnd_stepping))
+
         if op.bnd_stepping != "incremental":
             if isinstance(op.bnd_step, list):
                 raise ValueError("list values for bnd_step are available "
                                  "only for incremental stepping")
             else:
+                d['step_start'], d['step_end'] = 1., 1.
                 d['mesh_cont_step'] = op.bnd_step
         else:
             d['mesh_cont_step'] = 0.0

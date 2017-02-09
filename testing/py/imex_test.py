@@ -19,8 +19,8 @@ hmdbg.check(len(g6) == 3 and hm.info_grid(g6[1])['Ncells'] == 6)
 for i, z in enumerate(hm.registered_grids()):
     hmdbg.check(int(z[-1]) == i + 1)
 hm.remove_all()
-g7 = hm.import_grid_hmg("g4.hmg", "Grid3")
-hmdbg.check(g7 == "Grid3" and len(hm.registered_grids()) == 1)
+g7 = hm.import_grid_hmg("g4.hmg", "Grid2D_3")
+hmdbg.check(g7 == "Grid2D_3" and len(hm.registered_grids()) == 1)
 hmdbg.check(hm.info_grid(g7)['Ncells'] == 30)
 
 # export/import contours 2d to native
@@ -29,7 +29,7 @@ c2 = hm.add_rect_contour([0, 0], [2, 2], 2)
 hm.export_contour_hmc(c1, "c1.hmc")
 hm.export_contour_hmc(c2, "c2.hmc", "bin")
 hm.export_contour_hmc([c1, c2], "c3.hmc", "bin")
-c3 = hm.import_contour_hmc("c1.hmc", "Contour1")
+c3 = hm.import_contour_hmc("c1.hmc", "Contour2D_1")
 [c4, c5] = hm.import_contour_hmc("c3.hmc", allconts=True)
 c6 = hm.import_contour_hmc("c3.hmc")
 hmdbg.check(len(hm.registered_contours()) == 6)
@@ -60,7 +60,7 @@ hm.export3d_surface_hmc([ss2, ss1], "ss2.hmc", "bin")
 hm.export3d_surface_hmc([ss1, gg1, ss2], "ss3.hmc", "fbin")
 [ss3, ss4] = hm.import3d_surface_hmc("ss2.hmc", allsurfs=True)
 ss5 = hm.import3d_surface_hmc("ss2.hmc")
-ss6 = hm.import3d_surface_hmc("ss3.hmc", "SurfaceOfGrid3D_1")
+ss6 = hm.import3d_surface_hmc("ss3.hmc", "Grid3D_1_surface")
 hmdbg.check(len(hm.registered_surfaces()) == 6)
 hmdbg.check(hm.info_surface(ss1)['Nfaces'] == hm.info_surface(gg1)['Nfaces'])
 hmdbg.check(hm.info_surface(ss2)['Nnodes'] == hm.info_surface(gg2)['Nnodes'])
@@ -96,7 +96,7 @@ hmdbg.check(not hm.registered_contours())
 hmdbg.check(not hm.registered_grids())
 hmdbg.check(not hm.registered_grids3d())
 hmdbg.check(not hm.registered_surfaces())
-hmdbg.check(hm.registered_btypes() == [(0, 'None')])
+hmdbg.check(hm.registered_btypes() == [(0, 'default-boundary')])
 
 hm.load_project("p.hmp")
 hmdbg.check(numcom == hm.flow.com_count())
@@ -104,7 +104,8 @@ hmdbg.check(all(a == b for a, b in zip(zc2, hm.registered_contours())))
 hmdbg.check(all(a == b for a, b in zip(zg2, hm.registered_grids())))
 hmdbg.check(all(a == b for a, b in zip(zs3, hm.registered_surfaces())))
 hmdbg.check(all(a == b for a, b in zip(zg3, hm.registered_grids3d())))
-hmdbg.check(hm.registered_btypes() == [(0, 'None'), (15, 'boundary15')])
+hmdbg.check(hm.registered_btypes() == [(0, 'default-boundary'),
+                                       (15, 'boundary15')])
 hm.load_project("../external_files/empty.hmp")
 
 print "export 2d to fluent"
@@ -162,8 +163,8 @@ hm.add_boundary_type(1, "b1")
 hm.add_boundary_type(3, "b3")
 g2 = hm.import_grid_gmsh("g1.msh")
 hm.export_grid_gmsh(g2, "g2.msh")
-hmdbg.check_ascii_file(3645262703607683293, "g1.msh")
-hmdbg.check_ascii_file(9753784544655327331, "g2.msh")
+hmdbg.check_ascii_file(1848074108755753273, "g1.msh")
+hmdbg.check_ascii_file(14301170686345005483, "g2.msh")
 hm.remove_all()
 
 print "import from fluent msh file"
@@ -173,7 +174,7 @@ hmdbg.check(hm.info_grid(g1) ==
              'Nnodes': 1196, 'Nedges': 2382, 'Ncells': 1186})
 hmdbg.check(len(hm.registered_btypes()) == 6)
 hm.export_grid_msh(g1, "g1.msh")
-hmdbg.check_ascii_file(16131402527791276029, "g1.msh")
+hmdbg.check_ascii_file(10239002963502473, "g1.msh")
 hm.remove_all()
 
 print "export 3d to fluent"
@@ -218,14 +219,14 @@ hmdbg.check_ascii_file(7412218476507145895, "c1.dat", 'dev')
 print "export 3d grid to tecplot"
 g4 = hm.extrude_grid(g3, [0, 1, 2, 3, 5, 8, 9], 0, 10)
 hm.export3d_grid_tecplot(g4, "c1.dat")
-hmdbg.check_ascii_file(56650079217497558, "c1.dat")
+hmdbg.check_ascii_file(12411243383169301254, "c1.dat")
 
 g1 = hm.add_unf_rect_grid([0, 0], [10, 10], 10, 10)
 c1 = hm.create_contour([[-2, 4], [8, -2], [4, 12], [-2, 4]])
 g1 = hm.exclude_contours(g1, c1, "inner")
 g2 = hm.extrude_grid(g1, [0, 0.2, 0.5, 0.9, 1.0], 1, 2, 3)
 hm.export3d_grid_tecplot(g2, "c2.dat")
-hmdbg.check_ascii_file(14382532352470452797, "c2.dat")
+hmdbg.check_ascii_file(1752936657739021944, "c2.dat")
 
 print "export with additional fields"
 hm.remove_all()
@@ -239,5 +240,5 @@ hm.export3d_grid_hmg(g2, "g2.hmg", afields=['cell-vertices',
                                             'cell-faces',
                                             'face-vertices',
                                             'linfem'])
-hmdbg.check_ascii_file(8752652965725854495, "g1.hmg")
-hmdbg.check_ascii_file(2963152156803323960, "g2.hmg")
+hmdbg.check_ascii_file(2861272265167478324, "g1.hmg")
+hmdbg.check_ascii_file(2486987787033937359, "g2.hmg")

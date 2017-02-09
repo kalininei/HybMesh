@@ -121,8 +121,11 @@ def _parse(fn):
     # filter out bc which are not present
     ztps2 = {}
     for e in eds:
-        if e[4] in ztps and e[4] not in ztps2:
-            ztps2[e[4]] = ztps[e[4]]
+        if e[4] in ztps:
+            if e[4] not in ztps2:
+                ztps2[e[4]] = ztps[e[4]]
+        else:
+            e[4] = 0  # set interior zone type to zero
     ztps = ztps2
 
     return points, eds, ztps

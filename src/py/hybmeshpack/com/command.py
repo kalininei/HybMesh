@@ -18,8 +18,9 @@ class ExecutionError(bp.EmbException):
             s += str(self.sender) + '\n'
         else:
             s += 'Unknown\n'
-        s += '\nMessage:\n'
-        s += self.message
+        if self.message:
+            s += '\nMessage:\n'
+            s += self.message
         return s
 
 
@@ -162,12 +163,13 @@ class Command(object):
     #auxilliary functions
     def get_option(self, code):
         try:
-            return self.options[code]
+            return copy.deepcopy(self.options[code])
         except KeyError:
-            if self._arguments_types[code].has_default():
-                return self._arguments_types[code].default
+            at = self._arguments_types()
+            if code in at and at[code].has_default():
+                return at[code].default
             else:
-                raise KeyError("Option %s is uknown" % code)
+                raise KeyError("Option '%s' is unknown" % code)
 
     def cont2_by_name(self, name):
         '->contour by its name or raise ObjNotFound'
@@ -201,13 +203,13 @@ class Command(object):
         """ ->Contour2 or raise. Grid contour or user contour by object name.
         Makes a deep copy if name is a grid.
         """
-        return self.any_acont_by_name().contour2()
+        return self.any_acont_by_name(name).contour2()
 
     def any_acont_by_name(self, name):
         """ ->AbstractContour2 or raise.
         """
         try:
-            return self.receiver.any_contour(name)
+            return self.receiver.get_any_contour(name)
         except KeyError:
             raise ObjectNotFound(name, self)
 
@@ -215,7 +217,7 @@ class Command(object):
         """ ->AbstractSurface3 or raise.
         """
         try:
-            return self.receiver.any_surface(name)
+            return self.receiver.get_any_surface(name)
         except KeyError:
             raise ObjectNotFound(name, self)
 
@@ -223,14 +225,20 @@ class Command(object):
         """ ->Surface3 or raise. Grid surface or surface by object name
         Makes a deep copy if name is a grid.
         """
-        return self.any_asurface_by_name().surface3()
+        return self.any_asurface_by_name(name).surface3()
+
+    def any_object_by_name(self, name):
+        try:
+            return self.receiver.get_object(name)
+        except KeyError:
+            raise ObjectNotFound(name, self)
 
     def ask_for_callback(self):
         """ ask parent flow interface for callback.
             Returns proper callback object
         """
         try:
-            return self.parent_flow.get_interface().ask_for_callback()
+            return self.parent_flow.interface.ask_for_callback()
         except:
             return basic.interf.Callback.silent_factory()
 

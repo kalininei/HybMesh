@@ -172,10 +172,10 @@ def import3d_surface_hmc(fname, srfname="", allsurfs=False):
         {"filename": fname, "srfname": srfname, "all": allsurfs})
     try:
         flow.exec_command(c)
-        ret = c.added_surface3()
+        ret = c.added_surfaces3()
         return ret if allsurfs else ret[0]
     except Exception:
-        raise ExecError('import_contours_hmc')
+        raise ExecError('import3d_surface_hmc')
 
 
 # data

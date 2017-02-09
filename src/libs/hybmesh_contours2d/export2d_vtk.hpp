@@ -12,7 +12,7 @@ void VerticesVTK(const VertexData& data, std::string fn);
 
 void GridVTK(const GridData& g, std::string fn);
 
-void BoundaryVTK(const GridData& g, std::string fn, const vector<int>& bcond={});
+void BoundaryVTK(const GridData& g, std::string fn);
 
 }}
 #endif

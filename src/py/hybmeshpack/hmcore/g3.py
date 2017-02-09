@@ -90,7 +90,7 @@ def extrude(g2obj, zvals, bbot, btop, bside=None):
     bside = ct.c_int(bside if bside is not None else -1)
     ret = ct.c_void_p()
     ccall(cport.g3_extrude, g2obj, nzvals, zvals, bbot, btop, bside,
-          ct.by_ref(ret))
+          ct.byref(ret))
     return ret
 
 
@@ -124,7 +124,7 @@ def tetrahedral_fill(sobjs, constrs, pts, pt_sizes, cb):
 
 def merge(obj1, obj2, cb=None):
     ret = ct.c_void_p()
-    call_cb(cport.g3_merge, cb, obj1, obj2, ct.byref(ret))
+    ccall_cb(cport.g3_merge, cb, obj1, obj2, ct.byref(ret))
     return ret
 
 
@@ -145,7 +145,7 @@ def to_msh(obj, fname, btypes, per_data, cb=None):
             tmp.extend(next(it))
         except StopIteration:
             break
-    per_data = list_to_c(per_data, float)
+    per_data = list_to_c(tmp, float)
     ccall_cb(cport.g3_to_msh, cb, obj, fname, btypes, n_per_data, per_data)
 
 

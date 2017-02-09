@@ -266,6 +266,7 @@ void PurgeGrid(BGrid& grid, const HM2D::EdgeData& cont){
 		}
 	}
 	HM2D::GridData compens = HM2D::Grid::Constructor::FromTab(vd, ctab);
+	HM2D::ECol::Algos::AssignBTypes(cont, compens.vedges);
 	grid.add_grid(BGrid::MoveFrom2(std::move(compens)));
 }
 
@@ -396,10 +397,10 @@ void IntersectCellsInfo2(const BGrid& grid,
 }
 
 int find_hanging(const HM2D::EdgeData& cont){
-	auto op = HM2D::Contour::OrderedPoints(cont);
+	auto op = HM2D::Contour::OrderedPoints1(cont);
 
 	for (auto a: op) a->id = 1;
-	for (auto a: HM2D::Contour::CornerPoints(cont)) a->id = 0;
+	for (auto a: HM2D::Contour::CornerPoints1(cont)) a->id = 0;
 
 	for (int i=0; i<op.size(); ++i){
 		if (cont[i]->is_boundary()) continue;

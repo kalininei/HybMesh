@@ -12,7 +12,7 @@ def _write_list_to_file(lst, fname):
 def cont2(fname, cont, cb=None):
     out = ["# vtk DataFile Version 3.0",
            cont.__class__.__name__, "ASCII"]
-    ne, np = cont.n_edges(), cont.n_points()
+    ne, np = cont.n_edges(), cont.n_vertices()
     # Raw data
     raw_btypes = cont.raw_data('btypes')
     raw_vert = cont.raw_data('vertices')
@@ -39,7 +39,7 @@ def cont2(fname, cont, cb=None):
 def grid2(fname, grid, cb=None):
     out = ["# vtk DataFile Version 3.0",
            grid.__class__.__name__, "ASCII"]
-    np, nc = grid.n_points(), grid.n_cells()
+    np, nc = grid.n_vertices(), grid.n_cells()
     # Raw data
     raw_vertices = grid.raw_data('vertices')
     raw_cellsize = grid.raw_data('cellsizes')
@@ -57,7 +57,7 @@ def grid2(fname, grid, cb=None):
     it = iter(raw_cellvert)
     for sz in raw_cellsize:
         sit = itertools.islice(it, sz)
-        out.append('%i %s' % (nc, ' '.join(map(str, sit))))
+        out.append('%i %s' % (sz, ' '.join(map(str, sit))))
     #CellTypes
     out.append("CELL_TYPES %i" % nc)
     out.extend(['7'] * nc)
@@ -71,5 +71,5 @@ def grid3(fname, grid, cb=None):
     g3core.to_vtk(grid.cdata, fname, cb)
 
 
-def vtk_surface(grid, fname, cb=None):
+def grid3_surface(fname, grid, cb=None):
     g3core.surface_to_vtk(grid.cdata, fname, cb)

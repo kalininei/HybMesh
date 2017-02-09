@@ -39,7 +39,7 @@ class ExtrudeZ(NewGrid3DCommand):
                    starting from bottom to top
         zvals is strictly increasing
         """
-        return {'name': co.BasicOption(str),
+        return {'name': co.BasicOption(str, None),
                 'base': co.BasicOption(str),
                 'zvals': co.ListOfOptions(co.BasicOption(float)),
                 'bbot': co.ListCompressedOption([0]),
@@ -48,7 +48,7 @@ class ExtrudeZ(NewGrid3DCommand):
                 }
 
     def _build_grid(self):
-        g2 = self.grid_by_name(self.get_option('base'))
+        g2 = self.grid2_by_name(self.get_option('base'))
         return g3core.extrude(g2.cdata,
                               self.get_option('zvals'),
                               self.get_option('bbot'),
@@ -75,7 +75,7 @@ class Revolve(NewGrid3DCommand):
                 }
 
     def _build_grid(self):
-        g2 = self.grid_by_name(self.get_option('base'))
+        g2 = self.grid2_by_name(self.get_option('base'))
         vec = [self.get_option('p1'), self.get_option('p2')]
         return g3core.revolve(g2.cdata, vec, self.get_option('phi'),
                               self.get_option('center_tri'),

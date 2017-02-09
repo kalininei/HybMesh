@@ -10,18 +10,16 @@ def copy_geom(objs):
 
     :param objs: identifier or list of identifiers of objects to copy
 
-    :returns: list of identifiers of copied objects if objs is alist,
-              single identifier of copied object otherwise
+    :returns: list of identifiers of copied objects in oder prescribed by
+       input list
     """
-    if isinstance(objs, list):
-        return map(copy_geom, objs)
+    if not isinstance(objs, list):
+        objs = [objs]
 
     try:
-        c = com.objcom.CopyGeom({"names": [objs]})
+        c = com.objcom.CopyGeom({"names": objs})
         flow.exec_command(c)
-        ret = c.added_contours2() + c.added_grids2() + c.added_surfaces3() +\
-            c.added_grids3()
-        return ret[0] if len(ret) > 0 else None
+        return c.odered_output()
     except:
         raise ExecError("copy_geom")
 
@@ -215,7 +213,7 @@ def registered_grids():
 def registered_grids3d():
     """ Returns list of all 3d grid identifiers
     """
-    return flow.get_receiver().get_grid3_names()
+    return flow.receiver.get_grid3_names()
 
 
 def registered_surfaces():

@@ -75,6 +75,8 @@ void AcuteConnector::BuildInternals(){
 	HM2D::VertexData cl {pc2info.pprev, pc2info.p, pc2info.pnext};
 	//4) build grid with one triangle
 	filler = BGrid::MoveFrom1(HM2D::Grid::Constructor::FromTab(cl, {{0, 1, 2}}));
+	filler->vedges[0]->boundary_type = pc2info.eprev->boundary_type;
+	filler->vedges[1]->boundary_type = pc2info.enext->boundary_type;
 	//5) set highest priority
 	filler->weight[filler->vcells[0].get()] = 0;
 };

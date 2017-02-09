@@ -15,16 +15,20 @@ class Grid3BndToSurface(addremove.AbstractAddRemove):
 
     @classmethod
     def _arguments_types(cls):
-        return {'name': co.BasicOption(str, None),
+        return {'surf_name': co.BasicOption(str, None),
                 'grid_name': co.BasicOption(str),
                 'separate': co.BoolOption(False),
                 }
 
     def _addrem_surface3(self):
-        g = self.grid3_by_name(self.get_option('grid_name'))
+        gn = self.get_option('grid_name')
+        sn = self.get_option('surf_name')
+        if sn is None:
+            sn = gn + '_surface'
+        g = self.grid3_by_name(gn)
         s = [g.surface().surface3()]
         if self.get_option('separate'):
-            s = s3core.quick_separate(s.cdata)
+            s = s3core.quick_separate(s[0].cdata)
             s = [Surface3(it) for it in s]
 
-        return [(it, self.get_option('name')) for it in s], []
+        return [(it, sn) for it in s], []

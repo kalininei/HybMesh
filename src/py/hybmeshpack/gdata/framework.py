@@ -26,7 +26,7 @@ class Framework(object):
         '-> {zone type: zone name}'
         ret = {}
         for n in self.zone_types.all_names():
-            ind = self.zone_types.obj_by_name[n].index
+            ind = self.zone_types.obj_by_name(n).index
             ret[ind] = n
         return ret
 
@@ -173,9 +173,10 @@ class Framework(object):
         self.contours2.clear()
         self.grids3.clear()
         self.surfaces3.clear()
-        self.boundary_types.clear()
-        self._bnames_pool.clear()
+        self.zone_types.clear()
+        self._znames_pool.clear()
         self._obj_pool.clear()
+        self.set_zone_type(0, "default-boundary")
 
     # copy
     def shallow_fillfrom(self, fwork):

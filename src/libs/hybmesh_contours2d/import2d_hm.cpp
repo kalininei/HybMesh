@@ -76,11 +76,19 @@ GridData Import::GridFromTabs(const vector<double> vert, const vector<int>& edge
 	}
 	for (int i=0; i<Ne; ++i){
 		int p1 = edgevert[2*i], p2 = edgevert[2*i+1];
+		if (p1 == p2 || p1 >= Nv || p2 >= Nv || p1 < 0 || p2 < 0)
+			throw std::runtime_error("edge " + std::to_string(i) +
+				" has illegal adjacent vertices connectivity: (" +
+				std::to_string(p1) + ", " + std::to_string(p2) + ")");
 		ng.vedges.push_back(std::make_shared<Edge>(ng.vvert[p1], ng.vvert[p2]));
 	}
 	for (int i=0; i<Nc; ++i){ ng.vcells.push_back(std::make_shared<Cell>()); }
 	for (int i=0; i<Ne; ++i){
 		int c1 = edgecell[2*i], c2 = edgecell[2*i+1];
+		if ((c1 != -1 && c1 == c2) || c1 >= Nc || c2 >= Nc)
+			throw std::runtime_error("edge " + std::to_string(i) +
+				" has illegal adjacent cells connectivity: (" +
+				std::to_string(c1) + ", " + std::to_string(c2) + ")");
 		if (c1>=0){
 			ng.vcells[c1]->edges.push_back(ng.vedges[i]);
 			ng.vedges[i]->left = ng.vcells[c1];
@@ -139,7 +147,7 @@ void Import::GridReader::fill_result(){
 	vector<int> btypes(Ne, 0);
 	try{
 		btypes = read_edges_field<int>("__boundary_types__");
-	} catch (const XmlElementNotFound&){}
+	} catch (const XmlElementNotFound&){ }
 	
 	//constructing a grid
 	GridData ng = Import::GridFromTabs(vert, edgevert, edgecell);

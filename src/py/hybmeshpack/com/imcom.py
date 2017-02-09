@@ -24,23 +24,20 @@ class _AbstractImport(addremove.AbstractAddRemove):
     def _addrem_objects(self):
         self.__check_file_existance()
         g2list, c2list, g3list, s3list = [], [], [], []
-        try:
-            self._init_read()
-            c2 = self._read_cont2()
-            g2 = self._read_grid2()
-            s3 = self._read_surf3()
-            g3 = self._read_grid3()
-            self._fin_read()
-        except Exception as e:
-            raise ExecutionError("Import failure", self, e)
+        self._init_read()
+        c2 = self._read_cont2()
+        g2 = self._read_grid2()
+        s3 = self._read_surf3()
+        g3 = self._read_grid3()
+        self._fin_read()
         for i, c in enumerate(c2):
-            c2list.append((self._c2name(i), Contour2(c)))
+            c2list.append((Contour2(c), self._c2name(i)))
         for i, c in enumerate(g2):
-            g2list.append((self._g2name(i), Grid2(c)))
+            g2list.append((Grid2(c), self._g2name(i)))
         for i, c in enumerate(s3):
-            s3list.append((self._s3name(i), Surface3(c)))
+            s3list.append((Surface3(c), self._s3name(i)))
         for i, c in enumerate(g3):
-            g3list.append((self._g3name(i), Grid3(c)))
+            g3list.append((Grid3(c), self._g3name(i)))
 
         return g2list, [], c2list, [], g3list, [], s3list, []
 
@@ -150,7 +147,7 @@ class ImportContoursNative(_AbstractImport):
         doc, root = 0, 0
         try:
             cb = self.ask_for_callback()
-            doc, root = hmxml.open_doc(self.get_option['filename'])
+            doc, root = hmxml.open_doc(self.get_option('filename'))
             if self.get_option('all'):
                 c2, self._c2names = natim.all_contours2(doc, root, cb)
             else:
@@ -190,7 +187,7 @@ class ImportGridsNative(_AbstractImport):
         doc, root = 0, 0
         try:
             cb = self.ask_for_callback()
-            doc, root = hmxml.open_doc(self.get_option['filename'])
+            doc, root = hmxml.open_doc(self.get_option('filename'))
             if self.get_option('all'):
                 g2, self._g2names = natim.all_grids2(doc, root, cb)
             else:
@@ -213,7 +210,7 @@ class _ImportGrid2WithBTypes(_AbstractImport):
     def _add_boundaries(self, bt):
         needed_boundaries = {}
         flowbtypes = self.receiver.get_zone_types()
-        for k, v in bt:
+        for k, v in bt.iteritems():
             if k not in flowbtypes:
                 needed_boundaries[k] = v
 
@@ -227,7 +224,7 @@ class _ImportGrid2WithBTypes(_AbstractImport):
     def _read_grid2(self):
         ret, bt = self._parser(self.get_option('filename'))
         self._add_boundaries(bt)
-        return ret
+        return [ret]
 
     # overriding since additional commands present in reading grid procedure
     def _clear(self):
@@ -318,7 +315,7 @@ class ImportSurfacesNative(_AbstractImport):
         doc, root = 0, 0
         try:
             cb = self.ask_for_callback()
-            doc, root = hmxml.open_doc(self.get_option['filename'])
+            doc, root = hmxml.open_doc(self.get_option('filename'))
             if self.get_option('all'):
                 s3, self._s3names = natim.all_surfaces3(doc, root, cb)
             else:
@@ -361,7 +358,7 @@ class ImportGrids3Native(_AbstractImport):
         doc, root = 0, 0
         try:
             cb = self.ask_for_callback()
-            doc, root = hmxml.open_doc(self.get_option['filename'])
+            doc, root = hmxml.open_doc(self.get_option('filename'))
             if self.get_option('all'):
                 g3, self._g3names = natim.all_grids3(doc, root, cb)
             else:

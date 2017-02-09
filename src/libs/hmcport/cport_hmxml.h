@@ -8,6 +8,8 @@ extern "C"{
 
 int hmxml_open_doc(const char* fname, void** doc, void** root);
 
+int hmxml_new_doc(void** doc, void** root);
+
 int hmxml_free_node(void* node);
 
 int hmxml_free_doc(void* doc);
@@ -18,13 +20,13 @@ int hmxml_write(void* doc, const char* filename);
 
 int hmxml_purged_string(void* doc, char** ret);
 
-int read_contour2(void* doc, void* node, void** obj, char** name);
+int read_contour2(void* doc, void* node, void** obj, char* name);
 
-int read_grid2(void* doc, void* node, void** obj, char** name);
+int read_grid2(void* doc, void* node, void** obj, char* name);
 
-int read_surface3(void* doc, void* node, void** obj, char** name);
+int read_surface3(void* doc, void* node, void** obj, char* name);
 
-int read_grid3(void* doc, void* node, void** obj, char** name, hmcport_callback cb);
+int read_grid3(void* doc, void* node, void** obj, char* name, hmcport_callback cb);
 
 }
 #endif

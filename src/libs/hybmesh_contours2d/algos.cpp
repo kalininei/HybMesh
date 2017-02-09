@@ -40,7 +40,7 @@ Tree cal::Simplified(const Tree& t1){
 EdgeData cal::Simplified(const EdgeData& cont){
 	auto p = CornerPoints(cont);
 	EdgeData ret = Assembler::Contour1(p, IsClosed(cont));
-	auto op = OrderedPoints(cont);
+	auto op = OrderedPoints1(cont);
 	aa::enumerate_ids_pvec(op);
 	for (auto& e: ret) e->boundary_type = cont[e->pfirst()->id]->boundary_type;
 	return ret;
@@ -410,41 +410,47 @@ void cal::RemovePoints(EdgeData& data, vector<int> ipnt){
 
 vector<int> cal::BTypesFromWeights(const EdgeData& cont, const vector<double>& w){
 	assert(Contour::IsContour(cont));
-	vector<int> ret;
-	vector<double> ew = HM2D::Contour::EWeights(cont);
+	vector<int> ret(w.size());
+	vector<double> eweights = HM2D::Contour::EWeights(cont);
 
-	auto wbegin = w.begin();
-	for (int i=0; i<ew.size(); ++i){
-		auto fnd = std::upper_bound(wbegin, w.end(), ew[i]);
-		if (fnd != w.begin()) --fnd;
-		wbegin = fnd;
-		ret[i] = cont[fnd - w.begin()]->boundary_type;
+	auto ebegin = eweights.begin();
+	for (int i=0; i<w.size(); ++i){
+		auto fnd = std::upper_bound(ebegin, eweights.end(), w[i]);
+		if (fnd != eweights.begin()) --fnd;
+		ebegin = fnd;
+		ret[i] = cont[fnd - eweights.begin()]->boundary_type;
 	}
 
-	assert(cont.size() == ret.size());
 	return ret;
 }
 
 void eal::AssignBTypes(const EdgeData& from, EdgeData& to){
+	if (to.size() == 0) return;
+	if (from.size() == 0){
+		for (auto& e: to) e->boundary_type = 0;
+		return;
+	}
 	//if all from edges have same bt
 	vector<int> bt(from.size());
 	for (int i=0; i<from.size(); ++i) bt[i] = from[i]->boundary_type;
 	if (all_of(bt.begin(), bt.end(), [&bt](int a){ return a == bt[0]; })){
 		for (auto& e: to) e->boundary_type = bt[0];
+		return;
 	}
 	//using custom Finder::ClosestEdge implementation
 	//to use epsilon comparison instead of '<'. 
 	//This is done to guarantee that amoung all equal distanced 'from'
 	//edges the first one will be taken.
-	for (auto& e: from){
-		Point p = e->center();
+	for (int ei=0; ei<to.size(); ++ei){
+		HM2D::Edge& e = *to[ei];
+		Point p = e.center();
 		double mindist = std::numeric_limits<double>::max();
 		int imin = -1;
 
-		for (int i=0; i<to.size(); ++i){
-			double meas = Point::meas_section(p, *to[i]->pfirst(), *to[i]->plast());
+		for (int i=0; i<from.size(); ++i){
+			double meas = Point::meas_section(p, *from[i]->pfirst(), *from[i]->plast());
 			if (meas < geps * geps){
-				e->boundary_type = to[i]->boundary_type;
+				imin = i;
 				break;
 			}
 			meas = sqrt(meas);
@@ -453,6 +459,6 @@ void eal::AssignBTypes(const EdgeData& from, EdgeData& to){
 				mindist = meas;
 			}
 		}
-		e->boundary_type = to[imin]->boundary_type;
+		e.boundary_type = from[imin]->boundary_type;
 	}
 }

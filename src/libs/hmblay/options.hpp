@@ -87,7 +87,7 @@ class Options: public Input{
 	shared_ptr<HM2D::EdgeData> __edges_data;
 
 	//these are contours which should be meshed (path)
-	//and full contour which contains the path
+	//and full contour which contains the path.
 	//path and full_source are directed in such a way that 
 	//grid is build in an inner (left) direction
 	//they have deep copied from __edges_data edges and shallow vertices

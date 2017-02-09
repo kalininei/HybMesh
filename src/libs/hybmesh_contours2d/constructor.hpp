@@ -27,6 +27,7 @@ EdgeData CutContour(const EdgeData& cont,
 EdgeData Spline(const vector<Point>& pnt, int nedges, bool force_closed=false);
 
 //resulting contours have no crosses and complicated connections.
+//equal resulting contours vertices are shared
 vector<EdgeData> ExtendedSeparate(const EdgeData& ecol);
 
 }}

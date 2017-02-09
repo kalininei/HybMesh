@@ -7,10 +7,23 @@
 
 int hmxml_open_doc(const char* fname, void** doc, void** root){
 	try{
-		HMXML::ReaderA* _doc = new HMXML::ReaderA(fname, "</HybMeshData>");
-		HMXML::Reader* _root = new HMXML::Reader(*_doc, _doc->_nd);
-		*doc = _doc;
-		*root = _root;
+		HMXML::ReaderA* doc_ = new HMXML::ReaderA(fname, "</HybMeshData>");
+		HMXML::Reader* root_ = new HMXML::Reader(*doc_, doc_->_nd);
+		*doc = doc_;
+		*root = root_;
+		return HMSUCCESS;
+	} catch (std::exception& e){
+		std::cout<<e.what()<<std::endl;
+		return HMERROR;
+	}
+}
+
+int hmxml_new_doc(void** doc, void** root){
+	try{
+		HMXML::ReaderA* doc_ = HMXML::ReaderA::pcreate("HybMeshData");
+		HMXML::Reader* root_ = new HMXML::Reader(*doc_, doc_->_nd);
+		*doc = doc_;
+		*root = root_;
 		return HMSUCCESS;
 	} catch (std::exception& e){
 		std::cout<<e.what()<<std::endl;
@@ -76,14 +89,14 @@ int hmxml_purged_string(void* doc, char** ret){
 	}
 }
 
-int read_contour2(void* doc, void* node, void** obj, char** name){
+int read_contour2(void* doc, void* node, void** obj, char* name){
 	try{
 		auto wr = static_cast<HMXML::ReaderA*>(doc);
 		auto sn = static_cast<HMXML::Reader*>(node);
 		std::string nm = sn->attribute(".", "name");
 		HM2D::Import::EColReader reader(wr, sn);
 		*obj = reader.result.release();
-		c2cpp::to_char_string(nm, name);
+		strcpy(name, nm.c_str());
 		return HMSUCCESS;
 	} catch (std::exception& e){
 		std::cout<<e.what()<<std::endl;
@@ -91,14 +104,14 @@ int read_contour2(void* doc, void* node, void** obj, char** name){
 	}
 }
 
-int read_grid2(void* doc, void* node, void** obj, char** name){
+int read_grid2(void* doc, void* node, void** obj, char* name){
 	try{
 		auto wr = static_cast<HMXML::ReaderA*>(doc);
 		auto sn = static_cast<HMXML::Reader*>(node);
 		std::string nm = sn->attribute(".", "name");
 		HM2D::Import::GridReader reader(wr, sn);
 		*obj = reader.result.release();
-		c2cpp::to_char_string(nm, name);
+		strcpy(name, nm.c_str());
 		return HMSUCCESS;
 	} catch (std::exception& e){
 		std::cout<<e.what()<<std::endl;
@@ -106,14 +119,14 @@ int read_grid2(void* doc, void* node, void** obj, char** name){
 	}
 }
 
-int read_surface3(void* doc, void* node, void** obj, char** name){
+int read_surface3(void* doc, void* node, void** obj, char* name){
 	try{
 		auto wr = static_cast<HMXML::ReaderA*>(doc);
 		auto sn = static_cast<HMXML::Reader*>(node);
 		std::string nm = sn->attribute(".", "name");
 		auto ret = HM3D::Import::ReadHMC(wr, sn);
-		*obj = ret->result.release();
-		c2cpp::to_char_string(nm, name);
+		c2cpp::to_pp(ret->result->surface, obj);
+		strcpy(name, nm.c_str());
 		return HMSUCCESS;
 	} catch (std::exception& e){
 		std::cout<<e.what()<<std::endl;
@@ -121,14 +134,14 @@ int read_surface3(void* doc, void* node, void** obj, char** name){
 	}
 }
 
-int read_grid3(void* doc, void* node, void** obj, char** name, hmcport_callback cb){
+int read_grid3(void* doc, void* node, void** obj, char* name, hmcport_callback cb){
 	try{
 		auto wr = static_cast<HMXML::ReaderA*>(doc);
 		auto sn = static_cast<HMXML::Reader*>(node);
 		std::string nm = sn->attribute(".", "name");
 		auto ret = HM3D::Import::ReadHMG.WithCallback(cb, wr, sn);
-		*obj = ret->result.release();
-		c2cpp::to_char_string(nm, name);
+		c2cpp::to_pp(ret->result->grid, obj);
+		strcpy(name, nm.c_str());
 		return HMSUCCESS;
 	} catch (std::exception& e){
 		std::cout<<e.what()<<std::endl;

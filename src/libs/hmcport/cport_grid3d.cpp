@@ -57,7 +57,7 @@ int g3_tab_btypes(void* obj, int* ret){
 int g3_point_at(void* obj, int index, double* ret){
 	try{
 		auto g = static_cast<HM3D::GridData*>(obj);
-		if (g->vvert.size()>=index) throw std::runtime_error("index is out of range");
+		if (index >= g->vvert.size()) throw std::runtime_error("index is out of range");
 		ret[0] = g->vvert[index]->x;
 		ret[1] = g->vvert[index]->y;
 		ret[2] = g->vvert[index]->z;
@@ -191,7 +191,7 @@ int g3_merge(void* obj1, void* obj2, void** ret, hmcport_callback cb){
 }
 
 int g3_extrude(void* obj, int nz, double* zvals,
-		int*  btop, int* bbot,
+		int*  bbot, int* btop,
 		int bside, void** ret){
 	try{
 		auto g2 = static_cast<HM2D::GridData*>(obj);
@@ -378,7 +378,7 @@ int g3_to_hm(void* doc, void* node, void* obj, const char* name, const char* fmt
 
 		//additional fields
 		for (int i=0; i<naf; ++i){
-			switch (std::map<const char*, int>{
+			switch (std::map<std::string, int>{
 					{"face_vertices", 1},
 					{"face-vertices", 2},
 					{"cell_faces", 3},

@@ -115,7 +115,7 @@ grid_final = hm.unite_grids(grid_wbnd, [(inout_grid, 0)])
 def channelbfun(x0, y0, x1, y1, oldb):
     # boundaries for obstacle are already set and we don't want to reset them.
     if oldb in [bcyl, bcut]:
-        return None
+        return oldb
     # bottom/top walls
     if abs(y0 - y1) < 1e-12:
         return bwalls

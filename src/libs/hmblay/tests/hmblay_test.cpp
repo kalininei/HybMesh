@@ -179,17 +179,16 @@ void test04(){
 	inp1.start = Point(10, 0);
 	inp1.end = Point(-10, 0);
 	inp1.bnd_step = 0.3;
-	//HM2D::GridData Ans1 = HMBlay::BuildBLayerGrid({inp1});
-	//add_check([&](){
-		//for (int i=0; i<Ans1.vcells.size(); ++i) if (Ans1.vcells[i]->area()<0) return false;
-		//for (int i=0; i<Ans1.vvert.size(); ++i) if (Ans1.vvert[i]->y<-1e-3) return false;
-		//bool hasp1=false, hasp2=false;
-		//for (int i=0; i<Ans1.vvert.size(); ++i){
-			//if (Point::dist(*Ans1.vvert[i], Point(10.4, 0))<1e-2) hasp1 = true;
-			//if (Point::dist(*Ans1.vvert[i],Point(-10.4, 0))<1e-2) hasp2 = true;
-		//}
-		//return true;
-	//}(), cn);
+	HM2D::GridData Ans1 = HMBlay::BuildBLayerGrid({inp1});
+	add_check([&](){
+		for (int i=0; i<Ans1.vvert.size(); ++i) if (Ans1.vvert[i]->y<-1e-3) return false;
+		bool hasp1=false, hasp2=false;
+		for (int i=0; i<Ans1.vvert.size(); ++i){
+			if (Point::dist(*Ans1.vvert[i], Point(10.4, 0))<1e-2) hasp1 = true;
+			if (Point::dist(*Ans1.vvert[i],Point(-10.4, 0))<1e-2) hasp2 = true;
+		}
+		return true;
+	}(), cn);
 
 	cn = std::string("Two layers with same partition depth count: outer");
 	HMBlay::Input inp2(inp1);
@@ -210,6 +209,7 @@ void test04(){
 		if (!hasp1 || !hasp2) return false;
 		return true;
 	}(), cn);
+	HM2D::Export::GridVTK(Ans2, "g1.vtk");
 
 	cn = std::string("Two layers with same partition depth count: inner");
 	inp1.direction = inp2.direction = HMBlay::DirectionFromString("INNER");

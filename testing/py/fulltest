@@ -1,80 +1,47 @@
 #!/usr/bin/sh
-# no args do all tests
-# args:
-#   -doc : do doc tests
-#   -unit: do unit tests     
 HMCOM="python ../../src/py/hybmesh.py -silent -sx"
 #HMCOM="hybmesh -silent -sx"
-DO_UNIT_TESTS=0
-DO_DOC_TESTS=0
-if [ $# -eq 0 ]
-then
-	DO_UNIT_TESTS=1
-	DO_DOC_TESTS=1
-else
-	for var in $@
-	do
-		if [ $var == "-doc" ]
-		then
-			DO_DOC_TESTS=1
-		elif [ $var == "-unit" ]
-		then
-			DO_UNIT_TESTS=1
-		fi
-	done
-fi
 
+echo "============ doing unit tests"
+echo "--- cont_test.py"
+$HMCOM cont_test.py
+echo "--- exclude_test.py"
+$HMCOM exclude_test.py
+echo "--- bgrid_test.py"
+$HMCOM bgrid_test.py
+echo "--- unite_test.py"
+$HMCOM unite_test.py
+echo "--- imex_test.py"
+$HMCOM imex_test.py
+echo "--- mapping_test.py"
+$HMCOM mapping_test.py
+echo "--- extrude_test.py"
+$HMCOM extrude_test.py
+echo "--- proto_test.py"
+$HMCOM proto_test.py
+echo "--- grid3d_test.py"
+$HMCOM grid3d_test.py
 
-if [ $DO_UNIT_TESTS -eq 1 ]
-then
-	echo "============ doing unit tests"
-	echo "--- cont_test.py"
-	$HMCOM cont_test.py
-	echo "--- exclude_test.py"
-	$HMCOM exclude_test.py
-	echo "--- bgrid_test.py"
-	$HMCOM bgrid_test.py
-	echo "--- unite_test.py"
-	$HMCOM unite_test.py
-	echo "--- imex_test.py"
-	$HMCOM imex_test.py
-	echo "--- mapping_test.py"
-	$HMCOM mapping_test.py
-	echo "--- extrude_test.py"
-	$HMCOM extrude_test.py
-	echo "--- proto_test.py"
-	$HMCOM proto_test.py
-	echo "--- grid3d_test.py"
-	$HMCOM grid3d_test.py
-else
-	echo "============ ignoring unit tests"
-fi
-
-if [ $DO_DOC_TESTS -eq 1 ]
-then
-	echo "============ doing doc tests"
-	$HMCOM fromdoc/ex_setbtype.py
-	$HMCOM fromdoc/ex_exclude.py
-	$HMCOM fromdoc/ex_unite_grids.py
-	$HMCOM fromdoc/ex_bgrid.py
-	$HMCOM fromdoc/ex_partcontour.py
-	$HMCOM fromdoc/ex_extrude.py
-	echo "--- intro_house"
-	$HMCOM fromdoc/intro_house.py
-	echo "--- intro_pentagon"
-	$HMCOM fromdoc/intro_pentagon.py
-	echo "--- intro_hcyl"
-	$HMCOM fromdoc/intro_hcyl.py
-	echo "--- intro_shark"
-	$HMCOM fromdoc/intro_shark.py
-	echo "--- intro_naca4415"
-	$HMCOM fromdoc/intro_naca4415.py
-	echo "--- intro_filtration"
-	$HMCOM fromdoc/intro_filtration.py
-	echo "--- rrj2"
-	$HMCOM others/rrj2.py
-	echo "--- botscript1"
-	$HMCOM others/botscript1.py
-else
-	echo "============ ignoring doc tests"
-fi
+echo "============ doing doc tests"
+$HMCOM fromdoc/ex_setbtype.py
+$HMCOM fromdoc/ex_exclude.py
+$HMCOM fromdoc/ex_unite_grids.py
+$HMCOM fromdoc/ex_bgrid.py
+$HMCOM fromdoc/ex_partcontour.py
+$HMCOM fromdoc/ex_extrude.py
+echo "--- intro_house"
+$HMCOM fromdoc/intro_house.py
+echo "--- intro_pentagon"
+$HMCOM fromdoc/intro_pentagon.py
+echo "--- intro_hcyl"
+$HMCOM fromdoc/intro_hcyl.py
+echo "--- intro_shark"
+$HMCOM fromdoc/intro_shark.py
+echo "--- intro_naca4415"
+$HMCOM fromdoc/intro_naca4415.py
+echo "--- intro_filtration"
+$HMCOM fromdoc/intro_filtration.py
+echo "--- rrj2"
+$HMCOM others/rrj2.py
+echo "--- botscript1"
+$HMCOM others/botscript1.py

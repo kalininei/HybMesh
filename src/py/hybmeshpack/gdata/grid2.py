@@ -5,9 +5,10 @@ from hybmeshpack.hmcore import g2 as g2core
 
 class Grid2(basic.GeomObject2):
     def __init__(self, cdata):
+        import ctypes as ct
         super(Grid2, self).__init__()
         # pointer to data stored at c-side
-        self.cdata = cdata
+        self.cdata = ct.cast(cdata, ct.c_void_p)
 
     def __del__(self):
         if self.cdata:
@@ -53,7 +54,7 @@ class Grid2(basic.GeomObject2):
 
     # overriden from GeomObject
     def deepcopy(self):
-        return g2core.deepcopy(self.cdata)
+        return Grid2(g2core.deepcopy(self.cdata))
 
     def point_at(self, index):
         return g2core.point_by_index(index)
@@ -79,9 +80,9 @@ class Grid2(basic.GeomObject2):
 
 
 class GridContour(cont2.AbstractContour2):
-    def __init__(self, g):
+    def __init__(self, gcdata):
         super(GridContour, self).__init__()
-        self.cgrid = g.cdata
+        self.cdata = gcdata
 
     def __del__(self):
         # cgrid is owned by Grid3 hence do nothing
@@ -115,7 +116,7 @@ class GridContour(cont2.AbstractContour2):
         return g2core.bnd_dims(self.cdata)[1]
 
     def contour2(self):
-        return g2core.extract_contour(self.cdata)
+        return cont2.Contour2(g2core.extract_contour(self.cdata))
 
     def length(self):
         return g2core.bnd_length(self.cdata)

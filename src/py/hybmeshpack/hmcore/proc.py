@@ -3,7 +3,7 @@ from hybmeshpack.basic.interf import SilentCallbackCancel2
 from . import CppLibError, cport
 
 
-def ccall_cb(cb, func, *args):
+def ccall_cb(func, cb, *args):
     if cb is None:
         cb = SilentCallbackCancel2()
     cb.initialize(func, args)
@@ -25,19 +25,19 @@ def list_to_c(lst, tp):
     """
     if lst is None:
         return None
-    if isinstance(lst, list):
+    if isinstance(lst, list) or isinstance(lst, tuple):
         d = len(lst)
         if d == 0:
             return None
         if tp == int or tp == 'int':
             ret = (ct.c_int * len(lst))()
             for i in range(d):
-                ret[i] = lst[i]
+                ret[i] = int(lst[i])
             return ret
         if tp == float or tp == 'float' or tp == 'double':
             ret = (ct.c_double * len(lst))()
             for i in range(d):
-                ret[i] = lst[i]
+                ret[i] = float(lst[i])
             return ret
         if tp == str or tp == 'str':
             ret = (ct.c_char_p * len(lst))()

@@ -35,6 +35,7 @@ def skewness(obj, threshold):
             'bad_skew': [cell skew: float]}
         returns {} if error
     """
+    threshold = ct.c_double(threshold)
     maxskew = ct.c_double()
     maxskewindex = ct.c_int()
     badnum = ct.c_int()
@@ -128,18 +129,18 @@ def raw_data(obj, what):
     elif what == 'cell-vert':
         nret, ret2 = ct.c_int(), ct.POINTER(ct.c_int)()
         ccall(cport.g2_tab_cellvert, obj, ct.byref(nret), ct.byref(ret2))
-        ret = move_to_static(nret, ret2, int)
+        ret = move_to_static(nret.value, ret2, int)
     elif what == 'cell-edge':
         nret, ret2 = ct.c_int(), ct.POINTER(ct.c_int)()
         ccall(cport.g2_tab_celledge, obj, ct.byref(nret), ct.byref(ret2))
-        ret = move_to_static(nret, ret2, int)
+        ret = move_to_static(nret.value, ret2, int)
     elif what == 'centers':
-        ret = ((ct.c_double * d[2]) * 2)()
+        ret = ((ct.c_double * 2) * d[2])()
         ccall(cport.g2_tab_centers, obj, ret)
     elif what == 'bedges':
         nret, ret2 = ct.c_int(), ct.POINTER(ct.c_int)()
         ccall(cport.g2_tab_bedges, obj, ct.byref(nret), ct.byref(ret2))
-        ret = move_to_static(nret, ret2, int)
+        ret = move_to_static(nret.value, ret2, int)
     else:
         raise ValueError('unknown what: %s' % what)
     return ret
@@ -258,8 +259,8 @@ def regular_hex_grid(area, crad, strict):
 
 
 def unstructed_fill(domain, constraint, embpts, filler):
-    nembpts = ct.c_int(len(embpts))
-    embpts = list_to_c(concat(embpts), float)
+    nembpts = ct.c_int(len(embpts) / 3)
+    embpts = list_to_c(embpts, float)
     ret = ct.c_void_p()
     ccall(cport.g2_unstructured_fill, domain, constraint,
           nembpts, embpts, filler, ct.byref(ret))
@@ -396,10 +397,10 @@ def boundary_layer_grid(opt, cb=None):
                 4: "INCREMENTAL",
             }[opt_entry['mesh_cont']])
             self.mesh_cont_step = ct.c_double(opt_entry['mesh_cont_step'])
-            self.start = (ct.c_double * 2)(opt_entry['start'].x,
-                                           opt_entry['start'].y)
-            self.end = (ct.c_double * 2)(opt_entry['end'].x,
-                                         opt_entry['end'].y)
+            self.start = (ct.c_double * 2)(opt_entry['start'][0],
+                                           opt_entry['start'][1])
+            self.end = (ct.c_double * 2)(opt_entry['end'][0],
+                                         opt_entry['end'][1])
             self.force_conformal = ct.c_int(
                 1 if opt_entry['force_conf'] else 0)
             self.angle_range = (ct.c_double * 4)(

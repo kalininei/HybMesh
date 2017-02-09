@@ -81,6 +81,7 @@ VertexData hc::UniquePoints(const EdgeData& ed){
 	VertexData ret {op[0]};
 	for (int i=1; i<op.size(); ++i){
 		if (*op[i] != *ret.back()) ret.push_back(op[i]);
+		else ret.back() = op[i];
 	}
 	return ret;
 }
@@ -90,6 +91,12 @@ VertexData hc::UniquePoints1(const EdgeData& ed){
 	return ret;
 }
 
+namespace{
+bool is_corner(const Point& p, const Point& pprev, const Point& pnext){
+	double ksi = Point::meas_section(p, pprev, pnext);
+	return ksi>=geps*geps;
+}
+}
 VertexData hc::CornerPoints(const EdgeData& ed){
 	auto pnt = UniquePoints(ed);
 	if (pnt.size() == 0) return {};
@@ -98,19 +105,86 @@ VertexData hc::CornerPoints(const EdgeData& ed){
 	if (!cl) ret.push_back(pnt[0]);
 	for (int i=0; i<(int)pnt.size()-1; ++i){
 		Point *pprev, *p, *pnext;
-		if (i == 0){
-			if (cl) pprev = pnt[pnt.size() - 2].get();
-			else continue;
-		} else pprev = pnt[i-1].get();
+		if (!cl && i==0) continue;
+
+		pprev = (i > 0) ? pnt[i-1].get() : pnt[pnt.size()-2].get();
 		p = pnt[i].get();
 		pnext = pnt[i+1].get();
-		double ksi = Point::meas_section(*p, *pprev, *pnext);
-		if (ksi>=geps*geps){
-			ret.push_back(pnt[i]);
-		}
+
+		if (is_corner(*p, *pprev, *pnext)) ret.push_back(pnt[i]); 
 	}
 	if (!cl) ret.push_back(pnt.back());
 	return ret;
+}
+
+namespace{
+EdgeData nozeros(const EdgeData& ed){
+	EdgeData ret;
+	double sumlen=0;
+	for (auto i=0; i<ed.size(); ++i){
+		sumlen += ed[i]->length();
+		if (sumlen > geps){
+			sumlen = 0;
+			ret.push_back(ed[i]);
+		}
+	}
+	return ret;
+}
+VertexData signpoints_open(const EdgeData& ed){
+	//remove zero sized edges
+	EdgeData nz = nozeros(ed);
+	if (nz.size() == 0) return {};
+	//add first
+	VertexData ret {nz[0]->first()};
+	//add middle points
+	for (int i=1; i<nz.size(); ++i){
+		//by boundary type
+		if (nz[i-1]->boundary_type != nz[i]->boundary_type){
+			ret.push_back(nz[i]->first());
+			continue;
+		}
+		//by angle
+		auto pprev = nz[i-1]->pfirst();
+		auto pcur = nz[i]->pfirst();
+		auto pnext = (i==nz.size()-1) ? nz.back()->plast() : nz[i+1]->pfirst();
+		if (is_corner(*pcur, *pprev, *pnext)) ret.push_back(nz[i]->first());
+	}
+	//add last
+	ret.push_back(nz.back()->last());
+	return ret;
+}
+
+VertexData signpoints_closed(const EdgeData& ed){
+	//remove zero sized edges
+	EdgeData nz = nozeros(ed);
+	if (nz.size() < 2) return {};
+	if (nz.size() == 2) return {nz[0]->first(), nz[0]->last(), nz[0]->first()};
+	VertexData ret;
+	//add middle points
+	for (int i=0; i<nz.size(); ++i){
+		auto eprev = (i==0) ? nz.back() : nz[i-1];
+		auto enext = (i==nz.size()-1) ? nz[0] : nz[i+1];
+		//by boundary type
+		if (eprev->boundary_type != nz[i]->boundary_type){
+			ret.push_back(nz[i]->first());
+			continue;
+		}
+		//by angle
+		auto pprev = eprev->pfirst();
+		auto pcur = nz[i]->pfirst();
+		auto pnext = enext->pfirst();
+		if (is_corner(*pcur, *pprev, *pnext)) ret.push_back(nz[i]->first());
+	}
+	//add last
+	ret.push_back(ret[0]);
+	return ret;
+}
+}
+
+VertexData hc::SignificantPoints(const EdgeData& ed){
+	Contour::R::ReallyDirect rd(ed);
+	if (IsClosed(ed)) return signpoints_closed(ed);
+	else return signpoints_open(ed);
 }
 
 VertexData Contour::CornerPoints1(const EdgeData& ed){
@@ -326,6 +400,7 @@ vector<Point> hc::WeightPoints(const EdgeData& p, vector<double> vw){
 
 vector<Point> Contour::WeightPointsByLen(const EdgeData& p, vector<double> vw){
 	vector<Point> ret;
+	if (vw.size() == 0) return ret;
 	auto pseq = OrderedPoints(p);
 	std::sort(vw.begin(), vw.end());
 	assert(!ISLOWER(vw[0], 0) && !ISGREATER(vw.back(), Length(p)));

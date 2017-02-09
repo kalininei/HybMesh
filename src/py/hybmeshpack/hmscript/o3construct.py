@@ -55,6 +55,9 @@ def tetrahedral_fill(domain):
         surface structures. Be sure that passed surface list nesting equals
         nesting of respective surface bounding boxes.
     """
+    if not isinstance(domain, list):
+        domain = [domain]
+
     c = com.grid3dcom.TetrahedralFill({"source": domain})
     try:
         flow.exec_command(c)

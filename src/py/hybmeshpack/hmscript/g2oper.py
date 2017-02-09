@@ -44,7 +44,7 @@ def exclude_contours(grid, conts, what):
                                      "is_inner": exa})
     try:
         flow.exec_command(c)
-        return c.added_grids2[0]
+        return c.added_grids2()[0]
     except:
         raise ExecError('exclude_contours')
 
@@ -198,7 +198,7 @@ def map_grid(base_grid, target_contour, base_points, target_points,
                              "return_invalid": return_invalid})
     try:
         flow.exec_command(c)
-        return c.added_grids2[0]
+        return c.added_grids2()[0]
     except:
         raise ExecError("map_grid")
 

@@ -128,8 +128,8 @@ vector<HM2D::EdgeData> modify_contours(int opt, HM2D::EdgeData& left, HM2D::Edge
 	if (opt & 4) rr.emplace_back(new HM2D::Contour::R::ReallyRevert(top));
 	else rd.emplace_back(new HM2D::Contour::R::ReallyDirect(top));
 
-	if (opt & 8) rr.emplace_back(new HM2D::Contour::R::ReallyRevert(left));
-	else rd.emplace_back(new HM2D::Contour::R::ReallyDirect(left));
+	if (opt & 8) rr.emplace_back(new HM2D::Contour::R::ReallyRevert(bot));
+	else rd.emplace_back(new HM2D::Contour::R::ReallyDirect(bot));
 
 	HM2D::VertexData leftp=HM2D::Contour::OrderedPoints(left);
 	HM2D::VertexData botp=HM2D::Contour::OrderedPoints(bot);

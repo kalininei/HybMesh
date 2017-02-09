@@ -58,9 +58,10 @@ class AbstractContour2(basic.GeomObject2):
 
 class Contour2(AbstractContour2):
     def __init__(self, cdata):
+        import ctypes as ct
         super(Contour2, self).__init__()
         # pointer to data stored at c-side
-        self.cdata = cdata
+        self.cdata = ct.cast(cdata, ct.c_void_p)
 
     def __del__(self):
         if self.cdata:
@@ -124,7 +125,7 @@ def _meas2cont(cont, p0):
     [p1] = cont.closest_points([p0], 'edge')
     p1[0] -= p0[0]
     p1[1] -= p0[1]
-    return p1[0] * p1[0] + p1[0] * p1[1]
+    return p1[0] * p1[0] + p1[1] * p1[1]
 
 
 def closest_contour(contlist, pnt):

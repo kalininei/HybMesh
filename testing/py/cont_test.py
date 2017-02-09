@@ -44,9 +44,14 @@ check_cont(c6, 16, 16, [16], {0: 16})
 print "set boundary types"
 hm.set_boundary_type(c1, btps=[1, 2, 3, 4])
 check_cont(c1, 4, 4, [4], {1: 1, 2: 1, 3: 1, 4: 1})
-hm.set_boundary_type(c1, bfun=lambda x0, y0, x1, y1, bo:
-                     {1: 0, 2: 0, 3: 0, 4: 15}[bo])
+hm.set_boundary_type(
+    c1,
+    bfun=lambda x0, y0, x1, y1, bo: {1: 0,
+                                     2: 0,
+                                     3: 0,
+                                     4: 15}[bo])
 check_cont(c1, 4, 4, [4], {0: 3, 15: 1})
+
 g3 = hm.add_unf_ring_grid([0, 0], 1, 2, 10, 5, 1.4)
 
 
@@ -59,7 +64,6 @@ def bfun3(x0, y0, x1, y1, bo):
     else:
         return 3
 
-
 hm.set_boundary_type(g3, bfun=bfun3)
 check_cont(g3, 20, 20, [10, 10], {1: 10, 2: 5, 3: 5})
 
@@ -67,6 +71,7 @@ print "separate/simplify"
 [c7, c8] = hm.simplify_contour(g3, separate=True)
 check_cont(c7, 10, 10, [10], {1: 5, 3: 5})
 check_cont(c8, 10, 10, [10], {1: 5, 2: 5})
+
 c9 = hm.create_contour([[0, 0], [3, 1], [6, 0], [9, 0],
                         [9, 3], [8, 6], [9, 9], [9, 12]],
                        [1, 1, 1, 1, 1, 2, 1])
@@ -74,7 +79,7 @@ c9 = hm.create_contour([[0, 0], [3, 1], [6, 0], [9, 0],
 check_cont(c10, 5, 4, [4], {1: 3, 2: 1})
 c11 = hm.create_contour([[0, 0], [3, 1], [6, 0], [9, 0],
                          [9, 3], [8, 6], [9, 9], [9, 12], [0, 0]],
-                        [1, 1, 1, 1, 1, 2, 1])
+                        [1, 1, 1, 1, 1, 2, 1, 0])
 c12 = hm.create_contour([[-20, -20], [20, -20], [20, 20],
                          [-20, 20], [-20, 0], [-20, -20]], 22)
 c13 = hm.unite_contours([c11, c12])
@@ -226,10 +231,10 @@ c2 = hm.partition_contour(c2, 'const', 0.03)
 c3 = hm.add_circ_contour([0.3, 0.7], 0.15, 16)
 c4 = hm.add_circ_contour([0.7, 0.7], 0.15, 24)
 g1 = hm.triangulate_domain(c1, [c2, c3, c4])
-checkdict(hm.info_grid(g1), {'cell_types': {3: 1004}})
+checkdict(hm.info_grid(g1), {'cell_types': {3: 1008}})
 
 g1 = hm.triangulate_domain([c1, c3, c4], c2)
-checkdict(hm.info_grid(g1), {'cell_types': {3: 822}})
+checkdict(hm.info_grid(g1), {'cell_types': {3: 824}})
 
 c1 = hm.create_spline_contour([[-0.2, 0.35], [0.5, 0.1], [1.2, 0.35]])
 c1 = hm.partition_contour(c1, "const", 0.05, crosses=[csqr])
@@ -242,14 +247,14 @@ c4 = hm.partition_contour(c4, "const", 0.02, crosses=[c2, c3])
 c5 = hm.partition_contour(csqr, "const", 0.1, crosses=[c1])
 g1 = hm.triangulate_domain(c5, [c1, c2, c3, c4])
 # checkdict(hm.info_grid(g1), {'cell_types': {3: 1404}})
-check(hm.skewness(g1, 0.75)['ok'])
+check(hm.info_grid(g1)['Ncells'] > 1000 and hm.skewness(g1, 0.75)['ok'])
 
 c1 = hm.partition_contour(csqr, "const", 0.05)
 g1 = hm.triangulate_domain(c1, pts=[0.3, [0.3, 0.7],
                                     0.3, [0.7, 0.7],
                                     0.005, [0.5, 0.1]])
 # checkdict(hm.info_grid(g1), {'cell_types': {3: 524}})
-check(hm.skewness(g1)['ok'])
+check(hm.info_grid(g1)['Ncells'] > 500 and hm.skewness(g1)['ok'])
 
 c1 = hm.create_spline_contour([[-0.2, 0.35], [0.5, 0.1], [1.2, 0.35]])
 c1 = hm.partition_contour(c1, "const", 0.05, crosses=[csqr])
@@ -276,7 +281,8 @@ check(hm.skewness(g1)['ok'])
 c = hm.add_circ_contour([0, 0], 1, 64)
 c1 = hm.create_contour([[-0.65, -0.65], [0.65, 0.65]])
 c1 = hm.partition_contour(c1, "const", 0.03)
-res = hm.matched_partition(c, 0.1, 1.0, [c1], [0.5, [-0.65, 0.65]], power=1)
+res = hm.matched_partition(
+    c, 0.1, 1.0, [c1], [0.5, [-0.65, 0.65]], angle0=180, power=1)
 checkdict(hm.info_contour(res), {'Nedges': 79})
 
 # contour partition

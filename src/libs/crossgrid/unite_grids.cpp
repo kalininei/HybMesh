@@ -193,7 +193,7 @@ GridData Algos::TUniteGrids::_run(const GridData& base, const GridData& sec, con
 	vector<GridData> sg = SplitData(ret);
 
 	//----- fill buffer
-	callback->step_after(20, "Filling buffer", sg.size()*contsec.bound_contours().size());
+	callback->silent_step_after(20, "Filling buffer", sg.size()*contsec.bound_contours().size());
 	for (int i=0; i<sg.size(); ++i)
 	for (auto n: contsec.bound_contours()){
 		callback->subprocess_step_after(1);

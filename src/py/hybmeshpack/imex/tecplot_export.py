@@ -29,7 +29,7 @@ def cont2(fname, cont, btypes={}, cb=None):
     # --- main contour
     out.extend(['ZONE T="Contour"',
                 'ZONETYPE=FELINESEG',
-                'N=%i E=%i' % (cont.n_points(), cont.n_edges()),
+                'N=%i E=%i' % (cont.n_vertices(), cont.n_edges()),
                 'DATAPACKING=BLOCK'
                 ])
     for p in raw_vertices:
@@ -60,3 +60,4 @@ def cont2(fname, cont, btypes={}, cb=None):
                     'D=(1 2)'])
         for e in elist:
             out.append('%i %i' % (e[0] + 1, e[1] + 1))
+    _write_list_to_file(out, fname)

@@ -36,6 +36,7 @@ TRet Difference(const ETree& c1, const vector<ECont>& cont);
 
 //procedure to remove all bad entries which 
 //may appear as a result of boolean operations
+//!!! does simplifications keeping corner and boundary type transition points
 void Heal(TRet& c1);
 
 }}}

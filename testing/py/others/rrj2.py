@@ -122,10 +122,11 @@ t6 = hm.create_contour([c[16], c[15]])
 tc = hm.unite_contours([t1, t2, t3, t4, t5, t6, t7])
 
 lc = hm.partition_contour(lc, "ref_weights", bstep_main, 90, start=c[0])
-tc = hm.partition_contour(tc, "ref_weights", bstep_main, 90, start=c[2],
-                          keep_pts=[c[5], c[6]])
+tc = hm.partition_contour(tc, "ref_weights", bstep_main, 180, start=c[2],
+                          keep_pts=[c[0], c[1], c[2], c[3], c[5], c[6]])
 g1 = hm.add_custom_rect_grid("orthogonal", lc, tc, rc, bc)
 g1cont = hm.grid_bnd_to_contour(g1, False)
+hm.export_grid_vtk(g1, "g1.vtk")
 
 # left appendix: g4
 bs = [0, step_bl, 2 * step_bl, 3 * step_bl]
@@ -198,8 +199,8 @@ g32 = hm.map_grid(
     project_to="vertex", algo="inverse_laplace")
 g3 = hm.unite_grids(g31, [(g32, 0)])
 # exclude superfluous zones in g1
-[cout1] = hm.extract_subcontours(g3, [p2, p4])
-cout2 = hm.create_contour([p2, p4])
+[cout1] = hm.extract_subcontours(g3, [p2, p5])
+cout2 = hm.create_contour([p2, p5])
 cout = hm.unite_contours([cout1, cout2])
 g1 = hm.exclude_contours(g1, cout, "inner")
 
@@ -537,6 +538,8 @@ def bfun(x0, y0, x1, y1, bt):
     yc = (y0 + y1) / 2.
     if yc > p1[1] and yc < p2[1]:
         return boutput_left
+    else:
+        return bt
 
 hm.set_boundary_type(g13, bfun=bfun)
 
@@ -557,6 +560,8 @@ def bfun(x0, y0, x1, y1, bt):
     yc = (y0 + y1) / 2.
     if yc > p3[1] and yc < p4[1]:
         return boutput_right
+    else:
+        return bt
 
 hm.set_boundary_type(g14, bfun=bfun)
 

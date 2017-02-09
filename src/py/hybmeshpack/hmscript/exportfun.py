@@ -71,8 +71,9 @@ def export_grid_vtk(gid, fname):
         grid = _grid2_from_id(gid)
         cb = flow.interface.ask_for_callback()
         vtk_export.grid2(fname, grid, cb)
-    except Exception as e:
-        raise ExportError(str(e))
+    except:
+        raise
+        raise ExportError("export_grid_vtk")
 
 
 def export_grid_hmg(gid, fname, fmt='ascii', afields=[]):
@@ -123,7 +124,7 @@ def export_grid_hmg(gid, fname, fmt='ascii', afields=[]):
         raise ExportError(str(e))
 
 
-def export_grid_msh(gid, fname, periodic_pairs=None):
+def export_grid_msh(gid, fname, periodic_pairs=[]):
     """Exports grid to fluent msh format
 
     :param gid: 2d grid file identifier or list of identifiers.
@@ -242,7 +243,7 @@ def export3d_grid_vtk(gid, fname_grid=None, fname_surface=None):
         raise ExportError(str(e))
 
 
-def export3d_grid_msh(gid, fname, periodic_pairs=None):
+def export3d_grid_msh(gid, fname, periodic_pairs=[]):
     """Exports 3D grid to fluent msh ascii format.
 
     :param gid: 3D grid file identifier or list of identifiers
@@ -277,6 +278,7 @@ def export3d_grid_msh(gid, fname, periodic_pairs=None):
         bt = flow.receiver.get_zone_types()
         fluent_export.grid3(fname, grid, bt, periodic_pairs, cb)
     except Exception as e:
+        raise
         raise ExportError(str(e))
 
 
@@ -517,7 +519,7 @@ def export_all_hmd(fname, fmt="ascii"):
         raise ValueError("Unknown export format %s" % fmt)
     try:
         cb = flow.interface.ask_for_callback()
-        native_export.export_all_tofile(fname, flow.reciever, fmt, cb)
+        native_export.export_all_tofile(fname, flow.receiver, fmt, cb)
     except Exception as e:
         raise ExportError(str(e))
 

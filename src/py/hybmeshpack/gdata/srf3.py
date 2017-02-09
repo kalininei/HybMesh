@@ -31,13 +31,14 @@ class AbstractSurface3(basic.GeomObject3):
 
 class Surface3(AbstractSurface3):
     def __init__(self, cdata):
+        import ctypes as ct
         super(Surface3, self).__init__()
         # pointer to data stored at c-side
-        self.cdata = cdata
+        self.cdata = ct.cast(cdata, ct.c_void_p)
 
     def __del__(self):
         if self.cdata:
-            s3core.free_surface3(self.cdata)
+            s3core.free_surf3(self.cdata)
 
     def _raw_data(self, what):
         return s3core.raw_data(self.cdata, what)

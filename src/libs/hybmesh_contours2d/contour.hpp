@@ -20,6 +20,9 @@ VertexData UniquePoints(const EdgeData&);
 //for open contours includes first and last points by default
 VertexData CornerPoints(const EdgeData&);
 
+//corner points + points with different left/right boundary types
+VertexData SignificantPoints(const EdgeData&);
+
 //same as ordered points but do not double last point for closed contours
 VertexData OrderedPoints1(const EdgeData&);
 VertexData UniquePoints1(const EdgeData&);
@@ -63,7 +66,6 @@ struct PInfoR{
 //detailed information about each node connection.
 vector<PInfoR> OrderedInfo(const EdgeData& ed);
 PInfoR PInfo(const EdgeData&, const Point*);
-
 
 Point WeightPoint(const EdgeData&, double);
 vector<Point> WeightPoints(const EdgeData&, vector<double>);

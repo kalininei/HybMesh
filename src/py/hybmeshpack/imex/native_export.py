@@ -38,9 +38,9 @@ def export_all(doc, node, framework, fmt, cb=None):
         elif isinstance(ob, Grid2):
             grid2(doc, node, ob, nm, fmt, cb=cb1)
         elif isinstance(ob, Surface3):
-            surf3(doc, node, ob, fmt, cb1)
+            surf3(doc, node, ob, nm, fmt, cb1)
         elif isinstance(ob, Grid3):
-            grid3(doc, node, ob, fmt, cb=cb1)
+            grid3(doc, node, ob, nm, fmt, cb=cb1)
 
 
 # *_tofile functions

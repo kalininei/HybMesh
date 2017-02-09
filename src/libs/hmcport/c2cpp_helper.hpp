@@ -53,6 +53,7 @@ inline vector<Point> to_points2(int np, double* pts){
 }
 
 inline bool eqstring(const char* _s1, std::string s2){
+	if (_s1 == nullptr) return false;
 	return s2 == std::string(_s1);
 }
 

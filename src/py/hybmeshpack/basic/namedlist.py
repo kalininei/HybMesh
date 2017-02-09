@@ -195,6 +195,8 @@ class NamedList(object):
     def change(self, oldobj=None, oldname=None, newobj=None, newname=None):
         "changes object name or value"
         e = self._find_entry(oldobj, oldname)
+        oldobj = e.obj
+        oldname = e.name
         if newobj is not None and oldobj != newobj:
             if self._obj_exists(newobj):
                 raise ValueError
@@ -236,10 +238,10 @@ class NamedList(object):
         """
         for e in self._data:
             self._names_pool._remove(e.name)
-        self._data.clear()
+        del self._data[:]
 
     def shallow_fillfrom(self, nlist):
         """ Copies data from nlist. Do not affect pool and prefix data"""
-        self._data.clear()
+        del self._data[:]
         for e in nlist._data:
             self._data.append(_NamedListEntry(e.name, e.obj))

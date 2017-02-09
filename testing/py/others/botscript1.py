@@ -13,6 +13,7 @@ with open("others/botscript1_adata/x2arr.dat") as f:
 
 cn = hm.add_unf_rect_grid([0, 0], [1, 1], 3, 3, x1arr, x2arr)
 mr = hm.add_unf_rect_grid(mr_min, mr_max, 13, 13, mr_step, mr_step)
+hm.export_grid_hmg([cn, mr], "op1.hmg")
 cn = hm.unite_grids(cn, [(mr, cn_bufsize)], False, False, 0, "4")
 
 dpath = "others/botscript1_adata/"
@@ -20,10 +21,7 @@ files = ["000.msh", "001.msh", "002.msh", "003.msh", "004.msh"]
 for f in files:
     print(f)
     dimple = hm.import_grid_gmsh(dpath + f)
-    # hm.export_grid_vtk(cn, "a.vtk")
-    # hm.export_grid_vtk(dimple, "b.vtk")
-    if f == '002.msh':
-        hm.export_grid_hmg([cn, dimple], "tmp.hmg", fmt="bin")
+    hm.export_grid_hmg([cn, dimple], "op" + f[:3] + ".hmg")
     cn = hm.unite_grids(cn, [(dimple, dm_bufsize)], False, False, 0, "4")
 
 hm.export_grid_vtk(cn, "g1.vtk")

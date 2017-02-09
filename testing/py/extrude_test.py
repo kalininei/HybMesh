@@ -25,7 +25,6 @@ print "extrusion with non-zero at zfaces and side bc from contour"
 s1 = hm.extrude_grid(g1, [-0.1, 0.1, 22], 8, 10, None)
 hm.export3d_grid_vtk(s1, None, "s2.vtk")
 hmdbg.check_ascii_file(4721469755399912982, "s2.vtk")
-hm.remove_geom(s1)
 
 print "extrusion with function at bottom z face"
 s1 = hm.extrude_grid(g1, [-0.1, 0.1, 0.2, 0.3],
@@ -72,4 +71,4 @@ g1 = hm.exclude_contours(g1, c1, "outer")
 g3 = hm.revolve_grid(g1, [s, 0], [s, 1], phi=[0, 10, 20, 30, 40, 50, 60],
                      merge_central=True)
 hm.export3d_grid_tecplot(g3, "g1.dat")
-hmdbg.check_ascii_file(3590506244349655033, "g1.dat")
+hmdbg.check_ascii_file(9784631763273424912, "g1.dat")

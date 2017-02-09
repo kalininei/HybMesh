@@ -174,6 +174,9 @@ int g2_reflect(void* obj, double* v0, double* v1){
 		for (auto& c: g->vcells){
 			std::reverse(c->edges.begin(), c->edges.end());
 		}
+		for (auto& e: g->vedges){
+			std::swap(e->left, e->right);
+		}
 		return HMSUCCESS;
 	} catch (std::exception& e){
 		std::cout<<e.what()<<std::endl;
@@ -188,7 +191,7 @@ int g2_rotate(void* obj, double* p0, double a){
 			double a = p->x - p0[0];
 			double b = p->y - p0[1];
 			p->x = a*cs - b*sn + p0[0];
-			p->y = a*sn + b*sn + p0[1];
+			p->y = a*sn + b*cs + p0[1];
 		}
 		return HMSUCCESS;
 	} catch (std::exception& e){
@@ -199,10 +202,8 @@ int g2_rotate(void* obj, double* p0, double a){
 int g2_from_points_edges(int npoints, double* points, int neds, int* eds, void** ret){
 	try{
 		vector<double> pts(npoints*2);
-		vector<int> edgevert(neds*2);
-		vector<int> edgecell(neds*2);
-		vector<int> bnds(neds);
 		std::copy(points, points+2*npoints, pts.begin());
+		vector<int> edgevert, edgecell, bnds;
 		int* it = eds;
 		for (int i=0; i<neds; ++i){
 			edgevert.push_back(*it++);
@@ -281,18 +282,19 @@ int g2_rect_grid(int nx, double* xdata, int ny, double* ydata, int* bnds, void**
 		return HMERROR;
 	}
 }
-int g2_circ_grid(double* p0, int nr, double* rdata, int na, double* adata, int istrian, int bnd, void** ret){
+int g2_circ_grid(double* p0, int nr, double* rdata, int na, double* adata,
+		int istrian, int bnd, void** ret){
 	try{
 		//build unit grid
 		HM2D::GridData ret_ = HM2D::Grid::Constructor::Circle(
 			Point(0, 0), 1., na-1, nr-1, istrian);
 		//adopt coordinates
 		int k = 0;
-		for (int ir = 0; ir<nr-1; ++ir)
+		for (int ir = nr-1; ir>0; --ir)
 		for (int ia = 0; ia<na-1; ++ia){
 			HM2D::Vertex* v = ret_.vvert[k++].get();
-			v->x = rdata[ir+1]*cos(adata[ia]);
-			v->y = rdata[ir+1]*sin(adata[ia]);
+			v->x = rdata[ir]*cos(adata[ia]/180.*M_PI);
+			v->y = rdata[ir]*sin(adata[ia]/180.*M_PI);
 		}
 		for (auto v: ret_.vvert){
 			v->x += p0[0];
@@ -302,6 +304,7 @@ int g2_circ_grid(double* p0, int nr, double* rdata, int na, double* adata, int i
 		for (auto e: HM2D::ECol::Assembler::GridBoundary(ret_)){
 			e->boundary_type = bnd;
 		}
+		c2cpp::to_pp(ret_, ret);
 		return HMSUCCESS;
 	} catch (std::exception& e){
 		std::cout<<e.what()<<std::endl;
@@ -316,11 +319,11 @@ int g2_ring_grid(double* p0, int nr, double* rdata, int na, double* adata, int* 
 			Point(0, 0), 1., 0.1, na-1, nr-1);
 		//adopt coordinates
 		int k = 0;
-		for (int ir = 0; ir<nr; ++ir)
+		for (int ir = nr-1; ir>=0; --ir)
 		for (int ia = 0; ia<na-1; ++ia){
 			HM2D::Vertex* v = ret_.vvert[k++].get();
-			v->x = rdata[ir]*cos(adata[ia]) + p.x;
-			v->y = rdata[ir]*sin(adata[ia]) + p.y;
+			v->x = rdata[ir]*cos(adata[ia]/180.*M_PI) + p.x;
+			v->y = rdata[ir]*sin(adata[ia]/180.*M_PI) + p.y;
 		}
 		//boundary
 		for (auto e: HM2D::ECol::Assembler::GridBoundary(ret_)){
@@ -359,7 +362,7 @@ int g2_tri_grid(double* verts, int ne, int* bnds, void** ret){
 			double x2 = w1 * p2.x + (1 - w1) * p1.x;
 			double y2 = w1 * p2.y + (1 - w1) * p1.y;
 			plines.emplace_back();
-			for (int j=0; j<ne+i-i; ++j){
+			for (int j=0; j<ne+1-i; ++j){
 				double w2 = (ne != i) ? double(j)/(ne-i) : 1;
 				double x3 = (1 - w2) * x1 + w2 * x2;
 				double y3 = (1 - w2) * y1 + w2 * y2;
@@ -411,9 +414,9 @@ int g2_hex_grid(const char* areatype, double* area, double crad, int strict, voi
 	try{
 		ScaleBase sc;
 		HM2D::GridData ret_;
-		switch (std::map<const char*, int>{
-				{"hex", 1},
-				{"rect", 2} }[areatype]){
+		switch (std::map<std::string, int>{
+				{"rect", 1},
+				{"hex", 2} }[areatype]){
 		case 1:
 			sc = BoundingBox(area[0], area[1], area[2], area[3]).to_scale();
 			ret_ = HM2D::Grid::Constructor::RegularHexagonal(
@@ -491,7 +494,7 @@ int g2_unstructured_fill(void* domain, void* constraint,
 		for (auto& c: cas){ etree.add_detached_contour(c); }
 
 		HM2D::GridData ret_;
-		switch (std::map<const char*, int>{
+		switch (std::map<std::string, int>{
 				{"3", 3},
 				{"4", 4},
 				{"pebi", 6} }[filler]){
@@ -533,7 +536,7 @@ int g2_custom_rect_grid(const char* algo, void* left, void* bottom, void* right,
 		HM2D::DeepCopy(top2, top3);
 		//assemble grid
 		HM2D::GridData ret_;
-		switch (std::map<const char*, int>{
+		switch (std::map<std::string, int>{
 			{"linear", 1},
 			{"inverse_laplace", 2},
 			{"direct_laplace", 3},
@@ -590,15 +593,15 @@ int g2_circ4grid(const char* algo, double* p0, double rad, double step, double s
 		double n = 2*M_PI*rad/step;
 		int n1 = round(n/8.0);
 		std::string stralgo;
-		switch (std::map<const char*, int>{
+		switch (std::map<std::string, int>{
 				{"linear", 1},
 				{"laplace", 2},
 				{"orthogonal_circ", 3},
 				{"orthogonal_rect", 4} }[algo]){
-			case 0: stralgo="linear"; break;
-			case 1: stralgo="laplace"; break;
-			case 2: stralgo="orthogonal-circ"; break;
-			case 3: stralgo="orthogonal-rect"; break;
+			case 1: stralgo="linear"; break;
+			case 2: stralgo="laplace"; break;
+			case 3: stralgo="orthogonal-circ"; break;
+			case 4: stralgo="orthogonal-rect"; break;
 			default: throw std::runtime_error("unknown algorithm");
 		};
 		HM2D::GridData ret_ = HMMap::Circ4Prototype(Point(0, 0), 1.0, 8*n1,
@@ -689,7 +692,7 @@ int g2_map_grid(void* base_obj, void* target_obj,
 		HMMap::Options opt;
 		opt.btypes_from_contour = bt_from_contour;
 
-		switch (std::map<const char*, int>{
+		switch (std::map<std::string, int>{
 				{"no", 1},
 				{"add_vertices", 2},
 				{"shift_vertices", 3}}[snap]){
@@ -699,7 +702,7 @@ int g2_map_grid(void* base_obj, void* target_obj,
 			default: throw std::runtime_error("unknown snap method");
 		}
 
-		switch (std::map<const char*, int>{
+		switch (std::map<std::string, int>{
 				{"direct_laplace", 1},
 				{"inverse_laplace", 2}}[algo]){
 			case 1: opt.algo = "direct-laplace"; break;
@@ -739,7 +742,7 @@ int g2_closest_points(void* obj, int npts, double* pts, const char* proj, double
 int g2_point_at(void* obj, int index, double* ret){
 	try{
 		auto g = static_cast<HM2D::GridData*>(obj);
-		if (g->vvert.size()>=index) throw std::runtime_error("index is out of range");
+		if (index >= g->vvert.size()) throw std::runtime_error("index is out of range");
 		ret[0] = g->vvert[index]->x;
 		ret[1] = g->vvert[index]->y;
 		return HMSUCCESS;
@@ -905,7 +908,10 @@ int g2_exclude_cont(void* obj, void* cont, int isinner, void** ret, hmcport_call
 		HM2D::EdgeData* e0 = static_cast<HM2D::EdgeData*>(cont);
 
 		//scaling
-		Autoscale::D2 sc(g0);
+		//using non-unity scaling to minimize risk of almost doubling points
+		//when using uniform rectangles
+		double unity = 1.0 + sqrt(2.0)/100.0 + sqrt(3.0)/1000.0;
+		Autoscale::D2 sc(g0, unity);
 		sc.add_data(e0);
 		//building contour tree
 		auto tree = HM2D::Contour::Tree::Assemble(*e0);
@@ -930,11 +936,12 @@ int g2_unite_grids(void* obj1, void* obj2, double buf, int fixbnd,
 		//using non-unity scaling to minimize risk of almost doubling points
 		//when using uniform rectangles
 		double unity = 1.0 + sqrt(2.0)/100.0 + sqrt(3.0)/1000.0;
-		Autoscale::D2 sc(g0);
+		Autoscale::D2 sc(g0, unity);
 		sc.add_data(g1);
+		sc.scale(buf);
 
 		HM2D::Grid::Algos::OptUnite opt;
-		sc.scale(opt.buffer_size);
+		opt.buffer_size = buf;
 		opt.preserve_bp = (bool)fixbnd;
 		opt.empty_holes = (bool)emptyholes;
 		opt.angle0 = angle0;
@@ -1002,7 +1009,7 @@ int g2_to_hm(void* doc, void* node, void* obj, const char* name, const char* fmt
 
 		//additional fields
 		for (int i=0; i<naf; ++i){
-			switch (std::map<const char*, int>{
+			switch (std::map<std::string, int>{
 					{"cell_edges", 1},
 					{"cell-edges", 2},
 					{"cell_vertices", 3},

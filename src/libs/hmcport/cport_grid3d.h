@@ -43,7 +43,7 @@ int g3_merge(void* obj1, void* obj2, void** ret, hmcport_callback cb);
 //btop, bbot = boundary types for each 2d cell of btop and bbot boundaries
 //bside value for side boundary (-1 to take values from 2d grid)
 int g3_extrude(void* obj, int nz, double* zvals,
-		int*  btop, int* bbot,
+		int*  bbot, int* btop,
 		int bside, void** ret);
 
 //vec - [x0, y0, x1, y1] array defining vector of rotation

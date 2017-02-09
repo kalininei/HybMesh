@@ -10,6 +10,7 @@
 #include "trigrid.hpp"
 #include "pebi.hpp"
 #include "infogrid.hpp"
+#include "cont_assembler.hpp"
 using namespace HMTesting;
 
 void old_numering(HM2D::GridData& g){
@@ -278,12 +279,14 @@ void test07(){
 	{
 		auto g2d = HM2D::Grid::Constructor::RectGrid(Point(1,0), Point(2,1), 1, 1);
 		old_numering(g2d);
+		for (auto e: HM2D::ECol::Assembler::GridBoundary(g2d)) e->boundary_type = 1;
 		auto g3d = RevolveGrid2D(g2d, {0, 45, 90}, Point(1, 0), Point(1, 1), false);
 		HM3D::Export::GridTecplot.Silent(g3d, "g1.dat");
 		add_file_check(13398422286724743124U, "g1.dat", "single cell, without center trian, incomplete");
 	}
 	{
 		auto g2d = HM2D::Grid::Constructor::RectGrid(Point(1,0), Point(2,1), 1, 1);
+		for (auto e: HM2D::ECol::Assembler::GridBoundary(g2d)) e->boundary_type = 1;
 		old_numering(g2d);
 		auto g3d = RevolveGrid2D(g2d, {20, 45, 90, 160, 270, 300, 380}, Point(1, 0), Point(1, 1), false);
 		HM3D::Export::GridTecplot.Silent(g3d, "g1.dat");
@@ -291,6 +294,7 @@ void test07(){
 	}
 	{
 		auto h2d = HM2D::Grid::Constructor::RectGrid(Point(0, 0), Point(2, 1), 2, 1);
+		for (auto e: HM2D::ECol::Assembler::GridBoundary(h2d)) e->boundary_type = 1;
 		old_numering(h2d);
 		auto g3d = RevolveGrid2D(h2d, {0, 10, 20, 30, 40, 50}, Point(0, 0), Point(0, 1), false);
 		HM3D::Export::GridTecplot.Silent(g3d, "g1.dat");
@@ -301,6 +305,7 @@ void test07(){
 		int c[] = {0, 1, 2};
 		auto g1 = HM2D::Grid::Constructor::FromRaw(3, 1, p, c, 3);
 		old_numering(g1);
+		for (auto e: HM2D::ECol::Assembler::GridBoundary(g1)) e->boundary_type = 1;
 		auto g2 = RevolveGrid2D(g1, {0, 45, 90}, Point(0,0), Point(0,1), false);
 		HM3D::Export::GridTecplot.Silent(g2, "g1.dat");
 		add_file_check(10167032458429566145U, "g1.dat", "no tri with single axis triangle");
@@ -310,6 +315,7 @@ void test07(){
 		int c[] = {0, 1, 2};
 		auto g1 = HM2D::Grid::Constructor::FromRaw(3, 1, p, c, 3);
 		old_numering(g1);
+		for (auto e: HM2D::ECol::Assembler::GridBoundary(g1)) e->boundary_type = 1;
 		auto g2 = RevolveGrid2D(g1, {0, 45, 90}, Point(0,0), Point(0,1), false);
 		HM3D::Export::GridTecplot.Silent(g2, "g1.dat");
 		add_file_check(11550191908304285294U, "g1.dat", "no tri, single off axis triangle");
@@ -325,7 +331,7 @@ void test07(){
 		old_numering(g1);
 		HM2D::Grid::Algos::Heal(g1);
 		old_numering(g1);
-
+		for (auto e: HM2D::ECol::Assembler::GridBoundary(g1)) e->boundary_type = 1;
 		auto g2 = RevolveGrid2D(g1, {0, 45, 90}, Point(0,0), Point(0,1), false);
 		HM3D::Export::GridTecplot.Silent(g2, "g1.dat");
 		add_file_check(12664340621499564857U, "g1.dat", "no tri, complex connections, incomplete");

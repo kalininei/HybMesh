@@ -82,6 +82,18 @@ vector<Options> Options::CreateFromParent(const vector<HMBlay::Input>& par){
 	}
 	
 	//4) Put start, end points to contours
+	for (auto& r: ret){
+		if (r.start != r.end){
+			r.pnt_start = std::get<1>(HM2D::Contour::GuaranteePoint(*r.edges, r.start)).get();
+			r.pnt_end = std::get<1>(HM2D::Contour::GuaranteePoint(*r.edges, r.end)).get();
+		} else {
+			auto av = HM2D::AllVertices(*r.edges);
+			auto fnd1 = HM2D::Finder::ClosestPoint(av, r.start);
+			auto fnd2 = HM2D::Finder::ClosestPoint(av, r.end);
+			r.pnt_start = av[std::get<0>(fnd1)].get();
+			r.pnt_end = av[std::get<0>(fnd2)].get();
+		}
+	}
 	//   Fill Option.path field
 	for (auto& r: ret){
 		r.Initialize();
@@ -90,53 +102,6 @@ vector<Options> Options::CreateFromParent(const vector<HMBlay::Input>& par){
 }
 
 void Options::Initialize(){
-	//make correct partition of contours, assemble paths
-	typedef HM2D::EdgeData ECol;
-	typedef HM2D::EdgeData ECont;
-	typedef HM2D::Contour::Algos::PartitionTp Ptp;
-	typedef HM2D::Contour::Tree Etree;
-	//Start and End points
-	if (start != end){
-		pnt_start = std::get<1>(HM2D::Contour::GuaranteePoint(*edges, start)).get();
-		pnt_end = std::get<1>(HM2D::Contour::GuaranteePoint(*edges, end)).get();
-	} else {
-		auto av = HM2D::AllVertices(*edges);
-		auto fnd1 = HM2D::Finder::ClosestPoint(av, start);
-		auto fnd2 = HM2D::Finder::ClosestPoint(av, end);
-		pnt_start = av[std::get<0>(fnd1)].get();
-		pnt_end = av[std::get<0>(fnd2)].get();
-	}
-	/*
-	auto av = HM2D::AllVertices(*edges);
-	auto fnd1 = HM2D::Finder::ClosestPoint(av, start);
-	auto fnd2 = HM2D::Finder::ClosestPoint(av, end);
-	pnt_start = av[std::get<0>(fnd1)].get();
-	pnt_end = av[std::get<0>(fnd2)].get();
-
-	//if points were not found as edges vertices then place them straight to __edges_data
-	//pool so that other option instances could find them and don't create their own copies
-	//of these points (only for open contours)
-	if (start != end){
-		auto split_edge = [&](Point psplit)->Point*{
-			auto ce = HM2D::Finder::ClosestEdge(*__edges_data, psplit);
-			assert(std::get<0>(ce)!=0);
-			HM2D::Edge* eold = (*__edges_data)[std::get<0>(ce)].get();
-			if (ISZERO(std::get<2>(ce))) return  eold->first().get();
-			if (ISZERO(1 - std::get<2>(ce))) return  eold->last().get();
-			auto newp = std::make_shared<HM2D::Vertex>(
-					Point::Weigh(*eold->first(), *eold->last(), std::get<2>(ce)));
-			auto enew1 = std::make_shared<HM2D::Edge>(eold->first(), newp);
-			auto enew2 = std::make_shared<HM2D::Edge>(eold->last(), newp);
-			__edges_data->erase(__edges_data->begin() + std::get<0>(ce));
-			__edges_data->push_back(enew1);
-			__edges_data->push_back(enew2);
-			return newp.get();
-		};
-		if (*pnt_start != start) pnt_start = split_edge(start);
-		if (*pnt_end != end) pnt_end = split_edge(end);
-	}
-	*/
-
 	//assemble a tree -> find contour with pnt_start/end -> cut it
 	auto tree = HM2D::Contour::Tree::Assemble(*edges);
 	//HM2D::Contour::R::RevertTree::Permanent(tree);

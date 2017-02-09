@@ -19,7 +19,7 @@ def info_grid3d(gid):
     """
     g = flow.receiver.get_grid3(gid)
     ret = {}
-    ret['Nnodes'] = g.n_points()
+    ret['Nnodes'] = g.n_vertices()
     ret['Nedges'] = g.n_edges()
     ret['Nfaces'] = g.n_faces()
     ret['Ncells'] = g.n_cells()
@@ -44,7 +44,7 @@ def info_surface(sid):
 
     s = flow.receiver.get_any_surface(sid)
     ret = {}
-    ret['Nnodes'] = s.n_points()
+    ret['Nnodes'] = s.n_vertices()
     ret['Nedges'] = s.n_edges()
     ret['Nfaces'] = s.n_faces()
     ret['btypes'] = {}
@@ -62,4 +62,4 @@ def domain_volume(sid):
 
     :returns: positive float or zero for not closed surfaces
     """
-    return flow.receiver().get_any_surface(sid).volume()
+    return flow.receiver.get_any_surface(sid).volume()

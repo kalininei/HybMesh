@@ -366,6 +366,14 @@ GridData GridFromModel(GModel& m){
 	return Grid::Constructor::FromTab(std::move(vvert), cellvert);
 }
 
+namespace{
+struct ShpVCmp{
+	bool operator()(const shared_ptr<HM2D::Vertex>& v1, const shared_ptr<HM2D::Vertex>& v2){
+		return *v1 < *v2;
+	}
+};
+};
+
 vector<Contour::Tree> build_cropped(const Contour::Tree& source){
 	//using shallow copies
 	vector<Contour::Tree> ret;
@@ -376,25 +384,39 @@ vector<Contour::Tree> build_cropped(const Contour::Tree& source){
 	}
 	for (auto& n: source.nodes) if (n->isouter()){
 		//root
-		ret.emplace_back();
-		auto& t = ret.back();
+		Contour::Tree t;
 		t.nodes.push_back(n);
 		//children
 		for (auto& ch: n->children){
 			t.nodes.push_back(ch.lock());
 		}
 		//constraints for this subtree: quick bounding box check only
-		if (constrbb.size()==0) continue;
-		vector<BoundingBox> nbb;
-		for (int i=0; i<t.nodes.size(); ++i){
-			nbb.push_back(BBox(t.nodes[i]->contour));
+		if (constrbb.size()!=0){
+			vector<BoundingBox> nbb;
+			for (int i=0; i<t.nodes.size(); ++i){
+				nbb.push_back(BBox(t.nodes[i]->contour));
+			}
+			int ic = 0;
+			for (auto& n: source.detached_contours()){
+				auto& cbb = constrbb[ic++];
+				if (cbb.relation(nbb[0]) == 3) continue;
+				t.nodes.push_back(n);
+			}
 		}
-		int ic = 0;
-		for (auto& n: source.detached_contours()){
-			auto& cbb = constrbb[ic++];
-			if (cbb.relation(nbb[0]) == 3) continue;
-			t.nodes.push_back(n);
+
+		//merge equal points
+		std::set<shared_ptr<Vertex>, ShpVCmp> vset;
+		t = Contour::Tree::DeepCopy(t);
+		auto merge_ep = [&vset](shared_ptr<HM2D::Vertex>& v){
+			auto er = vset.insert(v);
+			if (!er.second){ v = *er.first; }
+		};
+		for (auto& e: t.alledges()){
+			merge_ep(e->vertices[0]);
+			merge_ep(e->vertices[1]);
 		}
+
+		ret.push_back(std::move(t));
 	}
 
 	return ret;
@@ -624,6 +646,19 @@ void recomb_heal(GridData& grid){
 		std::rotate(c2->edges.begin(), c2->edges.begin()+loc2, c2->edges.end());
 		c1->edges.erase(c1->edges.begin()+loc1);
 		c1->edges.insert(c1->edges.begin()+loc1, c2->edges.begin(), c2->edges.end()-1);
+		for (int i=0; i<c1->edges.size(); ++i){
+			if (c1->edges[i]->has_left_cell() && c1->edges[i]->left.lock().get() == c2){
+				c1->edges[i]->left.reset();
+			}
+			if (c1->edges[i]->has_right_cell() && c1->edges[i]->right.lock().get() == c2){
+				c1->edges[i]->right.reset();
+			}
+			if (HM2D::Contour::CorrectlyDirectedEdge(c1->edges, i)){
+				c1->edges[i]->left = grid.vcells[ic1];
+			} else {
+				c1->edges[i]->right = grid.vcells[ic2];
+			}
+		}
 		grid.vcells[ic2]=nullptr;
 		Grid::Algos::RestoreFromCells(grid);
 		return !std::get<0>(Contour::Finder::SelfCross(c1->edges));

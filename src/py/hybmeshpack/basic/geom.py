@@ -25,7 +25,7 @@ def build_seg(x0, x1, nx, cust):
     if len(cust) > 1:
         return
     if len(cust) == 1:
-        nx = max(1, round((x1 - x0) / cust[0]))
+        nx = max(1, int(round((x1 - x0) / cust[0])))
         del cust[0]
     for i in range(nx + 1):
         cust.append(x0 + (x1 - x0) * float(i) / nx)

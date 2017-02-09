@@ -3,6 +3,10 @@ from hybmeshpack.com import factory
 from hybmeshpack.hmcore import hmxml
 from hybmeshpack.gdata import framework
 import native_import
+from hybmeshpack.gdata.cont2 import Contour2
+from hybmeshpack.gdata.srf3 import Surface3
+from hybmeshpack.gdata.grid2 import Grid2
+from hybmeshpack.gdata.grid3 import Grid3
 
 
 def _load_command_flow(comflow, xmlnode):
@@ -82,13 +86,13 @@ def flow_and_framework_fromfile(filename, flow, cb=None):
             c, g, s3, g3, cn, gn, s3n, g3n =\
                 native_import.all_geom(doc, statenode, cb)
             for k, v in zip(cn, c):
-                data.add_contour2(k, v)
+                data.append_contour2(Contour2(v), k)
             for k, v in zip(gn, g):
-                data.add_grid2(k, v)
+                data.append_grid2(Grid2(v), k)
             for k, v in zip(s3n, s3):
-                data.add_surface3(k, v)
+                data.append_surface3(Surface3(v), k)
             for k, v in zip(g3n, g3):
-                data.add_grid3(k, v)
+                data.append_grid3(Grid3(v), k)
         flow.set_receiver(data)
     except:
         raise

@@ -71,8 +71,8 @@ def unite_contours(conts):
     try:
         flow.exec_command(c)
         return c.added_contours2()[0]
-    except:
-        raise ExecError("unite_contours")
+    except Exception as e:
+        raise ExecError("unite_contours. " + str(e))
 
 
 def set_boundary_type(cid, btps=None, bfun=None):
@@ -96,7 +96,7 @@ def set_boundary_type(cid, btps=None, bfun=None):
     Only one of **btps**, **bfun** arguments should be defined.
     """
     try:
-        cont = flow.get_receiver().get_any_contour(cid)
+        cont = flow.receiver.get_any_contour(cid)
         if bfun is not None:
             bt = cont.raw_data('btypes')
             pt = cont.raw_data('vertices')
@@ -105,9 +105,12 @@ def set_boundary_type(cid, btps=None, bfun=None):
             for ibt, iev in zip(bt, ev):
                 p0, p1 = pt[iev[0]], pt[iev[1]]
                 newbc.append(bfun(p0[0], p0[1], p1[0], p1[1], ibt))
+            for i in range(len(newbc)):
+                if newbc[i] is None:
+                    newbc[i] = bt[i]
         else:
             newbc = btps
-        args = {"name": cid}
+        args = {}
         if not isinstance(newbc, list):
             args[newbc] = range(cont.n_edges())
         else:
@@ -116,7 +119,7 @@ def set_boundary_type(cid, btps=None, bfun=None):
                     args[b] = []
                 args[b].append(i)
 
-        c = com.contcom.SetBTypeToContour({"btypes": [args]})
+        c = com.contcom.SetBTypeToContour({"name": cid, "btypes": args})
         flow.exec_command(c)
     except:
         raise ExecError("set_boundary_type")
@@ -256,13 +259,13 @@ def partition_contour(cont, algo, step=1., angle0=30., keep_bnd=False,
         raise ValueError
     sp, ep = None, None
     if start is not None:
-        sp = (start[0], start[1])
+        sp = [start[0], start[1]]
     if end is not None:
-        ep = (end[0], end[1])
+        ep = [end[0], end[1]]
     kp = []
     if keep_pts is not None:
         for p in keep_pts:
-            kp.append((p[0], p[1]))
+            kp.append([p[0], p[1]])
 
     args = {"algo": algo,
             "step": plain_step,
@@ -383,9 +386,9 @@ def partition_segment(start, end, hstart, hend, hinternal=[]):
     """
     from hybmeshpack.hmcore import c2 as c2core
     try:
-        return c2core.segment_part(start, end, hstart, hend, hinternal)
-    except Exception as e:
-        raise ExecError(str(e))
+        return c2core.segment_partition(start, end, hstart, hend, hinternal)
+    except:
+        raise ExecError("partition_segment")
 
 
 def connect_subcontours(sources, fix=[], close="no", shiftnext=True):

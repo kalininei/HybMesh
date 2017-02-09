@@ -373,6 +373,15 @@ template<class C>
 void constant_ids_pvec(const C& inp, int val){
 	for (auto& it: inp) it->id = val;
 }
+template<class Iter>
+void enumerate_ids_pvec(const Iter& i1, const Iter& i2){
+	int i=0;
+	for (auto it = i1; it!=i2; ++it) (*it)->id = i++;
+}
+template<class Iter>
+void constant_ids_pvec(const Iter& i1, const Iter& i2, int val){
+	for (auto it = i1; it!=i2; ++it) (*it)->id = val;
+}
 template<class C>
 std::vector<int> get_ids(const C& inp){
 	std::vector<int> ret(inp.size());

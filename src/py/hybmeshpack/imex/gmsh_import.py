@@ -1,7 +1,7 @@
 import hybmeshpack.hmcore.g2 as g2core
 
 
-def _parse(self, fn):
+def _parse(fn):
     """ ->
         {bindex: bname}
         [ ... points ... ],
@@ -92,7 +92,7 @@ def _parse_bt(btnames, allbt):
     return ret
 
 
-def grid2(self, fn):
+def grid2(fn):
     """ ->( Grid2.grid.cdata, {bindex: bname, ...}
     """
     bt, pts, cls, bedges = _parse(fn)

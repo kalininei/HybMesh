@@ -16,19 +16,19 @@ int s3_dims(void* obj, int* dims){
 				e->last()->id = 0;
 			}
 		}
-		dims[0] = surf->size();
+		dims[0] = 0;
 		dims[1] = 0;
-		dims[2] = 0;
+		dims[2] = surf->size();
 		for (auto& f: *surf)
 		for (auto& e: f->edges) if (e->id == 0){
 			++dims[1];
 			e->id = 1;
 			if (e->first()->id == 0){
-				++dims[2];
+				++dims[0];
 				e->first()->id = 1;
 			}
 			if (e->last()->id == 0){
-				++dims[2];
+				++dims[0];
 				e->last()->id = 1;
 			}
 		}

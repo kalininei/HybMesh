@@ -88,7 +88,7 @@ void* grid_construct(int npoints, int ncells, double* points, int* cells){
 	for (int i=0; i<ncells; ++i){
 		cellsizes[i] = *it;
 		sum += cellsizes[i];
-		it += cellsizes[i];
+		it += cellsizes[i]+1;
 	}
 	int* cellvert = new int[sum];
 	it = cells;
@@ -205,7 +205,7 @@ void test2(){
 	HM2D::GridData gmain = HM2D::Grid::Constructor::RectGrid01(10, 10);
 	HM2D::GridData gsec = HM2D::Grid::Constructor::RectGrid(Point(0.3, 0.3), Point(0.6, 0.6), 30, 30);
 	void* res;
-	g2_unite_grids(&gmain, &gsec, 0.05, 1, 0, 0, 0, &res, nocb);
+	g2_unite_grids(&gmain, &gsec, 0.05, 1, 0, 0, "3", &res, nocb);
 	g2_free(res);
 }
 
@@ -214,7 +214,7 @@ void test3(){
 	HM2D::GridData gmain = HM2D::Grid::Constructor::RectGrid(Point(0, 0), Point(1, 1), 10, 10);
 	HM2D::GridData gsec = HM2D::Grid::Constructor::RectGrid(Point(0.3, -0.1), Point(0.6, 0.2), 30, 30);
 	void* res;
-	g2_unite_grids(&gmain, &gsec, 0.15, 1, 0, 0, 0, &res, nocb);
+	g2_unite_grids(&gmain, &gsec, 0.15, 1, 0, 0, "3", &res, nocb);
 	g2_free(res);
 }
 
@@ -223,7 +223,7 @@ void test4(){
 	HM2D::GridData gmain = HM2D::Grid::Constructor::RectGrid(Point(0, 0), Point(1, 1), 10, 10);
 	HM2D::GridData gsec = HM2D::Grid::Constructor::RectGrid(Point(-0.3, -0.3), Point(0.5, 0.5), 30, 30);
 	void* res;
-	g2_unite_grids(&gmain, &gsec, 0.2, 1, 0, 0, 0, &res, nocb);
+	g2_unite_grids(&gmain, &gsec, 0.2, 1, 0, 0, "3", &res, nocb);
 	g2_free(res);
 }
 
@@ -240,7 +240,7 @@ void test5(){
 	void* gsec  = grid_construct(9, 8, pnt2, cls2);
 
 	void* res;
-	g2_unite_grids(&gmain, gsec, 2.0, 1, 0, 0, 0, &res, nocb);
+	g2_unite_grids(&gmain, gsec, 2.0, 1, 0, 0, "3", &res, nocb);
 	add_check(ISEQ(HM2D::Grid::Area(*static_cast<HM2D::GridData*>(res)), 100), "area check");
 
 	g2_free(gsec);
@@ -253,13 +253,13 @@ void test6(){
 	HM2D::GridData gsec = HM2D::Grid::Constructor::RectGrid(Point(0.5, 0.5), Point(0.6, 0.6), 30, 30);
 
 	void* res;
-	g2_unite_grids(&gmain, &gsec, 0.3, 1, 0, 0, 0, &res, nocb);
+	g2_unite_grids(&gmain, &gsec, 0.3, 1, 0, 0, "3", &res, nocb);
 	g2_free(res);
 
-	g2_unite_grids(&gmain, &gsec, 0.3, 1, 0, 0, 0, &res, nocb);
+	g2_unite_grids(&gmain, &gsec, 0.3, 1, 0, 0, "3", &res, nocb);
 	g2_free(res);
 
-	g2_unite_grids(&gmain, &gsec, 0.3, 1, 0, 0, 0, &res, nocb);
+	g2_unite_grids(&gmain, &gsec, 0.3, 1, 0, 0, "3", &res, nocb);
 	g2_free(res);
 
 }
@@ -272,9 +272,9 @@ void test7(){
 	HM2D::GridData gsec3 = HM2D::Grid::Constructor::RectGrid(Point(2, 1.05), Point(3, 2.05), 10, 10);
 
 	void *res, *res2, *res3;
-	g2_unite_grids(&gmain, &gsec, 0.2, 1, 0, 0, 0, &res, nocb);
-	g2_unite_grids(res, &gsec2, 0.2, 1, 0, 0, 0, &res2, nocb);
-	g2_unite_grids(res2, &gsec3, 0.2, 1, 0, 0, 0, &res3, nocb);
+	g2_unite_grids(&gmain, &gsec, 0.2, 1, 0, 0, "3", &res, nocb);
+	g2_unite_grids(res, &gsec2, 0.2, 1, 0, 0, "3", &res2, nocb);
+	g2_unite_grids(res2, &gsec3, 0.2, 1, 0, 0, "3", &res3, nocb);
 
 	int dim[3], dim2[3], dim3[3];
 	g2_dims(res, dim);
@@ -297,8 +297,8 @@ void test8(){
 	HM2D::GridData gsec2 = HM2D::Grid::Constructor::RectGrid(Point(-0.5, 0.3), Point(5.5, 0.6), 100, 10);
 
 	void *res, *res2;
-	g2_unite_grids(&gmain, &gsec, 0.2, 1, 0, 0, 0, &res, nocb);
-	g2_unite_grids(res, &gsec2, 0.2, 1, 0, 0, 0, &res2, nocb);
+	g2_unite_grids(&gmain, &gsec, 0.2, 1, 0, 0, "3", &res, nocb);
+	g2_unite_grids(res, &gsec2, 0.2, 1, 0, 0, "3", &res2, nocb);
 	add_check(check_convexity(res2, 0, 4), "hanging nodes number");
 	g2_free(res);
 	g2_free(res2);
@@ -309,8 +309,8 @@ void test9(){
 	HM2D::GridData gmain = HM2D::Grid::Constructor::RectGrid( Point(0, 0), Point(7, 7), 7, 7);
 	HM2D::GridData gsec = HM2D::Grid::Constructor::RectGrid( Point(2.5, -1), Point(4.99, 1), 30, 30);
 	void* res, *res2;
-	g2_unite_grids(&gmain, &gsec, 0.2, 1, 0, 0, 0, &res, nocb);
-	g2_unite_grids(&gmain, &gsec, 0.2, 0, 0, 0, 0, &res2, nocb);
+	g2_unite_grids(&gmain, &gsec, 0.2, 1, 0, 0, "3", &res, nocb);
+	g2_unite_grids(&gmain, &gsec, 0.2, 0, 0, 0, "3", &res2, nocb);
 	int dim[3], dim2[3];
 	g2_dims(res, dim);
 	g2_dims(res2, dim2);
@@ -340,8 +340,8 @@ void test10(){
 	HM2D::GridData gsec = HM2D::Grid::Constructor::RectGrid(Point(0.31,-0.3), Point(0.695,0.5), 10, 10);
 
 	void* res, *res2;
-	g2_unite_grids(&gmain, &gsec, 1.0, 1, 0, 0, 0, &res, nocb);
-	g2_unite_grids(&gmain, &gsec, 1.0, 0, 0, 0, 0, &res2, nocb);
+	g2_unite_grids(&gmain, &gsec, 1.0, 1, 0, 0, "3", &res, nocb);
+	g2_unite_grids(&gmain, &gsec, 1.0, 0, 0, 0, "3", &res2, nocb);
 
 	g2_free(res);
 	g2_free(res2);
@@ -356,7 +356,7 @@ void test11(){
 	std::vector<int> cls_sec = {4,0,1,5,4, 4,1,2,6,5, 4,6,2,3,7, 4,3,0,4,7};
 	void *gsec, *res;
 	gsec = grid_construct(8, 4, &pts_sec[0], &cls_sec[0]);
-	g2_unite_grids(&gmain, gsec, 0, 0, 0, 0, 0, &res, nocb);
+	g2_unite_grids(&gmain, gsec, 0, 0, 0, 0, "3", &res, nocb);
 	int dim[3];
 	g2_dims(res, dim);
 	add_check(dim[0] == 125 && dim[2] == 96, "resulting topology");
@@ -374,7 +374,7 @@ void test12(){
 	std::vector<int> cls_sec = {4,0,1,5,4, 4,1,2,6,5, 4,6,2,3,7, 4,3,0,4,7};
 	void *gsec, *res;
 	gsec = grid_construct(8, 4, &pts_sec[0], &cls_sec[0]);
-	g2_unite_grids(&gmain, gsec, 0.2, 1, 0, 0, 0, &res, nocb);
+	g2_unite_grids(&gmain, gsec, 0.2, 1, 0, 0, "3", &res, nocb);
 	//frontal
 	//add_check(grid_ncells(res) == 132 && grid_npoints(res) == 99, "resulting topology");
 	//Delaunay
@@ -390,7 +390,7 @@ void test13(){
 	HM2D::GridData gmain = HM2D::Grid::Constructor::RectGrid(Point(0,0), Point(1,1), 100, 100);
 	HM2D::GridData gsec = HM2D::Grid::Constructor::RectGrid(Point(-2, 0), Point(-1, 1), 10, 10);
 	void *res;
-	g2_unite_grids(&gmain, &gsec, 0.2, 1, 0, 0, 0, &res, nocb);
+	g2_unite_grids(&gmain, &gsec, 0.2, 1, 0, 0, "3", &res, nocb);
 	g2_free(res);
 }
 
@@ -503,7 +503,7 @@ void test17(){
 	HM2D::GridData bigg = HM2D::Grid::Constructor::RectGrid(Point(-20, -10), Point(100, 10), 12, 2);
 	HM2D::GridData smallg = HM2D::Grid::Constructor::RectGrid(Point(0, 0), Point(0.1, 0.1), 10, 10);
 	void* unig;
-	g2_unite_grids(&bigg, &smallg, 0.2, 1, 0, 0, 0, &unig, nocb);
+	g2_unite_grids(&bigg, &smallg, 0.2, 1, 0, 0, "3", &unig, nocb);
 
 	g2_free(unig);
 }
@@ -539,7 +539,7 @@ void test19(){
 	auto g1 = HM2D::Grid::Constructor::RectGrid01(10, 10);
 	auto g2 = HM2D::Grid::Constructor::RectGrid(Point(0.5, 0.3), Point(1.5, 0.65), 13, 10);
 	void *g3;
-	g2_unite_grids(&g1, &g2, 0.1, 0, 0, 0, 0, &g3, nocb);
+	g2_unite_grids(&g1, &g2, 0.1, 0, 0, 0, "3", &g3, nocb);
 	add_check(check_convexity(g3, 0, 0), "no hanging nodes check");
 	g2_free(g3);
 };
@@ -553,11 +553,11 @@ void test20(){
 
 	auto g3 = HM2D::Grid::Constructor::RectGrid(Point(0.45, 0.45), Point(0.55, 0.55), 3, 3);
 	void* g4;
-	g2_unite_grids(g2, &g3, 0, 0, 0, 0, 0, &g4, nocb);
+	g2_unite_grids(g2, &g3, 0, 0, 0, 0, "3", &g4, nocb);
 
 	auto g5 = HM2D::Grid::Constructor::RectGrid(Point(-5, -5), Point(5, 5), 19, 21);
 	void* g6;
-	g2_unite_grids(&g5, g4, 0.1, 0, 1, 0, 0, &g6, nocb);
+	g2_unite_grids(&g5, g4, 0.1, 0, 1, 0, "3", &g6, nocb);
 
 	double a5, a1, a3, a6;
 	g2_area(&g5, &a5);

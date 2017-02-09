@@ -59,7 +59,7 @@ def build_from_points(pts, force_closed, bnds):
     bnds = list_to_c(supplement(bnds, len(pts)), int)
     force_closed = ct.c_int(force_closed)
     npts = ct.c_int(len(pts))
-    pts = list_to_c(concat(pts))
+    pts = list_to_c(concat(pts), float)
     ret = ct.c_void_p()
     ccall(cport.c2_frompoints, npts, pts, bnds, force_closed, ct.byref(ret))
     return ret
@@ -102,23 +102,20 @@ def decompose_contour(obj):
 
 
 def spline(pts, bnds, nedges):
-    bnds = supplement(bnds, nedges)
-    pts = concat(pts)
-
+    bnds = list_to_c(supplement(bnds, len(pts)), int)
+    npts = ct.c_int(len(pts))
+    pts = list_to_c(concat(pts), float)
+    nedges = ct.c_int(nedges)
     ret = ct.c_void_p()
-    ned = ct.c_int(nedges)
-    np = ct.c_int(len(pts))
-    bnds = list_to_c(bnds, int)
-    pts = list_to_c(pts, float)
-
-    ccall(cport.c2_sline, np, pts, ned, bnds, ct.byref(ret))
+    ccall(cport.c2_spline, npts, pts, nedges, bnds, ct.byref(ret))
     return ret
 
 
-def clip_domain(obj1, obj2, op):
+def clip_domain(obj1, obj2, op, simp):
     "op is [union, difference, intersection, xor]"
+    simp = ct.c_int(simp)
     ret = ct.c_void_p()
-    ccall(cport.c2_clip_domain, obj1, obj2, op, ct.byref(ret))
+    ccall(cport.c2_clip_domain, obj1, obj2, op, simp, ct.byref(ret))
     return ret
 
 
@@ -131,17 +128,17 @@ def contour_partition(obj, step, algo, a0, keepbnd,
         nedges: None or forced number of resulting edges
     """
     # options
-    step = list_to_c(step, "float")
     nstep = ct.c_int(len(step))
+    step = list_to_c(step, "float")
     a0 = ct.c_double(a0)
     keepbnd = ct.c_int(keepbnd)
     nedges = ct.c_int(nedges) if nedges is not None else ct.c_int(-1)
-    crosses = list_to_c(crosses, "void*")
     ncrosses = ct.c_int(len(crosses))
-    keeppts = list_to_c(concat(keeppts), "float")
-    nkeeppts = ct.c_int(len(keeppts) / 2)
-    start = list_to_c(start, "float") if start is not None else None
-    end = list_to_c(end, "float") if end is not None else None
+    crosses = list_to_c(crosses, "void*")
+    nkeeppts = ct.c_int(len(keeppts))
+    keeppts = list_to_c(concat(keeppts), float)
+    start = list_to_c(start, float) if start is not None else None
+    end = list_to_c(end, float) if end is not None else None
 
     #call
     ret = ct.c_void_p()
@@ -155,10 +152,10 @@ def contour_partition(obj, step, algo, a0, keepbnd,
 
 
 def matched_partition(obj, conts, pts, step, infdist, power, a0):
-    conts = list_to_c(conts, "void*")
     nconts = ct.c_int(len(conts))
-    pts = list_to_c(concat(pts), float)
-    npts = ct.c_int(len(pts) / 2)
+    conts = list_to_c(conts, "void*")
+    npts = ct.c_int(len(pts) / 3)
+    pts = list_to_c(pts, float)
     step = ct.c_double(step)
     infdist = ct.c_double(infdist)
     power = ct.c_double(power)
@@ -171,19 +168,36 @@ def matched_partition(obj, conts, pts, step, infdist, power, a0):
     return ret
 
 
+def segment_partition(start, end, hstart, hend, hinternal):
+    start = ct.c_double(start)
+    end = ct.c_double(end)
+    hstart = ct.c_double(hstart)
+    hend = ct.c_double(hend)
+    ninternal = ct.c_int(len(hinternal) / 2)
+    hinternal = list_to_c(hinternal, float)
+    nret = ct.c_int()
+    ret = ct.POINTER(ct.c_double)()
+
+    ccall(cport.c2_segment_partition, start, end, hstart, hend,
+          ninternal, hinternal, ct.byref(nret), ct.byref(ret))
+    r = ret[:nret.value]
+    free_cside_array(ret, float)
+    return r
+
+
 def extract_subcontours(obj, plist):
+    nplist = ct.c_int(len(plist))
     plist = list_to_c(concat(plist), float)
-    nplist = ct.c_int(len(plist) / 2)
-    ret = ct.c_void_p()
-    ccall(cport.c2_extract_subcontours, obj, nplist, plist, ct.byref(ret))
-    return ret
+    ret = (ct.c_void_p * (nplist.value - 1))()
+    ccall(cport.c2_extract_subcontours, obj, nplist, plist, ret)
+    return list(ret)
 
 
 def connect_subcontours(objs, fx, close, shift):
-    objs = list_to_c(objs, "void*")
     nobjs = ct.c_int(len(objs))
-    fx = list_to_c(fx, int)
+    objs = list_to_c(objs, "void*")
     nfx = ct.c_int(len(fx))
+    fx = list_to_c(fx, int)
     shift = ct.c_int(shift)
     ret = ct.c_void_p()
     ccall(cport.c2_connect_subcontours, nobjs, objs, nfx, fx, shift, close,
@@ -226,12 +240,6 @@ def closest_points(obj, pts, proj):
     npts = ct.c_int(len(pts))
     pts = list_to_c(concat(pts), 'float')
     ret = (ct.c_double * len(pts))()
-    if proj == "vertex":
-        proj = ct.c_int(0)
-    elif proj == "edge":
-        proj = ct.c_int(1)
-    else:
-        raise ValueError
     ccall(cport.c2_closest_points, obj, npts, pts, proj, ret)
     it = iter(ret)
     return [[a, b] for a, b in zip(it, it)]

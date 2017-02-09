@@ -35,8 +35,8 @@ parea = hm.partition_contour(area, 'const', dom_size)
 # that all well points and fracture edges be preserved as grid entities
 # and cell sizes near well be equal to w_size
 # (see fig.2)
-fin2 = hm.triangulate_domain(parea, [pcrack],
-                           [w_size, w1, w_size, w2, w_size, w3])
+fin2 = hm.triangulate_domain(
+    parea, [pcrack], [w_size, w1, w_size, w2, w_size, w3])
 
 # 2. Quadrangulation with boundaries refinement
 # make 1D partition of a crack keeping in mind mesh refinement
@@ -153,6 +153,7 @@ hm.export_grid_vtk(fin5, "g5.vtk")
 hm.export_grid_vtk(fin6, "g6.vtk")
 hm.export3d_grid_tecplot(fin7, "g7.dat")
 # if hm.info_grid(fin4)['cell_types'][4] != 1567:
-sk = hm.skewness(fin4)
+sk = hm.skewness(fin4, 0.8)
 if len(sk['bad_cells']) > 1:
-    print "!!!!! bad result"
+    print sk
+    raise Exception

@@ -33,13 +33,13 @@ EdgeData cns::Circle(int N, Point cnt, Point poc){
 }
 
 EdgeData cns::FromPoints(const vector<double>& pnt, bool force_closed){
-	VertexData p;
-	for (int i=0; i<(int)pnt.size(); i+=2) p.emplace_back(new Vertex(pnt[i], pnt[i+1]));
-	if (*p[0] == *p.back()) p.back() = p[0];
-	return Contour::Assembler::Contour1(p, force_closed);
+	vector<Point> p;
+	for (int i=0; i<pnt.size(); i+=2) p.emplace_back(pnt[i], pnt[i+1]);
+	return FromPoints(p, force_closed);
 }
 
 EdgeData cns::FromPoints(const vector<Point>& pnt, bool force_closed){
+	if (pnt.size() == 0) return HM2D::EdgeData();
 	VertexData p;
 	for (int i=0; i<(int)pnt.size(); ++i) p.emplace_back(new Vertex(pnt[i]));
 	if (*p[0] == *p.back()) p.back() = p[0];

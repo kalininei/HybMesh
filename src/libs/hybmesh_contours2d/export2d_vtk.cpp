@@ -5,6 +5,22 @@
 
 using namespace HM2D;
 
+namespace{
+
+template<class C>
+void add_vtk_data(const vector<C>& data, std::string name, std::string fn, bool is_first = false){
+	std::ofstream f(fn, std::ios_base::app);
+	if (is_first) f<<"CELL_DATA "<<data.size()<<std::endl;
+	std::string tp = (std::is_same<C, int>::value) ? " int 1" : " float 1";
+	f<<"SCALARS "<<name<<tp<<std::endl;
+	f<<"LOOKUP_TABLE default"<<std::endl;
+	for (auto v: data) f<<v<<std::endl;
+	f.close();
+}
+
+}
+
+
 void Export::ContourVTK(const EdgeData& ec, std::string fn){
 	std::ofstream fs(fn);
 	fs<<"# vtk DataFile Version 3.0"<<std::endl;
@@ -25,6 +41,18 @@ void Export::ContourVTK(const EdgeData& ec, std::string fn){
 	}
 	fs<<"CELL_TYPES  "<<ec.size()<<std::endl;
 	for (int i=0;i<ec.size();++i) fs<<3<<std::endl;
+
+	//boundary conditions if any
+	vector<int> bcond(ec.size());
+	for (int i=0; i<ec.size(); ++i) bcond[i] = ec[i]->boundary_type;
+	if (std::all_of(bcond.begin(), bcond.end(), [](int a){ return a==0; })){
+		return;
+	}
+	fs<<"CELL_DATA "<<bcond.size()<<std::endl;
+	fs<<"SCALARS boundary_type int 1"<<std::endl;
+	fs<<"LOOKUP_TABLE default"<<std::endl;
+	for (auto v: bcond) fs<<v<<std::endl;
+
 	fs.close();
 }
 
@@ -47,21 +75,6 @@ void Export::VerticesVTK(const VertexData& data, std::string fn){
 	fs<<"CELL_TYPES  "<<data.size()<<std::endl;
 	for (int i=0;i<data.size();++i) fs<<1<<std::endl;
 	fs.close();
-}
-
-namespace{
-
-template<class C>
-void add_vtk_data(const vector<C>& data, std::string name, std::string fn, bool is_first = false){
-	std::ofstream f(fn, std::ios_base::app);
-	if (is_first) f<<"CELL_DATA "<<data.size()<<std::endl;
-	std::string tp = (std::is_same<C, int>::value) ? " int 1" : " float 1";
-	f<<"SCALARS "<<name<<tp<<std::endl;
-	f<<"LOOKUP_TABLE default"<<std::endl;
-	for (auto v: data) f<<v<<std::endl;
-	f.close();
-}
-
 }
 
 void Export::GridVTK(const GridData& g, std::string fn){
@@ -94,11 +107,16 @@ void Export::GridVTK(const GridData& g, std::string fn){
 	fs.close();
 }
 
-void Export::BoundaryVTK(const GridData& g, std::string fn, const vector<int>& bcond){
+void Export::BoundaryVTK(const GridData& g, std::string fn){
 	//save contour
 	auto ct = HM2D::Contour::Tree::GridBoundary(g).alledges();
 	HM2D::Export::ContourVTK(ct, fn.c_str());
-	if (bcond.size() == 0) return;
+	/*
+	vector<int> bcond(ct.size());
+	for (int i=0; i<ct.size(); ++i) bcond[i] = ct[i]->boundary_type;
+	if (std::all_of(bcond.begin(), bcond.end(), [](int a){ return a==0; })){
+		return;
+	}
 	aa::constant_ids_pvec(g.vedges, 0);
 	for (int i=0; i<bcond.size(); ++i){
 		if (i==g.vedges.size()) break;
@@ -112,4 +130,5 @@ void Export::BoundaryVTK(const GridData& g, std::string fn, const vector<int>& b
 
 	//add to output file
 	add_vtk_data(convertedbc, "boundary_type", fn, true);
+	*/
 }

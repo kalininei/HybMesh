@@ -53,7 +53,7 @@ int c2_decompose(void* obj, int* nret, void*** ret);
 int c2_spline(int np, double* pts, int ned, int* bnds, void** ret);
 
 //clip domain operation: 'union', 'intersection', 'xor', 'difference'
-int c2_clip_domain(void* obj1, void* obj2, const char* op, void** ret);
+int c2_clip_domain(void* obj1, void* obj2, const char* op, int simplify, void** ret);
 
 //makes contour partition using different algorithms: 'const', 'ref_points', 'ref_weights', 'ref_lengths'
 // algo: 0 - const step; 1 - refference point step; 2,3 - ref weights/lengths steps
@@ -72,6 +72,9 @@ int c2_partition(void* obj, const char* algo, int nstep, double* step, double a0
 //makes contour partition taking into account partition of given constrained contours and points
 int c2_matched_partition(void* obj, int nconts, void** conts, int npts, double* pts, double step,
                          double infdist, double power, double a0, void** ret);
+
+int c2_segment_partition(double start, double end, double hstart, double hend,
+	int ninternal, double* hinternal, int* nret, double** ret);
 
 //breaks contour into subcontours by given points
 int c2_extract_subcontours(void* obj, int nplist, double* plist, void** ret);

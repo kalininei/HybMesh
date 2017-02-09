@@ -111,7 +111,7 @@ def extract_subcontours(source, plist, project_to="vertex"):
         'src': source, 'plist': plist, 'project_to': project_to})
     try:
         flow.exec_command(c)
-        return c.added_contours()[0]
+        return c.added_contours2()
     except Exception:
         raise ExecError('extract_subcontours')
 
@@ -138,7 +138,7 @@ def add_rect_contour(p0, p1, bnd=0):
     c = com.contcom.AddRectCont({"p0": p0, "p1": p1, "bnds": b})
     try:
         flow.exec_command(c)
-        return c.added_contours()[0]
+        return c.added_contours2()[0]
     except:
         raise ExecError('add_rect_contour')
 
@@ -161,7 +161,7 @@ def add_circ_contour(p0, rad, n_arc, bnd=0):
                                  "na": n_arc, "bnd": bnd})
     try:
         flow.exec_command(c)
-        return c._get_added_names()[1][0]
+        return c.added_contours2()[0]
     except:
         raise ExecError("add_circ_contour")
 

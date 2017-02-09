@@ -10,10 +10,10 @@ int g2_area(void* obj, double* ret);
 int g2_bnd_dims(void* obj, int* ret);
 int g2_bnd_length(void* obj, double** ret);
 int g2_skewness(void* obj, double threshold, double* maxskew, int* maxskewindex,
-		int badnum, int** badindex, double** badvals);
+		int* badnum, int** badindex, double** badvals);
 int g2_deepcopy(void* obj, void** ret);
 int g2_free(void* obj);
-int g2_concatenate(int nobjs, void* objs, void** ret);
+int g2_concatenate(int nobjs, void** objs, void** ret);
 int g2_move(void* obj, double* dx);
 int g2_scale(void* obj, double* pc, double* p0);
 int g2_reflect(void* obj, double* v0, double* v1);

@@ -71,7 +71,7 @@ def write_framework(fw, xmlnode):
 # ---------------------- Everything
 def flow_and_framework_tofile(filename, comflow, fmt="ascii"):
     'writes flow.CommandFlow object to xml file'
-    cb = comflow.get_interface().ask_for_callback()
+    cb = comflow.interface.ask_for_callback()
     cb1 = cb.subcallback(0, 3)
 
     cb1._callback("Writing command flow", "", 0, 0)
@@ -90,7 +90,7 @@ def flow_and_framework_tofile(filename, comflow, fmt="ascii"):
         cb2 = cb.subcallback(1, 3)
         doc, root = hmxml.open_doc(filename)
         [nd] = hmxml.query(root, "FLOW/STATE", required="=1")
-        natex.export_all(doc, nd, comflow.reciever, fmt, cb2)
+        natex.export_all(doc, nd, comflow.receiver, fmt, cb2)
     except:
         raise
     finally:

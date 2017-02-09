@@ -5,9 +5,10 @@ from hybmeshpack.hmcore import g3 as g3core
 
 class Grid3(basic.GeomObject3):
     def __init__(self, cdata):
+        import ctypes as ct
         super(Grid3, self).__init__()
         # pointer to data stored at c-side
-        self.cdata = cdata
+        self.cdata = ct.cast(cdata, ct.c_void_p)
 
     def __del__(self):
         if self.cdata:
@@ -21,6 +22,9 @@ class Grid3(basic.GeomObject3):
 
     def n_faces(self):
         return g3core.dims(self.cdata)[2]
+
+    def n_cells(self):
+        return g3core.dims(self.cdata)[3]
 
     def surface(self):
         return GridSurface(self.cdata)
@@ -39,7 +43,6 @@ class Grid3(basic.GeomObject3):
     def point_at(self, index):
         return g3core.point_by_index(index)
 
-
     def raw_data(self, what):
         """ -> ctypes arrays
         what = 'btypes' -> [b0, b1, b2, ...]
@@ -52,9 +55,9 @@ class Grid3(basic.GeomObject3):
 
 
 class GridSurface(srf3.AbstractSurface3):
-    def __init__(self, g):
+    def __init__(self, gcdata):
         super(GridSurface, self).__init__()
-        self.cgrid = g.cdata
+        self.cdata = gcdata
 
     def __del__(self):
         # cgrid is owned by Grid3 hence do nothing
@@ -85,7 +88,7 @@ class GridSurface(srf3.AbstractSurface3):
         return g3core.bnd_dims(self.cdata)[2]
 
     def surface3(self):
-        return g3core.extract_surface(self.cdata)
+        return srf3.Surface3(g3core.extract_surface(self.cdata))
 
     def area(self):
         return g3core.bnd_area(self.cdata)

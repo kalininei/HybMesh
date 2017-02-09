@@ -10,14 +10,15 @@
 #include "cont_partition.hpp"
 #include "cont_assembler.hpp"
 #include "finder2d.hpp"
-#include "partition01.hpp"
 #include "export2d_hm.hpp"
+#include "partition01.hpp"
+
 
 int c2_dims(void* obj, int* ret){
 	try{
 		auto c = static_cast<HM2D::EdgeData*>(obj);
-		ret[0] = c->size();
-		ret[1] = HM2D::AllVertices(*c).size();
+		ret[1] = c->size();
+		ret[0] = HM2D::AllVertices(*c).size();
 		return HMSUCCESS;
 	} catch (std::exception& e){
 		std::cout<<e.what()<<std::endl;
@@ -112,6 +113,7 @@ int c2_reflect(void* obj, double* v0, double* v1){
 			p->x = A[0]*a + A[1]*b + v0[0];
 			p->y = A[2]*a + A[3]*b + v0[1];
 		}
+		for (auto& e: *cont){ std::swap(e->left, e->right); }
 		return HMSUCCESS;
 	} catch (std::exception& e){
 		std::cout<<e.what()<<std::endl;
@@ -127,7 +129,7 @@ int c2_rotate(void* obj, double* p0, double a){
 			double a = p->x - p0[0];
 			double b = p->y - p0[1];
 			p->x = a*cs - b*sn + p0[0];
-			p->y = a*sn + b*sn + p0[1];
+			p->y = a*sn + b*cs + p0[1];
 		}
 		return HMSUCCESS;
 	} catch (std::exception& e){
@@ -138,8 +140,7 @@ int c2_rotate(void* obj, double* p0, double a){
 
 int c2_frompoints(int npts, double* pts, int* bnds, int force_closed, void** ret){
 	try{
-		vector<double> pp;
-		pp.insert(pp.end(), pts, pts + npts*2);
+		vector<double> pp(pts, pts+npts*2);
 		HM2D::EdgeData ret_ = HM2D::Contour::Constructor::FromPoints(pp, force_closed);
 		for (int i=0; i<ret_.size(); ++i){
 			ret_[i]->boundary_type = bnds[i];
@@ -203,8 +204,12 @@ int c2_decompose(void* obj, int* nret, void*** ret){
 		auto cont = static_cast<HM2D::EdgeData*>(obj);
 		Autoscale::D2 sc(cont);
 		vector<HM2D::EdgeData> sep = HM2D::Contour::Constructor::ExtendedSeparate(*cont);
-		for (auto& s: sep) sc.unscale(&s);
-		c2cpp::to_ppp(sep, nret, ret);
+		vector<HM2D::EdgeData> ret_(sep.size());
+		for (int i=0; i<sep.size(); ++i){
+			HM2D::DeepCopy(sep[i], ret_[i]);
+			sc.unscale(&ret_[i]);
+		}
+		c2cpp::to_ppp(ret_, nret, ret);
 		return HMSUCCESS;
 	} catch (std::exception& e){
 		std::cout<<e.what()<<std::endl;
@@ -218,8 +223,15 @@ int c2_spline(int np, double* _pts, int ned, int* bnds, void** ret){
 		vector<Point> pts = c2cpp::to_points2(np, _pts);
 		Autoscale::D2 sc(pts);
 		HM2D::EdgeData spline = HM2D::Contour::Constructor::Spline(pts, ned);
-		for (int i=0; i<spline.size(); ++i)
-			spline[i]->boundary_type = bnds[i];
+
+		int icur = 0;
+		for (int i=0; i<spline.size(); ++i){
+			if (*spline[i]->pfirst() == pts[icur+1]){
+				++icur;
+			}
+			spline[i]->boundary_type = bnds[icur];
+		}
+
 		sc.unscale(&spline);
 		c2cpp::to_pp(spline, ret);
 		return HMSUCCESS;
@@ -229,7 +241,7 @@ int c2_spline(int np, double* _pts, int ned, int* bnds, void** ret){
 	}
 }
 
-int c2_clip_domain(void* obj1, void* obj2, const char* op, void** ret){
+int c2_clip_domain(void* obj1, void* obj2, const char* op, int simplify, void** ret){
 	try{
 		auto cont1 = static_cast<HM2D::EdgeData*>(obj1);
 		auto cont2 = static_cast<HM2D::EdgeData*>(obj2);
@@ -253,8 +265,28 @@ int c2_clip_domain(void* obj1, void* obj2, const char* op, void** ret){
 		} else {
 			throw std::runtime_error("unknown operation");
 		}
+	
+		//heal to remove 0 angled sections
 		HM2D::Contour::Clip::Heal(t);
 		auto ae = t.alledges();
+		//restore non-significant points
+		if (!simplify && t.nodes.size() > 0){
+			vector<Point*> allpnt;
+			for (auto& v: HM2D::AllVertices(*cont1)) allpnt.push_back(v.get());
+			for (auto& v: HM2D::AllVertices(*cont2)) allpnt.push_back(v.get());
+			for (auto p: allpnt){
+				auto fnd = HM2D::Finder::ClosestEdge(ae, *p);
+				if (std::get<0>(fnd)<0) continue;
+				auto ed = ae[std::get<0>(fnd)];
+				//if point lies on edge and does not equal edge end points
+				if (std::get<1>(fnd)<geps && ISIN_NN(std::get<2>(fnd), geps, 1-geps)){
+					auto cont = t.find_node(ed.get());
+					HM2D::Contour::GuaranteePoint(cont->contour, *p);
+					ae = t.alledges();
+				}
+			}
+		}
+		//unscale and return
 		sc.unscale(&ae);
 		c2cpp::to_pp(ae, ret);
 		return HMSUCCESS;
@@ -341,8 +373,13 @@ void place_cross(HM2D::EdgeData& data, const HM2D::EdgeData& cc,
 	}
 }
 void place_angle(HM2D::EdgeData& data, double a0, bool keepbnd, HM2D::VertexData& keep){
-	auto sc = HM2D::ECol::Algos::Simplified(data, a0, keepbnd, keep);
-	keep = HM2D::AllVertices(sc);
+	if (a0 >= 0){
+		auto sc = HM2D::ECol::Algos::Simplified(data, a0, keepbnd, keep);
+		for (auto v: AllVertices(sc)) keep.push_back(v);
+	} else {
+		for (auto v: AllVertices(data)) keep.push_back(v);
+	}
+	aa::no_duplicates(keep);
 }
 std::map<double, double> ref_weights_to_weights(const HM2D::EdgeData& data, const vector<double>& step){
 	std::map<double, double> ret;
@@ -378,12 +415,12 @@ void force_start(HM2D::EdgeData& cont, Point start, HM2D::EdgeData& nonprocessed
 	for (auto e: cont) if (e->id == 0){
 		nonprocessed.push_back(e);
 	}
-	aa::keep_by_id(cont, 1);
+	cont = ret;
 }
 void cut_by_startend(HM2D::EdgeData& cont, Point start, Point end, HM2D::EdgeData& nonprocessed){
 	auto av = HM2D::AllVertices(cont);
 	int i1 = std::get<0>(HM2D::Finder::ClosestPoint(av, start));
-	int i2 = std::get<1>(HM2D::Finder::ClosestPoint(av, end));
+	int i2 = std::get<0>(HM2D::Finder::ClosestPoint(av, end));
 	if (i1 == i2) force_start(cont, start, nonprocessed);
 	auto ret = HM2D::Contour::Assembler::Contour1(cont, av[i1].get(), av[i2].get());
 	aa::constant_ids_pvec(cont, 0);
@@ -391,7 +428,7 @@ void cut_by_startend(HM2D::EdgeData& cont, Point start, Point end, HM2D::EdgeDat
 	for (auto e: cont) if (e->id == 0){
 		nonprocessed.push_back(e);
 	}
-	aa::keep_by_id(cont, 1);
+	std::swap(cont, ret);
 }
 HM2D::EdgeData const_partition(HM2D::EdgeData& data, double step, double a0,
 		bool keepbnd, int nedges,
@@ -405,8 +442,7 @@ HM2D::EdgeData const_partition(HM2D::EdgeData& data, double step, double a0,
 	for (auto& sc: simpc)
 	for (auto& c: ccont) place_cross(sc, c, keep);
 	//place angle points and boundary significant points
-	if (a0 >= 0) for (auto& d: simpc)
-		place_angle(data, a0, keepbnd,keep);
+	for (auto& d: simpc) place_angle(d, a0, keepbnd, keep);
 	//divide edges number with respect to simple contours lengths
 	vector<int> ned(simpc.size(), -1);
 	if (nedges > 0){
@@ -437,11 +473,11 @@ HM2D::EdgeData ref_partition(HM2D::EdgeData& data, const char* algo,
 	for (auto& p: keeppts) place_keep(data, p, keep);
 	for (auto& c: ccont) place_cross(data, c, keep);
 	//place angle points and boundary significant points
-	if (a0 >= 0) place_angle(data, a0, keepbnd, keep);
+	place_angle(data, a0, keepbnd, keep);
 	//modify step depending on algorithm
 	std::map<double, double> weights;
 
-	switch (std::map<const char*, int>({
+	switch (std::map<std::string, int>({
 			{"const", 1},
 			{"ref_points", 2},
 			{"ref_lengths", 3},
@@ -490,16 +526,26 @@ int c2_partition(void* obj, const char* algo, int nstep, double* step, double a0
 		ScaleBase sc = HM2D::Scale01(cont);
 		for (int i=0; i<ccont.size(); ++i)
 			HM2D::Scale(ccont[i], sc);
-		if (c2cpp::eqstring(algo, "ref_points")){
+		switch (std::map<std::string, int>({
+				{"const", 1},
+				{"ref_points", 2},
+				{"ref_lengths", 3},
+				{"ref_weights", 4}})[algo]){
+		case 2:
 			for (int i=0; i<basis.size(); i+=3){
 				basis[i] /= sc.L;
 				basis[i+1] = (basis[i+1] - sc.p0.x)/sc.L;
 				basis[i+2] = (basis[i+2] - sc.p0.y)/sc.L;
 			}
-		} else {
-			for (int i=0; i<basis.size(); ++i){
-				basis[i] /= sc.L;
-			}
+			break;
+		case 1: case 3:
+			for (int i=0; i<basis.size(); ++i) basis[i] /= sc.L; 
+			break;
+		case 4:
+			for (int i=0; i<basis.size(); i+=2) basis[i] /= sc.L; 
+			break;
+		default:
+			throw std::runtime_error("unknown parition algorithm");
 		}
 		sc.scale(keeppts.begin(), keeppts.end());
 		//cut by start/end
@@ -512,17 +558,17 @@ int c2_partition(void* obj, const char* algo, int nstep, double* step, double a0
 
 		//build algorithm-depending result
 		HM2D::EdgeData ret_;
-		switch (std::map<const char*, int>({
+		switch (std::map<std::string, int>({
 				{"const", 1},
 				{"ref_points", 2},
 				{"ref_lengths", 3},
 				{"ref_weights", 4}})[algo]){
 		case 1:
-			ret_ = _c2part::const_partition(ret_, basis[0], a0,
+			ret_ = _c2part::const_partition(cont, basis[0], a0,
 					keepbnd, nedges, ccont, keeppts);
 			break;
 		case 2: case 3: case 4:
-			ret_ = _c2part::ref_partition(ret_, algo, basis, a0,
+			ret_ = _c2part::ref_partition(cont, algo, basis, a0,
 					keepbnd, nedges, ccont, keeppts);
 			break;
 		default:
@@ -597,6 +643,32 @@ int c2_matched_partition(void* obj, int nconds, void** conds, int npts, double* 
 	}
 }
 
+int c2_segment_partition(double start, double end, double hstart, double hend,
+		int ninternal, double* hinternal, int* nret, double** ret){
+	try{
+		double len = end - start;
+		std::map<double, double> w;
+		w[0] = hstart / len;
+		w[1.] = hend / len;
+		for (int i=0; i<ninternal; ++i){
+			double c = hinternal[2*i];
+			double s = hinternal[2*i+1];
+			c = (c - start) / len;
+			s/=len;
+			w[c] = s;
+		}
+		vector<double> ret_ = HMMath::Partition01(w);
+		for (auto& v: ret_) v = (v*len) + start;
+		*ret = new double[ret_.size()];
+		std::copy(ret_.begin(), ret_.end(), *ret);
+		*nret = ret_.size();
+		return HMSUCCESS;
+	} catch (std::exception& e){
+		std::cout<<e.what()<<std::endl;
+		return HMERROR;
+	}
+}
+
 int c2_extract_subcontours(void* obj, int nplist, double* plist, void** ret){
 	try{
 		vector<Point> p0 = c2cpp::to_points2(nplist, plist);
@@ -639,7 +711,6 @@ int c2_extract_subcontours(void* obj, int nplist, double* plist, void** ret){
 			}
 		}
 		//4) assemble
-		*ret = new void*[nplist-1];
 		for (int i=0; i<nplist-1; ++i){
 			int i1 = i, i2 = i+1;
 			if (reversed_order) std::swap(i1, i2);
@@ -777,7 +848,7 @@ int c2_point_at(void* obj, int index, double* ret){
 	try{
 		auto cont = static_cast<HM2D::EdgeData*>(obj);
 		auto av = HM2D::AllVertices(*cont);
-		if (av.size()>=index) throw std::runtime_error("index is out of range");
+		if (index >= av.size()) throw std::runtime_error("index is out of range");
 		ret[0] = av[index]->x;
 		ret[1] = av[index]->y;
 		return HMSUCCESS;

@@ -4,7 +4,7 @@ from proc import cport, ccall, ccall_cb, free_cside_array
 
 def open_doc(fname):
     doc, root = ct.c_void_p(0), ct.c_void_p(0)
-    ccall(cport.hmxml_open_doc, fname, ct.by_ref(doc), ct.by_ref(root))
+    ccall(cport.hmxml_open_doc, fname, ct.byref(doc), ct.byref(root))
     return doc, root
 
 
@@ -18,8 +18,12 @@ def query(node, query_string, required="no"):
     " required = 'no/=0/=1/>0' "
     rnum = ct.c_int(0)
     rans = ct.POINTER(ct.c_void_p)()
-    ccall(cport.hmxml_query, node, query, ct.byref(rnum), ct.byref(rans))
+    query_string = query_string.encode('utf-8')
+    ccall(cport.hmxml_query, node, query_string,
+          ct.byref(rnum), ct.byref(rans))
     try:
+        if required not in ['no', '>0', '=1', '=0']:
+            raise
         if required == '>0' and rnum.value == 0:
             raise
         if required == '=1' and rnum.value != 1:
@@ -30,7 +34,7 @@ def query(node, query_string, required="no"):
         for i in range(rnum.value):
             ccall(cport.hmxml_free_node, rans[i])
         raise Exception("Improper number of entries (=%i) for %s" %
-                        (rnum.value, query))
+                        (rnum.value, query_string))
     ret = []
     for i in range(rnum.value):
         ret.append(rans[i])
@@ -46,7 +50,8 @@ def doc_to_file(doc, filename):
 
 def new_doc():
     rdoc, rroot = ct.c_void_p(), ct.c_void_p()
-    ccall(cport.new_writer, ct.byref(rdoc), ct.byref(rroot))
+    ccall(cport.hmxml_new_doc, ct.byref(rdoc), ct.byref(rroot))
+    return rdoc, rroot
 
 
 def import_contour2(doc, node, cb=None):
@@ -73,8 +78,7 @@ def import_surface3(doc, node, cb=None):
 def import_grid3(doc, node, cb=None):
     rgrid = ct.c_void_p()
     rname = ct.create_string_buffer(1024)
-
-    ccall_cb(cb, cport.read_grid3,
+    ccall_cb(cport.read_grid3, cb,
              doc, node, ct.byref(rgrid), rname)
 
     return rgrid, rname.value

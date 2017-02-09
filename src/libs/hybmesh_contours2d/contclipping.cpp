@@ -287,17 +287,17 @@ TRet ci::Difference(const ETree& c1, const vector<ECont>& cont){
 }
 
 void ci::Heal(TRet& c1){
-	//remove zero length edges
+	c1.remove_detached();
 	for (auto& path: c1.nodes){
-		auto pts = Contour::CornerPoints(path->contour);
-	
-		//remove collinear nodes: 180 and 360 angles)
+		auto pts = Contour::SignificantPoints(path->contour);
+		//remove edges at 360 degree
 STARTFOR:
 		if (pts.size()>2) for (int i=0; i<pts.size(); ++i){
 			auto& p0 = pts[(i==0)?pts.size()-1:i-1];
 			auto& p1 = pts[i];
 			auto& p2 = pts[(i==pts.size()-1)?0:i+1];
-			if (fabs(triarea(*p0, *p1, *p2))<geps2){
+			double an = Angle(*p0, *p1, *p2);
+			if (an < geps || an > 2*M_PI - geps){
 				pts.erase(pts.begin() + i);
 				goto STARTFOR;
 			}
@@ -305,19 +305,22 @@ STARTFOR:
 
 		//write simplified contour
 		if (pts.size() != path->contour.size()){
-			path->contour = HM2D::Contour::Assembler::Contour1(pts, true);
+			HM2D::EdgeData newcont = HM2D::Contour::Assembler::Contour1(pts, true);
+			auto pathop = HM2D::Contour::OrderedPoints1(path->contour);
+			aa::enumerate_ids_pvec(pathop);
+			for (auto e: newcont){
+				e->boundary_type = path->contour[e->pfirst()->id]->boundary_type;
+			}
+			std::swap(newcont, path->contour);
 		}
 	}
 	//remove invalid contours with less then 3 edges
-	std::set<int> not_needed;
+	std::set<HM2D::Contour::Tree::TNode*> not_needed;
 	for (int i=0; i<c1.nodes.size(); ++i){
-		if (c1.nodes[i]->contour.size()<3) not_needed.insert(i);
+		if (c1.nodes[i]->contour.size()<3)
+			not_needed.insert(c1.nodes[i].get());
 	}
-	if (not_needed.size() > 0){
-		aa::remove_entries(c1.nodes, not_needed);
-		//updates topology
-		c1.update_topology();
-	}
+	for (auto c: not_needed) c1.remove_contour(c);
 }
 
 #endif
