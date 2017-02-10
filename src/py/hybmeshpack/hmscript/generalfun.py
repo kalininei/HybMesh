@@ -3,6 +3,8 @@ from hybmeshpack.hmscript import flow
 from hybmeshpack.hmscript import ExecError
 from hybmeshpack import progdata
 from hybmeshpack import com
+from datachecks import (icheck, ListOr1, UListOr1, Point2D, ZType, ACont2D,
+                        OneOf, Float, String, AObject, APoint)
 
 
 def copy_geom(objs):
@@ -13,6 +15,7 @@ def copy_geom(objs):
     :returns: list of identifiers of copied objects in oder prescribed by
        input list
     """
+    icheck(0, ListOr1(AObject()))
     if not isinstance(objs, list):
         objs = [objs]
 
@@ -38,6 +41,11 @@ def move_geom(objs, dx, dy, dz=0.):
 
     :returns: None
     """
+    icheck(0, UListOr1(AObject()))
+    icheck(1, Float())
+    icheck(2, Float())
+    icheck(3, Float())
+
     ob = objs if isinstance(objs, list) else [objs]
     try:
         c = com.objcom.MoveGeom({"names": ob, "dx": dx, "dy": dy, "dz": dz})
@@ -65,6 +73,11 @@ def scale_geom(objs, xpc=100., ypc=100., zpc=100., refp=[0.0, 0.0, 0.0]):
     if **objs** contains only 2d objects **zpc** is ignored and could be
     ommitted, **refp** could by given as ``[x, y]``.
     """
+    icheck(0, UListOr1(AObject()))
+    icheck(1, Float(grthan=0.))
+    icheck(2, Float(grthan=0.))
+    icheck(3, Float(grthan=0.))
+    icheck(4, APoint())
     # for backward compatibility check if zpc was omitted
     if isinstance(zpc, list):
         refp = zpc
@@ -93,6 +106,9 @@ def rotate_geom(objs, angle, pc=[0.0, 0.0]):
 
     :returns: None
     """
+    icheck(0, UListOr1(ACont2D()))
+    icheck(1, Float())
+    icheck(2, Point2D())
     try:
         ob = objs if isinstance(objs, list) else [objs]
         c = com.objcom.RotateGeom({"names": ob, "angle": angle,
@@ -114,6 +130,10 @@ def reflect_geom(objs, pnt1, pnt2):
 
     :returns: None
     """
+    icheck(0, UListOr1(ACont2D()))
+    icheck(1, Point2D())
+    icheck(2, Point2D(noteq=[pnt1]))
+
     try:
         ob = objs if isinstance(objs, list) else [objs]
         c = com.objcom.ReflectGeom({"names": ob, "p1": pnt1, "p2": pnt2})
@@ -129,6 +149,7 @@ def remove_geom(objs):
 
     :returns: None
     """
+    icheck(0, UListOr1(AObject()))
     try:
         ob = objs if isinstance(objs, list) else [objs]
         c = com.objcom.RemoveGeom({"names": ob})
@@ -157,6 +178,8 @@ def remove_all_but(objs):
 
     :returns: None
     """
+    icheck(0, UListOr1(AObject()))
+
     if not isinstance(objs, list):
         objs = [objs]
 
@@ -180,6 +203,9 @@ def check_compatibility(vers, policy=1):
     :returns: False if versions are incompatible, True otherwise.
 
     """
+    icheck(0, String())
+    icheck(1, OneOf(1, 2, 3))
+
     versc = progdata.HybMeshVersion.current()
     versi = progdata.HybMeshVersion(vers)
     # last checked for 0.2.1 version
@@ -245,6 +271,9 @@ def add_boundary_type(index, name="boundary1"):
     be changed automatically.
 
     """
+    icheck(0, ZType())
+    icheck(1, String())
+
     c = com.contcom.EditBoundaryType({"index": index, "name": name})
     flow.exec_command(c)
     return index

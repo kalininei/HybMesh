@@ -2,6 +2,9 @@
 import copy
 from hybmeshpack import com
 from hybmeshpack.hmscript import flow, ExecError
+from datachecks import (icheck, List, Bool, UList, Point2D, ListOr1,
+                        ZType, UInt, ACont2D, OneOf, Float,
+                        NoneOr, Func, InvalidArgument, Cont2D, CompoundList)
 
 
 def simplify_contour(cont, simplify=True, angle=0., separate=False):
@@ -14,8 +17,8 @@ def simplify_contour(cont, simplify=True, angle=0., separate=False):
        Collinear segments will not be splitted if they have different
        boundary types.
 
-    :param degree angle: minimum allowed angle between segments
-       after simplification (deg, >=0)
+    :param degree angle: maximum allowed angle between simplified segments
+       (deg, >=0).
 
     :param bool separate: assemble list of singly connected contours from
        multiply connected source contour
@@ -23,6 +26,11 @@ def simplify_contour(cont, simplify=True, angle=0., separate=False):
     :returns: list of created contours ids
 
     """
+    icheck(0, ACont2D())
+    icheck(1, Bool())
+    icheck(2, Float(within=[0., 180., '[]']))
+    icheck(3, Bool())
+
     c = com.contcom.SimplifyContours({"names": [cont],
                                       "simplify": simplify,
                                       "angle": angle,
@@ -50,6 +58,8 @@ def decompose_contour(cont):
 
     Tries to assemble as many closed contours as possible.
     """
+    icheck(0, ACont2D())
+
     c = com.contcom.DecomposeContour({"source": cont})
     try:
         flow.exec_command(c)
@@ -67,6 +77,8 @@ def unite_contours(conts):
 
     Equal nodes of input contours will be merged.
     """
+    icheck(0, List(ACont2D()))
+
     c = com.contcom.UniteContours({"sources": conts})
     try:
         flow.exec_command(c)
@@ -95,6 +107,12 @@ def set_boundary_type(cid, btps=None, bfun=None):
 
     Only one of **btps**, **bfun** arguments should be defined.
     """
+    icheck(0, ACont2D())
+    icheck(1, NoneOr(ListOr1(ZType())))
+    icheck(2, NoneOr(Func(nargs=5)))
+    if btps is None and bfun is None:
+        raise InvalidArgument("One of 'btps'/'bfun' should be defined")
+
     try:
         cont = flow.receiver.get_any_contour(cid)
         if bfun is not None:
@@ -144,6 +162,11 @@ def clip_domain(dom1, dom2, operation, simplify=True):
 
     :returns: created contour identifier or None if resulting domain is empty
     """
+    icheck(0, ACont2D())
+    icheck(1, ACont2D())
+    icheck(2, OneOf("union", "difference", "intersection", "xor"))
+    icheck(3, Bool())
+
     c = com.contcom.ClipDomain({"c1": dom1, "c2": dom2, "oper": operation,
                                 "simplify": simplify})
     try:
@@ -245,6 +268,28 @@ def partition_contour(cont, algo, step=1., angle0=30., keep_bnd=False,
 
     See also: :ref:`simplecontmeshing`
     """
+    icheck(0, ACont2D())
+    icheck(1, OneOf("const", "ref_points", "ref_weights", "ref_lengths"))
+    if algo == "const":
+        icheck(2, Float(grthan=0.0))
+    elif algo == "ref_points":
+        icheck(2, CompoundList(Float(grthan=0.0),
+                               Point2D(), minlen=2))
+    elif algo == "ref_weights":
+        icheck(2, CompoundList(Float(grthan=0.0),
+                               Float(within=[-1, 1, '[]']), minlen=2))
+    elif algo == "ref_lengths":
+        icheck(2, CompoundList(Float(grthan=0.0), Float(), minlen=2))
+    icheck(3, Float())
+    icheck(4, Bool())
+    icheck(5, NoneOr(UInt(minv=1)))
+    icheck(6, List(ACont2D()))
+    icheck(7, List(Point2D()))
+    icheck(8, NoneOr(Point2D()))
+    icheck(9, NoneOr(Point2D()))
+    if start is None and algo in ['ref_weights', 'ref_lengths']:
+        raise InvalidArgument("Define start point for %s partition" % algo)
+
     # prepare arguments for command
     if algo == "const":
         plain_step = [step]
@@ -314,6 +359,14 @@ def matched_partition(cont, step, influence, ref_conts=[], ref_pts=[],
 
         See :ref:`matchedcontmeshing` for details.
     """
+    icheck(0, ACont2D())
+    icheck(1, Float(grthan=0.0))
+    icheck(2, Float(grthan=0.0))
+    icheck(3, UList(ACont2D()))
+    icheck(4, CompoundList(Float(grthan=0.0), Point2D()))
+    icheck(5, Float(within=[-1., 180., '[]']))
+    icheck(6, Float(grthan=0.0))
+
     if not isinstance(ref_conts, list):
         ref_conts = [ref_conts]
 
@@ -384,6 +437,13 @@ def partition_segment(start, end, hstart, hend, hinternal=[]):
          print hm.partition_segment(1, 2, 0.1, 0.1, [1.5, 0.4])
          >>> [1.0, 1.1082238, 1.3278488, 1.672151, 1.891776, 2.0]
     """
+    icheck(0, Float())
+    icheck(1, Float(grthan=start))
+    icheck(2, Float(grthan=0.))
+    icheck(3, Float(grthan=0.))
+    icheck(4, CompoundList(Float(within=[start, end, '()']),
+                           Float(grthan=0.0)))
+
     from hybmeshpack.hmcore import c2 as c2core
     try:
         return c2core.segment_partition(start, end, hstart, hend, hinternal)
@@ -424,6 +484,11 @@ def connect_subcontours(sources, fix=[], close="no", shiftnext=True):
     creates a section which explicitly connects first and last contours
     by a straight line.
     """
+    icheck(0, UList(Cont2D()))
+    icheck(1, UList(UInt(maxv=len(sources) - 1), maxlen=len(sources)))
+    icheck(2, OneOf('no', 'yes', 'force'))
+    icheck(3, Bool())
+
     args = {}
     args['src'] = sources
     args['fix'] = copy.deepcopy(fix)

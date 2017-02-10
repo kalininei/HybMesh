@@ -7,6 +7,9 @@ from hybmeshpack.imex import fluent_export
 from hybmeshpack.imex import gmsh_export
 from hybmeshpack.imex import tecplot_export
 from hybmeshpack.imex import flow_export
+from datachecks import (icheck, UListOr1, Bool, UList, Point3D,
+                        ZType, Grid2D, ACont2D, OneOf, NoneOr,
+                        String, Grid3D, ASurf3D, CompoundList)
 
 
 def _grid2_from_id(gid):
@@ -67,6 +70,9 @@ def export_grid_vtk(gid, fname):
 
        :returns: None
     """
+    icheck(0, UListOr1(Grid2D()))
+    icheck(1, String())
+
     try:
         grid = _grid2_from_id(gid)
         cb = flow.interface.ask_for_callback()
@@ -113,8 +119,11 @@ def export_grid_hmg(gid, fname, fmt='ascii', afields=[]):
         fmt = "bin"
     if fmt == "fbinary":
         fmt = "fbin"
-    if fmt not in ["bin", "fbin", "ascii"]:
-        raise ValueError("Unknown export format %s" % fmt)
+    icheck(0, UListOr1(Grid2D()))
+    icheck(1, String())
+    icheck(2, OneOf('ascii', 'bin', 'fbin'))
+    icheck(3, UList(OneOf('cell-vertices', 'cell-edges')))
+
     try:
         names = gid if isinstance(gid, list) else [gid]
         grids = map(flow.receiver.get_grid2, names)
@@ -152,6 +161,10 @@ def export_grid_msh(gid, fname, periodic_pairs=[]):
 
     Only grids with triangle/quadrangle cells could be exported.
     """
+    icheck(0, UListOr1(Grid2D()))
+    icheck(1, String())
+    icheck(2, CompoundList(ZType(), ZType(), Bool()))
+
     try:
         cb = flow.interface.ask_for_callback()
         grid = _grid2_from_id(gid)
@@ -179,6 +192,9 @@ def export_grid_gmsh(gid, fname):
     Physical Groups with an id
     identical to boundary index and a respective Physical Name.
     """
+    icheck(0, UListOr1(Grid2D()))
+    icheck(1, String())
+
     try:
         cb = flow.interface.ask_for_callback()
         grid = _grid2_from_id(gid)
@@ -203,6 +219,9 @@ def export_grid_tecplot(gid, fname):
     Boundary segments with same boundary type will be converted
     to separate zones.
     """
+    icheck(0, UListOr1(Grid2D()))
+    icheck(1, String())
+
     try:
         cb = flow.interface.ask_for_callback()
         grid = _grid2_from_id(gid)
@@ -232,6 +251,10 @@ def export3d_grid_vtk(gid, fname_grid=None, fname_surface=None):
     Boundary types are exported as a field called ``boundary_types`` to
     surface output file.
     """
+    icheck(0, UListOr1(Grid3D()))
+    icheck(1, NoneOr(String()))
+    icheck(2, NoneOr(String()))
+
     try:
         cb = flow.interface.ask_for_callback()
         grid = _grid3_from_id(gid)
@@ -272,6 +295,10 @@ def export3d_grid_msh(gid, fname, periodic_pairs=[]):
     :raises: hmscript.ExportError
 
     """
+    icheck(0, UListOr1(Grid3D()))
+    icheck(1, String())
+    icheck(2, CompoundList(ZType(), ZType(), Point3D(), Point3D()))
+
     try:
         cb = flow.interface.ask_for_callback()
         grid = _grid3_from_id(gid)
@@ -296,6 +323,9 @@ def export3d_grid_tecplot(gid, fname):
 
     All 3D cells will be saved as FEPOLYHEDRON elements.
     """
+    icheck(0, UListOr1(Grid3D()))
+    icheck(1, String())
+
     try:
         cb = flow.interface.ask_for_callback()
         grid = _grid3_from_id(gid)
@@ -322,6 +352,8 @@ def export3d_grid_gmsh(gid, fname):
     Physical Groups with an id identical to boundary index and
     respective Physical Name.
     """
+    icheck(0, UListOr1(Grid3D()))
+    icheck(1, String())
     try:
         cb = flow.interface.ask_for_callback()
         grid = _grid3_from_id(gid)
@@ -374,8 +406,11 @@ def export3d_grid_hmg(gid, fname, fmt="ascii", afields=[]):
         fmt = "bin"
     if fmt == "fbinary":
         fmt = "fbin"
-    if fmt not in ["bin", "fbin", "ascii"]:
-        raise ValueError("Unknown export format %s" % fmt)
+    icheck(0, UListOr1(Grid3D()))
+    icheck(1, String())
+    icheck(2, OneOf('ascii', 'bin', 'fbin'))
+    icheck(3, UList(OneOf('face-vertices', 'cell-faces', 'cell-vertices',
+                          'linfem')))
     try:
         names = gid if isinstance(gid, list) else [gid]
         grids = map(flow.receiver.get_grid3, names)
@@ -397,6 +432,9 @@ def export_contour_vtk(cid, fname):
 
     :return: None
     """
+    icheck(0, UListOr1(ACont2D()))
+    icheck(1, String())
+
     try:
         cont = _cont2_from_id(cid)
         cb = flow.interface.ask_for_callback()
@@ -429,8 +467,10 @@ def export_contour_hmc(cid, fname, fmt="ascii"):
         fmt = "bin"
     elif fmt == "fbinary":
         fmt = "fbin"
-    elif fmt not in ["bin", "fbin", "ascii"]:
-        raise ValueError("Unknown export format %s" % fmt)
+    icheck(0, UListOr1(ACont2D()))
+    icheck(1, String())
+    icheck(2, OneOf('ascii', 'bin', 'fbin'))
+
     try:
         names = cid if isinstance(cid, list) else [cid]
         conts = [_cont2_from_id(n) for n in names]
@@ -455,6 +495,9 @@ def export_contour_tecplot(cid, fname):
     Additional zones will be created for all segments with same
     boundary type.
     """
+    icheck(0, UListOr1(ACont2D()))
+    icheck(1, String())
+
     try:
         cb = flow.interface.ask_for_callback()
         cont = _cont2_from_id(cid)
@@ -486,8 +529,10 @@ def export3d_surface_hmc(sid, fname, fmt="ascii"):
         fmt = "bin"
     elif fmt == "fbinary":
         fmt = "fbin"
-    elif fmt not in ["bin", "fbin", "ascii"]:
-        raise ValueError("Unknown export format %s" % fmt)
+    icheck(0, UListOr1(ASurf3D()))
+    icheck(1, String())
+    icheck(2, OneOf('ascii', 'bin', 'fbin'))
+
     try:
         names = sid if isinstance(sid, list) else [sid]
         surfs = [_surf3_from_id(n) for n in names]
@@ -515,8 +560,9 @@ def export_all_hmd(fname, fmt="ascii"):
         fmt = "bin"
     elif fmt == "fbinary":
         fmt = "fbin"
-    elif fmt not in ["bin", "fbin", "ascii"]:
-        raise ValueError("Unknown export format %s" % fmt)
+    icheck(0, String())
+    icheck(1, OneOf('ascii', 'bin', 'fbin'))
+
     try:
         cb = flow.interface.ask_for_callback()
         native_export.export_all_tofile(fname, flow.receiver, fmt, cb)
@@ -544,8 +590,9 @@ def save_project(fname, fmt="ascii"):
         fmt = "bin"
     elif fmt == "fbinary":
         fmt = "fbin"
-    elif fmt not in ["bin", "fbin", "ascii"]:
-        raise ValueError("Unknown export format %s" % fmt)
+    icheck(0, String())
+    icheck(1, OneOf('ascii', 'bin', 'fbin'))
+
     try:
         flow_export.flow_and_framework_tofile(fname, flow, fmt)
     except Exception as e:

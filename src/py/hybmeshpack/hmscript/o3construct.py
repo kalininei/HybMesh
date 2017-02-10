@@ -2,6 +2,8 @@
 from hybmeshpack import com
 from hybmeshpack.hmscript import flow, ExecError
 import copy
+from datachecks import (icheck, UListOr1, Bool, Point2D, ZType, Grid2D, UInt,
+                        Float, NoneOr, Func, Grid3D, ASurf3D, Or, IncList)
 
 
 def grid3_bnd_to_surface(gid, separate=False):
@@ -18,6 +20,9 @@ def grid3_bnd_to_surface(gid, separate=False):
     :raises: ValueError, ExecError
 
     """
+    icheck(0, Grid3D())
+    icheck(1, Bool())
+
     c = com.surfcom.Grid3BndToSurface({"grid_name": gid,
                                       "separate": separate})
     try:
@@ -55,6 +60,8 @@ def tetrahedral_fill(domain):
         surface structures. Be sure that passed surface list nesting equals
         nesting of respective surface bounding boxes.
     """
+    icheck(0, UListOr1(ASurf3D()))
+
     if not isinstance(domain, list):
         domain = [domain]
 
@@ -105,6 +112,12 @@ def extrude_grid(obj, zcoords, bottombc=0, topbc=0, sidebc=None):
           :start-after: vvvvvvvvvvvvvvvvvvvvvvvv
           :end-before: ^^^^^^^^^^^^^^^^^^^^^^^^
     """
+    icheck(0, Grid2D())
+    icheck(1, IncList(Float()))
+    icheck(2, Or(ZType(), Func(nargs=3)))
+    icheck(3, Or(ZType(), Func(nargs=3)))
+    icheck(4, NoneOr(ZType()))
+
     # calculate boundary types
     if not isinstance(bottombc, int) or not isinstance(topbc, int):
         grid = flow.receiver.get_grid2(obj)
@@ -183,6 +196,15 @@ def revolve_grid(obj, p1, p2, n_phi=None,
     **phi** with any desired refinement if needed.
 
     """
+    icheck(0, Grid2D())
+    icheck(1, Point2D())
+    icheck(2, Point2D(noteq=p1))
+    icheck(3, NoneOr(UInt(minv=3)))
+    icheck(4, NoneOr(IncList(Float())))
+    icheck(5, ZType())
+    icheck(6, ZType())
+    icheck(7, Bool())
+
     # calculate phi's
     if n_phi is None:
         inp_phi = copy.deepcopy(phi)

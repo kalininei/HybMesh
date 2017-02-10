@@ -1,6 +1,7 @@
 " 3D objects operations"
 from hybmeshpack import com
 from hybmeshpack.hmscript import flow, ExecError
+from datachecks import icheck, Grid3D
 
 
 def merge_grids3(g1, g2):
@@ -17,6 +18,9 @@ def merge_grids3(g1, g2):
         Merge procedure will process only strictly
         coincident boundary primitives.
     """
+    icheck(0, Grid3D())
+    icheck(1, Grid3D())
+
     c = com.grid3dcom.Merge({"src1": g1, "src2": g2})
     try:
         flow.exec_command(c)

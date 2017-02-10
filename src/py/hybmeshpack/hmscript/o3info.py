@@ -1,5 +1,6 @@
 "3D objects information"
 from hybmeshpack.hmscript import flow
+from datachecks import (icheck, Grid3D, ASurf3D)
 
 
 def info_grid3d(gid):
@@ -17,6 +18,7 @@ def info_grid3d(gid):
           }
 
     """
+    icheck(0, Grid3D())
     g = flow.receiver.get_grid3(gid)
     ret = {}
     ret['Nnodes'] = g.n_vertices()
@@ -41,6 +43,7 @@ def info_surface(sid):
           'btypes': {btype(int): int}  # boundary type: number of faces
          }
     """
+    icheck(0, ASurf3D())
 
     s = flow.receiver.get_any_surface(sid)
     ret = {}
@@ -62,4 +65,5 @@ def domain_volume(sid):
 
     :returns: positive float or zero for not closed surfaces
     """
+    icheck(0, ASurf3D())
     return flow.receiver.get_any_surface(sid).volume()

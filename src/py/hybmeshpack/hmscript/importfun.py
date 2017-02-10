@@ -2,6 +2,7 @@
 from hybmeshpack import com
 from hybmeshpack.imex import flow_import
 from hybmeshpack.hmscript import flow, ExecError
+from datachecks import (icheck, Bool, String, ExistingFile)
 
 
 # Importing grids
@@ -21,6 +22,10 @@ def import_grid_hmg(fname, gridname="", allgrids=False):
     :raises: ValueError, ExecError.
 
     """
+    icheck(0, ExistingFile())
+    icheck(1, String())
+    icheck(2, Bool())
+
     c = com.imcom.ImportGridsNative({
         "filename": fname, "gridname": gridname, "all": allgrids})
     try:
@@ -42,6 +47,8 @@ def import_grid_msh(fname):
 
        :raises: ExecError
     """
+    icheck(0, ExistingFile())
+
     c = com.imcom.ImportGridMSH({"filename": fname})
     try:
         flow.exec_command(c)
@@ -67,6 +74,8 @@ def import_grid_gmsh(fname):
     type will be taken from PhysicalNames field if it exists, otherwise
     the default name "gmsh-boundary-index" will be used.
     """
+    icheck(0, ExistingFile())
+
     c = com.imcom.ImportGridGMSH({"filename": fname})
     try:
         flow.exec_command(c)
@@ -88,6 +97,10 @@ def import3d_grid_hmg(fname, gridname="", allgrids=False):
 
     :returns: grid identifier/list of identifiers if **allgrids** is set.
     """
+    icheck(0, ExistingFile())
+    icheck(1, String())
+    icheck(2, Bool())
+
     c = com.imcom.ImportGrids3Native({
         "filename": fname, "gridname": gridname, "all": allgrids})
     try:
@@ -115,6 +128,9 @@ def import_contour_ascii(fname, wbtype=False, force_closed=False):
 
     :returns: contour identifier
     """
+    icheck(0, ExistingFile())
+    icheck(1, Bool())
+    icheck(2, Bool())
     c = com.imcom.ImportContourASCII({"filename": fname,
                                       "btypes": wbtype,
                                       "force_closed": force_closed})
@@ -140,6 +156,10 @@ def import_contour_hmc(fname, contname="", allconts=False):
 
       :raises: ExecError
     """
+    icheck(0, ExistingFile())
+    icheck(1, String())
+    icheck(2, Bool())
+
     c = com.imcom.ImportContoursNative(
         {"filename": fname, "contname": contname, "all": allconts})
     try:
@@ -168,6 +188,10 @@ def import3d_surface_hmc(fname, srfname="", allsurfs=False):
 
       :raises: ExecError
     """
+    icheck(0, ExistingFile())
+    icheck(1, String())
+    icheck(2, Bool())
+
     c = com.imcom.ImportSurfacesNative(
         {"filename": fname, "srfname": srfname, "all": allsurfs})
     try:
@@ -189,6 +213,8 @@ def import_all_hmd(fname):
 
     :raises: ExecError
     """
+    icheck(0, ExistingFile())
+
     c = com.imcom.ImportAllNative({"filename": fname})
     try:
         flow.exec_command(c)
@@ -207,6 +233,7 @@ def load_project(fname):
 
     See :ref:`hmp-file` for description.
     """
+    icheck(0, ExistingFile())
     try:
         cb = flow.interface.ask_for_callback()
         flow.to_zero_state()

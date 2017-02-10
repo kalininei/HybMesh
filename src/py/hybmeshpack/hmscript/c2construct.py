@@ -2,6 +2,8 @@
 import math
 from hybmeshpack import com
 from hybmeshpack.hmscript import flow, ExecError
+from datachecks import (icheck, List, Bool, Point2D, ListOr1,
+                        ZType, Grid2D, UInt, ACont2D, OneOf, Float)
 
 
 def grid_bnd_to_contour(gid, simplify=True):
@@ -14,6 +16,9 @@ def grid_bnd_to_contour(gid, simplify=True):
 
     :returns: contour identifier
     """
+    icheck(0, Grid2D())
+    icheck(1, Bool())
+
     c = com.contcom.GridBndToContour({"grid_name": gid,
                                       "simplify": simplify})
     try:
@@ -39,6 +44,9 @@ def create_contour(pnts, bnds=0):
        >>> hmscript.create_contour([[0, 0], [1, 0], [1, 1], [0, 0]],
                                   [b1, b2, b3])
     """
+    icheck(0, List(Point2D(), minlen=2))
+    icheck(1, ListOr1(ZType()))
+
     b = bnds if isinstance(bnds, list) else [bnds]
     c = com.contcom.CreateContour({"points": pnts,
                                    "bnds": b})
@@ -57,16 +65,19 @@ def create_spline_contour(pnts, bnds=0, nedges=100):
          then resulting contour will be closed.
 
     :param single-or-list-of-boundary-identifiers bnds: boundary type for
-         each contour segment or single identifier for the whole contour.
+         each contour segment bounded by **pnts**
+         or single identifier for the whole contour.
 
     :param int nedges: number of line segments of resulting contour.
          Should be equal or greater than the number of sections defined by
          **pnts**.
 
     :returns: contour identifier
-
-    :raises: hmscript.ExecError, ValueError
     """
+    icheck(0, List(Point2D(), minlen=3))
+    icheck(1, ListOr1(ZType(), llen=len(pnts) - 1))
+    icheck(2, UInt(minv=len(pnts) - 1))
+
     b = bnds if isinstance(bnds, list) else [bnds]
     c = com.contcom.CreateSpline({"points": pnts,
                                   "bnds": b,
@@ -107,6 +118,10 @@ def extract_subcontours(source, plist, project_to="vertex"):
         could coincide. In that case the sum of resulting subcontours
         will be equal to **source**.
     """
+    icheck(0, ACont2D())
+    icheck(1, List(Point2D(), minlen=2))
+    icheck(2, OneOf("line", "vertex", "corner"))
+
     c = com.contcom.ExtractSubcontours({
         'src': source, 'plist': plist, 'project_to': project_to})
     try:
@@ -130,6 +145,10 @@ def add_rect_contour(p0, p1, bnd=0):
 
     :return: Contour identifier
     """
+    icheck(0, Point2D())
+    icheck(1, Point2D(grthan=p0))
+    icheck(2, ListOr1(ZType(), llen=4))
+
     if isinstance(bnd, list):
         b = bnd[0:4]
     else:
@@ -153,10 +172,14 @@ def add_circ_contour(p0, rad, n_arc, bnd=0):
     :param int n_arc: partition of circle arc
 
     :param bnd: boundary identifier for contour.
-       With the default value no boundary types will be set.
 
     :return: Contour identifier
     """
+    icheck(0, Point2D())
+    icheck(1, Float(grthan=0.0))
+    icheck(2, UInt(minv=3))
+    icheck(3, ZType())
+
     c = com.contcom.AddCircCont({"p0": p0, "rad": rad,
                                  "na": n_arc, "bnd": bnd})
     try:
@@ -183,6 +206,12 @@ def add_circ_contour2(p0, p1, p2, n_arc, bnd=0):
     :return:  Contour identifier
 
     """
+    icheck(0, Point2D())
+    icheck(1, Point2D(noteq=[p0]))
+    icheck(2, Point2D(noteq=[p0, p1]))
+    icheck(3, UInt(minv=3))
+    icheck(4, ZType())
+
     try:
         p0, p1, p2 = map(float, p0), map(float, p1), map(float, p2)
         xb, yb = p1[0] - p0[0], p1[1] - p0[1]
@@ -196,7 +225,7 @@ def add_circ_contour2(p0, p1, p2, n_arc, bnd=0):
         cy = I21 * B1 + I22 * B2
         rad = math.sqrt((cx - xb) * (cx - xb) + (cy - yb) * (cy - yb))
     except:
-        raise ValueError("Failed to build a circle with given parameters")
+        raise ExecError("Failed to build a circle with given parameters")
     return add_circ_contour([cx + p0[0], cy + p0[1]], rad, n_arc, bnd)
 
 
@@ -221,6 +250,12 @@ def add_circ_contour3(p0, p1, curv, n_arc, bnd=0):
     ``p1``-``p0`` arc.
     """
     from hybmeshpack.basic.geom import angle_3pnt
+    icheck(0, Point2D())
+    icheck(1, Point2D(noteq=[p0]))
+    icheck(2, Float(grthan=0.0))
+    icheck(3, UInt(minv=3))
+    icheck(4, ZType())
+
     try:
         p0, p1, curv = map(float, p0), map(float, p1), float(curv)
         xa, ya = p1[0] - p0[0], p1[1] - p0[1]

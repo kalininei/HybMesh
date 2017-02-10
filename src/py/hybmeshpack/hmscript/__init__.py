@@ -20,6 +20,11 @@ class ExportError(Exception):
         mes = _ainfo
         super(ExportError, self).__init__(mes)
 
+class InvalidArgument(ValueError):
+    """Raised when user passes invalid argument to a function"""
+    def __init__(self, msg=""):
+        super(InvalidArgument, self).__init__(msg)
+
 from generalfun import *  # NOQA
 
 from exportfun import *  # NOQA

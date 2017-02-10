@@ -2,6 +2,8 @@
 from hybmeshpack.hmscript import flow
 from hybmeshpack.hmcore import c2 as c2core
 from hybmeshpack.gdata.cont2 import Contour2, closest_contour
+from datachecks import (icheck, List, Bool, Point2D, Grid2D, UInt, ACont2D,
+                        Float, NoneOr, InvalidArgument)
 
 
 def info_grid(gid):
@@ -20,6 +22,7 @@ def info_grid(gid):
           }
 
     """
+    icheck(0, Grid2D())
     grid = flow.receiver.get_grid2(gid)
     ret = {}
     ret['Nnodes'] = grid.n_vertices()
@@ -47,6 +50,8 @@ def info_contour(cid):
          }
 
     """
+    icheck(0, ACont2D())
+
     cont = flow.receiver.get_any_contour(cid).contour2()
     ret = {}
     ret['Nnodes'] = cont.n_vertices()
@@ -99,6 +104,16 @@ def get_point(obj, ind=None, vclosest=None, eclosest=None, cclosest=None,
     If **cclosest** point is defined then returns non straight line
     object contour vertex closest to input point.
     """
+    icheck(0, ACont2D())
+    icheck(1, NoneOr(UInt()))
+    icheck(2, NoneOr(Point2D()))
+    icheck(3, NoneOr(Point2D()))
+    icheck(4, NoneOr(Point2D()))
+    icheck(5, Bool())
+    if ind is None and vclosest is None and eclosest is None and\
+            cclosest is None:
+        raise InvalidArgument("Define point location")
+
     try:
         tar = flow.receiver.get_contour2(obj)
     except KeyError:
@@ -125,6 +140,7 @@ def domain_area(cid):
 
     :returns: positive float or zero for open contours
     """
+    icheck(0, ACont2D())
     return flow.receiver.get_any_contour(cid).area()
 
 
@@ -140,6 +156,9 @@ def pick_contour(pnt, contlist=[]):
     If **contlist** is empty then looks over all registered contours.
     This procedure does not take 2d grid contours into account.
     """
+    icheck(0, Point2D())
+    icheck(1, List(ACont2D()))
+
     conts = map(flow.receiver.get_any_contour, contlist)
     cc = closest_contour(conts, pnt)
     ind = conts.index(cc)
@@ -167,6 +186,9 @@ def skewness(gid, threshold=0.7):
     `bad_cells` and `bad_skew` lists entries correspond to same bad cells
 
     """
+    icheck(0, Grid2D())
+    icheck(1, Float())
+
     skew = flow.receiver.get_grid2(gid).skewness(threshold)
     if (len(skew) == 0):
         raise Exception("Failed to calculate skewness")

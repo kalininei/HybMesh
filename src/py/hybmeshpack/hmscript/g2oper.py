@@ -2,6 +2,8 @@
 from hybmeshpack import com
 from hybmeshpack.hmscript import flow, ExecError
 import o2info
+from datachecks import (icheck, List, UListOr1, Bool, UList, Point2D,
+                        Grid2D, OneOf, Float, Tuple, ACont2D)
 
 
 def exclude_contours(grid, conts, what):
@@ -31,6 +33,10 @@ def exclude_contours(grid, conts, what):
            :end-before: END OF EXAMPLE
 
     """
+    icheck(0, Grid2D())
+    icheck(1, UListOr1(ACont2D()))
+    icheck(2, OneOf("inner", "outer"))
+
     if not isinstance(conts, list):
         conts = [conts]
     if what == "inner":
@@ -89,6 +95,13 @@ def unite_grids(base_grid, over_grids, empty_holes=False, fix_bnd=False,
            :end-before: END OF EXAMPLE
 
     """
+    icheck(0, Grid2D())
+    icheck(1, UList(Tuple(Grid2D(), Float())))
+    icheck(2, Bool())
+    icheck(3, Bool())
+    icheck(4, Float(within=[-1., 180., '[]']))
+    icheck(5, OneOf('3', '4'))
+
     args = {"base": base_grid, "empty_holes": empty_holes,
             "angle0": zero_angle_approx,
             "fix_bnd": fix_bnd, "plus": [],
@@ -170,6 +183,17 @@ def map_grid(base_grid, target_contour, base_points, target_points,
     :returns: identifier of newly created grid
 
     """
+    icheck(0, Grid2D())
+    icheck(1, ACont2D())
+    icheck(2, List(Point2D(), minlen=1))
+    icheck(3, List(Point2D(), llen=len(base_points)))
+    icheck(4, OneOf('no', 'add_vertices', 'shift_vertices'))
+    icheck(5, OneOf('line', 'vertex', 'corner'))
+    icheck(6, OneOf('from_grid', 'from_contour'))
+    icheck(7, OneOf('inverse_laplace', 'direct_laplace'))
+    icheck(8, Bool())
+    icheck(9, Bool())
+
     # project_to option treatment
     if project_to == "line":
         pass
@@ -238,6 +262,10 @@ def heal_grid(gid, simplify_boundary=30, convex_cells=-1):
     * remove concave cells
 
     """
+    icheck(0, UListOr1(Grid2D()))
+    icheck(1, Float(within=[-1., 180., '[]']))
+    icheck(2, Float(within=[-1., 180., '[]']))
+
     if isinstance(gid, list):
         for g in gid:
             heal_grid(g, simplify_boundary, convex_cells)

@@ -3,6 +3,9 @@ import copy
 from hybmeshpack import com
 from hybmeshpack.hmscript import flow, ExecError
 import o2info
+from datachecks import (icheck, List, UListOr1, Bool, Point2D, ListOr1, ZType,
+                        UInt, ACont2D, OneOf, Float, NoneOr, InvalidArgument,
+                        Cont2D, Or, IncList, CompoundList, Any)
 
 
 # Prototype grids
@@ -44,6 +47,14 @@ def add_unf_rect_grid(p0=[0, 0], p1=[1, 1], nx=3, ny=3,
     Use :func:`partition_segment` to conveniently define **custom\_** fields
     if needed.
     """
+    icheck(0, Point2D())
+    icheck(1, Point2D(grthan=p0))
+    icheck(2, UInt(minv=1))
+    icheck(3, UInt(minv=1))
+    icheck(4, Or(Float(grthan=0.), IncList(Float())))
+    icheck(5, Or(Float(grthan=0.), IncList(Float())))
+    icheck(6, ListOr1(ZType(), llen=4))
+
     bnd = bnd[:4] if isinstance(bnd, list) else [bnd, bnd, bnd, bnd]
     custom_x = custom_x if isinstance(custom_x, list) else [custom_x]
     custom_y = custom_y if isinstance(custom_y, list) else [custom_y]
@@ -113,6 +124,16 @@ def add_unf_circ_grid(p0, rad=1.0, na=8, nr=4, coef=1.0, is_trian=True,
     Use :func:`partition_segment` to conveniently define **custom\_** fields
     if needed.
     """
+    icheck(0, Point2D())
+    icheck(1, Float(grthan=0.0))
+    icheck(2, UInt(minv=3))
+    icheck(3, UInt(minv=1))
+    icheck(4, Float(grthan=0.0))
+    icheck(5, Bool())
+    icheck(6, Or(Float(grthan=0.0), IncList(Float())))
+    icheck(7, Or(Float(grthan=0.0), IncList(Float())))
+    icheck(8, ZType())
+
     custom_rads = custom_rads if isinstance(custom_rads, list)\
         else [custom_rads]
     custom_archs = custom_archs if isinstance(custom_archs, list)\
@@ -159,6 +180,14 @@ def add_unf_ring_grid(p0, radinner, radouter,
     """
     if radinner > radouter:
         radinner, radouter = radouter, radinner
+    icheck(0, Point2D())
+    icheck(1, Float(grthan=0.0))
+    icheck(2, Float(grthan=0.0))
+    icheck(3, UInt(minv=3))
+    icheck(4, UInt(minv=1))
+    icheck(5, Float(grthan=0.0))
+    icheck(6, ListOr1(ZType(), llen=2))
+
     bnd = bnd[:2] if isinstance(bnd, list) else [bnd, bnd]
     c = com.gridcom.AddUnfRingGrid({
         "p0": p0,
@@ -188,6 +217,14 @@ def add_unf_hex_grid(area, cell_radius, strict=False):
 
     See details in :ref:`hexgrid`
     """
+    icheck(0, List(Any()))
+    icheck(0, CompoundList(Point2D(),
+                           Or(Float(grthan=0.0),
+                              Point2D(grthan=area[0])),
+                           llen=2))
+    icheck(1, Float(grthan=0.))
+    icheck(2, Bool())
+
     simpar = [area[0][0], area[0][1]]
     if isinstance(area[1], list):
         simpar.append(area[1][0])
@@ -221,6 +258,12 @@ def add_triangle_grid(p0, p1, p2, nedge, bnd=0):
     Resulting grid will contain quadrangle cells everywhere except
     area near ``p0``-``p2`` edge where triangle cells will be built.
     """
+    icheck(0, Point2D())
+    icheck(1, Point2D(noteq=[p0]))
+    icheck(2, Point2D(noteq=[p0, p1]))
+    icheck(3, UInt(minv=1))
+    icheck(4, ListOr1(ZType(), llen=3))
+
     bnd = bnd[:3] if isinstance(bnd, list) else [bnd, bnd, bnd]
     c = com.gridcom.AddTriGrid({
         "vertices": [p0, p1, p2], "nedge": nedge, "bnd": bnd})
@@ -280,6 +323,15 @@ def add_custom_rect_grid(algo, left, bottom, right=None, top=None,
     :raise: hmscript.ExecError, ValueError
 
     """
+    icheck(0, OneOf('linear', 'linear_tfi', 'hermite_tfi', 'inverse_laplace',
+                    'direct_laplace', 'orthogonal'))
+    icheck(1, Cont2D())
+    icheck(2, Cont2D())
+    icheck(3, NoneOr(Cont2D()))
+    icheck(4, NoneOr(Cont2D()))
+    icheck(5, List(Float(), llen=4))
+    icheck(6, Bool())
+
     # call
     args = {'algo': algo,
             'left': left,
@@ -329,6 +381,13 @@ def add_circ_rect_grid(p0, rad, step, sqrside=1.0, rcoef=1.0, algo="linear"):
     :raise: hmscript.ExecError, ValueError
 
     """
+    icheck(0, Point2D())
+    icheck(1, Float(grthan=0.0))
+    icheck(2, Float(grthan=0.0))
+    icheck(3, Float(within=[0., 1.4, '[)']))
+    icheck(4, Float(grthan=0.0))
+    icheck(5, OneOf('linear', 'laplace', 'orthogonal_circ', 'orthogonal_rect'))
+
     # call
     args = {'algo': algo,
             'p0': p0,
@@ -373,6 +432,11 @@ def stripe(cont, partition, tip='no', bnd=0):
     Use :func:`partition_segment` to define non-equidistant
     **partition** with any desired refinement if needed.
     """
+    icheck(0, ACont2D())
+    icheck(1, IncList(Float(grthan=0.0)))
+    icheck(2, OneOf('no', 'radial'))
+    icheck(3, ListOr1(ZType(), llen=4))
+
     bnd = bnd[:4] if isinstance(bnd, list) else [bnd, bnd, bnd, bnd]
     arg = {"source": cont, "partition": partition, "tip": tip, "bnd": bnd}
     c = com.gridcom.StripeGrid(arg)
@@ -412,7 +476,7 @@ def _triquad(domain, constr, pts, tp):
         raise ExecError('unstructured fill')
 
 
-def triangulate_domain(domain, constr=None, pts=[], fill='3'):
+def triangulate_domain(domain, constr=[], pts=[], fill='3'):
     """Builds constrained triangulation within given domain
 
     :param domain: single or list of closed contours
@@ -439,6 +503,11 @@ def triangulate_domain(domain, constr=None, pts=[], fill='3'):
 
     See details in :ref:`unstructured-meshing`.
     """
+    icheck(0, UListOr1(ACont2D()))
+    icheck(1, UListOr1(ACont2D()))
+    icheck(2, CompoundList(Float(grthan=0.0), Point2D()))
+    icheck(3, OneOf('3', '4'))
+
     if fill == '3':
         return _triquad(domain, constr, pts, '3')
     elif fill == '4':
@@ -447,7 +516,7 @@ def triangulate_domain(domain, constr=None, pts=[], fill='3'):
         raise ValueError("unknown `fill` option")
 
 
-def pebi_fill(domain, constr=None, pts=[]):
+def pebi_fill(domain, constr=[], pts=[]):
     """Builds perpendicular bisector cells in given domain.
 
     :param domain: single or list of closed contours
@@ -475,6 +544,9 @@ def pebi_fill(domain, constr=None, pts=[]):
 
     See details in :ref:`unstructured-meshing`.
     """
+    icheck(0, UListOr1(ACont2D()))
+    icheck(1, UListOr1(ACont2D()))
+    icheck(2, CompoundList(Float(grthan=0.0), Point2D()))
     return _triquad(domain, constr, pts, 'pebi')
 
 
@@ -632,7 +704,7 @@ def build_boundary_grid(opts):
         elif op.direction == "right":
             d['direction'] = -1
         else:
-            raise ValueError("Invalid direction: " + str(op.direction))
+            raise InvalidArgument("Invalid direction: " + str(op.direction))
         if op.bnd_stepping == "no":
             d['mesh_cont'] = 0
         elif op.bnd_stepping == "const":
@@ -644,20 +716,21 @@ def build_boundary_grid(opts):
         elif op.bnd_stepping == "incremental":
             d['mesh_cont'] = 4
         else:
-            raise ValueError("Invalid bnd_stepping: " + str(op.bnd_stepping))
+            raise InvalidArgument(
+                "Invalid bnd_stepping: " + str(op.bnd_stepping))
 
         if op.bnd_stepping != "incremental":
             if isinstance(op.bnd_step, list):
-                raise ValueError("list values for bnd_step are available "
-                                 "only for incremental stepping")
+                raise InvalidArgument("list values for bnd_step are available "
+                                      "only for incremental stepping")
             else:
                 d['step_start'], d['step_end'] = 1., 1.
                 d['mesh_cont_step'] = op.bnd_step
         else:
             d['mesh_cont_step'] = 0.0
             if not isinstance(op.bnd_step, list) or len(op.bnd_step) < 2:
-                raise ValueError("Incremental stepping requires list[2] as "
-                                 "bnd_step")
+                raise InvalidArgument(
+                    "Incremental stepping requires list[2] as bnd_step")
             d['step_start'] = op.bnd_step[0]
             d['step_end'] = op.bnd_step[1]
 
@@ -681,7 +754,8 @@ def build_boundary_grid(opts):
                 d['end'] = o2info.get_point(
                     op.contour_id, cclosest=d['end'], only_contour=True)
             else:
-                raise ValueError("Unknown `project_to` = %s" % op.project_to)
+                raise InvalidArgument(
+                    "Unknown `project_to` = %s" % op.project_to)
 
         d['force_conf'] = op.force_conformal
         # check partition
@@ -690,7 +764,7 @@ def build_boundary_grid(opts):
                 op.partition = [0]
                 break
         if len(op.partition) < 2:
-            raise ValueError("Invalid partition")
+            raise InvalidArgument("Invalid partition")
         d['partition'] = op.partition
         inp.append(d)
 
