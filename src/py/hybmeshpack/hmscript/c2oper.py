@@ -1,12 +1,13 @@
 "contours and 2D domains operations and modifications"
 import copy
 from hybmeshpack import com
-from hybmeshpack.hmscript import flow, ExecError
+from hybmeshpack.hmscript import flow, hmscriptfun
 from datachecks import (icheck, List, Bool, UList, Point2D, ListOr1,
                         ZType, UInt, ACont2D, OneOf, Float,
                         NoneOr, Func, InvalidArgument, Cont2D, CompoundList)
 
 
+@hmscriptfun
 def simplify_contour(cont, simplify=True, angle=0., separate=False):
     """ Separates and simplify user contour
 
@@ -35,13 +36,11 @@ def simplify_contour(cont, simplify=True, angle=0., separate=False):
                                       "simplify": simplify,
                                       "angle": angle,
                                       "separate": separate})
-    try:
-        flow.exec_command(c)
-        return c.added_contours2()
-    except:
-        raise ExecError("simplify_contour")
+    flow.exec_command(c)
+    return c.added_contours2()
 
 
+@hmscriptfun
 def decompose_contour(cont):
     """ Returns set of simple singly connected contours built from
     input contour
@@ -49,8 +48,6 @@ def decompose_contour(cont):
     :param cont: contour identifier
 
     :returns: list of new contour identifiers
-
-    :raises: ValueError, ExecError
 
     All resulting contour vertices will have no more than two adjacent edges.
     If input contour has vertices with more than two connections
@@ -61,13 +58,11 @@ def decompose_contour(cont):
     icheck(0, ACont2D())
 
     c = com.contcom.DecomposeContour({"source": cont})
-    try:
-        flow.exec_command(c)
-        return c.added_contours2()
-    except:
-        raise ExecError("decompose_contour")
+    flow.exec_command(c)
+    return c.added_contours2()
 
 
+@hmscriptfun
 def unite_contours(conts):
     """ Unites contours to single multiply connected contour
 
@@ -80,13 +75,11 @@ def unite_contours(conts):
     icheck(0, List(ACont2D()))
 
     c = com.contcom.UniteContours({"sources": conts})
-    try:
-        flow.exec_command(c)
-        return c.added_contours2()[0]
-    except Exception as e:
-        raise ExecError("unite_contours. " + str(e))
+    flow.exec_command(c)
+    return c.added_contours2()[0]
 
 
+@hmscriptfun
 def set_boundary_type(cid, btps=None, bfun=None):
     """ Mark user or grid contour segments with boundary types.
 
@@ -113,36 +106,34 @@ def set_boundary_type(cid, btps=None, bfun=None):
     if btps is None and bfun is None:
         raise InvalidArgument("One of 'btps'/'bfun' should be defined")
 
-    try:
-        cont = flow.receiver.get_any_contour(cid)
-        if bfun is not None:
-            bt = cont.raw_data('btypes')
-            pt = cont.raw_data('vertices')
-            ev = cont.raw_data('edge-vert')
-            newbc = []
-            for ibt, iev in zip(bt, ev):
-                p0, p1 = pt[iev[0]], pt[iev[1]]
-                newbc.append(bfun(p0[0], p0[1], p1[0], p1[1], ibt))
-            for i in range(len(newbc)):
-                if newbc[i] is None:
-                    newbc[i] = bt[i]
-        else:
-            newbc = btps
-        args = {}
-        if not isinstance(newbc, list):
-            args[newbc] = range(cont.n_edges())
-        else:
-            for i, b in enumerate(newbc):
-                if b not in args:
-                    args[b] = []
-                args[b].append(i)
+    cont = flow.receiver.get_any_contour(cid)
+    if bfun is not None:
+        bt = cont.raw_data('btypes')
+        pt = cont.raw_data('vertices')
+        ev = cont.raw_data('edge-vert')
+        newbc = []
+        for ibt, iev in zip(bt, ev):
+            p0, p1 = pt[iev[0]], pt[iev[1]]
+            newbc.append(bfun(p0[0], p0[1], p1[0], p1[1], ibt))
+        for i in range(len(newbc)):
+            if newbc[i] is None:
+                newbc[i] = bt[i]
+    else:
+        newbc = btps
+    args = {}
+    if not isinstance(newbc, list):
+        args[newbc] = range(cont.n_edges())
+    else:
+        for i, b in enumerate(newbc):
+            if b not in args:
+                args[b] = []
+            args[b].append(i)
 
-        c = com.contcom.SetBTypeToContour({"name": cid, "btypes": args})
-        flow.exec_command(c)
-    except:
-        raise ExecError("set_boundary_type")
+    c = com.contcom.SetBTypeToContour({"name": cid, "btypes": args})
+    flow.exec_command(c)
 
 
+@hmscriptfun
 def clip_domain(dom1, dom2, operation, simplify=True):
     """ Executes domain clipping procedure
 
@@ -169,16 +160,14 @@ def clip_domain(dom1, dom2, operation, simplify=True):
 
     c = com.contcom.ClipDomain({"c1": dom1, "c2": dom2, "oper": operation,
                                 "simplify": simplify})
-    try:
-        flow.exec_command(c)
-        if len(c.added_contours2()) > 0:
-            return c.added_contours2()[0]
-        else:
-            return None
-    except:
-        raise ExecError("clip_domain")
+    flow.exec_command(c)
+    if len(c.added_contours2()) > 0:
+        return c.added_contours2()[0]
+    else:
+        return None
 
 
+@hmscriptfun
 def partition_contour(cont, algo, step=1., angle0=30., keep_bnd=False,
                       nedges=None, crosses=[], keep_pts=[],
                       start=None, end=None):
@@ -237,8 +226,6 @@ def partition_contour(cont, algo, step=1., angle0=30., keep_bnd=False,
     :param end: start and end points which define processing segment
 
     :returns: new contour identifier
-
-    :raises: hmscript.ExecError, ValueError
 
     Points set defined by user for ``algo='ref_points'`` algorithm
     will not present in resulting contour (as well as points defined
@@ -300,8 +287,6 @@ def partition_contour(cont, algo, step=1., angle0=30., keep_bnd=False,
             plain_step.extend(step[2 * i + 1])
     elif algo in ["ref_weights", "ref_lengths"]:
         plain_step = copy.deepcopy(step)
-    else:
-        raise ValueError
     sp, ep = None, None
     if start is not None:
         sp = [start[0], start[1]]
@@ -324,13 +309,11 @@ def partition_contour(cont, algo, step=1., angle0=30., keep_bnd=False,
             "keep_pts": kp}
     # call
     c = com.contcom.PartitionContour(args)
-    try:
-        flow.exec_command(c)
-        return c.added_contours2()[0]
-    except Exception:
-        raise ExecError('partition_contour')
+    flow.exec_command(c)
+    return c.added_contours2()[0]
 
 
+@hmscriptfun
 def matched_partition(cont, step, influence, ref_conts=[], ref_pts=[],
                       angle0=30., power=3.):
     """ Makes a contour partition with respect to other
@@ -384,13 +367,11 @@ def matched_partition(cont, step, influence, ref_conts=[], ref_pts=[],
             "power": power
             }
     c = com.contcom.MatchedPartition(args)
-    try:
-        flow.exec_command(c)
-        return c.added_contours2()[0]
-    except Exception:
-        raise ExecError('matched_partition')
+    flow.exec_command(c)
+    return c.added_contours2()[0]
 
 
+@hmscriptfun
 def partition_segment(start, end, hstart, hend, hinternal=[]):
     """ Makes a partition of numeric segment by given
     recommended step sizes at different locations.
@@ -409,8 +390,6 @@ def partition_segment(start, end, hstart, hend, hinternal=[]):
 
     :returns: increasing float list representing
        partitioned segment [start, ..(internal steps).., end]
-
-    :raises: ValueError, ExecError
 
     This is a helper function which runs iterative procedure
     to adopt partition of the segment to user defined step size
@@ -445,12 +424,10 @@ def partition_segment(start, end, hstart, hend, hinternal=[]):
                            Float(grthan=0.0)))
 
     from hybmeshpack.hmcore import c2 as c2core
-    try:
-        return c2core.segment_partition(start, end, hstart, hend, hinternal)
-    except:
-        raise ExecError("partition_segment")
+    return c2core.segment_partition(start, end, hstart, hend, hinternal)
 
 
+@hmscriptfun
 def connect_subcontours(sources, fix=[], close="no", shiftnext=True):
     """ Connects sequence of open contours into a single contour
     even if neighboring contours have no equal end points
@@ -495,8 +472,5 @@ def connect_subcontours(sources, fix=[], close="no", shiftnext=True):
     args['close'] = close
     args['shiftnext'] = shiftnext
     c = com.contcom.ConnectSubcontours(args)
-    try:
-        flow.exec_command(c)
-        return c.added_contours2()[0]
-    except Exception:
-        raise ExecError("connect_subcontours")
+    flow.exec_command(c)
+    return c.added_contours2()[0]

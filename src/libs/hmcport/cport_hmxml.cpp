@@ -13,7 +13,7 @@ int hmxml_open_doc(const char* fname, void** doc, void** root){
 		*root = root_;
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -26,7 +26,7 @@ int hmxml_new_doc(void** doc, void** root){
 		*root = root_;
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -36,7 +36,7 @@ int hmxml_free_node(void* node){
 		if (node != nullptr) delete static_cast<HMXML::Reader*>(node);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -46,7 +46,7 @@ int hmxml_free_doc(void* doc){
 		if (doc != nullptr) delete static_cast<HMXML::ReaderA*>(doc);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -58,7 +58,7 @@ int hmxml_query(void* node, const char* query, int* rnum, void*** ret){
 		c2cpp::to_ppp(fnd, rnum, ret);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -68,7 +68,7 @@ int hmxml_write(void* doc, const char* filename){
 		static_cast<HMXML::ReaderA*>(doc)->write(filename);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -84,7 +84,7 @@ int hmxml_purged_string(void* doc, char** ret){
 		c2cpp::to_char_string(copy.tostring(), ret);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -99,7 +99,7 @@ int read_contour2(void* doc, void* node, void** obj, char* name){
 		strcpy(name, nm.c_str());
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -114,7 +114,7 @@ int read_grid2(void* doc, void* node, void** obj, char* name){
 		strcpy(name, nm.c_str());
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -129,7 +129,7 @@ int read_surface3(void* doc, void* node, void** obj, char* name){
 		strcpy(name, nm.c_str());
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -144,7 +144,7 @@ int read_grid3(void* doc, void* node, void** obj, char* name, hmcport_callback c
 		strcpy(name, nm.c_str());
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }

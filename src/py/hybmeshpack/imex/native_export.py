@@ -1,5 +1,5 @@
 from hybmeshpack.hmcore import hmxml
-from hybmeshpack.basic.interf import SilentCallbackCancel2
+from hybmeshpack.basic.cb import SilentCallbackCancel2
 from hybmeshpack.gdata.grid2 import Grid2
 from hybmeshpack.gdata.grid3 import Grid3
 from hybmeshpack.gdata.cont2 import Contour2

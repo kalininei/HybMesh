@@ -1,6 +1,5 @@
 "file exporting functions"
-from hybmeshpack.hmscript import flow
-from hybmeshpack.hmscript import ExportError
+from hybmeshpack.hmscript import flow, hmscriptfun
 from hybmeshpack.imex import vtk_export
 from hybmeshpack.imex import native_export
 from hybmeshpack.imex import fluent_export
@@ -59,6 +58,7 @@ def _surf3_from_id(gid):
 
 
 # Exporting grids
+@hmscriptfun
 def export_grid_vtk(gid, fname):
     """ Exports 2d grid to vtk format
 
@@ -66,22 +66,17 @@ def export_grid_vtk(gid, fname):
 
        :param str fname: output filename
 
-       :raises: ExportError
-
        :returns: None
     """
     icheck(0, UListOr1(Grid2D()))
     icheck(1, String())
 
-    try:
-        grid = _grid2_from_id(gid)
-        cb = flow.interface.ask_for_callback()
-        vtk_export.grid2(fname, grid, cb)
-    except:
-        raise
-        raise ExportError("export_grid_vtk")
+    grid = _grid2_from_id(gid)
+    cb = flow.interface.ask_for_callback()
+    vtk_export.grid2(fname, grid, cb)
 
 
+@hmscriptfun
 def export_grid_hmg(gid, fname, fmt='ascii', afields=[]):
     """Exports 2d grid to hybmesh native format.
 
@@ -98,8 +93,6 @@ def export_grid_hmg(gid, fname, fmt='ascii', afields=[]):
 
       :param list-of-str afields: additional data which should be placed
           to output file.
-
-      :raises: hmscript.ExportError
 
       :returns: None
 
@@ -124,15 +117,13 @@ def export_grid_hmg(gid, fname, fmt='ascii', afields=[]):
     icheck(2, OneOf('ascii', 'bin', 'fbin'))
     icheck(3, UList(OneOf('cell-vertices', 'cell-edges')))
 
-    try:
-        names = gid if isinstance(gid, list) else [gid]
-        grids = map(flow.receiver.get_grid2, names)
-        cb = flow.interface.ask_for_callback()
-        native_export.grid2_tofile(fname, grids, names, fmt, afields, cb)
-    except Exception as e:
-        raise ExportError(str(e))
+    names = gid if isinstance(gid, list) else [gid]
+    grids = map(flow.receiver.get_grid2, names)
+    cb = flow.interface.ask_for_callback()
+    native_export.grid2_tofile(fname, grids, names, fmt, afields, cb)
 
 
+@hmscriptfun
 def export_grid_msh(gid, fname, periodic_pairs=[]):
     """Exports grid to fluent msh format
 
@@ -157,31 +148,25 @@ def export_grid_msh(gid, fname, periodic_pairs=[]):
 
     :returns: None
 
-    :raises: hmscript.ExportError
-
     Only grids with triangle/quadrangle cells could be exported.
     """
     icheck(0, UListOr1(Grid2D()))
     icheck(1, String())
     icheck(2, CompoundList(ZType(), ZType(), Bool()))
 
-    try:
-        cb = flow.interface.ask_for_callback()
-        grid = _grid2_from_id(gid)
-        bt = flow.receiver.get_zone_types()
-        fluent_export.grid2(fname, grid, bt, periodic_pairs, cb)
-    except Exception as e:
-        raise ExportError(str(e))
+    cb = flow.interface.ask_for_callback()
+    grid = _grid2_from_id(gid)
+    bt = flow.receiver.get_zone_types()
+    fluent_export.grid2(fname, grid, bt, periodic_pairs, cb)
 
 
+@hmscriptfun
 def export_grid_gmsh(gid, fname):
     """ Exports grid to gmsh ascii format
 
     :param gid: single or list of grid identifiers
 
     :param fname: output filename
-
-    :raises: hmscript.ExportError
 
     :returns: None
 
@@ -195,23 +180,19 @@ def export_grid_gmsh(gid, fname):
     icheck(0, UListOr1(Grid2D()))
     icheck(1, String())
 
-    try:
-        cb = flow.interface.ask_for_callback()
-        grid = _grid2_from_id(gid)
-        bt = flow.receiver.get_zone_types()
-        gmsh_export.grid2(fname, grid, bt, cb)
-    except Exception as e:
-        raise ExportError(str(e))
+    cb = flow.interface.ask_for_callback()
+    grid = _grid2_from_id(gid)
+    bt = flow.receiver.get_zone_types()
+    gmsh_export.grid2(fname, grid, bt, cb)
 
 
+@hmscriptfun
 def export_grid_tecplot(gid, fname):
     """exports grid to tecplot ascii \*.dat format
 
     :param gid: grid identifier or list of identifiers
 
     :param fname: output filename
-
-    :raises: hmscript.ExportError
 
     :returns: None
 
@@ -222,16 +203,14 @@ def export_grid_tecplot(gid, fname):
     icheck(0, UListOr1(Grid2D()))
     icheck(1, String())
 
-    try:
-        cb = flow.interface.ask_for_callback()
-        grid = _grid2_from_id(gid)
-        bt = flow.receiver.get_zone_types()
-        tecplot_export.grid2(fname, grid, bt, cb)
-    except Exception as e:
-        raise ExportError(str(e))
+    cb = flow.interface.ask_for_callback()
+    grid = _grid2_from_id(gid)
+    bt = flow.receiver.get_zone_types()
+    tecplot_export.grid2(fname, grid, bt, cb)
 
 
 # 3d exports
+@hmscriptfun
 def export3d_grid_vtk(gid, fname_grid=None, fname_surface=None):
     """Exports 3D grid and its surface to vtk ascii format.
 
@@ -240,8 +219,6 @@ def export3d_grid_vtk(gid, fname_grid=None, fname_surface=None):
     :param str-or-None fname_grid: filename for grid output.
 
     :param str-or-None fname_surface: filename for surface output.
-
-    :raises: hmscript.ExportError
 
     Only hexahedron, prism, wedge and tetrahedron cells could be exported
     as a grid. Surface export takes arbitrary grid.
@@ -255,17 +232,15 @@ def export3d_grid_vtk(gid, fname_grid=None, fname_surface=None):
     icheck(1, NoneOr(String()))
     icheck(2, NoneOr(String()))
 
-    try:
-        cb = flow.interface.ask_for_callback()
-        grid = _grid3_from_id(gid)
-        if fname_grid is not None:
-            vtk_export.grid3(fname_grid, grid, cb)
-        if fname_surface is not None:
-            vtk_export.grid3_surface(fname_surface, grid, cb)
-    except Exception as e:
-        raise ExportError(str(e))
+    cb = flow.interface.ask_for_callback()
+    grid = _grid3_from_id(gid)
+    if fname_grid is not None:
+        vtk_export.grid3(fname_grid, grid, cb)
+    if fname_surface is not None:
+        vtk_export.grid3_surface(fname_surface, grid, cb)
 
 
+@hmscriptfun
 def export3d_grid_msh(gid, fname, periodic_pairs=[]):
     """Exports 3D grid to fluent msh ascii format.
 
@@ -292,31 +267,24 @@ def export3d_grid_msh(gid, fname, periodic_pairs=[]):
        For surface 2D topology definition periodic/shadow surfaces are taken
        with outside/inside normals respectively.
 
-    :raises: hmscript.ExportError
-
     """
     icheck(0, UListOr1(Grid3D()))
     icheck(1, String())
     icheck(2, CompoundList(ZType(), ZType(), Point3D(), Point3D()))
 
-    try:
-        cb = flow.interface.ask_for_callback()
-        grid = _grid3_from_id(gid)
-        bt = flow.receiver.get_zone_types()
-        fluent_export.grid3(fname, grid, bt, periodic_pairs, cb)
-    except Exception as e:
-        raise
-        raise ExportError(str(e))
+    cb = flow.interface.ask_for_callback()
+    grid = _grid3_from_id(gid)
+    bt = flow.receiver.get_zone_types()
+    fluent_export.grid3(fname, grid, bt, periodic_pairs, cb)
 
 
+@hmscriptfun
 def export3d_grid_tecplot(gid, fname):
     """Exports 3D grid to tecplot ascii \*.dat format.
 
     :param gid: 3D grid file identifier or list of identifiers
 
     :param str grid: filename for output
-
-    :raises: hmscript.ExportError
 
     A grid zone and zones for each boundary surface defined by boundary type
     will be created in the output file.
@@ -326,23 +294,19 @@ def export3d_grid_tecplot(gid, fname):
     icheck(0, UListOr1(Grid3D()))
     icheck(1, String())
 
-    try:
-        cb = flow.interface.ask_for_callback()
-        grid = _grid3_from_id(gid)
-        bt = flow.receiver.get_zone_types()
-        tecplot_export.grid3(fname, grid, bt, cb)
-    except Exception as e:
-        raise ExportError(str(e))
+    cb = flow.interface.ask_for_callback()
+    grid = _grid3_from_id(gid)
+    bt = flow.receiver.get_zone_types()
+    tecplot_export.grid3(fname, grid, bt, cb)
 
 
+@hmscriptfun
 def export3d_grid_gmsh(gid, fname):
     """Exports 3D grid to gmsh ascii format.
 
     :param gid: grid identifier or list of identifiers
 
     :param str fname: output filename.
-
-    :raises: hmscript.ExportError
 
     Only grids with tetrahedral/hexahedral/prism/pyramid cells
     could be exported.
@@ -354,15 +318,13 @@ def export3d_grid_gmsh(gid, fname):
     """
     icheck(0, UListOr1(Grid3D()))
     icheck(1, String())
-    try:
-        cb = flow.interface.ask_for_callback()
-        grid = _grid3_from_id(gid)
-        bt = flow.receiver.get_zone_types()
-        gmsh_export.grid3(fname, grid, bt, cb)
-    except Exception as e:
-        raise ExportError(str(e))
+    cb = flow.interface.ask_for_callback()
+    grid = _grid3_from_id(gid)
+    bt = flow.receiver.get_zone_types()
+    gmsh_export.grid3(fname, grid, bt, cb)
 
 
+@hmscriptfun
 def export3d_grid_hmg(gid, fname, fmt="ascii", afields=[]):
     """Exports 3d grid to hybmesh native format.
 
@@ -379,8 +341,6 @@ def export3d_grid_hmg(gid, fname, fmt="ascii", afields=[]):
 
       :param list-of-str afields: additional data which should be placed
           to output file.
-
-      :raises: hmscript.ExportError
 
       To save additional data into grid file
       :ref:`user defined fields <udef-fields>`
@@ -411,16 +371,14 @@ def export3d_grid_hmg(gid, fname, fmt="ascii", afields=[]):
     icheck(2, OneOf('ascii', 'bin', 'fbin'))
     icheck(3, UList(OneOf('face-vertices', 'cell-faces', 'cell-vertices',
                           'linfem')))
-    try:
-        names = gid if isinstance(gid, list) else [gid]
-        grids = map(flow.receiver.get_grid3, names)
-        cb = flow.interface.ask_for_callback()
-        native_export.grid3_tofile(fname, grids, names, fmt, afields, cb)
-    except Exception as e:
-        raise ExportError(str(e))
+    names = gid if isinstance(gid, list) else [gid]
+    grids = map(flow.receiver.get_grid3, names)
+    cb = flow.interface.ask_for_callback()
+    native_export.grid3_tofile(fname, grids, names, fmt, afields, cb)
 
 
 # Exporting contours
+@hmscriptfun
 def export_contour_vtk(cid, fname):
     """Exports contour to vtk format.
 
@@ -428,21 +386,17 @@ def export_contour_vtk(cid, fname):
 
     :param str fname: output filename.
 
-    :raises: ExportError
-
     :return: None
     """
     icheck(0, UListOr1(ACont2D()))
     icheck(1, String())
 
-    try:
-        cont = _cont2_from_id(cid)
-        cb = flow.interface.ask_for_callback()
-        vtk_export.cont2(fname, cont, cb)
-    except Exception as e:
-        raise ExportError(str(e))
+    cont = _cont2_from_id(cid)
+    cb = flow.interface.ask_for_callback()
+    vtk_export.cont2(fname, cont, cb)
 
 
+@hmscriptfun
 def export_contour_hmc(cid, fname, fmt="ascii"):
     """Exports contours to native format.
 
@@ -457,8 +411,6 @@ def export_contour_hmc(cid, fname, fmt="ascii"):
          * ``'fbin'`` - only floating point fields will be saved
            in binary section.
 
-      :raises: ExportError
-
       :returns: None
 
       See :ref:`contour2d-file` for format description.
@@ -471,23 +423,19 @@ def export_contour_hmc(cid, fname, fmt="ascii"):
     icheck(1, String())
     icheck(2, OneOf('ascii', 'bin', 'fbin'))
 
-    try:
-        names = cid if isinstance(cid, list) else [cid]
-        conts = [_cont2_from_id(n) for n in names]
-        cb = flow.interface.ask_for_callback()
-        native_export.cont2_tofile(fname, conts, names, fmt, cb)
-    except Exception as e:
-        raise ExportError(str(e))
+    names = cid if isinstance(cid, list) else [cid]
+    conts = [_cont2_from_id(n) for n in names]
+    cb = flow.interface.ask_for_callback()
+    native_export.cont2_tofile(fname, conts, names, fmt, cb)
 
 
+@hmscriptfun
 def export_contour_tecplot(cid, fname):
     """Exports contour to tecplot ascii \*.dat format.
 
     :param cid: contour identifier or list of identifiers,
 
     :param str fname: output filename.
-
-    :raises: ExportError
 
     :returns: None
 
@@ -498,15 +446,13 @@ def export_contour_tecplot(cid, fname):
     icheck(0, UListOr1(ACont2D()))
     icheck(1, String())
 
-    try:
-        cb = flow.interface.ask_for_callback()
-        cont = _cont2_from_id(cid)
-        bt = flow.receiver.get_zone_types()
-        tecplot_export.cont2(fname, cont, bt, cb)
-    except Exception as e:
-        raise ExportError(str(e))
+    cb = flow.interface.ask_for_callback()
+    cont = _cont2_from_id(cid)
+    bt = flow.receiver.get_zone_types()
+    tecplot_export.cont2(fname, cont, bt, cb)
 
 
+@hmscriptfun
 def export3d_surface_hmc(sid, fname, fmt="ascii"):
     """Exports 3d surface to hybmesh native format.
 
@@ -521,8 +467,6 @@ def export3d_surface_hmc(sid, fname, fmt="ascii"):
          * ``'fbin'`` - only floating point fields will be saved
            in binary section.
 
-      :raises: hmscript.ExportError
-
       See :ref:`surface3d-file` for format description.
     """
     if fmt == "binary":
@@ -533,15 +477,13 @@ def export3d_surface_hmc(sid, fname, fmt="ascii"):
     icheck(1, String())
     icheck(2, OneOf('ascii', 'bin', 'fbin'))
 
-    try:
-        names = sid if isinstance(sid, list) else [sid]
-        surfs = [_surf3_from_id(n) for n in names]
-        cb = flow.interface.ask_for_callback()
-        native_export.surf3_tofile(fname, surfs, names, fmt, cb)
-    except Exception as e:
-        raise ExportError(str(e))
+    names = sid if isinstance(sid, list) else [sid]
+    surfs = [_surf3_from_id(n) for n in names]
+    cb = flow.interface.ask_for_callback()
+    native_export.surf3_tofile(fname, surfs, names, fmt, cb)
 
 
+@hmscriptfun
 def export_all_hmd(fname, fmt="ascii"):
     """Exports all geometrical data to native format.
 
@@ -563,13 +505,11 @@ def export_all_hmd(fname, fmt="ascii"):
     icheck(0, String())
     icheck(1, OneOf('ascii', 'bin', 'fbin'))
 
-    try:
-        cb = flow.interface.ask_for_callback()
-        native_export.export_all_tofile(fname, flow.receiver, fmt, cb)
-    except Exception as e:
-        raise ExportError(str(e))
+    cb = flow.interface.ask_for_callback()
+    native_export.export_all_tofile(fname, flow.receiver, fmt, cb)
 
 
+@hmscriptfun
 def save_project(fname, fmt="ascii"):
     """Saves current command flow and data to HybMesh project file.
 
@@ -582,8 +522,6 @@ def save_project(fname, fmt="ascii"):
          * ``'fbin'`` - only floating point fields will be saved
            in binary section.
 
-       :raises: ExportError
-
        See :ref:`hmp-file` for description.
     """
     if fmt == "binary":
@@ -593,7 +531,4 @@ def save_project(fname, fmt="ascii"):
     icheck(0, String())
     icheck(1, OneOf('ascii', 'bin', 'fbin'))
 
-    try:
-        flow_export.flow_and_framework_tofile(fname, flow, fmt)
-    except Exception as e:
-        raise ExportError(str(e))
+    flow_export.flow_and_framework_tofile(fname, flow, fmt)

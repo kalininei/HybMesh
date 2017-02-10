@@ -1,11 +1,12 @@
 " 2d contours construction procedures"
 import math
 from hybmeshpack import com
-from hybmeshpack.hmscript import flow, ExecError
+from hybmeshpack.hmscript import flow, hmscriptfun
 from datachecks import (icheck, List, Bool, Point2D, ListOr1,
                         ZType, Grid2D, UInt, ACont2D, OneOf, Float)
 
 
+@hmscriptfun
 def grid_bnd_to_contour(gid, simplify=True):
     """ Extracts grid boundary to user contour
 
@@ -21,13 +22,11 @@ def grid_bnd_to_contour(gid, simplify=True):
 
     c = com.contcom.GridBndToContour({"grid_name": gid,
                                       "simplify": simplify})
-    try:
-        flow.exec_command(c)
-        return c.added_contours2()[0]
-    except:
-        raise ExecError("grid_bnd_to_contour")
+    flow.exec_command(c)
+    return c.added_contours2()[0]
 
 
+@hmscriptfun
 def create_contour(pnts, bnds=0):
     """ Create singly connected contour from sequence of points
 
@@ -50,13 +49,11 @@ def create_contour(pnts, bnds=0):
     b = bnds if isinstance(bnds, list) else [bnds]
     c = com.contcom.CreateContour({"points": pnts,
                                    "bnds": b})
-    try:
-        flow.exec_command(c)
-        return c.added_contours2()[0]
-    except:
-        raise ExecError("create_contour")
+    flow.exec_command(c)
+    return c.added_contours2()[0]
 
 
+@hmscriptfun
 def create_spline_contour(pnts, bnds=0, nedges=100):
     """ Creates singly connected contour as a parametric cubic spline.
 
@@ -82,13 +79,11 @@ def create_spline_contour(pnts, bnds=0, nedges=100):
     c = com.contcom.CreateSpline({"points": pnts,
                                   "bnds": b,
                                   "nedges": nedges})
-    try:
-        flow.exec_command(c)
-        return c.added_contours2()[0]
-    except:
-        raise ExecError("create_spline_contour")
+    flow.exec_command(c)
+    return c.added_contours2()[0]
 
 
+@hmscriptfun
 def extract_subcontours(source, plist, project_to="vertex"):
     """ Extracts singly connected subcontours from given contour
 
@@ -104,8 +99,6 @@ def extract_subcontours(source, plist, project_to="vertex"):
            * ``"corner"`` projects to closest contour corner vertex
 
         :returns: list of new contours identifiers
-
-        :raises: ValueError, ExecError
 
         Length of **plist** should be equal or greater than two.
         First and last points in **plist** define first and last points
@@ -124,13 +117,11 @@ def extract_subcontours(source, plist, project_to="vertex"):
 
     c = com.contcom.ExtractSubcontours({
         'src': source, 'plist': plist, 'project_to': project_to})
-    try:
-        flow.exec_command(c)
-        return c.added_contours2()
-    except Exception:
-        raise ExecError('extract_subcontours')
+    flow.exec_command(c)
+    return c.added_contours2()
 
 
+@hmscriptfun
 def add_rect_contour(p0, p1, bnd=0):
     """Adds four point closed rectangular contour
 
@@ -155,13 +146,11 @@ def add_rect_contour(p0, p1, bnd=0):
         b = [bnd, bnd, bnd, bnd]
 
     c = com.contcom.AddRectCont({"p0": p0, "p1": p1, "bnds": b})
-    try:
-        flow.exec_command(c)
-        return c.added_contours2()[0]
-    except:
-        raise ExecError('add_rect_contour')
+    flow.exec_command(c)
+    return c.added_contours2()[0]
 
 
+@hmscriptfun
 def add_circ_contour(p0, rad, n_arc, bnd=0):
     """Adds circle contour from given center and radius
 
@@ -182,13 +171,11 @@ def add_circ_contour(p0, rad, n_arc, bnd=0):
 
     c = com.contcom.AddCircCont({"p0": p0, "rad": rad,
                                  "na": n_arc, "bnd": bnd})
-    try:
-        flow.exec_command(c)
-        return c.added_contours2()[0]
-    except:
-        raise ExecError("add_circ_contour")
+    flow.exec_command(c)
+    return c.added_contours2()[0]
 
 
+@hmscriptfun
 def add_circ_contour2(p0, p1, p2, n_arc, bnd=0):
     """Adds circle contour from given arc points
 
@@ -212,23 +199,22 @@ def add_circ_contour2(p0, p1, p2, n_arc, bnd=0):
     icheck(3, UInt(minv=3))
     icheck(4, ZType())
 
-    try:
-        p0, p1, p2 = map(float, p0), map(float, p1), map(float, p2)
-        xb, yb = p1[0] - p0[0], p1[1] - p0[1]
-        xc, yc = p2[0] - p0[0], p2[1] - p0[1]
-        A11, A12 = 2.0 * xb, 2.0 * yb
-        A21, A22 = 2.0 * xc, 2.0 * yc
-        B1, B2 = xb * xb + yb * yb, xc * xc + yc * yc
-        d = A11 * A22 - A12 * A21
-        I11, I12, I21, I22 = A22 / d, -A12 / d, -A21 / d, A11 / d
-        cx = I11 * B1 + I12 * B2
-        cy = I21 * B1 + I22 * B2
-        rad = math.sqrt((cx - xb) * (cx - xb) + (cy - yb) * (cy - yb))
-    except:
-        raise ExecError("Failed to build a circle with given parameters")
+    p0, p1, p2 = map(float, p0), map(float, p1), map(float, p2)
+    xb, yb = p1[0] - p0[0], p1[1] - p0[1]
+    xc, yc = p2[0] - p0[0], p2[1] - p0[1]
+    A11, A12 = 2.0 * xb, 2.0 * yb
+    A21, A22 = 2.0 * xc, 2.0 * yc
+    B1, B2 = xb * xb + yb * yb, xc * xc + yc * yc
+    d = A11 * A22 - A12 * A21
+    I11, I12, I21, I22 = A22 / d, -A12 / d, -A21 / d, A11 / d
+    cx = I11 * B1 + I12 * B2
+    cy = I21 * B1 + I22 * B2
+    rad = math.sqrt((cx - xb) * (cx - xb) + (cy - yb) * (cy - yb))
+
     return add_circ_contour([cx + p0[0], cy + p0[1]], rad, n_arc, bnd)
 
 
+@hmscriptfun
 def add_circ_contour3(p0, p1, curv, n_arc, bnd=0):
     """Adds circle contour from given arc points and curvature
 
@@ -256,24 +242,21 @@ def add_circ_contour3(p0, p1, curv, n_arc, bnd=0):
     icheck(3, UInt(minv=3))
     icheck(4, ZType())
 
-    try:
-        p0, p1, curv = map(float, p0), map(float, p1), float(curv)
-        xa, ya = p1[0] - p0[0], p1[1] - p0[1]
-        r = abs(1.0 / curv)
-        a, b, c = -2.0 * xa, -2.0 * ya, xa * xa + ya * ya
-        s = a * a + b * b
-        x0, y0 = -a * c / s, -b * c / s
-        d = r * r - c * c / s
-        mult = math.sqrt(d / s)
-        cx1 = x0 + b * mult
-        cy1 = y0 - a * mult
-        cx2 = x0 - b * mult
-        cy2 = y0 + a * mult
-        a1 = angle_3pnt((0.0, 0.0), (cx1, cx2), (xa, ya))
-        if (a1 < math.pi):
-            cx, cy = cx1, cy1
-        else:
-            cx, cy = cx2, cy2
-    except:
-        raise ValueError("Failed to build a circle with given parameters")
+    p0, p1, curv = map(float, p0), map(float, p1), float(curv)
+    xa, ya = p1[0] - p0[0], p1[1] - p0[1]
+    r = abs(1.0 / curv)
+    a, b, c = -2.0 * xa, -2.0 * ya, xa * xa + ya * ya
+    s = a * a + b * b
+    x0, y0 = -a * c / s, -b * c / s
+    d = r * r - c * c / s
+    mult = math.sqrt(d / s)
+    cx1 = x0 + b * mult
+    cy1 = y0 - a * mult
+    cx2 = x0 - b * mult
+    cy2 = y0 + a * mult
+    a1 = angle_3pnt((0.0, 0.0), (cx1, cx2), (xa, ya))
+    if (a1 < math.pi):
+        cx, cy = cx1, cy1
+    else:
+        cx, cy = cx2, cy2
     return add_circ_contour([cx + p0[0], cy + p0[1]], r, n_arc, bnd)

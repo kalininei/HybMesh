@@ -1,6 +1,5 @@
 import copy
 import math
-import command
 from hybmeshpack.basic import geom as bgeom
 from hybmeshpack.hmcore import g2 as g2core
 from hybmeshpack.hmcore import c2 as c2core
@@ -397,7 +396,7 @@ class BuildBoundaryGrid(NewGridCommand):
                 addto['start'] = copy.deepcopy(p0)
                 addto['end'] = copy.deepcopy(p1)
             if op['start'] is None or op['end'] is None:
-                raise command.ExecutionError(
+                raise Exception(
                     "cannot find correct source for boundary grid", self)
 
         # if points coincide find closest subcontour

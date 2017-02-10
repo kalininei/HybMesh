@@ -31,7 +31,7 @@ int g2_dims(void* obj, int* ret){
 		ret[2] = g->vcells.size();
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -41,7 +41,7 @@ int g2_area(void* obj, double* ret){
 		*ret = HM2D::Grid::Area(*g);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -51,7 +51,7 @@ int g2_bnd_dims(void* obj, int* ret){
 		auto c = HM2D::ECol::Assembler::GridBoundary(*g);
 		return c2_dims(&c, ret);
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -61,7 +61,7 @@ int g2_bnd_length(void* obj, double* ret){
 		auto c = HM2D::ECol::Assembler::GridBoundary(*g);
 		return c2_length(&c, ret);
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -91,7 +91,7 @@ int g2_skewness(void* obj, double threshold, double* maxskew, int* maxskewindex,
 		std::copy(badvals_.begin(), badvals_.end(), *badvals);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -102,7 +102,7 @@ int g2_deepcopy(void* obj, void** ret){
 		c2cpp::to_pp(ret_, ret);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -111,7 +111,7 @@ int g2_free(void* obj){
 		delete static_cast<HM2D::GridData*>(obj);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -127,7 +127,7 @@ int g2_concatenate(int nobjs, void** objs, void** ret){
 		c2cpp::to_pp(ret_, ret);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -139,7 +139,7 @@ int g2_move(void* obj, double* dx){
 		}
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -153,7 +153,7 @@ int g2_scale(void* obj, double* pc, double* p0){
 		}
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -179,7 +179,7 @@ int g2_reflect(void* obj, double* v0, double* v1){
 		}
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -195,7 +195,7 @@ int g2_rotate(void* obj, double* p0, double a){
 		}
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -217,7 +217,7 @@ int g2_from_points_edges(int npoints, double* points, int neds, int* eds, void**
 		c2cpp::to_pp(ret_, ret);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -249,7 +249,7 @@ int g2_from_points_cells(int npoints, double* points, int ncells, int* cellsizes
 		c2cpp::to_pp(ret_, ret);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -278,7 +278,7 @@ int g2_rect_grid(int nx, double* xdata, int ny, double* ydata, int* bnds, void**
 		c2cpp::to_pp(ret_, ret);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -307,7 +307,7 @@ int g2_circ_grid(double* p0, int nr, double* rdata, int na, double* adata,
 		c2cpp::to_pp(ret_, ret);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -336,7 +336,7 @@ int g2_ring_grid(double* p0, int nr, double* rdata, int na, double* adata, int* 
 		c2cpp::to_pp(ret_, ret);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -406,7 +406,7 @@ int g2_tri_grid(double* verts, int ne, int* bnds, void** ret){
 		c2cpp::to_pp(ret_, ret);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -439,7 +439,7 @@ int g2_hex_grid(const char* areatype, double* area, double crad, int strict, voi
 		c2cpp::to_pp(ret_, ret);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -449,7 +449,7 @@ int g2_extract_contour(void* obj, void** ret){
 			*static_cast<HM2D::GridData*>(obj));
 		return c2_deepcopy(&cont, ret);
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -463,7 +463,7 @@ int g2_set_btypes(void* obj, int* bndlist, int for_all_edges){
 			return c2_set_btypes(&cont, bndlist);
 		}
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -507,7 +507,7 @@ int g2_unstructured_fill(void* domain, void* constraint,
 		c2cpp::to_pp(ret_, ret);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -580,10 +580,10 @@ int g2_custom_rect_grid(const char* algo, void* left, void* bottom, void* right,
 			c2cpp::to_pp(e.invalid_grid, ret);
 			return HMSUCCESS;
 		} 
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	} catch (std::runtime_error &e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -612,7 +612,7 @@ int g2_circ4grid(const char* algo, double* p0, double rad, double step, double s
 		c2cpp::to_pp(ret_, ret);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -668,7 +668,7 @@ int g2_stripe_grid(void* obj, int npart, double* part, const char* tipalgo, int*
 		c2cpp::to_pp(ret_, ret);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -722,10 +722,10 @@ int g2_map_grid(void* base_obj, void* target_obj,
 			c2cpp::to_pp(e.invalid_grid, ret);
 			return HMSUCCESS;
 		}
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -735,7 +735,7 @@ int g2_closest_points(void* obj, int npts, double* pts, const char* proj, double
 		auto g = static_cast<HM2D::GridData*>(obj);
 		return c2_closest_points(&g->vedges, npts, pts, proj, ret);
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -747,7 +747,7 @@ int g2_point_at(void* obj, int index, double* ret){
 		ret[1] = g->vvert[index]->y;
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -757,7 +757,7 @@ int g2_tab_btypes(void* obj, int* ret){
 		auto g = static_cast<HM2D::GridData*>(obj);
 		return c2_tab_btypes(&g->vedges, ret);
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -770,7 +770,7 @@ int g2_tab_vertices(void* obj, double* ret){
 		}
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -784,7 +784,7 @@ int g2_tab_edgevert(void* obj, int* ret){
 		}
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -796,7 +796,7 @@ int g2_tab_cellsizes(void* obj, int* ret){
 		}
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -815,7 +815,7 @@ int g2_tab_cellvert(void* obj, int* nret, int** ret){
 		std::copy(ret_.begin(), ret_.end(), *ret);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -834,7 +834,7 @@ int g2_tab_celledge(void* obj, int* nret, int** ret){
 		std::copy(ret_.begin(), ret_.end(), *ret);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -852,7 +852,7 @@ int g2_tab_centers(void* obj, double* ret){
 		}
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -866,7 +866,7 @@ int g2_tab_bedges(void* obj, int* nret, int** ret){
 		for (int i=0; i<*nret; ++i) (*ret)[i] = cont[i]->id;
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -882,7 +882,7 @@ int g2_simplify_bnd(void* obj, double angle, void** ret){
 		c2cpp::to_pp(ret_, ret);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -898,7 +898,7 @@ int g2_convex_cells(void* obj, double angle, void** ret){
 		c2cpp::to_pp(ret_, ret);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -923,7 +923,7 @@ int g2_exclude_cont(void* obj, void* cont, int isinner, void** ret, hmcport_call
 		c2cpp::to_pp(ret_, ret);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -951,7 +951,7 @@ int g2_unite_grids(void* obj1, void* obj2, double buf, int fixbnd,
 		c2cpp::to_pp(ret_, ret);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -985,7 +985,7 @@ int g2_to_msh(void* obj, const char* fname, BoundaryNamesStruct btypes, int n_pe
 		HM2D::Export::GridMSH(*g, fname, fnames, pd);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -996,7 +996,7 @@ int g2_to_tecplot(void* obj, const char* fname, BoundaryNamesStruct btypes){
 		HM2D::Export::GridTecplot(*g, fname, fnames);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -1026,7 +1026,7 @@ int g2_to_hm(void* doc, void* node, void* obj, const char* name, const char* fmt
 		}
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -1061,7 +1061,7 @@ int g2_boundary_layer(int nopt, BoundaryLayerGridOption* opt, void** ret, hmcpor
 		*ret = new HM2D::GridData(HMBlay::BuildBLayerGrid(vinp));
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }

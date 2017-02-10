@@ -2,32 +2,12 @@
 import ast
 import copy
 from hybmeshpack import basic
-import hybmeshpack.basic.proc as bp
 
 
-class ExecutionError(bp.EmbException):
-    def __init__(self, message, sender=None, upper_error=None):
-        '(text message, Command object)'
-        super(ExecutionError, self).__init__(message, upper_error)
-        self.message = message
-        self.sender = sender
-
-    def __str__(self):
-        s = 'HybMesh error in command\n'
-        if self.sender is not None:
-            s += str(self.sender) + '\n'
-        else:
-            s += 'Unknown\n'
-        if self.message:
-            s += '\nMessage:\n'
-            s += self.message
-        return s
-
-
-class ObjectNotFound(ExecutionError):
-    def __init__(self, objname, sender=None, upper_error=None):
+class ObjectNotFound(ValueError):
+    def __init__(self, objname):
         s = "Object %s not found" % objname
-        super(ObjectNotFound, self).__init__(s, sender, upper_error)
+        super(ObjectNotFound, self).__init__(s)
 
 
 class Command(object):

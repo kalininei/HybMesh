@@ -34,7 +34,7 @@ int s3_dims(void* obj, int* dims){
 		}
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -44,7 +44,7 @@ int s3_tab_btypes(void* obj, int* ret){
 		for (auto& f: *surf) *ret++ = f->boundary_type;
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -53,7 +53,7 @@ int s3_area(void* obj, double* ret){
 		_THROW_NOT_IMP_;
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -65,7 +65,7 @@ int s3_deepcopy(void* obj, void** ret){
 		c2cpp::to_pp(ret_, ret);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -75,7 +75,7 @@ int s3_free(void* obj){
 		delete static_cast<HM3D::FaceData*>(obj);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -87,7 +87,7 @@ int s3_volume(void* obj, double* ret){
 		*ret = fabs(HM3D::Surface::Volume(*s));
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -101,7 +101,7 @@ int s3_move(void* obj, double* dx){
 		}
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -116,7 +116,7 @@ int s3_scale(void* obj, double* pc, double* p0){
 		}
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -129,7 +129,7 @@ int s3_quick_separate(void* obj, int* nret, void*** ret){
 		c2cpp::to_ppp(sep, nret, ret);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -142,7 +142,7 @@ int s3_concatenate(int nobjs, void** objs, void** ret){
 		c2cpp::to_pp(ret_, ret);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -155,7 +155,7 @@ int s3_to_hm(void* doc, void* node, void* obj, const char* name, const char* fmt
 		HM3D::Export::SurfaceWriter(*c, wr, sn, name, fmt);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }

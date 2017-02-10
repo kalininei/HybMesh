@@ -26,7 +26,7 @@ int g3_move(void* obj, double* dx){
 		}
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -41,7 +41,7 @@ int g3_scale(void* obj, double* pc, double* p0){
 		}
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -50,7 +50,7 @@ int g3_tab_btypes(void* obj, int* ret){
 		auto g = static_cast<HM3D::GridData*>(obj);
 		return s3_tab_btypes(&g->vfaces, ret);
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -63,7 +63,7 @@ int g3_point_at(void* obj, int index, double* ret){
 		ret[2] = g->vvert[index]->z;
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -75,7 +75,7 @@ int g3_deepcopy(void* obj, void** ret){
 		c2cpp::to_pp(ret_, ret);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -92,7 +92,7 @@ int g3_concatenate(int nobjs, void** objs, void** ret){
 		c2cpp::to_pp(ret_, ret);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -103,7 +103,7 @@ int g3_free(void* obj){
 		delete static_cast<HM3D::GridData*>(obj);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -119,7 +119,7 @@ int g3_dims(void* obj, int* ret){
 		ret[3] = g->vcells.size();
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -131,7 +131,7 @@ int g3_bnd_dims(void* obj, int* dims){
 		auto s = HM3D::Surface::GridSurface(*g);
 		return s3_dims(&s, dims);
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -143,7 +143,7 @@ int g3_bnd_area(void* obj, double* ret){
 		auto c = HM3D::Surface::GridSurface(*g);
 		return s3_area(&c, ret);
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -155,7 +155,7 @@ int g3_extract_surface(void* obj, void** ret){
 			*static_cast<HM3D::GridData*>(obj));
 		return s3_deepcopy(&surf, ret);
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -169,7 +169,7 @@ int g3_volume(void* obj, double* ret){
 		*ret = HM3D::Surface::Volume(srf);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -185,7 +185,7 @@ int g3_merge(void* obj1, void* obj2, void** ret, hmcport_callback cb){
 		c2cpp::to_pp(ret_, ret);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -209,7 +209,7 @@ int g3_extrude(void* obj, int nz, double* zvals,
 		c2cpp::to_pp(ret_, ret);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -236,7 +236,7 @@ int g3_revolve(void* obj, double* vec, int n_phi, double* phi,
 		c2cpp::to_pp(ret_, ret);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -263,7 +263,7 @@ int g3_tetrahedral_fill(int nsurf, void** surf,
 		c2cpp::to_pp(ret_, ret);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -277,7 +277,7 @@ int g3_to_vtk(void* obj, const char* fname, hmcport_callback f2){
 			fname);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -288,7 +288,7 @@ int g3_surface_to_vtk(void* obj, const char* fname, hmcport_callback f2){
 			fname);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -335,7 +335,7 @@ int g3_to_msh(void* obj, const char* fname, BoundaryNamesStruct bnames,
 		}
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -349,7 +349,7 @@ int g3_to_gmsh(void* obj, const char* fname, BoundaryNamesStruct bnames,
 		HM3D::Export::GridGMSH.WithCallback(f2, *g, fname, nmfunc);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -363,7 +363,7 @@ int g3_to_tecplot(void* obj, const char* fname, BoundaryNamesStruct bnames,
 		HM3D::Export::GridTecplot.WithCallback(f2, *g, fname, nmfunc);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -404,7 +404,7 @@ int g3_to_hm(void* doc, void* node, void* obj, const char* name, const char* fmt
 		}
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }

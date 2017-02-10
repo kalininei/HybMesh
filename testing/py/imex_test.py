@@ -143,7 +143,7 @@ print "controlled fail on illegal periodic data"
 try:
     hm.export_grid_msh(g4, "g1.msh", [bbot, 0, True])
     hmdbg.check(False)
-except hm.ExportError:
+except hm.ExecError:
     hmdbg.check(True)
 
 print "export to gmsh file"

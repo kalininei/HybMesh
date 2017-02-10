@@ -21,7 +21,7 @@ int c2_dims(void* obj, int* ret){
 		ret[0] = HM2D::AllVertices(*c).size();
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -33,7 +33,7 @@ int c2_deepcopy(void* obj, void** ret){
 		*ret = ret_;
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -43,7 +43,7 @@ int c2_free(void* obj){
 		if (obj != nullptr) delete static_cast<HM2D::EdgeData*>(obj);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -55,7 +55,7 @@ int c2_area(void* obj, double* ret){
 		*ret = tree.area();
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -65,7 +65,7 @@ int c2_length(void* obj, double* ret){
 		*ret = HM2D::Length(*static_cast<HM2D::EdgeData*>(obj));
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -79,7 +79,7 @@ int c2_move(void* obj, double* dp){
 		}
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -94,7 +94,7 @@ int c2_scale(void* obj, double* pc, double* p0){
 		}
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -116,7 +116,7 @@ int c2_reflect(void* obj, double* v0, double* v1){
 		for (auto& e: *cont){ std::swap(e->left, e->right); }
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -133,7 +133,7 @@ int c2_rotate(void* obj, double* p0, double a){
 		}
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -148,7 +148,7 @@ int c2_frompoints(int npts, double* pts, int* bnds, int force_closed, void** ret
 		c2cpp::to_pp(ret_, ret);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -162,7 +162,7 @@ int c2_simplify_self(void* obj, double angle, int keep_btypes){
 		cont->insert(cont->end(), ret1.begin(), ret1.end());
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -176,7 +176,7 @@ int c2_quick_separate(void* obj, int* nret, void*** ret){
 		c2cpp::to_ppp(sep, nret, ret);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -193,7 +193,7 @@ int c2_unite(int nobjs, void** objs, void** ret){
 		*ret = ret_;
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -212,7 +212,7 @@ int c2_decompose(void* obj, int* nret, void*** ret){
 		c2cpp::to_ppp(ret_, nret, ret);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -236,7 +236,7 @@ int c2_spline(int np, double* _pts, int ned, int* bnds, void** ret){
 		c2cpp::to_pp(spline, ret);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -291,7 +291,7 @@ int c2_clip_domain(void* obj1, void* obj2, const char* op, int simplify, void** 
 		c2cpp::to_pp(ae, ret);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -583,7 +583,7 @@ int c2_partition(void* obj, const char* algo, int nstep, double* step, double a0
 		c2cpp::to_pp(ret_, ret);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -638,7 +638,7 @@ int c2_matched_partition(void* obj, int nconds, void** conds, int npts, double* 
 		c2cpp::to_pp(ret_, ret);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -664,7 +664,7 @@ int c2_segment_partition(double start, double end, double hstart, double hend,
 		*nret = ret_.size();
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -722,7 +722,7 @@ int c2_extract_subcontours(void* obj, int nplist, double* plist, void** ret){
 		}
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -754,7 +754,7 @@ int c2_connect_subcontours(int nobjs, void** objs, int nfix, int* fix, int shift
 		c2cpp::to_pp(ret_, ret);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -767,7 +767,7 @@ int c2_set_btypes(void* obj, int* bnd){
 		}
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -793,7 +793,7 @@ int c2_contour_type(void* obj, int* ret){
 		}
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -807,7 +807,7 @@ int c2_concatenate(int nobjs, void** objs, void** ret){
 		c2cpp::to_pp(ret_, ret);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -839,7 +839,7 @@ int c2_closest_points(void* obj, int npts, double* pts, const char* proj, double
 		}
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -853,7 +853,7 @@ int c2_point_at(void* obj, int index, double* ret){
 		ret[1] = av[index]->y;
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -871,7 +871,7 @@ int c2_end_points(void* obj, double* start, double* end){
 		end[1] = HM2D::Contour::Last(sc)->y;
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -887,7 +887,7 @@ int c2_tab_edgevert(void* obj, int* ret){
 		}
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -901,7 +901,7 @@ int c2_tab_vertices(void* obj, double* ret){
 		}
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -913,7 +913,7 @@ int c2_tab_btypes(void* obj, int* ret){
 		}
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }
@@ -926,7 +926,7 @@ int c2_to_hm(void* doc, void* node, void* obj, const char* name, const char* fmt
 		HM2D::Export::EColWriter(*c, wr, sn, name, fmt);
 		return HMSUCCESS;
 	} catch (std::exception& e){
-		std::cout<<e.what()<<std::endl;
+		add_error_message(e.what());
 		return HMERROR;
 	}
 }

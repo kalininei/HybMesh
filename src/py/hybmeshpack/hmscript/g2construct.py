@@ -1,7 +1,7 @@
 "2D grids construction procedures"
 import copy
 from hybmeshpack import com
-from hybmeshpack.hmscript import flow, ExecError
+from hybmeshpack.hmscript import flow, hmscriptfun
 import o2info
 from datachecks import (icheck, List, UListOr1, Bool, Point2D, ListOr1, ZType,
                         UInt, ACont2D, OneOf, Float, NoneOr, InvalidArgument,
@@ -9,6 +9,7 @@ from datachecks import (icheck, List, UListOr1, Bool, Point2D, ListOr1, ZType,
 
 
 # Prototype grids
+@hmscriptfun
 def add_unf_rect_grid(p0=[0, 0], p1=[1, 1], nx=3, ny=3,
                       custom_x=[], custom_y=[], bnd=0):
     """Builds rectangular grid.
@@ -29,8 +30,6 @@ def add_unf_rect_grid(p0=[0, 0], p1=[1, 1], nx=3, ny=3,
        rectangle sides
 
     :returns: created grid identifier
-
-    :raises: ValueError, hmscript.ExecError
 
     Builds a grid in a rectangular area formed by points **p0** and **p1**.
     **nx** and **ny** provide grid partition in x and y direction.
@@ -63,13 +62,11 @@ def add_unf_rect_grid(p0=[0, 0], p1=[1, 1], nx=3, ny=3,
                                     "custom_x": custom_x,
                                     "custom_y": custom_y,
                                     "bnds": bnd})
-    try:
-        flow.exec_command(c)
-        return c.added_grids2()[0]
-    except:
-        raise ExecError("add_unf_rect_grid")
+    flow.exec_command(c)
+    return c.added_grids2()[0]
 
 
+@hmscriptfun
 def add_unf_circ_grid(p0, rad=1.0, na=8, nr=4, coef=1.0, is_trian=True,
                       custom_rads=[], custom_archs=[], bnd=0):
     """Builds circular grid.
@@ -98,8 +95,6 @@ def add_unf_circ_grid(p0, rad=1.0, na=8, nr=4, coef=1.0, is_trian=True,
     :param int bnd: boundary type for outer contour
 
     :returns: created grid identifier
-
-    :raises: ValueError, hmscript.ExecError
 
     Creates a radial grid with the center in **p0**.
 
@@ -146,13 +141,11 @@ def add_unf_circ_grid(p0, rad=1.0, na=8, nr=4, coef=1.0, is_trian=True,
         "custom_r": custom_rads,
         "custom_a": custom_archs,
         "bnd": bnd})
-    try:
-        flow.exec_command(c)
-        return c.added_grids2()[0]
-    except:
-        raise ExecError("add_unf_circ_grid")
+    flow.exec_command(c)
+    return c.added_grids2()[0]
 
 
+@hmscriptfun
 def add_unf_ring_grid(p0, radinner, radouter,
                       na, nr, coef=1.0, bnd=0):
     """Builds ring grid
@@ -195,13 +188,11 @@ def add_unf_ring_grid(p0, radinner, radouter,
         "na": na, "nr": nr,
         "coef": coef,
         "bnd": bnd})
-    try:
-        flow.exec_command(c)
-        return c.added_grids2()[0]
-    except:
-        raise ExecError("add_unf_ring_grid")
+    flow.exec_command(c)
+    return c.added_grids2()[0]
 
 
+@hmscriptfun
 def add_unf_hex_grid(area, cell_radius, strict=False):
     """ Builds grid with regular hexagonal cells
 
@@ -233,13 +224,11 @@ def add_unf_hex_grid(area, cell_radius, strict=False):
         simpar.append(area[1])
     args = {"area": simpar, "crad": cell_radius, "strict": strict}
     c = com.gridcom.AddUnfHexGrid(args)
-    try:
-        flow.exec_command(c)
-        return c.added_grids2()[0]
-    except Exception:
-        raise ExecError('build uniform hexagonal grid')
+    flow.exec_command(c)
+    return c.added_grids2()[0]
 
 
+@hmscriptfun
 def add_triangle_grid(p0, p1, p2, nedge, bnd=0):
     """Creates structured grid in triangle area
 
@@ -267,13 +256,11 @@ def add_triangle_grid(p0, p1, p2, nedge, bnd=0):
     bnd = bnd[:3] if isinstance(bnd, list) else [bnd, bnd, bnd]
     c = com.gridcom.AddTriGrid({
         "vertices": [p0, p1, p2], "nedge": nedge, "bnd": bnd})
-    try:
-        flow.exec_command(c)
-        return c.added_grids2()[0]
-    except:
-        raise ExecError("add_triangle_grid")
+    flow.exec_command(c)
+    return c.added_grids2()[0]
 
 
+@hmscriptfun
 def add_custom_rect_grid(algo, left, bottom, right=None, top=None,
                          hermite_tfi_w=[1.0, 1.0, 1.0, 1.0],
                          return_invalid=False):
@@ -320,8 +307,6 @@ def add_custom_rect_grid(algo, left, bottom, right=None, top=None,
 
     :return: new grid identifier
 
-    :raise: hmscript.ExecError, ValueError
-
     """
     icheck(0, OneOf('linear', 'linear_tfi', 'hermite_tfi', 'inverse_laplace',
                     'direct_laplace', 'orthogonal'))
@@ -341,13 +326,11 @@ def add_custom_rect_grid(algo, left, bottom, right=None, top=None,
             'her_w': hermite_tfi_w,
             'return_invalid': return_invalid}
     c = com.gridcom.AddCustomRectGrid(args)
-    try:
-        flow.exec_command(c)
-        return c.added_grids2()[0]
-    except:
-        raise ExecError('custom rectangular grid')
+    flow.exec_command(c)
+    return c.added_grids2()[0]
 
 
+@hmscriptfun
 def add_circ_rect_grid(p0, rad, step, sqrside=1.0, rcoef=1.0, algo="linear"):
     """ Creates quadrangular cell grid in a circular area.
     See details in :ref:`circrect_grid`.
@@ -378,8 +361,6 @@ def add_circ_rect_grid(p0, rad, step, sqrside=1.0, rcoef=1.0, algo="linear"):
 
     :return: new grid identifier
 
-    :raise: hmscript.ExecError, ValueError
-
     """
     icheck(0, Point2D())
     icheck(1, Float(grthan=0.0))
@@ -396,13 +377,11 @@ def add_circ_rect_grid(p0, rad, step, sqrside=1.0, rcoef=1.0, algo="linear"):
             'sqrside': sqrside,
             'rcoef': rcoef}
     c = com.gridcom.AddCirc4Grid(args)
-    try:
-        flow.exec_command(c)
-        return c.added_grids2()[0]
-    except Exception:
-        raise ExecError('circ_rect_grid')
+    flow.exec_command(c)
+    return c.added_grids2()[0]
 
 
+@hmscriptfun
 def stripe(cont, partition, tip='no', bnd=0):
     """ Build a structured grid to the both sides of contour line
 
@@ -422,8 +401,6 @@ def stripe(cont, partition, tip='no', bnd=0):
 
     :return: grid identifier
 
-    :raise: hmscript.ExecError, ValueError
-
     Horizontal partition is taken from contour partition.
     Vertical partition is given by user with ``partition`` list parameter.
     If it starts with non zero value then grid will not contain
@@ -440,11 +417,8 @@ def stripe(cont, partition, tip='no', bnd=0):
     bnd = bnd[:4] if isinstance(bnd, list) else [bnd, bnd, bnd, bnd]
     arg = {"source": cont, "partition": partition, "tip": tip, "bnd": bnd}
     c = com.gridcom.StripeGrid(arg)
-    try:
-        flow.exec_command(c)
-        return c.added_grids2()[0]
-    except Exception:
-        raise ExecError('stripe grid')
+    flow.exec_command(c)
+    return c.added_grids2()[0]
 
 
 def _triquad(domain, constr, pts, tp):
@@ -469,13 +443,11 @@ def _triquad(domain, constr, pts, tp):
         c = com.gridcom.PebiFill(arg)
     else:
         c = com.gridcom.TriangulateArea(arg)
-    try:
-        flow.exec_command(c)
-        return c.added_grids2()[0]
-    except Exception:
-        raise ExecError('unstructured fill')
+    flow.exec_command(c)
+    return c.added_grids2()[0]
 
 
+@hmscriptfun
 def triangulate_domain(domain, constr=[], pts=[], fill='3'):
     """Builds constrained triangulation within given domain
 
@@ -512,10 +484,9 @@ def triangulate_domain(domain, constr=[], pts=[], fill='3'):
         return _triquad(domain, constr, pts, '3')
     elif fill == '4':
         return _triquad(domain, constr, pts, '4')
-    else:
-        raise ValueError("unknown `fill` option")
 
 
+@hmscriptfun
 def pebi_fill(domain, constr=[], pts=[]):
     """Builds perpendicular bisector cells in given domain.
 
@@ -624,6 +595,7 @@ class BoundaryGridOptions(object):
     partition.
     """
 
+    @hmscriptfun
     def __init__(self, contour_id=None,
                  partition=[0],
                  direction="left",
@@ -647,6 +619,7 @@ class BoundaryGridOptions(object):
         self.end_point = end_point
         self.project_to = project_to
 
+    @hmscriptfun
     def uniform_partition(self, fullh, n):
         """Sets uniform boundary grid vertical `partition` with
         the full depth of ``fullh`` and ``n`` total layers
@@ -654,6 +627,7 @@ class BoundaryGridOptions(object):
         h = fullh / n
         self.partition = [i * h for i in range(n + 1)]
 
+    @hmscriptfun
     def incremental_partition(self, h0, coef, n):
         """Sets incremental boundary grid vertical `partition`
         starting from ``h0``, with each next step is ``coef`` times
@@ -667,14 +641,13 @@ class BoundaryGridOptions(object):
                 coef * (self.partition[-1] - self.partition[-2]))
 
 
+@hmscriptfun
 def build_boundary_grid(opts):
     """Builds a boundary grid near contour
 
     :params opts: single or list of :class:`BoundaryGridOptions` objects
 
     :returns: identifier of the newly created grid.
-
-    :raises ExecError, ValueError
 
     If different options for different segments of the contour are required
     (e.g. different partitions) then multiple option instances with the same
@@ -769,8 +742,5 @@ def build_boundary_grid(opts):
         inp.append(d)
 
     c = com.gridcom.BuildBoundaryGrid({"opt": inp})
-    try:
-        flow.exec_command(c)
-        return c.added_grids2()[0]
-    except Exception:
-        raise ExecError('build_boundary_grid')
+    flow.exec_command(c)
+    return c.added_grids2()[0]

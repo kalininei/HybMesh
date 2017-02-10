@@ -3,9 +3,14 @@
 Console interface for HybMesh. Possible arguments:
 -v -- print version and exit
 -u -- check for updates and exit
--sx fn.py [-silent]
+-sx fn.py [-silent] [-verbosity n]
     Execute hybmesh python script fn.py
     -silent: no console callback during execution
+    -verbosity n: choose console output mode
+        0: silent mode (same as -silent)
+        1: +execution errors descriptions
+        2: +commands start/end reports
+        3: +progress bar [default]
 """
 # -x fn.hmp [-sgrid gname fmt fn] [-sproj fn] [-silent]
 #     Execute command flow from 'hmp' file and saves resulting data.
@@ -55,10 +60,27 @@ def main():
     if len(sys.argv) >= 3 and '-sx' in sys.argv:
         fn = sys.argv[sys.argv.index('-sx') + 1]
         from hybmeshpack import hmscript
-        if '-silent' not in sys.argv:
-            hmscript.flow.set_interface(basic.interf.ConsoleInterface())
+        verb = 3
+        if '-silent' in sys.argv:
+            verb = 0
+        elif '-verbosity' in sys.argv:
+            try:
+                iv = sys.argv.index('-verbosity')
+                verb = int(sys.argv[iv + 1])
+                if verb < 0 or verb > 3:
+                    raise
+            except:
+                sys.exit('Invalid verbosity level. See -help.')
+        if verb == 0:
+            hmscript.flow.set_interface(hmscript.ConsoleInterface0())
+        elif verb == 1:
+            hmscript.flow.set_interface(hmscript.ConsoleInterface1())
+        elif verb == 2:
+            hmscript.flow.set_interface(hmscript.ConsoleInterface2())
+        elif verb == 3:
+            hmscript.flow.set_interface(hmscript.ConsoleInterface3())
         execfile(fn)
-        if '-silent' not in sys.argv:
+        if verb > 1:
             print "DONE"
         sys.exit()
     elif len(sys.argv) >= 3 and '-x' in sys.argv:

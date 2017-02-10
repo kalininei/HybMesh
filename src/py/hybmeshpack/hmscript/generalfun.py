@@ -1,12 +1,12 @@
 "general geometry and flow status functions"
-from hybmeshpack.hmscript import flow
-from hybmeshpack.hmscript import ExecError
+from hybmeshpack.hmscript import flow, hmscriptfun
 from hybmeshpack import progdata
 from hybmeshpack import com
 from datachecks import (icheck, ListOr1, UListOr1, Point2D, ZType, ACont2D,
                         OneOf, Float, String, AObject, APoint)
 
 
+@hmscriptfun
 def copy_geom(objs):
     """ Creates deep copies of geometry objects
 
@@ -19,14 +19,12 @@ def copy_geom(objs):
     if not isinstance(objs, list):
         objs = [objs]
 
-    try:
-        c = com.objcom.CopyGeom({"names": objs})
-        flow.exec_command(c)
-        return c.odered_output()
-    except:
-        raise ExecError("copy_geom")
+    c = com.objcom.CopyGeom({"names": objs})
+    flow.exec_command(c)
+    return c.odered_output()
 
 
+@hmscriptfun
 def move_geom(objs, dx, dy, dz=0.):
     """ Moves a list of objects
 
@@ -47,13 +45,11 @@ def move_geom(objs, dx, dy, dz=0.):
     icheck(3, Float())
 
     ob = objs if isinstance(objs, list) else [objs]
-    try:
-        c = com.objcom.MoveGeom({"names": ob, "dx": dx, "dy": dy, "dz": dz})
-        flow.exec_command(c)
-    except:
-        raise ExecError("move_geom")
+    c = com.objcom.MoveGeom({"names": ob, "dx": dx, "dy": dy, "dz": dz})
+    flow.exec_command(c)
 
 
+@hmscriptfun
 def scale_geom(objs, xpc=100., ypc=100., zpc=100., refp=[0.0, 0.0, 0.0]):
     """ Scales objects
 
@@ -85,15 +81,13 @@ def scale_geom(objs, xpc=100., ypc=100., zpc=100., refp=[0.0, 0.0, 0.0]):
     if len(refp) == 2:
         refp = [refp[0], refp[1], 0.]
 
-    try:
-        ob = objs if isinstance(objs, list) else [objs]
-        c = com.objcom.ScaleGeom({"names": ob, "xpc": xpc, "ypc": ypc,
-                                  "zpc": zpc, "p0": refp})
-        flow.exec_command(c)
-    except:
-        raise ExecError("scale_geom")
+    ob = objs if isinstance(objs, list) else [objs]
+    c = com.objcom.ScaleGeom({"names": ob, "xpc": xpc, "ypc": ypc,
+                              "zpc": zpc, "p0": refp})
+    flow.exec_command(c)
 
 
+@hmscriptfun
 def rotate_geom(objs, angle, pc=[0.0, 0.0]):
     """ Rotates group of 2d objects
 
@@ -109,15 +103,13 @@ def rotate_geom(objs, angle, pc=[0.0, 0.0]):
     icheck(0, UListOr1(ACont2D()))
     icheck(1, Float())
     icheck(2, Point2D())
-    try:
-        ob = objs if isinstance(objs, list) else [objs]
-        c = com.objcom.RotateGeom({"names": ob, "angle": angle,
-                                   "p0": pc})
-        flow.exec_command(c)
-    except:
-        raise ExecError("rotate_geom")
+    ob = objs if isinstance(objs, list) else [objs]
+    c = com.objcom.RotateGeom({"names": ob, "angle": angle,
+                               "p0": pc})
+    flow.exec_command(c)
 
 
+@hmscriptfun
 def reflect_geom(objs, pnt1, pnt2):
     """ Makes a reflection of 2d geometry objects over a  given line
 
@@ -134,14 +126,12 @@ def reflect_geom(objs, pnt1, pnt2):
     icheck(1, Point2D())
     icheck(2, Point2D(noteq=[pnt1]))
 
-    try:
-        ob = objs if isinstance(objs, list) else [objs]
-        c = com.objcom.ReflectGeom({"names": ob, "p1": pnt1, "p2": pnt2})
-        flow.exec_command(c)
-    except:
-        raise ExecError("reflect_geom")
+    ob = objs if isinstance(objs, list) else [objs]
+    c = com.objcom.ReflectGeom({"names": ob, "p1": pnt1, "p2": pnt2})
+    flow.exec_command(c)
 
 
+@hmscriptfun
 def remove_geom(objs):
     """ Completely removes object or list of objects
 
@@ -150,26 +140,22 @@ def remove_geom(objs):
     :returns: None
     """
     icheck(0, UListOr1(AObject()))
-    try:
-        ob = objs if isinstance(objs, list) else [objs]
-        c = com.objcom.RemoveGeom({"names": ob})
-        flow.exec_command(c)
-    except:
-        raise ExecError("remove_geom")
+    ob = objs if isinstance(objs, list) else [objs]
+    c = com.objcom.RemoveGeom({"names": ob})
+    flow.exec_command(c)
 
 
+@hmscriptfun
 def remove_all():
     """ Completely removes all geometry objects and boundary types
 
     :returns: None
     """
-    try:
-        c = com.objcom.RemoveAll({})
-        flow.exec_command(c)
-    except:
-        raise ExecError("remove_all")
+    c = com.objcom.RemoveAll({})
+    flow.exec_command(c)
 
 
+@hmscriptfun
 def remove_all_but(objs):
     """ Removes all geometry objects except for listed ones
 
@@ -188,6 +174,7 @@ def remove_all_but(objs):
     remove_geom(all_obj)
 
 
+@hmscriptfun
 def check_compatibility(vers, policy=1):
     """ Checks version compatibility. Notifies if current version
     of hymbesh is not fully compatible with input version.
@@ -198,7 +185,7 @@ def check_compatibility(vers, policy=1):
 
        * 0 - do nothing (return False)
        * 1 - report warning to cout
-       * 2 - raise Exception
+       * 2 - raise ExecError
 
     :returns: False if versions are incompatible, True otherwise.
 
@@ -224,30 +211,35 @@ def check_compatibility(vers, policy=1):
     return ret
 
 
+@hmscriptfun
 def registered_contours():
     """ Returns list of all contour identifiers
     """
     return flow.receiver.get_contour2_names()
 
 
+@hmscriptfun
 def registered_grids():
     """ Returns list of all 2d grid identifiers
     """
     return flow.receiver.get_grid2_names()
 
 
+@hmscriptfun
 def registered_grids3d():
     """ Returns list of all 3d grid identifiers
     """
     return flow.receiver.get_grid3_names()
 
 
+@hmscriptfun
 def registered_surfaces():
     """ Returns list of all surface identifiers
     """
     return flow.receiver.get_surface3_names()
 
 
+@hmscriptfun
 def registered_btypes():
     """ Returns list of all boundary types as list of (index, name) tuples
     """
@@ -257,6 +249,7 @@ def registered_btypes():
     return ret
 
 
+@hmscriptfun
 def add_boundary_type(index, name="boundary1"):
     """ Register boundary type name.
 

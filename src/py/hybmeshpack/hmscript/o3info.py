@@ -1,8 +1,9 @@
 "3D objects information"
-from hybmeshpack.hmscript import flow
+from hybmeshpack.hmscript import flow, hmscriptfun
 from datachecks import (icheck, Grid3D, ASurf3D)
 
 
+@hmscriptfun
 def info_grid3d(gid):
     """ Get 3d grid structure information
 
@@ -28,6 +29,7 @@ def info_grid3d(gid):
     return ret
 
 
+@hmscriptfun
 def info_surface(sid):
     """Get surface structure information
 
@@ -58,6 +60,7 @@ def info_surface(sid):
     return ret
 
 
+@hmscriptfun
 def domain_volume(sid):
     """Calculates area of closed domain bounded by the **s** surface
 

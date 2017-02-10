@@ -1,11 +1,12 @@
 " 2D object information"
-from hybmeshpack.hmscript import flow
+from hybmeshpack.hmscript import flow, hmscriptfun
 from hybmeshpack.hmcore import c2 as c2core
 from hybmeshpack.gdata.cont2 import Contour2, closest_contour
 from datachecks import (icheck, List, Bool, Point2D, Grid2D, UInt, ACont2D,
                         Float, NoneOr, InvalidArgument)
 
 
+@hmscriptfun
 def info_grid(gid):
     """Get grid structure information
 
@@ -32,6 +33,7 @@ def info_grid(gid):
     return ret
 
 
+@hmscriptfun
 def info_contour(cid):
     """Get contour structure information
 
@@ -71,6 +73,7 @@ def info_contour(cid):
     return ret
 
 
+@hmscriptfun
 def get_point(obj, ind=None, vclosest=None, eclosest=None, cclosest=None,
               only_contour=True):
     """ Returns object point
@@ -133,6 +136,7 @@ def get_point(obj, ind=None, vclosest=None, eclosest=None, cclosest=None,
         return tar.point_at(ind)
 
 
+@hmscriptfun
 def domain_area(cid):
     """Calculates area of the domain bounded by the contour
 
@@ -144,6 +148,7 @@ def domain_area(cid):
     return flow.receiver.get_any_contour(cid).area()
 
 
+@hmscriptfun
 def pick_contour(pnt, contlist=[]):
     """ Returns contour closest to given point
 
@@ -165,6 +170,7 @@ def pick_contour(pnt, contlist=[]):
     return contlist[ind]
 
 
+@hmscriptfun
 def skewness(gid, threshold=0.7):
     """Reports equiangular skewness coefficient (in [0, 1]) of grid cells
 

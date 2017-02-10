@@ -1,11 +1,12 @@
 "3D objects construction routines"
 from hybmeshpack import com
-from hybmeshpack.hmscript import flow, ExecError
+from hybmeshpack.hmscript import flow, hmscriptfun
 import copy
 from datachecks import (icheck, UListOr1, Bool, Point2D, ZType, Grid2D, UInt,
                         Float, NoneOr, Func, Grid3D, ASurf3D, Or, IncList)
 
 
+@hmscriptfun
 def grid3_bnd_to_surface(gid, separate=False):
     """ Returns surface object built out of grid boundary
 
@@ -17,32 +18,26 @@ def grid3_bnd_to_surface(gid, separate=False):
     :returns: grid identifier if **separate** is False or
        list of grid identifiers otherwise
 
-    :raises: ValueError, ExecError
-
     """
     icheck(0, Grid3D())
     icheck(1, Bool())
 
     c = com.surfcom.Grid3BndToSurface({"grid_name": gid,
                                       "separate": separate})
-    try:
-        flow.exec_command(c)
-        if separate:
-            return c.added_surfaces3()
-        else:
-            return c.added_surfaces3()[0]
-    except Exception:
-        raise ExecError("grid3_bnd_to_surface")
+    flow.exec_command(c)
+    if separate:
+        return c.added_surfaces3()
+    else:
+        return c.added_surfaces3()[0]
 
 
+@hmscriptfun
 def tetrahedral_fill(domain):
     """ Fills 3D domain with tetrahedral mesh
 
     :param domain: surface/3d grid identifier (or list of identifiers)
 
     :returns: 3d grid identifier
-
-    :raises: ValueError, ExecError
 
     Domain is defined by any number of closed surfaces passed in **domain**
     argument. Internal nesting procedure
@@ -66,13 +61,11 @@ def tetrahedral_fill(domain):
         domain = [domain]
 
     c = com.grid3dcom.TetrahedralFill({"source": domain})
-    try:
-        flow.exec_command(c)
-        return c.added_grids3()[0]
-    except Exception:
-        raise ExecError('tetrahedral fill')
+    flow.exec_command(c)
+    return c.added_grids3()[0]
 
 
+@hmscriptfun
 def extrude_grid(obj, zcoords, bottombc=0, topbc=0, sidebc=None):
     """ Creates 3D grid by extrusion of 2D grid along z-axis
 
@@ -101,8 +94,6 @@ def extrude_grid(obj, zcoords, bottombc=0, topbc=0, sidebc=None):
 
     :returns: 3D grid identifier
 
-    :raises: ValueError, hmscript.ExecError
-
     Use :func:`partition_segment` to define non-equidistant
     **zcoords** with any desired refinement.
 
@@ -124,35 +115,27 @@ def extrude_grid(obj, zcoords, bottombc=0, topbc=0, sidebc=None):
         cc_pnt = grid.raw_data('centers')
     if isinstance(bottombc, int):
         bbot = [bottombc]
-    elif hasattr(bottombc, '__call__'):
+    elif callable(bottombc):
         bbot = [bottombc(p[0], p[1], i) for i, p in enumerate(cc_pnt)]
-    else:
-        raise ValueError("Invalid bottombc type")
     if isinstance(topbc, int):
         btop = [topbc]
-    elif hasattr(topbc, '__call__'):
+    elif callable(topbc):
         btop = [topbc(p[0], p[1], i) for i, p in enumerate(cc_pnt)]
-    else:
-        raise ValueError("Invalid topbc type")
     if sidebc is None:
         bside = None
     elif isinstance(sidebc, int):
         bside = sidebc
-    else:
-        raise ValueError("Invalid sidebc type")
 
     c = com.grid3dcom.ExtrudeZ({"base": obj,
                                 "zvals": copy.deepcopy(zcoords),
                                 "bside": bside,
                                 "btop": btop,
                                 "bbot": bbot})
-    try:
-        flow.exec_command(c)
-        return c.added_grids3()[0]
-    except:
-        raise ExecError("extrusion")
+    flow.exec_command(c)
+    return c.added_grids3()[0]
 
 
+@hmscriptfun
 def revolve_grid(obj, p1, p2, n_phi=None,
                  phi=None, btype1=0, btype2=0, merge_central=False):
     """ Creates 3D grid by revolution of 2D grid around a vector
@@ -187,8 +170,6 @@ def revolve_grid(obj, p1, p2, n_phi=None,
 
     :returns: 3D grid identifier
 
-    :raises: ValueError, ExecError
-
     All points of input grid should lie to the one side of rotation
     vector.
 
@@ -220,8 +201,5 @@ def revolve_grid(obj, p1, p2, n_phi=None,
                                "bt1": btype1,
                                "bt2": btype2,
                                "center_tri": not merge_central})
-    try:
-        flow.exec_command(c)
-        return c.added_grids3()[0]
-    except:
-        raise ExecError("revolve_grid")
+    flow.exec_command(c)
+    return c.added_grids3()[0]

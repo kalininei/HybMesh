@@ -85,8 +85,7 @@ class RemoveGeom(addremove.AbstractAddRemove):
             elif isinstance(ob, gdata.grid3.Grid3):
                 g3names.append(n)
             else:
-                raise command.ExecutionError(
-                    "Unknown object %" % str(ob), self)
+                raise ValueError("Unknown object %" % str(ob), self)
 
         return [], g2names, [], c2names, [], g3names, [], s3names
 
@@ -311,8 +310,7 @@ class CopyGeom(addremove.AbstractAddRemove):
                 ret.append(g3[0])
                 del g3[0]
             else:
-                raise command.ExecutionError(
-                    "Unknown object", self)
+                raise ValueError("Unknown object", self)
         return ret
 
     def _addrem_objects(self):
@@ -334,8 +332,7 @@ class CopyGeom(addremove.AbstractAddRemove):
                 self.__odered.append('g3')
                 g3.append(cp)
             else:
-                raise command.ExecutionError(
-                    "Unknown object %" % str(ob), self)
+                raise ValueError("Unknown object %" % str(ob), self)
 
         return g2, [], c2, [], g3, [], s3, []
 

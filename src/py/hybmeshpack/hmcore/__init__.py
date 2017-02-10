@@ -9,4 +9,4 @@ cport = ct.cdll.LoadLibrary(os.path.abspath(_libfn))
 
 class CppLibError(Exception):
     def __init__(self, mes=""):
-        super(CppLibError, self).__init__("Aglorithm error. " + mes)
+        super(CppLibError, self).__init__(mes)

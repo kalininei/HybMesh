@@ -1,11 +1,12 @@
 "2d grids operations and modifications"
 from hybmeshpack import com
-from hybmeshpack.hmscript import flow, ExecError
+from hybmeshpack.hmscript import flow, hmscriptfun
 import o2info
 from datachecks import (icheck, List, UListOr1, Bool, UList, Point2D,
                         Grid2D, OneOf, Float, Tuple, ACont2D)
 
 
+@hmscriptfun
 def exclude_contours(grid, conts, what):
     """Builds a grid by excluding contour area from existing grid.
 
@@ -17,8 +18,6 @@ def exclude_contours(grid, conts, what):
        Describes what part of ``conts`` domain exclude
 
     :returns: new grid identifier
-
-    :raises: ValueError, ExecError
 
     .. note::
 
@@ -43,18 +42,14 @@ def exclude_contours(grid, conts, what):
         exa = True
     elif what == "outer":
         exa = False
-    else:
-        raise ValueError("Invalid 'what' parameter: %s" % str(what))
     c = com.gridcom.ExcludeContours({"grid_name": grid,
                                      "cont_names": conts,
                                      "is_inner": exa})
-    try:
-        flow.exec_command(c)
-        return c.added_grids2()[0]
-    except:
-        raise ExecError('exclude_contours')
+    flow.exec_command(c)
+    return c.added_grids2()[0]
 
 
+@hmscriptfun
 def unite_grids(base_grid, over_grids, empty_holes=False, fix_bnd=False,
                 zero_angle_approx=0, buffer_fill='3'):
     """Makes grids superposition.
@@ -85,8 +80,6 @@ def unite_grids(base_grid, over_grids, empty_holes=False, fix_bnd=False,
 
     :return: identifier of the newly created grid
 
-    :raises: hmscript.ExecError
-
     See detailed options description in :ref:`gridimp`.
 
     Example:
@@ -108,16 +101,12 @@ def unite_grids(base_grid, over_grids, empty_holes=False, fix_bnd=False,
             "filler": buffer_fill}
     for ig in over_grids:
         args["plus"].append({"name": ig[0], "buf": ig[1], "den": 7})
-    if buffer_fill not in ['3', '4']:
-        raise ValueError("Invalid buffer_fill option")
     c = com.gridcom.UniteGrids(args)
-    try:
-        flow.exec_command(c)
-        return c.added_grids2()[0]
-    except Exception:
-        raise ExecError('unite_grids')
+    flow.exec_command(c)
+    return c.added_grids2()[0]
 
 
+@hmscriptfun
 def map_grid(base_grid, target_contour, base_points, target_points,
              snap="no", project_to="line", btypes="from_grid",
              algo="inverse_laplace",
@@ -178,8 +167,6 @@ def map_grid(base_grid, target_contour, base_points, target_points,
 
        .. warning:: Never use invalid grids for further operations.
 
-    :raises: ValueError, hmscript.ExecError
-
     :returns: identifier of newly created grid
 
     """
@@ -220,13 +207,11 @@ def map_grid(base_grid, target_contour, base_points, target_points,
                              "btypes": btypes,
                              "is_reversed": is_reversed,
                              "return_invalid": return_invalid})
-    try:
-        flow.exec_command(c)
-        return c.added_grids2()[0]
-    except:
-        raise ExecError("map_grid")
+    flow.exec_command(c)
+    return c.added_grids2()[0]
 
 
+@hmscriptfun
 def heal_grid(gid, simplify_boundary=30, convex_cells=-1):
     """ Set of procedures for simplification of grid geometry
 
@@ -237,8 +222,6 @@ def heal_grid(gid, simplify_boundary=30, convex_cells=-1):
     :param float convex_cells: angle (deg) in [0, 180]
 
     :return: None
-
-    :raises: ValueError, ExecError
 
     If **simplify_boundary** parameter is non-negative then edges which
 
@@ -273,7 +256,4 @@ def heal_grid(gid, simplify_boundary=30, convex_cells=-1):
     c = com.gridcom.HealGrid({"name": gid,
                               "simp_bnd": simplify_boundary,
                               "convex": convex_cells})
-    try:
-        flow.exec_command(c)
-    except:
-        raise ExecError('heal_grid')
+    flow.exec_command(c)

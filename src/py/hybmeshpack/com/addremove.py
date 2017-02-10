@@ -85,11 +85,8 @@ class AbstractAddRemove(command.Command):
         self.__addrem = None
 
     def _exec(self):
-        try:
-            self.__addrem = _AddRemoveObjects(*self._addrem_objects())
-            return self.__addrem.do(self.receiver)
-        except Exception as e:
-            raise command.ExecutionError("", self, e)
+        self.__addrem = _AddRemoveObjects(*self._addrem_objects())
+        return self.__addrem.do(self.receiver)
 
     def _clear(self):
         self.__addrem = None

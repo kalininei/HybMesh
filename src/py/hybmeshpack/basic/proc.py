@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 import time
-import copy
-import sys
 
 
 class AbstractSender(object):
@@ -22,50 +20,6 @@ class AbstractSender(object):
         "sent a message for subscribers"
         for s in self._subscribers:
             s(tp, self, **kwargs)
-
-
-class EmbException(Exception):
-    """ Exception which remembers the traceback
-        of previous Exception. Can be embedded multiple times.
-        Example
-        try:
-            try:
-                raise Exception("First")
-            except Exception as e:
-                raise EmbException("Second", e)
-        except EmbException as e:
-            EmbException.print_estack(e)
-            print e
-
-        will print trace from exception First
-        and message from exception Second
-    """
-    def __init__(self, message, prevexc=None):
-        import traceback
-        super(EmbException, self).__init__(message)
-        self.message = message
-        self.__stack = None
-        if prevexc is None:
-            self.__stack = traceback.format_stack()[:-1]
-        elif hasattr(prevexc, '_SmartException__stack'):
-            self.__stack = prevexc._SmartException__stack
-        else:
-            self.__stack = traceback.format_exception(*sys.exc_info())
-
-    def get_stack(self):
-        return copy.deepcopy(self.__stack)
-
-    @staticmethod
-    def estack(exc):
-        if hasattr(exc, '_EmbException__stack'):
-            return exc.get_stack()
-        else:
-            import traceback
-            return copy.deepcopy(traceback.format_exc())
-
-    @staticmethod
-    def print_estack(exc):
-        print ''.join(EmbException.estack(exc))
 
 
 def exectime(method):

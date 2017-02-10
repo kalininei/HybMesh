@@ -1,4 +1,4 @@
-from hybmeshpack.basic.interf import SilentCallbackCancel2
+from hybmeshpack.basic.cb import SilentCallbackCancel2
 from hybmeshpack.hmcore import hmxml
 
 

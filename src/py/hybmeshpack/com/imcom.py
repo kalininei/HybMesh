@@ -1,8 +1,6 @@
 import os.path
 import contcom
-from command import ExecutionError
 from hybmeshpack.hmcore import c2 as c2core
-#
 from hybmeshpack.hmcore import hmxml as hmxml
 from hybmeshpack.gdata.grid2 import Grid2
 from hybmeshpack.gdata.grid3 import Grid3
@@ -44,7 +42,7 @@ class _AbstractImport(addremove.AbstractAddRemove):
     def __check_file_existance(self):
         fn = self.get_option('filename')
         if not os.path.isfile(fn):
-            raise ExecutionError("File not found %s" % fn, self)
+            raise Exception("File not found %s" % fn, self)
 
     #functions for overriding
     def _init_read(self):
@@ -116,7 +114,7 @@ class ImportContourASCII(_AbstractImport):
                 b.append(0)
 
         if len(pts) < 2:
-            raise ExecutionError("Too few points defined", self)
+            raise Exception("Too few points defined", self)
 
         return [c2core.build_from_points(
             pts, self.get_option('force_closed'), b)]

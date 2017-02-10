@@ -1,6 +1,14 @@
 import ctypes as ct
-from hybmeshpack.basic.interf import SilentCallbackCancel2
+from hybmeshpack.basic.cb import SilentCallbackCancel2
 from . import CppLibError, cport
+
+
+def get_last_cside_error():
+    ret = ct.c_char_p()
+    cport.get_last_error_message(ct.byref(ret))
+    out = str(ret.value)
+    free_cside_array(ret, "char")
+    return out
 
 
 def ccall_cb(func, cb, *args):
@@ -9,13 +17,15 @@ def ccall_cb(func, cb, *args):
     cb.initialize(func, args)
     cb.execute_command()
     if not cb.get_result():
-        raise CppLibError()
+        msg = get_last_cside_error()
+        raise CppLibError(msg)
 
 
 def ccall(func, *args):
     ok = func(*args)
     if not ok:
-        raise CppLibError()
+        msg = get_last_cside_error()
+        raise CppLibError(msg)
 
 
 def list_to_c(lst, tp):

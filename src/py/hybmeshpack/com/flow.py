@@ -82,10 +82,8 @@ class CommandFlow(bp.AbstractSender):
             self._send_message(self.BEFORE_EXECUTION, com=cmd)
             try:
                 res = cmd.do(self.receiver)
-            except command.ExecutionError as ke:
-                self.interface.error_handler().known_execution_error(ke)
             except Exception as e:
-                self.interface.error_handler().unknown_execution_error(e, cmd)
+                self.interface.error_handler().execution_error(e, cmd)
 
             if res:
                 self._send_message(self.SUCCESS_EXECUTION, com=cmd)
