@@ -105,7 +105,7 @@ vector<int> define_squares_positions(const BoundingBoxFinder& bf,
 
 	//set undefined to those which contains tree edges
 	for (auto e: tree_edges){
-		for (int i: bf.sqrs(BoundingBox(*e->first(), *e->last()))){
+		for (int i: bf.sqrs_by_bbox(BoundingBox(*e->first(), *e->last()))){
 			ret[i] = 3;
 		}
 	}

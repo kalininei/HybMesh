@@ -102,7 +102,10 @@ struct ClipperTree: public ClipperObject{
 	static ClipperTree Build(const Contour::Tree& tree);
 	//to container
 	static Contour::Tree HMContainer(const ClipperLib::PolyTree&, const BoundingBox&);
+
 	//sorting physical points: INSIDE/OUTSIDE/BOUND for each point
+	//BOUND result is not reliable.
+	//!!! Use this only if it is known that pts do not lie on boundaries.
 	vector<int> SortOutPoints(const vector<Point>& pts) const;
 
 private:

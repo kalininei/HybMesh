@@ -11,7 +11,8 @@ double Area(const GridData& grid);
 //areas cell by cell
 vector<double> CellAreas(const GridData& grid);
 
-//extracts cells which are fully inside (what = INSIDE) or outside (what = OUTSIDE) of given domain
+//extracts cells which are fully inside (what = INSIDE) or
+//fully outside (what = OUTSIDE) of given domain
 CellData ExtractCells(const GridData& grid, const Contour::Tree& domain, int what);
 CellData ExtractCells(const GridData& grid, const EdgeData& domain, int what);
 

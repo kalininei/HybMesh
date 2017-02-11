@@ -52,13 +52,28 @@ public:
 	VertexData find(const vector<Point>& p);
 };
 
+class RasterizeEdges{
+	std::shared_ptr<BoundingBoxFinder> bbf;
+	//true for squares which contain an edge
+	vector<bool> black_squares;
+public:
+	RasterizeEdges(const EdgeData& ed, const BoundingBox& bb, double step);
+
+	// 0 for black squares
+	// 1, 2, 3 for grouped white squares
+	// if use_groups = false, all whites have unity feature
+	vector<int> colour_squares(bool use_groups) const;
+
+	BoundingBoxFinder& bbfinder(){ return *bbf; }
+};
 
 }
 
 namespace Contour{ namespace Finder{
 
 //->(INSIDE, BOUND, OUTSIDE). Direction is ignored.
-int WhereIs(const EdgeData&, const Point& p);
+//bb is a helper bounding box of input contour. 
+int WhereIs(const EdgeData&, const Point& p, BoundingBox* bb=0);
 
 // ======== Crosses and intersections
 //finds first cross (with respect to length of c1) of contours c1, c2.

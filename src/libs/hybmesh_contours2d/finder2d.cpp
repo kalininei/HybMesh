@@ -147,17 +147,21 @@ VertexData Finder::VertexMatch::find(const vector<Point>& p){
 }
 
 
-int Contour::Finder::WhereIs(const EdgeData& ed, const Point& p){
+int Contour::Finder::WhereIs(const EdgeData& ed, const Point& p, BoundingBox* bb){
 	//whereis for contour trees uses this routine
 	//passing all tree edges as 'ed'.
 	//Hence 'ed' is not always a closed contour.
 	assert(!IsContour(ed) || IsClosed(ed));
-	auto bbox = BBox(ed, 0);
-	if (bbox.whereis(p) == OUTSIDE) return OUTSIDE;
+	BoundingBox bbox;
+	if (bb == nullptr){
+		bbox = BBox(ed, 0);
+		bb = &bbox;
+	}
+	if (bb->whereis(p) == OUTSIDE) return OUTSIDE;
 
 	//Contour::Finderculate number of crosses between ed and [p, pout]
 	//where pout is random outside point
-	Point pout(bbox.xmax + 1.56749, bbox.ymax + 1.06574);
+	Point pout(bb->xmax + 1.56749, bb->ymax + 1.06574);
 
 	for (int tries=0; tries<100; ++tries){
 		double ksieta[2];
@@ -266,3 +270,62 @@ Contour::Finder::SelfCross(const EdgeData& c1){
 	return std::make_tuple(false, Point(0, 0), 0., 0.);
 }
 
+Finder::RasterizeEdges::RasterizeEdges(const EdgeData& ed, const BoundingBox& bb, double step){
+	bbf.reset(new BoundingBoxFinder(bb, step));
+	black_squares.resize(bbf->nsqr(), false);
+	for (auto& e: ed){
+		vector<int> is = bbf->sqrs_by_segment(*e->pfirst(), *e->plast());
+		bbf->raw_addentry(is);
+		for (auto i: is){ black_squares[i] = true; }
+	}
+}
+
+namespace{
+vector<int> fill_group(int first, vector<bool>& used, int nx, int ny){
+	std::array<int, 4> adj;
+	auto fill_adj = [&nx, &ny, &adj](int i){
+		int ix = i % nx;
+		int iy = i / nx;
+		adj[0] = (ix != 0) ? (iy*nx+ix-1) : -1;
+		adj[1] = (ix != nx-1) ? (iy*nx+ix+1) : -1;
+		adj[2] = (iy != 0) ? ((iy-1)*nx+ix) : -1;
+		adj[3] = (iy != ny-1) ? ((iy+1)*nx+ix) : -1;
+	};
+
+	vector<int> ret(1, first); used[first] = true;
+	int uu=0;
+	while (uu<ret.size()){
+		fill_adj(ret[uu]);
+		for (auto a: adj) if (a != -1 && !used[a]){
+			ret.push_back(a);
+			used[a] = true;
+		}
+		++uu;
+	}
+
+	return ret;
+}
+}
+
+vector<int> Finder::RasterizeEdges::colour_squares(bool use_groups) const{
+	vector<int> ret(bbf->nsqr(), 1);
+	for (int i=0; i<bbf->nsqr(); ++i)
+		if (black_squares[i])
+			ret[i] = 0;
+	if (!use_groups) return ret;
+
+	//grouping non zero using graph split
+	vector<bool> used = black_squares;
+	int curgroup = 1;
+	while (1){
+		int first = std::find(used.begin(), used.end(), false)-used.begin();
+		if (first >= used.size()) break;
+
+		for (auto i: fill_group(first, used, bbf->nx(), bbf->ny())){
+			ret[i] = curgroup;
+		}
+		++curgroup;
+	}
+
+	return ret;
+}

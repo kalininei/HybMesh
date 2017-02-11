@@ -10,6 +10,7 @@
 #include "treverter2d.hpp"
 #include "export2d_vtk.hpp"
 #include "finder2d.hpp"
+#include "clipper_core.hpp"
 
 using HMTesting::add_check;
 
@@ -519,7 +520,28 @@ void test13(){
 		if (ans4[4] != OUTSIDE) return false;
 		return true;
 	}(), "after rotation");
+	
+	{
+		auto con1 = Contour::Constructor::FromPoints({0,0, 1,0, 1,1, 0,1}, true);
+		auto con2 = Contour::Constructor::FromPoints({0.3,0.3, 0.7,0.3, 0.7,0.7, 0.4,0.7}, true);
+		Contour::Tree ctree;
+		ctree.add_contour(con1);
+		ctree.add_contour(con2);
 
+		HM2D::Impl::ClipperPath path1(con1);
+		int r1 = path1.WhereIs(Point(0.5, 0.5));
+
+		HM2D::Contour::R::ReallyRevert::Permanent(con1);
+		HM2D::Impl::ClipperPath path2(con1);
+		HM2D::Contour::R::ReallyRevert::Permanent(con1);
+		int r2 = path1.WhereIs(Point(0.5, 0.5));
+
+		auto path3 = HM2D::Impl::ClipperTree::Build(ctree);
+		vector<int> r3 = path3.SortOutPoints({Point(0.5, 0.5), Point(0.2, 0.2), Point(-1, -1)});
+
+		add_check(r1 == 1 && r2 == 1 && r3[0] == -1 &&
+		          r3[1] == 1 && r3[2] == -1, "clipper procedures");
+	}
 }
 
 void test14(){

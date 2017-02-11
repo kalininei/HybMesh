@@ -309,6 +309,12 @@ void BoundingBoxFinder::addentry(const BoundingBox& e){
 	}
 	++totaldata;
 }
+
+void BoundingBoxFinder::raw_addentry(const vector<int>& isqr){
+	for (int i: isqr) data[i].push_back(totaldata);
+	++totaldata;
+}
+
 int BoundingBoxFinder::get_xstart(double x) const{
 	int ret = (x - x0) / hx;
 	if (ISEQ(ret*hx, x-x0)) --ret;
@@ -344,7 +350,7 @@ vector<int> BoundingBoxFinder::suspects(const Point& bb) const{
 		get_xstart(bb.x), get_xend(bb.x),
 		get_ystart(bb.y), get_yend(bb.y));
 }
-vector<int> BoundingBoxFinder::sqrs(const BoundingBox& bb) const{
+vector<int> BoundingBoxFinder::sqrs_by_bbox(const BoundingBox& bb) const{
 	vector<int> ret;
 	for (int j=get_ystart(bb.ymin); j<=get_yend(bb.ymax); ++j)
 	for (int i=get_xstart(bb.xmin); i<=get_xend(bb.xmax); ++i)
@@ -356,6 +362,58 @@ vector<int> BoundingBoxFinder::sqrs_by_entry(int e) const{
 	for (int i=0; i<nsqr(); ++i)
 	if (std::find(data[i].begin(), data[i].end(), e) != data[i].end())
 		ret.push_back(i);
+	return ret;
+}
+
+vector<int> BoundingBoxFinder::sqrs_by_point(const Point& p) const{
+	return sqrs_by_bbox(BoundingBox(p));
+}
+vector<int> BoundingBoxFinder::sqrs_by_segment(const Point& p1, const Point& p2) const{
+	//Using something like Bresenham algorithm but keeping all suspect squares
+	//degenerate cases
+	if (ISEQ(p1.x, p2.x) || ISEQ(p1.y, p2.y)) return sqrs_by_bbox(BoundingBox(p1, p2));
+	//first scale points into integer geometry
+	Point a1(p1.x - x0, p1.y - y0), a2(p2.x - x0, p2.y - y0);
+	if (a1.x > a2.x) std::swap(a1, a2);
+	a1.x /= hx; a2.x /= hx;
+	a1.y /= hy; a2.y /= hy;
+	//line equation:
+	//can not get zero division cause degenerate cases have already been removed
+	double tg = (a2.y - a1.y) / (a2.x - a1.x);
+	double b = a1.y - tg * a1.x;
+
+	auto leftbound = [](double x)->int{
+		int fl = floor(x);
+		return ISLOWER(fl, x) ? fl : fl - 1;
+	};
+	auto rightbound = [](double x)->int{
+		int ce = ceil(x);
+		return ISGREATER(ce, x) ? ce : ce + 1;
+	};
+	vector<int> ret;
+	auto app = [&](int ix, int iy){
+		if (ix<0 || ix>=nx() || iy<0 || iy>=ny())
+			return;
+		ret.push_back(iy*nx()+ix);
+	};
+
+	int ileft = std::max(0, leftbound(a1.x));
+	int iright = std::min(nx(), rightbound(a2.x));
+	vector<double> yex;
+	yex.push_back(tg * std::max(a1.x, 0.0) + b);
+	for (int ix = ileft+1; ix<iright; ++ix){
+		yex.push_back(tg*ix + b);
+	}
+	yex.push_back(tg*std::min(a2.x, (double)nx()) + b);
+
+	for (int i=0; i<yex.size()-1; ++i){
+		double ay1=yex[i], ay2=yex[i+1];
+		if (ay1 > ay2) std::swap(ay1, ay2);
+		int ymn = leftbound(ay1);
+		int ymx = rightbound(ay2);
+		for (int j=ymn; j<ymx; ++j) app(ileft + i, j);
+	}
+
 	return ret;
 }
 

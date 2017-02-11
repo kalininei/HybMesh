@@ -1,6 +1,7 @@
 #include "clipper_core.hpp"
 #include <limits>
 #include "cont_assembler.hpp"
+#include "treverter2d.hpp"
 
 using namespace HM2D;
 using namespace HM2D::Impl;
@@ -224,6 +225,7 @@ void ClipperTree::ApplyBoundingBox(const BoundingBox& newbbox){
 
 //from tree
 ClipperTree ClipperTree::Build(const Contour::Tree& tree){
+	HM2D::Contour::R::RevertTree rv(tree);
 	ClipperTree ret;
 	ret.ApplyBoundingBox(HM2D::BBox(tree.alledges()));
 	for (auto n: tree.nodes){
@@ -249,33 +251,52 @@ int whereis(const ClipperLib::Paths& paths, const ClipperLib::IntPoint& pnt){
 	}
 	return level%2==0 ? OUTSIDE : INSIDE;
 }
+int whereis(const vector<ClipperPath>& paths, const ClipperLib::IntPoint& pnt){
+	int level = 0;
+	for (auto& path: paths){
+		int r = ClipperLib::PointInPolygon(pnt, path.data);
+		if (r == -1) return BOUND;
+		if (r == 1) level +=1;
+	}
+	return level%2==0 ? OUTSIDE : INSIDE;
+}
 }
 
 //sorting physical points: INSIDE/OUTSIDE/BOUND for each point
 vector<int> ClipperTree::SortOutPoints(const vector<Point>& pts) const{
+	vector<int> ret;
 	//scaling points
 	vector<ClipperLib::IntPoint> ipts;
 	for (auto& p: pts) ipts.push_back(ToIntGeom(p));
-	//assembling offset procedure
-	ClipperLib::ClipperOffset os;
-	for (int i=0; i<data.size(); ++i) if (!isopen[i]){
-		os.AddPath(data[i].data, ClipperLib::jtSquare, ClipperLib::etClosedPolygon);
-	}
-	//inner, outer
-	ClipperLib::Paths inner, outer;
-	double k = geps * factor;
-	os.Execute(inner, -k);
-	os.Execute(outer, k);
 
-	//sorting points
-	vector<int> ret;
 	for (auto& p: ipts){
-		if (whereis(inner, p) == INSIDE) ret.push_back(INSIDE);
-		else{
-			if (whereis(outer, p) == OUTSIDE) ret.push_back(OUTSIDE);
-			else ret.push_back(BOUND);
-		}
+		ret.push_back(whereis(data, p));
 	}
+
+	//This was a code which tried to overcome difficulties
+	//with BOUND feature. Now current procedure is used only for
+	//non-bound nodes and it is not need. I hope.
+	//
+	////assembling offset procedure
+	//ClipperLib::ClipperOffset os;
+	//for (int i=0; i<data.size(); ++i) if (!isopen[i]){
+		//os.AddPath(data[i].data, ClipperLib::jtSquare, ClipperLib::etClosedPolygon);
+	//}
+	////inner, outer
+	//ClipperLib::Paths inner, outer;
+	//double k = geps * factor;
+	//os.Execute(inner, -k);
+	//os.Execute(outer, k);
+
+	////sorting points
+	//for (auto& p: ipts){
+		//if (whereis(inner, p) == INSIDE) ret.push_back(INSIDE);
+		//else{
+			//if (whereis(outer, p) == OUTSIDE) ret.push_back(OUTSIDE);
+			//else ret.push_back(BOUND);
+		//}
+	//}
+	
 	return ret;
 }
 

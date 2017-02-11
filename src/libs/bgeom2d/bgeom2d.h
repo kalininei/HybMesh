@@ -265,7 +265,7 @@ public:
 	>::type Build(Iter first, Iter last){
 		if (first == last) return BoundingBox();
 		BoundingBox ret(first->x, first->y, first->x, first->y);
-		while (first!=last) {ret.WidenWithPoint(&*first); ++first;}
+		while (first!=last) {ret.WidenWithPoint(*first); ++first;}
 		return ret;
 	}
 	//Container<Point*> -> BoundingBox
@@ -333,12 +333,16 @@ struct BoundingBoxFinder{
 	BoundingBoxFinder(const BoundingBox& area, double L);
 
 	void addentry(const BoundingBox& e);
+	void raw_addentry(const vector<int>& isqr);
 	vector<int> suspects(const BoundingBox& bb) const;
 	vector<int> suspects(const Point& bb) const;
 
 	//data access
-	vector<int> sqrs(const BoundingBox& bb) const;
 	vector<int> sqrs_by_entry(int e) const;
+	vector<int> sqrs_by_point(const Point&) const;
+	vector<int> sqrs_by_segment(const Point&, const Point&) const;
+	vector<int> sqrs_by_bbox(const BoundingBox&) const;
+
 	int nsqr() const { return (mx+1)*(my+1); }
 	const vector<int>& sqr_entries(int i) const { return data[i]; }
 	int nx() const { return mx+1; }
