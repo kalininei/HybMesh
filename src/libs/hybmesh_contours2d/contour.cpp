@@ -4,7 +4,6 @@
 #include "debug2d.hpp"
 using namespace HM2D;
 using namespace HM2D::Contour;
-namespace hc = HM2D::Contour;
 
 bool Contour::IsContour(const EdgeData& ed){
 	for (int i=0; i<ed.size()-1; ++i){
@@ -37,7 +36,7 @@ shared_ptr<Vertex> Contour::Last(const EdgeData& ed){
 	}
 }
 
-bool hc::IsClosed(const EdgeData& cont){
+bool Contour::IsClosed(const EdgeData& cont){
 	if (cont.size() < 2) {
 		return false;
 	} else if (cont.size() == 2){
@@ -51,11 +50,11 @@ bool hc::IsClosed(const EdgeData& cont){
 	               cont[0]->first() == cont.back()->first() ||
 	               cont[0]->last() == cont.back()->last());
 }
-bool hc::IsOpen(const EdgeData& cont){
+bool Contour::IsOpen(const EdgeData& cont){
 	return !IsClosed(cont);
 }
 
-VertexData hc::OrderedPoints(const EdgeData& cont){
+VertexData Contour::OrderedPoints(const EdgeData& cont){
 	if (cont.size() == 0) return {};
 	else if (cont.size() == 1) return {cont[0]->first(), cont[0]->last()};
 	else {
@@ -69,13 +68,7 @@ VertexData hc::OrderedPoints(const EdgeData& cont){
 		return ret;
 	}
 }
-VertexData hc::OrderedPoints1(const EdgeData& cont){
-	auto ret = OrderedPoints(cont);
-	if (ret[0] == ret.back()) ret.resize(ret.size()-1);
-	return ret;
-}
-
-VertexData hc::UniquePoints(const EdgeData& ed){
+VertexData Contour::UniquePoints(const EdgeData& ed){
 	auto op = OrderedPoints(ed);
 	if (op.size() == 0) return op;
 	VertexData ret {op[0]};
@@ -85,19 +78,13 @@ VertexData hc::UniquePoints(const EdgeData& ed){
 	}
 	return ret;
 }
-VertexData hc::UniquePoints1(const EdgeData& ed){
-	auto ret = UniquePoints(ed);
-	if (ret[0] == ret.back()) ret.pop_back();
-	return ret;
-}
-
 namespace{
 bool is_corner(const Point& p, const Point& pprev, const Point& pnext){
 	double ksi = Point::meas_section(p, pprev, pnext);
 	return ksi>=geps*geps;
 }
 }
-VertexData hc::CornerPoints(const EdgeData& ed){
+VertexData Contour::CornerPoints(const EdgeData& ed){
 	auto pnt = UniquePoints(ed);
 	if (pnt.size() == 0) return {};
 	VertexData ret;
@@ -111,9 +98,10 @@ VertexData hc::CornerPoints(const EdgeData& ed){
 		p = pnt[i].get();
 		pnext = pnt[i+1].get();
 
-		if (is_corner(*p, *pprev, *pnext)) ret.push_back(pnt[i]); 
+		if (is_corner(*p, *pprev, *pnext)) ret.push_back(pnt[i]);
 	}
 	if (!cl) ret.push_back(pnt.back());
+	else if (ret.size() > 0) ret.push_back(ret[0]);
 	return ret;
 }
 
@@ -181,19 +169,42 @@ VertexData signpoints_closed(const EdgeData& ed){
 }
 }
 
-VertexData hc::SignificantPoints(const EdgeData& ed){
+VertexData Contour::SignificantPoints(const EdgeData& ed){
 	Contour::R::ReallyDirect rd(ed);
 	if (IsClosed(ed)) return signpoints_closed(ed);
 	else return signpoints_open(ed);
 }
 
-VertexData Contour::CornerPoints1(const EdgeData& ed){
-	auto ret = CornerPoints(ed);
-	if (ret.size()>0 && Contour::IsClosed(ed)){
-		ret.push_back(ret[0]);
+
+VertexData Contour::OrderedPoints1(const EdgeData& cont){
+	auto ret = OrderedPoints(cont);
+	if (ret.size()>0 && ret[0] == ret.back()){
+		ret.resize(ret.size()-1);
 	}
 	return ret;
 }
+VertexData Contour::CornerPoints1(const EdgeData& ed){
+	auto ret = CornerPoints(ed);
+	if (ret.size()>0 && ret[0] == ret.back()){
+		ret.resize(ret.size()-1);
+	}
+	return ret;
+}
+VertexData Contour::SignificantPoints1(const EdgeData& ed){
+	auto ret = SignificantPoints(ed);
+	if (ret.size()>0 && ret[0] == ret.back()){
+		ret.resize(ret.size()-1);
+	}
+	return ret;
+}
+VertexData Contour::UniquePoints1(const EdgeData& ed){
+	auto ret = UniquePoints(ed);
+	if (ret.size()>0 && ret[0] == ret.back()){
+		ret.resize(ret.size()-1);
+	}
+	return ret;
+}
+
 
 bool Contour::CorrectlyDirectedEdge(const EdgeData& cont, int i){
 	if (cont.size() == 1) return true;
@@ -258,7 +269,7 @@ vector<PInfoR> Contour::OrderedInfo(const EdgeData& ed){
 }
 
 std::tuple<double, double, int, double, double>
-hc::CoordAt(const EdgeData& cont, const Point& p){
+Contour::CoordAt(const EdgeData& cont, const Point& p){
 	auto fnd = HM2D::Finder::ClosestEdge(cont, p);
 	int ind = std::get<0>(fnd);
 	assert(ind >= 0);
@@ -272,13 +283,6 @@ hc::CoordAt(const EdgeData& cont, const Point& p){
 
 	double outw = outlen/std::accumulate(lens.begin(), lens.end(), 0.0);
 	return std::make_tuple(outlen, outw, ind, std::get<2>(fnd), std::get<1>(fnd));
-}
-
-void hc::Reverse(EdgeData& ed){ std::reverse(ed.begin(), ed.end()); }
-
-void Contour::AddLastPoint(EdgeData& to, std::shared_ptr<Vertex> p){
-	auto p0 = Last(to);
-	to.push_back(std::make_shared<Edge>(p0, p));
 }
 
 namespace {
@@ -336,45 +340,7 @@ Point Contour::InnerPoint(const EdgeData& ed){
 	return inner_point_core(ed);
 }
 
-std::tuple<bool, shared_ptr<Vertex>>
-Contour::GuaranteePoint(EdgeData& ed, const Point& p){
-	std::tuple<bool, shared_ptr<Vertex>> ret;
-
-	auto ce = HM2D::Finder::ClosestEdge(ed, p);
-	if (std::get<0>(ce)<0){
-		std::get<0>(ret) = false;
-		return ret;
-	}
-	Edge* e = ed[std::get<0>(ce)].get();
-	double elen = e->length();
-	double len2 = std::get<2>(ce)*elen;
-	if (ISZERO(len2)){
-		std::get<0>(ret) = false;
-		std::get<1>(ret) = e->first();
-	} else if (ISZERO(elen-len2)){
-		std::get<0>(ret) = false;
-		std::get<1>(ret) = e->last();
-	} else {
-		auto pnew = std::make_shared<Vertex>(Point::Weigh(
-			*e->first(), *e->last(), std::get<2>(ce)));
-		auto e1 = std::make_shared<Edge>(*e);
-		auto e2 = std::make_shared<Edge>(*e);
-		e1->vertices[1] = pnew;
-		e2->vertices[0] = pnew;
-		if (CorrectlyDirectedEdge(ed, std::get<0>(ce))){
-			ed[std::get<0>(ce)] = e1;
-			ed.insert(ed.begin()+std::get<0>(ce)+1, e2);
-		} else {
-			ed[std::get<0>(ce)] = e2;
-			ed.insert(ed.begin()+std::get<0>(ce)+1, e1);
-		}
-		std::get<0>(ret) = true;
-		std::get<1>(ret) = pnew;
-	}
-	return ret;
-}
-
-double hc::Area(const EdgeData& c){
+double Contour::Area(const EdgeData& c){
 	if (c.size() == 0) return 0;
 	assert(IsClosed(c));
 	auto order = OrderedPoints(c);
@@ -388,11 +354,11 @@ double hc::Area(const EdgeData& c){
 	return ret;
 };
 
-Point hc::WeightPoint(const EdgeData& ed, double w){
+Point Contour::WeightPoint(const EdgeData& ed, double w){
 	return WeightPoints(ed, vector<double>{w})[0];
 }
 
-vector<Point> hc::WeightPoints(const EdgeData& p, vector<double> vw){
+vector<Point> Contour::WeightPoints(const EdgeData& p, vector<double> vw){
 	double len = Length(p);
 	for (auto& v: vw) v*=len;
 	return WeightPointsByLen(p, vw);
@@ -404,7 +370,7 @@ vector<Point> Contour::WeightPointsByLen(const EdgeData& p, vector<double> vw){
 	auto pseq = OrderedPoints(p);
 	std::sort(vw.begin(), vw.end());
 	assert(!ISLOWER(vw[0], 0) && !ISGREATER(vw.back(), Length(p)));
-	
+
 	vector<double> elens {0};
 	for (auto& e: p) elens.push_back(Point::dist(*e->first(), *e->last()));
 	std::partial_sum(elens.begin(), elens.end(), elens.begin());
@@ -429,71 +395,29 @@ vector<double> Contour::EWeights(const EdgeData& c){
 	return ret;
 }
 
-void hc::Connect(EdgeData& to, const EdgeData& from){
-	auto self0 = First(to), self1 = Last(to);
-	auto target0 = First(from), target1 = Last(from);
-	//choosing option for unition
-	if (to.size() == 0 || from.size() == 0 ) goto COPY12;
-	else if (self0 == self1 || target0 == target1) goto THROW;
-	else if (from.size() == 1 &&
-		(from[0]->first() == self1 || from[0]->last() == self1)) goto COPY12;
-	else if (from.size() == 1 &&
-		(from[0]->first() == self0 || from[0]->last() == self0)) goto COPY03;
-	//try to add new contour to the end of current
-	else if (self1 == target0) goto COPY12;
-	else if (self1 == target1) goto NEED_REVERSE;
-	//if failed try to add before the start
-	else if (self0 == target1) goto COPY03;
-	else if (self0 == target0) goto NEED_REVERSE;
-	else goto THROW;
-
-COPY03:
-	{
-		to.insert(to.begin(), from.begin(), from.end());
-		return;
-	}
-COPY12:
-	{
-		to.insert(to.end(), from.begin(), from.end());
-		return;
-	}
-NEED_REVERSE:
-	{
-		EdgeData tmp(from);
-		Reverse(tmp);
-		return Connect(to, tmp);
-	}
-THROW:
-	{
-		throw std::runtime_error("Impossible to unite non-connected contours");
-	}
+double Contour::Length(const EdgeData& ed){
+	double ret = 0;
+	for (auto& e: ed) ret += e->length();
+	return ret;
+}
+vector<double> Contour::ELengths(const EdgeData& ed){
+	vector<double> ret;
+	for (auto& e: ed) ret.push_back(e->length());
+	return ret;
 }
 
-void hc::SplitEdge(EdgeData& cont, int iedge, const vector<Point>& pts){
-	if (pts.size() == 0) return;
-	assert(IsContour(cont));
-	bool iscor = CorrectlyDirectedEdge(cont, iedge);
-	if (!iscor) cont[iedge]->reverse();
+vector<int> Contour::BTypesFromWeights(const EdgeData& cont, const vector<double>& w){
+	assert(Contour::IsContour(cont));
+	vector<int> ret(w.size());
+	vector<double> eweights = HM2D::Contour::EWeights(cont);
 
-	VertexData pp(pts.size()+2);
-	pp[0] = cont[iedge]->vertices[0];
-	pp.back() = cont[iedge]->vertices[1];
-	for (int i=1; i<pp.size()-1; ++i){
-		pp[i] = std::make_shared<Vertex>(pts[i-1]);
+	auto ebegin = eweights.begin();
+	for (int i=0; i<w.size(); ++i){
+		auto fnd = std::upper_bound(ebegin, eweights.end(), w[i]);
+		if (fnd != eweights.begin()) --fnd;
+		ebegin = fnd;
+		ret[i] = cont[fnd - eweights.begin()]->boundary_type;
 	}
 
-	cont[iedge]->vertices[1] = pp[1];
-	EdgeData newed(pts.size());
-	for (int i=0; i<pts.size(); ++i){
-		newed[i] = std::make_shared<Edge>(*cont[iedge]);
-		newed[i]->vertices[0] = pp[i+1];
-		newed[i]->vertices[1] = pp[i+2];
-	}
-	cont.insert(cont.begin()+iedge+1, newed.begin(), newed.end());
-
-	if (!iscor){
-		for (auto it=cont.begin()+iedge; it!=cont.begin()+iedge+pts.size()+1; ++it){
-			(*it)->reverse();
-		}
-	}
-};
+	return ret;
+}

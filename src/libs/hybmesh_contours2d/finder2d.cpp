@@ -1,5 +1,6 @@
 #include "finder2d.hpp"
 #include "contour.hpp"
+#include "clipper_core.hpp"
 using namespace HM2D;
 
 // =============== contains procedures
@@ -198,7 +199,7 @@ cross_core(const EdgeData& c1, const EdgeData& c2, bool is1){
 	VertexData op1 = Contour::OrderedPoints(c1);
 	VertexData op2 = Contour::OrderedPoints(c2);
 
-	auto lens1 = ELengths(c1), lens2 = ELengths(c2);
+	auto lens1 = Contour::ELengths(c1), lens2 = Contour::ELengths(c2);
 	double flen1 = std::accumulate(lens1.begin(), lens1.end(), 0.0);
 	double flen2 = std::accumulate(lens2.begin(), lens2.end(), 0.0);
 
@@ -329,3 +330,141 @@ vector<int> Finder::RasterizeEdges::colour_squares(bool use_groups) const{
 
 	return ret;
 }
+
+vector<int> Contour::Finder::SortOutPoints(const EdgeData& t1, const vector<Point>& pnt){
+	Contour::Tree tree;
+	tree.add_contour(t1);
+	auto ret = SortOutPoints(tree, pnt);
+	//if t1 is inner contour
+	if (Contour::Area(t1) < 0){
+		for (auto& r: ret){
+			if (r == OUTSIDE) r = INSIDE;
+			else if (r == INSIDE) r = OUTSIDE;
+		}
+	}
+	return ret;
+}
+
+namespace{
+//does sorting using clipper procedure.
+//It could be used only if points are known not to lie on edges
+vector<int> clipper_sort_out_points(const Contour::Tree& t1, const vector<Point>& pnt){
+	auto ctree = Impl::ClipperTree::Build(t1);
+	vector<int> ret = ctree.SortOutPoints(pnt);
+	assert([&](){
+		//Boundary points should be treated somewhere else
+		for (auto i: ret) if (i == BOUND) return false;
+		return true;
+	}());
+	return ret;
+}
+//does sort by calculating intersections
+vector<int> raw_sort_out_points(const Contour::Tree& t1, const vector<Point>& pnt){
+	//bounding boxes
+	std::map<Contour::Tree::TNode*, BoundingBox> bb;
+	for (auto& n: t1.bound_contours()){
+		bb[n.get()] = HM2D::BBox(n->contour);
+	}
+
+	std::function<void(const ShpVector<Contour::Tree::TNode>&, Point&, int&)>
+	lvwithin = [&lvwithin, &bb](const ShpVector<Contour::Tree::TNode>& lv, Point& p, int& a){
+		int indwithin = -1;
+		for (int i=0; i<lv.size(); ++i){
+			int rs = Contour::Finder::WhereIs(lv[i]->contour, p, &bb[lv[i].get()]);
+			if (rs == BOUND){ a = -2; return; }
+			else if (rs == INSIDE) { indwithin = i; break; }
+		}
+		if (indwithin == -1) return;
+		else {
+			ShpVector<Contour::Tree::TNode> newlv;
+			for (auto w: lv[indwithin]->children) newlv.push_back(w.lock());
+			return lvwithin(newlv, p, ++a);
+		}
+	};
+
+	vector<int> ret;
+	auto roots = t1.roots();
+	for (auto p: pnt){
+		int maxlevel = -1;
+		lvwithin(roots, p, maxlevel);
+		if (maxlevel == -2) ret.push_back(BOUND);
+		else if (maxlevel == -1) ret.push_back(OUTSIDE);
+		else if (maxlevel % 2 == 0) ret.push_back(INSIDE);
+		else ret.push_back(OUTSIDE);
+	}
+	return ret;
+}
+
+//does sort by discretizing input contour, grouping discretized squares
+//and calling raw_sort_out_points for single point for each group
+vector<int> qsort_out_points(const Contour::Tree& t1, const vector<Point>& pnt){
+	vector<int> ret(pnt.size());
+	auto pntbb = BoundingBox::Build(pnt.begin(), pnt.end());
+
+	HM2D::EdgeData ae = t1.alledges();
+	HM2D::Finder::RasterizeEdges discr(ae, pntbb, pntbb.maxlen()/50);
+	vector<int> sqr_colours = discr.colour_squares(true);
+
+	//colours of input points
+	vector<int> pnt_colours(pnt.size());
+	for (int i=0; i<pnt.size(); ++i){
+		vector<int> sqrs = discr.bbfinder().sqrs_by_point(pnt[i]);
+		pnt_colours[i] = sqr_colours[sqrs[0]];
+		for (int j=1; j<sqrs.size(); ++j){
+			pnt_colours[i] = std::min(pnt_colours[i], sqr_colours[sqrs[j]]);
+		}
+	}
+
+	//build groups->points map
+	std::map<int, vector<int>> used_colours = { {0, vector<int>()} };
+	for (int i=0; i<pnt.size(); ++i) if (pnt_colours[i] != 0){
+		auto fnd = used_colours.find(pnt_colours[i]);
+		if (fnd == used_colours.end()){
+			fnd = used_colours.emplace(pnt_colours[i], vector<int>{}).first;
+		}
+		fnd->second.push_back(i);
+	} else {
+		//check [0] (black) group if those points lie on edges
+		ret[i] = INSIDE;
+		for (int sus: discr.bbfinder().suspects(pnt[i])){
+			double m = Point::meas_section(pnt[i], *ae[sus]->pfirst(), *ae[sus]->plast());
+			if (m < geps*geps) {ret[i] = BOUND; break; }
+		}
+		//point is not on edge -> add it for future analysis
+		if (ret[i] == INSIDE) used_colours[0].push_back(i);
+	}
+
+	//assembling point list to be passed to RawSortOut procedure
+	//groups points, then points of undefined group
+	vector<Point> pnt_to_raw;
+	for (auto& it: used_colours) if (it.first > 0){
+		//first points of non-black groups
+		pnt_to_raw.push_back(pnt[it.second[0]]);
+	} else {
+		//all points of the black group
+		for (auto& it2: it.second){
+			pnt_to_raw.push_back(pnt[it2]);
+		}
+	}
+	//call raw procedure
+	//vector<int> raw_output = raw_sort_out_points(t1, pnt_to_raw);
+	vector<int> raw_output = clipper_sort_out_points(t1, pnt_to_raw);
+
+	//restore result
+	auto rit = raw_output.begin();
+	for (auto& it: used_colours) if (it.first > 0){
+		int pos = *rit++;
+		for (auto& ind: it.second){ ret[ind] = pos; }
+	} else {
+		//all points of the black group
+		for (auto& it2: it.second){ ret[it2] = *rit++; }
+	}
+	return ret;
+}
+}
+
+vector<int> Contour::Finder::SortOutPoints(const Tree& t1, const vector<Point>& pnt){
+	if (pnt.size() < 100) return raw_sort_out_points(t1, pnt);
+	else return qsort_out_points(t1, pnt);
+}
+

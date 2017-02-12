@@ -20,6 +20,16 @@ vector<VertexData> Coarsening(const EdgeData& cont,
 		const std::set<shared_ptr<Vertex>>& mandatory,
 		double h, double crit_angle, double snap_dist);
 
+
+//Gives a vector defining a director of contour in given point p which should be amoung contour points.
+//direction = 1 -> consider contour as it is
+//direction = -1 -> revert contour before procedure
+//len_forward, len_backward - length of smoothing.
+//   *_forward and *_backward are steps along given contour direction
+//   before possible reversion due to `direction=-1` option.
+//result is a unit vector
+Vect SmoothedDirection2(const EdgeData& c, const Point* p, int direction, double len_forwad, double len_backward);
+
 }}}
 
 #endif

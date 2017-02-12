@@ -3,10 +3,10 @@
 
 source ../../src/libs/dbgscripts/hmout.gdb
 
-file ./hmblay_test
+file ./hmgrid3d_test
 
 set breakpoint pending on
-b canonic_bgrid.cpp:526
+b hmgrid3d_test.cpp:182
 run
 
 source ../../src/libs/dbgscripts/skiplist

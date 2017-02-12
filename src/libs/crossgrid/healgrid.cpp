@@ -1,11 +1,11 @@
 #include "healgrid.hpp"
-#include "algos.hpp"
+#include "modcont.hpp"
 #include "modgrid.hpp"
 #include "treverter2d.hpp"
-#include "cont_assembler.hpp"
+#include "assemble2d.hpp"
 #include "contabs2d.hpp"
 #include "finder2d.hpp"
-#include "contclipping.hpp"
+#include "clipdomain.hpp"
 
 using namespace HM2D;
 using namespace HM2D::Grid;
@@ -40,7 +40,7 @@ struct _ShiftSnapPreCalc{
 		}
 		//gridbnd = GGeom::Info::Contour(grid);
 		//all contour significant points weights
-		cp = HM2D::Contour::CornerPoints(cont);
+		cp = HM2D::Contour::CornerPoints1(cont);
 		for (auto p: cp){
 			auto coord = HM2D::Contour::CoordAt(cont, *p);
 			contw[std::get<1>(coord)] = p;
@@ -283,7 +283,7 @@ void Algos::Heal(GridData& from){
 		auto& c = from.vcells[i];
 		auto& ec = c->edges;
 		if (Contour::Area(ec) < 0){
-			Contour::Reverse(ec);
+			Contour::Algos::Reverse(ec);
 		}
 		//fix left-right cell connections
 		for (int j=0; j<ec.size(); ++j){

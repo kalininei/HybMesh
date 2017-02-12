@@ -1,13 +1,14 @@
 #include "mapped_contour.hpp"
 #include "hmmapping.hpp"
 #include "contour.hpp"
+#include "modcont.hpp"
 
 using namespace HMMap::Impl;
 MappedContour::MappedContour(const HM2D::EdgeData* c1, const HM2D::EdgeData* c2, bool reversed):
 		base(c1), orig_mapped(c2){
 	if (reversed){
 		rev_mapped = *c2;
-		HM2D::Contour::Reverse(rev_mapped);
+		HM2D::Contour::Algos::Reverse(rev_mapped);
 		mapped = &rev_mapped;
 	} else {
 		mapped = orig_mapped;

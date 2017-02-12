@@ -6,6 +6,7 @@ using namespace HM3D::Surface;
 using namespace HM3D::Surface::R;
 
 Revert::Revert(const FaceData& srf){
+	permanent = false;
 	obj = const_cast<FaceData*>(&srf);
 	need_revert = vector<bool>(srf.size(), false);
 	auto ae = AllEdges(srf);
@@ -70,9 +71,11 @@ Revert::Revert(const FaceData& srf){
 	}
 }
 Revert::~Revert(){
-	for (size_t i=0; i<obj->size(); ++i)
-	if (need_revert[i]){
-		(*obj)[i]->reverse();
+	if (!permanent){
+		for (size_t i=0; i<obj->size(); ++i)
+		if (need_revert[i]){
+			(*obj)[i]->reverse();
+		}
 	}
 }
 void Revert::reverse_direction(){
@@ -99,7 +102,7 @@ RevertTree::RevertTree(const Tree& srf){
 RevertTree::~RevertTree(){}
 
 RevertGridSurface::RevertGridSurface(const FaceData& srf, bool cells_left){
-	is_permanent = false;
+	permanent = false;
 	obj = const_cast<FaceData*>(&srf);
 	need_revert.resize(srf.size(), false);
 	if (cells_left) for (int i=0; i<srf.size(); ++i){
@@ -117,9 +120,9 @@ RevertGridSurface::RevertGridSurface(const FaceData& srf, bool cells_left){
 	}
 }
 RevertGridSurface::~RevertGridSurface(){
-	if (!is_permanent)
-	for (int i=0; i<obj->size(); ++i) if (need_revert[i]){
-		(*obj)[i]->reverse();
+	if (!permanent){
+		for (int i=0; i<obj->size(); ++i) if (need_revert[i]){
+			(*obj)[i]->reverse();
+		}
 	}
 }
-void RevertGridSurface::make_permanent(){ is_permanent = true; }

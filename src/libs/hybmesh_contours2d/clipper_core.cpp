@@ -1,6 +1,6 @@
 #include "clipper_core.hpp"
 #include <limits>
-#include "cont_assembler.hpp"
+#include "assemble2d.hpp"
 #include "treverter2d.hpp"
 
 using namespace HM2D;
@@ -16,7 +16,7 @@ void ClipperObject::ApplyBoundingBox(const BoundingBox& newbbox){
 		factor = (long double)CLIPPER_RESOLUTION / maxlen;
 		factor = std::min(factor, (long double) std::numeric_limits<ClipperLib::cInt>::max()/100.0);
 	}
-	p0 = newbbox.Center();
+	p0 = newbbox.center();
 }
 
 ClipperLib::IntPoint ClipperObject::ToIntGeom(const Point& p) const{
@@ -35,7 +35,7 @@ Point ClipperObject::ToRealGeom(const ClipperLib::IntPoint& p) const{
 
 ClipperPath::ClipperPath(const EdgeData& path){
 	auto pnt = Contour::OrderedPoints(path);
-	ApplyBoundingBox(BoundingBox::Build(pnt.begin(), pnt.end()));
+	ApplyBoundingBox(BoundingBox::PBuild(pnt.begin(), pnt.end()));
 	std::transform(pnt.begin(), pnt.end(), std::back_inserter(data),
 		[&](shared_ptr<Point> p){ return this->ToIntGeom(*p);
 	});
@@ -66,18 +66,11 @@ int ClipperPath::WhereIs(Point p) const{
 	return ClipperLib::PointInPolygon(ToIntGeom(p), data);
 }
 
-Contour::Tree ClipperPath::Offset(double delta, HM2D::Contour::Algos::OffsetTp tp) const{
+Contour::Tree ClipperPath::Offset(double delta, ClipperLib::EndType et) const{
 	long double dd = (long double)delta * factor;
 	double arctol = ClipperArcTolerance * factor;
 	ClipperLib::ClipperOffset worker;
 	
-	ClipperLib::EndType et;
-	switch (tp){
-		case Contour::Algos::OffsetTp::RC_CLOSED_POLY: et = ClipperLib::etClosedPolygon; break;
-		case Contour::Algos::OffsetTp::RC_OPEN_ROUND: et = ClipperLib::etOpenRound; break;
-		case Contour::Algos::OffsetTp::RC_OPEN_BUTT: et = ClipperLib::etOpenButt; break;
-		default: _THROW_NOT_IMP_;
-	}
 	worker.AddPath(this->data, ClipperLib::jtRound, et);
 	worker.ArcTolerance = arctol;
 	ClipperLib::PolyTree sol;
@@ -311,16 +304,16 @@ BoundingBox SameBoundingBox(
 		if (pths1[i].data.size() == 0) continue;
 		if (uninit) {ret = pths1[i].bbox; uninit = false; }
 		else{
-			ret.WidenWithPoint(pths1[i].bbox.BottomLeft());
-			ret.WidenWithPoint(pths1[i].bbox.TopRight());
+			ret.widen(pths1[i].bbox.pmin());
+			ret.widen(pths1[i].bbox.pmax());
 		}
 	}
 	for (int i=0; i<pths2.size(); ++i){
 		if (pths2[i].data.size() == 0) continue;
 		if (uninit) {ret = pths2[i].bbox; uninit = false; }
 		else{
-			ret.WidenWithPoint(pths2[i].bbox.BottomLeft());
-			ret.WidenWithPoint(pths2[i].bbox.TopRight());
+			ret.widen(pths2[i].bbox.pmin());
+			ret.widen(pths2[i].bbox.pmax());
 		}
 	}
 	assert(!uninit);

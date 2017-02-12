@@ -2,19 +2,19 @@
 set (HEADERS
 	primitives2d.hpp
 	contour.hpp
-	tree.hpp
+	contour_tree.hpp
 	contabs2d.hpp
 	finder2d.hpp
 	treverter2d.hpp
-	constructor.hpp
+	buildcont.hpp
 	clipper_core.hpp
-	contclipping.hpp
+	clipdomain.hpp
 	debug2d.hpp
 	gpc_core.hpp
-	cont_assembler.hpp
-	algos.hpp
-	cont_partition.hpp
-	cont_repart.hpp
+	assemble2d.hpp
+	modcont.hpp
+	partcont.hpp
+	coarsencont.hpp
 	export2d_hm.hpp
 	export2d_vtk.hpp
 	export2d_tecplot.hpp
@@ -26,19 +26,19 @@ set (HEADERS
 set (SOURCES
 	primitives2d.cpp
 	contour.cpp
-	tree.cpp
+	contour_tree.cpp
 	contabs2d.cpp
 	finder2d.cpp
 	treverter2d.cpp
-	constructor.cpp
+	buildcont.cpp
 	clipper_core.cpp
-	contclipping.cpp
+	clipdomain.cpp
 	debug2d.cpp
 	gpc_core.cpp
-	cont_assembler.cpp
-	algos.cpp
-	cont_partition.cpp
-	cont_repart.cpp
+	assemble2d.cpp
+	modcont.cpp
+	partcont.cpp
+	coarsencont.cpp
 	export2d_hm.cpp
 	export2d_vtk.cpp
 	export2d_tecplot.cpp

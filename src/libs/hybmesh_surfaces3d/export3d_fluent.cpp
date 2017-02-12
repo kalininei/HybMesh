@@ -5,6 +5,7 @@
 #include "surface.hpp"
 #include "debug3d.hpp"
 #include "serialize3d.hpp"
+#include "assemble3d.hpp"
 
 using namespace HM3D;
 namespace hme = HM3D::Export;
@@ -49,7 +50,7 @@ char msh_cell_type(HM3D::Cell& c){
 
 std::map<int, ShpVector<Face>> faces_by_btype(const GridData& g){
 	std::map<int, ShpVector<Face>> ret;
-	//interior zone has always be there
+	//interior zone should always be there
 	ret.emplace(std::numeric_limits<int>::min(), ShpVector<Face>());
 	for (auto f: g.vfaces){
 		int tp = (f->is_boundary()) ? f->boundary_type : std::numeric_limits<int>::min();
@@ -286,7 +287,7 @@ void gridmsh(HMCallback::Caller2& callback, const GridData& g, std::string fn,
 }
 
 void hme::PeriodicDataEntry::assemble(GridData& g, std::map<Face*, Face*>& outmap){
-	auto surfs = HM3D::Surface::GridSurfaceBType(g);
+	auto surfs = HM3D::Surface::Assembler::GridSurfaceBType(g);
 	HM3D::FaceData periodic_surf = surfs[bt];
 	HM3D::FaceData shadow_surf = surfs[bt_shadow];
 	
@@ -302,15 +303,15 @@ void hme::PeriodicDataEntry::assemble(GridData& g, std::map<Face*, Face*>& outma
 	for (auto f: shadow_surf) f->correct_edge_directions();
 
 	//boundary
-	ShpVector<Edge> bnd1 = Surface::ExtractBoundary(periodic_surf, v);
-	ShpVector<Edge> bnd2 = Surface::ExtractBoundary(shadow_surf, v_shadow);
+	ShpVector<Edge> bnd1 = Contour::Assembler::ExtractBoundary(periodic_surf, v);
+	ShpVector<Edge> bnd2 = Contour::Assembler::ExtractBoundary(shadow_surf, v_shadow);
 	//boundary sizes should be equal
 	if (bnd1.size() != bnd2.size() || bnd1.size() == 0)
 		throw std::runtime_error("Periodic merging failed");
 
 	//subsurface bounded by bnd1, bnd2 (if initial surface are multiply connected)
-	periodic_surf = HM3D::Surface::SubSurface(periodic_surf, bnd1[0]->vertices[0].get());
-	shadow_surf = HM3D::Surface::SubSurface(shadow_surf, bnd2[0]->vertices[0].get());
+	periodic_surf = HM3D::Surface::Assembler::SubSurface(periodic_surf, bnd1[0]->vertices[0].get());
+	shadow_surf = HM3D::Surface::Assembler::SubSurface(shadow_surf, bnd2[0]->vertices[0].get());
 
 	//Rearranging to match topology
 	HM3D::Surface::FaceRearrange(periodic_surf, bnd1[0].get());

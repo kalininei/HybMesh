@@ -3,7 +3,7 @@
 
 #include "primitives3d.hpp"
 
-namespace HM3D{
+namespace HM3D{ namespace Grid{ namespace Constructor{
 
 //Faces should have matched direction.
 //Pyramids will be built to the left side of faces
@@ -20,5 +20,5 @@ GridData BuildPyramidLayer(
 	double merge_angle=60);
 
 
-}
+}}}
 #endif

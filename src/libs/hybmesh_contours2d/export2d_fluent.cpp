@@ -2,8 +2,8 @@
 #include <sstream>
 #include <fstream>
 #include <unordered_map>
-#include "algos.hpp"
-#include "cont_assembler.hpp"
+#include "modcont.hpp"
+#include "assemble2d.hpp"
 
 using namespace HM2D;
 namespace hme=HM2D::Export;
@@ -176,7 +176,7 @@ std::vector<int> hme::PeriodicData::assemble(GridData& g) const {
 			throw std::runtime_error("Periodic merging failed");
 		}
 		//check direction
-		if (ar[0].size() > 1 && ar[0][0]->last() != ar[0][1]->first()) HM2D::Contour::Reverse(ar[0]);
+		if (ar[0].size() > 1 && ar[0][0]->last() != ar[0][1]->first()) HM2D::Contour::Algos::Reverse(ar[0]);
 		assembled_b_contours.push_back(std::move(ar[0]));
 	}
 	//map for adressing
@@ -209,7 +209,7 @@ std::vector<int> hme::PeriodicData::assemble(GridData& g) const {
 				HM2D::Contour::IsClosed(*c2)){
 			throw std::runtime_error("Periodic merging failed");
 		}
-		if (isrev[k]) HM2D::Contour::Reverse(*c2);
+		if (isrev[k]) HM2D::Contour::Algos::Reverse(*c2);
 		for (int i=0; i<c1->size(); ++i){
 			cont_edges_relations.push_back((*c1)[i].get());
 			cont_edges_relations.push_back((*c2)[i].get());

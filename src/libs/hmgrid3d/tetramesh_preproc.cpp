@@ -2,6 +2,7 @@
 #include "debug3d.hpp"
 #include "merge3d.hpp"
 #include "pyramid_layer.hpp"
+#include "assemble3d.hpp"
 using namespace HM3D::Mesher;
 using namespace HM3D;
 
@@ -19,7 +20,7 @@ SurfacePreprocess::SurfacePreprocess(const Surface::Tree& tree, double split_ang
 
 	//decomposed_surfs1 stores decomposition surfaces for all tree node surfaces
 	for (auto n: tree.nodes){
-		decomposed_surfs1.push_back(Surface::ExtractSmooth(n->surface, split_angle));
+		decomposed_surfs1.push_back(Surface::Assembler::ExtractSmooth(n->surface, split_angle));
 	}
 
 	assemble_bnd_grid();
@@ -49,7 +50,7 @@ void SurfacePreprocess::assemble_bnd_grid(){
 	//Save faces id since they store decomposition information
 	shared_ptr<aa::RestoreIds<FaceData>> resfd(new aa::RestoreIds<FaceData>(fd));
 	//build pyramids
-	bnd_grid = HM3D::BuildPyramidLayer(fd, true, 60);
+	bnd_grid = HM3D::Grid::Constructor::BuildPyramidLayer(fd, true, 60);
 
 	//split bnd grid inner surfaces according to input surface decomposition
 	resfd.reset();
@@ -126,7 +127,7 @@ void SurfacePreprocess::supplement_from_decomposed_surfs(){
 			vector<EdgeData> vds;
 			assert(surfs_rnormals.find(&s) != surfs_rnormals.end());
 			Vect3 right_normal = surfs_rnormals[&s];
-			auto ex = Surface::ExtractAllBoundaries(s, right_normal);
+			auto ex = Contour::Assembler::ExtractAllBoundaries(s, right_normal);
 			assert(ex[0].size() == 1);
 			vds.push_back(ex[0][0]);
 			for (int i=0; i<ex[1].size(); ++i) vds.push_back(ex[1][i]);
@@ -178,6 +179,6 @@ void SurfacePreprocess::Restore(GridData& g, const VertexData& gvert, const Vert
 }
 
 void SurfacePreprocess::merge_with_bnd(GridData& tar, const vector<int>& tar_points, const vector<int>& bnd_points){
-	HM3D::MergeGrid(bnd_grid, tar, bnd_points, tar_points);
+	HM3D::Grid::Algos::MergeGrid(bnd_grid, tar, bnd_points, tar_points);
 }
 

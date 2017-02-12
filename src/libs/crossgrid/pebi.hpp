@@ -2,7 +2,7 @@
 #define HYBMESH_PEBI_HPP
 #include "hmcallback.hpp"
 #include "primitives2d.hpp"
-#include "tree.hpp"
+#include "contour_tree.hpp"
 
 namespace HM2D{
 

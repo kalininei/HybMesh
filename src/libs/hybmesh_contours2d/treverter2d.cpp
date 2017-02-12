@@ -1,5 +1,6 @@
 #include "treverter2d.hpp"
 #include "finder2d.hpp"
+#include "modcont.hpp"
 using namespace HM2D;
 using namespace HM2D::Contour;
 using namespace HM2D::Contour::R;
@@ -17,12 +18,12 @@ ReallyRevert::ReallyRevert(const EdgeData& ed){
 		}
 	}
 	//reverse contour
-	Reverse(*obj);
+	Algos::Reverse(*obj);
 }
 
 ReallyRevert::~ReallyRevert(){
 	if (!permanent){
-		Reverse(*obj);
+		Algos::Reverse(*obj);
 		for (int i=0; i<reverted_edges.size(); ++i) if (reverted_edges[i]){
 			(*obj)[i]->reverse();
 		}

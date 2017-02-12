@@ -1,10 +1,11 @@
 #include "extpath.hpp"
-#include "algos.hpp"
-#include "constructor.hpp"
+#include "modcont.hpp"
+#include "buildcont.hpp"
 #include "treverter2d.hpp"
-#include "cont_partition.hpp"
-#include "cont_assembler.hpp"
+#include "partcont.hpp"
+#include "assemble2d.hpp"
 #include "finder2d.hpp"
+#include "coarsencont.hpp"
 
 using namespace HMBlay::Impl;
 
@@ -98,7 +99,7 @@ ExtPath ExtPath::Assemble(const vector<Options*>& data){
 		//check for ordering
 		assert(ret.size() == 0 || HM2D::Contour::Last(ret) == HM2D::Contour::First(*p));
 		//add edges
-		HM2D::Contour::Connect(ret, *p);
+		HM2D::Contour::Algos::Connect(ret, *p);
 		for (int i=0; i<p->size(); ++i) edgeopt.push_back(d);
 	}
 	//add empty options
@@ -180,7 +181,7 @@ void ExtPath::FillEndConditions(){
 		double l2 = std::get<0>(fndp1) - h;
 		if (l2 < 0){
 			assert(HM2D::Contour::IsClosed(*full_source));
-			l2 += HM2D::Length(*full_source);
+			l2 += HM2D::Contour::Length(*full_source);
 		}
 		auto fndp2 = HM2D::Contour::CoordAt(*full_source, HM2D::Contour::WeightPointsByLen(*full_source, {l2})[0]);
 		if (ISEQ(std::get<3>(fndp2), 0.)){
@@ -204,7 +205,7 @@ void ExtPath::FillEndConditions(){
 		Point p1 = *HM2D::Contour::Last(*this), p2;
 		auto fndp1 = HM2D::Contour::CoordAt(*full_source, p1);
 		double l2 = std::get<0>(fndp1) + h;
-		double fslen = HM2D::Length(*full_source);
+		double fslen = HM2D::Contour::Length(*full_source);
 		if (l2 > fslen){
 			assert(HM2D::Contour::IsClosed(*full_source));
 			l2 -= fslen;
@@ -231,7 +232,7 @@ void ExtPath::PerpendicularStart(){
 	Vect v = ext_data[0].normal * 100;
 	Point f = *HM2D::Contour::First(*this);
 	auto c = HM2D::Contour::Constructor::FromPoints({f, f+v});
-	HM2D::Contour::Connect(leftbc, c);
+	HM2D::Contour::Algos::Connect(leftbc, c);
 }
 
 void ExtPath::PerpendicularEnd(){
@@ -239,7 +240,7 @@ void ExtPath::PerpendicularEnd(){
 	Vect v = ext_data.back().normal * 100;
 	Point f = *HM2D::Contour::Last(*this);
 	auto c = HM2D::Contour::Constructor::FromPoints({f, f+v});
-	HM2D::Contour::Connect(rightbc, c);
+	HM2D::Contour::Algos::Connect(rightbc, c);
 }
 
 
@@ -270,7 +271,7 @@ vector<ExtPath> ExtPath::DivideByAngle(const ExtPath& pth, vector<CornerTp> tps)
 	//if this is a closed contour get rid of division at the first point
 	if (HM2D::Contour::IsClosed(pth) && ret.size()>1 && !istps(ret[0].ext_data[0].tp)){
 		ExtPath np(ret.back());
-		HM2D::Contour::Connect(np, ret[0]);
+		HM2D::Contour::Algos::Connect(np, ret[0]);
 		for (int i=1; i<ret[0].ext_data.size(); ++i){
 			np.ext_data.push_back(ret[0].ext_data[i]);
 		}
@@ -300,10 +301,10 @@ vector<ExtPath> ExtPath::DivideByHalf(const ExtPath& pth){
 	vector<ExtPath> ret(2);
 	//first edges
 	ret[0].emplace_back(new HM2D::Edge(dp[0], dp[1]));
-	for (int i=2; i<hind+1; ++i) HM2D::Contour::AddLastPoint(ret[0], dp[i]);
+	for (int i=2; i<hind+1; ++i) HM2D::Contour::Algos::AddLastPoint(ret[0], dp[i]);
 	//second edges
 	ret[1].emplace_back(new HM2D::Edge(dp[hind], dp[hind+1]));
-	for (int i = hind+2; i<dp.size(); ++i) HM2D::Contour::AddLastPoint(ret[1], dp[i]);
+	for (int i = hind+2; i<dp.size(); ++i) HM2D::Contour::Algos::AddLastPoint(ret[1], dp[i]);
 	//first ext_data
 	for (int i=0; i<hind+1; ++i) ret[0].ext_data.push_back(pth.ext_data[i]);
 	//second ext_data
@@ -444,7 +445,7 @@ ExtPath ExtPath::SubPath(double len1, double len2) const{
 
 Point* ExtPath::AddPoint(double len){
 	auto w = HM2D::Contour::WeightPointsByLen(*this, {len});
-	auto g = HM2D::Contour::GuaranteePoint(*this, w[0]);
+	auto g = HM2D::Contour::Algos::GuaranteePoint(*this, w[0]);
 	auto ret = std::get<1>(g);
 	//if point already in path -> return it
 	if (std::get<0>(g) == false) return ret.get();

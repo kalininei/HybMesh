@@ -132,9 +132,6 @@ EdgeData AllEdges(const CellData& from);
 std::tuple<VertexData> AllPrimitives(const EdgeData& from);
 std::tuple<VertexData, EdgeData> AllPrimitives(const CellData& from);
 
-//lengths
-double Length(const EdgeData&);
-vector<double> ELengths(const EdgeData&);
 }
 
 #endif

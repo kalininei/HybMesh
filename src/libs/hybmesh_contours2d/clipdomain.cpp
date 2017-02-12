@@ -1,7 +1,7 @@
-#include "contclipping.hpp"
+#include "clipdomain.hpp"
 #include "clipper_core.hpp"
 #include "gpc_core.hpp"
-#include "cont_assembler.hpp"
+#include "assemble2d.hpp"
 
 namespace ci = HM2D::Contour::Clip;
 using namespace ci;
@@ -322,5 +322,35 @@ STARTFOR:
 	}
 	for (auto c: not_needed) c1.remove_contour(c);
 }
+
+// ===================================== Offset implementation
+namespace{
+ClipperLib::EndType get_et(HM2D::Contour::Algos::OffsetTp tp){
+	ClipperLib::EndType et;
+	switch (tp){
+		case HM2D::Contour::Algos::OffsetTp::RC_CLOSED_POLY: et = ClipperLib::etClosedPolygon; break;
+		case HM2D::Contour::Algos::OffsetTp::RC_OPEN_ROUND: et = ClipperLib::etOpenRound; break;
+		case HM2D::Contour::Algos::OffsetTp::RC_OPEN_BUTT: et = ClipperLib::etOpenButt; break;
+		default: _THROW_NOT_IMP_;
+	}
+	return et;
+}
+}
+
+HM2D::Contour::Tree HM2D::Contour::Algos::Offset(const EdgeData& source, double delta, OffsetTp tp){
+	Impl::ClipperPath cp(source);
+	if (IsClosed(source) && Contour::Area(source) < 0) delta = -delta;
+	return cp.Offset(delta, get_et(tp));
+};
+
+HM2D::EdgeData HM2D::Contour::Algos::Offset1(const EdgeData& source, double delta){
+	Contour::Tree ans;
+	if (IsClosed(source)) ans = Offset(source, delta, OffsetTp::RC_CLOSED_POLY);
+	else ans = Offset(source, delta, OffsetTp::RC_OPEN_ROUND);
+	assert(ans.nodes.size() == 1);
+	return ans.nodes[0]->contour;
+};
+
+
 
 #endif

@@ -1,5 +1,6 @@
 #include "serialize3d.hpp"
 #include "surface.hpp"
+#include "assemble3d.hpp"
 
 using namespace HM3D;
 using namespace HM3D::Ser;
@@ -325,7 +326,7 @@ const vector<vector<int>>& Ser::Grid::face_vertex() const { return cache->face_v
 const vector<int>& Ser::Grid::face_vertex(int n) const { return cache->face_vertex()[n]; }
 
 void Ser::Grid::set_btype(std::function<int(Vertex, int)> func){
-	auto bsurf = HM3D::Surface::GridSurface(grid);
+	auto bsurf = HM3D::Surface::Assembler::GridSurface(grid);
 	HM3D::Surface::SetBoundaryTypes(bsurf, func);
 	cache->_btypes.clear();
 }

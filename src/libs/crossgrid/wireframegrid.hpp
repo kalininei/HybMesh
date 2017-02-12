@@ -7,7 +7,7 @@
 #include <list>
 #include <map>
 #include "primitives2d.hpp"
-#include "tree.hpp"
+#include "contour_tree.hpp"
 
 namespace HM2D{ namespace Grid{ namespace Impl{
 

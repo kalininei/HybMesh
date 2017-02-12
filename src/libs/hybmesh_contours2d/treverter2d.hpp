@@ -1,7 +1,7 @@
 #ifndef HYBMESH_TREVERTER2D_HPP
 #define HYBMESH_TREVERTER2D_HPP
 #include "contour.hpp"
-#include "tree.hpp"
+#include "contour_tree.hpp"
 
 namespace HM2D{
 	

@@ -1,6 +1,7 @@
 #include "merge3d.hpp"
 #include "debug3d.hpp"
 #include "surface.hpp"
+#include "assemble3d.hpp"
 
 using namespace HM3D;
 
@@ -137,7 +138,7 @@ void assemble_duplicate_faces(FaceData& ffrom, FaceData& fto, vector<int>& from,
 
 }
 
-void HM3D::MergeGrid(GridData& from, GridData& to,
+void HM3D::Grid::Algos::MergeGrid(GridData& from, GridData& to,
 		const vector<int>& from_vert, const vector<int>& to_vert){
 	assert(
 		//check points equality
@@ -232,15 +233,15 @@ void HM3D::MergeGrid(GridData& from, GridData& to,
 	}
 }
 
-GridData HM3D::MergeGrids(const GridData& _g1, const GridData& _g2){
+GridData HM3D::Grid::Algos::MergeGrids(const GridData& _g1, const GridData& _g2){
 	//make deep copies of g1, g2
 	GridData g1, g2;
 	DeepCopy(_g1, g1);
 	DeepCopy(_g2, g2);
 
 	//assemble coincident points
-	auto srf1 = Surface::GridSurface(g1);
-	auto srf2 = Surface::GridSurface(g2);
+	auto srf1 = Surface::Assembler::GridSurface(g1);
+	auto srf2 = Surface::Assembler::GridSurface(g2);
 	auto pc1 = AllVertices(srf1);
 	auto pc2 = AllVertices(srf2);
 

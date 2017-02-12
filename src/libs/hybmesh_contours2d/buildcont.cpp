@@ -1,10 +1,10 @@
-#include "constructor.hpp"
+#include "buildcont.hpp"
 #include "spmat.hpp"
 #include "partition01.hpp"
 #include "contour.hpp"
 #include "treverter2d.hpp"
-#include "cont_assembler.hpp"
-#include "algos.hpp"
+#include "assemble2d.hpp"
+#include "modcont.hpp"
 
 using namespace HM2D;
 using namespace HM2D::Contour;
@@ -54,7 +54,7 @@ EdgeData cns::CutContour(const EdgeData& cont, const Point& pstart, int directio
 	EdgeData other;
 	DeepCopy(cont, other);
 	R::ReallyDirect::Permanent(other);
-	auto ps = std::get<1>(GuaranteePoint(other, pstart));
+	auto ps = std::get<1>(Algos::GuaranteePoint(other, pstart));
 	if (IsClosed(other)){
 		R::ForceFirst::Permanent(other, pstart);
 	} else {
@@ -66,15 +66,15 @@ EdgeData cns::CutContour(const EdgeData& cont, const Point& pstart, int directio
 	}
 	assert(len<=Length(other));
 	Point p2 = Contour::WeightPointsByLen(other, {len})[0];
-	auto ps2 = std::get<1>(GuaranteePoint(other, p2));
+	auto ps2 = std::get<1>(Algos::GuaranteePoint(other, p2));
 	return Assembler::ShrinkContour(other, ps.get(), ps2.get());
 }
 
 EdgeData cns::CutContour(const EdgeData& cont, const Point& pstart, const Point& pend){
 	EdgeData ret;
 	DeepCopy(cont, ret);
-	auto p1 = std::get<1>(GuaranteePoint(ret, pstart));
-	auto p2 = std::get<1>(GuaranteePoint(ret, pend));
+	auto p1 = std::get<1>(Algos::GuaranteePoint(ret, pstart));
+	auto p2 = std::get<1>(Algos::GuaranteePoint(ret, pend));
 	ret = Assembler::ShrinkContour(ret, p1.get(), p2.get());
 	if (First(ret) != p1) R::ReallyRevert::Permanent(ret);
 	return ret;
@@ -390,7 +390,7 @@ vector<EdgeData> cns::ExtendedSeparate(const EdgeData& _ecol){
 		auto it = sep_builder.take_any();
 		Point* p0 = First(*it).get();
 		while (1){
-			Connect(bf, *it);
+			Algos::Connect(bf, *it);
 			if (Last(*it).get() == p0) break;
 			else it = sep_builder.take_next(it);
 		};

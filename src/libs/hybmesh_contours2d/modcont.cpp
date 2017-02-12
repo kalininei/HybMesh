@@ -1,31 +1,14 @@
-#include "algos.hpp"
+#include "modcont.hpp"
 #include "clipper_core.hpp"
 #include "contabs2d.hpp"
-#include "cont_assembler.hpp"
+#include "assemble2d.hpp"
 #include "treverter2d.hpp"
 #include "finder2d.hpp"
-#include "hmtimer.hpp"
 
 using namespace HM2D;
 using Contour::Tree;
 namespace cal = HM2D::Contour::Algos;
 namespace eal = HM2D::ECol::Algos;
-
-// ===================================== Offset implementation
-Tree cal::Offset(const EdgeData& source, double delta, OffsetTp tp){
-	Impl::ClipperPath cp(source);
-	if (IsClosed(source) && Contour::Area(source) < 0) delta = -delta;
-	return cp.Offset(delta, tp);
-};
-
-EdgeData cal::Offset1(const EdgeData& source, double delta){
-	Contour::Tree ans;
-	if (IsClosed(source)) ans = Offset(source, delta, OffsetTp::RC_CLOSED_POLY);
-	else ans = Offset(source, delta, OffsetTp::RC_OPEN_ROUND);
-	assert(ans.nodes.size() == 1);
-	return ans.nodes[0]->contour;
-};
-
 
 // ===================================== Simplifications
 Tree cal::Simplified(const Tree& t1){
@@ -39,7 +22,7 @@ Tree cal::Simplified(const Tree& t1){
 }
 
 EdgeData cal::Simplified(const EdgeData& cont){
-	auto p = CornerPoints(cont);
+	auto p = CornerPoints1(cont);
 	EdgeData ret = Assembler::Contour1(p, IsClosed(cont));
 	auto op = OrderedPoints1(cont);
 	aa::enumerate_ids_pvec(op);
@@ -286,181 +269,6 @@ void eal::MergePoints(EdgeData& ecol){
 	std::swap(newedge, ecol);
 }
 
-vector<int> cal::SortOutPoints(const EdgeData& t1, const vector<Point>& pnt){
-	Contour::Tree tree;
-	tree.add_contour(t1);
-	auto ret = cal::SortOutPoints(tree, pnt);
-	//if t1 is inner contour
-	if (Contour::Area(t1) < 0){
-		for (auto& r: ret){
-			if (r == OUTSIDE) r = INSIDE;
-			else if (r == INSIDE) r = OUTSIDE;
-		}
-	}
-	return ret;
-}
-
-namespace{
-//does sorting using clipper procedure.
-//It could be used only if points are known not to lie on edges
-vector<int> clipper_sort_out_points(const Tree& t1, const vector<Point>& pnt){
-	auto ctree = Impl::ClipperTree::Build(t1);
-	vector<int> ret = ctree.SortOutPoints(pnt);
-	assert([&](){
-		//Boundary points should be treated somewhere else
-		for (auto i: ret) if (i == BOUND) return false;
-		return true;
-	}());
-	return ret;
-}
-//does sort by calculating intersections
-vector<int> raw_sort_out_points(const Tree& t1, const vector<Point>& pnt){
-	//bounding boxes
-	std::map<Tree::TNode*, BoundingBox> bb;
-	for (auto& n: t1.bound_contours()){
-		bb[n.get()] = HM2D::BBox(n->contour);
-	}
-
-	std::function<void(const ShpVector<Tree::TNode>&, Point&, int&)>
-	lvwithin = [&lvwithin, &bb](const ShpVector<Tree::TNode>& lv, Point& p, int& a){
-		int indwithin = -1;
-		for (int i=0; i<lv.size(); ++i){
-			int rs = Contour::Finder::WhereIs(lv[i]->contour, p, &bb[lv[i].get()]);
-			if (rs == BOUND){ a = -2; return; }
-			else if (rs == INSIDE) { indwithin = i; break; }
-		}
-		if (indwithin == -1) return;
-		else {
-			ShpVector<Tree::TNode> newlv;
-			for (auto w: lv[indwithin]->children) newlv.push_back(w.lock());
-			return lvwithin(newlv, p, ++a);
-		}
-	};
-
-	vector<int> ret;
-	auto roots = t1.roots();
-	for (auto p: pnt){
-		int maxlevel = -1;
-		lvwithin(roots, p, maxlevel);
-		if (maxlevel == -2) ret.push_back(BOUND);
-		else if (maxlevel == -1) ret.push_back(OUTSIDE);
-		else if (maxlevel % 2 == 0) ret.push_back(INSIDE);
-		else ret.push_back(OUTSIDE);
-	}
-	return ret;
-}
-
-//does sort by discretizing input contour, grouping discretized squares
-//and calling raw_sort_out_points for single point for each group
-vector<int> qsort_out_points(const Tree& t1, const vector<Point>& pnt){
-	vector<int> ret(pnt.size());
-	auto pntbb = BoundingBox::Build(pnt.begin(), pnt.end());
-
-	HM2D::EdgeData ae = t1.alledges();
-	HM2D::Finder::RasterizeEdges discr(ae, pntbb, pntbb.maxlen()/50);
-	vector<int> sqr_colours = discr.colour_squares(true);
-
-	//colours of input points
-	vector<int> pnt_colours(pnt.size());
-	for (int i=0; i<pnt.size(); ++i){
-		vector<int> sqrs = discr.bbfinder().sqrs_by_point(pnt[i]);
-		pnt_colours[i] = sqr_colours[sqrs[0]];
-		for (int j=1; j<sqrs.size(); ++j){
-			pnt_colours[i] = std::min(pnt_colours[i], sqr_colours[sqrs[j]]);
-		}
-	}
-
-	//build groups->points map
-	std::map<int, vector<int>> used_colours = { {0, vector<int>()} };
-	for (int i=0; i<pnt.size(); ++i) if (pnt_colours[i] != 0){
-		auto fnd = used_colours.find(pnt_colours[i]);
-		if (fnd == used_colours.end()){
-			fnd = used_colours.emplace(pnt_colours[i], vector<int>{}).first;
-		}
-		fnd->second.push_back(i);
-	} else {
-		//check [0] (black) group if those points lie on edges
-		ret[i] = INSIDE;
-		for (int sus: discr.bbfinder().suspects(pnt[i])){
-			double m = Point::meas_section(pnt[i], *ae[sus]->pfirst(), *ae[sus]->plast());
-			if (m < geps*geps) {ret[i] = BOUND; break; }
-		}
-		//point is not on edge -> add it for future analysis
-		if (ret[i] == INSIDE) used_colours[0].push_back(i);
-	}
-
-	//assembling point list to be passed to RawSortOut procedure
-	//groups points, then points of undefined group
-	vector<Point> pnt_to_raw;
-	for (auto& it: used_colours) if (it.first > 0){
-		//first points of non-black groups
-		pnt_to_raw.push_back(pnt[it.second[0]]);
-	} else {
-		//all points of the black group
-		for (auto& it2: it.second){
-			pnt_to_raw.push_back(pnt[it2]);
-		}
-	}
-	//call raw procedure
-	//vector<int> raw_output = raw_sort_out_points(t1, pnt_to_raw);
-	vector<int> raw_output = clipper_sort_out_points(t1, pnt_to_raw);
-
-	//restore result
-	auto rit = raw_output.begin();
-	for (auto& it: used_colours) if (it.first > 0){
-		int pos = *rit++;
-		for (auto& ind: it.second){ ret[ind] = pos; }
-	} else {
-		//all points of the black group
-		for (auto& it2: it.second){ ret[it2] = *rit++; }
-	}
-	return ret;
-}
-}
-
-vector<int> cal::SortOutPoints(const Tree& t1, const vector<Point>& pnt){
-	if (pnt.size() < 100) return raw_sort_out_points(t1, pnt);
-	else return qsort_out_points(t1, pnt);
-}
-
-namespace{
-Point smoothed_direction_step(const EdgeData& c, double w0, double w_step){
-	double w = w0+w_step;
-	//adjust w_step
-	if (w > 1.0){
-		if (Contour::IsOpen(c)) return *Contour::Last(c);
-		while (w>1) w -= 1.0;
-	}
-	return Contour::WeightPoint(c, w);
-}
-}
-Vect cal::SmoothedDirection2(const EdgeData& c, const Point* p, int direction, double len_forward, double len_backward){
-	//preliminary simplification
-	auto cont = cal::Simplified(c);
-	//decrease lens to half of contour lengths
-	double full_len = Length(cont);
-	if (len_forward > full_len/2) len_forward = full_len/2;
-	if (len_backward > full_len/2) len_backward = full_len/2;
-	//find points
-	double pw = std::get<1>(Contour::CoordAt(cont, *p));
-	Point p1 = smoothed_direction_step(cont, pw, len_forward/full_len);
-	Contour::R::ReallyRevert::Permanent(cont);
-	Point p2 = smoothed_direction_step(cont, 1 - pw, len_backward/full_len);
-	
-	//return zero if all lengths are 0
-	if (p1 == p2 && p1 == *p) return Vect(0, 0);
-
-	Vect ret;
-	if (p1 != p2) ret = p1 - p2;
-	else{
-		ret = p1 - *p;
-		vecRotate(ret, -M_PI/2);
-	}
-	if (direction == -1) ret *= -1;
-	vecNormalize(ret);
-	return ret;
-}
-
 void cal::RemovePoints(EdgeData& data, vector<int> ipnt){
 	bool is_closed = Contour::IsClosed(data);
 	std::sort(ipnt.begin(), ipnt.end());
@@ -502,22 +310,6 @@ void cal::RemovePoints(EdgeData& data, vector<int> ipnt){
 	}
 }
 
-vector<int> cal::BTypesFromWeights(const EdgeData& cont, const vector<double>& w){
-	assert(Contour::IsContour(cont));
-	vector<int> ret(w.size());
-	vector<double> eweights = HM2D::Contour::EWeights(cont);
-
-	auto ebegin = eweights.begin();
-	for (int i=0; i<w.size(); ++i){
-		auto fnd = std::upper_bound(ebegin, eweights.end(), w[i]);
-		if (fnd != eweights.begin()) --fnd;
-		ebegin = fnd;
-		ret[i] = cont[fnd - eweights.begin()]->boundary_type;
-	}
-
-	return ret;
-}
-
 void eal::AssignBTypes(const EdgeData& from, EdgeData& to){
 	if (to.size() == 0) return;
 	if (from.size() == 0){
@@ -555,4 +347,119 @@ void eal::AssignBTypes(const EdgeData& from, EdgeData& to){
 		}
 		e.boundary_type = from[imin]->boundary_type;
 	}
+}
+
+void cal::Reverse(EdgeData& ed){ std::reverse(ed.begin(), ed.end()); }
+
+void cal::AddLastPoint(EdgeData& to, std::shared_ptr<Vertex> p){
+	auto p0 = Last(to);
+	to.push_back(std::make_shared<Edge>(p0, p));
+}
+
+
+void cal::Connect(EdgeData& to, const EdgeData& from){
+	auto self0 = First(to), self1 = Last(to);
+	auto target0 = First(from), target1 = Last(from);
+	//choosing option for unition
+	if (to.size() == 0 || from.size() == 0 ) goto COPY12;
+	else if (self0 == self1 || target0 == target1) goto THROW;
+	else if (from.size() == 1 &&
+		(from[0]->first() == self1 || from[0]->last() == self1)) goto COPY12;
+	else if (from.size() == 1 &&
+		(from[0]->first() == self0 || from[0]->last() == self0)) goto COPY03;
+	//try to add new contour to the end of current
+	else if (self1 == target0) goto COPY12;
+	else if (self1 == target1) goto NEED_REVERSE;
+	//if failed try to add before the start
+	else if (self0 == target1) goto COPY03;
+	else if (self0 == target0) goto NEED_REVERSE;
+	else goto THROW;
+
+COPY03:
+	{
+		to.insert(to.begin(), from.begin(), from.end());
+		return;
+	}
+COPY12:
+	{
+		to.insert(to.end(), from.begin(), from.end());
+		return;
+	}
+NEED_REVERSE:
+	{
+		EdgeData tmp(from);
+		Reverse(tmp);
+		return Connect(to, tmp);
+	}
+THROW:
+	{
+		throw std::runtime_error("Impossible to unite non-connected contours");
+	}
+}
+
+void cal::SplitEdge(EdgeData& cont, int iedge, const vector<Point>& pts){
+	if (pts.size() == 0) return;
+	assert(IsContour(cont));
+	bool iscor = CorrectlyDirectedEdge(cont, iedge);
+	if (!iscor) cont[iedge]->reverse();
+
+	VertexData pp(pts.size()+2);
+	pp[0] = cont[iedge]->vertices[0];
+	pp.back() = cont[iedge]->vertices[1];
+	for (int i=1; i<pp.size()-1; ++i){
+		pp[i] = std::make_shared<Vertex>(pts[i-1]);
+	}
+
+	cont[iedge]->vertices[1] = pp[1];
+	EdgeData newed(pts.size());
+	for (int i=0; i<pts.size(); ++i){
+		newed[i] = std::make_shared<Edge>(*cont[iedge]);
+		newed[i]->vertices[0] = pp[i+1];
+		newed[i]->vertices[1] = pp[i+2];
+	}
+	cont.insert(cont.begin()+iedge+1, newed.begin(), newed.end());
+
+	if (!iscor){
+		for (auto it=cont.begin()+iedge; it!=cont.begin()+iedge+pts.size()+1; ++it){
+			(*it)->reverse();
+		}
+	}
+};
+
+std::tuple<bool, shared_ptr<Vertex>>
+cal::GuaranteePoint(EdgeData& ed, const Point& p){
+	std::tuple<bool, shared_ptr<Vertex>> ret;
+
+	auto ce = HM2D::Finder::ClosestEdge(ed, p);
+	if (std::get<0>(ce)<0){
+		std::get<0>(ret) = false;
+		return ret;
+	}
+	Edge* e = ed[std::get<0>(ce)].get();
+	double elen = e->length();
+	double len2 = std::get<2>(ce)*elen;
+	if (ISZERO(len2)){
+		std::get<0>(ret) = false;
+		std::get<1>(ret) = e->first();
+	} else if (ISZERO(elen-len2)){
+		std::get<0>(ret) = false;
+		std::get<1>(ret) = e->last();
+	} else {
+		auto pnew = std::make_shared<Vertex>(Point::Weigh(
+			*e->first(), *e->last(), std::get<2>(ce)));
+		auto e1 = std::make_shared<Edge>(*e);
+		auto e2 = std::make_shared<Edge>(*e);
+		e1->vertices[1] = pnew;
+		e2->vertices[0] = pnew;
+		if (CorrectlyDirectedEdge(ed, std::get<0>(ce))){
+			ed[std::get<0>(ce)] = e1;
+			ed.insert(ed.begin()+std::get<0>(ce)+1, e2);
+		} else {
+			ed[std::get<0>(ce)] = e2;
+			ed.insert(ed.begin()+std::get<0>(ce)+1, e1);
+		}
+		std::get<0>(ret) = true;
+		std::get<1>(ret) = pnew;
+	}
+	return ret;
 }

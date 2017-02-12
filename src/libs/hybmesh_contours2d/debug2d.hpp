@@ -5,8 +5,9 @@
 
 #include "primitives2d.hpp"
 #include "contour.hpp"
-#include "tree.hpp"
+#include "contour_tree.hpp"
 #include "hmdebug.hpp"
+#include "hmtimer.hpp"
 
 namespace HM2D{
 
@@ -38,6 +39,36 @@ struct Debug: public HMDebug{
 	//extract primitives without id change
 	static VertexData allvertices(const EdgeData& c);
 	static EdgeData alledges(const CellData& c);
+
+
+	static double hash(const VertexData& g){
+		double ret = g.size();
+		int k = 0;
+		for (auto& v: g)  ret += 2.4 * ( ++k % 231) * v->x;
+		for (auto& v: g)  ret -= 3.1 * ( ++k % 123) * v->y;
+		return ret;
+	}
+	static double hash(const EdgeData& g){
+		double ret = g.size();
+		int k = 0;
+		for (auto& v: g){
+			ret += (++k % 10) * (v->vertices[0]->x * 0.5 - v->vertices[0]->y * 0.4);
+			ret += (++k % 12) * (v->vertices[1]->x * 0.2 - v->vertices[1]->y * 0.7);
+		}
+		return ret;
+	}
+	static double hash(const CellData& g){
+		double ret = g.size();
+		int k =0;
+		for (auto& c: g){
+			ret += (++k % 10 - 5) * hash(c->edges);
+		}
+		return ret;
+	}
+	static double hash(const GridData& g){
+		return hash(g.vcells) - hash(g.vedges) + 2. * hash(g.vvert);
+	}
+
 };
 
 }

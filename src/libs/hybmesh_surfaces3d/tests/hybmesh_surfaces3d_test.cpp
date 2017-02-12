@@ -6,15 +6,16 @@
 #include "buildgrid.hpp"
 #include "contour.hpp"
 #include "healgrid.hpp"
+#include "assemble3d.hpp"
 
 using namespace HMTesting;
 
 void test01(){
 	std::cout<<"1. Surface tree assembling, reverting, volumes"<<std::endl;
 	{
-		auto g1 = HM3D::Constructor::Cuboid({0, 0, 0}, 1, 1, 2, 2, 3, 2);
+		auto g1 = HM3D::Grid::Constructor::Cuboid({0, 0, 0}, 1, 1, 2, 2, 3, 2);
 		std::swap(g1.vfaces[0], g1.vfaces[5]);
-		auto s1 = HM3D::Surface::GridSurface(g1);
+		auto s1 = HM3D::Surface::Assembler::GridSurface(g1);
 		double v1, v2, v3, v4, v5, v6;
 		v1 = HM3D::Surface::Volume(s1);
 		{
@@ -35,7 +36,7 @@ void test01(){
 	}
 	{
 		auto gcyl2 = HM2D::Grid::Constructor::Circle(Point{0, 0}, 1, 64, 3, false);
-		auto gcyl = HM3D::Constructor::SweepGrid2D(gcyl2, {0, 1, 2, 3});
+		auto gcyl = HM3D::Grid::Constructor::SweepGrid2D(gcyl2, {0, 1, 2, 3});
 		auto gtmp1 = HM2D::Grid::Constructor::Circle(Point(0, 0), 0.3, 64, 3, true);
 		vector<int> inpcells;
 		vector<int> badpoints;
@@ -63,20 +64,20 @@ void test01(){
 
 		vector<double> degs = {0};
 		for (int i=0; i<32; ++i) degs.push_back(degs.back() + 180./32.);
-		auto ghsphere = HM3D::Constructor::RevolveGrid2D(ghsphere2, degs,
+		auto ghsphere = HM3D::Grid::Constructor::RevolveGrid2D(ghsphere2, degs,
 				Point(0, 0), Point(0, 1), false);
 		for (auto p: ghsphere.vvert) p->z += 2.5;
 
-		auto gcube1 = HM3D::Constructor::Cuboid({0, 0, 2.3}, 0.05, 0.05, 0.05, 2, 3, 4);
-		auto gcube2 = HM3D::Constructor::Cuboid({20, 20, -2.5}, 6, 3, 1, 3, 1, 2);
-		auto gcube3 = HM3D::Constructor::Cuboid({20, 20, -2.5}, 1, 1, 1, 3, 1, 2);
+		auto gcube1 = HM3D::Grid::Constructor::Cuboid({0, 0, 2.3}, 0.05, 0.05, 0.05, 2, 3, 4);
+		auto gcube2 = HM3D::Grid::Constructor::Cuboid({20, 20, -2.5}, 6, 3, 1, 3, 1, 2);
+		auto gcube3 = HM3D::Grid::Constructor::Cuboid({20, 20, -2.5}, 1, 1, 1, 3, 1, 2);
 
 		HM3D::FaceData totalsurface;
-		auto surf1 = HM3D::Surface::GridSurface(ghsphere);
-		auto surf2 = HM3D::Surface::GridSurface(gcyl);
-		auto surf3 = HM3D::Surface::GridSurface(gcube1);
-		auto surf4 = HM3D::Surface::GridSurface(gcube2);
-		auto surf5 = HM3D::Surface::GridSurface(gcube3);
+		auto surf1 = HM3D::Surface::Assembler::GridSurface(ghsphere);
+		auto surf2 = HM3D::Surface::Assembler::GridSurface(gcyl);
+		auto surf3 = HM3D::Surface::Assembler::GridSurface(gcube1);
+		auto surf4 = HM3D::Surface::Assembler::GridSurface(gcube2);
+		auto surf5 = HM3D::Surface::Assembler::GridSurface(gcube3);
 		totalsurface.insert(totalsurface.end(), surf1.begin(), surf1.end());
 		totalsurface.insert(totalsurface.end(), surf2.begin(), surf2.end());
 		totalsurface.insert(totalsurface.end(), surf3.begin(), surf3.end());

@@ -1,5 +1,5 @@
-#include "cont_assembler.hpp"
-#include "algos.hpp"
+#include "assemble2d.hpp"
+#include "modcont.hpp"
 #include "debug2d.hpp"
 #include <stack>
 #include "contabs2d.hpp"
@@ -115,7 +115,7 @@ EdgeData _assemble(AMap& mp, AMap::iterator start){
 	//go backwards if start point had two connected edges
 	//and contour was not closed
 	if (IsOpen(ret) && start->second.size() == 1){
-		Reverse(ret);
+		Algos::Reverse(ret);
 		ecur = *start->second.begin();
 		it = start;
 		while (it != mp.end()){
@@ -124,7 +124,7 @@ EdgeData _assemble(AMap& mp, AMap::iterator start){
 			ret.push_back(eprev);
 			remove_edge_from_amap(mp, eprev);
 		}
-		Reverse(ret);
+		Algos::Reverse(ret);
 	}
 	return ret;
 }
@@ -164,7 +164,7 @@ vector<EdgeData> sort_all_contours(vector<EdgeData>& ret, std::map<Edge*, int>& 
 	for (auto& c: ret){
 		if (IsClosed(c)){
 			//close contours always outer and start with edge with minimum index
-			if (Contour::Area(c) < 0) Reverse(c);
+			if (Contour::Area(c) < 0) Algos::Reverse(c);
 			int mini = edind[c[0].get()]; int mini_ind=0;
 			for (int i=1; i<c.size(); ++i){
 				int ind = edind[c[i].get()];
@@ -176,7 +176,7 @@ vector<EdgeData> sort_all_contours(vector<EdgeData>& ret, std::map<Edge*, int>& 
 			std::rotate(c.begin(), c.begin() + mini_ind, c.end());
 		} else {
 			//open contours first edge has lower index than last edge
-			if (edind[c[0].get()] > edind[c.back().get()]) Reverse(c);
+			if (edind[c[0].get()] > edind[c.back().get()]) Algos::Reverse(c);
 		}
 	}
 	//sort contours within ret according to first edge global index
@@ -324,10 +324,10 @@ EdgeData get_contour_by_pts(const EdgeData& col, const Point* pnt1, const Point*
 	if (IsOpen(ret)){
 		if (ret.size() > 1 &&
 		    Point::meas(*First(ret), *pnt1) > Point::meas(*Last(ret), *pnt1)){
-			Reverse(ret);
+			Algos::Reverse(ret);
 		}
 	} else {
-		if (Area(ret) < 0) Reverse(ret);
+		if (Area(ret) < 0) Algos::Reverse(ret);
 	}
 
 	return ret;
@@ -378,7 +378,7 @@ EdgeData cns::ShrinkContour(const EdgeData& con, const Point* pnt_start, const P
 		else{
 			//if reversed non-closed
 			EdgeData r = assemble_core(con, i1, i0);
-			Reverse(r);
+			Algos::Reverse(r);
 			return r;
 		}
 	}
@@ -429,15 +429,15 @@ void connect_opens_by_cells(EdgeData& to, EdgeData& from){
 		return ed_connect(to, from);
 	} else if (Last(to) == Last(from) &&
 	           acell(to.back().get()) == acell(from.back().get())){
-		Reverse(from);
+		Algos::Reverse(from);
 		return ed_connect(to, from);
 	} else if (First(to) == First(from) &&
 	           acell(to[0].get()) == acell(from[0].get())){
-		Reverse(to);
+		Algos::Reverse(to);
 		return ed_connect(to, from);
 	} else if (First(to) == Last(from) &&
 	           acell(to[0].get()) == acell(from.back().get())){
-		Reverse(to); Reverse(from);
+		Algos::Reverse(to); Algos::Reverse(from);
 		return ed_connect(to, from);
 	}
 }

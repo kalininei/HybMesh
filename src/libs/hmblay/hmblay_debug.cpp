@@ -8,7 +8,7 @@ void Debug::info_extpath(const Impl::ExtPath& pth){
 	std::cout<<"+++ Extended path at "<<&pth<<". "<<pth.size()<<" edges. ";
 	if (HM2D::Contour::IsClosed(pth)) std::cout<<"Closed. "<<"Area = "<<HM2D::Contour::Area(pth)<<std::endl;
 	else std::cout<<"Open."<<std::endl;
-	std::cout<<"+++ Length = "<<HM2D::Length(pth)<<std::endl;
+	std::cout<<"+++ Length = "<<HM2D::Contour::Length(pth)<<std::endl;
 	auto op = HM2D::Contour::OrderedPoints(pth);
 	for (int i=0; i<op.size(); ++i){
 		printf("Point %p:  (%10.6f, %10.6f)", op[i].get(), op[i]->x, op[i]->y);

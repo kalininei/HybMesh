@@ -1,10 +1,10 @@
 #include "wireframegrid.hpp"
 #include <algorithm>
 #include <numeric>
-#include "cont_assembler.hpp"
+#include "assemble2d.hpp"
 #include "modgrid.hpp"
 #include "buildgrid.hpp"
-#include "algos.hpp"
+#include "modcont.hpp"
 #include "trigrid.hpp"
 #include "finder2d.hpp"
 
@@ -43,13 +43,10 @@ auto PtsGraph::_impose_impl(const PtsGraph& main_graph, const PtsGraph& imp_grap
 
 	// === Acceleration initialization
 	//find rectangle which contains all nodes
-	Point top1 = Point::GetTop(main_graph.nodes.begin(), main_graph.nodes.end());
-	Point bot1 = Point::GetBot(main_graph.nodes.begin(), main_graph.nodes.end());
-	Point top2 = Point::GetTop(imp_graph.nodes.begin(), imp_graph.nodes.end());
-	Point bot2 = Point::GetBot(imp_graph.nodes.begin(), imp_graph.nodes.end());
-	Point maxp = Point(std::max(top1.x, top2.x), std::max(top1.y, top2.y));
-	Point minp = Point(std::min(bot1.x, bot2.x), std::min(bot1.y, bot2.y));
-	PtsGraphAccel Accel(G, minp, maxp, eps);
+	BoundingBox bb1 = BoundingBox::Build(main_graph.nodes.begin(), main_graph.nodes.end());
+	BoundingBox bb2 = BoundingBox::Build(imp_graph.nodes.begin(), imp_graph.nodes.end());
+	bb1.widen(bb2);
+	PtsGraphAccel Accel(G, bb1.pmin(), bb1.pmax(), eps);
 
 	vector<int> crnodes_ind;
 	//add points from g; fill ig_nodes array
@@ -481,9 +478,8 @@ PtsGraphAccel::PtsGraphAccel(PtsGraph& g, const Point& pmin, const Point& pmax, 
 PtsGraphAccel::PtsGraphAccel(PtsGraph& g,  double e) noexcept:
 		eps(e), epsPnt(e,e), ip(Tind2Proc(Naux,Naux)), G(&g), nodecomp(e), ndfinder(nodecomp)
 {
-	Point pmax = Point::GetTop(G->nodes.begin(), G->nodes.end());
-	Point pmin = Point::GetBot(G->nodes.begin(), G->nodes.end());
-	init(pmin, pmax);
+	auto bb = BoundingBox::Build(G->nodes.begin(), G->nodes.end());
+	init(bb.pmin(), bb.pmax());
 }
 void PtsGraphAccel::init(Point pmin, Point pmax) noexcept{
 	pmin-=epsPnt; pmax+=epsPnt;
@@ -644,14 +640,6 @@ PtsGraph PtsGraph::cut(const PtsGraph& wmain, const Contour::Tree& conts, int di
 	//get the imposition: wmain + conts
 	auto ires = impose(wmain, ccut, geps);
 	PtsGraph& pg = std::get<0>(ires);
-	//filter lines which lie within bad region
-	//using the position of line center point
-
-	//bad algorithm because of the short edges problem
-	//std::vector<Point> line_cnt = pg.center_line_points();
-	//auto flt = conts.filter_points_i(line_cnt);
-	//std::vector<int>& badi = (dir==INSIDE) ? std::get<0>(flt) : std::get<2>(flt);
-	//std::set<int> bad_lines(badi.begin(), badi.end());
 	
 	//TODO: need better algorithm
 	std::vector<bool> is_on_conts(pg.nodes.size(), false);
@@ -659,7 +647,7 @@ PtsGraph PtsGraph::cut(const PtsGraph& wmain, const Contour::Tree& conts, int di
 	for (int i=0; i<pg.nodes.size(); ++i) if (std::get<2>(ires)[i] >= 0.0) is_on_conts[i] = true;
 
 	std::vector<Point> line_cnt = pg.center_line_points();
-	std::vector<int> flt = Contour::Algos::SortOutPoints(conts, line_cnt);
+	std::vector<int> flt = Contour::Finder::SortOutPoints(conts, line_cnt);
 	std::vector<int> ptypes(line_cnt.size(), 1); //1 - good, 2 - bad, 3 - bnd
 	for (int i=0; i<flt.size(); ++i){
 		if (flt[i] == BOUND) ptypes[i] = 3;
@@ -707,7 +695,7 @@ void PtsGraph::add_edges(const EdgeData& c){
 
 void PtsGraph::exclude_area(const Contour::Tree& cont, int dir){
 	std::vector<Point> line_cnt = center_line_points();
-	vector<int> flt = Contour::Algos::SortOutPoints(cont, line_cnt);
+	vector<int> flt = Contour::Finder::SortOutPoints(cont, line_cnt);
 	std::vector<int> badi;
 	for (int i=0; i<flt.size(); ++i){
 		if (flt[i] == dir) badi.push_back(i);

@@ -1,8 +1,8 @@
 #include "bgrid_impose.hpp"
-#include "contclipping.hpp"
-#include "constructor.hpp"
-#include "cont_assembler.hpp"
-#include "algos.hpp"
+#include "clipdomain.hpp"
+#include "buildcont.hpp"
+#include "assemble2d.hpp"
+#include "modcont.hpp"
 #include "treverter2d.hpp"
 #include "buildgrid.hpp"
 #include "trigrid.hpp"
@@ -90,7 +90,7 @@ public:
 HM2D::EdgeData
 WidenCellCont(const HM2D::EdgeData& cont){
 	vector<Point> ret;
-	auto op = HM2D::Contour::CornerPoints1(cont);
+	auto op = HM2D::Contour::CornerPoints(cont);
 	assert(op.size()>=4);
 	if (op.size() < 4) return HM2D::EdgeData();
 	vector<std::pair<Point, Point>> lines(cont.size());
@@ -190,7 +190,7 @@ void TriAreaModify(HM2D::Contour::Tree& tree, const BGrid& og){
 			if (ISZERO(std::get<4>(fnd))){
 				const double& w = std::get<3>(fnd);
 				if (!ISZERO(w) && !ISEQ(w, 1)){
-					HM2D::Contour::GuaranteePoint(n->contour, *p);
+					HM2D::Contour::Algos::GuaranteePoint(n->contour, *p);
 				}
 			}
 		}
@@ -260,7 +260,7 @@ void PurgeGrid(BGrid& grid, const HM2D::EdgeData& cont){
 	vector<vector<int>> ctab;
 	for (auto n: goodareas){
 		ctab.emplace_back();
-		for (auto pp: HM2D::Contour::CornerPoints(*n)){
+		for (auto pp: HM2D::Contour::CornerPoints1(*n)){
 			ctab.back().push_back(vd.size());
 			vd.emplace_back(new HM2D::Vertex(*pp));
 		}
@@ -307,7 +307,7 @@ const HM2D::EdgeData* ClosedSource(const HM2D::EdgeData* src, const BGrid* grid)
 	};
 	//1) try: direct connection
 	if (goodline(*HM2D::Contour::First(*src), *HM2D::Contour::Last(*src))){
-		HM2D::Contour::AddLastPoint(*closedsrc, HM2D::Contour::First(*closedsrc));
+		HM2D::Contour::Algos::AddLastPoint(*closedsrc, HM2D::Contour::First(*closedsrc));
 		return closedsrc;
 	}
 	//2) try: connection via grid bounding box
@@ -336,7 +336,7 @@ const HM2D::EdgeData* ClosedSource(const HM2D::EdgeData* src, const BGrid* grid)
 	auto epoint = find_good_box_point(*HM2D::Contour::Last(*closedsrc));
 	if (epoint){
 		//add epoint edge to source in order not to disregard possible crossing with newly added edge
-		HM2D::Contour::AddLastPoint(*closedsrc, epoint);
+		HM2D::Contour::Algos::AddLastPoint(*closedsrc, epoint);
 		auto spoint = find_good_box_point(*HM2D::Contour::First(*closedsrc));
 		if (spoint){
 			//build subcontour from a square

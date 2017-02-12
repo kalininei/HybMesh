@@ -4,7 +4,6 @@
 #include "hmproject.h"
 #include <algorithm>
 #include "addalgo.hpp"
-
 //Point
 struct Point{
 	double x,y;
@@ -19,18 +18,6 @@ struct Point{
 	}
 	void set(double a=0, double b=0) noexcept {x=a; y=b;}
 	void set(const Point& p2) noexcept {x=p2.x; y=p2.y;}
-	//from plain arrays
-	template<int Dim>
-	static vector<Point> read_from_plain(const vector<double>& pcoord){
-		vector<Point> ret; ret.reserve(pcoord.size()/Dim);
-		auto it=pcoord.begin();
-		while (it!=pcoord.end()){
-			double x= *it++;
-			double y=(Dim>1) ? *it++ : 0.0;
-			ret.push_back(Point(x,y));
-		}
-		return ret;
-	}
 	// ============== measures and distances
 	static double meas(const Point& p1, const Point& p2) noexcept{
 		return (p1.x-p2.x)*(p1.x-p2.x)+(p1.y-p2.y)*(p1.y-p2.y);
@@ -50,33 +37,6 @@ struct Point{
 	static Point Weigh(const Point& p1, const Point& p2, double w) noexcept{
 		return Point(p1.x*(1-w)+p2.x*w, p1.y*(1-w)+p2.y*w);
 	}
-
-
-	//finds point which coordinates are the highest among all points in container
-	template<class FirstIter, class LastIter>
-	static Point GetTop(FirstIter start, LastIter end){
-		return Point(
-			std::max_element(start, end, 
-				[](const Point& p1, const Point& p2){ return p1.x<p2.x; })->x,
-			std::max_element(start, end, 
-				[](const Point& p1, const Point& p2){ return p1.y<p2.y; })->y
-		);
-	}
-	template<class FirstIter, class LastIter>
-	static Point GetBot(FirstIter start, LastIter end){
-		return Point(
-			std::min_element(start, end, 
-				[](const Point& p1, const Point& p2){ return p1.x<p2.x; })->x,
-			std::min_element(start, end, 
-				[](const Point& p1, const Point& p2){ return p1.y<p2.y; })->y
-		);
-	}
-
-	template<class FirstIter, class LastIter>
-	static Point CPoint(FirstIter start, LastIter end){
-		return std::accumulate(start, end, Point(0,0))/std::distance(start,end);
-	}
-
 };
 
 //point operators
@@ -137,9 +97,11 @@ struct ScaleBase{
 	Point p0;
 	double L;
 	explicit ScaleBase(double x0=0, double y0=0, double _L=1): p0(x0, y0), L(_L){}
+
 	//scale and unscale procedures
 	void scale(Point& p) const noexcept {p-=p0; p/=L; }
 	void unscale(Point& p) const noexcept {p*=L; p+=p0; }
+
 	//scale points in container with Points
 	template<class FirstIter, class LastIter>
 	void scale(FirstIter start, LastIter end) const noexcept {
@@ -150,34 +112,10 @@ struct ScaleBase{
 		for (auto it=start; it!=end; ++it){ unscale(*it); }
 	}
 	//forces all points in container be in 1x1x1 square preserving aspect ratio
-	template <class Container>
-	static ScaleBase doscale(Container& cont) noexcept{
-		return doscale(cont.begin(), cont.end());
-	}
 	template<class FirstIter, class LastIter>
-	static ScaleBase doscale(FirstIter start, LastIter end, double a=1.0) noexcept{
-		if (start >= end) return ScaleBase();
-		auto p0 = Point::GetBot(start, end);
-		auto pdif = Point::GetTop(start, end) - p0;
-		double L = std::max(pdif.x, pdif.y) / a;
-		ScaleBase ret(p0.x, p0.y, L);
-		ret.scale(start, end);
-		return ret;
-	}
-	template<class Iter>
-	static ScaleBase p_doscale(Iter start, Iter end, double a=1.0) noexcept{
-		if (start >= end) return ScaleBase();
-		vector<Point> p; p.reserve(end-start);
-		std::transform(start, end, std::back_inserter(p), 
-				[](const typename Iter::value_type& x){ return *x; });
-		auto p0 = Point::GetBot(p.begin(), p.end());
-		auto pdif = Point::GetTop(p.begin(), p.end()) - p0;
-		double L = std::max(pdif.x, pdif.y) / a;
-		ScaleBase ret(p0.x, p0.y, L);
-		ret.p_scale(start, end);
-		return ret;
-	}
-	//scale points in container with Points pointers
+	static ScaleBase doscale(FirstIter start, LastIter end, double a=1.0) noexcept;
+	
+	//scale points in container with Points*
 	template<class FirstIter, class LastIter>
 	void p_scale(FirstIter start, LastIter end) const noexcept {
 		for (auto it=start; it!=end; ++it){ scale(**it); }
@@ -186,6 +124,8 @@ struct ScaleBase{
 	void p_unscale(FirstIter start, LastIter end) const noexcept{
 		for (auto it=start; it!=end; ++it){ unscale(**it); }
 	}
+	template<class Iter>
+	static ScaleBase p_doscale(Iter start, Iter end, double a=1.0) noexcept;
 };
 
 //find a node by coordinate
@@ -246,10 +186,7 @@ inline double triarea(const Point& p1, const Point& p2, const Point& p3){
 //add refinement points within [0, Len] section. 0 and Len are not included.
 vector<double> RefineSection(double a, double b, double Len, double Den);
 
-class BoundingBox{
-protected:
-	void init();
-public:
+struct BoundingBox{
 	double xmin, xmax, ymin, ymax;
 
 	BoundingBox():xmin(0), xmax(0), ymin(0), ymax(0){}
@@ -259,42 +196,41 @@ public:
 	BoundingBox(const Point& p1, double e=0.0);
 
 	//Container<Point> -> BoundingBox
-	template<class Iter> static typename std::enable_if<
-		std::is_base_of<Point, typename Iter::value_type>::value,
-		BoundingBox
-	>::type Build(Iter first, Iter last){
+	template<class Iter>
+	static BoundingBox Build(Iter first, Iter last, double e=0.){
 		if (first == last) return BoundingBox();
 		BoundingBox ret(first->x, first->y, first->x, first->y);
-		while (first!=last) {ret.WidenWithPoint(*first); ++first;}
+		while (first!=last) {ret.widen(*first); ++first;}
+		ret.widen(e);
 		return ret;
 	}
 	//Container<Point*> -> BoundingBox
-	template<class Iter> static typename std::enable_if<
-		!std::is_base_of<Point, typename Iter::value_type>::value,
-		BoundingBox
-	>::type Build(Iter first, Iter last, double e=0.){
+	template<class Iter>
+	static BoundingBox PBuild(Iter first, Iter last, double e=0.){
 		if (first == last) return BoundingBox();
 		BoundingBox ret((*first)->x, (*first)->y, (*first)->x, (*first)->y);
-		while (first!=last) {ret.WidenWithPoint(**first); ++first;}
+		while (first!=last) {ret.widen(**first); ++first;}
 		ret.widen(e);
 		return ret;
 	}
 
 	//Enlarge if point lies outside box
-	void WidenWithPoint(const Point& p);
+	void widen(const Point& p);
 	//widen to all directions at certain distance
 	void widen(double e);
+	//sum of boundingboxes
+	void widen(const BoundingBox& p);
 
-	Point Center() const;
+	Point center() const;
 
 	double area() const;
 	double lenx() const { return xmax-xmin; }
 	double leny() const { return ymax-ymin; }
 	double maxlen() const { return std::max(lenx(), leny()); }
 	double lendiag() const { return sqrt(lenx()*lenx() + leny()*leny()); }
-	Point BottomLeft() const { return Point(xmin, ymin); }
-	Point TopRight() const { return Point(xmax, ymax); }
-	vector<Point> FourPoints() const;
+	Point pmin() const { return Point(xmin, ymin); }
+	Point pmax() const { return Point(xmax, ymax); }
+	std::array<Point, 4> four_points() const;
 	ScaleBase to_scale() const { return ScaleBase(xmin, ymin, std::max(lenx(), leny())); }
 
 	//-> INSIDE, OUTSIDE, BOUND
@@ -313,7 +249,7 @@ public:
 	//4 - faces of bb and this cross each other
 	int relation(const BoundingBox& bb) const;
 
-	//Filter points from container of Point*
+	//Filter points from container<Point*>
 	template<class Container>
 	Container Filter(const Container& data,
 			bool inside, bool bound, bool outside){
@@ -362,5 +298,28 @@ private:
 	int get_xend(double x) const;
 	int get_yend(double y) const;
 };
+
+// ============================ template implementations
+template<class FirstIter, class LastIter>
+ScaleBase ScaleBase::doscale(FirstIter start, LastIter end, double a) noexcept{
+	if (start >= end) return ScaleBase();
+	auto bb = BoundingBox::Build(start, end);
+	Point p0 = bb.pmin();
+	double L = bb.maxlen() / a;
+	ScaleBase ret(p0.x, p0.y, L);
+	ret.scale(start, end);
+	return ret;
+}
+
+template<class Iter>
+ScaleBase ScaleBase::p_doscale(Iter start, Iter end, double a) noexcept{
+	if (start >= end) return ScaleBase();
+	auto bb = BoundingBox::PBuild(start, end);
+	Point p0 = bb.pmin();
+	double L = bb.maxlen() / a;
+	ScaleBase ret(p0.x, p0.y, L);
+	ret.p_scale(start, end);
+	return ret;
+}
 
 #endif

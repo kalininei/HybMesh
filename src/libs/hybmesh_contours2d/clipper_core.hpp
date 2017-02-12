@@ -3,8 +3,8 @@
 
 #include "clipper.hpp"
 #include "contour.hpp"
-#include "tree.hpp"
-#include "algos.hpp"
+#include "contour_tree.hpp"
+#include "modcont.hpp"
 
 namespace HM2D{ namespace Impl{
 class ClipperPath;
@@ -52,7 +52,7 @@ struct ClipperPath: public ClipperObject{
 	void AddPointToEnd(const Point& p);
 
 	// === Methods
-	Contour::Tree Offset(double delta, HM2D::Contour::Algos::OffsetTp tp) const;
+	Contour::Tree Offset(double delta, ClipperLib::EndType et) const;
 	//-1 - point is on polygon
 	// 0 - point is outside polygon
 	// 1 - point is in polygon

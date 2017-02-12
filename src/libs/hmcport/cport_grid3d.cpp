@@ -7,9 +7,10 @@
 #include "surface.hpp"
 #include "treverter3d.hpp"
 #include "merge3d.hpp"
-#include "construct_grid3d.hpp"
+#include "buildgrid3d.hpp"
 #include "revolve_grid3d.hpp"
 #include "tetrahedral.hpp"
+#include "assemble3d.hpp"
 #include "export3d_vtk.hpp"
 #include "export3d_fluent.hpp"
 #include "export3d_gmsh.hpp"
@@ -128,7 +129,7 @@ int g3_dims(void* obj, int* ret){
 int g3_bnd_dims(void* obj, int* dims){
 	try{
 		auto g = static_cast<HM3D::GridData*>(obj);
-		auto s = HM3D::Surface::GridSurface(*g);
+		auto s = HM3D::Surface::Assembler::GridSurface(*g);
 		return s3_dims(&s, dims);
 	} catch (std::exception& e){
 		add_error_message(e.what());
@@ -140,7 +141,7 @@ int g3_bnd_dims(void* obj, int* dims){
 int g3_bnd_area(void* obj, double* ret){
 	try{
 		auto g = static_cast<HM3D::GridData*>(obj);
-		auto c = HM3D::Surface::GridSurface(*g);
+		auto c = HM3D::Surface::Assembler::GridSurface(*g);
 		return s3_area(&c, ret);
 	} catch (std::exception& e){
 		add_error_message(e.what());
@@ -151,7 +152,7 @@ int g3_bnd_area(void* obj, double* ret){
 //creates surface out of grid boundary
 int g3_extract_surface(void* obj, void** ret){
 	try{
-		auto surf = HM3D::Surface::GridSurface(
+		auto surf = HM3D::Surface::Assembler::GridSurface(
 			*static_cast<HM3D::GridData*>(obj));
 		return s3_deepcopy(&surf, ret);
 	} catch (std::exception& e){
@@ -164,7 +165,7 @@ int g3_extract_surface(void* obj, void** ret){
 int g3_volume(void* obj, double* ret){
 	try{
 		auto g = static_cast<HM3D::GridData*>(obj);
-		auto srf = HM3D::Surface::GridSurface(*g);
+		auto srf = HM3D::Surface::Assembler::GridSurface(*g);
 		HM3D::Surface::R::RevertGridSurface rv(srf, true);
 		*ret = HM3D::Surface::Volume(srf);
 		return HMSUCCESS;
@@ -180,7 +181,7 @@ int g3_merge(void* obj1, void* obj2, void** ret, hmcport_callback cb){
 		auto g1 = static_cast<HM3D::GridData*>(obj1);
 		auto g2 = static_cast<HM3D::GridData*>(obj2);
 		Autoscale::D3 sc(vector<HM3D::GridData*>{g1, g2});
-		HM3D::GridData ret_ = HM3D::MergeGrids(*g1, *g2);
+		HM3D::GridData ret_ = HM3D::Grid::Algos::MergeGrids(*g1, *g2);
 		sc.unscale(&ret_);
 		c2cpp::to_pp(ret_, ret);
 		return HMSUCCESS;
@@ -200,10 +201,10 @@ int g3_extrude(void* obj, int nz, double* zvals,
 		auto botfun = [bbot](int i){ return bbot[i]; };
 		HM3D::GridData ret_;
 		if (bside >= 0){
-			ret_ = HM3D::Constructor::SweepGrid2D(
+			ret_ = HM3D::Grid::Constructor::SweepGrid2D(
 					*g2, z, botfun, topfun, bside);
 		} else {
-			ret_ = HM3D::Constructor::SweepGrid2D(
+			ret_ = HM3D::Grid::Constructor::SweepGrid2D(
 					*g2, z, botfun, topfun);
 		}
 		c2cpp::to_pp(ret_, ret);
@@ -230,7 +231,7 @@ int g3_revolve(void* obj, double* vec, int n_phi, double* phi,
 		sc.scale(pend);
 		std::vector<double> vphi(phi, phi + n_phi);
 
-		HM3D::GridData ret_ = HM3D::Constructor::RevolveGrid2D(
+		HM3D::GridData ret_ = HM3D::Grid::Constructor::RevolveGrid2D(
 			*g2, vphi, pstart, pend, is_trian, b1, b2);
 		sc.unscale(&ret_);
 		c2cpp::to_pp(ret_, ret);

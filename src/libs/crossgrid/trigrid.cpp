@@ -1,14 +1,14 @@
 #include "trigrid.hpp"
-#include "algos.hpp"
-#include "cont_partition.hpp"
+#include "modcont.hpp"
+#include "partcont.hpp"
 #include "contabs2d.hpp"
 #include "treverter2d.hpp"
 #include "healgrid.hpp"
 #include "buildgrid.hpp"
 #include "modgrid.hpp"
 #include "finder2d.hpp"
-#include "constructor.hpp"
-#include "cont_assembler.hpp"
+#include "buildcont.hpp"
+#include "assemble2d.hpp"
 #include "Gmsh.h"
 #include "GModel.h"
 #include "MVertex.h"
@@ -44,8 +44,8 @@ Contour::Tree no_crosses_with_priority(const Contour::Tree& source){
 		auto crosses = HM2D::Contour::Finder::CrossAll(c1, c2);
 		VertexData from1, from2, to;
 		for (auto& c: crosses){
-			auto res1 = HM2D::Contour::GuaranteePoint(c1, std::get<1>(c));
-			auto res2 = HM2D::Contour::GuaranteePoint(c2, std::get<1>(c));
+			auto res1 = HM2D::Contour::Algos::GuaranteePoint(c1, std::get<1>(c));
+			auto res2 = HM2D::Contour::Algos::GuaranteePoint(c2, std::get<1>(c));
 			if (std::get<1>(res1) == std::get<1>(res2)) continue;
 			//substitute res1, res2 with node of highest priority
 			int pri1 = get_priority(res1);
@@ -88,7 +88,7 @@ Contour::Tree Mesher::PrepareSource(const Contour::Tree& source, double defsize)
 	//sizes calculation
 	std::map<Point*, double> sizes;
 	auto ae = ret.alledges();
-	auto lens = ELengths(ae);
+	auto lens = Contour::ELengths(ae);
 	for (auto ve: Connectivity::VertexEdge(ae)){
 		double lenmin=lens[ve.eind[0]], lenmax=lens[ve.eind[0]];
 		for (int i=1; i<ve.size(); ++i){
@@ -220,7 +220,7 @@ double calculate_len_at(const EdgeData& cont, const Point& p, const vector<std::
 std::map<double, double> build_weights(const EdgeData& cont, double sz0, double sz1,
 		const vector<std::pair<Point, double>>& src){
 	if (src.size() == 0) return build_map01(sz0, sz1);
-	double len = HM2D::Length(cont);
+	double len = HM2D::Contour::Length(cont);
 	auto ret = fill_map_keys(len, std::min(sz0, sz1), src, 100);
 
 	vector<double> w;
@@ -258,7 +258,7 @@ vector<std::pair<Point, double>> sort_out_sources(const EdgeData& source,
 
 	vector<Point> pp(input.size());
 	for (int i=0; i<input.size(); ++i) pp[i] = input[i].first;
-	vector<int> srt = Contour::Algos::SortOutPoints(source, pp);
+	vector<int> srt = Contour::Finder::SortOutPoints(source, pp);
 	vector<std::pair<Point, double>> ret;
 	for (int i=0; i<srt.size(); ++i) if (srt[i] != OUTSIDE){
 		ret.push_back(input[i]);
@@ -601,7 +601,7 @@ GridData gmsh_builder(const Contour::Tree& source, const std::map<Point, double>
 	for (auto ret: gg)
 	for (int i=0; i<ret.vcells.size(); ++i){
 		if (Contour::Area(ret.vcells[i]->edges) < 0){
-			Contour::Reverse(ret.vcells[i]->edges);
+			Contour::Algos::Reverse(ret.vcells[i]->edges);
 		}
 	}
 	GridData ret = std::move(gg[0]);
@@ -628,7 +628,7 @@ void recomb_heal(GridData& grid){
 	auto process = [&](int ic1, int ic2, int n1, int n2){
 		Cell* c1 = grid.vcells[ic1].get();
 		Cell* c2 = grid.vcells[ic2].get();
-		Contour::Reverse(c2->edges);
+		Contour::Algos::Reverse(c2->edges);
 		auto op1 = Contour::OrderedPoints1(c1->edges);
 		auto op2 = Contour::OrderedPoints1(c2->edges);
 		int loc1=-1, loc2=-1;

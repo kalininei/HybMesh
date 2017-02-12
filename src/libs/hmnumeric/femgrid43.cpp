@@ -1,12 +1,12 @@
 #include "femgrid43.hpp"
-#include "algos.hpp"
-#include "cont_repart.hpp"
-#include "cont_assembler.hpp"
+#include "modcont.hpp"
+#include "coarsencont.hpp"
+#include "assemble2d.hpp"
 #include "contabs2d.hpp"
 #include "modgrid.hpp"
 #include "trigrid.hpp"
 #include "finder2d.hpp"
-#include "constructor.hpp"
+#include "buildcont.hpp"
 
 using namespace HMFem;
 
@@ -380,8 +380,8 @@ void TAuxGrid3::mandatory_intersections(HM2D::EdgeData& c1, HM2D::EdgeData& c2){
 	auto cres = HM2D::Contour::Finder::CrossAll(c1, c2);
 	for (auto& it: cres){
 		Point& p = std::get<1>(it);
-		auto gp1 = HM2D::Contour::GuaranteePoint(c1, p);
-		auto gp2 = HM2D::Contour::GuaranteePoint(c2, p);
+		auto gp1 = HM2D::Contour::Algos::GuaranteePoint(c1, p);
+		auto gp2 = HM2D::Contour::Algos::GuaranteePoint(c2, p);
 		mandatory_points.insert(std::get<1>(gp1));
 		mandatory_points.insert(std::get<1>(gp2));
 	}
@@ -433,7 +433,7 @@ void adopt_lost(int ilost, vector<vector<Point>>& veclost, Point& ret){
 		//place ret to veclost points.
 		//We hope they are sorted (is it guaranteed ???).
 		HM2D::EdgeData contlost = HM2D::Contour::Constructor::FromPoints(lost);
-		HM2D::Contour::GuaranteePoint(contlost, ret);
+		HM2D::Contour::Algos::GuaranteePoint(contlost, ret);
 		lost.clear();
 		for (auto p: HM2D::Contour::OrderedPoints1(contlost)) {
 			lost.push_back(*p);
@@ -504,7 +504,7 @@ void TAuxGrid3::adopt_complicated_connections(HM2D::Contour::Tree& tree,
 		auto node = tree.find_node(cont[de].get());
 		Point pnew = divide_edge(cont[de].get(), lost);
 		aa::enumerate_ids_pvec(node->contour);
-		HM2D::Contour::SplitEdge(node->contour, cont[de]->id, {pnew});
+		HM2D::Contour::Algos::SplitEdge(node->contour, cont[de]->id, {pnew});
 	}
 	//check once more time
 	return adopt_complicated_connections(tree, lost);

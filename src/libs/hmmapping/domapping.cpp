@@ -1,8 +1,8 @@
 #include "domapping.hpp"
 #include "femassembly.hpp"
 #include "hmtimer.hpp"
-#include "cont_assembler.hpp"
-#include "algos.hpp"
+#include "assemble2d.hpp"
+#include "modcont.hpp"
 #include "treverter2d.hpp"
 #include "healgrid.hpp"
 #include "finder2d.hpp"
@@ -62,7 +62,7 @@ HM2D::GridData DoMapping::run(HMCallback::Caller2& cb){
 	cb.step_after(5, "Check grid");
 	if (mcol.is_reversed()){
 		for (auto e: ret.vedges) std::swap(e->left, e->right);
-		for (auto c: ret.vcells) HM2D::Contour::Reverse(c->edges);
+		for (auto c: ret.vcells) HM2D::Contour::Algos::Reverse(c->edges);
 	}
 	if (!HM2D::Grid::Algos::Check(ret)) throw HMMap::EInvalidGrid(std::move(ret));
 
@@ -163,7 +163,7 @@ void DirectMapping::build_grid3(){
 		for (auto p: HM2D::AllVertices(*cmapping->get_mapped())){
 			//find mapped point
 			Point pbase = cmapping->map_from_mapped(*p);
-			HM2D::Contour::GuaranteePoint(*copied_base_contour, pbase);
+			HM2D::Contour::Algos::GuaranteePoint(*copied_base_contour, pbase);
 		}
 	}
 	g3 = std::make_shared<HM2D::GridData>(
@@ -226,7 +226,7 @@ void InverseMapping::build_grid3(){
 		for (auto p: HM2D::AllVertices(*cmapping->get_base())){
 			//find mapped point
 			Point pmapped = cmapping->map_from_base(*p);
-			HM2D::Contour::GuaranteePoint(*copied_mapped_contour, pmapped);
+			HM2D::Contour::Algos::GuaranteePoint(*copied_mapped_contour, pmapped);
 		}
 	}
 	

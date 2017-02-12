@@ -2,9 +2,9 @@
 #include "hmmapping.hpp"
 #include "hmfdm.hpp"
 #include "hmconformal.hpp"
-#include "constructor.hpp"
-#include "cont_assembler.hpp"
-#include "algos.hpp"
+#include "buildcont.hpp"
+#include "assemble2d.hpp"
+#include "modcont.hpp"
 #include "healgrid.hpp"
 #include "buildgrid.hpp"
 #include "finder2d.hpp"
@@ -190,7 +190,7 @@ void check_direction(HM2D::GridData& ret){
 	if (ret.vcells.size() == 0) return;
 	if (HM2D::Contour::Area(ret.vcells[0]->edges) < 0){
 		for (auto e: ret.vedges) std::swap(e->left, e->right);
-		for (auto c: ret.vcells) HM2D::Contour::Reverse(c->edges);
+		for (auto c: ret.vcells) HM2D::Contour::Algos::Reverse(c->edges);
 	}
 	if (!HM2D::Grid::Algos::Check(ret)) throw HMMap::EInvalidGrid(std::move(ret));
 }

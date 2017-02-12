@@ -346,7 +346,8 @@ void merge_pyramids(CellData& cells, double merge_angle, PyrConstructor& pc){
 }
 
 
-GridData HM3D::BuildPyramidLayer(const FaceData& faces, bool non3only, double merge_angle){
+GridData HM3D::Grid::Constructor::BuildPyramidLayer(const FaceData& faces,
+		bool non3only, double merge_angle){
 	//initial commit: add single face cells
 	CellData ac = single_face_cells(faces);
 	bool need_pyramids = !non3only;

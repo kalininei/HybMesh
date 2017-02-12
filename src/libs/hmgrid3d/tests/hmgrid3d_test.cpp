@@ -6,11 +6,15 @@
 #include "buildgrid.hpp"
 #include "unite_grids.hpp"
 #include "healgrid.hpp"
-#include "constructor.hpp"
+#include "buildcont.hpp"
 #include "trigrid.hpp"
 #include "pebi.hpp"
 #include "infogrid.hpp"
-#include "cont_assembler.hpp"
+#include "assemble2d.hpp"
+#include "assemble3d.hpp"
+#include "debug2d.hpp"
+#include "export2d_fluent.hpp"
+#include "export2d_vtk.hpp"
 using namespace HMTesting;
 
 void old_numering(HM2D::GridData& g){
@@ -34,7 +38,7 @@ void old_numering(HM2D::GridData& g){
 
 void test01(){
 	std::cout<<"1. export cuboid to vtk"<<std::endl;
-	auto g1 = HM3D::Constructor::Cuboid({0, 0, 0}, 1, 2, 5, 3, 3, 3);
+	auto g1 = HM3D::Grid::Constructor::Cuboid({0, 0, 0}, 1, 2, 5, 3, 3, 3);
 	HM3D::Export::AllVTK.Silent(g1, "g1.vtk", "c1.vtk");
 	add_check(g1.vvert.size() == 64 && g1.vcells.size() == 27 &&
 			g1.vedges.size() == 144 && g1.vfaces.size() == 108,
@@ -47,7 +51,7 @@ void test02(){
 	std::cout<<"2. parallel sweep"<<std::endl;
 	{
 		auto g2d = HM2D::Grid::Constructor::RectGrid01(11, 7);
-		auto g3d = HM3D::Constructor::SweepGrid2D(g2d, {0.3, 0.4, 0.8});
+		auto g3d = HM3D::Grid::Constructor::SweepGrid2D(g2d, {0.3, 0.4, 0.8});
 		HM3D::Export::BoundaryVTK(g3d, "c1.vtk");
 		HM3D::Export::GridVTK(g3d, "g1.vtk");
 		add_check(g3d.vvert.size() == 288 && g3d.vedges.size() == 708 &&
@@ -56,7 +60,7 @@ void test02(){
 	}
 	{
 		auto g2d = HM2D::Grid::Constructor::Ring(Point(0, 0), 4, 2, 12, 4);
-		auto g3d = HM3D::Constructor::SweepGrid2D(g2d, {0, 0.1, 0.4, 0.7});
+		auto g3d = HM3D::Grid::Constructor::SweepGrid2D(g2d, {0, 0.1, 0.4, 0.7});
 		HM3D::Export::BoundaryVTK(g3d, "c1.vtk");
 		HM3D::Export::GridVTK(g3d, "g1.vtk");
 		add_check(g3d.vvert.size() == 240 && g3d.vcells.size() == 144,
@@ -64,7 +68,7 @@ void test02(){
 	}
 	{
 		auto g2d = HM2D::Grid::Constructor::Circle(Point(1, 0), 4, 24, 10, true);
-		auto g3d = HM3D::Constructor::SweepGrid2D(g2d, {0, 1, 2, 3});
+		auto g3d = HM3D::Grid::Constructor::SweepGrid2D(g2d, {0, 1, 2, 3});
 		HM3D::Export::BoundaryVTK(g3d, "c1.vtk");
 		HM3D::Export::GridVTK(g3d, "g1.vtk");
 		add_check(g3d.vvert.size() == 964 && g3d.vcells.size() == 720,
@@ -75,14 +79,14 @@ void test02(){
 void test03(){
 	std::cout<<"3. Fluent export"<<std::endl;
 	{
-		auto g1 = HM3D::Constructor::Cuboid(HM3D::Vertex(0, 0, 0), 1, 1, 1, 2, 2, 1);
+		auto g1 = HM3D::Grid::Constructor::Cuboid(HM3D::Vertex(0, 0, 0), 1, 1, 1, 2, 2, 1);
 		HM3D::Export::GridMSH.Silent(g1, "g1.msh");
 		add_file_check(15306802383608290446U, "g1.msh", "simple cuboid");
 	}
 	{
 		auto g2d = HM2D::Grid::Constructor::RectGrid01(6, 3);
 		old_numering(g2d);
-		auto g3d = HM3D::Constructor::SweepGrid2D(g2d, {0, 0.1, 0.2, 0.5},
+		auto g3d = HM3D::Grid::Constructor::SweepGrid2D(g2d, {0, 0.1, 0.2, 0.5},
 				[](int i){ return 1; },
 				[](int i){ return 2; },
 				[](int i){ return i+3; });
@@ -101,7 +105,7 @@ void test03(){
 		HM2D::CellData cd {g1.vcells[0], g1.vcells[4]};
 		auto g2 = HM2D::Grid::Constructor::InvokeGrid::Permanent(cd);
 		old_numering(g2);
-		auto g3d = HM3D::Constructor::SweepGrid2D(g2, {0, 0.1});
+		auto g3d = HM3D::Grid::Constructor::SweepGrid2D(g2, {0, 0.1});
 		HM3D::Export::GridMSH(g3d, "g3.msh");
 		add_file_check(3132562703476878584U, "g3.msh", "mixed hex/wedge cells");
 	}
@@ -110,7 +114,7 @@ void test03(){
 		HM2D::CellData cd {g1.vcells[5]};
 		auto g2 = HM2D::Grid::Constructor::InvokeGrid::Permanent(cd);
 		old_numering(g2);
-		auto g3d = HM3D::Constructor::SweepGrid2D(g2, {0, 0.1});
+		auto g3d = HM3D::Grid::Constructor::SweepGrid2D(g2, {0, 0.1});
 		HM3D::Export::GridMSH(g3d, "g4.msh");
 		add_file_check(1811066807055341946U, "g4.msh", "single pentagon prism cell");
 	}
@@ -121,7 +125,7 @@ void test03(){
 		old_numering(g2);
 		auto g3 = HM2D::Grid::Algos::UniteGrids(g1, g2, HM2D::Grid::Algos::OptUnite());
 		old_numering(g3);
-		auto g3d = HM3D::Constructor::SweepGrid2D(g3, {0, 0.1, 0.2, 0.3, 0.5},
+		auto g3d = HM3D::Grid::Constructor::SweepGrid2D(g3, {0, 0.1, 0.2, 0.3, 0.5},
 				[](int){return 1;}, [](int){return 2;},
 				[&g3](int e)->int{
 					Point pc = g3.vedges[e]->center();
@@ -146,7 +150,7 @@ void test04(){
 	{
 		auto g2d = HM2D::Grid::Constructor::RectGrid({0.0, 0.1, 1.0}, {0.0, 0.3, 1.0});
 		old_numering(g2d);
-		auto g3d = HM3D::Constructor::SweepGrid2D(g2d, {0.0, 0.2, 1.0});
+		auto g3d = HM3D::Grid::Constructor::SweepGrid2D(g2d, {0.0, 0.2, 1.0});
 		HM3D::Export::PeriodicData pd;
 		pd.add_condition(1, 2, HM3D::Vertex(0, 0, 0), HM3D::Vertex(0, 0, 1), true);
 		HM3D::Export::GridMSH(g3d, "_o1.msh", pd); 
@@ -174,7 +178,8 @@ void test04(){
 		auto g2d = HM2D::Grid::Algos::UniteGrids(g2d1, g2d2, opt);
 		vector<double> zvec;
 		for (int i=0; i<100; i+=10)  zvec.push_back(3 + (double)i/99);
-		auto g3d = HM3D::Constructor::SweepGrid2D(g2d, zvec);
+		auto g3d = HM3D::Grid::Constructor::SweepGrid2D(g2d, zvec);
+
 		HM3D::Ser::Grid s3d(g3d);
 		s3d.set_btype([](HM3D::Vertex v, int bt){
 					if (bt == 3){
@@ -190,7 +195,7 @@ void test04(){
 		pd.add_condition(1, 2, HM3D::Vertex(0, 0, 3), HM3D::Vertex(0, 0, 4), true);
 		pd.add_condition(3, 4, HM3D::Vertex(0, 0, 3), HM3D::Vertex(10, 0, 3), true);
 		HM3D::Export::GridMSH(g3d, "g2.msh", pd);
-		add_file_check(4771476334321374110U, "g2.msh", "multiple periodic");
+		add_file_check(18279916701421103105U, "g2.msh", "multiple periodic");
 	}
 };
 
@@ -199,14 +204,14 @@ void test05(){
 	{
 		auto g2d = HM2D::Grid::Constructor::RectGrid01(1, 1);
 		old_numering(g2d);
-		auto g3d = HM3D::Constructor::SweepGrid2D(g2d, {0.0, 0.5});
+		auto g3d = HM3D::Grid::Constructor::SweepGrid2D(g2d, {0.0, 0.5});
 		HM3D::Export::GridTecplot.Silent(g3d, "g1.dat");
 		add_file_check(1831833575709478659U, "g1.dat", "single cell grid");
 	}
 	{
 		auto g2d = HM2D::Grid::Constructor::Circle(Point(0, 0), 10, 30, 10, false);
 		old_numering(g2d);
-		auto g3d = HM3D::Constructor::SweepGrid2D(g2d, {1.0, 1.2, 1.4, 1.6, 1.7, 1.8, 1.9, 2.0});
+		auto g3d = HM3D::Grid::Constructor::SweepGrid2D(g2d, {1.0, 1.2, 1.4, 1.6, 1.7, 1.8, 1.9, 2.0});
 		HM3D::Export::GridTecplot.Silent(g3d, "g1.dat");
 		add_file_check(17626851046985520587U, "g1.dat", "polyhedral grid");
 		HM3D::Export::BoundaryTecplot.Silent(HM3D::Ser::Grid(g3d), "g1.dat");
@@ -215,7 +220,7 @@ void test05(){
 }
 
 void test06(){
-	using HM3D::Constructor::RevolveGrid2D;
+	using HM3D::Grid::Constructor::RevolveGrid2D;
 	std::cout<<"6. Solid of revolution"<<std::endl;
 	auto g2d = HM2D::Grid::Constructor::RectGrid(Point(1,0), Point(2,1), 1, 1);
 	old_numering(g2d);
@@ -274,7 +279,7 @@ void test06(){
 }
 
 void test07(){
-	using HM3D::Constructor::RevolveGrid2D;
+	using HM3D::Grid::Constructor::RevolveGrid2D;
 	std::cout<<"7. Solid of revolution, merging centeral cells"<<std::endl;
 	{
 		auto g2d = HM2D::Grid::Constructor::RectGrid(Point(1,0), Point(2,1), 1, 1);
@@ -343,7 +348,7 @@ void test07(){
 
 void test08(){
 	std::cout<<"8. export cuboid to gmsh"<<std::endl;
-	auto g1 = HM3D::Constructor::Cuboid({0, 0, 0}, 1, 2, 5, 3, 3, 3);
+	auto g1 = HM3D::Grid::Constructor::Cuboid({0, 0, 0}, 1, 2, 5, 3, 3, 3);
 	auto bfun = [](int i)->std::string{
 		if (i==1) return "bottom";
 		if (i==2) return "top";
@@ -362,18 +367,18 @@ void test08(){
 void test09(){
 	std::cout<<"9. 3d domain unstructured meshing"<<std::endl;
 	{
-		auto g1 = HM3D::Constructor::Cuboid({0, 0, 0}, 1, 1, 1, 5, 5, 5);
-		auto s1 = HM3D::Surface::GridSurface(g1);
+		auto g1 = HM3D::Grid::Constructor::Cuboid({0, 0, 0}, 1, 1, 1, 5, 5, 5);
+		auto s1 = HM3D::Surface::Assembler::GridSurface(g1);
 		auto g2 = HM3D::Mesher::UnstructuredTetrahedral(s1); 
 		add_check(ISEQ(HM3D::SumVolumes(g2.vcells), 1), "grid in cubic domain");
 	}
 	{
-		auto g1 = HM3D::Constructor::Cuboid({1, 1, 1}, 2, 3, 1, 7, 8, 4);
-		auto g2 = HM3D::Constructor::Cuboid({10, 10, 10}, 5, 5, 5, 10, 10, 10);
+		auto g1 = HM3D::Grid::Constructor::Cuboid({1, 1, 1}, 2, 3, 1, 7, 8, 4);
+		auto g2 = HM3D::Grid::Constructor::Cuboid({10, 10, 10}, 5, 5, 5, 10, 10, 10);
 		auto gcyl2 = HM2D::Grid::Constructor::Circle(Point{1, 1}, 5, 64, 10, true);
 		vector<double> zsweep;
 		for (int i=0; i<11; ++i) zsweep.push_back( (double)i / 10 * 4);
-		auto gcyl = HM3D::Constructor::SweepGrid2D(gcyl2, zsweep);
+		auto gcyl = HM3D::Grid::Constructor::SweepGrid2D(gcyl2, zsweep);
 
 		HM3D::FaceData srf;
 		//for (auto f: gcyl.vfaces) if (f->is_boundary()) srf.faces.push_back(f);
@@ -400,7 +405,7 @@ void test09(){
 		auto g2 = HM2D::Grid::Constructor::TriToPebi(g1);
 		vector<double> zsweep;
 		for (int i=0; i<11; ++i) zsweep.push_back( (double)i / 10 );
-		auto g3 = HM3D::Constructor::SweepGrid2D(g2, zsweep);
+		auto g3 = HM3D::Grid::Constructor::SweepGrid2D(g2, zsweep);
 
 		HM3D::FaceData srf;
 		for (auto f: g3.vfaces) if (f->is_boundary()) srf.push_back(f);
@@ -416,7 +421,7 @@ void test09(){
 		auto g1 = HM2D::Mesher::UnstructuredTriangle(tree);
 		vector<double> zsweep;
 		for (int i=0; i<11; ++i) zsweep.push_back( (double)i / 10 );
-		auto g3 = HM3D::Constructor::SweepGrid2D(g1, zsweep);
+		auto g3 = HM3D::Grid::Constructor::SweepGrid2D(g1, zsweep);
 
 		HM3D::FaceData srf;
 		for (auto f: g3.vfaces) if (f->is_boundary()) srf.push_back(f);
@@ -433,7 +438,7 @@ void test09(){
 		auto g1 = HM2D::Mesher::UnstructuredTriangle(tree);
 		vector<double> zsweep;
 		for (int i=0; i<11; ++i) zsweep.push_back( (double)i / 10 );
-		auto g3 = HM3D::Constructor::SweepGrid2D(g1, zsweep);
+		auto g3 = HM3D::Grid::Constructor::SweepGrid2D(g1, zsweep);
 
 		HM3D::FaceData srf;
 		for (auto f: g3.vfaces) if (f->is_boundary()) srf.push_back(f);
@@ -449,7 +454,7 @@ void test09(){
 		//FIXME hz=0.2 fails due to pyramid intersections
 		double hz = 0.25;
 		while (zsweep.back()<5) zsweep.push_back(zsweep.back()+hz);
-		auto g2 = HM3D::Constructor::SweepGrid2D(g1, zsweep);
+		auto g2 = HM3D::Grid::Constructor::SweepGrid2D(g1, zsweep);
 		HM3D::FaceData srf2;
 		for (auto f: g2.vfaces) if (f->is_boundary()) srf2.push_back(f);
 
@@ -468,7 +473,7 @@ void test10(){
 		vector<double> zsweep;
 		double hz = 1;
 		for (int i=0; i<2; ++i) zsweep.push_back(i*hz);
-		auto g3 = HM3D::Constructor::SweepGrid2D(g2, zsweep);
+		auto g3 = HM3D::Grid::Constructor::SweepGrid2D(g2, zsweep);
 		HM3D::FaceData srf3;
 		for (auto f: g3.vfaces) if (f->is_boundary()) srf3.push_back(f);
 
@@ -480,7 +485,7 @@ void test10(){
 		vector<double> zsweep;
 		double hz = 1;
 		for (int i=0; i<3; ++i) zsweep.push_back(i*hz);
-		auto g3 = HM3D::Constructor::SweepGrid2D(g2, zsweep);
+		auto g3 = HM3D::Grid::Constructor::SweepGrid2D(g2, zsweep);
 		HM3D::FaceData srf3;
 		for (auto f: g3.vfaces) if (f->is_boundary()) srf3.push_back(f);
 
@@ -495,7 +500,7 @@ void test10(){
 		vector<double> zsweep;
 		double hz = 1;
 		for (int i=0; i<4; ++i) zsweep.push_back(i*hz);
-		auto g3 = HM3D::Constructor::SweepGrid2D(g2, zsweep);
+		auto g3 = HM3D::Grid::Constructor::SweepGrid2D(g2, zsweep);
 		HM3D::Surface srf3;
 		for (auto f: g3.vfaces) if (f->is_boundary()) srf3.faces.push_back(f);
 

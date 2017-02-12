@@ -1,12 +1,13 @@
 #include "modgrid.hpp"
-#include "algos.hpp"
+#include "modcont.hpp"
 #include "healgrid.hpp"
 #include <stack>
-#include "cont_assembler.hpp"
+#include "assemble2d.hpp"
 #include "contabs2d.hpp"
 #include "finder2d.hpp"
 #include "treverter2d.hpp"
 #include "infogrid.hpp"
+#include "debug_grid2d.hpp"
 using namespace HM2D;
 using namespace HM2D::Grid;
 

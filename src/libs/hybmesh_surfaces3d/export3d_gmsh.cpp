@@ -5,6 +5,7 @@
 #include "serialize3d.hpp"
 #include "export3d_vtk.hpp"
 #include "surface.hpp"
+#include "assemble3d.hpp"
 
 using namespace HM3D;
 namespace hme = HM3D::Export;
@@ -16,7 +17,7 @@ void hme::TGridGMSH::_run(const Ser::Grid& ser, std::string fn, BFun bfun){
 	callback->step_after(25, "Faces assembling");
 	auto fv = ser.face_vertex();
 	//face data
-	std::map<int, FaceData> srfs = Surface::GridSurfaceBType(grid);
+	std::map<int, FaceData> srfs = Surface::Assembler::GridSurfaceBType(grid);
 	std::map<int, vector<vector<int>>> psrfs;
 	int totfaces = 0;
 	aa::enumerate_ids_pvec(grid.vfaces);

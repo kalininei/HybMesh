@@ -1,7 +1,7 @@
 #include "gpc_core.hpp"
 #include "string.h"
-#include "algos.hpp"
-#include "cont_assembler.hpp"
+#include "modcont.hpp"
+#include "assemble2d.hpp"
 
 using namespace HM2D::Impl;
 using namespace HM2D;

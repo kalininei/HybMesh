@@ -2,7 +2,7 @@
 #define CROSSGRID_BUFFERGRID_H
 
 #include <map>
-#include "tree.hpp"
+#include "contour_tree.hpp"
 
 namespace HM2D{ namespace Grid{ namespace Impl{
 
@@ -19,7 +19,7 @@ class BufferGrid: public CellData{
 	Contour::Tree offset_contact(const Contour::Tree& outer_bnd, const EdgeData& contact, double bsize) const;
 	Contour::Tree offset_closed_contact(const Contour::Tree& outer_bnd, const EdgeData& contact, double bsize) const;
 	Contour::Tree offset_open_contact(const Contour::Tree& outer_bnd, const EdgeData& contact, double bsize) const;
-	void remove_vertex_from_orig(Vertex* v);
+	void remove_vertices_from_orig(const VertexData& badp);
 	Contour::Tree build_buffer_zone(const Contour::Tree& outer_bnd, double buffer_size) const;
 	Contour::Tree triangulation_boundary();
 

@@ -1,9 +1,11 @@
 set (HEADERS
 	primitives3d.hpp
+	finder3d.hpp
 	contabs3d.hpp
 	debug3d.hpp
 	surface.hpp
 	surface_tree.hpp
+	assemble3d.hpp
 	serialize3d.hpp
 	treverter3d.hpp
 	
@@ -17,10 +19,12 @@ set (HEADERS
 
 set (SOURCES
 	primitives3d.cpp
+	finder3d.cpp
 	contabs3d.cpp
 	debug3d.cpp
 	surface.cpp
 	surface_tree.cpp
+	assemble3d.cpp
 	serialize3d.cpp
 	treverter3d.cpp
 

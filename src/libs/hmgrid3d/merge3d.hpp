@@ -3,7 +3,7 @@
 
 #include "primitives3d.hpp"
 
-namespace HM3D{
+namespace HM3D{ namespace Grid{ namespace Algos{
 
 //duplicate primitives will be taken from `from` grid
 //result will be written to `to` grid.
@@ -14,7 +14,7 @@ void MergeGrid(GridData& from, GridData& to,
 GridData MergeGrids(const GridData& g1, const GridData& g2);
 
 
-}
+}}}
 
 
 

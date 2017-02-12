@@ -1,5 +1,5 @@
 #include "import2d_hm.hpp"
-#include "constructor.hpp"
+#include "buildcont.hpp"
 
 using namespace HM2D;
 using namespace HMXML;

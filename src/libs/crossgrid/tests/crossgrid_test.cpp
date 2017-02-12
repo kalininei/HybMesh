@@ -3,14 +3,14 @@
 #include "cport_cont2d.h"
 #include "trigrid.hpp"
 #include "pebi.hpp"
-#include "constructor.hpp"
+#include "buildcont.hpp"
 #include "buildgrid.hpp"
 #include "healgrid.hpp"
 #include "infogrid.hpp"
 #include "unite_grids.hpp"
 #include "modgrid.hpp"
 #include "wireframegrid.hpp"
-#include "cont_assembler.hpp"
+#include "assemble2d.hpp"
 #include "debug2d.hpp"
 #include "debug_grid2d.hpp"
 #include "export2d_vtk.hpp"
@@ -802,7 +802,7 @@ void test24(){
 		auto tree = tree_w_constraints({{Point(0, 0), Point(1, 0), Point(1, 1), Point(0, 1)}}, {}, 0.1);
 		auto trig = HM2D::Mesher::UnstructuredTriangle(tree);
 		auto g1 = HM2D::Grid::Constructor::TriToPebi(trig);
-		auto els = HM2D::ELengths(g1.vedges);
+		auto els = HM2D::Contour::ELengths(g1.vedges);
 		add_check(maxskew(g1)<0.5, "skewness check");
 		add_check(*min_element(els.begin(), els.end())>0.005, "edges lengths");
 	}
@@ -938,19 +938,19 @@ void test26(){
 		HM2D::Grid::Algos::RemoveCells(g1, {43, 44, 53, 54, 65, 66, 75, 76});
 		vector<HM2D::EdgeData> conts = HM2D::Contour::Assembler::GridBoundary(g1);
 		add_check(conts.size() == 3 &&
-		          ISEQ(HM2D::Length(conts[0]), 4) &&
-		          ISEQ(HM2D::Length(conts[1]), 0.8) &&
-		          ISEQ(HM2D::Length(conts[2]), 0.8), "two inner areas");
+		          ISEQ(HM2D::Contour::Length(conts[0]), 4) &&
+		          ISEQ(HM2D::Contour::Length(conts[1]), 0.8) &&
+		          ISEQ(HM2D::Contour::Length(conts[2]), 0.8), "two inner areas");
 	}
 	{
 		auto g1 = HM2D::Grid::Constructor::RectGrid01(10, 10);
 		HM2D::Grid::Algos::RemoveCells(g1, {35,  43, 44, 53, 54, 65, 66, 75, 76});
 		vector<HM2D::EdgeData> conts = HM2D::Contour::Assembler::GridBoundary(g1);
 		add_check(conts.size() == 4 &&
-		          ISEQ(HM2D::Length(conts[0]), 4) &&
-		          ISEQ(HM2D::Length(conts[1]), 0.4) &&
-		          ISEQ(HM2D::Length(conts[2]), 0.8) &&
-	                  ISEQ(HM2D::Length(conts[3]), 0.8), "three inner areas");
+		          ISEQ(HM2D::Contour::Length(conts[0]), 4) &&
+		          ISEQ(HM2D::Contour::Length(conts[1]), 0.4) &&
+		          ISEQ(HM2D::Contour::Length(conts[2]), 0.8) &&
+	                  ISEQ(HM2D::Contour::Length(conts[3]), 0.8), "three inner areas");
 	}
 	{
 		auto g1 = HM2D::Grid::Constructor::RectGrid01(10, 10);

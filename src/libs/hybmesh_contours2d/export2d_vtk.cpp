@@ -1,7 +1,7 @@
 #include "export2d_vtk.hpp"
 #include <fstream>
 #include "contour.hpp"
-#include "tree.hpp"
+#include "contour_tree.hpp"
 
 using namespace HM2D;
 

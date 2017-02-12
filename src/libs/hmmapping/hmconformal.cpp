@@ -3,8 +3,8 @@
 #include "dscpack_port.hpp"
 #include "hmcompute.hpp"
 #include "confrect_fem.hpp"
-#include "constructor.hpp"
-#include "cont_assembler.hpp"
+#include "buildcont.hpp"
+#include "assemble2d.hpp"
 #include "treverter2d.hpp"
 
 using namespace HMMap::Conformal;
@@ -254,10 +254,10 @@ Impl::RectApprox::Build(const vector<Point>& path, int i1, int i2, int i3){
 	r2.make_permanent();
 
 	//calc_options
-	ret->_len_top = HM2D::Length(ret->top);
-	ret->_len_bot = HM2D::Length(ret->bot);
-	ret->_len_right = HM2D::Length(ret->right);
-	ret->_len_left = HM2D::Length(ret->left);
+	ret->_len_top = HM2D::Contour::Length(ret->top);
+	ret->_len_bot = HM2D::Contour::Length(ret->bot);
+	ret->_len_right = HM2D::Contour::Length(ret->right);
+	ret->_len_left = HM2D::Contour::Length(ret->left);
 	ret->_module = (ret->_len_top + ret->_len_bot)/(ret->_len_left+ret->_len_right);
 	ret->_left_straight = (HM2D::Contour::CornerPoints(ret->left).size() == 2);
 	ret->_bot_straight = (HM2D::Contour::CornerPoints(ret->bot).size() == 2);

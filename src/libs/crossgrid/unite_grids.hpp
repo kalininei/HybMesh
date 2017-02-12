@@ -3,7 +3,7 @@
 
 #include "primitives2d.hpp"
 #include "hmcallback.hpp"
-#include "tree.hpp"
+#include "contour_tree.hpp"
 
 namespace HM2D{ namespace Grid{ namespace Algos{
 

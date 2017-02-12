@@ -37,6 +37,9 @@ struct Edge{
 	//==== Features
 	shared_ptr<Vertex> first() const { return vertices[0]; }
 	shared_ptr<Vertex> last() const { return vertices[1]; }
+	Vertex* pfirst() const { return vertices[0].get(); }
+	Vertex* plast() const { return vertices[1].get(); }
+
 	double measure() const;
 	double length() const;
 
@@ -135,20 +138,6 @@ FaceData AllFaces(const CellData& from);
 std::tuple<VertexData> AllPrimitives(const EdgeData& from);
 std::tuple<VertexData, EdgeData> AllPrimitives(const FaceData& from);
 std::tuple<VertexData, EdgeData, FaceData> AllPrimitives(const CellData& from);
-
-//miscellaneous algorithms
-std::tuple<
-	Vertex*,     //pointer to closest vertex
-	int,         //index of closest vertex within vec
-	double       //measure to closest vertex
-> FindClosestVertex(const VertexData& vec, Vertex v);
-
-//connect edges at data starting from vertex closest to v till close or end reached.
-//chooses direction according to edge which includes v as start vertex
-//!!! If edge vertex has more then 2 connections or 
-//    multiple edges include v as start point result is undefined (false assert in debug mode)
-//!!! Doesn't go backward
-EdgeData Connect(const EdgeData& data, Vertex v);
 
 //cells volumes
 vector<double> Volumes(const CellData& cd);

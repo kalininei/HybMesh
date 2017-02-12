@@ -1,10 +1,10 @@
-#include "cont_partition.hpp"
+#include "partcont.hpp"
 #include "piecewise.hpp"
 #include "partition01.hpp"
-#include "cont_assembler.hpp"
+#include "assemble2d.hpp"
 #include "treverter2d.hpp"
 #include "finder2d.hpp"
-#include "algos.hpp"
+#include "modcont.hpp"
 
 using namespace HM2D;
 using namespace HM2D::Contour;
@@ -264,7 +264,7 @@ EdgeData partition_core(A& step, const EdgeData& contour){
 	//assign boundary type
 	vector<double> wcenters(w.size()-1);
 	for (int i=0; i<w.size()-1; ++i) wcenters[i] = (w[i] + w[i+1])/2.;
-	vector<int> bt = HM2D::Contour::Algos::BTypesFromWeights(contour, wcenters);
+	vector<int> bt = BTypesFromWeights(contour, wcenters);
 	for (int i=0; i<ret.size(); ++i){
 		ret[i]->boundary_type = bt[i];
 	}
@@ -288,12 +288,12 @@ EdgeData partition_core(A& step, const EdgeData& contour, const Vlist& keep){
 	auto it0 = keep.begin(), it1 = std::next(it0);
 	EdgeData ret;
 	while (it1 != keep.end()){
-		Connect(ret, partition_section(step, contour, *it0, *it1));
+		cns::Connect(ret, partition_section(step, contour, *it0, *it1));
 		//if sub.size() == 1 then its direction is not defined
 		//so we need to check the resulting direction.
 		//We did it after second union when direction matters
 		if (it0 == std::next(keep.begin())){
-			if (Last(ret) != *it1) Reverse(ret);
+			if (Last(ret) != *it1) cns::Reverse(ret);
 		}
 
 		++it0; ++it1;
@@ -356,7 +356,7 @@ EdgeData cns::Partition(double step, const EdgeData& contour, PartitionTp tp){
 		case PartitionTp::KEEP_ALL:
 			return Partition(step, contour, AllVertices(contour));
 		case PartitionTp::KEEP_SHAPE:
-			return Partition(step, contour, CornerPoints(contour));
+			return Partition(step, contour, CornerPoints1(contour));
 	};
 }
 EdgeData cns::WeightedPartition(const std::map<double, double>& basis,
@@ -367,7 +367,7 @@ EdgeData cns::WeightedPartition(const std::map<double, double>& basis,
 		case PartitionTp::KEEP_ALL:
 			return WeightedPartition(basis, contour, AllVertices(contour));
 		case PartitionTp::KEEP_SHAPE:
-			return WeightedPartition(basis, contour, CornerPoints(contour));
+			return WeightedPartition(basis, contour, CornerPoints1(contour));
 	};
 }
 EdgeData cns::Partition(double step, const EdgeData& contour,

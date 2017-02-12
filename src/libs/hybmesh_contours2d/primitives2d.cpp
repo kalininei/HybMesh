@@ -143,18 +143,9 @@ void HM2D::DeepCopy(const GridData& from, GridData& to, int level){
 }
 
 // ===================== Miscellaneous
-double HM2D::Length(const EdgeData& ed){
-	double ret = 0;
-	for (auto& e: ed) ret += e->length();
-	return ret;
-}
-vector<double> HM2D::ELengths(const EdgeData& ed){
-	vector<double> ret;
-	for (auto& e: ed) ret.push_back(e->length());
-	return ret;
-}
 BoundingBox HM2D::BBox(const VertexData& vd, double eps){
-	return BoundingBox::Build(vd.begin(), vd.end(), eps);
+	assert(vd.size() > 0);
+	return BoundingBox::PBuild(vd.begin(), vd.end(), eps);
 }
 
 BoundingBox HM2D::BBox(const EdgeData& ed, double eps){

@@ -1,11 +1,11 @@
 #include "connectors.hpp"
 #include "bgrid_impose.hpp"
-#include "contclipping.hpp"
-#include "algos.hpp"
-#include "constructor.hpp"
+#include "clipdomain.hpp"
+#include "modcont.hpp"
+#include "buildcont.hpp"
 #include "treverter2d.hpp"
 #include "buildgrid.hpp"
-#include "cont_assembler.hpp"
+#include "assemble2d.hpp"
 #include "healgrid.hpp"
 #include "finder2d.hpp"
 
@@ -176,8 +176,8 @@ void ReentrantConnector::BuildInternals(){
 	bot = next->LeftContour();
 	// left/bot are straight lines. Otherwise there was an error
 	// during ExtPath division
-	assert(ISEQ( HM2D::Length(left), Point::dist(*HM2D::Contour::First(left), *HM2D::Contour::Last(left)) ));
-	assert(ISEQ( HM2D::Length(bot),  Point::dist(*HM2D::Contour::First(bot), *HM2D::Contour::Last(bot))  ));
+	assert(ISEQ( HM2D::Contour::Length(left), Point::dist(*HM2D::Contour::First(left), *HM2D::Contour::Last(left)) ));
+	assert(ISEQ( HM2D::Contour::Length(bot),  Point::dist(*HM2D::Contour::First(bot), *HM2D::Contour::Last(bot))  ));
 	//int sz = std::min(left.size(), bot.size());
 	//if (left.size()>sz) left = HMCont2D::ECollection::ShallowCopy(left, 0, sz);
 	//if (bot.size()>sz) bot = HMCont2D::ECollection::ShallowCopy(bot, 0, sz);
@@ -246,8 +246,8 @@ void RoundConnector::BuildInternals(){
 		circ_end.push_back(
 			HM2D::Contour::Constructor::Circle(36, cp, pend[i])
 		);
-		HM2D::Contour::Reverse(circ_start.back());
-		HM2D::Contour::Reverse(circ_end.back());
+		HM2D::Contour::Algos::Reverse(circ_start.back());
+		HM2D::Contour::Algos::Reverse(circ_end.back());
 	}
 
 	//contours from lowest to highest
@@ -265,7 +265,7 @@ void RoundConnector::BuildInternals(){
 	double lenprev = Point::dist(*prev->right_points[Nlay],
 			*prev->right_points[Nlay-1]);
 	double lenav = (lennext+lenprev)/2.0;
-	int N = std::ceil(HM2D::Length(conts.back()) / lenav);
+	int N = std::ceil(HM2D::Contour::Length(conts.back()) / lenav);
 	for (int i=0; i<=N; ++i) w.push_back((double)i/N);
 
 	//get points

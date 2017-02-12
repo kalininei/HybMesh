@@ -1,7 +1,7 @@
 #ifndef HYBMESH_HMFEM_FEMGRID43
 #define HYBMESH_HMFEM_FEMGRID43
 #include "primitives2d.hpp"
-#include "tree.hpp"
+#include "contour_tree.hpp"
 #include "hmcallback.hpp"
 
 namespace HMFem{ 

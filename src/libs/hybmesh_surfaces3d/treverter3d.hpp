@@ -11,15 +11,22 @@ namespace HM3D{ namespace Surface{ namespace R{
 class Revert{
 	FaceData* obj;
 	vector<bool> need_revert;
+	bool permanent;
 public:
 	//delete default constructors to avoid premature reversion.
 	Revert(const Revert&) = delete;
-	Revert(Revert&&) = delete;
-	Revert& operator=(const Revert&) = delete;
+
 	//using const since all surf changes are temporal
-	explicit Revert(const FaceData& srf);
+	Revert(const FaceData& srf);
 	~Revert();
+
 	void reverse_direction();
+	void make_permanent(){permanent = true; }
+
+	static void Permanent(FaceData& srf){
+		Revert a(srf);
+		a.make_permanent();
+	}
 };
 
 //tree internal area is located to the left of even leveled surfaces
@@ -32,12 +39,20 @@ class RevertTree{
 public:
 	//delete default constructors to avoid premature reversion.
 	RevertTree(const RevertTree&) = delete;
-	RevertTree(RevertTree&&) = delete;
-	RevertTree& operator=(const RevertTree&) = delete;
 
 	//using const since all surf changes are temporal
-	explicit RevertTree(const Surface::Tree& srf);
+	RevertTree(const Surface::Tree& srf);
 	~RevertTree();
+
+	void make_permanent(){
+		for (auto& a: openrevs) a->make_permanent();
+		for (auto& a: closedrevs) a->make_permanent();
+	}
+
+	static void Permenent(Surface::Tree& tree){
+		RevertTree a(tree);
+		a.make_permanent();
+	}
 };
 
 //all faces wich have no left (cells_left=true) or right (cells_left=false)
@@ -45,18 +60,21 @@ public:
 class RevertGridSurface{
 	FaceData* obj;
 	vector<bool> need_revert;
-	bool is_permanent;
+	bool permanent;
 public:
 	//delete default constructors to avoid premature reversion.
 	RevertGridSurface(const RevertGridSurface&) = delete;
-	RevertGridSurface(RevertGridSurface&&) = delete;
-	RevertGridSurface& operator=(const RevertGridSurface&) = delete;
 
 	//using const since all surf changes are temporal
 	RevertGridSurface(const FaceData& srf, bool cells_left);
 	~RevertGridSurface();
 
-	void make_permanent();
+	void make_permanent(){ permanent = true; }
+
+	static void Permanent(FaceData& srf, bool cells_left){
+		RevertGridSurface a(srf, cells_left);
+		a.make_permanent();
+	}
 };
 
 }}}

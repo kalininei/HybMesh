@@ -7,70 +7,7 @@
 
 using namespace HM3D;
 
-std::tuple<Vertex*, int, double>
-HM3D::FindClosestVertex(const VertexData& vec, Vertex v){
-	std::tuple<Vertex*, int, double> ret;
-	Vertex*& vout = std::get<0>(ret);
-	int& ind = std::get<1>(ret);
-	double& meas = std::get<2>(ret);
-
-	vout = 0; ind = 0; meas = -1;
-	int it=0;
-	for (auto& x: vec){
-		double m = Vertex::meas(v, *x);
-		if (vout == 0 || m<meas){
-			vout = x.get(); meas = m; ind = it;
-		}
-		++it;
-	}
-
-	return ret;
-}
-
-// ================= Edge
-EdgeData HM3D::Connect(const EdgeData& data, Vertex app_v){
-	//1. find closest vertex to v
-	ShpVector<Vertex> vall;
-	for (auto d: data) { vall.push_back(d->first()); vall.push_back(d->last()); }
-	vall = aa::no_duplicates(vall);
-	auto fres = FindClosestVertex(vall, app_v);
-	const shared_ptr<Vertex> v = vall[std::get<1>(fres)];
-
-	//2. find edge which includes v as start node
-	auto fnd = std::find_if(data.begin(), data.end(),
-			[&v](shared_ptr<Edge> d){ return d->first() == v;});
-	assert(fnd != data.end());
-
-	//3. assemble vertex_edge connectivity
-	auto vertex_edge = Connectivity::VertexEdge(data);
-	for (int i=0; i<vertex_edge.size(); ++i) vertex_edge[i].v->id = i;
-
-	//4. assembling
-	vector<int> assembled(1, fnd - data.begin());
-	shared_ptr<Vertex> curv(v);
-	while(1){
-		const shared_ptr<Edge>& curedge = data[assembled.back()];
-		assert(curedge->first() == curv);
-		shared_ptr<Vertex> nextv = curedge->last();
-		auto& ve = vertex_edge[nextv->id];
-		assert(ve.size() == 1 || ve.size() == 2);
-		int i_nextedge;
-		if (ve.size() == 1) break;
-		else{
-			i_nextedge = ve.eind[0];
-			if (i_nextedge == assembled.back()) i_nextedge = ve.eind[1];
-		}
-		if (i_nextedge == assembled[0]) break;
-		else assembled.push_back(i_nextedge);
-		std::swap(curv, nextv);
-	}
-
-	//5. write return vector
-	ShpVector<Edge> ret; ret.reserve(assembled.size());
-	for (int i: assembled) ret.push_back(data[i]);
-	return ret;
-}
-
+// ================ face
 double Edge::measure() const{
 	return Vertex::meas(*first(), *last());
 }
@@ -493,21 +430,21 @@ void HM3D::DeepCopy(const GridData& from, GridData& to, int level){
 }
 
 ScaleBase3 HM3D::Scale01(VertexData& obj, double a1){
-	return ScaleBase3::doscale(obj, 1);
+	return ScaleBase3::p_doscale(obj, 1);
 }
 ScaleBase3 HM3D::Scale01(FaceData& obj, double a){
 	auto av = AllVertices(obj);
 	return Scale01(av, a);
 }
 void HM3D::Scale(VertexData& obj, const ScaleBase3& sc){
-	sc.scale(obj.begin(), obj.end());
+	sc.p_scale(obj.begin(), obj.end());
 }
 void HM3D::Scale(FaceData& obj, const ScaleBase3& sc){
 	auto av = AllVertices(obj);
 	Scale(av, sc);
 }
 void HM3D::Unscale(VertexData& obj, const ScaleBase3& sc){
-	sc.unscale(obj.begin(), obj.end());
+	sc.p_unscale(obj.begin(), obj.end());
 }
 void HM3D::Unscale(FaceData& obj, const ScaleBase3& sc){
 	auto av = AllVertices(obj);

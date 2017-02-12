@@ -1,6 +1,6 @@
 set (HEADERS
 	hmgrid3d.hpp
-	construct_grid3d.hpp
+	buildgrid3d.hpp
 	revolve_grid3d.hpp
 	tetrahedral.hpp
 	tetramesh_preproc.hpp
@@ -10,7 +10,7 @@ set (HEADERS
 
 set (SOURCES
 	hmgrid3d.cpp
-	construct_grid3d.cpp
+	buildgrid3d.cpp
 	revolve_grid3d.cpp
 	tetrahedral.cpp
 	tetramesh_preproc.cpp

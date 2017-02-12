@@ -1,6 +1,7 @@
 #include "infogrid.hpp"
-#include "tree.hpp"
-#include "algos.hpp"
+#include "contour_tree.hpp"
+#include "modcont.hpp"
+#include "finder2d.hpp"
 
 using namespace HM2D;
 namespace hg=HM2D::Grid;
@@ -123,7 +124,7 @@ vector<int> define_squares_positions(const BoundingBoxFinder& bf,
 	for (auto& g: groups){
 		gpoints.push_back(bf.sqr_center(g[0]));
 	}
-	vector<int> gf = Contour::Algos::SortOutPoints(tree, gpoints);
+	vector<int> gf = Contour::Finder::SortOutPoints(tree, gpoints);
 	for (auto& i: gf){
 		if (i==INSIDE) i = 1;
 		else if (i==OUTSIDE) i = 2;
@@ -170,6 +171,9 @@ CellData Grid::ExtractCells(const GridData& grid, const Contour::Tree& domain, i
 	std::copy_if(grid.vcells.begin(), grid.vcells.end(), std::back_inserter(ret),
 			[](const shared_ptr<Cell>& c){ return c->id == 1; });
 
+	//return if no cells to process
+	if (icells.size() == 0) return ret;
+
 	//build finder
 	BoundingBox bbox({HM2D::BBox(ivert), bbox2});
 	BoundingBoxFinder bfinder(bbox, bbox.maxlen()/30);
@@ -202,7 +206,7 @@ CellData Grid::ExtractCells(const GridData& grid, const Contour::Tree& domain, i
 	//Sorting vertices
 	vector<Point> pivert(ivert.size());
 	for (int i=0; i<ivert.size(); ++i) pivert[i].set(*ivert[i]);
-	vector<int> srt = Contour::Algos::SortOutPoints(nt, pivert);
+	vector<int> srt = Contour::Finder::SortOutPoints(nt, pivert);
 	for (int i=0; i<ivert.size(); ++i) ivert[i]->id = srt[i];
 
 	//analyzing undefined cells: if it contains bad point

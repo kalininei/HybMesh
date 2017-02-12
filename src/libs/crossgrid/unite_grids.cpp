@@ -1,15 +1,16 @@
 #include "unite_grids.hpp"
-#include "tree.hpp"
+#include "contour_tree.hpp"
 #include "treverter2d.hpp"
 #include "modgrid.hpp"
 #include "buffergrid.hpp"
-#include "algos.hpp"
+#include "modcont.hpp"
 #include "wireframegrid.hpp"
-#include "constructor.hpp"
-#include "contclipping.hpp"
+#include "buildcont.hpp"
+#include "clipdomain.hpp"
 #include "healgrid.hpp"
 #include "finder2d.hpp"
-#include "cont_assembler.hpp"
+#include "assemble2d.hpp"
+#include "debug_grid2d.hpp"
 using namespace HM2D;
 using namespace HM2D::Grid;
 
@@ -258,7 +259,6 @@ GridData Algos::TCombineGrids::_run(const GridData& g1, const GridData& g2){
 	ic2.insert(ic2.end(), ic1.begin(), ic1.end());
 	EdgeData rc = HM2D::ECol::Assembler::GridBoundary(ret);
 	HM2D::ECol::Algos::AssignBTypes(ic2, rc);
-
 	return ret;
 }
 

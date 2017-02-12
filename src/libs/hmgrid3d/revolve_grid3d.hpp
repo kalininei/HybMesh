@@ -4,7 +4,7 @@
 #include "primitives2d.hpp"
 #include "primitives3d.hpp"
 
-namespace HM3D{namespace Constructor{
+namespace HM3D{namespace Grid{ namespace Constructor{
 
 //returns final grid
 //phi_coords in degrees
@@ -14,5 +14,5 @@ HM3D::GridData RevolveGrid2D(const HM2D::GridData& g2d,
 		int bt1 = 2, int bt2 = 3);
 
 
-}}
+}}}
 #endif

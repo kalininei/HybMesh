@@ -3,13 +3,14 @@
 #include "modgrid.hpp"
 #include "healgrid.hpp"
 #include "buildgrid.hpp"
-#include "cont_assembler.hpp"
-#include "algos.hpp"
+#include "assemble2d.hpp"
+#include "modcont.hpp"
 #include "contabs2d.hpp"
 #include "infogrid.hpp"
 #include "treverter2d.hpp"
-#include "contclipping.hpp"
+#include "clipdomain.hpp"
 #include "finder2d.hpp"
+#include "debug_grid2d.hpp"
 
 using namespace HM2D;
 using namespace HM2D::Grid;
@@ -27,7 +28,7 @@ vector<EdgeData> BufferGrid::build_contacts(const EdgeData& bedges) const{
 	//bedges have direction according to buffergrid contour tree.
 	//we want contact lines to be directed according to it to specify offset direction.
 	for (auto& c: contacts){
-		if (!Contour::CorrectlyDirectedEdge(c, 0)) Contour::Reverse(c);
+		if (!Contour::CorrectlyDirectedEdge(c, 0)) Contour::Algos::Reverse(c);
 	}
 	return contacts;
 }
@@ -164,10 +165,9 @@ EdgeData BufferGrid::define_source_edges(const EdgeData& cont) const{
 	return ret;
 }
 
-void BufferGrid::remove_vertex_from_orig(Vertex* v){
-	auto bnded = ECol::Assembler::GridBoundary(*orig);
-	aa::enumerate_ids_pvec(orig->vedges);
-	//find edges
+namespace{
+void remove_vertex(Vertex* v, GridData& from, HM2D::EdgeData& bnded){
+	//do not remove superfluous edges but removes its points connectivity
 	Edge *e1 = 0, *e2 = 0;
 	auto it = bnded.begin();
 	while (it != bnded.end()){
@@ -200,15 +200,82 @@ void BufferGrid::remove_vertex_from_orig(Vertex* v){
 	else if (e1->pfirst() == e2->pfirst()) newe->vertices[0] = e2->last();
 	else newe->vertices[0] = e2->first();
 
+	//adjust input data so that they could not be found in next
+	//function call
+	bnded.push_back(newe);
+	e1->vertices[0].reset(); e1->vertices[1].reset();
+	e2->vertices[0].reset(); e2->vertices[1].reset();
+
 	//cell->edge connectivity
 	int i0 = aa::shpvec_ifind(c1->edges, e1);
 	int i1 = aa::shpvec_ifind(c1->edges, e2);
 	c1->edges[i0] = newe;
 	c1->edges.erase(c1->edges.begin()+i1);
+}
+
+}
+
+//namespace {
+//void rr2(Vertex* v, GridData* orig){
+//        auto bnded = ECol::Assembler::GridBoundary(*orig);
+//        aa::enumerate_ids_pvec(orig->vedges);
+//        //find edges
+//        Edge *e1 = 0, *e2 = 0;
+//        auto it = bnded.begin();
+//        while (it != bnded.end()){
+//                if ((*it)->pfirst() == v || (*it)->plast() == v){
+//                        e1 = it->get();
+//                        break;
+//                }
+//                ++it;
+//        }
+//        ++it;
+//        while (it != bnded.end()){
+//                if ((*it)->pfirst() == v || (*it)->plast() == v){
+//                        e2 = it->get();
+//                        break;
+//                }
+//                ++it;
+//        }
+//        assert(e1 != 0 && e2 != 0);
+//        //find cells
+//        //e1 and e2 should have same adjacent cells
+//        if (e1->no_left_cell()) e1->reverse();
+//        if (e2->no_left_cell()) e2->reverse();
+//        Cell *c1 = e1->left.lock().get();
+//        assert(e2->left.lock().get() == c1);
+
+//        //build new edge
+//        shared_ptr<Edge> newe(new Edge(*e1));
+//        if (e1->plast() == e2->pfirst()) newe->vertices[1] = e2->last();
+//        else if (e1->plast() == e2->plast()) newe->vertices[1] = e2->first();
+//        else if (e1->pfirst() == e2->pfirst()) newe->vertices[0] = e2->last();
+//        else newe->vertices[0] = e2->first();
+
+//        //cell->edge connectivity
+//        int i0 = aa::shpvec_ifind(c1->edges, e1);
+//        int i1 = aa::shpvec_ifind(c1->edges, e2);
+//        c1->edges[i0] = newe;
+//        c1->edges.erase(c1->edges.begin()+i1);
 	
-	//remove edges from vedges
-	orig->vedges[e1->id] = newe;
-	orig->vedges.erase(orig->vedges.begin()+e2->id);
+//        //remove edges from vedges
+//        orig->vedges[e1->id] = newe;
+//        orig->vedges.erase(orig->vedges.begin()+e2->id);
+//}
+//}
+
+void BufferGrid::remove_vertices_from_orig(const VertexData& vd){
+	auto bnded = ECol::Assembler::GridBoundary(*orig);
+	int bndedlen = bnded.size();
+	for (auto& v: vd) remove_vertex(v.get(), *orig, bnded);
+
+	//adjust orit->vedges by removing edges with no point connectivity
+	//and by addition of newly created edges passed to bnded list.
+	orig->vedges.insert(orig->vedges.end(),
+		bnded.begin() + bndedlen, bnded.end());
+	auto rr = std::remove_if(orig->vedges.begin(), orig->vedges.end(),
+		[](const shared_ptr<HM2D::Edge>& e){ return e->vertices[0] == nullptr; });
+	orig->vedges.resize(rr - orig->vedges.begin());
 }
 void BufferGrid::rebuild_source_edges(EdgeData& cont, EdgeData& sed) {
 	VertexData badpnt;
@@ -325,6 +392,6 @@ void BufferGrid::update_original(int filler){
 	aa::constant_ids_pvec(orig->vcells, 0);
 	aa::constant_ids_pvec(*this, 1);
 	Algos::RemoveCellsById(*orig, 1);
-	for (auto v: badpoints) remove_vertex_from_orig(v.get());
+	remove_vertices_from_orig(badpoints);
 	Algos::MergeTo(g3, *orig);
 }

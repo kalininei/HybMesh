@@ -90,7 +90,7 @@ bool SectCross(const Point& p1S, const Point& p1E, const Point& p2S, const Point
 
 bool SectCrossWRenorm(const Point& p1S, const Point& p1E, const Point& p2S, const Point& p2E, double* ksieta) noexcept{
 	std::array<Point, 4> p {p1S, p1E, p2S, p2E};
-	ScaleBase s = ScaleBase::doscale(p);
+	ScaleBase s = ScaleBase::doscale(p.begin(), p.end());
 	bool ret = SectCross(p[0], p[1], p[2], p[3], ksieta);
 	return ret;
 }
@@ -179,29 +179,33 @@ vector<int> NodeFinder::get_index(const Point* p) const{
 	return ret;
 }
 
-void BoundingBox::init(){
-	xmin =  gbig; xmax = -gbig;
-	ymin =  gbig; ymax = -gbig;
-}
-
 void BoundingBox::widen(double e){
 	xmin -= e; ymin -= e;
 	xmax += e; ymax += e;
 }
 
-void BoundingBox::WidenWithPoint(const Point& p){
+void BoundingBox::widen(const BoundingBox& p){
+	xmin = std::min(xmin, p.xmin);
+	xmax = std::max(xmax, p.xmax);
+	ymin = std::min(ymin, p.ymin);
+	ymax = std::max(ymax, p.ymax);
+}
+
+void BoundingBox::widen(const Point& p){
 	if (p.x < xmin) xmin = p.x;
 	if (p.x > xmax) xmax = p.x;
 	if (p.y < ymin) ymin = p.y;
 	if (p.y > ymax) ymax = p.y;
 }
 
-Point BoundingBox::Center() const{
+Point BoundingBox::center() const{
 	return Point((xmin+xmax)/2, (ymin+ymax)/2);
 }
 
 BoundingBox::BoundingBox(const vector<BoundingBox>& bb, double e){
-	init();
+	assert(bb.size() > 0);
+	xmin = bb[0].xmin; xmax = bb[0].xmax;
+	ymin = bb[0].ymin; ymax = bb[0].ymax;
 	for (auto& b: bb){
 		if (xmin > b.xmin) xmin = b.xmin;
 		if (ymin > b.ymin) ymin = b.ymin;
@@ -259,7 +263,7 @@ bool BoundingBox::contains(const Point& p1, const Point& p2) const{
 
 }
 
-vector<Point> BoundingBox::FourPoints() const{
+std::array<Point, 4> BoundingBox::four_points() const{
 	return { Point(xmin, ymin), Point(xmax, ymin),
 		Point(xmax, ymax), Point(xmin, ymax) };
 }

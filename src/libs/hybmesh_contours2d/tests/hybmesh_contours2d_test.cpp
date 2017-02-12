@@ -1,12 +1,12 @@
 #include <type_traits>
 #include "hmtesting.hpp"
 #include "primitives2d.hpp"
-#include "constructor.hpp"
-#include "algos.hpp"
-#include "cont_partition.hpp"
-#include "contclipping.hpp"
-#include "cont_assembler.hpp"
-#include "cont_repart.hpp"
+#include "buildcont.hpp"
+#include "modcont.hpp"
+#include "partcont.hpp"
+#include "clipdomain.hpp"
+#include "assemble2d.hpp"
+#include "coarsencont.hpp"
 #include "treverter2d.hpp"
 #include "export2d_vtk.hpp"
 #include "finder2d.hpp"
@@ -76,27 +76,27 @@ void test3(){
 	std::cout<<"3. Partition algorithm"<<std::endl;
 	auto c12 = Contour::Constructor::Circle(12, 10, Point(5,4));
 	auto c6 = Contour::Constructor::FromPoints({0.0,0.0, 0.2,0, 0.33,0, 0.7,0.2, 0.9,0.6, 1.0,0.0 });
-	double len12 = Length(c12);
-	double len6 = Length(c6);
+	double len12 = Contour::Length(c12);
+	double len6 = Contour::Length(c6);
 	add_check(fabs(len12 - 62) < 0.5, "12-sided contour length");
 	//1) ignore all algorithm
 	auto r1 = Contour::Algos::Partition(len12/5.0, c12, Contour::Algos::PartitionTp::IGNORE_ALL);
-	add_check(fabs(Length(r1)-57.5067)<1e-3, "ignore all");
+	add_check(fabs(Contour::Length(r1)-57.5067)<1e-3, "ignore all");
 
 	//2) keep all
 	auto r2 = Contour::Algos::Partition(len12/5.0, c12, Contour::Algos::PartitionTp::KEEP_ALL);
-	add_check(fabs(Length(r2)-len12)<1e-3 && r2.size() == c12.size(), "keep all for closed contour");
+	add_check(fabs(Contour::Length(r2)-len12)<1e-3 && r2.size() == c12.size(), "keep all for closed contour");
 
 	auto r3 = Contour::Algos::Partition(0.11, c6, Contour::Algos::PartitionTp::KEEP_ALL);
-	add_check(fabs(Length(r3)-len6)<1e-12, "keep all for a polyline");
+	add_check(fabs(Contour::Length(r3)-len6)<1e-12, "keep all for a polyline");
 
 	//3) keep shape
 	auto r4 = Contour::Algos::Partition(1.0, c6, Contour::Algos::PartitionTp::KEEP_SHAPE);
 	HM2D::Export::ContourVTK(c6, "c1.vtk");
 	HM2D::Export::ContourVTK(r4, "c2.vtk");
-	add_check(r4.size() == 4 && fabs(Length(r4)-len6)<1e-12, "keep shape coarse");
+	add_check(r4.size() == 4 && fabs(Contour::Length(r4)-len6)<1e-12, "keep shape coarse");
 	auto r5 = Contour::Algos::Partition(0.1, c6, Contour::Algos::PartitionTp::KEEP_SHAPE);
-	add_check(fabs(Length(r5)-len6)<1e-12, "keep shape fine");
+	add_check(fabs(Contour::Length(r5)-len6)<1e-12, "keep shape fine");
 }
 
 void test4(){
@@ -105,13 +105,13 @@ void test4(){
 	auto c10 = Contour::Constructor::Circle(10, 1, Point(-5,4));
 	auto r1 = Contour::Algos::Partition(100, c10, Contour::Algos::PartitionTp::IGNORE_ALL);
 	add_check(r1.size() == 3 && Contour::Area(r1) > 0, "positive closed path, ignore all");
-	Contour::Reverse(c10);
+	Contour::Algos::Reverse(c10);
 	auto r2 = Contour::Algos::Partition(0.1, c10, Contour::Algos::PartitionTp::IGNORE_ALL);
-	add_check(r2.size() == std::lround(Length(c10)/0.1) && Contour::Area(r2) < 0, "negative closed path, ignore all");
+	add_check(r2.size() == std::lround(Contour::Length(c10)/0.1) && Contour::Area(r2) < 0, "negative closed path, ignore all");
 
 	//keep shape
 	auto in4 = Contour::Constructor::Circle(10, 0.2, Point(2,3));
-	Contour::Reverse(in4);
+	Contour::Algos::Reverse(in4);
 	auto out4 = Contour::Algos::Partition(0.1, in4, Contour::Algos::PartitionTp::KEEP_SHAPE);
 	add_check(fabs(Contour::Area(in4) - Contour::Area(out4))<1e-8, "negative closed path, keep shape");
 }
@@ -122,7 +122,7 @@ void test5(){
 
 	//1) closed contour
 	auto c1 = Contour::Constructor::Circle(13, 5, Point(0, 0));
-	Contour::Reverse(c1);
+	Contour::Algos::Reverse(c1);
 	DeepCopy(c1, collection);
 	auto etree1 = Contour::Tree::Assemble(collection);
 	add_check(fabs(etree1.area() + Contour::Area(c1))<1e-12, "1 closed contour");
@@ -144,24 +144,24 @@ void test5(){
 	DeepCopy(c4, collection);
 	auto etree4 = Contour::Tree::Assemble(collection);
 	double area4=(-Contour::Area(c1)-Contour::Area(c2)-Contour::Area(c3));
-	double len4 = Length(c1) + Length(c2) + Length(c3) + Length(c4);
-	add_check(fabs(etree4.area() - area4)<1e-12 && fabs(Length(etree4.alledges()) - len4)<1e-12, "3 closed, 1 open");
+	double len4 = Contour::Length(c1) + Contour::Length(c2) + Contour::Length(c3) + Contour::Length(c4);
+	add_check(fabs(etree4.area() - area4)<1e-12 && fabs(Contour::Length(etree4.alledges()) - len4)<1e-12, "3 closed, 1 open");
 
 	//5) + big contour
 	auto c5 = Contour::Constructor::Circle(100, 30, Point(1,1));
 	DeepCopy(c5, collection);
 	auto etree5 = Contour::Tree::Assemble(collection);
 	double area5=Contour::Area(c5) - (-Contour::Area(c1)-Contour::Area(c2)-Contour::Area(c3));
-	double len5 = Length(c1) + Length(c2) + Length(c3) + Length(c4) + Length(c5);
-	add_check(fabs(etree5.area() - area5)<1e-8 && fabs(Length(etree5.alledges()) - len5)<1e-12, "4 closed, 1 open");
+	double len5 = Contour::Length(c1) + Contour::Length(c2) + Contour::Length(c3) + Contour::Length(c4) + Contour::Length(c5);
+	add_check(fabs(etree5.area() - area5)<1e-8 && fabs(Contour::Length(etree5.alledges()) - len5)<1e-12, "4 closed, 1 open");
 
 	//6) + another contour
 	auto c6 = Contour::Constructor::Circle(13, 4.5, Point(0, 0));
 	DeepCopy(c6, collection);
 	auto etree6 = Contour::Tree::Assemble(collection);
 	double area6=Contour::Area(c5) - (-Contour::Area(c1)) + Contour::Area(c6) - Contour::Area(c2) - Contour::Area(c3);
-	double len6 = Length(c6) + Length(c1) + Length(c2) + Length(c3) + Length(c4) + Length(c5);
-	add_check(fabs(etree6.area() - area6)<1e-8 && fabs(Length(etree6.alledges()) - len6)<1e-12, "5 closed, 1 open");
+	double len6 = Contour::Length(c6) + Contour::Length(c1) + Contour::Length(c2) + Contour::Length(c3) + Contour::Length(c4) + Contour::Length(c5);
+	add_check(fabs(etree6.area() - area6)<1e-8 && fabs(Contour::Length(etree6.alledges()) - len6)<1e-12, "5 closed, 1 open");
 }
 
 void test6(){
@@ -170,12 +170,12 @@ void test6(){
 	EdgeData c1 = Contour::Constructor::FromPoints({0,0, 2,1, 4,3, 5,1, 6,2, 7,0});
 	EdgeData a1 {c1[0], c1[1]};
 	EdgeData a2 {c1[2]};
-	Contour::Connect(a1, a2);
+	Contour::Algos::Connect(a1, a2);
 	add_check(Contour::OrderedPoints(a1).size() == 4, "unite open lines");
 
 	try{
 		EdgeData a3 {c1[1]};
-		Contour::Connect(a1, a3);
+		Contour::Algos::Connect(a1, a3);
 		add_check(false, "try to add not connected line");
 	} catch (std::runtime_error& g){
 		add_check(true, "try to add not connected line");
@@ -185,7 +185,7 @@ void test6(){
 	add_check(Contour::IsClosed(a1), "closing contour");
 
 	try{
-		Contour::Connect(a1, c1);
+		Contour::Algos::Connect(a1, c1);
 		add_check(false, "try to add to a closed contour");
 	} catch (std::runtime_error& g){
 		add_check(true, "try to add to a closed contour");
@@ -332,15 +332,15 @@ void test11(){
 	EdgeData ecol1;
 	ecol1.emplace_back(new Edge(ed[0]));
 	auto tree1 = Contour::Tree::Assemble(ecol1);
-	add_check(tree1.nodes.size() == 1 && Length(tree1.detached_contours()[0]->contour) == 1.0, "one side");
+	add_check(tree1.nodes.size() == 1 && Contour::Length(tree1.detached_contours()[0]->contour) == 1.0, "one side");
 
 	//2. 2 divergent edges
 	EdgeData ecol2;
 	ecol2.emplace_back(new Edge(ed[0]));
 	ecol2.emplace_back(new Edge(ed[11]));
 	auto tree2 = Contour::Tree::Assemble(ecol2);
-	add_check(tree2.nodes.size() == 2 && Length(tree2.detached_contours()[0]->contour) == 1.0 &&
-		Length(tree2.detached_contours()[1]->contour) == 1.0, "two divergent sides");
+	add_check(tree2.nodes.size() == 2 && Contour::Length(tree2.detached_contours()[0]->contour) == 1.0 &&
+		Contour::Length(tree2.detached_contours()[1]->contour) == 1.0, "two divergent sides");
 
 	//3. 2 connected edges
 	EdgeData ecol3;
@@ -348,7 +348,7 @@ void test11(){
 	ecol3.emplace_back(new Edge(ed[1]));
 	auto tree3 = Contour::Tree::Assemble(ecol3);
 	add_check(tree3.nodes.size() == 1 &&
-			Length(tree3.detached_contours()[0]->contour) == 2.0, "two connected edges");
+			Contour::Length(tree3.detached_contours()[0]->contour) == 2.0, "two connected edges");
 
 	//4. 2 connected and 1 disconnected
 	EdgeData ecol4;
@@ -360,8 +360,8 @@ void test11(){
 		auto oc1 = tree4.detached_contours()[0]->contour;
 		auto oc2 = tree4.detached_contours()[1]->contour;
 		if (oc1.size() == 2) std::swap(oc1, oc2);
-		if (oc1.size() != 1 || Length(oc1) != 1.0) return false;
-		if (oc2.size() != 2 || Length(oc2) != 2.0) return false;
+		if (oc1.size() != 1 || Contour::Length(oc1) != 1.0) return false;
+		if (oc2.size() != 2 || Contour::Length(oc2) != 2.0) return false;
 		return true;
 	}(), "2 connected and 1 disconnected edges");
 
@@ -371,7 +371,7 @@ void test11(){
 	ecol5.emplace_back(new Edge(ed[11]));
 	ecol5.emplace_back(new Edge(ed[2]));
 	auto tree5 = Contour::Tree::Assemble(ecol5);
-	add_check(tree5.nodes.size() == 1 && Length(tree5.detached_contours()[0]->contour) == 3.0,
+	add_check(tree5.nodes.size() == 1 && Contour::Length(tree5.detached_contours()[0]->contour) == 3.0,
 			"3 connected edges");
 
 	//6. Closed contour
@@ -428,7 +428,7 @@ void test11(){
 	ecol9.emplace_back(new Edge(ed[8]));
 	auto tree9 = Contour::Tree::Assemble(ecol9);
 	add_check(tree9.nodes.size() == 2 && tree9.area() == 1.0 &&
-		Length(tree9.detached_contours()[0]->contour) == 3.0,
+		Contour::Length(tree9.detached_contours()[0]->contour) == 3.0,
 		"closed contour + open contour with common points");
 
 	//10. Swastika sign 
@@ -444,8 +444,8 @@ void test11(){
 
 	auto tree10 = Contour::Tree::Assemble(ecol10);
 	add_check(tree10.nodes.size() == 2 &&
-		Length(tree10.detached_contours()[0]->contour) == 4.0 &&
-		Length(tree10.detached_contours()[1]->contour) == 4.0,
+		Contour::Length(tree10.detached_contours()[0]->contour) == 4.0 &&
+		Contour::Length(tree10.detached_contours()[1]->contour) == 4.0,
 		"two crossed open contours");
 
 	//11. All in one. Result here is ambiguous.
@@ -470,7 +470,7 @@ void test13(){
 	std::cout<<"13. Sorting points out"<<std::endl;
 	auto cn1 = Contour::Constructor::FromPoints({0,0, 1,0, 1,1, 0,1}, true);
 	vector<Point> p1 = {Point(-0.5, 0.5), Point(0, 0.5), Point(0.5, 0.5), Point(1, 0.5), Point(1, 0)};
-	auto ans1 = Contour::Algos::SortOutPoints(cn1, p1);
+	auto ans1 = Contour::Finder::SortOutPoints(cn1, p1);
 
 	add_check([&]{
 		if (ans1[0] != OUTSIDE) return false;
@@ -487,7 +487,7 @@ void test13(){
 	ctree.add_contour(cn2);
 
 	vector<Point> p2 = {Point(-0.5, 0.5), Point(0, 0.5), Point(0.05, 0.5), Point(0.1, 0.5), Point(0.5, 0.5)};
-	auto ans2 = Contour::Algos::SortOutPoints(ctree, p2);
+	auto ans2 = Contour::Finder::SortOutPoints(ctree, p2);
 	add_check([&]{
 		if (ans2[0] != OUTSIDE) return false;
 		if (ans2[1] != BOUND) return false;
@@ -505,8 +505,8 @@ void test13(){
 	for (auto& p: p1) rotate(37, p);
 	for (auto& p: p2) rotate(37, p);
 
-	auto ans3 = Contour::Algos::SortOutPoints(cn1, p1);
-	auto ans4 = Contour::Algos::SortOutPoints(ctree, p2);
+	auto ans3 = Contour::Finder::SortOutPoints(cn1, p1);
+	auto ans4 = Contour::Finder::SortOutPoints(ctree, p2);
 	add_check([&]{
 		if (ans3[0] != OUTSIDE) return false;
 		if (ans3[1] != BOUND) return false;
@@ -668,7 +668,7 @@ void test16(){
 		m.clear(); m[1.0/6.0]=5; m[4.0/6.0]=1;
 		auto ans1 = Contour::Algos::WeightedPartition(m, inp1, 50, ap);
 		add_check(ans1.size() == 50 &&
-				ISEQ(ELengths(ans1)[0], ELengths(ans1)[9]), "closed contour");
+				ISEQ(Contour::ELengths(ans1)[0], Contour::ELengths(ans1)[9]), "closed contour");
 	}
 	{
 		auto inp1 = Contour::Constructor::FromPoints({0,0, 0.001,0, 1.99,0, 2,0, 2,1, 0,1}, true);
@@ -679,8 +679,8 @@ void test16(){
 		auto ans1 = Contour::Algos::WeightedPartition(m, inp1, 20, ap);
 		Export::ContourVTK(ans1, "ans1.vtk");
 		add_check(ans1.size() == 20 &&
-				ISEQ(ELengths(ans1)[5], ELengths(ans1)[19]) &&
-				ISEQ(ELengths(ans1)[4], 0.01), "closed contour with restriction");
+				ISEQ(Contour::ELengths(ans1)[5], Contour::ELengths(ans1)[19]) &&
+				ISEQ(Contour::ELengths(ans1)[4], 0.01), "closed contour with restriction");
 	}
 }
 

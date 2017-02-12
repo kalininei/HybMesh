@@ -1,7 +1,7 @@
 #ifndef HYBMESH_CONTOURS2D_GPC_CORE_HPP
 #define HYBMESH_CONTOURS2D_GPC_CORE_HPP
 #include "primitives2d.hpp"
-#include "tree.hpp"
+#include "contour_tree.hpp"
 
 extern "C"{
 #include "gpc.h"

@@ -175,24 +175,25 @@ struct ScaleBase3{
 	//scale and unscale procedures
 	//inscribes all points into [0, a]x[0, a]x[0, a] cube
 	template<class PContainer>
-	static ScaleBase3 doscale(PContainer& p, double a=1.0) {
+	static ScaleBase3 p_doscale(PContainer& p, double a=1.0) {
 		if (p.size() == 0) return ScaleBase3();
 		BoundingBox3D bb(p);
 		ScaleBase3 ret(bb.xmin, bb.ymin, bb.zmin, bb.maxlen()/a);
-		ret.scale(p.begin(), p.end());
+		ret.p_scale(p.begin(), p.end());
 		return ret;
 	}
 
 	//scale points in container with Points pointers
 	template<class FirstIter, class LastIter>
-	void scale(FirstIter begin, LastIter end) const  {
+	void p_scale(FirstIter begin, LastIter end) const  {
 		for (auto it=begin; it!=end; ++it){ scale(**it); }
 	}
 	template<class FirstIter, class LastIter>
-	void unscale(FirstIter begin, LastIter end) const  {
+	void p_unscale(FirstIter begin, LastIter end) const  {
 		for (auto it=begin; it!=end; ++it){ unscale(**it); }
 	}
 };
+
 //signed tetrahedron volume which first point is (0, 0, 0)
 double tetrahedron_volume_0(const Point3& p1, const Point3& p2, const Point3& p3);
 //signed tetrahedron volume by four points

@@ -1,4 +1,6 @@
-#include "cont_repart.hpp"
+#include "coarsencont.hpp"
+#include "modcont.hpp"
+#include "treverter2d.hpp"
 using namespace HM2D;
 using namespace HM2D::Contour;
 
@@ -401,3 +403,43 @@ vector<VertexData> Algos::Coarsening(const EdgeData& cont,
 	//6. assemble result
 	return final_result(d, snres);
 }
+
+namespace{
+Point smoothed_direction_step(const EdgeData& c, double w0, double w_step){
+	double w = w0+w_step;
+	//adjust w_step
+	if (w > 1.0){
+		if (Contour::IsOpen(c)) return *Contour::Last(c);
+		while (w>1) w -= 1.0;
+	}
+	return Contour::WeightPoint(c, w);
+}
+}
+
+Vect Algos::SmoothedDirection2(const EdgeData& c, const Point* p, int direction, double len_forward, double len_backward){
+	//preliminary simplification
+	auto cont = Algos::Simplified(c);
+	//decrease lens to half of contour lengths
+	double full_len = Length(cont);
+	if (len_forward > full_len/2) len_forward = full_len/2;
+	if (len_backward > full_len/2) len_backward = full_len/2;
+	//find points
+	double pw = std::get<1>(Contour::CoordAt(cont, *p));
+	Point p1 = smoothed_direction_step(cont, pw, len_forward/full_len);
+	Contour::R::ReallyRevert::Permanent(cont);
+	Point p2 = smoothed_direction_step(cont, 1 - pw, len_backward/full_len);
+	
+	//return zero if all lengths are 0
+	if (p1 == p2 && p1 == *p) return Vect(0, 0);
+
+	Vect ret;
+	if (p1 != p2) ret = p1 - p2;
+	else{
+		ret = p1 - *p;
+		vecRotate(ret, -M_PI/2);
+	}
+	if (direction == -1) ret *= -1;
+	vecNormalize(ret);
+	return ret;
+}
+

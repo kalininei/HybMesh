@@ -1,5 +1,5 @@
-#include "tree.hpp"
-#include "cont_assembler.hpp"
+#include "contour_tree.hpp"
+#include "assemble2d.hpp"
 #include "treverter2d.hpp"
 #include "contour.hpp"
 #include "finder2d.hpp"

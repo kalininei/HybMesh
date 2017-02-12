@@ -2,13 +2,13 @@
 #include "c2cpp_helper.hpp"
 #include "tscaler.hpp"
 #include "primitives2d.hpp"
-#include "tree.hpp"
-#include "constructor.hpp"
-#include "algos.hpp"
-#include "contclipping.hpp"
+#include "contour_tree.hpp"
+#include "buildcont.hpp"
+#include "modcont.hpp"
+#include "clipdomain.hpp"
 #include "treverter2d.hpp"
-#include "cont_partition.hpp"
-#include "cont_assembler.hpp"
+#include "partcont.hpp"
+#include "assemble2d.hpp"
 #include "finder2d.hpp"
 #include "export2d_hm.hpp"
 #include "partition01.hpp"
@@ -62,7 +62,7 @@ int c2_area(void* obj, double* ret){
 
 int c2_length(void* obj, double* ret){
 	try{
-		*ret = HM2D::Length(*static_cast<HM2D::EdgeData*>(obj));
+		*ret = HM2D::Contour::Length(*static_cast<HM2D::EdgeData*>(obj));
 		return HMSUCCESS;
 	} catch (std::exception& e){
 		add_error_message(e.what());
@@ -281,7 +281,7 @@ int c2_clip_domain(void* obj1, void* obj2, const char* op, int simplify, void** 
 				//if point lies on edge and does not equal edge end points
 				if (std::get<1>(fnd)<geps && ISIN_NN(std::get<2>(fnd), geps, 1-geps)){
 					auto cont = t.find_node(ed.get());
-					HM2D::Contour::GuaranteePoint(cont->contour, *p);
+					HM2D::Contour::Algos::GuaranteePoint(cont->contour, *p);
 					ae = t.alledges();
 				}
 			}
@@ -333,7 +333,7 @@ vector<int> required_nedges(vector<HM2D::EdgeData>& part_contours, int nedges,
 	//nums double
 	vector<double> lens;
 	for (int i=0; i<part_contours.size(); ++i){
-		lens.push_back(HM2D::Length(part_contours[i]));
+		lens.push_back(HM2D::Contour::Length(part_contours[i]));
 	}
 	vector<double> nums_double;
 	double full_len = std::accumulate(lens.begin(), lens.end(), 0.0);
@@ -346,7 +346,7 @@ vector<int> required_nedges(vector<HM2D::EdgeData>& part_contours, int nedges,
 
 void place_keep(HM2D::EdgeData& data, Point p, HM2D::VertexData& keep){
 	if (HM2D::Contour::IsContour(data)){
-		auto gp = HM2D::Contour::GuaranteePoint(data, p);
+		auto gp = HM2D::Contour::Algos::GuaranteePoint(data, p);
 		keep.push_back(std::get<1>(gp));
 		return;
 	}
@@ -368,7 +368,7 @@ void place_cross(HM2D::EdgeData& data, const HM2D::EdgeData& cc,
 	assert(HM2D::Contour::IsContour(cc));
 	auto cres = HM2D::Contour::Finder::CrossAll(data, cc);
 	for (auto cross: cres){
-		auto gp = HM2D::Contour::GuaranteePoint(data, std::get<1>(cross));
+		auto gp = HM2D::Contour::Algos::GuaranteePoint(data, std::get<1>(cross));
 		keep.push_back(std::get<1>(gp));
 	}
 }
@@ -399,7 +399,7 @@ std::map<double, double> ref_points_to_weights(const HM2D::EdgeData& data, const
 	return ref_weights_to_weights(data, step1);
 }
 std::map<double, double> ref_lengths_to_weights(const HM2D::EdgeData& data, vector<double> step){
-	double len = HM2D::Length(data);
+	double len = HM2D::Contour::Length(data);
 	for (int i=0; i<step.size(); i+=2){
 		step[i+1]/=len;
 		if (step[i+1] < 0) step[i+1] = 1 + step[i+1];
@@ -693,7 +693,7 @@ int c2_extract_subcontours(void* obj, int nplist, double* plist, void** ret){
 		if (src == nullptr) throw std::runtime_error("source contour was not found");
 		//2) project base points
 		for (int i=0; i<p0.size(); ++i){
-			auto gp0 = HM2D::Contour::GuaranteePoint(*src, p0[i]);
+			auto gp0 = HM2D::Contour::Algos::GuaranteePoint(*src, p0[i]);
 			p0[i].set(*std::get<1>(gp0));
 			p1[i] = std::get<1>(gp0).get();
 		}
@@ -745,7 +745,7 @@ int c2_connect_subcontours(int nobjs, void** objs, int nfix, int* fix, int shift
 			vconts, close_method=="yes", shift==1, fixset);
 
 		if (close_method == "force" && HM2D::Contour::IsOpen(c)){
-			HM2D::Contour::AddLastPoint(c, HM2D::Contour::First(c));
+			HM2D::Contour::Algos::AddLastPoint(c, HM2D::Contour::First(c));
 		}
 		//deepcopy
 		HM2D::EdgeData ret_;

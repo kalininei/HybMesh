@@ -1,8 +1,8 @@
-#include "construct_grid3d.hpp"
+#include "buildgrid3d.hpp"
 #include "debug3d.hpp"
 using namespace HM3D;
 
-namespace cns = Constructor;
+namespace cns = Grid::Constructor;
 
 GridData cns::Cuboid(Vertex leftp, double lx, double ly, double lz, int nx, int ny, int nz){
 	GridData ret;
@@ -137,7 +137,7 @@ GridData cns::SweepGrid2D(const HM2D::GridData& g, const vector<double>& zcoords
 		std::function<int(int)> side_bt){
 
 	GridData ret;
-
+	
 	//Needed Data
 	auto& e2d = g.vedges;
 	int n2p = g.vvert.size(), n2c = g.vcells.size(), n2e = e2d.size(), nz = zcoords.size();

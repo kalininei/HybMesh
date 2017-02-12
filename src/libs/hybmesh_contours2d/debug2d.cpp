@@ -1,9 +1,10 @@
 #ifndef NDEBUG
 
 #include "debug2d.hpp"
-#include "constructor.hpp"
+#include "buildcont.hpp"
 #include <fstream>
 #include "export2d_vtk.hpp"
+#include "modcont.hpp"
 
 using namespace HM2D;
 
@@ -15,7 +16,7 @@ void Debug::info_contour(const EdgeData& c){
 	} else {
 		Cout()<<"Shattered edges."<<std::endl;
 	}
-	Cout()<<"+++ Length = "<<Length(c)<<std::endl;
+	Cout()<<"+++ Length = "<<Contour::Length(c)<<std::endl;
 	int i = 0;
 	for (auto e: c){
 		Print("%i: Points %p -- %p, (%10.6f, %10.6f) -- (%10.6f, %10.6f) --> Edge %p\n",

@@ -4,7 +4,7 @@
 #include "serialize3d.hpp"
 #include "primitives2d.hpp"
 
-namespace HM3D{namespace Constructor{
+namespace HM3D{ namespace Grid{ namespace Constructor{
 
 //build a cuboid in [0, 0, 0]x[lx, ly, lz] and translate it to leftp.
 //boundary types of resulting grid are (for unit cube):
@@ -39,7 +39,7 @@ HM3D::GridData SweepGrid2D(const HM2D::GridData& g2d, const vector<double>& zcoo
 		int side_bt);                          //constant side boundary type
 
 
-}}
+}}}
 
 
 #endif

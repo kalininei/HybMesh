@@ -89,28 +89,6 @@ private:
 };
 
 
-class Singleton2: public HMCallback::Caller2{
-	Singleton2();
-public:
-	static Singleton2& init(std::string s, double duration);
-	static Singleton2& get();
-
-	struct Beholder{
-		Beholder(HMCallback::Fun2& cb){ Singleton2::get().call = cb; }
-		~Beholder(){ Singleton2::get().call = HMCallback::silent2; }
-	};
-	static Beholder enable(HMCallback::Fun2& cb){ return Beholder(cb); }
-};
-
-template<class Fun, class... Args>
-void WithCallback(HMCallback::Fun2 cb, Fun&& f, Args &&... args){
-	auto _tmp = Singleton2::enable(cb);
-	f(std::forward<Args>(args)...);
-	Singleton2::get().fin();
-}
-
-template<class TExecutor> class FunctionWithCallback;
-
 template<int N>
 struct TDuration{ static constexpr int value = N; };
 

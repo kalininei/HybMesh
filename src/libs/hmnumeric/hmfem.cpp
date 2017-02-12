@@ -1,6 +1,6 @@
 #include "hmfem.hpp"
 #include "femassembly.hpp"
-#include "cont_assembler.hpp"
+#include "assemble2d.hpp"
 
 using namespace HMFem;
 

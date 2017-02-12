@@ -1,13 +1,14 @@
 #include "canonic_bgrid.hpp"
 #include "hmtimer.hpp"
-#include "constructor.hpp"
-#include "algos.hpp"
+#include "buildcont.hpp"
+#include "modcont.hpp"
 #include "treverter2d.hpp"
-#include "cont_assembler.hpp"
+#include "assemble2d.hpp"
 #include "treverter2d.hpp"
 #include "buildgrid.hpp"
 #include "healgrid.hpp"
 #include "finder2d.hpp"
+#include "clipdomain.hpp"
 
 #define USE_ANALYTICAL_MAPPINGS false
 
@@ -149,8 +150,8 @@ MappedRect::Factory(HM2D::EdgeData& left, HM2D::EdgeData& right,
 			ISEQGREATER(an1, M_PI/2) && ISEQGREATER(an2, M_PI/2)){
 		auto ellipse = HM2D::Contour::Algos::Offset1(bottom, h);
 		
-		auto pl = HM2D::Contour::GuaranteePoint(ellipse, *HM2D::Contour::Last(left2));
-		auto pr = HM2D::Contour::GuaranteePoint(ellipse, *HM2D::Contour::Last(right2));
+		auto pl = HM2D::Contour::Algos::GuaranteePoint(ellipse, *HM2D::Contour::Last(left2));
+		auto pr = HM2D::Contour::Algos::GuaranteePoint(ellipse, *HM2D::Contour::Last(right2));
 		top = HM2D::Contour::Constructor::CutContour(ellipse,
 				*HM2D::Contour::Last(right2),
 				*HM2D::Contour::Last(left2));
@@ -339,11 +340,11 @@ RectForClosedArea::RectForClosedArea(const HM2D::EdgeData& side, const HM2D::Edg
 	assert(HM2D::Contour::IsClosed(top));
 	//collect points from top
 	vector<Point> ptop; ptop.reserve(top.size());
-	for (auto p: HM2D::Contour::CornerPoints(top)) ptop.push_back(*p);
+	for (auto p: HM2D::Contour::CornerPoints1(top)) ptop.push_back(*p);
 	if (ptop[0] != *HM2D::Contour::First(top)) ptop.insert(ptop.begin(), *HM2D::Contour::First(top));
 	//collect points from bot
 	vector<Point> pbot; pbot.reserve(bottom.size());
-	for (auto p: HM2D::Contour::CornerPoints(bottom)) pbot.push_back(*p);
+	for (auto p: HM2D::Contour::CornerPoints1(bottom)) pbot.push_back(*p);
 	if (pbot[0] != *HM2D::Contour::First(bottom)) pbot.insert(pbot.begin(), *HM2D::Contour::First(bottom));
 	//correct direction
 	double a1 = HM2D::Contour::Area(top);
@@ -370,11 +371,11 @@ RectForClosedArea::Build(const HM2D::EdgeData& bottom, const Point* pstart, doub
 	if (toptree.nodes.size() != 1) _THROW_NOT_IMP_;
 	auto top = toptree.nodes[0]->contour;
 	if (HM2D::Contour::Area(bottom) * HM2D::Contour::Area(top) < 0){
-		HM2D::Contour::Reverse(top);
+		HM2D::Contour::Algos::Reverse(top);
 	}
 	//find point on a cross between normal from bottom.first() and top contour
 	//and set it as a start point for top
-	auto gp = HM2D::Contour::GuaranteePoint(top, *HM2D::Contour::First(bottom));
+	auto gp = HM2D::Contour::Algos::GuaranteePoint(top, *HM2D::Contour::First(bottom));
 	//auto top2 = HM2D::Contour::Assembler::ShrinkContour(top, std::get<1>(gp).get(), std::get<1>(gp).get());
 	HM2D::Contour::R::ForceFirst::Permanent(top, *std::get<1>(gp));
 	//all 4 contours were set. call main routine

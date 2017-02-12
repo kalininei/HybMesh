@@ -3,7 +3,7 @@
 
 #include "primitives2d.hpp"
 #include "contour.hpp"
-#include "tree.hpp"
+#include "contour_tree.hpp"
 
 namespace HM2D{ namespace Contour{ namespace Clip{
 
@@ -39,6 +39,28 @@ TRet Difference(const ETree& c1, const vector<ECont>& cont);
 //!!! does simplifications keeping corner and boundary type transition points
 void Heal(TRet& c1);
 
-}}}
+}
+
+namespace Algos{
+
+//Offset contour
+enum class OffsetTp{
+	//rounding at corners
+	RC_CLOSED_POLY,
+	RC_OPEN_ROUND,
+	RC_OPEN_BUTT,
+	//square corners
+	SC_CLOSED_POLY,
+};
+
+//takes into account direction of source and sign of delta:
+//offsets to the right side if delta>0.
+Tree Offset(const EdgeData& source, double delta, OffsetTp tp);
+//forces singly connected output contour. tp = CLOSED_POLY or OPEN_ROUND
+EdgeData Offset1(const EdgeData& source, double delta);
+
+}
+
+}}
 
 #endif

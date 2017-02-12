@@ -1,7 +1,7 @@
 #include "options.hpp"
-#include "algos.hpp"
-#include "cont_partition.hpp"
-#include "cont_assembler.hpp"
+#include "modcont.hpp"
+#include "partcont.hpp"
+#include "assemble2d.hpp"
 #include "treverter2d.hpp"
 #include "finder2d.hpp"
 
@@ -84,8 +84,8 @@ vector<Options> Options::CreateFromParent(const vector<HMBlay::Input>& par){
 	//4) Put start, end points to contours
 	for (auto& r: ret){
 		if (r.start != r.end){
-			r.pnt_start = std::get<1>(HM2D::Contour::GuaranteePoint(*r.edges, r.start)).get();
-			r.pnt_end = std::get<1>(HM2D::Contour::GuaranteePoint(*r.edges, r.end)).get();
+			r.pnt_start = std::get<1>(HM2D::Contour::Algos::GuaranteePoint(*r.edges, r.start)).get();
+			r.pnt_end = std::get<1>(HM2D::Contour::Algos::GuaranteePoint(*r.edges, r.end)).get();
 		} else {
 			auto av = HM2D::AllVertices(*r.edges);
 			auto fnd1 = HM2D::Finder::ClosestPoint(av, r.start);
@@ -133,7 +133,7 @@ void Options::Initialize(){
 	//reverse full_source if path is in opposite direction.
 	if (HM2D::Contour::PInfo(full_source, pnt_start).pnext !=
 	    HM2D::Contour::PInfo(path, pnt_start).pnext){
-		HM2D::Contour::Reverse(full_source);
+		HM2D::Contour::Algos::Reverse(full_source);
 	}
 	assert(HM2D::Contour::PInfo(full_source, pnt_start).pnext ==
 	       HM2D::Contour::PInfo(path, pnt_start).pnext);
@@ -141,7 +141,7 @@ void Options::Initialize(){
 	//reverse path if necessary.
 	if (direction == Direction::OUTER){
 		HM2D::Contour::R::ReallyRevert::Permanent(path);
-		HM2D::Contour::Reverse(full_source);
+		HM2D::Contour::Algos::Reverse(full_source);
 	}
 }
 

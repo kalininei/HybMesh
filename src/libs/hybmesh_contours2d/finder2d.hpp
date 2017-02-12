@@ -2,6 +2,7 @@
 #define HYBMESH_FINDER2D_HPP
 #include "primitives2d.hpp"
 #include "contabs2d.hpp"
+#include "contour_tree.hpp"
 
 namespace HM2D{ namespace Finder{
 
@@ -93,6 +94,11 @@ CrossAll(const EdgeData& c1, const EdgeData& c2);
 std::tuple<bool, Point, double, double>
 SelfCross(const EdgeData& c1);
 
+//Calculate points position with respect to contour.
+//Contour direction is taken into account.
+//Builds vector with INSIDE/OUTSIDE/BOUND for each point.
+vector<int> SortOutPoints(const EdgeData& t1, const vector<Point>& pnt);
+vector<int> SortOutPoints(const Contour::Tree& t1, const vector<Point>& pnt);
 
 }}
 

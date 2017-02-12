@@ -2,7 +2,7 @@
 #include "debug3d.hpp"
 using namespace HM3D;
 
-namespace cns = Constructor;
+namespace cns = Grid::Constructor;
 
 namespace{
 struct revolve_builder{

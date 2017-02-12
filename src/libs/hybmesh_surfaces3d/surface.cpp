@@ -21,24 +21,6 @@ bool hs::IsClosed(const FaceData& fd){
 	return isclosed;
 }
 
-FaceData hs::GridSurface(const GridData& g){
-	FaceData ret;
-	for (auto f: g.vfaces){
-		if (f->is_boundary()) ret.push_back(f);
-	}
-	return ret;
-}
-
-std::map<int, FaceData> hs::GridSurfaceBType(const HM3D::GridData& g){
-	FaceData all = GridSurface(g);
-	std::map<int, FaceData> ret;
-	for (auto f: all){
-		auto er = ret.emplace(f->boundary_type, FaceData());
-		er.first->second.push_back(f);
-	}
-	return ret;
-}
-
 void hs::SetBoundaryTypes(const FaceData& fvec, std::function<int(Vertex, int)> bfun){
 	for (auto f: fvec) if (f->is_boundary()){
 		Vertex cv;
@@ -47,27 +29,6 @@ void hs::SetBoundaryTypes(const FaceData& fvec, std::function<int(Vertex, int)> 
 		cv.x /= av.size(); cv.y /= av.size(); cv.z /= av.size();
 		f->boundary_type = bfun(cv, f->boundary_type);
 	}
-}
-
-
-namespace{
-void connect_faces(int fc, const vector<vector<int>>& ff, vector<bool>& used, vector<int>& ret){
-	if (used[fc]) return;
-	used[fc] = true;
-	ret.push_back(fc);
-	for (int sibf: ff[fc]) connect_faces(sibf, ff, used, ret);
-}
-}
-
-FaceData hs::SubSurface(const FaceData& s, const Vertex* v){
-	//subdivide
-	vector<FaceData> subd = HM3D::SplitData(s);
-	//find part which contains v
-	for (auto& fvec: subd){
-		auto av = AllVertices(fvec);
-		if (aa::shp_find(av.begin(), av.end(), v) != av.end()) return fvec;
-	}
-	return FaceData();
 }
 
 
@@ -277,124 +238,6 @@ bool hs::MatchTopology(const FaceData& a, const FaceData& b){
 	}
 	
 	return true;
-}
-
-EdgeData hs::ExtractBoundary(const FaceData& a, Vertex v){
-	//leave only edges which have single face connection
-	ShpVector<Edge> bedges;
-	for (auto& fe: Connectivity::EdgeFace(a)){
-		if (fe.size() == 1) bedges.push_back(fe.e);
-	}
-	return Connect(bedges, v);
-}
-std::array<vector<EdgeData>, 2> hs::ExtractAllBoundaries(const FaceData& a, Vect3 right_normal){
-	std::array<vector<EdgeData>, 2> ret;
-	//leave only boundary edges
-	EdgeData bedges;
-	vector<bool> reversed;
-	for (auto& fe: Connectivity::EdgeFaceExtended(a)){
-		if (fe.size() > 1) continue;
-		bedges.push_back(fe.e);
-		reversed.push_back(!fe.posdir[0]);
-	}
-
-	//temporary reverse edges
-	auto reverse_edge = [](EdgeData& ed, vector<bool>& need){
-		for (int i=0; i<ed.size(); ++i)
-			if (need[i]) ed[i]->reverse();
-	};
-	reverse_edge(bedges, reversed);
-	
-	auto assemble = [](EdgeData& ed)->vector<EdgeData>{
-		//enumarate vertices
-		int k=0;
-		for (auto& e: ed) {e->last()->id = -1; }
-		for (auto& e: ed) {e->first()->id = k++; }
-		vector<bool> used(ed.size(), false);
-		//process
-		vector<EdgeData> ret;
-		while (1){
-			auto fnd = std::find(used.begin(), used.end(), false);
-			if (fnd == used.end()) break;
-			ret.emplace_back();
-			auto& rs = ret.back();
-
-			int istart = fnd - used.begin();
-			int icur = istart;
-			do{
-				rs.push_back(ed[icur]);
-				used[icur] = true;
-				icur = ed[icur]->last()->id;
-			} while (istart != icur && icur>=0 && used[icur]==false);
-
-			if (icur<0) ret.resize(ret.size()-1);
-		}
-		return ret;
-	};
-	//connect all
-	vector<EdgeData> alllines = assemble(bedges);
-
-	//choose internal/external
-	for (auto& line: alllines){
-		assert(line.size()>0);
-		auto p0 = line[0]->first();
-		double area=0.;
-		for (int i=1; i<line.size()-1; ++i){
-			auto p1 = line[i]->first();
-			auto p2 = line[i]->last();
-			area += vecDot(vecCross(*p1-*p0, *p2-*p0), right_normal);
-		}
-		if (area > 0) ret[0].push_back(line);
-		else ret[1].push_back(line);
-	}
-	
-	//reverse edges back
-	reverse_edge(bedges, reversed);
-
-	return ret;
-}
-
-vector<FaceData> hs::ExtractSmooth(const FaceData& s, double angle){
-	aa::enumerate_ids_pvec(s);
-	vector<Vect3> normals(s.size());
-	for (int i=0; i<s.size(); ++i) normals[i] = s[i]->left_normal();
-
-	std::list<shared_ptr<Face>> unused(s.begin(), s.end());
-	vector<FaceData> ret;
-
-	auto use_face = [&](std::list<shared_ptr<Face>>::iterator it, FaceData* srf){
-		(*srf).push_back(*it);
-		return unused.erase(it);
-	};
-
-	double badcos = cos(angle*M_PI/180.);
-	while (unused.size()>0){
-		ret.push_back(FaceData());
-		auto& news = ret.back();
-
-		Vect3 normal1 = normals[(*unused.begin())->id];
-		use_face(unused.begin(), &news);
-
-		auto it = unused.begin();
-		while (it != unused.end()){
-			Vect3& normal2 = normals[(*it)->id];
-			double cos = vecDot(normal1, normal2);
-			if (cos > badcos){
-				it = use_face(it, &news);
-			} else ++it;
-		}
-	}
-
-	vector<FaceData> ret1;
-	for (auto& r: ret){
-		vector<FaceData> ss = HM3D::SplitData(r);
-		ret1.resize(ret1.size()+ss.size());
-		for (int i=0; i<ss.size(); ++i){
-			std::swap(ret1[ret1.size()-ss.size()+i], ss[i]);
-		}
-	}
-	
-	return ret1;
 }
 
 double Surface::Volume(const FaceData& fc){

@@ -280,17 +280,3 @@ void LoopCaller2::new_iteration(double subproc_duration){
 	move_now(iter, nm, subproc_duration);
 	++iter;
 }
-
-
-Singleton2::Singleton2(): Caller2("", -1, HMCallback::silent2){}
-
-Singleton2& Singleton2::init(std::string s, double duration){
-	get().reset(s, duration);
-	return get();
-}
-
-Singleton2& Singleton2::get(){
-	static Singleton2 _callback;
-	return _callback;
-};
-

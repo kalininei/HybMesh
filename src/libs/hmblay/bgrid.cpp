@@ -3,7 +3,7 @@
 #include "bgrid_impose.hpp"
 #include "connectors.hpp"
 #include "hmtimer.hpp"
-#include "contclipping.hpp"
+#include "clipdomain.hpp"
 #include "debug2d.hpp"
 #include "healgrid.hpp"
 #include "modgrid.hpp"
@@ -31,7 +31,7 @@ BGrid BGrid::MeshFullPath(const ExtPath& epath){
 	bool use_rect_approx = !epath.ext_data[0].opt->force_conformal;
 	for (auto& p: pths){
 		//estimate vertical and horizontal partition
-		int isz = p.PathPartition(0, HM2D::Length(p)).size();
+		int isz = p.PathPartition(0, HM2D::Contour::Length(p)).size();
 		int jsz = p.largest_vpart_size();
 
 		double h = p.largest_depth();
@@ -63,7 +63,7 @@ BGrid BGrid::MeshFullPath(const ExtPath& epath){
 	//5. build rectangular meshes
 	for (int i=0; i<mesher4.size(); ++i){
 		ExtPath& ipth = pths[i];
-		double ilen = HM2D::Length(ipth);
+		double ilen = HM2D::Contour::Length(ipth);
 		double depth = ipth.largest_depth();
 		auto bpart = [&](double w1, double w2)->vector<double>{
 			vector<double> reallen = ipth.PathPartition(w1*ilen, w2*ilen);

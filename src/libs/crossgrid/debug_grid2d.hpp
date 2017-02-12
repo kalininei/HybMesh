@@ -4,7 +4,7 @@
 #ifndef NDEBUG
 
 #include "primitives2d.hpp"
-#include "hmdebug.hpp"
+#include "debug2d.hpp"
 #include "wireframegrid.hpp"
 
 namespace HM2D{ namespace Grid{
