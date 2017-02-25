@@ -1,6 +1,7 @@
 """Script for assembling binding headers.
 For installation purposes only"""
 import sys
+import os
 
 class Func(object):
     def __init__(self):
@@ -150,8 +151,8 @@ class Generator(object):
             lines.insert(index, line)
 
 
-    @staticmethod
-    def __write(lines, outfn):
+    @classmethod
+    def _write(cls, lines, outfn):
         for i in range(len(lines)):
             if not lines[i].endswith('\n'):
                 lines[i] = lines[i] + '\n'
@@ -244,7 +245,7 @@ class Generator(object):
     def _rawreturn_method(cls, tp, arg):
         if tp == "#VECDOUBLE":
             fun = '_to_vecdouble_raw'
-        elif tp == "#MAP_INT_DOUBLE":
+        elif tp == "#VEC_INT_DOUBLE":
             fun = '_to_map_int_double_raw'
         else:
             raise Exception("unknown rawreturn_method type: " + tp)
@@ -263,13 +264,29 @@ class Generator(object):
             assert(len(aval) <= 2)
             if len(aval) == 2:
                 if aval[1][0] == '#':
-                    s = "%s %s=%s" % (cls._translate(a[-2]), s, cls._translate(aval[1]))
+                    s = "%s=%s" % (s, cls._translate(aval[1]))
                 else:
-                    s = "%s %s=%s" % (cls._translate(a[-2]), s, aval[1])
+                    s = "%s=%s" % (s, aval[1])
+            s = "{} {}".format(cls._translate(a[-2]), s)
             s = s.strip()
             define_args.append(s)
 
-        return cls._function_caption(define_args, func)
+        ret = cls._function_caption(define_args, func)
+        ret[0] = ret[0] + cls._open_tag()
+        return ret
+
+
+    @classmethod
+    def _format_out_string(cls, lines, indent):
+        ret = []
+        for lline in lines:
+            for line in lline:
+                if len(line.strip()) > 0 and ';:{}(,.'.find(line[-1]) < 0:
+                    line = line + cls._eol_symbol()
+                if (len(line) > 0):
+                    line = indent + line
+                ret.append(line);
+        return ret
 
 
     @classmethod
@@ -286,7 +303,7 @@ class Generator(object):
                     a[1] = cls._translate(a[1])
                 subs.append(a[1])
             elif a[0] == '$ARGKW':
-                subs.append("'{}=' + {}".format(a[1], cls._tos_method(a[2], var)))
+                subs.append('"{}=" + {}'.format(a[1], cls._tos_method(a[2], var)))
             elif a[0].startswith('$ARGSPLIT('):
                 alla = [a]
                 index = int(a[0][10:-1])
@@ -311,7 +328,8 @@ class Generator(object):
                 for a in alla[1:]:
                     args.remove(a)
                 subs2 = ['""',
-                         '---' + cls._for_loop(cls._vec_size(alla[0][2].split('=')[0]))]
+                         '---' + cls._for_loop(cls._vec_size(alla[0][2].split('=')[0])) +
+                         cls._open_tag()]
                 for a2 in alla:
                     subs2.append(cls._indent() + cls._tos_method(
                         "#" + a2[1][4:], a2[2].split('=')[0] + '[i]'))
@@ -330,14 +348,17 @@ class Generator(object):
     def _parse_fun(cls, func):
         ret = []
         # parsing arguments
-        ret.append(cls._parse_caption(func))
+        ret.extend(cls._parse_caption(func))
 
         # assemble command
         subs = cls._parse_args(func)
-        ret.extend(cls._merge_string_code("comstr", "()", ", ", subs, ''))
+        ret.extend(cls._merge_string_code("comstr", "", ", ", subs, ''))
 
         # return statement
-        wc = cls._worker_call('_apply_command', func.targetfun, 'comstr')
+        if len(subs) > 0:
+            wc = cls._worker_call('_apply_command', '"{}"'.format(func.targetfun), 'comstr')
+        else:
+            wc = cls._worker_call('_apply_command', '"{}"'.format(func.targetfun), '""')
         if func.argreturn[0] == '$RETURNNO':
             ret.append(wc)
         elif func.argreturn[0] == '$RETURN':
@@ -353,6 +374,10 @@ class Generator(object):
         # align
         for i in range(1, len(ret)):
             ret[i] = '{}{}'.format(cls._indent(), ret[i])
+
+        #close
+        ret.append(cls._close_tag())
+        ret.append('')
         return ret
     
 
@@ -384,7 +409,8 @@ class Generator(object):
                     string_created = True
                 else:
                     ret.append(cls._string_append(indent, tmpvar, s2, ', '))
-        ret.append(cls._string_into_parant(tmpvar, parant))
+        if len(parant) == 2:
+            ret.append(cls._string_into_parant(tmpvar, parant))
 
         if starter:
             for i in range(len(ret)):
@@ -392,10 +418,6 @@ class Generator(object):
         return ret
 
 
-
-
-
-        
     # interface functions
     def parse(self, mask):
         """ fills out strings """
@@ -406,39 +428,54 @@ class Generator(object):
             tar.append(self._parse_fun(f))
 
 
-    def write_to_file(self, basefile, outfile):
+    def write_to_file(self, basefile, outdir):
         bb = self.__readlines(basefile)
         for k, v in self.outstrings.iteritems():
             index = self.__findline(bb, ">>$%s" % k)
             indent = self.__get_indent(bb[index])
             s = self._format_out_string(v, indent)
             self.__substitute(bb, index, s)
-        self.__write(bb, outfile)
-
+        if not os.path.exists(outdir):
+            os.makedirs(outdir)
+        extension = os.path.splitext(basefile)[1]
+        fn = 'Hybmesh' + extension
+        self._write(bb, os.path.join(outdir, fn))
 
 
 if __name__ == "__main__":
-    """arguments:
-        -target py/cpp/cs/m/java
-        -mask funcmask_file
-        -base basefile with >>$ instructions
-        -out output_file
+    """possible arguments:
+        [py/cpp/java/m/all]
+        [odir /path/to/...]
     """
-    sys.argv = ['-target', 'py', '-mask', 'funcmask', '-base', 'pybase.py', '-out', 'out.py']
-    target, mask, base, out = None, None, None, None
-    for i, nm in enumerate(sys.argv):
-        if nm == '-target':
-            target = sys.argv[i + 1];
-        elif nm == '-mask':
-            mask = sys.argv[i + 1];
-        elif nm == '-base':
-            base = sys.argv[i + 1];
-        elif nm == '-out':
-            out = sys.argv[i + 1];
-    if None in [target, mask, base, out]:
-        raise Exception("Incorrect arguments")
+    defaultdir = 'out'
+    try:
+        dirindex = sys.argv.index('odir')
+        odir = int(sys.argv[dirindex + 1])
+    except ValueError:
+        odir = defaultdir
 
-    mask = MaskParser(mask)
-    generator = Generator.factory(target)
-    generator.parse(mask)
-    generator.write_to_file(base, out)
+    mask = 'funcmask'
+
+    target, base = [], []
+    if 'py' in sys.argv or 'all' in sys.argv:
+        target.append('py')
+        base.append('pybase.py')
+    if 'cpp' in sys.argv or 'all' in sys.argv:
+        target.append('cpp')
+        base.append('cppbase.hpp')
+    if 'java' in sys.argv or 'all' in sys.argv:
+        target.append('java')
+        base.append('javabase.java')
+    if 'm' in sys.argv or 'all' in sys.argv:
+        target.append('m')
+        base.append('mbase.m')
+    if 'cs' in sys.argv or 'all' in sys.argv:
+        target.append('cs')
+        base.append('csbase.cs')
+
+    for t, b in zip(target, base):
+        print t
+        omask = MaskParser(mask)
+        generator = Generator.factory(t)
+        generator.parse(omask)
+        generator.write_to_file(b, odir)

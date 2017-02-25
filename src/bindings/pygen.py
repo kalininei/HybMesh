@@ -9,7 +9,6 @@ class Generator(bindparser.Generator):
         'FALSE': 'False',
         'ZEROSTRING': '""',
         'ZEROVECOBJECT2D': '[]',
-        'ZEROVECPOINT': '[]',
         'ZEROVECDOUBLE': '[]',
         'ZEROVECSTRING': '[]',
         'ZEROVECINT': '[]',
@@ -22,6 +21,7 @@ class Generator(bindparser.Generator):
         'GRID2D': "",
         'BOOL': "",
         'VECPOINT': "",
+        'VECPOINT3': "",
         'VECINT': "",
         'INT': "",
         'OBJECT2D': "",
@@ -41,6 +41,7 @@ class Generator(bindparser.Generator):
         'POINT3': "",
         'VECSTRING': "",
         'VECBOOL': "",
+        'VEC_INT_DOUBLE': "",
     }
 
 
@@ -109,12 +110,16 @@ class Generator(bindparser.Generator):
             capstring.append(a)
             capstring.append(', ')
         capstring[-1] = capstring[-1][:-2]
-        capstring.append('):')
-        return ''.join(capstring)
+        capstring.append(')')
+        return [''.join(capstring)]
 
     @classmethod
     def _close_tag(cls):
         return ''
+
+    @classmethod
+    def _open_tag(cls):
+        return ':'
 
     @classmethod
     def _vec_size(cls, vec):
@@ -141,7 +146,7 @@ class Generator(bindparser.Generator):
 
     @classmethod
     def _for_loop(cls, nstring):
-        return "for i in range({}):".format(nstring)
+        return "for i in range({})".format(nstring)
 
     @classmethod
     def _indent(cls):
@@ -151,12 +156,6 @@ class Generator(bindparser.Generator):
     def _string_pop_begin(cls, var, num):
         return "{0} = {0}[{1}:]".format(var, num)
 
-
-    def _format_out_string(self, lines, indent):
-        ret = []
-        for lline in lines:
-            ret.append("")
-            ret.append("")
-            for line in lline:
-                ret.append(indent + line);
-        return ret
+    @classmethod
+    def _eol_symbol(cls):
+        return ''

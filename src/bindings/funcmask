@@ -83,14 +83,14 @@ $FUNC(
 	$NAME partition_contour_const
 	$ARG #OBJECT2D cont
 	$ARGHIDDEN "'const'"
-	$ARG #DOUBLE step=1.
-	$ARG #DOUBLE zero_angle0=30.
+	$ARG #DOUBLE step=1.0
+	$ARG #DOUBLE zero_angle=30.0
 	$ARG #BOOL keep_bnd=#FALSE
 	$ARG #INT nedges=-1
-	$ARG #VECINT crosses=#ZEROVECOBJECT2D
+	$ARG #VECOBJECT2D crosses=#ZEROVECOBJECT2D
 	$ARG #VECPOINT keep_pts=#ZEROVECPOINT
-	$ARG #POINT start=#NONEPOINT
-	$ARG #POINT end=#NONEPOINT
+	$ARG #POINT pstart=#NONEPOINT
+	$ARG #POINT pend=#NONEPOINT
 	$RETURN #CONTOUR2D
 $FUNC)
 
@@ -100,13 +100,13 @@ $FUNC(
 	$ARGHIDDEN "'ref_points'"
 	$ARGSPLITVEC(0) #VECPOINT ref_points
 	$ARGSPLITVEC(0) #VECDOUBLE steps
-	$ARG #DOUBLE zero_angle0=30.
+	$ARG #DOUBLE zero_angle=30.0
 	$ARG #BOOL keep_bnd=#FALSE
 	$ARG #INT nedges=-1
-	$ARG #VECINT crosses=#ZEROVECOBJECT2D
+	$ARG #VECOBJECT2D crosses=#ZEROVECOBJECT2D
 	$ARG #VECPOINT keep_pts=#ZEROVECPOINT
-	$ARG #POINT start=#NONEPOINT
-	$ARG #POINT end=#NONEPOINT
+	$ARG #POINT pstart=#NONEPOINT
+	$ARG #POINT pend=#NONEPOINT
 	$RETURN #CONTOUR2D
 $FUNC)
 
@@ -116,13 +116,13 @@ $FUNC(
 	$ARGHIDDEN "'ref_lengths'"
 	$ARGSPLITVEC(0) #VECPOINT ref_lengths
 	$ARGSPLITVEC(0) #VECDOUBLE steps
-	$ARG #DOUBLE zero_angle0=30.
+	$ARG #DOUBLE zero_angle=30.0
 	$ARG #BOOL keep_bnd=#FALSE
 	$ARG #INT nedges=-1
-	$ARG #VECINT crosses=#ZEROVECOBJECT2D
+	$ARG #VECOBJECT2D crosses=#ZEROVECOBJECT2D
 	$ARG #VECPOINT keep_pts=#ZEROVECPOINT
-	$ARG #POINT start=#NONEPOINT
-	$ARG #POINT end=#NONEPOINT
+	$ARG #POINT pstart=#NONEPOINT
+	$ARG #POINT pend=#NONEPOINT
 	$RETURN #CONTOUR2D
 $FUNC)
 
@@ -133,15 +133,15 @@ $FUNC(
 	$ARG #DOUBLE influence
 	$ARG #VECOBJECT2D ref_conts=#ZEROVECOBJECT2D
 	$ARG #VECPOINT ref_pts=#ZEROVECPOINT
-	$ARG #DOUBLE zero_angle=30.
-	$ARG #DOUBLE power=3.
+	$ARG #DOUBLE zero_angle=30.0
+	$ARG #DOUBLE power=3.0
 	$RETURN #CONTOUR2D
 $FUNC)
 
 $FUNC(
 	$NAME partition_segment
-	$ARG #DOUBLE start
-	$ARG #DOUBLE end
+	$ARG #DOUBLE pstart
+	$ARG #DOUBLE pend
 	$ARG #DOUBLE hstart
 	$ARG #DOUBLE hend
 	$ARG #VECDOUBLE hinternal=#ZEROVECDOUBLE
@@ -274,8 +274,8 @@ $FUNC(
 	$ARG #OBJECT2D source
 	$ARG #VECDOUBLE partition
 	$ARG #STRING direction=#VALSTRING(left)
-	$ARG #POINT start=#NONEPOINT
-	$ARG #POINT end=#NONEPOINT
+	$ARG #POINT pstart=#NONEPOINT
+	$ARG #POINT pend=#NONEPOINT
 	$ARG #VECDOUBLE range_angles=#VALVECDOUBLE(40,125,235,275)
 	$RETURN #GRID2D
 $FUNC)
@@ -291,7 +291,7 @@ $FUNC)
 $FUNC(
 	$NAME unite_grids
 	$TFUN unite_grids1
-	$ARG #GRID2D base
+	$ARG #GRID2D basic
 	$ARG #GRID2D secondary
 	$ARG #DOUBLE buffer
 	$ARG #BOOL empty_holes=#FALSE
@@ -508,8 +508,8 @@ $FUNC(
 	$ARG #STRING fname
 	$ARGSPLITVEC(0) #VECINT pp_main=#ZEROVECINT
 	$ARGSPLITVEC(0) #VECINT pp_shadow=#ZEROVECINT
-	$ARGSPLITVEC(0) #VECPOINT pp_main_points=#ZEROVECPOINT3
-	$ARGSPLITVEC(0) #VECPOINT pp_shadow_points=#ZEROVECPOINT3
+	$ARGSPLITVEC(0) #VECPOINT3 pp_main_points=#ZEROVECPOINT3
+	$ARGSPLITVEC(0) #VECPOINT3 pp_shadow_points=#ZEROVECPOINT3
 	$RETURNNO
 $FUNC)
 
@@ -555,13 +555,6 @@ $FUNC(
 	$NAME export_contour_tecplot
 	$ARG #VECCONTOUR2D cont
 	$ARG #STRING fname
-	$RETURNNO
-$FUNC)
-$FUNC(
-	$NAME export_contour_hmc
-	$ARG #VECCONTOUR2D cont
-	$ARG #STRING fname
-	$ARG #STRING fmt=#VALSTRING(ascii)
 	$RETURNNO
 $FUNC)
 
@@ -689,7 +682,7 @@ $FUNC(
 	$TFUN _binding_skewness
 	$ARGHIDDEN #SELF(sid)
 	$ARG #DOUBLE threshold=0.7
-	$RETURNRAW #MAP_INT_DOUBLE
+	$RETURNRAW #VEC_INT_DOUBLE
 $FUNC)
 
 $FUNC(
