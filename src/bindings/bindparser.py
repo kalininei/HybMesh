@@ -181,9 +181,7 @@ class Generator(object):
 
     @classmethod
     def _tos_method(cls, tp, argument):
-        if tp in ['#GRID2D', '#OBJECT2D', '#CONTOUR2D', '#GRID3D']:
-            return cls._sid_tos(argument)
-        elif tp == '#STRING':
+        if tp == '#STRING':
             return argument
         else:
             if tp == '#VECPOINT':
@@ -194,6 +192,8 @@ class Generator(object):
                 fun = '_tos_point'
             elif tp == '#POINT3':
                 fun = '_tos_point3'
+            elif tp in ['#GRID2D', '#OBJECT2D', '#CONTOUR2D', '#GRID3D']:
+                fun = '_tos_object'
             elif tp in ['#VECOBJECT2D', '#VECCONTOUR2D', '#VECOBJECT3D', '#VECGRID3D',
                         '#VECGRID2D', '#VECSURFACE3D', '#VECOBJECT']:
                 fun = '_tos_vecobject'
@@ -246,7 +246,7 @@ class Generator(object):
         if tp == "#VECDOUBLE":
             fun = '_to_vecdouble_raw'
         elif tp == "#VEC_INT_DOUBLE":
-            fun = '_to_map_int_double_raw'
+            fun = '_to_vec_int_double_raw'
         else:
             raise Exception("unknown rawreturn_method type: " + tp)
         return cls._return_statement(cls._worker_call(fun, arg))

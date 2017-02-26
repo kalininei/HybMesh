@@ -41,7 +41,7 @@ class Generator(bindparser.Generator):
         'POINT3': "Point3",
         'VECSTRING': "String[]",
         'VECBOOL': "boolean[]",
-        'VEC_INT_DOUBLE': "AbstractMap.SimpleEntry<Integer, Double>[]",
+        'VEC_INT_DOUBLE': "Map<Integer, Double>",
     }
 
 
@@ -125,6 +125,7 @@ class Generator(bindparser.Generator):
         if capstring[-1] == ', ':
             capstring.pop()
         capstring.append(')')
+        capstring.append(' throws Hybmesh.EUserInterrupt, Hybmesh.ERuntimeError');
         ret = [''.join(capstring)]
         for (k, v) in defargs:
             ret.append("{arg} = ({arg} != null) ? {arg} : new {val};".format(arg=k, val=v))
