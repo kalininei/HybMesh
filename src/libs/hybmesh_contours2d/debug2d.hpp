@@ -52,8 +52,8 @@ struct Debug: public HMDebug{
 		double ret = g.size();
 		int k = 0;
 		for (auto& v: g){
-			ret += (++k % 10) * (v->vertices[0]->x * 0.5 - v->vertices[0]->y * 0.4);
-			ret += (++k % 12) * (v->vertices[1]->x * 0.2 - v->vertices[1]->y * 0.7);
+			ret += (++k % 2) * (v->vertices[0]->x * 0.5 - v->vertices[1]->y * 0.4);
+			ret += (++k % 3) * (v->vertices[1]->x * 0.2 - v->vertices[0]->y * 0.7);
 		}
 		return ret;
 	}

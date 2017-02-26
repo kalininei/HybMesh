@@ -72,3 +72,4 @@ g3 = hm.revolve_grid(g1, [s, 0], [s, 1], phi=[0, 10, 20, 30, 40, 50, 60],
                      merge_central=True)
 hm.export3d_grid_tecplot(g3, "g1.dat")
 hmdbg.check_ascii_file(9784631763273424912, "g1.dat")
+hm.export3d_grid_vtk(g3, "g1.vtk")

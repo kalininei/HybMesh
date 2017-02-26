@@ -37,14 +37,22 @@ void old_numering(HM2D::GridData& g){
 };
 
 void test01(){
-	std::cout<<"1. export cuboid to vtk"<<std::endl;
-	auto g1 = HM3D::Grid::Constructor::Cuboid({0, 0, 0}, 1, 2, 5, 3, 3, 3);
-	HM3D::Export::AllVTK.Silent(g1, "g1.vtk", "c1.vtk");
-	add_check(g1.vvert.size() == 64 && g1.vcells.size() == 27 &&
-			g1.vedges.size() == 144 && g1.vfaces.size() == 108,
-			"cuboid primitives number"); 
-	add_file_check(15732503264642486832U, "g1.vtk", "grid");
-	add_file_check(12574868808136614456U, "c1.vtk", "boundary");
+	std::cout<<"1. export to vtk"<<std::endl;
+	{
+		auto g1 = HM3D::Grid::Constructor::Cuboid({0, 0, 0}, 1, 2, 5, 3, 3, 3);
+		HM3D::Export::AllVTK.Silent(g1, "g1.vtk", "c1.vtk");
+		add_check(g1.vvert.size() == 64 && g1.vcells.size() == 27 &&
+				g1.vedges.size() == 144 && g1.vfaces.size() == 108,
+				"cuboid primitives number"); 
+		add_file_check(15732503264642486832U, "g1.vtk", "cuboid grid");
+		add_file_check(12574868808136614456U, "c1.vtk", "cuboid boundary");
+	}
+	{
+		auto g1 = HM2D::Grid::Constructor::RegularHexagonal(Point(1, 1), 10., 2.);
+		auto g3 = HM3D::Grid::Constructor::SweepGrid2D(g1, {0., 1., 3., 5.});
+		HM3D::Export::GridVTK(g3, "g1.vtk");
+		add_file_check(17870419829891734470U, "g1.vtk", "regular hexagonal");
+	}
 }
 
 void test02(){
@@ -381,9 +389,9 @@ void test09(){
 		auto gcyl = HM3D::Grid::Constructor::SweepGrid2D(gcyl2, zsweep);
 
 		HM3D::FaceData srf;
-		//for (auto f: gcyl.vfaces) if (f->is_boundary()) srf.faces.push_back(f);
-		//for (auto f: g1.vfaces) if (f->is_boundary()) srf.faces.push_back(f);
-		for (auto f: g2.vfaces) if (f->is_boundary()) srf.push_back(f);
+		for (auto f: gcyl.vfaces) if (f->is_boundary()) srf.push_back(f);
+		for (auto f: g1.vfaces) if (f->is_boundary()) srf.push_back(f);
+		//for (auto f: g2.vfaces) if (f->is_boundary()) srf.push_back(f);
 
 		auto res = HM3D::Mesher::UnstructuredTetrahedral.WVerbTimer(srf);
 		//auto res = HM3D::Mesher::UnstructuredTetrahedral(srf);
@@ -513,14 +521,14 @@ void test10(){
 
 
 int main(){
-	test01();
-	test02();
-	test03();
-	test04();
-	test05();
-	test06();
-	test07();
-	test08();
+	//test01();
+	//test02();
+	//test03();
+	//test04();
+	//test05();
+	//test06();
+	//test07();
+	//test08();
 	test09();
 	test10();
 	

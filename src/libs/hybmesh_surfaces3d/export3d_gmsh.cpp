@@ -46,7 +46,7 @@ void hme::TGridGMSH::_run(const Ser::Grid& ser, std::string fn, BFun bfun){
 			case 12: tp = 5; break;
 			case 14: tp = 7; break;
 			case 13: tp = 6; break;
-			default: assert(false);
+			default: throw std::runtime_error("Invalid cell for 3D gmsh export found");
 		}
 		os<<num+1<<" "<<tp<<" 2 "<<ientity<<" "<<ientity;
 		if (tp != 6){
@@ -60,7 +60,7 @@ void hme::TGridGMSH::_run(const Ser::Grid& ser, std::string fn, BFun bfun){
 	};
 
 	std::ofstream of(fn);
-	of.precision(17);
+	of.precision(16);
 	//header
 	of<<"$MeshFormat"<<std::endl;
 	of<<"2.2 0 8"<<std::endl;

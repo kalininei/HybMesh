@@ -159,8 +159,19 @@ bool hme::vtkcell_expression::try_wedge(std::vector<std::vector<int>>& data){
 }
 bool hme::vtkcell_expression::try_polygon(std::vector<std::vector<int>>& data){
 	celltype=7;
-	if (data.size() != 1) _false_return();
+	if (data.size() != 1) return _false_return();
 	pts = data[0];
+	return true;
+}
+bool hme::vtkcell_expression::try_polyhedron(std::vector<std::vector<int>>& data){
+	celltype=42;
+	if (data.size() < 4) return _false_return();
+	pts.clear();
+	pts.push_back(data.size());
+	for (auto& d: data){
+		pts.push_back(d.size());
+		for (auto& p: d) pts.push_back(p);
+	}
 	return true;
 }
 
@@ -171,9 +182,10 @@ hme::vtkcell_expression hme::vtkcell_expression::build(std::vector<std::vector<i
 	if (ret.try_wedge(cint)) return ret;
 	if (ret.try_pyramid(cint)) return ret;
 	if (ret.try_polygon(cint)) return ret;
+	if (ret.try_polyhedron(cint)) return ret;
 	std::string s("Can not treat 3D cell with ");
 	s += std::to_string(cint.size());
-	s += " faces as valid tetrahedron/hexahedron/prism/pyramid";
+	s += " faces as valid vtk format cell";
 	throw std::runtime_error(s.c_str());
 }
 vector<hme::vtkcell_expression> hme::vtkcell_expression::cell_assembler(const Ser::Grid& ser,

@@ -117,7 +117,13 @@ void Export::GridWriter::AddLinFemConnectivity(){
 	auto vtkex = vtkcell_expression::cell_assembler(*grid, af, true);
 	vector<vector<int>> linfem(vtkex.size());
 	for (size_t i=0; i<linfem.size(); ++i){
-		std::swap(linfem[i], vtkex[i].pts);
+		switch (vtkex[i].celltype){
+		case 10: case 12: case 13: case 14:
+			std::swap(linfem[i], vtkex[i].pts);
+		default:
+			break;
+		}
+
 	}
 	AddCellData("__linfem__", linfem, is_binary<int>());
 }

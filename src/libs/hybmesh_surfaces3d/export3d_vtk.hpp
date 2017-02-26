@@ -70,11 +70,14 @@ class vtkcell_expression{
 	bool try_pyramid(std::vector<std::vector<int>>& data);
 	bool try_wedge(std::vector<std::vector<int>>& data);
 	bool try_polygon(std::vector<std::vector<int>>& data);
+	bool try_polyhedron(std::vector<std::vector<int>>& data);
 	static vtkcell_expression build(std::vector<std::vector<int>>& cint);
 public:
 	//holds points indicies in vtk type orders
+	//for celltype=42 also includes face size information
 	vector<int> pts;
 	int celltype; //10 - tetrahedron; 12 - hexahedron; 14 - pyramid; 13 - wedge
+	              //42 - polyhedron
 
 	//tries to build expressions for all cells in ser.
 	//aface is face_vertex connectivity table

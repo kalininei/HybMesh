@@ -356,6 +356,7 @@ void Algos::Heal(GridData& from){
 		if (less_tppp(v1, v2)) continue;
 		int ind1 = v1 - &sus_sorted[0];
 		int ind2 = v2 - &sus_sorted[0];
+		if (ind1 > ind2) std::swap(ind1, ind2);
 		change1.push_back(susedges[ind1]);
 		change2.push_back(susedges[ind2]);
 		++it;
