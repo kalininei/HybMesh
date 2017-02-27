@@ -45,7 +45,7 @@ def write_command_flow(comflow, xmlnode, flowname=None):
     rt = ET.SubElement(xmlnode, "FLOW")
     if flowname is not None:
         rt.attrib['name'] = flowname
-    #Commands list
+    # Commands list
     cl = ET.SubElement(rt, "COMMANDS")
     for c in comflow._commands:
         nd = ET.SubElement(cl, "COM")

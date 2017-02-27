@@ -241,7 +241,7 @@ def partition_contour(cont, algo, step=1., angle0=30., keep_bnd=False,
     If **start** and **end** points are defined then only segment between
     these points will be parted. Note that all closed contours are treated
     in counterclockwise direction. Given start/end points will be
-    projected to closest contour vertex.
+    projected to closest contour vertices.
 
     ``ref_weights``, ``ref_lengths`` partition methods
     require definition of **start** point

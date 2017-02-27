@@ -45,20 +45,20 @@ def grid2(fname, grid, cb=None):
     raw_cellsize = grid.raw_data('cellsizes')
     raw_cellvert = grid.raw_data('cell-vert')
 
-    #Points
+    # Points
     out.append("DATASET UNSTRUCTURED_GRID")
     out.append("POINTS %i float" % np)
     out.extend(
         ['%s %s 0' % (str(p[0]), str(p[1])) for p in raw_vertices]
     )
-    #Cells
+    # Cells
     cd = sum(raw_cellsize) + nc
     out.append("CELLS %i %i" % (nc, cd))
     it = iter(raw_cellvert)
     for sz in raw_cellsize:
         sit = itertools.islice(it, sz)
         out.append('%i %s' % (sz, ' '.join(map(str, sit))))
-    #CellTypes
+    # CellTypes
     out.append("CELL_TYPES %i" % nc)
     out.extend(['7'] * nc)
 

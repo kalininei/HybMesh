@@ -12,7 +12,7 @@ class RenameGeom(command.Command):
         super(RenameGeom, self).__init__(argsdict)
         self.renamed_object = None
 
-    #overriden from Command
+    # overriden from Command
     def doc(self):
         return "Rename object: %s" % self.oldname
 

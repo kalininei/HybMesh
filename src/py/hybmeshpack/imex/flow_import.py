@@ -11,7 +11,7 @@ from hybmeshpack.gdata.grid3 import Grid3
 
 def _load_command_flow(comflow, xmlnode):
     'adds commands to flow.CommandFlow comflow from xmlnode tagged FLOW'
-    #Commands list
+    # Commands list
     cfnd = xmlnode.findall("COMMANDS/COM")
     # reset all commands because they can not be undone after this procedure
     if len(cfnd) > 0:

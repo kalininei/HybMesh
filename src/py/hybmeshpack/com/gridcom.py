@@ -21,7 +21,7 @@ class NewGridCommand(addremove.AbstractAddRemove):
         else:
             return [], []
 
-    #function for overloading
+    # function for overloading
     def _build_grid(self):
         '-> grid2.Grid2.cdata pointer'
         raise NotImplementedError

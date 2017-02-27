@@ -125,17 +125,17 @@ class SimplifyContours(addremove.AbstractAddRemove):
                 if i >= len(nnames):
                     nnames.append(n)
         added = []
-        #make copies
+        # make copies
         for i, nm in enumerate(names):
             cont = self.any_acont_by_name(nm).deepcopy()
             added.append((cont, nnames[i]))
 
-        #simplify
+        # simplify
         if simp:
             for c in added:
                 c2core.simplify(c[0].cdata, an, True)
 
-        #separate
+        # separate
         if sep:
             newadded = []
             for c in added:

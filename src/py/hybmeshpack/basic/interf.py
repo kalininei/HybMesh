@@ -10,9 +10,12 @@ class DefaultErrorHandler(object):
         pass
 
     def execution_error(self, exc, cmd):
-        """ called by command flow if command fails to execute
+        """ called by command flow if command fails to execute.
             exc - Exception
             cmd - command which failed
+            This should not raise any exceptions.
+            Only for notification routines.
+            Use BasicInterface.flow_messages to raise Exceptions.
         """
         pass
 
@@ -25,10 +28,10 @@ class BasicInterface(object):
         self.cur_flow_collection = None
 
     def set_flow(self, flow):
-        #unregister from previous flow messages
+        # unregister from previous flow messages
         if self.cur_flow is not None:
             self.cur_flow.remove_subscriber(self.flow_messages)
-        #register for cur_flow messages
+        # register for cur_flow messages
         self.cur_flow = flow
         self.cur_flow.add_subscriber(self.flow_messages)
 

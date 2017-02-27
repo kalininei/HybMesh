@@ -16,7 +16,7 @@ class NewGrid3DCommand(addremove.AbstractAddRemove):
         else:
             return [], []
 
-    #function for overloading
+    # function for overloading
     def _build_grid(self):
         '-> grid3.Grid3.cdata pointer'
         raise NotImplementedError

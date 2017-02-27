@@ -53,15 +53,27 @@ class Callback(object):
             return cb
 
     # function for overloading
-    def _callback(*args):
-        raise NotImplementedError
+    def _callback(self, *args):
+        return 0 if self._proceed else 1
 
     def subcallback(self, part, total):
-        return self
+        return SubCallback(part, total, self)
 
     @staticmethod
     def silent_factory():
         return SilentCallbackCancel2()
+
+
+class SubCallback(Callback):
+    def __init__(self, part, total, main):
+        super(SubCallback, self).__init__(main.cb_res_type, main.cb_args_types)
+        self.__main = main
+        self.__part = part
+        self.__total = total
+
+    def _callback(self, n1, n2, p1, p2):
+        p1 = float(self.__part + p1) / self.__total
+        return self.__main._callback(n1, n2, p1, p2)
 
 
 class SilentCallbackCancel2(Callback):
@@ -73,21 +85,6 @@ class SilentCallbackCancel2(Callback):
         super(SilentCallbackCancel2, self).__init__(
             int, (str, str, float, float))
 
-    def _callback(self, n1, n2, p1, p2):
-        return 0 if self._proceed else 1
-
-
-class ConsoleCallbackCancel2Sub(SilentCallbackCancel2):
-    def __init__(self, part, total, main):
-        super(ConsoleCallbackCancel2Sub, self).__init__()
-        self.__main = main
-        self.__part = part
-        self.__total = total
-
-    def _callback(self, n1, n2, p1, p2):
-        p1 = float(self.__part + p1) / self.__total
-        return self.__main._callback(n1, n2, p1, p2)
-
 
 class ConsoleCallbackCancel2(SilentCallbackCancel2):
     """ Callback to console. no cancel.
@@ -98,7 +95,7 @@ class ConsoleCallbackCancel2(SilentCallbackCancel2):
 
     def subcallback(self, part, total):
         self.__prev_n1, self.__prev_n2 = '', ''
-        return ConsoleCallbackCancel2Sub(part, total, self)
+        return super(ConsoleCallbackCancel2, self).subcallback(part, total)
 
     @staticmethod
     def _supl(s, char, sz):

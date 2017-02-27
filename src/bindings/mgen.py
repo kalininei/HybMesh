@@ -1,6 +1,7 @@
 import bindparser
 import os
 
+
 class Generator(bindparser.Generator):
     def __init__(self):
         super(Generator, self).__init__()
@@ -45,7 +46,6 @@ class Generator(bindparser.Generator):
         'VEC_INT_DOUBLE': "",
     }
 
-
     @classmethod
     def __translate_vec(cls, *args):
         ret = ['[']
@@ -56,31 +56,25 @@ class Generator(bindparser.Generator):
         ret.append(']')
         return ''.join(ret)
 
-
     @classmethod
     def _translate_VALVECINT(cls, *args):
         return cls.__translate_vec(*args)
-
 
     @classmethod
     def _translate_VALVECDOUBLE(cls, *args):
         return cls.__translate_vec(*args)
 
-
     @classmethod
     def _translate_VALSTRING(cls, arg):
         return "'%s'" % arg
-
 
     @classmethod
     def _translate_VALPOINT(cls, *args):
         return cls._translate_VALVECDOUBLE(*args)
 
-
     @classmethod
     def _translate_VALPOINT3(cls, *args):
         return cls._translate_VALVECDOUBLE(*args)
-
 
     @classmethod
     def _translate_SELF(cls, arg):
@@ -95,7 +89,6 @@ class Generator(bindparser.Generator):
                 ret = ret + ', ' + arg[i+1]
         return ret + ')'
 
-
     @classmethod
     def _sid_tos(cls, argument):
         return "{}.sid".format(argument)
@@ -103,7 +96,7 @@ class Generator(bindparser.Generator):
     @classmethod
     def _return_statement(cls, val):
         return "ret = {}".format(val)
-    
+
     @classmethod
     def _function_caption(cls, args, func):
         capstring = ["function ret=%s(self, " % func.name]
@@ -155,7 +148,8 @@ class Generator(bindparser.Generator):
 
     @classmethod
     def _string_pop_begin(cls, var, num):
-        return "if size({0}, 2)>{1} {0} = {0}(num + 1: size({0}, 2)) end".format(var, num)
+        s = "if size({0}, 2)>{1} {0} = {0}(num + 1: size({0}, 2)) end"
+        return s.format(var, num)
 
     @classmethod
     def _eol_symbol(cls):

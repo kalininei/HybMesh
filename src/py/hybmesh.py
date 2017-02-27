@@ -11,7 +11,13 @@ Console interface for HybMesh. Possible arguments:
         1: +execution errors descriptions
         2: +commands start/end reports
         3: +progress bar [default]
+-px p1 p2 p3 p4 [-silent]
+    Execute hybmesh in a pipe communication mode.
+    p* are open pipe descriptors for
+    1 - read signal, 2 - write signal
+    3 - read data, 4 - write data
 """
+
 # -x fn.hmp [-sgrid gname fmt fn] [-sproj fn] [-silent]
 #     Execute command flow from 'hmp' file and saves resulting data.
 #     Options are
@@ -35,8 +41,137 @@ import sys
 from hybmeshpack import progdata, imex, basic
 
 
+def sxexec(argv):
+    from hybmeshpack import hmscript
+    fn = sys.argv[argv.index('-sx') + 1]
+    verb = 3
+    if '-silent' in argv:
+        verb = 0
+    elif '-verbosity' in argv:
+        try:
+            iv = argv.index('-verbosity')
+            verb = int(argv[iv + 1])
+            if verb < 0 or verb > 3:
+                raise
+        except:
+            sys.exit('Invalid verbosity level. See -help.')
+    if verb == 0:
+        hmscript.flow.set_interface(hmscript.ConsoleInterface0())
+    elif verb == 1:
+        hmscript.flow.set_interface(hmscript.ConsoleInterface1())
+    elif verb == 2:
+        hmscript.flow.set_interface(hmscript.ConsoleInterface2())
+    elif verb == 3:
+        hmscript.flow.set_interface(hmscript.ConsoleInterface3())
+    execfile(fn)
+    if verb > 1:
+        print "DONE"
+    sys.exit()
+
+
+def xexec(argv):
+    fn = sys.argv[sys.argv.index('-x') + 1]
+    # load flow and state
+    f = imex.read_flow_and_framework_from_file(fn)
+
+    if '-silent' not in sys.argv:
+        f.set_interface(basic.interf.ConsoleInterface())
+
+    # run till end
+    f.exec_all()
+
+    # save current state
+    if '-sproj' in sys.argv:
+        fn = sys.argv[sys.argv.index('-sproj') + 1]
+        imex.write_flow_and_framework_to_file(f, fn)
+
+    # export grid
+    for i, op in enumerate(sys.argv):
+        if op == '-sgrid':
+            gname = sys.argv[i + 1]
+            fmt = sys.argv[i + 2]
+            fn = sys.argv[i + 3]
+            try:
+                imex.export_grid(fmt, fn, flow=f, name=gname)
+                print '%s saved to %s' % (gname, fn)
+            except Exception as e:
+                print 'Exporting Failure: %s' % str(e)
+
+    print "DONE"
+    sys.exit()
+
+
+def pxexec(argv):
+    """ pipe mode execution """
+    from hybmeshpack import hmscript
+    import os
+    import ast
+    import struct
+    import ctypes as ct
+    sig_read = int(argv[2])
+    sig_write = int(argv[3])
+    data_read = int(argv[4])
+    data_write = int(argv[5])
+    if os.name == 'nt':
+        import msvcrt
+        sig_read = msvcrt.open_osfhandle(sig_read, os.O_APPEND | os.O_RDONLY)
+        data_read = msvcrt.open_osfhandle(data_read, os.O_APPEND | os.O_RDONLY)
+        sig_write = msvcrt.open_osfhandle(sig_write, os.O_APPEND)
+        data_write = msvcrt.open_osfhandle(data_write, os.O_APPEND)
+    if '-silent' in argv:
+        hmscript.flow.set_interface(hmscript.ConsoleInterface0())
+    else:
+        hmscript.flow.set_interface(hmscript.PipeInterface(
+                sig_read, sig_write, data_read, data_write))
+    while 1:
+        # wait for a signal from client
+        s1 = os.read(sig_read, 1)
+        # command was written to dataread pipe
+        if s1 == "C":
+            sz = os.read(data_read, 4)
+            sz = struct.unpack('=i', sz)[0]
+            cm = os.read(data_read, sz)
+            sz = os.read(data_read, 4)
+            sz = struct.unpack('=i', sz)[0]
+            args = os.read(data_read, sz)
+            try:
+                cm = getattr(hmscript.hybmeshpack, cm)
+                args = ast.literal_eval(args)
+                ret = cm(*args)
+            except hmscript.hybmeshpack.UserInterrupt:
+                # interrupted by callback function
+                os.write(sig_write, "I")
+            except Exception as e:
+                # error return
+                s = str(e)
+                os.write(data_write, struct.pack('=i', len(s)) + s)
+                os.write(sig_write, "E")
+            else:
+                # normal return
+                if ret is None:
+                    # None return
+                    os.write(data_write, '\0\0\0\0')
+                elif isinstance(s, ct.Array):
+                    # command returning ctypes array object
+                    rawlen, alen = ct.sizeof(s), s._length_
+                    os.write(data_write, struct.pack('=ii', rawlen + 4, alen))
+                    os.write(data_write, struct.pack('=%is' % rawlen, s))
+                else:
+                    # regular command which returns python types
+                    s = str(ret)
+                    os.write(data_write, struct.pack('=i', len(s)) + s)
+                os.write(sig_write, "R")
+        # quit signal
+        elif s1 == "Q" or not s1:
+            print "server quit"
+            quit()
+        else:
+            raise Exception("Invalid instruction for server")
+
+
 def main():
-    if len(sys.argv) == 1 or sys.argv[1] in ['help', 'h', '-help', '-h']:
+    if len(sys.argv) == 1 or sys.argv[1] in ['help', 'h', '-help',
+                                             '-h', '--help']:
         print __doc__
         sys.exit()
 
@@ -55,66 +190,15 @@ def main():
             else:
                 print 'No updates are available'
             sys.exit()
-
     # execution
     if len(sys.argv) >= 3 and '-sx' in sys.argv:
-        fn = sys.argv[sys.argv.index('-sx') + 1]
-        from hybmeshpack import hmscript
-        verb = 3
-        if '-silent' in sys.argv:
-            verb = 0
-        elif '-verbosity' in sys.argv:
-            try:
-                iv = sys.argv.index('-verbosity')
-                verb = int(sys.argv[iv + 1])
-                if verb < 0 or verb > 3:
-                    raise
-            except:
-                sys.exit('Invalid verbosity level. See -help.')
-        if verb == 0:
-            hmscript.flow.set_interface(hmscript.ConsoleInterface0())
-        elif verb == 1:
-            hmscript.flow.set_interface(hmscript.ConsoleInterface1())
-        elif verb == 2:
-            hmscript.flow.set_interface(hmscript.ConsoleInterface2())
-        elif verb == 3:
-            hmscript.flow.set_interface(hmscript.ConsoleInterface3())
-        execfile(fn)
-        if verb > 1:
-            print "DONE"
-        sys.exit()
+        sxexec(sys.argv)
     elif len(sys.argv) >= 3 and '-x' in sys.argv:
-        fn = sys.argv[sys.argv.index('-x') + 1]
-        # load flow and state
-        f = imex.read_flow_and_framework_from_file(fn)
+        xexec(sys.argv)
+    elif len(sys.argv) >= 6 and sys.argv[1] == '-px':
+        pxexec(sys.argv)
 
-        if '-silent' not in sys.argv:
-            f.set_interface(basic.interf.ConsoleInterface())
-
-        # run till end
-        f.exec_all()
-
-        # save current state
-        if '-sproj' in sys.argv:
-            fn = sys.argv[sys.argv.index('-sproj') + 1]
-            imex.write_flow_and_framework_to_file(f, fn)
-
-        # export grid
-        for i, op in enumerate(sys.argv):
-            if op == '-sgrid':
-                gname = sys.argv[i + 1]
-                fmt = sys.argv[i + 2]
-                fn = sys.argv[i + 3]
-                try:
-                    imex.export_grid(fmt, fn, flow=f, name=gname)
-                    print '%s saved to %s' % (gname, fn)
-                except Exception as e:
-                    print 'Exporting Failure: %s' % str(e)
-
-        print "DONE"
-        sys.exit()
-
-    sys.exit('Invalid option string. See -help.')
+    sys.exit('Invalid options string. See -help.')
 
 
 if __name__ == '__main__':

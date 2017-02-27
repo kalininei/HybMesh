@@ -39,28 +39,28 @@ class _AddRemoveObjects(object):
         self.clear_backup()
         self.backup = receiver.backup_copy()
 
-        #remove grids
+        # remove grids
         for n in self.remg2:
             receiver.remove_grid2(name=n)
-        #remove contours
+        # remove contours
         for n in self.remc2:
             receiver.remove_contour2(name=n)
-        #remove g3
+        # remove g3
         for n in self.remg3:
             receiver.remove_grid3(name=n)
-        #remove s3
+        # remove s3
         for n in self.rems3:
             receiver.remove_surface3(name=n)
-        #add grids
+        # add grids
         for v in self.addg2:
             self.new_g2.append(receiver.append_grid2(*v))
-        #add contours
+        # add contours
         for v in self.addc2:
             self.new_c2.append(receiver.append_contour2(*v))
-        #add grid3
+        # add grid3
         for v in self.addg3:
             self.new_g3.append(receiver.append_grid3(*v))
-        #add surface3
+        # add surface3
         for v in self.adds3:
             self.new_s3.append(receiver.append_surface3(*v))
         return True
@@ -127,7 +127,7 @@ class AbstractAddRemove(command.Command):
         return self._addrem_grid2() + self._addrem_contour2() +\
             self._addrem_grid3() + self._addrem_surface3()
 
-    #function for overriding
+    # function for overriding
     def _addrem_grid2(self):
         """ -> addg2, remg2
         addg2 -- [ (Grid2, name), ... ]

@@ -3,6 +3,7 @@ For installation purposes only"""
 import sys
 import os
 
+
 class Func(object):
     def __init__(self):
         self.class_ = None
@@ -49,7 +50,6 @@ class MaskParser(object):
                 raise
             self.funcs.append(f)
 
-
     @staticmethod
     def __extract_funcs(fn):
         ret = []
@@ -70,7 +70,6 @@ class MaskParser(object):
                 ret.append(substr.strip())
         return ret
 
-
     @staticmethod
     def __tokenize(lines):
         ret = []
@@ -83,8 +82,6 @@ class MaskParser(object):
         for i, itok in enumerate(toks[:-1]):
             ret.append(words[itok: toks[i+1]])
         return ret
-
-
 
 
 class Generator(object):
@@ -112,22 +109,11 @@ class Generator(object):
         else:
             raise Exception('Unknown type')
 
-    # =========== for overriding
-    def _format_out_string(self, lines, indent):
-        raise NotImplementedError
-
-
-    def _parse_fun(self, func):
-        "-> [str]"
-        raise NotImplementedError
-
-
     # ===========  self methods
     @staticmethod
     def __readlines(fn):
         with open(fn) as f:
             return f.readlines()
-
 
     @staticmethod
     def __findline(lines, substr):
@@ -136,20 +122,17 @@ class Generator(object):
                 return i
         raise Exception("Substring %s was not found" % substr)
 
-
     @staticmethod
     def __get_indent(line):
         s2 = line.strip()
         i = line.find(s2[0])
         return line[:i]
 
-
     @staticmethod
     def __substitute(lines, index, sublines):
         del lines[index]
         for line in reversed(sublines):
             lines.insert(index, line)
-
 
     @classmethod
     def _write(cls, lines, outfn):
@@ -159,7 +142,6 @@ class Generator(object):
         with open(outfn, 'w') as f:
             f.writelines(lines)
 
-
     @classmethod
     def _translate(cls, token):
         fnd1 = token.find('(')
@@ -168,7 +150,7 @@ class Generator(object):
             args = []
         else:
             stem = token[1:fnd1]
-            args = token[fnd1 + 1 : -1].split(',')
+            args = token[fnd1 + 1:-1].split(',')
 
         try:
             return cls.dictionary[stem]
@@ -194,8 +176,9 @@ class Generator(object):
                 fun = '_tos_point3'
             elif tp in ['#GRID2D', '#OBJECT2D', '#CONTOUR2D', '#GRID3D']:
                 fun = '_tos_object'
-            elif tp in ['#VECOBJECT2D', '#VECCONTOUR2D', '#VECOBJECT3D', '#VECGRID3D',
-                        '#VECGRID2D', '#VECSURFACE3D', '#VECOBJECT']:
+            elif tp in ['#VECOBJECT2D', '#VECCONTOUR2D', '#VECOBJECT3D',
+                        '#VECGRID3D', '#VECGRID2D', '#VECSURFACE3D',
+                        '#VECOBJECT']:
                 fun = '_tos_vecobject'
             elif tp == '#INT':
                 fun = '_tos_int'
@@ -210,7 +193,6 @@ class Generator(object):
             else:
                 raise Exception("unknown tos type " + tp)
             return cls._worker_call(fun, argument)
-
 
     @classmethod
     def _return_method(cls, tp, arg):
@@ -240,7 +222,6 @@ class Generator(object):
             raise Exception("unknown return_method type: " + tp)
         return cls._return_statement(cls._worker_call(fun, arg))
 
-
     @classmethod
     def _rawreturn_method(cls, tp, arg):
         if tp == "#VECDOUBLE":
@@ -250,7 +231,6 @@ class Generator(object):
         else:
             raise Exception("unknown rawreturn_method type: " + tp)
         return cls._return_statement(cls._worker_call(fun, arg))
-
 
     @classmethod
     def _parse_caption(cls, func):
@@ -275,7 +255,6 @@ class Generator(object):
         ret[0] = ret[0] + cls._open_tag()
         return ret
 
-
     @classmethod
     def _format_out_string(cls, lines, indent):
         ret = []
@@ -285,9 +264,8 @@ class Generator(object):
                     line = line + cls._eol_symbol()
                 if (len(line) > 0):
                     line = indent + line
-                ret.append(line);
+                ret.append(line)
         return ret
-
 
     @classmethod
     def _parse_args(cls, func):
@@ -303,7 +281,8 @@ class Generator(object):
                     a[1] = cls._translate(a[1])
                 subs.append(a[1])
             elif a[0] == '$ARGKW':
-                subs.append('"{}=" + {}'.format(a[1], cls._tos_method(a[2], var)))
+                subs.append('"{}=" + {}'.format(
+                    a[1], cls._tos_method(a[2], var)))
             elif a[0].startswith('$ARGSPLIT('):
                 alla = [a]
                 index = int(a[0][10:-1])
@@ -316,7 +295,8 @@ class Generator(object):
                 for a2 in alla:
                     var2 = a2[-1].split('=')[0]
                     subs2.append(cls._tos_method(a2[1], var2))
-                subs2 = cls._merge_string_code("tmp{}".format(index), "[]", ", ", subs2, '---')
+                subs2 = cls._merge_string_code(
+                    "tmp{}".format(index), "[]", ", ", subs2, '---')
                 subs.extend(subs2)
                 subs.append("tmp{}".format(index))
             elif a[0].startswith('$ARGSPLITVEC('):
@@ -328,21 +308,24 @@ class Generator(object):
                 for a in alla[1:]:
                     args.remove(a)
                 subs2 = ['""',
-                         '---' + cls._for_loop(cls._vec_size(alla[0][2].split('=')[0])) +
+                         '---' +
+                         cls._for_loop(
+                             cls._vec_size(alla[0][2].split('=')[0])) +
                          cls._open_tag()]
                 for a2 in alla:
                     subs2.append(cls._indent() + cls._tos_method(
                         "#" + a2[1][4:], a2[2].split('=')[0] + '[i]'))
                 if cls._close_tag():
                     subs2.append('---' + cls._close_tag())
-                subs2.append('---' + cls._string_pop_begin('tmp{}'.format(index), 2))
-                subs2 = cls._merge_string_code("tmp{}".format(index), "[]", ", ", subs2, '---')
+                subs2.append('---' + cls._string_pop_begin(
+                        'tmp{}'.format(index), 2))
+                subs2 = cls._merge_string_code(
+                        "tmp{}".format(index), "[]", ", ", subs2, '---')
                 subs.extend(subs2)
                 subs.append("tmp{}".format(index))
             else:
                 raise Exception("unknown argument: " + str(a))
         return subs
-
 
     @classmethod
     def _parse_fun(cls, func):
@@ -356,14 +339,17 @@ class Generator(object):
 
         # return statement
         if len(subs) > 0:
-            wc = cls._worker_call('_apply_command', '"{}"'.format(func.targetfun), 'comstr')
+            wc = cls._worker_call(
+                    '_apply_command', '"{}"'.format(func.targetfun), 'comstr')
         else:
-            wc = cls._worker_call('_apply_command', '"{}"'.format(func.targetfun), '""')
+            wc = cls._worker_call(
+                    '_apply_command', '"{}"'.format(func.targetfun), '""')
         if func.argreturn[0] == '$RETURNNO':
             ret.append(wc)
         elif func.argreturn[0] == '$RETURN':
             ret.append(cls._vecbyte_init('comret', wc))
-            ret.append(cls._string_init('sret', cls._worker_call('_tos_vecbyte', 'comret')))
+            ret.append(cls._string_init(
+                    'sret', cls._worker_call('_tos_vecbyte', 'comret')))
             ret.append(cls._return_method(func.argreturn[1], "sret"))
         elif func.argreturn[0] == '$RETURNRAW':
             ret.append(cls._vecbyte_init('comret', wc))
@@ -375,22 +361,25 @@ class Generator(object):
         for i in range(1, len(ret)):
             ret[i] = '{}{}'.format(cls._indent(), ret[i])
 
-        #close
-        ret.append(cls._close_tag())
+        # close
+        if cls._close_tag():
+            ret.append(cls._close_tag())
         ret.append('')
         return ret
-    
 
     @classmethod
-    def _merge_string_code(cls, tmpvar, parant, divider, substrings, starter=''):
+    def _merge_string_code(cls, tmpvar, parant, divider,
+                           substrings, starter=''):
         """
         {starter}tmpvar = []
         {starter}tmpvar.append(substrings[0])
         {starter}tmpvar.append(substrings[1])
         {starter}outvar = '[' + {divider}.join(tmpvar) + ']'
 
-        if substring starts with '---', simply pastes this substing without '---'.
-        if substring has white spaces ahead, uses them as string indentation
+        if substring starts with '---',
+            simply pastes this substing without '---'.
+        if substring has white spaces ahead,
+            uses them as string indentation
         """
         ret = []
         string_created = False
@@ -417,16 +406,18 @@ class Generator(object):
                 ret[i] = "{}{}".format(starter, ret[i])
         return ret
 
-
     # interface functions
     def parse(self, mask):
         """ fills out strings """
-        self.outstrings = {'Hybmesh':[], 'Contour2D': [], 'Grid2D': [],
+        self.outstrings = {'Hybmesh': [], 'Contour2D': [], 'Grid2D': [],
                            'Surface3D': [], 'Grid3D': []}
         for f in mask.funcs:
             tar = self.outstrings[f.class_]
             tar.append(self._parse_fun(f))
 
+        for v in self.outstrings.values():
+            while (v[-1][-1] == ''):
+                v[-1].pop()
 
     def write_to_file(self, basefile, outdir):
         bb = self.__readlines(basefile)

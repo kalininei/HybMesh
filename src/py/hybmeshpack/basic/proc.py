@@ -6,7 +6,7 @@ class AbstractSender(object):
     'Base class which send messages'
 
     def __init__(self):
-        #subscribers list
+        # subscribers list
         self._subscribers = []
 
     def add_subscriber(self, fun):

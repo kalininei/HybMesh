@@ -9,19 +9,19 @@ class Framework(object):
     def __init__(self):
         self._obj_pool = NamedListPool()
         self._znames_pool = NamedListPool()
-        #grids list
+        # grids list
         self.grids2 = NamedList("Grid2D_1", self._obj_pool)
-        #user contours list
+        # user contours list
         self.contours2 = NamedList("Contour2D_1", self._obj_pool)
-        #grids3d list
+        # grids3d list
         self.grids3 = NamedList("Grid3D_1", self._obj_pool)
-        #surfaces3 list
+        # surfaces3 list
         self.surfaces3 = NamedList("Surface3D_1", self._obj_pool)
-        #zone types
+        # zone types
         self.zone_types = NamedList("Zone1", self._znames_pool)
         self.zone_types.append(BndType(0), "default-boundary")
 
-    #boundary types manager
+    # boundary types manager
     def get_zone_types(self):
         '-> {zone type: zone name}'
         ret = {}
@@ -47,7 +47,7 @@ class Framework(object):
                 return
         self.zone_types.append(BndType(index), name)
 
-    #2d grids manager
+    # 2d grids manager
     def append_grid2(self, grid, name=None):
         "-> name. add a grid to a grid list"
         return self.grids2.append(grid, name)
@@ -64,7 +64,7 @@ class Framework(object):
         '-> [list of grid names]'
         return self.grids2.all_names()
 
-    #3d grids manager
+    # 3d grids manager
     def append_grid3(self, grid, name=None):
         "-> name. add a grid to a grid list"
         return self.grids3.append(grid, name)
@@ -81,7 +81,7 @@ class Framework(object):
         '-> [list of grid names]'
         return self.grids3.all_names()
 
-    #2d contours manager
+    # 2d contours manager
     def append_contour2(self, contour, name=None):
         "-> name. add a contour to the contour list"
         return self.contours2.append(contour, name)
@@ -98,7 +98,7 @@ class Framework(object):
         '-> [list of contour names]'
         return self.contours2.all_names()
 
-    #3d surfaces manager
+    # 3d surfaces manager
     def append_surface3(self, surface, name=None):
         "-> name. add a surface to the surface list"
         return self.surfaces3.append(surface, name)
@@ -115,7 +115,7 @@ class Framework(object):
         '-> [list of surface names]'
         return self.surfaces3.all_names()
 
-    #2d objects manager
+    # 2d objects manager
     def get_names2(self):
         '-> [list of all grid and contours names]'
         return self.get_grid2_names() + self.get_contour2_names()
@@ -134,7 +134,7 @@ class Framework(object):
         except KeyError:
             return self.contours2.obj_by_name(name)
 
-    #3d objects manager
+    # 3d objects manager
     def get_names3(self):
         '-> [list of all grid and surfaces names]'
         return self.get_grid3_names() + self.get_surface3_names()

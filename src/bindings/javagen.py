@@ -1,5 +1,6 @@
 import bindparser
 
+
 class Generator(bindparser.Generator):
     def __init__(self):
         super(Generator, self).__init__()
@@ -44,7 +45,6 @@ class Generator(bindparser.Generator):
         'VEC_INT_DOUBLE': "Map<Integer, Double>",
     }
 
-
     @classmethod
     def __translate_vec(cls, *args):
         ret = ['{']
@@ -55,31 +55,25 @@ class Generator(bindparser.Generator):
         ret.append('}')
         return ''.join(ret)
 
-
     @classmethod
     def _translate_VALVECINT(cls, *args):
         return 'int[]' + cls.__translate_vec(*args)
-
 
     @classmethod
     def _translate_VALVECDOUBLE(cls, *args):
         return 'double[]'+cls.__translate_vec(*args)
 
-
     @classmethod
     def _translate_VALSTRING(cls, arg):
         return '"%s"' % arg
-
 
     @classmethod
     def _translate_VALPOINT(cls, *args):
         return "Point2({}, {})".format(*args)
 
-
     @classmethod
     def _translate_VALPOINT3(cls, *args):
         return "Point3({}, {}, {})".format(*args)
-
 
     @classmethod
     def _translate_SELF(cls, arg):
@@ -94,7 +88,6 @@ class Generator(bindparser.Generator):
                 ret = ret + ', ' + arg[i+1]
         return ret + ')'
 
-
     @classmethod
     def _sid_tos(cls, argument):
         return "{}.sid".format(argument)
@@ -102,7 +95,7 @@ class Generator(bindparser.Generator):
     @classmethod
     def _return_statement(cls, val):
         return "return {}".format(val)
-    
+
     @classmethod
     def _function_caption(cls, args, func):
         if func.argreturn[0] == '$RETURNNO':
@@ -125,10 +118,12 @@ class Generator(bindparser.Generator):
         if capstring[-1] == ', ':
             capstring.pop()
         capstring.append(')')
-        capstring.append(' throws Hybmesh.EUserInterrupt, Hybmesh.ERuntimeError');
+        capstring.append(
+                ' throws Hybmesh.EUserInterrupt, Hybmesh.ERuntimeError')
         ret = [''.join(capstring)]
         for (k, v) in defargs:
-            ret.append("{arg} = ({arg} != null) ? {arg} : new {val};".format(arg=k, val=v))
+            ret.append("{arg} = ({arg} != null) ? {arg} : new {val};".format(
+                    arg=k, val=v))
         return ret
 
     @classmethod
@@ -172,8 +167,8 @@ class Generator(bindparser.Generator):
 
     @classmethod
     def _string_pop_begin(cls, var, num):
-        return "if ({0}.length() >= {1}) {0} = {0}.substring({1})".format(var, num)
-
+        return "if ({0}.length() >= {1}) {0} = {0}.substring({1})".format(
+                var, num)
 
     @classmethod
     def _eol_symbol(cls):

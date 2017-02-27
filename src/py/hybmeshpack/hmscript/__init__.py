@@ -1,6 +1,7 @@
 import traceback
 import os
 import sys
+import struct
 from hybmeshpack.com.flow import CommandFlow
 import hybmeshpack.basic.interf
 import hybmeshpack.basic.cb
@@ -23,6 +24,12 @@ class InvalidArgument(ValueError):
         super(InvalidArgument, self).__init__(msg)
 
 
+class UserInterrupt(Exception):
+    """Raised when callback returns 1"""
+    def __init__(self):
+        super(UserInterrupt, self).__init__("Interrupted by user")
+
+
 def hmscriptfun(method):
     """ decorator for interface functions
     for catching exceptions.
@@ -31,6 +38,8 @@ def hmscriptfun(method):
         try:
             return method(*args, **kw)
         except InvalidArgument:
+            raise
+        except UserInterrupt:
             raise
         except Exception as e:
             exc_info = sys.exc_info()
@@ -61,7 +70,7 @@ class ConsoleInterface0(hybmeshpack.basic.interf.BasicInterface):
     # overriden functions
     def flow_messages(self, tp, sender, **kwargs):
         if tp == sender.FAILED_EXECUTION:
-            # exception will be catched in hmscipt function
+            # exception will be catched in hmscript function
             raise Exception
 
 
@@ -105,6 +114,59 @@ class ConsoleInterface3(ConsoleInterface2):
 
     def ask_for_callback(self):
         return hybmeshpack.basic.cb.ConsoleCallbackCancel2()
+
+
+class PipeInterface(ConsoleInterface0):
+    def __init__(self, sig_read, sig_write, data_read, data_write):
+        super(PipeInterface, self).__init__()
+        self.p = [sig_read, sig_write, data_read, data_write]
+        self.was_cancelled = False
+        self.last_error_message = ""
+
+    class Callback(hybmeshpack.basic.cb.SilentCallbackCancel2):
+        def __init__(self, interf):
+            super(PipeInterface.Callback, self).__init__()
+            self.interf = interf
+            self.interf.was_cancelled = False
+
+        def _callback(self, n1, n2, p1, p2):
+            l1, l2 = len(n1), len(n2)
+            ilen = 8 + 8 + 4 + 4 + l1 + l2
+            s = struct.pack('=iddii%is%is' % (l1, l2),
+                            ilen, p1, p2, l1, l2, n1, n2)
+            os.write(self.interf.p[3], s)
+            os.write(self.interf.p[1], "B")
+            r = os.read(self.interf.p[0], 1)
+            if r == "S":
+                self._proceed = False
+                self.was_cancelled = True
+            elif r == "G":
+                self._proceed = True
+            return super(PipeInterface.Callback, self)._callback()
+
+    class ErrorHandler(hybmeshpack.basic.interf.DefaultErrorHandler):
+        def __init__(self, interf):
+            super(PipeInterface.ErrorHandler, self).__init__()
+            self.interf = interf
+
+        def execution_error(self, exc, cmd):
+            self.interf.last_error_message = str(exc)
+
+    def ask_for_callback(self):
+        return self.Callback(self)
+
+    # overriden functions
+    def error_handler(self):
+        return self.ErrorHandler(self)
+
+    # overriden functions
+    def flow_messages(self, tp, sender, **kwargs):
+        if tp == sender.FAILED_EXECUTION:
+            # exception will be catched in hmscript function
+            if self.was_cancelled:
+                raise UserInterrupt()
+            else:
+                raise Exception(self.last_error_message)
 
 
 # global flow and data

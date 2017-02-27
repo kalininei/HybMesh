@@ -40,7 +40,7 @@ def div_range(a, b, n, k=1):
     """
     if a != 0:
         return [x + a for x in div_range(0, b - a, n, k)]
-    #now a = 0, b = length of the section
+    # now a = 0, b = length of the section
     st = [k ** i for i in range(n)]
     a0 = float(b) / sum(st)
     ret = [0]

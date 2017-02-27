@@ -44,7 +44,7 @@ class _AbstractImport(addremove.AbstractAddRemove):
         if not os.path.isfile(fn):
             raise Exception("File not found %s" % fn, self)
 
-    #functions for overriding
+    # functions for overriding
     def _init_read(self):
         pass
 
@@ -159,7 +159,7 @@ class ImportContoursNative(_AbstractImport):
             hmxml.close_doc(doc, [root])
 
 
-#========================= Import grids
+# ========================= Import grids
 class ImportGridsNative(_AbstractImport):
     'Import grids from native file'
     def __init__(self, argsdict):
@@ -218,7 +218,7 @@ class _ImportGrid2WithBTypes(_AbstractImport):
             self.addcom.append(com)
             self.addcom[-1].do(self.receiver)
 
-    #overriding
+    # overriding
     def _read_grid2(self):
         ret, bt = self._parser(self.get_option('filename'))
         self._add_boundaries(bt)

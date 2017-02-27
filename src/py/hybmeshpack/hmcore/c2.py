@@ -140,7 +140,7 @@ def contour_partition(obj, step, algo, a0, keepbnd,
     start = list_to_c(start, float) if start is not None else None
     end = list_to_c(end, float) if end is not None else None
 
-    #call
+    # call
     ret = ct.c_void_p()
     ccall(cport.c2_partition, obj, algo,
           nstep, step, a0, keepbnd, nedges,

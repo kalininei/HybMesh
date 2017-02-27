@@ -22,7 +22,7 @@ class Command(object):
         self.__comment = ""
         self.options = copy.deepcopy(argsdict)
 
-        #last receiver of the command of gdata.Framework type
+        # last receiver of the command of gdata.Framework type
         self.receiver = None
 
         # flow to which this command belongs (flow.Commandflow)
@@ -59,7 +59,7 @@ class Command(object):
             self.__executed = False
             self._clear()
 
-    #user comments property
+    # user comments property
     def set_comment(self, s):
         ' sets string comment to the command '
         self.__comment = s
@@ -88,7 +88,7 @@ class Command(object):
         """
         return cls.__name__
 
-    #constructors
+    # constructors
     @classmethod
     def fromstring(cls, slist):
         """ -> Command object
@@ -105,8 +105,8 @@ class Command(object):
                 a[k] = v.unserial(a[k])
         return cls(a)
 
-    #------------ methods to override
-    #info
+    # ------------ methods to override
+    # info
     @classmethod
     def doc(cls):
         """-> str.
@@ -124,7 +124,7 @@ class Command(object):
         """
         raise NotImplementedError
 
-    #evalution
+    # evalution
     def _exec(self):
         """ command execution returns True
             if success and False otherwise
@@ -140,7 +140,7 @@ class Command(object):
     def _redo(self):
         raise NotImplementedError
 
-    #auxilliary functions
+    # auxilliary functions
     def get_option(self, code):
         try:
             return copy.deepcopy(self.options[code])

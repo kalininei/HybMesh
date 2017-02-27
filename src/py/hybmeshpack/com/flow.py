@@ -5,7 +5,7 @@ from hybmeshpack.gdata.framework import Framework
 
 
 class CommandFlow(bp.AbstractSender):
-    #messages from command flow to _send_message procedure
+    # messages from command flow to _send_message procedure
     APPEND_COMMAND = 0
     BEFORE_EXECUTION = 1
     SUCCESS_EXECUTION = 2
@@ -15,15 +15,15 @@ class CommandFlow(bp.AbstractSender):
 
     def __init__(self):
         super(CommandFlow, self).__init__()
-        #command list
+        # command list
         self._commands = [command.Start()]
-        #commands[i > curposition] can be redone
+        # commands[i > curposition] can be redone
         self._curpos = 0
-        #commands[i <= startposition] cannot be undone
+        # commands[i <= startposition] cannot be undone
         self._startpos = 0
-        #receiver: gdata.Framework.framework
+        # receiver: gdata.Framework.framework
         self.receiver = Framework()
-        #default communication with user
+        # default communication with user
         self.interface = interf.BasicInterface()
 
     def set_interface(self, interface):
@@ -41,28 +41,28 @@ class CommandFlow(bp.AbstractSender):
         "-> Command. Get a command by index"
         return self._commands[i]
 
-    #can undo/redo from current position
+    # can undo/redo from current position
     def can_undo(self):
         return self._curpos > self._startpos
 
     def can_redo(self):
         return len(self._commands) - 1 > self._curpos
 
-    #removes all commands after curpos, adds the command to list
-    #and executes it
+    # removes all commands after curpos, adds the command to list
+    # and executes it
     def exec_command(self, c):
         # remove all commands from current position to last command
         if (self.can_redo()):
             for c in self._commands[self._curpos + 1:]:
                 c.reset()
             self._commands = self._commands[:self._curpos + 1]
-        #addition
+        # addition
         self.append_command(c)
-        #execution
+        # execution
         self.exec_next()
 
-    #Adds the command to the end of the commands list.
-    #Doesn't execute it
+    # Adds the command to the end of the commands list.
+    # Doesn't execute it
     def append_command(self, c):
         # append a command
         self._commands.append(c)
@@ -70,11 +70,11 @@ class CommandFlow(bp.AbstractSender):
         c.set_flow(self)
         self._send_message(self.APPEND_COMMAND)
 
-    #commands execution procedures
+    # commands execution procedures
     def exec_next(self):
         "executes (or redo's) the next command"
         if (self.can_redo()):
-            #execution
+            # execution
             self._curpos += 1
             res = False
 
@@ -119,7 +119,7 @@ class CommandFlow(bp.AbstractSender):
         self._commands = self._commands[:self._curpos + 1]
         self._startpos = self._curpos
 
-    #sets command receiver to its ZeroState. Commands are preserved
+    # sets command receiver to its ZeroState. Commands are preserved
     def to_zero_state(self):
         self._curpos = 0
         self._startpos = 0
@@ -195,7 +195,7 @@ class FlowCollection(object):
                                    text="Can not remove the last flow")
                 return
 
-        #if deleted flow is actual one change actual flow
+        # if deleted flow is actual one change actual flow
         if self._flows[flow_name] == self._actFlow:
             ind = self._flows.keys().index(flow_name)
             if ind == 0:
@@ -204,13 +204,13 @@ class FlowCollection(object):
                 ind -= 1
             self.set_actual_flow(self._flows.keys()[ind])
 
-        #removing from list
+        # removing from list
         del self._flows[flow_name]
 
     def rename_flow(self, oldname, newname):
         self._flows.change_key(oldname, newname)
 
-    #function which are called from CommandFlow
+    # function which are called from CommandFlow
     def _new_receiver(self):
         ' returns new empty unconnected framework '
         return self._rec_cls()
