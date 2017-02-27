@@ -9,9 +9,9 @@ import java.util.HashMap;
 
 class Hybmesh{
 	static {
-		System.loadLibrary("core_hybmesh_connection_java");
+		System.loadLibrary("core_hmconnection_java");
 	}
-	public static String hybmesh_exec_path = "/home/ek/Hybmesh/build/bin/hybmesh";
+	public static String hybmesh_exec_path = "build/bin/hybmesh";  //>>$EXEPATH
 
 	class Worker{
 		// ==== communication library

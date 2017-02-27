@@ -7,7 +7,7 @@
 #include <sstream>
 #include <stdexcept>
 
-#define DEFAULT_HYBMESH_PATH "/home/ek/Hybmesh/build/bin/hybmesh"
+#define DEFAULT_HYBMESH_EXE_PATH "hybmesh"  // >>$EXEPATH
 
 class Hybmesh{
 public:
@@ -66,7 +66,7 @@ private:
 		void get_signal(char* sig);
 		void get_data(int* sz, char** data);
 		void send_signal(char sig);
-		void send_data(int sz, char* data);
+		void send_data(int sz, const char* data);
 		void break_connection();
 		//server communication
 		void _send_command(const std::string& func, const std::string& com);
@@ -81,7 +81,8 @@ private:
 		}
 		//constructor
 		Worker(const char* hybmeshpath){
-			if (hybmeshpath == NULL) require_connection(DEFAULT_HYBMESH_PATH);
+			if (hybmeshpath == NULL) require_connection(
+					DEFAULT_HYBMESH_EXE_PATH);
 			else require_connection(hybmeshpath);
 			cb_context = 0;
 			callback = &default_callback;
@@ -646,7 +647,7 @@ void Hybmesh::Worker::get_data(int* sz, char** data){
 void Hybmesh::Worker::send_signal(char sig){
 	HMPLATFORM_WRITE(sig_write, &sig, 1);
 }
-void Hybmesh::Worker::send_data(int sz, char* data){
+void Hybmesh::Worker::send_data(int sz, const char* data){
 	HMPLATFORM_WRITE(data_write, (char*)(&sz), 4);
 	HMPLATFORM_WRITE(data_write, data, sz);
 }

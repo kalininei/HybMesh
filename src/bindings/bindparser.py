@@ -419,13 +419,31 @@ class Generator(object):
             while (v[-1][-1] == ''):
                 v[-1].pop()
 
-    def write_to_file(self, basefile, outdir):
+    def write_to_file(self, basefile, outdir, libpath, exepath):
+        # reading basefile and substitution
         bb = self.__readlines(basefile)
         for k, v in self.outstrings.iteritems():
             index = self.__findline(bb, ">>$%s" % k)
             indent = self.__get_indent(bb[index])
             s = self._format_out_string(v, indent)
             self.__substitute(bb, index, s)
+
+        # libdir, exedir
+        if libpath is None:
+            libpath = "lib-not-defined"
+        if exepath is None:
+            exepath = "exe-not-defined"
+        for i in range(len(bb)):
+            if ">>$EXEPATH" in bb[i]:
+                s3 = bb[i].split('"')
+                send = '' if s3[2][0] == ' ' else s3[2][0]
+                bb[i] = s3[0] + '"' + exepath + '"' + send
+            elif ">>$LIBPATH" in bb[i]:
+                s3 = bb[i].split('"')
+                send = '' if s3[2][0] == ' ' else s3[2][0]
+                bb[i] = s3[0] + '"' + libpath + '"' + send
+
+        # writing to file
         if not os.path.exists(outdir):
             os.makedirs(outdir)
         extension = os.path.splitext(basefile)[1]
@@ -435,17 +453,30 @@ class Generator(object):
 
 if __name__ == "__main__":
     """possible arguments:
-        [py/cpp/java/m/all]
+        [py/cpp/java/m/oct/all]
         [odir /path/to/...]
+        [libpath /path/to/lib/]
+        [exepath /path/to/exe/]
     """
-    defaultdir = 'out'
     try:
         dirindex = sys.argv.index('odir')
-        odir = int(sys.argv[dirindex + 1])
+        odir = sys.argv[dirindex + 1]
     except ValueError:
-        odir = defaultdir
+        odir = 'out'
 
     mask = 'funcmask'
+
+    if 'libpath' in sys.argv:
+        ind = sys.argv.index('libpath')
+        libpath = sys.argv[ind+1]
+    else:
+        libpath = None
+
+    if 'exepath' in sys.argv:
+        ind = sys.argv.index('exepath')
+        exepath = sys.argv[ind+1]
+    else:
+        exepath = None
 
     target, base = [], []
     if 'py' in sys.argv or 'all' in sys.argv:
@@ -469,4 +500,4 @@ if __name__ == "__main__":
         omask = MaskParser(mask)
         generator = Generator.factory(t)
         generator.parse(omask)
-        generator.write_to_file(b, odir)
+        generator.write_to_file(b, odir, libpath, exepath)

@@ -22,10 +22,10 @@ source_group ("Source Files" FILES ${SOURCES} ${SOURCES})
 
 add_library(${HMPROJECT_TARGET} SHARED ${HEADERS} ${SOURCES})
 
-target_link_libraries(${HMPROJECT_TARGET} ${LibXML2_LIBRARIES})
+target_link_libraries(${HMPROJECT_TARGET} ${LIBXML2_LIBRARIES})
 target_link_libraries(${HMPROJECT_TARGET} ${GMSH_TARGET})
 
-include_directories(${LibXML2_INCLUDE_DIRS})
+include_directories(${LIBXML2_INCLUDE_DIR})
 include_directories(${GMSH_INCLUDE})
 
 install(TARGETS ${HMPROJECT_TARGET}

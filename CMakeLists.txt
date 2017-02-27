@@ -2,13 +2,16 @@
 # [ROOT]
 #  | - [src]
 #  |    | - CMakeLists.txt
-#  |    | - $MainGui.py    //main python executable. Should return version on --version argument.
-#  |    | - $MainConf.py   //configuration module
-#  |    | - [$PyPack]   //python package
-#  |    |     | - ...   //python source files
-#  |    | - [libs]      //c libraries
-#  |          | - CMakeLists.txt
-#  |          | - [...] //directories with cpp libraries. Each contains CMakeLists.txt.   
+#  |    | - [py]
+#  |    |    | - $MainBin.py //main python executable. returns version on --version argument.
+#  |    |    | - [$PyPack]   //python package
+#  |    |
+#  |    | - [libs]       //c libraries
+#  |    |     | - CMakeLists.txt
+#  |    |     | - [...]  //directories with cpp libraries. Each contains CMakeLists.txt.   
+#  |    |
+#  |    | - [bindings]   // bindings source files
+#  |
 #  | - [BuildScripts]
 #  |     | - RunPyinstaller.cmake.in   //script for building windows binary from ${MainGui}
 #  |     | - make_installer.nsi.in     //script for building windows installer
@@ -20,9 +23,10 @@
 
 # ========================= Installation strategy
 # Unix:
-# -- $MainGui -> ${CMAKE_INSTALL_PREFIX}/bin
-# -- $MainConf and $PyPack will be installed as standard python packages
+# -- $MainBin -> ${CMAKE_INSTALL_PREFIX}/bin
+# -- $PyPack will be installed as standard python packages
 # -- cpp libs -> ${CMAKE_INSTALL_PREFIX}/lib/${APPNAME}/*.so
+# -- bindings -> ${CMAKE_INSTALL_PREFIX}/share/${APPNAME}/[cpp/java/...]/*
 # Windows
 # -- $MainGui -> ${CMAKE_INSTALL_PREFIX}/py/$MainGui.py
 # -- cpp libs -> ${CMAKE_INSTALL_PREFIX}/lib/*.dll, *.dll.a
@@ -37,7 +41,7 @@ project(HybMesh C CXX Fortran)
 # name of resulting installed executable
 set(APPNAME hybmesh)
 # names of files and directories in the file tree
-set(MainGui hybmesh-gui)
+#set(MainGui hybmesh-gui)
 set(MainBin hybmesh)
 set(PyPack hybmeshpack)
 # description
@@ -121,6 +125,7 @@ else()
 	set(GMSH_TARGET ${FIND_LIBGMSH})
 	find_path(GMSH_INCLUDE NAMES Gmsh.h GModel.h PATH_SUFFIXES gmsh)
 endif()
+
 #libpolyclipping: global definition of BUILD_CLIPPER, CLIPPER_TARGET, CLIPPER_INCLUDE
 set(CLIPPER_TARGET polyclipping)
 set(BUILD_CLIPPER on)
@@ -152,13 +157,46 @@ else(WIN32)
 endif()
 #libxml2
 if (WIN32)
-	set(LibXML2_WINDIR ${CMAKE_SOURCE_DIR}/src/libs/external/winlib/)
-	set(LibXML2_INCLUDE_DIRS ${LibXML2_WINDIR}include)
-	set(LibXML2_LIBRARIES "${LibXML2_WINDIR}libxml2-2.dll;${LibXML2_WINDIR}libiconv-2.dll")
-	set(LibXML2_FOUND TRUE)
+	set(LIBXML2_WINDIR ${CMAKE_SOURCE_DIR}/src/libs/external/winlib/)
+	set(LIBXML2_INCLUDE_DIRS ${LIBXML2_WINDIR}include)
+	set(LIBXML2_LIBRARIES "${LIBXML2_WINDIR}libxml2-2.dll;${LIBXML2_WINDIR}libiconv-2.dll")
+	set(LIBXML2_FOUND TRUE)
 else(WIN32)
-	find_package(LibXML2 REQUIRED)
+	find_package(LIBXML2 REQUIRED)
 endif()
+
+# bindings
+# java
+find_package(JNI)
+if (JNI_FOUND)
+	option(INCLUDE_JAVA_BINDINGS "build java bindings" ON)
+	message(STATUS "Java native interface found at ${JAVA_INCLUDE_PATH}")
+	set(JAVA_BINDINGS_TARGET core_hmconnection_java)
+else()
+	set(INCLUDE_JAVA_BINDINGS FALSE)
+	message(STATUS "Java native interface not found")
+endif()
+# csharp
+option(INCLUDE_CS_BINDINGS "build c#/mono bindings" ON)
+set(CS_BINDINGS_TARGET core_hmconnection_cs)
+# matlab
+option(INCLUDE_MATLAB_BINDINGS "build matlab bindings" ON)
+set(MATLAB_BINDINGS_TARGET core_hmconnection_matlab)
+# octave
+find_package(Octave)
+if (OCTAVE_EXECUTABLE)
+	option(INCLUDE_OCTAVE_BINDINGS "build octave bindings" ON)
+	set(OCT_BINDINGS_TARGET core_hmconnection_oct)
+else()
+	message(STATUS "Octave not found")
+	set(INCLUDE_OCTAVE_BINDINGS FALSE)
+endif()
+# python
+option(INCLUDE_PYTHON_BINDINGS "build python2/3 bindings" ON)
+set(PY_BINDINGS_TARGET core_hmconnection_py)
+# cpp
+option(INCLUDE_CPP_BINDINGS "build cpp bindings" ON)
+
 
 #libhmproject: HMPROJECT_INCLUDE, HMPROJECT_TARGET
 set(HMPROJECT_INCLUDE "${CMAKE_SOURCE_DIR}/src/libs/hmproject")
@@ -197,7 +235,6 @@ set(DSCPACK_TARGET dscpack)
 #libhmcport: global definition of HMCPORT_INCLUDE, HMCPORT_TARGET
 set(HMCPORT_INCLUDE "${CMAKE_SOURCE_DIR}/src/libs/hmcport")
 set(HMCPORT_TARGET hmcport)
-
 
 # ============================ build source
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)

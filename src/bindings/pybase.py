@@ -222,9 +222,8 @@ class _Worker(object):
 
 
 class Hybmesh(object):
-    hybmesh_exec_path = "home/ek/HybMesh/build/bin/hybmesh"
-    hybmesh_lib_path = "home/ek/HybMesh/build/lib/"\
-                       "core_hybmesh_connection_py.so"
+    hybmesh_exec_path = "home/ek/HybMesh/build/bin/hybmesh"  # >>$EXEPATH
+    hybmesh_lib_path = "core_hybmesh_connection_py.so"  # >>$LIBPATH
 
     class ERuntimeError(Exception):
         def __init__(self, msg):

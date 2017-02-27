@@ -1,4 +1,4 @@
-classdef Worker
+classdef HybmeshWorker
 	properties
 		connection;
 		callback = @(n1, n2, p1, p2) 1;
@@ -6,35 +6,35 @@ classdef Worker
 	methods(Access={?HybMesh})
 		%low level communication
 		function ret=require_connection(self, server_path)
-			%TODO
+			ret = core_hmconnection_oct(1, server_path);
 		end
 		function ret=get_signal(self)
-			%TODO
+			ret = core_hmconnection_oct(2, self.connection);
 		end
-		function [sz, data] = get_data(self)
-			%TODO
+		function data = get_data(self)
+			ret = core_hmconnection_oct(4, self.connection);
 		end
 		function send_signal(self, sig)
-			%TODO
+			core_hmconnection_oct(3, self.connection, sig);
 		end
-		function send_data(self, sz, data)
-			%TODO
+		function send_data(self, data)
+			core_hmconnection_oct(5, self.connection, data);
 		end
 		function break_connection(self)
-			%TODO
+			core_hmconnection_oct(6, self.connection);
 		end
 	end
 	methods (Access=private)
 		function _send_command(self, func, com){
-			self.send_data(size(func, 2), func);
-			self.send_data(size(com, 2), com);
+			self.send_data(func);
+			self.send_data(com);
 			self.send_signal("C");
 		end
 		function ret=_wait_for_signal(self)
 			ret=self.get_signal(self)
 		end
 		function ret= _read_buffer(self)
-			[ret, ~] = self.get_data();
+			ret = self.get_data();
 		end
 		function _apply_callback(self, buf)
 			p = typecast(buf(1:16), "double");
@@ -93,45 +93,45 @@ classdef Worker
 		end
 		function ret=_to_grid(self, str)
 			str = self.__parse_vecstring(str)
-			ret = Grid2D(str(1), self);
+			ret = HybmeshGrid2D(str(1), self);
 		end
 		function ret=_to_cont(self, str)
 			str = self.__parse_vecstring(str)
-			ret = Contour2D(str(1), self);
+			ret = HybmeshContour2D(str(1), self);
 		end
 		function ret=_to_grid3(self, str)
 			str = self.__parse_vecstring(str)
-			ret = Grid3D(str(1), self);
+			ret = HybmeshGrid3D(str(1), self);
 		end
 		function ret=_to_vecint(self, str)
 			ret = str2num(str)
 		end
 		function ret=_to_veccont(self, str)
 			str = self.__parse_vecstring(str)
-			ret(size(str, 1)) = Contour2D;
+			ret(size(str, 1)) = HybmeshContour2D;
 			for i = [1:size(str, 1)]
-				ret(i) = Contour2D(str(i), self);
+				ret(i) = HybmeshContour2D(str(i), self);
 			end
 		end
 		function ret=_to_vecgrid(self, str)
 			str = self.__parse_vecstring(str)
-			ret(size(str, 1)) = Grid2D;
+			ret(size(str, 1)) = HybmeshGrid2D;
 			for i = [1:size(str, 1)]
-				ret(i) = Grid2D(str(i), self);
+				ret(i) = HybmeshGrid2D(str(i), self);
 			end
 		end
 		function ret=_to_vecsurface(self, str)
 			str = self.__parse_vecstring(str)
-			ret(size(str, 1)) = Surface3D;
+			ret(size(str, 1)) = HybmeshSurface3D;
 			for i = [1:size(str, 1)]
-				ret(i) = Surface3D(str(i), self);
+				ret(i) = HybmeshSurface3D(str(i), self);
 			end
 		end
 		function ret=_to_vecgrid3(self, str)
 			str = self.__parse_vecstring(str)
-			ret(size(str, 1)) = Grid3D;
+			ret(size(str, 1)) = HybmeshGrid3D;
 			for i = [1:size(str, 1)]
-				ret(i) = Grid3D(str(i), self);
+				ret(i) = HybmeshGrid3D(str(i), self);
 			end
 		end
 		% cpp type -> string
@@ -216,13 +216,13 @@ classdef Worker
 	end
 end
 
-classdef Contour2D
+classdef HybmeshContour2D
 	methods(Access={?HybMesh})
 		worker;
 		sid;
 	end
 	methods
-		function self=Contour2D(sid="", worker=0)
+		function self=HybmeshContour2D(sid="", worker=0)
 			self.sid = sid;
 			self.worker = worker;
 		end
@@ -230,13 +230,13 @@ classdef Contour2D
 	end
 end
 
-classdef Grid2D
+classdef HybmeshGrid2D
 	methods(Access={?HybMesh})
 		worker;
 		sid;
 	end
 	methods
-		function self=Grid2D(sid="", worker=0)
+		function self=HybmeshGrid2D(sid="", worker=0)
 			self.sid = sid;
 			self.worker = worker;
 		end
@@ -244,13 +244,13 @@ classdef Grid2D
 	end
 end
 
-classdef Surface3D
+classdef HybmeshSurface3D
 	methods(Access={?HybMesh})
 		worker;
 		sid;
 	end
 	methods
-		function self=Surface3D(sid="", worker=0)
+		function self=HybmeshSurface3D(sid="", worker=0)
 			self.sid = sid;
 			self.worker = worker;
 		end
@@ -258,13 +258,13 @@ classdef Surface3D
 	end
 end
 
-classdef Grid3D
+classdef HybmeshGrid3D
 	methods(Access={?HybMesh})
 		worker;
 		sid;
 	end
 	methods
-		function self=Grid3D(sid="", worker=0)
+		function self=HybmeshGrid3D(sid="", worker=0)
 			self.sid = sid;
 			self.worker = worker;
 		end
@@ -274,13 +274,22 @@ end
 
 classdef Hybmesh < handle
 	properties (Access=private)
-		Worker worker;
+		HybmeshWorker worker;
 	end
-
+	methods(Static)
+		function ret=hybmesh_exec_path(newpath)
+			persistent path = "hybmesh.exe";  %>>$EXEPATH
+			if nargin
+				path = newpath;
+			end
+			ret = path;
+		end
+	end
 	methods
 		function ret=Hybmesh(path)
-			ret.worker = Worker;
-			ret.worker.connection = ret.worker.require_connection(path);
+			ret.worker = HybmeshWorker;
+			ret.worker.connection = ret.worker.require_connection(
+				ret.hybmesh_exec_path());
 		end
 		function assign_callback(self, cb)
 			ret.worker.callback = cb;

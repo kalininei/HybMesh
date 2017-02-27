@@ -247,9 +247,9 @@ public class Hybmesh: IDisposable{
 	private Worker worker;
 //public:
 	public static string hybmesh_exec_path =
-		"/home/ek/Hybmesh/build/bin/hybmesh";
+		"/home/ek/Hybmesh/build/bin/hybmesh";  //>>$EXEPATH
 	public static string hybmesh_lib_path =
-		"/home/ek/Hybmesh/build/lib/core_hybmesh_connection_cs.so";
+		"/home/ek/Hybmesh/build/lib/core_hybmesh_connection_cs.so";  //>>$LIBPATH
 
 	[Serializable]
 	public class EUserInterrupt: Exception{

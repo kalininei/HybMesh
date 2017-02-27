@@ -10,9 +10,13 @@ set(CONFIG_PY "${PYOUTDIR}/config_installed.py")
 # =========================== configuration file 
 if (WIN32)
 	set(LIB_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/lib")
+	set(SHARE_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/share")
+	set(EXE_INSTALL_DIR "#>INSTALLDIR<#/bin")
 	set(HYBMESH_HOMEDIR "$ENV{PROGRAMDATA}\\hybmesh")
 else()
 	set(LIB_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/lib/${APPNAME}")
+	set(SHARE_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/share/${APPNAME}")
+	set(EXE_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/bin")
 	set(HYBMESH_HOMEDIR "~/.hybmesh")
 endif()
 configure_file(${CONFIG_PY_IN} ${CONFIG_PY} @ONLY)
@@ -40,7 +44,7 @@ if (WIN32)
 	
 	# =========  run pyinstaller
 	if (${USE_PYINSTALLER})
-	    set(PYINST_IN "${CMAKE_SOURCE_DIR}/BuildScripts/RunPyinstaller.cmake.in")
+		set(PYINST_IN "${CMAKE_SOURCE_DIR}/BuildScripts/RunPyinstaller.cmake.in")
 		if (CMAKE_BUILD_TYPE STREQUAL "Debug")
 			set(PYINST_OPT "-y")
 		else()
@@ -95,10 +99,11 @@ if (WIN32)
 else()
 	# console application
 	install(PROGRAMS "${CMAKE_SOURCE_DIR}/src/py/${MainBin}.py" 
-		DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
+		DESTINATION ${EXE_INSTALL_DIR}
 		RENAME ${APPNAME})
 endif()
 
 
 # ================ build libraries
-add_subdirectory(libs)
+# add_subdirectory(libs)
+add_subdirectory(bindings)
