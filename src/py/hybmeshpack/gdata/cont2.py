@@ -19,10 +19,6 @@ class AbstractContour2(basic.GeomObject2):
         "returns Contour2 object: self or deepcopied"
         raise NotImplementedError
 
-    def set_bnd(self, bnd):
-        "bnd - [list-of-int]: boundary type for each contour edges"
-        raise NotImplementedError
-
     def end_points(self):
         """ -> p0, p1. Where p0, p1 are [x, y] points.
             returns None, None for compaund contours
@@ -42,9 +38,9 @@ class AbstractContour2(basic.GeomObject2):
 
     def raw_data(self, what):
         """ -> ctypes arrays
-        what = 'btypes' -> [b0, b1, b2, .... ]
-        what = 'vertices' -> [[x0, y0], [x1, y1], ...]
-        what = 'edge-vert' -> [[v0, v1], [v0, v1], ...]
+        what = 'vert' -> [x0, y0, x1, y1, ...]
+        what = 'edge_vert' -> [v0, v1, v0, v1, ...]
+        what = 'bt' -> [b0, b1, b2, .... ]
         """
         return self.contour2()._raw_data(what)
 
@@ -76,6 +72,12 @@ class Contour2(AbstractContour2):
     def deepcopy(self):
         c = c2core.deepcopy(self.cdata)
         return Contour2(c)
+
+    def dims(self):
+        return c2core.dims(self.cdata)
+
+    def assign_boundary_type(self, bt):
+        return c2core.assign_boundary_types(self.cdata, bt)
 
     # overriden from GeomObject2
     def move2(self, dx, dy):
@@ -115,10 +117,6 @@ class Contour2(AbstractContour2):
 
     def length(self):
         return c2core.length(self.cdata)
-
-    def set_bnd(self, bnd):
-        "bnd - [list-of-int]: boundary type for each contour edges"
-        return c2core.set_bnd(self.cdata, bnd)
 
 
 def _meas2cont(cont, p0):

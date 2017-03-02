@@ -2,7 +2,7 @@ import ctypes as ct
 from . import cport
 import g2
 from proc import (ccall, ccall_cb, list_to_c, concat, supplement,
-                  CBoundaryNames)
+                  move_to_static, CBoundaryNames, BndTypesDifference)
 
 
 def free_grid3(obj):
@@ -49,9 +49,51 @@ def scale(obj, xpc, ypc, zpc, px, py, pz):
 def raw_data(obj, what):
     ret = None
     d = dims(obj)
-    if what == 'btypes':
+    if what == 'vert':
+        ret = (ct.c_double * (3*d[0]))()
+        ccall(cport.g3_tab_vertices, obj, ret)
+    elif what == 'edge_vert':
+        ret = (ct.c_int * (2*d[1]))()
+        ccall(cport.g3_tab_edgevert, obj, ret)
+    elif what == 'face_dim':
+        ret = (ct.c_int * d[2])()
+        ccall(cport.g3_tab_facedim, obj, ret)
+    elif what == 'face_edge':
+        nret, ret2 = ct.c_int(), ct.POINTER(ct.c_int)()
+        ccall(cport.g3_tab_faceedge, obj, ct.byref(nret), ct.byref(ret2))
+        ret = move_to_static(nret.value, ret2, int)
+    elif what == 'face_vert':
+        nret, ret2 = ct.c_int(), ct.POINTER(ct.c_int)()
+        ccall(cport.g3_tab_facevert, obj, ct.byref(nret), ct.byref(ret2))
+        ret = move_to_static(nret.value, ret2, int)
+    elif what == 'face_cell':
+        ret = (ct.c_int * (2*d[2]))()
+        ccall(cport.g3_tab_facecell, obj, ret)
+    elif what == 'cell_fdim':
+        ret = (ct.c_int * d[3])()
+        ccall(cport.g3_tab_cellfdim, obj, ret)
+    elif what == 'cell_vdim':
+        ret = (ct.c_int * d[3])()
+        ccall(cport.g3_tab_cellvdim, obj, ret)
+    elif what == 'cell_face':
+        nret, ret2 = ct.c_int(), ct.POINTER(ct.c_int)()
+        ccall(cport.g3_tab_cellface, obj, ct.byref(nret), ct.byref(ret2))
+        ret = move_to_static(nret.value, ret2, int)
+    elif what == 'cell_vert':
+        nret, ret2 = ct.c_int(), ct.POINTER(ct.c_int)()
+        ccall(cport.g3_tab_cellvert, obj, ct.byref(nret), ct.byref(ret2))
+        ret = move_to_static(nret.value, ret2, int)
+    elif what == 'bt':
         ret = (ct.c_int * d[2])()
         ccall(cport.g3_tab_btypes, obj, ret)
+    elif what == 'bnd':
+        nret, ret2 = ct.c_int(), ct.POINTER(ct.c_int)()
+        ccall(cport.g3_tab_bnd, obj, ct.byref(nret), ct.byref(ret2))
+        ret = move_to_static(nret.value, ret2, int)
+    elif what == 'bnd_bt':
+        nret, ret2 = ct.c_int(), ct.POINTER(ct.c_int)()
+        ccall(cport.g3_tab_bndbt, obj, ct.byref(nret), ct.byref(ret2))
+        ret = move_to_static(nret.value, ret2, int)
     else:
         raise Exception('unknown what: %s' % what)
     return ret
@@ -126,6 +168,12 @@ def merge(obj1, obj2, cb=None):
     ret = ct.c_void_p()
     ccall_cb(cport.g3_merge, cb, obj1, obj2, ct.byref(ret))
     return ret
+
+
+def assign_boundary_types(obj, bt):
+    dataout = ct.POINTER(ct.c_int)()
+    ccall(cport.g3_assign_boundary_types, obj, bt.data, ct.byref(dataout))
+    return BndTypesDifference.from_cdata(dataout)
 
 
 def to_msh(obj, fname, btypes, per_data, cb=None):

@@ -70,67 +70,13 @@ def unite_contours(conts):
 
     :return: contour identifier
 
-    Equal nodes of input contours will be merged.
+    Equal nodes and segments of input contours will be merged.
     """
     icheck(0, List(ACont2D()))
 
     c = com.contcom.UniteContours({"sources": conts})
     flow.exec_command(c)
     return c.added_contours2()[0]
-
-
-@hmscriptfun
-def set_boundary_type(cid, btps=None, bfun=None):
-    """ Mark user or grid contour segments with boundary types.
-
-    :param cid: contour or grid identifier
-
-    :param btps: list of boundary types identifiers for each segment
-       or single identifier for the whole contour
-
-    :param  bfun: function ``(x0, y0, x1, y1, bt) -> btype``
-       which returns boundary type taking segment endpoints
-       and old boundary type as arguments.
-
-    Example:
-
-      .. literalinclude:: ../../testing/py/fromdoc/ex_setbtype.py
-          :start-after: START OF EXAMPLE
-          :end-before: END OF EXAMPLE
-
-    Only one of **btps**, **bfun** arguments should be defined.
-    """
-    icheck(0, ACont2D())
-    icheck(1, NoneOr(ListOr1(ZType())))
-    icheck(2, NoneOr(Func(nargs=5)))
-    if btps is None and bfun is None:
-        raise InvalidArgument("One of 'btps'/'bfun' should be defined")
-
-    cont = flow.receiver.get_any_contour(cid)
-    if bfun is not None:
-        bt = cont.raw_data('btypes')
-        pt = cont.raw_data('vertices')
-        ev = cont.raw_data('edge-vert')
-        newbc = []
-        for ibt, iev in zip(bt, ev):
-            p0, p1 = pt[iev[0]], pt[iev[1]]
-            newbc.append(bfun(p0[0], p0[1], p1[0], p1[1], ibt))
-        for i in range(len(newbc)):
-            if newbc[i] is None:
-                newbc[i] = bt[i]
-    else:
-        newbc = btps
-    args = {}
-    if not isinstance(newbc, list):
-        args[newbc] = range(cont.n_edges())
-    else:
-        for i, b in enumerate(newbc):
-            if b not in args:
-                args[b] = []
-            args[b].append(i)
-
-    c = com.contcom.SetBTypeToContour({"name": cid, "btypes": args})
-    flow.exec_command(c)
 
 
 @hmscriptfun
@@ -255,6 +201,8 @@ def partition_contour(cont, algo, step=1., angle0=30., keep_bnd=False,
 
     See also: :ref:`simplecontmeshing`
     """
+    if nedges <= 0:
+        nedges = None
     icheck(0, ACont2D())
     icheck(1, OneOf("const", "ref_points", "ref_weights", "ref_lengths"))
     if algo == "const":

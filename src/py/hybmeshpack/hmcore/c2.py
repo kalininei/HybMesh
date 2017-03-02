@@ -1,7 +1,7 @@
 import ctypes as ct
 from . import cport
 from proc import (ccall, list_to_c, free_cside_array,
-                  supplement, concat)
+                  supplement, concat, BndTypesDifference)
 
 
 def deepcopy(obj):
@@ -205,9 +205,10 @@ def connect_subcontours(objs, fx, close, shift):
     return ret
 
 
-def set_bnd(obj, bnd):
-    bnd = list_to_c(bnd, "int")
-    ccall(cport.c2_set_btypes, obj, bnd)
+def assign_boundary_types(obj, bt):
+    dataout = ct.POINTER(ct.c_int)()
+    ccall(cport.c2_assign_boundary_types, obj, bt.data, ct.byref(dataout))
+    return BndTypesDifference.from_cdata(dataout)
 
 
 def contour_type(obj):
@@ -248,17 +249,17 @@ def closest_points(obj, pts, proj):
 def raw_data(obj, what):
     ret = None
     d = dims(obj)
-    if what == 'btypes':
+    if what == 'vert':
+        ret = (ct.c_double * (2*d[0]))()
+        ccall(cport.c2_tab_vertices, obj, ret)
+    elif what == 'edge_vert':
+        ret = (ct.c_int * (2*d[1]))()
+        ccall(cport.c2_tab_edgevert, obj, ret)
+    elif what == 'bt':
         ret = (ct.c_int * d[1])()
         ccall(cport.c2_tab_btypes, obj, ret)
-    elif what == 'vertices':
-        ret = ((ct.c_double * 2) * d[0])()
-        ccall(cport.c2_tab_vertices, obj, ret)
-    elif what == 'edge-vert':
-        ret = ((ct.c_int * 2) * d[1])()
-        ccall(cport.c2_tab_edgevert, obj, ret)
     else:
-        raise Exception('unknown what: %s' % what)
+        raise Exception('unknown what: %s' % repr(what))
     return ret
 
 

@@ -17,7 +17,13 @@ class AbstractSurface3(basic.GeomObject3):
 
     def raw_data(self, what):
         """ -> ctypes arrays
-        what = 'btypes' -> [b0, b1, b2, ...]
+        what = 'vert' -> [x0, y0, z0, x1, y1, z1, ...]
+        what = 'edge_vert' -> [e0v0, e0v1, e1v0, e1v1, ...]
+        what = 'face_dim' -> [f0dim, f1dim]
+        what = 'face_edge' -> [f0e0, f0e1, ..., f1e0,..]
+        what = 'face_vert' -> [f0v0, f0v1, ..., f1v0,..]
+        what = 'bt' -> [b0, b1, b2, ...]
+        what = 'center' -> [x0, y0, z0, x1, ...]
         """
         return self.surface3()._raw_data(what)
 
@@ -56,6 +62,12 @@ class Surface3(AbstractSurface3):
 
     def point_at(self, index):
         return s3core.point_by_index(index)
+
+    def dims(self):
+        return s3core.dims(self.cdata)
+
+    def assign_boundary_type(self, bt):
+        return s3core.assign_boundary_types(self.cdata, bt)
 
     # overriden from GeomObject3
     def volume(self):

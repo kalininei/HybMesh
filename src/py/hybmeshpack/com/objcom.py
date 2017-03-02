@@ -339,3 +339,46 @@ class CopyGeom(addremove.AbstractAddRemove):
     def _clear(self):
         self._odered = []
         return super(CopyGeom, self)._clear()
+
+
+class SetBType(command.Command):
+    'sets integer boundary types to object segments'
+
+    def __init__(self, arg):
+        super(SetBType, self).__init__(arg)
+        self.backup_bnd = []
+        self.new_bnd = []
+
+    def doc(self):
+        return "Set boundary types"
+
+    @classmethod
+    def _arguments_types(cls):
+        """ name - string
+            bdict - {bndtype: [list of edges indicies] }
+            btypes - btype for the whole object
+        """
+        return {'name': comopt.BasicOption(str),
+                'btypes': comopt.BoundaryPickerOption(),
+                'whole': comopt.NoneOr(comopt.BasicOption(int), None),
+                }
+
+    def _exec(self):
+        from hybmeshpack import hmcore
+        self.inp = hmcore.proc.BndTypesDifference.from_pydata(
+                self.get_option('whole'), self.get_option('btypes'))
+        obj = self.any_object_by_name(self.get_option('name'))
+        self.out = obj.assign_boundary_type(self.inp)
+        return True
+
+    def _clear(self):
+        self.inp = None
+        self.out = None
+
+    def _undo(self):
+        obj = self.any_object_by_name(self.get_option('name'))
+        obj.assign_boundary_type(self.out)
+
+    def _redo(self):
+        obj = self.any_object_by_name(self.get_option('name'))
+        obj.assign_boundary_type(self.inp)

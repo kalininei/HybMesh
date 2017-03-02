@@ -116,11 +116,13 @@ def extrude_grid(obj, zcoords, bottombc=0, topbc=0, sidebc=None):
     if isinstance(bottombc, int):
         bbot = [bottombc]
     elif callable(bottombc):
-        bbot = [bottombc(p[0], p[1], i) for i, p in enumerate(cc_pnt)]
+        it = iter(cc_pnt)
+        bbot = [bottombc(p[0], p[1], i) for i, p in enumerate(zip(it, it))]
     if isinstance(topbc, int):
         btop = [topbc]
     elif callable(topbc):
-        btop = [topbc(p[0], p[1], i) for i, p in enumerate(cc_pnt)]
+        it = iter(cc_pnt)
+        btop = [topbc(p[0], p[1], i) for i, p in enumerate(zip(it, it))]
     if sidebc is None:
         bside = None
     elif isinstance(sidebc, int):

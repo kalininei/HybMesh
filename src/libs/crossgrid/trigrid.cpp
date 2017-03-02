@@ -532,6 +532,7 @@ GridData gmsh_fill(const Contour::Tree& tree, const std::map<Point, double>& emb
 	GmshSetOption("Mesh", "Algorithm", 2.0);
 	GmshSetOption("Mesh", "Optimize", 1.0);
 	GmshSetOption("General", "Verbosity", 0.0);
+	GmshSetOption("General", "Verbosity", 10.0);
 	GModel m;
 	m.setFactory("Gmsh");
 
@@ -551,20 +552,26 @@ GridData gmsh_fill(const Contour::Tree& tree, const std::map<Point, double>& emb
 	vector<GVertex*> g_vertex_heap(av.size(), 0);
 	vector<MVertex*> m_vertex_heap(av.size(), 0);
 	vector<vector<GEdge*>> g_edges;
+
+
 	for (auto n: tree.nodes){
-		g_edges.push_back(fill_model_with_1d(m, n->contour, g_edges_heap, g_vertex_heap, m_vertex_heap, h));
+		g_edges.push_back(fill_model_with_1d(
+			m, n->contour, g_edges_heap, g_vertex_heap, m_vertex_heap, h));
 	}
 	cb.step_after(10, "Face assembling");
 	GFace* gf = assemble_face(m, tree, g_edges, embedded);
+	
 
 	cb.step_after(50, "Meshing");
 	//!! gmsh 2.11 doesn't work correctly without this line
 	//   if chararcteristic mesh size is not 1.0
 	auto bb = m.bounds();
 	GmshSetBoundingBox(bb.min()[0], bb.max()[0], bb.min()[1], bb.max()[1], 0, 0);
+	//gmsh has some zero division operations hence we need to stop checking
 	NanSignalHandler::StopCheck();
 	if (algo == 0) fill_model_with_2d(m, gf);
 	else fill_model_with_2d_recomb(m, gf);
+	//turn nan check on
 	NanSignalHandler::StartCheck();
 
 	cb.step_after(25, "Assemble mesh");

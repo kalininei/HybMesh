@@ -85,7 +85,7 @@ int c2_connect_subcontours(int nobjs, void** objs, int nfx, int* fx, int shift,
 		const char* close_method, void** ret);
 
 //set boundary types to contour
-int c2_set_btypes(void* obj, int* bnd);
+int c2_assign_boundary_types(void* obj, int* bnd, int** revdif);
 
 //-> (0) 'open', (1) 'closed', (2) 'mdomain', (3) 'compound'
 int c2_contour_type(void* obj, int* ret);

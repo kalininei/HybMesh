@@ -48,6 +48,109 @@ int s3_tab_btypes(void* obj, int* ret){
 		return HMERROR;
 	}
 }
+int s3_tab_vertices(void* obj, double* ret){
+	try{
+		auto surf = static_cast<HM3D::FaceData*>(obj);
+		for (auto& v: HM3D::AllVertices(*surf)){
+			*ret++ = v->x;
+			*ret++ = v->y;
+			*ret++ = v->z;
+		}
+		return HMSUCCESS;
+	} catch (std::exception& e){
+		add_error_message(e.what());
+		return HMERROR;
+	}
+}
+int s3_tab_edgevert(void* obj, int* ret){
+	try{
+		auto surf = static_cast<HM3D::FaceData*>(obj);
+		auto ae = AllEdges(*surf);
+		auto av = AllVertices(*surf);
+		aa::enumerate_ids_pvec(av);
+		for (auto& e: ae){
+			*ret++ = e->pfirst()->id;
+			*ret++ = e->plast()->id;
+		}
+		return HMSUCCESS;
+	} catch (std::exception& e){
+		add_error_message(e.what());
+		return HMERROR;
+	}
+}
+int s3_tab_facedim(void* obj, int* ret){
+	try{
+		auto surf = static_cast<HM3D::FaceData*>(obj);
+		for (auto& f: *surf){
+			*ret++ = f->edges.size();
+		}
+		return HMSUCCESS;
+	} catch (std::exception& e){
+		add_error_message(e.what());
+		return HMERROR;
+	}
+}
+int s3_tab_faceedge(void* obj, int* nret, int** cret){
+	try{
+		auto surf = static_cast<HM3D::FaceData*>(obj);
+		*nret = 0;
+		for (auto& f: *surf) *nret+=f->edges.size();
+		*cret = new int[*nret];
+		int* ret = *cret;
+		auto ae = HM3D::AllEdges(*surf);
+		aa::enumerate_ids_pvec(ae);
+		for (auto& f: *surf){
+			for (auto& e: f->edges){
+				*ret++ = e->id;
+			}
+		}
+		return HMSUCCESS;
+	} catch (std::exception& e){
+		add_error_message(e.what());
+		return HMERROR;
+	}
+}
+int s3_tab_facevert(void* obj, int* nret, int** cret){
+	try{
+		auto surf = static_cast<HM3D::FaceData*>(obj);
+		*nret = 0;
+		for (auto& f: *surf) *nret+=f->edges.size();
+		*cret = new int[*nret];
+		int* ret = *cret;
+		auto av = HM3D::AllVertices(*surf);
+		aa::enumerate_ids_pvec(av);
+		for (auto& f: *surf){
+			for(auto& v: f->sorted_vertices()){
+				*ret++ = v->id;
+			}
+		}
+		return HMSUCCESS;
+	} catch (std::exception& e){
+		add_error_message(e.what());
+		return HMERROR;
+	}
+}
+int s3_tab_centers(void* obj, double* ret){
+	try{
+		auto surf = static_cast<HM3D::FaceData*>(obj);
+		for (auto& f: *surf){
+			Point3 pnt(0, 0, 0);
+			for (auto& v: AllVertices(f->edges)){
+				pnt += *v;
+			}
+			pnt /= f->edges.size();
+			*ret++ = pnt.x;
+			*ret++ = pnt.y;
+			*ret++ = pnt.z;
+		}
+		return HMSUCCESS;
+	} catch (std::exception& e){
+		add_error_message(e.what());
+		return HMERROR;
+	}
+}
+
+
 int s3_area(void* obj, double* ret){
 	try{
 		_THROW_NOT_IMP_;
@@ -153,6 +256,25 @@ int s3_to_hm(void* doc, void* node, void* obj, const char* name, const char* fmt
 		HMXML::Reader* sn = static_cast<HMXML::Reader*>(node);
 		HM3D::FaceData* c = static_cast<HM3D::FaceData*>(obj);
 		HM3D::Export::SurfaceWriter(*c, wr, sn, name, fmt);
+		return HMSUCCESS;
+	} catch (std::exception& e){
+		add_error_message(e.what());
+		return HMERROR;
+	}
+}
+
+int s3_assign_boundary_types(void* obj, int* bnd, int** revdif){
+	try{
+		auto surf = static_cast<HM3D::FaceData*>(obj);
+		auto whole_assign = [&surf](int bt, std::map<int, int>& mp){
+			for (int k=0; k<surf->size(); ++k){
+				mp[k] = bt;
+			}
+		};
+		auto bt_by_index = [&surf](int ind)->int&{
+			return (*surf)[ind]->boundary_type;
+		};
+		c2cpp::assign_boundary_types(bnd, revdif, whole_assign, bt_by_index);
 		return HMSUCCESS;
 	} catch (std::exception& e){
 		add_error_message(e.what());

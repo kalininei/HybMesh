@@ -49,6 +49,7 @@ classdef HybmeshWorker
 			end
 		end
 		function ret=__parse_vecstring(self, str)
+			error("not-implemented")
 		end
 	end
 	methods

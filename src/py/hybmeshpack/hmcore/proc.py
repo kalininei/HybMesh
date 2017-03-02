@@ -137,3 +137,54 @@ def concat(a):
     for it in a:
         b.extend(it)
     return b
+
+
+class BndTypesDifference(object):
+    def __init__(self):
+        # data is:
+        #    total number of btypes,
+        #    whole_btype, 1, -1      # if whole is needed
+        #    btype0, number of ind0_i, ind0_0, ind0_1, .....
+        #    btype1, number of ind1_i, ind1_0, ind1_1, .....
+        super(BndTypesDifference, self).__init__()
+        self.data = None
+        self.need_free = False
+
+    @classmethod
+    def from_pydata(cls, whole, typesdict):
+        """ whole is None or btype for all boundary primitives
+            typesdict is {btype: [primitives indicies]}
+        """
+        ret = cls()
+        dtsize = 1
+        if whole is not None:
+            dtsize += 3
+        for v in typesdict.values():
+            dtsize += 2 + len(v)
+        ret.data = (ct.c_int * dtsize)()
+        ret.data[0] = len(typesdict)
+        if whole is not None:
+            ret.data[0] += 1
+            ret.data[1], ret.data[2], ret.data[3] = whole, 1, -1
+            icur = 4
+        else:
+            icur = 1
+        for k, v in typesdict.iteritems():
+            ret.data[icur], ret.data[icur+1] = k, len(v)
+            icur += 2
+            for t in v:
+                ret.data[icur] = t
+                icur += 1
+        return ret
+
+    @classmethod
+    def from_cdata(cls, cd):
+        ret = cls()
+        if isinstance(cd, ct.POINTER(ct.c_int)):
+            ret.need_free = True
+        ret.data = cd
+
+    def __del__(self):
+        # if it was allocated on c-side
+        if self.need_free:
+            free_cside_array(self.data, "int")

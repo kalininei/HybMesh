@@ -105,7 +105,6 @@ def pxexec(argv):
     """ pipe mode execution """
     from hybmeshpack import hmscript
     import os
-    import ast
     import struct
     import ctypes as ct
     sig_read = int(argv[2])
@@ -135,10 +134,10 @@ def pxexec(argv):
             sz = struct.unpack('=i', sz)[0]
             args = os.read(data_read, sz)
             try:
-                cm = getattr(hmscript.hybmeshpack, cm)
-                args = ast.literal_eval(args)
-                ret = cm(*args)
-            except hmscript.hybmeshpack.UserInterrupt:
+                ##############################3
+                print cm, ":", repr(args)
+                ret = eval("hmscript.{}({})".format(cm, args))
+            except hmscript.UserInterrupt:
                 # interrupted by callback function
                 os.write(sig_write, "I")
             except Exception as e:
@@ -151,19 +150,25 @@ def pxexec(argv):
                 if ret is None:
                     # None return
                     os.write(data_write, '\0\0\0\0')
-                elif isinstance(s, ct.Array):
+                elif isinstance(ret, ct.Array):
                     # command returning ctypes array object
-                    rawlen, alen = ct.sizeof(s), s._length_
+                    rawlen, alen = ct.sizeof(ret), ret._length_
                     os.write(data_write, struct.pack('=ii', rawlen + 4, alen))
-                    os.write(data_write, struct.pack('=%is' % rawlen, s))
+                    os.write(data_write, ret)
                 else:
                     # regular command which returns python types
-                    s = str(ret)
+                    s = repr(ret)
+                    ##############################3
+                    print "return is ", s
                     os.write(data_write, struct.pack('=i', len(s)) + s)
                 os.write(sig_write, "R")
         # quit signal
         elif s1 == "Q" or not s1:
-            print "server quit"
+            ##########################
+            if s1 == "Q":
+                print "normal server quit"
+            else:
+                print "server terminated"
             quit()
         else:
             raise Exception("Invalid instruction for server")

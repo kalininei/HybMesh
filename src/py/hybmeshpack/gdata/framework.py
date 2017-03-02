@@ -1,6 +1,7 @@
 import itertools
 from basic import BndType
 from hybmeshpack.basic.namedlist import NamedList, NamedListPool
+from hybmeshpack.gdata import grid2, cont2, srf3, grid3
 
 
 class Framework(object):
@@ -165,6 +166,24 @@ class Framework(object):
             return self.get_object2(name)
         except KeyError:
             return self.get_object3(name)
+
+    def whatis(self, iden):
+        if isinstance(iden, str):
+            iden = self.get_object(iden)
+        if isinstance(iden, cont2.Contour2):
+            return 'c2'
+        elif isinstance(iden, grid2.Grid2):
+            return 'g2'
+        elif isinstance(iden, srf3.Surface3):
+            return 's3'
+        elif isinstance(iden, grid3.Grid3):
+            return 'g3'
+        elif isinstance(iden, grid3.GridSurface):
+            return 'g3s'
+        elif isinstance(iden, grid2.GridContour):
+            return 'g2c'
+        else:
+            raise KeyError
 
     # state manipulations
     def to_zero_state(self):

@@ -3,7 +3,7 @@ from hybmeshpack.hmscript import flow, hmscriptfun
 from hybmeshpack.hmcore import c2 as c2core
 from hybmeshpack.gdata.cont2 import Contour2, closest_contour
 from datachecks import (icheck, List, Bool, Point2D, Grid2D, UInt, ACont2D,
-                        Float, NoneOr, InvalidArgument)
+                        OneOf, Cont2D, Float, NoneOr, InvalidArgument)
 
 
 @hmscriptfun
@@ -200,3 +200,23 @@ def skewness(gid, threshold=0.7):
         raise Exception("Failed to calculate skewness")
     skew['ok'] = (len(skew['bad_cells']) == 0)
     return skew
+
+
+@hmscriptfun
+def tab_cont2(obj, what):
+    icheck(0, Cont2D())
+    icheck(1, OneOf('vert',
+                    'edge_vert',
+                    'bt'
+                   ))
+    return flow.receiver.get_contour2(obj).raw_data(what)
+
+
+@hmscriptfun
+def tab_grid2(obj, what):
+    icheck(0, Grid2D())
+    icheck(1, OneOf('vert',
+                    'edge_vert', 'edge_cell',
+                    'cell_dim', 'cell_edge', 'cell_vert',
+                    'bnd', 'bt', 'bnd_bt'))
+    return flow.receiver.get_grid2(obj).raw_data(what)

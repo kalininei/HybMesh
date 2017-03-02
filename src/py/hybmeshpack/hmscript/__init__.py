@@ -37,12 +37,17 @@ def hmscriptfun(method):
     def ret(*args, **kw):
         try:
             return method(*args, **kw)
+        except ExecError:
+            raise
         except InvalidArgument:
             raise
         except UserInterrupt:
             raise
         except Exception as e:
             exc_info = sys.exc_info()
+            ############################################3
+            import traceback
+            print traceback.format_exc(exc_info[2])
             newe = ExecError(method.__name__, str(e))
             raise newe.__class__, newe, exc_info[2]
     return ret
@@ -150,6 +155,8 @@ class PipeInterface(ConsoleInterface0):
             self.interf = interf
 
         def execution_error(self, exc, cmd):
+            #######################
+            ConsoleErrorHandler().execution_error(exc, cmd)
             self.interf.last_error_message = str(exc)
 
     def ask_for_callback(self):
@@ -184,4 +191,5 @@ from g2oper import *  # NOQA
 from o3info import *  # NOQA
 from o3construct import *  # NOQA
 from o3oper import *  # NOQA
+import _bindoper  # NOQA
 import _dbg  # NOQA

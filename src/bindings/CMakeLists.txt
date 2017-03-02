@@ -10,6 +10,7 @@ if (INCLUDE_CPP_BINDINGS)
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/cppbase.hpp
 		        ${CMAKE_CURRENT_SOURCE_DIR}/cppgen.py
 		        ${CMAKE_CURRENT_SOURCE_DIR}/bindparser.py
+		        ${CMAKE_CURRENT_SOURCE_DIR}/funcmask
 		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 	)
 	add_custom_target(cpp_bindings_header ALL DEPENDS ${BINDINGSOUT}/cpp/Hybmesh.hpp)
@@ -32,9 +33,10 @@ if (INCLUDE_CS_BINDINGS)
 	add_custom_command(
 		OUTPUT ${BINDINGSOUT}/cs/Hybmesh.cs
 		COMMAND ${PYTHON} ${BINDPARSER} ${CMDLINE} 
-		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/cppbase.hpp
-		        ${CMAKE_CURRENT_SOURCE_DIR}/cppgen.py
+		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/csbase.cs
+		        ${CMAKE_CURRENT_SOURCE_DIR}/csgen.py
 		        ${CMAKE_CURRENT_SOURCE_DIR}/bindparser.py
+		        ${CMAKE_CURRENT_SOURCE_DIR}/funcmask
 		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 	)
 	add_custom_target(cs_bindings_header ALL DEPENDS ${BINDINGSOUT}/cs/Hybmesh.cs)
@@ -59,8 +61,9 @@ if (INCLUDE_JAVA_BINDINGS)
 		OUTPUT ${BINDINGSOUT}/java/Hybmesh.java
 		COMMAND ${PYTHON} ${BINDPARSER} ${CMDLINE} 
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/javabase.java
-			${CMAKE_CURRENT_SOURCE_DIR}/javagen.py
-			${CMAKE_CURRENT_SOURCE_DIR}/bindparser.py
+		        ${CMAKE_CURRENT_SOURCE_DIR}/javagen.py
+		        ${CMAKE_CURRENT_SOURCE_DIR}/bindparser.py
+		        ${CMAKE_CURRENT_SOURCE_DIR}/funcmask
 		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 	)
 	add_custom_target(java_bindings_header ALL DEPENDS ${BINDINGSOUT}/java/Hybmesh.java)
@@ -89,8 +92,9 @@ if (INCLUDE_PYTHON_BINDINGS)
 		OUTPUT ${BINDINGSOUT}/py/Hybmesh.py
 		COMMAND ${PYTHON} ${BINDPARSER} ${CMDLINE} 
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/pybase.py
-			${CMAKE_CURRENT_SOURCE_DIR}/pygen.py
-			${CMAKE_CURRENT_SOURCE_DIR}/bindparser.py
+		        ${CMAKE_CURRENT_SOURCE_DIR}/pygen.py
+		        ${CMAKE_CURRENT_SOURCE_DIR}/bindparser.py
+		        ${CMAKE_CURRENT_SOURCE_DIR}/funcmask
 		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 	)
 	add_custom_target(py_bindings_header ALL DEPENDS ${BINDINGSOUT}/py/Hybmesh.py)
@@ -109,8 +113,9 @@ if (INCLUDE_MATLAB_BINDINGS OR INCLUDE_OCTAVE_BINDINGS)
 		OUTPUT ${BINDINGSOUT}/m/Hybmesh.m
 		COMMAND ${PYTHON} ${BINDPARSER} ${CMDLINE} 
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/mbase.m
-			${CMAKE_CURRENT_SOURCE_DIR}/mgen.py
-			${CMAKE_CURRENT_SOURCE_DIR}/bindparser.py
+		        ${CMAKE_CURRENT_SOURCE_DIR}/mgen.py
+		        ${CMAKE_CURRENT_SOURCE_DIR}/bindparser.py
+		        ${CMAKE_CURRENT_SOURCE_DIR}/funcmask
 		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 	)
 	add_custom_target(oct_bindings_header ALL DEPENDS ${BINDINGSOUT}/m/Hybmesh.m)

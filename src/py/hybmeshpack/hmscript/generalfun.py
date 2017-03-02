@@ -1,9 +1,11 @@
 "general geometry and flow status functions"
+import copy
 from hybmeshpack.hmscript import flow, hmscriptfun
 from hybmeshpack import progdata
 from hybmeshpack import com
 from datachecks import (icheck, ListOr1, UListOr1, Point2D, ZType, ACont2D,
-                        OneOf, Float, String, AObject, APoint)
+                        OneOf, Float, String, AObject, APoint, NoneOr, List,
+                        UInt, Func, InvalidArgument, Dict)
 
 
 @hmscriptfun
@@ -270,3 +272,171 @@ def add_boundary_type(index, name="boundary1"):
     c = com.contcom.EditBoundaryType({"index": index, "name": name})
     flow.exec_command(c)
     return index
+
+
+def _setbt_bcont2grid(g, kv):
+    kvcp = copy.deepcopy(kv)
+    kv.clear()
+    bt = g.raw_data('bedges')
+    for conti, gridi in enumerate(bt):
+        if conti in kvcp:
+            kv[gridi] = kvcp[conti]
+
+
+def _setbt_bsurf2grid(g, kv):
+    kvcp = copy.deepcopy(kv)
+    kv.clear()
+    bt = g.raw_data('bfaces')
+    for surfi, gridi in enumerate(bt):
+        if surfi in kvcp:
+            kv[gridi] = kvcp[surfi]
+
+
+def _setbt_args_g2btps(g, btps, kv):
+    _setbt_args_c2btps(g.contour(), btps, kv)
+    _setbt_bcont2grid(g, kv)
+
+
+def _setbt_args_g2bfun(g, bfun, kv):
+    _setbt_args_c2bfun(g.contour(), bfun, kv)
+    _setbt_bcont2grid(g, kv)
+
+
+def _setbt_args_g3btps(g, btps, kv):
+    _setbt_args_s3btps(g.surface(), btps, kv)
+    _setbt_bsurf2grid(g, kv)
+
+
+def _setbt_args_g3bfun(g, bfun, kv):
+    _setbt_args_s3bfun(g.surface(), bfun, kv)
+    _setbt_bsurf2grid(g, kv)
+
+
+def _setbt_args_s3btps(g, btps, kv):
+    bold = g.raw_data('btypes')
+    for b1, b2 in zip(bold, btps):
+        if b1 == b2:
+            continue
+        if b2 not in kv:
+            kv[b2] = []
+        kv[b2].append(b1)
+
+
+def _setbt_args_s3bfun(g, bfun, kv):
+    bold = g.raw_data('btypes')
+    cnt = g.raw_data('centers')
+    it = iter(cnt)
+    for b1, x, y, z in zip(bold, it, it, it):
+        b2 = bfun(x, y, z, b1)
+        if b2 is None or b2 == b1:
+            continue
+        if b2 not in kv:
+            kv[b2] = []
+        kv[b2].append(b1)
+
+
+def _setbt_args_c2btps(g, btps, kv):
+    bold = g.raw_data('btypes')
+    for b1, b2 in zip(bold, btps):
+        if b1 == b2:
+            continue
+        if b2 not in kv:
+            kv[b2] = []
+        kv[b2].append(b1)
+
+
+def _setbt_args_c2bfun(g, bfun, kv):
+    bold = g.raw_data('btypes')
+    vert = g.raw_data('vertices')
+    ev = g.raw_data('edge-vert')
+    for i, b1 in enumerate(bold):
+        e0, e1 = ev[2*i], ev[2*i+1]
+        b2 = bfun(vert[2*e0], vert[2*e0+1],
+                  vert[2*e1], vert[2*e1+1], b1)
+        if b2 is None or b2 == b1:
+            continue
+        if b2 not in kv:
+            kv[b2] = []
+        kv[b2].append(b1)
+
+
+@hmscriptfun
+def set_boundary_type(obj, btps=None, bfun=None, bdict=None):
+    """ Mark geometrical object with boundary types.
+
+    :param obj: geometric object identifier
+
+    :param btps: single identifier for the whole object or list
+       of identifiers for each boundary segment.
+
+    :param  bfun: function which returns boundary type taking segment
+       coordinates and old boundary type as arguments.
+
+    :param bdict: {btype: [list-of-segment indicies]} dictionary
+       which maps boundary type with object segments indicies
+
+    Only one of **btps**, **bfun**, **bdict** arguments should be defined.
+
+    **bfun** signature is:
+
+       * ``(x0, y0, x1, y1, bt) -> btype`` for 2D objects, where
+         *x0, y0, x1, y1* are edge end point coordinates,
+         bt - old boundary type
+       * ``(xc, yc, zc, bt) -> btype`` for 3D objects, where
+         *xc, yc, zc* - approximate face center coordinates,
+         bt - old boundary type
+
+    If **obj** is a grid then only boundary segments will be passed
+    to **bfun** function and **btps** list entries will
+    be associated with boundary segments only.
+    However **bdict** entries should contain global edge or face indicies.
+
+    Example:
+
+      .. literalinclude:: ../../testing/py/fromdoc/ex_setbtype.py
+          :start-after: START OF EXAMPLE
+          :end-before: END OF EXAMPLE
+
+    """
+    icheck(0, AObject())
+    icheck(1, NoneOr(ListOr1(ZType())))
+    icheck(3, NoneOr(Dict(ZType(), List(UInt()))))
+    t = flow.receiver.whatis(obj)
+    if t in ['g2', 'c2']:
+        icheck(2, NoneOr(Func(narg=5)))
+    else:
+        icheck(2, NoneOr(Func(narg=4)))
+    if [btps, bfun, bdict].count(None) != 2:
+        raise InvalidArgument(
+            "One of [btps, bfun, bdict] should be not None")
+
+    args = {'name': obj, 'whole': None, 'btypes': {}}
+
+    if isinstance(btps, int):
+        args['whole'] = btps
+    elif bdict is not None:
+        args['btypes'] = bdict
+    else:
+        g = flow.receiver.get_object(obj)
+        if t == 'g2':
+            if btps is not None:
+                _setbt_args_g2btps(g, btps, args['btypes'])
+            if bfun is not None:
+                _setbt_args_g2bfun(g, bfun, args['btypes'])
+        if t == 'g3':
+            if btps is not None:
+                _setbt_args_g3btps(g, btps, args['btypes'])
+            if bfun is not None:
+                _setbt_args_g3bfun(g, bfun, args['btypes'])
+        if t == 'c2':
+            if btps is not None:
+                _setbt_args_c2btps(g, btps, args['btypes'])
+            if bfun is not None:
+                _setbt_args_c2bfun(g, bfun, args['btypes'])
+        if t == 's3':
+            if btps is not None:
+                _setbt_args_s3btps(g, btps, args['btypes'])
+            if bfun is not None:
+                _setbt_args_s3bfun(g, bfun, args['btypes'])
+    c = com.objcom.SetBType(args)
+    flow.exec_command(c)

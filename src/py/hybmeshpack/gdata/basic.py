@@ -23,6 +23,16 @@ class GeomObject(object):
     def point_at(self, index):
         raise NotImplementedError
 
+    def dims(self):
+        raise NotImplementedError
+
+    def assign_boundary_type(self, bt):
+        """ bt is a hmcore.proc.BndTypesDifference instance
+            returns hmcore.proc.BndTypesDifference instance
+              which can be used for revert assignment
+        """
+        raise NotImplementedError
+
 
 class GeomObject2(GeomObject):
     def __init__(self):

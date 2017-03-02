@@ -5,6 +5,7 @@
 #include <string>
 #include <string.h>
 #include "bgeom2d.h"
+#include <functional>
 
 namespace c2cpp{
 
@@ -58,8 +59,50 @@ inline bool eqstring(const char* _s1, std::string s2){
 }
 
 
+inline void assign_boundary_types(int* bnd, int** revdif,
+		std::function<void(int, std::map<int, int>&)> whole_assign,
+		std::function<int&(int)> bt_by_index){
+	std::map<int, int> newbt; //index, newbt
+	int sz = *bnd++;
+	for (int i=0; i<sz; ++i){
+		int nb = *bnd++;
+		int btsz = *bnd++;
+		for (int j=0; j<btsz; ++j){
+			int index = *bnd++;
+			if (index < 0) whole_assign(nb, newbt);
+			else newbt[index] = nb;
+		}
+		
+	}
+	std::map<int, std::vector<int>> rev;
+	for (auto kv: newbt){
+		int& obt = bt_by_index(kv.first);
+		if (obt != kv.second){
+			auto fnd = rev.find(kv.first);
+			if (fnd == rev.end()){
+				fnd = rev.emplace(kv.first, std::vector<int>()).first;
+			}
+			fnd->second.push_back(obt);
+			obt = kv.second;
+		}
+	}
+	//forming return
+	int revsz = 1;
+	for (auto kv: rev) revsz += 2 + kv.second.size();
+	*revdif = new int[revsz];
+	int* it = *revdif;
+	*it++ = rev.size();
+	for (auto kv: rev){
+		*it++ = kv.first;
+		*it++ = kv.second.size();
+		for (int i=0; i<kv.second.size(); ++i){
+			*it++ = kv.second[i];
+		}
+	}
 }
 
+
+}
 
 
 

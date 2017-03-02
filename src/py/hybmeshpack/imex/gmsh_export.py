@@ -28,12 +28,12 @@ def grid2(fname, grid, btypes={}, cb=None):
     out.append("2.2 0 8")
     out.append("$EndMeshFormat")
     # needed raw data
-    raw_bt = grid.raw_data('btypes')
-    raw_vert = grid.raw_data('vertices')
-    raw_cellsize = grid.raw_data('cellsizes')
-    raw_cellvert = grid.raw_data('cell-vert')
-    raw_edgevert = grid.raw_data('edge-vert')
-    raw_boundary = grid.raw_data('bedges')
+    raw_bt = grid.raw_data('bt')
+    raw_vert = grid.raw_data('vert')
+    raw_cellsize = grid.raw_data('cell_dim')
+    raw_cellvert = grid.raw_data('cell_vert')
+    raw_edgevert = grid.raw_data('edge_vert')
+    raw_boundary = grid.raw_data('bnd')
     # extract boundary types
     bdict = {}
     for v in raw_bt:
@@ -56,7 +56,8 @@ def grid2(fname, grid, btypes={}, cb=None):
     # nodes
     out.append("$Nodes")
     out.append(str(grid.n_vertices()))
-    for i, p in enumerate(raw_vert):
+    it = iter(raw_vert)
+    for i, p in enumerate(zip(it, it)):
         out.append(' '.join([str(i + 1), str(p[0]), str(p[1]), "0.0"]))
     out.append("$EndNodes")
     # cells elements
@@ -72,8 +73,8 @@ def grid2(fname, grid, btypes={}, cb=None):
     # line elements
     n = grid.n_cells() + 1
     for ib in raw_boundary:
-        b, ev = raw_bt[ib], raw_edgevert[ib]
-        nind = str(ev[0] + 1) + ' ' + str(ev[1] + 1)
+        b, ev0, ev1 = raw_bt[ib], raw_edgevert[2*ib], raw_edgevert[2*ib+1]
+        nind = str(ev0 + 1) + ' ' + str(ev1 + 1)
         bind = str(b)
         out.append(' '.join([str(n), "1", "2", bind, bind, nind]))
         n += 1

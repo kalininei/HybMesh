@@ -43,11 +43,29 @@ class Grid3(basic.GeomObject3):
     def point_at(self, index):
         return g3core.point_by_index(index)
 
+    def dims(self):
+        return g3core.dims(self.cdata)
+
     def raw_data(self, what):
         """ -> ctypes arrays
-        what = 'btypes' -> [b0, b1, b2, ...]
+        what = 'vert' -> [x0, y0, z0, x1, ..]
+        what = 'edge_vert' -> [e0v0, e0v1, ..]
+        what = 'face_dim' -> [f0dim, f1dim, ...]
+        what = 'face_edge' -> [f0e0, f0e1, ..., f1e0, ..]
+        what = 'face_vert' -> [f0v0, f0v1, f0v2, .., f1v0]
+        what = 'face_cell' -> [f0left, f0right, f1left, ...]
+        what = 'cell_fdim' -> [c0nfaces, c1nfaces, ...]
+        what = 'cell_vdim' -> [c0nvert, c1nvert, ...]
+        what = 'cell_face' -> [c0f0, c0f1, c0f2, .., c1f0]
+        what = 'cell_vert' -> [c0v0, c0v1, ..., c0v0,]
+        what = 'bt'  -> [f0bt, f1bt, ....]
+        what = 'bnd' -> [bf0, bf1, ...]
+        what = 'bnd_bt' -> [bf0, bt0, bf1, bt1, ...]
         """
         return g3core.raw_data(self.cdata, what)
+
+    def assign_boundary_type(self, bt):
+        return g3core.assign_boundary_types(self.cdata, bt)
 
     # overriden from GeomObject3
     def volume(self):
@@ -78,6 +96,9 @@ class GridSurface(srf3.AbstractSurface3):
         return g3core.volume(self.cdata)
 
     # overriden from AbstractSurface3
+    def dims(self):
+        return g3core.bnd_dims(self.cdata)
+
     def n_vertices(self):
         return g3core.bnd_dims(self.cdata)[0]
 

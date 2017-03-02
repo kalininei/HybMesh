@@ -32,7 +32,7 @@ int g2_tri_grid(double* verts, int nedge, int* bnds, void** ret);
 //  'hex' -- hexagon given by center point and radius
 int g2_hex_grid(const char* areatype, double* area, double crad, int strict, void** ret);
 int g2_extract_contour(void* obj, void** ret);
-int g2_set_btypes(void* obj, int* bndlist, int for_all_edges);
+int g2_assign_boundary_types(void* obj, int* bnd, int** revdif);
 
 //triangulate given contour using contour vertices as basic points
 // domain - domain to triangulate
@@ -84,6 +84,10 @@ int g2_map_grid(void* base_obj, void* target_obj,
 
 int g2_point_at(void* obj, int index, double* ret);
 int g2_closest_points(void* obj, int npts, double* pts, const char* proj, double* ret);
+int g2_simplify_bnd(void* obj, double angle, void** ret);
+
+
+//tabs
 int g2_tab_btypes(void* obj, int* ret);
 int g2_tab_vertices(void* obj, double* ret);
 int g2_tab_edgevert(void* obj, int* ret);
@@ -92,7 +96,8 @@ int g2_tab_cellvert(void* obj, int* nret, int** ret2);
 int g2_tab_celledge(void* obj, int* nret, int** ret2);
 int g2_tab_centers(void* obj, double* ret);
 int g2_tab_bedges(void* obj, int* nret, int** ret2);
-int g2_simplify_bnd(void* obj, double angle, void** ret);
+int g2_tab_edgecell(void* obj, int* ret);
+int g2_tab_bndbt(void* obj, int* nret, int** ret2);
 
 //angle in (0, 180). If 0 - removes all concave cell segments. If 180 - only degenerate
 //return 0 on error

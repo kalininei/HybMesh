@@ -242,56 +242,6 @@ class EditBoundaryType(command.Command):
         self._exec()
 
 
-class SetBTypeToContour(command.Command):
-    'sets integer boundary types to contours edges'
-
-    def __init__(self, arg):
-        super(SetBTypeToContour, self).__init__(arg)
-        self.backup_bnd = []
-        self.new_bnd = []
-
-    def doc(self):
-        return "Set boundary types to contours"
-
-    @classmethod
-    def _arguments_types(cls):
-        """ name - string
-            btypes - {bndtype: [list of edges indicies] }
-        """
-        return {'name': comopt.BasicOption(str),
-                'btypes': comopt.BoundaryPickerOption(),
-                }
-
-    def _exec(self):
-        self._clear()
-
-        cont = self.any_acont_by_name(self.get_option('name'))
-        oldbnd = list(cont.raw_data('btypes'))
-        newbnd = copy.deepcopy(oldbnd)
-        di = self.get_option('btypes')
-        for k, v in di.iteritems():
-            for it in v:
-                newbnd[it] = k
-
-        self.backup_bnd = oldbnd
-        self.new_bnd = newbnd
-
-        self._redo()
-        return True
-
-    def _clear(self):
-        self.backup_bnd = []
-        self.new_bnd = []
-
-    def _undo(self):
-        cont = self.any_acont_by_name(self.get_option('name'))
-        cont.set_bnd(self.backup_bnd)
-
-    def _redo(self):
-        cont = self.any_acont_by_name(self.get_option('name'))
-        cont.set_bnd(self.new_bnd)
-
-
 class CreateContour(addremove.AbstractAddRemove):
     'Manually enter contour points'
     def __init__(self, argsdict):

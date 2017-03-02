@@ -24,7 +24,7 @@ class Grid2(basic.GeomObject2):
         return g2core.dims(self.cdata)[2]
 
     def cell_types_info(self):
-        sizes = self.raw_data("cellsizes")
+        sizes = self.raw_data("cell_dim")
         ret = {}
         for s in sizes:
             if s in ret:
@@ -41,18 +41,28 @@ class Grid2(basic.GeomObject2):
 
     def raw_data(self, what):
         """ returns ctypes arrays
-        what = 'btypes' -> [b0, b1, ...]
-        what = 'vertices' -> [[x0, y0], [x1, y1], ...]
-        what = 'edge-vert' -> [[p0, p1], [p0, p1], ...];
-        what = 'cellsizes' -> [sz0, sz1, ... ]
-        what = 'cell-vert' -> [v0, v1, .., vn, v0, ....]; need cellsizes
-        what = 'cell-edge' -> [e0, e1, ..., ]; need cellsizes
-        what = 'centers' -> [[x0, y0], [x1, y1], ....]
-        what = 'bedges' -> [e0, e1, ...]
+        what = 'vert' -> [x0, y0, x1, y1, ...]
+        what = 'edge_vert' -> [e0p0, e0p1, e1p0, e1p1, ...];
+        what = 'edge_cell' -> [e0left, e0right, e1left, e1right, ...];
+        what = 'cell_dim' -> [sz0, sz1, ... ]
+        what = 'cell_vert' -> [v0, v1, .., vn, v0, ....]; need cellsizes
+        what = 'cell_edge' -> [e0, e1, ..., ]; need cellsizes
+        what = 'center' -> [x0, y0, x1, y1, ....]
+        what = 'bnd' -> [e0, e1, ...]
+        what = 'bt' -> [b0, b1, ...]
+        what = 'bnd_bt' -> [e0, b0, e1, b1, ...]
         """
         return g2core.raw_data(self.cdata, what)
 
+
+    def assign_boundary_type(self, bt):
+        return g2core.assign_boundary_types(self.cdata, bt)
+
+
     # overriden from GeomObject
+    def dims(self):
+        return g2core.dims(self.cdata)
+
     def deepcopy(self):
         return Grid2(g2core.deepcopy(self.cdata))
 
@@ -108,6 +118,9 @@ class GridContour(cont2.AbstractContour2):
     def area(self):
         return g2core.area(self.cdata)
 
+    def dims(self):
+        return g2core.bnd_dims(self.cdata)
+
     # overriden from AbstractContour2
     def n_points(self):
         return g2core.bnd_dims(self.cdata)[0]
@@ -120,7 +133,3 @@ class GridContour(cont2.AbstractContour2):
 
     def length(self):
         return g2core.bnd_length(self.cdata)
-
-    def set_bnd(self, bnd):
-        "bnd - [list-of-int]: boundary type for each contour edges"
-        return g2core.set_bnd(self.cdata, bnd, False)

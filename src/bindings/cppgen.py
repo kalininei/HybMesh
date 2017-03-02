@@ -9,14 +9,14 @@ class Generator(bindparser.Generator):
         'TRUE': 'true',
         'FALSE': 'false',
         'ZEROSTRING': '""',
-        'ZEROVECOBJECT2D': 'std::vector<Object2D>()',
-        'ZEROVECDOUBLE': 'std::vector<double>()',
-        'ZEROVECSTRING': 'std::vector<std::string>()',
-        'ZEROVECINT': 'std::vector<int>()',
-        'ZEROVECBOOL': 'std::vector<bool>()',
-        'ZEROVECPOINT': 'std::vector<Point2>()',
-        'ZEROVECPOINT3': 'std::vector<Point3>()',
-        'ZEROVECCONTOUR2D': 'std::vector<Contour2D>()',
+        'ZEROVECOBJECT2D': '{}',
+        'ZEROVECDOUBLE': '{}',
+        'ZEROVECSTRING': '{}',
+        'ZEROVECINT': '{}',
+        'ZEROVECBOOL': '{}',
+        'ZEROVECPOINT': '{}',
+        'ZEROVECPOINT3': '{}',
+        'ZEROVECCONTOUR2D': '{}',
         'NONEPOINT': 'Point2::None()',
         'NONECONTOUR2D': 'Contour2D::None()',
         'GRID2D': "Grid2D",
@@ -34,6 +34,7 @@ class Generator(bindparser.Generator):
         'VECCONTOUR2D': "std::vector<Contour2D>",
         'CONTOUR2D': "Contour2D",
         'GRID3D': "Grid3D",
+        'SURFACE3D': "Surface3D",
         'VECOBJECT3D': "std::vector<Object3D>",
         'VECGRID2D': "std::vector<Grid2D>",
         'VECSURFACE3D': "std::vector<Surface3D>",
@@ -76,8 +77,8 @@ class Generator(bindparser.Generator):
         return cls._translate_VALVECDOUBLE(*args)
 
     @classmethod
-    def _translate_SELF(cls, arg):
-        return "{}".format(arg)
+    def _translate_SID(cls):
+        return cls._worker_call('_tos_string', 'sid');
 
     @classmethod
     def _worker_call(clc, func, *arg):
@@ -145,7 +146,7 @@ class Generator(bindparser.Generator):
 
     @classmethod
     def _for_loop(cls, nstring):
-        return "for (int i=0; i<{}; ++i)".format(nstring)
+        return "for (size_t i=0; i<{}; ++i)".format(nstring)
 
     @classmethod
     def _indent(cls):

@@ -22,8 +22,21 @@ int g3_dims(void* obj, int*);
 //n_vert, n_edges, n_faces
 int g3_bnd_dims(void* obj, int* dims);
 
-//fills ret array with 'number of boundary faces' values
+//fills ret array with 'number of faces' values
 int g3_tab_btypes(void* obj, int* ret);
+
+int g3_tab_vertices(void* obj, double* ret);
+int g3_tab_edgevert(void* obj, int* ret);
+int g3_tab_facedim(void* obj, int* ret);
+int g3_tab_faceedge(void* obj, int* nret, int** ret2);
+int g3_tab_facevert(void* obj, int* nret, int** ret2);
+int g3_tab_facecell(void* obj, int* ret);
+int g3_tab_cellfdim(void* obj, int* ret);
+int g3_tab_cellvdim(void* obj, int* ret);
+int g3_tab_cellface(void* obj, int* nret, int** ret2);
+int g3_tab_cellvert(void* obj, int* nret, int** ret2);
+int g3_tab_bnd(void* obj, int* nret, int** ret2);
+int g3_tab_bndbt(void* obj, int* nret, int** ret2);
 
 //boundary area
 int g3_bnd_area(void* obj, double* ret);
@@ -37,6 +50,7 @@ int g3_volume(void* obj, double* ret);
 //merge coincident primitives
 int g3_merge(void* obj1, void* obj2, void** ret, hmcport_callback cb);
 
+int g3_assign_boundary_types(void* obj, int* bnd, int** revdif);
 
 //====== sweep constructors
 //construct by sweep in z direction

@@ -49,12 +49,219 @@ int g3_scale(void* obj, double* pc, double* p0){
 int g3_tab_btypes(void* obj, int* ret){
 	try{
 		auto g = static_cast<HM3D::GridData*>(obj);
-		return s3_tab_btypes(&g->vfaces, ret);
+		for (auto& f: g->vfaces) *ret++ = f->boundary_type;
+		return HMSUCCESS;
 	} catch (std::exception& e){
 		add_error_message(e.what());
 		return HMERROR;
 	}
 }
+
+int g3_tab_vertices(void* obj, double* ret){
+	try{
+		auto g = static_cast<HM3D::GridData*>(obj);
+		for (auto& v: g->vvert){
+			*ret++ = v->x;
+			*ret++ = v->y;
+			*ret++ = v->z;
+		}
+		return HMSUCCESS;
+	} catch (std::exception& e){
+		add_error_message(e.what());
+		return HMERROR;
+	}
+}
+int g3_tab_edgevert(void* obj, int* ret){
+	try{
+		auto g = static_cast<HM3D::GridData*>(obj);
+		aa::enumerate_ids_pvec(g->vvert);
+		for (auto& e: g->vedges){
+			*ret++ = e->pfirst()->id;
+			*ret++ = e->plast()->id;
+		}
+		return HMSUCCESS;
+	} catch (std::exception& e){
+		add_error_message(e.what());
+		return HMERROR;
+	}
+}
+int g3_tab_facedim(void* obj, int* ret){
+	try{
+		auto g = static_cast<HM3D::GridData*>(obj);
+		for (auto& f: g->vfaces){
+			*ret++ = f->edges.size();
+		}
+		return HMSUCCESS;
+	} catch (std::exception& e){
+		add_error_message(e.what());
+		return HMERROR;
+	}
+}
+int g3_tab_faceedge(void* obj, int* nret, int** ret2){
+	try{
+		auto g = static_cast<HM3D::GridData*>(obj);
+		*nret = 0;
+		for (auto& f: g->vfaces) *nret += f->edges.size();
+		*ret2 = new int[*nret];
+		int* ret = *ret2;
+		aa::enumerate_ids_pvec(g->vedges);
+		for (auto& f: g->vfaces)
+		for (auto& e: f->edges){
+			*ret++ = e->id;
+		}
+		return HMSUCCESS;
+	} catch (std::exception& e){
+		add_error_message(e.what());
+		return HMERROR;
+	}
+}
+int g3_tab_facevert(void* obj, int* nret, int** ret2){
+	try{
+		auto g = static_cast<HM3D::GridData*>(obj);
+		*nret = 0;
+		for (auto& f: g->vfaces) *nret += f->edges.size();
+		*ret2 = new int[*nret];
+		int* ret = *ret2;
+		aa::enumerate_ids_pvec(g->vvert);
+		for (auto& f: g->vfaces)
+		for (auto& v: f->sorted_vertices()){
+			*ret++ = v->id;
+		}
+		return HMSUCCESS;
+	} catch (std::exception& e){
+		add_error_message(e.what());
+		return HMERROR;
+	}
+}
+int g3_tab_facecell(void* obj, int* ret){
+	try{
+		auto g = static_cast<HM3D::GridData*>(obj);
+		aa::enumerate_ids_pvec(g->vcells);
+		for (auto& f: g->vfaces){
+			*ret++ = (f->has_left_cell()) ? f->left.lock()->id
+			                              : -1;
+			*ret++ = (f->has_right_cell()) ? f->right.lock()->id
+			                               : -1;
+		}
+		return HMSUCCESS;
+	} catch (std::exception& e){
+		add_error_message(e.what());
+		return HMERROR;
+	}
+}
+int g3_tab_cellfdim(void* obj, int* ret){
+	try{
+		auto g = static_cast<HM3D::GridData*>(obj);
+		for (auto& c: g->vcells){
+			*ret++ = c->faces.size();
+		}
+		return HMSUCCESS;
+	} catch (std::exception& e){
+		add_error_message(e.what());
+		return HMERROR;
+	}
+}
+int g3_tab_cellvdim(void* obj, int* ret){
+	try{
+		auto g = static_cast<HM3D::GridData*>(obj);
+		for (auto& c: g->vcells){
+			*ret++ = AllVertices(c->faces).size();
+		}
+		return HMSUCCESS;
+	} catch (std::exception& e){
+		add_error_message(e.what());
+		return HMERROR;
+	}
+}
+int g3_tab_cellface(void* obj, int* nret, int** ret2){
+	try{
+		auto g = static_cast<HM3D::GridData*>(obj);
+		std::vector<int> r;
+		aa::enumerate_ids_pvec(g->vfaces);
+		for (auto& c: g->vcells)
+		for (auto& f: c->faces) r.push_back(f->id);
+		*nret = r.size();
+		*ret2 = new int[*nret];
+		std::copy(r.begin(), r.end(), *ret2);
+		return HMSUCCESS;
+	} catch (std::exception& e){
+		add_error_message(e.what());
+		return HMERROR;
+	}
+}
+int g3_tab_cellvert(void* obj, int* nret, int** ret2){
+	try{
+		auto g = static_cast<HM3D::GridData*>(obj);
+		std::vector<int> r;
+		aa::enumerate_ids_pvec(g->vvert);
+		HM3D::Export::vtkcell_expression exp;
+		for (auto& c: g->vcells){
+			std::vector<std::vector<int>> vv(c->faces.size());
+			for (int i=0; i<vv.size(); ++i)
+			for (auto& v: c->faces[i]->sorted_vertices()){
+				vv[i].push_back(v->id);
+			}
+			if (exp.try_tetrahedron(vv) ||
+			    exp.try_hexahedron(vv) ||
+			    exp.try_pyramid(vv) ||
+			    exp.try_wedge(vv)){
+				r.insert(r.end(), exp.pts.begin(), exp.pts.end());
+			} else {
+				for (auto& v: AllVertices(c->faces)){
+					r.push_back(v->id);
+				}
+			}
+		}
+		*nret = r.size();
+		*ret2 = new int[*nret];
+		std::copy(r.begin(), r.end(), *ret2);
+		return HMSUCCESS;
+	} catch (std::exception& e){
+		add_error_message(e.what());
+		return HMERROR;
+	}
+}
+int g3_tab_bnd(void* obj, int* nret, int** ret2){
+	try{
+		auto g = static_cast<HM3D::GridData*>(obj);
+		std::vector<int> r;
+		for (int i=0; i<g->vfaces.size(); ++i){
+			auto& f=g->vfaces[i];
+			if (f->is_boundary()){
+				r.push_back(i);
+			}
+		}
+		*nret = r.size();
+		*ret2 = new int[*nret];
+		std::copy(r.begin(), r.end(), *ret2);
+		return HMSUCCESS;
+	} catch (std::exception& e){
+		add_error_message(e.what());
+		return HMERROR;
+	}
+}
+int g3_tab_bndbt(void* obj, int* nret, int** ret2){
+	try{
+		auto g = static_cast<HM3D::GridData*>(obj);
+		std::vector<int> r;
+		for (int i=0; i<g->vfaces.size(); ++i){
+			auto& f=g->vfaces[i];
+			if (f->is_boundary()){
+				r.push_back(i);
+				r.push_back(f->boundary_type);
+			}
+		}
+		*nret = r.size();
+		*ret2 = new int[*nret];
+		std::copy(r.begin(), r.end(), *ret2);
+		return HMSUCCESS;
+	} catch (std::exception& e){
+		add_error_message(e.what());
+		return HMERROR;
+	}
+}
+
+
 int g3_point_at(void* obj, int index, double* ret){
 	try{
 		auto g = static_cast<HM3D::GridData*>(obj);
@@ -403,6 +610,27 @@ int g3_to_hm(void* doc, void* node, void* obj, const char* name, const char* fmt
 				throw std::runtime_error("unknown field "+std::string(af[i]));
 			}
 		}
+		return HMSUCCESS;
+	} catch (std::exception& e){
+		add_error_message(e.what());
+		return HMERROR;
+	}
+}
+
+int g3_assign_boundary_types(void* obj, int* bnd, int** revdif){
+	try{
+		auto grid = static_cast<HM3D::GridData*>(obj);
+		auto whole_assign = [&grid](int bt, std::map<int, int>& mp){
+			for (int k=0; k<grid->vfaces.size(); ++k){
+				if (grid->vfaces[k]->is_boundary()){
+					mp[k] = bt;
+				}
+			}
+		};
+		auto bt_by_index = [&grid](int ind)->int&{
+			return grid->vfaces[ind]->boundary_type;
+		};
+		c2cpp::assign_boundary_types(bnd, revdif, whole_assign, bt_by_index);
 		return HMSUCCESS;
 	} catch (std::exception& e){
 		add_error_message(e.what());

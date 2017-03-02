@@ -62,6 +62,7 @@ extern HMCallback::FunctionWithCallback<TSurfaceVTK> SurfaceVTK;
 class vtkcell_expression{
 	bool _false_return();
 
+public:
 	static int find_opposite(std::vector<std::vector<int>>& data, int cind, int pind);
 	static int is_opposite(std::vector<std::vector<int>>& data, int i1, int i2);
 	static std::pair<int, int> get_opposite(std::vector<std::vector<int>>& data, int ic);
@@ -72,7 +73,7 @@ class vtkcell_expression{
 	bool try_polygon(std::vector<std::vector<int>>& data);
 	bool try_polyhedron(std::vector<std::vector<int>>& data);
 	static vtkcell_expression build(std::vector<std::vector<int>>& cint);
-public:
+
 	//holds points indicies in vtk type orders
 	//for celltype=42 also includes face size information
 	vector<int> pts;

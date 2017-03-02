@@ -107,6 +107,52 @@ def unite_grids(base_grid, over_grids, empty_holes=False, fix_bnd=False,
 
 
 @hmscriptfun
+def unite_grids1(base_grid, secondary_grid, buffer_size,
+                 empty_holes=False, fix_bnd=False,
+                 zero_angle_approx=0, buffer_fill='3'):
+    """Makes superposition of two grids.
+
+    :param base_grid: basic grid identifier
+
+    :param secondary_grid: superposed grid identifier
+
+    :param float buffer_size: size of the buffer zone
+
+    :param bool empty_holes: keep all empty zones
+      (in case of multiple connectivity)
+      of imposed grids in the resulting grid.
+
+    :param bool fix_bnd: whether to fix all boundary nodes
+
+    :param positive-degree zero_angle_approx:
+      defines deviation from the straight angle which is considered
+      insignificant. Grid boundary vertices which provide insignificant
+      contour turns could be moved in order to obtain better result.
+      Makes sense only if ``fix_bnd = False``.
+
+    :param str buffer_fill: type of grid in a buffer.
+
+      * ``"3"`` - triangle grid
+      * ``"4"`` - mostly quadrangle grid
+
+    :return: identifier of the newly created grid
+
+    Same as :func:unite_grids for given pair of grids.
+    """
+    icheck(0, Grid2D())
+    icheck(1, Grid2D())
+    icheck(2, Float())
+    icheck(3, Bool())
+    icheck(4, Bool())
+    icheck(5, Float(within=[-1., 180., '[]']))
+    icheck(6, OneOf('3', '4'))
+
+    return unite_grids(base_grid, [(secondary_grid, buffer_size)],
+                       empty_holes, fix_bnd, zero_angle_approx,
+                       buffer_fill)
+
+
+@hmscriptfun
 def map_grid(base_grid, target_contour, base_points, target_points,
              snap="no", project_to="line", btypes="from_grid",
              algo="inverse_laplace",

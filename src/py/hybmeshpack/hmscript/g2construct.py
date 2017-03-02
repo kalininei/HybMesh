@@ -240,7 +240,7 @@ def add_triangle_grid(p0, p1, p2, nedge, bnd=0):
 
     :param int nedge: partition of triangle edges
 
-    :param int-or-list-of-int: boundary types for outer contour
+    :param int-or-list-of-int bnd: boundary types for outer contour
 
     :return: identifier of newly created grid
 
@@ -744,3 +744,43 @@ def build_boundary_grid(opts):
     c = com.gridcom.BuildBoundaryGrid({"opt": inp})
     flow.exec_command(c)
     return c.added_grids2()[0]
+
+
+@hmscriptfun
+def simple_boundary_grid(cont, partition, direction, pstart=None, pend=None,
+                         range_angles=[40, 125, 235, 275]):
+    """Builds a singly-connected boundary grid near contour
+
+    :params cont: source contour (or grid) identifier
+
+    :params list-of-float partition: partition in perpendicular direction.
+
+    :params str direction: 'left'/'right'
+
+    :params pstart:
+
+    :params pend: points in [x, y] format which define
+      the exact segment of the contour for building grid.
+      If both are None hence whole contour (or all subcontours) will be used.
+
+    :params range_angles: list of 4 angle values (deg) which define algorithms
+      for contour bends treatment.
+
+    :returns: identifier of the newly created grid.
+
+    This is a wrapper for a :func:build_boundary_grid with simplified
+    interface. It allows to build a boundary grid with constant partition
+    options using existing contour segmentation for horizontal stepping.
+    """
+    icheck(0, ACont2D())
+    icheck(1, IncList(Float(), startfrom=0.0))
+    icheck(2, OneOf('left', 'right'))
+    icheck(3, NoneOr(Point2D()))
+    icheck(4, NoneOr(Point2D(noteq=pstart)))
+    icheck(5, IncList(Float(within=[0, 360, '[]'])))
+
+    bo = BoundaryGridOptions(
+        cont, partition, direction, bnd_stepping='no',
+        range_angles=range_angles, start_point=pstart,
+        end_point=pend)
+    return build_boundary_grid([bo])

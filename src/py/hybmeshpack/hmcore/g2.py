@@ -1,7 +1,7 @@
 import ctypes as ct
 from . import cport
 from proc import (ccall, ccall_cb, list_to_c, free_cside_array, move_to_static,
-                  CBoundaryNames, concat, supplement)
+                  CBoundaryNames, concat, supplement, BndTypesDifference)
 
 
 def dims(obj):
@@ -98,11 +98,10 @@ def rotate(obj, x0, y0, angle):
     ccall(cport.g2_rotate, obj, p0, a)
 
 
-def set_bnd(obj, bndlist, for_all_edges):
-    nb = dims(obj)[1] if for_all_edges else bnd_dims(obj)[1]
-    bndlist = list_to_c(supplement(bndlist, nb), int)
-    for_all_edges = ct.c_int(for_all_edges)
-    ccall(cport.g2_set_btypes, obj, bndlist, for_all_edges)
+def assign_boundary_types(obj, bt):
+    dataout = ct.POINTER(ct.c_int)()
+    ccall(cport.g2_assign_boundary_types, obj, bt.data, ct.byref(dataout))
+    return BndTypesDifference.from_cdata(dataout)
 
 
 def extract_contour(obj):
@@ -114,35 +113,42 @@ def extract_contour(obj):
 def raw_data(obj, what):
     ret = None
     d = dims(obj)
-    if what == 'btypes':
-        ret = (ct.c_int * d[1])()
-        ccall(cport.g2_tab_btypes, obj, ret)
-    elif what == 'vertices':
-        ret = ((ct.c_double * 2) * d[0])()
+    if what == 'vert':
+        ret = (ct.c_double * (2*d[0]))()
         ccall(cport.g2_tab_vertices, obj, ret)
-    elif what == 'edge-vert':
-        ret = ((ct.c_int * 2) * d[1])()
+    elif what == 'edge_vert':
+        ret = (ct.c_int * (2*d[1]))()
         ccall(cport.g2_tab_edgevert, obj, ret)
-    elif what == 'cellsizes':
+    elif what == 'edge_cell':
+        ret = (ct.c_int * (2*d[1]))()
+        ccall(cport.g2_tab_edgecell, obj, ret)
+    elif what == 'cell_dim':
         ret = (ct.c_int * d[2])()
         ccall(cport.g2_tab_cellsizes, obj, ret)
-    elif what == 'cell-vert':
+    elif what == 'cell_vert':
         nret, ret2 = ct.c_int(), ct.POINTER(ct.c_int)()
         ccall(cport.g2_tab_cellvert, obj, ct.byref(nret), ct.byref(ret2))
         ret = move_to_static(nret.value, ret2, int)
-    elif what == 'cell-edge':
+    elif what == 'cell_edge':
         nret, ret2 = ct.c_int(), ct.POINTER(ct.c_int)()
         ccall(cport.g2_tab_celledge, obj, ct.byref(nret), ct.byref(ret2))
         ret = move_to_static(nret.value, ret2, int)
-    elif what == 'centers':
-        ret = ((ct.c_double * 2) * d[2])()
+    elif what == 'center':
+        ret = (ct.c_double * (2*d[2]))()
         ccall(cport.g2_tab_centers, obj, ret)
-    elif what == 'bedges':
+    elif what == 'bnd':
         nret, ret2 = ct.c_int(), ct.POINTER(ct.c_int)()
         ccall(cport.g2_tab_bedges, obj, ct.byref(nret), ct.byref(ret2))
         ret = move_to_static(nret.value, ret2, int)
+    elif what == 'bt':
+        ret = (ct.c_int * d[1])()
+        ccall(cport.g2_tab_btypes, obj, ret)
+    elif what == 'bnd_bt':
+        nret, ret2 = ct.c_int(), ct.POINTER(ct.c_int)()
+        ccall(cport.g2_tab_bndbt, obj, ct.byref(nret), ct.byref(ret2))
+        ret = move_to_static(nret.value, ret2, int)
     else:
-        raise ValueError('unknown what: %s' % what)
+        raise ValueError('unknown "what": %s' % repr(what))
     return ret
 
 

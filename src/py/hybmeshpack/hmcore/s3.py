@@ -1,6 +1,7 @@
 import ctypes as ct
 from . import cport
-from proc import ccall, ccall_cb, free_cside_array, list_to_c
+from proc import (ccall, ccall_cb, free_cside_array, list_to_c,
+                  move_to_static, BndTypesDifference)
 
 
 def deepcopy(obj):
@@ -65,11 +66,31 @@ def concatenate(objs):
 def raw_data(obj, what):
     ret = None
     d = dims(obj)
-    if what == 'btypes':
+    if what == 'vert':
+        ret = (ct.c_double * (3*d[0]))()
+        ccall(cport.s3_tab_vertices, obj, ret)
+    elif what == 'edge_vert':
+        ret = (ct.c_int * (2*d[1]))()
+        ccall(cport.s3_tab_edgevert, obj, ret)
+    elif what == 'face_dim':
         ret = (ct.c_int * d[2])()
+        ccall(cport.s3_tab_facedim, obj, ret)
+    elif what == 'face_edge':
+        nret, cret = ct.c_int(), ct.POINTER(ct.c_int)()
+        ccall(cport.s3_tab_faceedge, obj, ct.byref(nret), ct.byref(cret))
+        ret = move_to_static(nret.value, cret, int)
+    elif what == 'face_vert':
+        nret, cret = ct.c_int(), ct.POINTER(ct.c_int)()
+        ccall(cport.s3_tab_facevert, obj, ct.byref(nret), ct.byref(cret))
+        ret = move_to_static(nret.value, cret, int)
+    elif what == 'bt':
+        ret = (ct.c_int*d[2])()
         ccall(cport.s3_tab_btypes, obj, ret)
+    elif what == 'center':
+        ret = (ct.c_double*(3*d[2]))()
+        ccall(cport.s3_tab_centers, obj, ret)
     else:
-        raise Exception('unknown what: %s' % what)
+        raise Exception('unknown what: %s' % repr(what))
     return ret
 
 
@@ -77,6 +98,12 @@ def point_by_index(obj, index):
     ret = (ct.c_double * 3)()
     ccall(cport.s3_point_at, obj, ct.c_int(index), ct.byref(ret))
     return list(ret)
+
+
+def assign_boundary_types(obj, bt):
+    dataout = ct.POINTER(ct.c_int)()
+    ccall(cport.s3_assign_boundary_types, obj, bt.data, ct.byref(dataout))
+    return BndTypesDifference.from_cdata(dataout)
 
 
 def to_hm(doc, node, obj, name, fmt, cb):

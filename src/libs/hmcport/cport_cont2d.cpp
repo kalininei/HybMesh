@@ -759,12 +759,19 @@ int c2_connect_subcontours(int nobjs, void** objs, int nfix, int* fix, int shift
 	}
 }
 
-int c2_set_btypes(void* obj, int* bnd){
+//set boundary types to contour
+int c2_assign_boundary_types(void* obj, int* bnd, int** revdif){
 	try{
 		auto cont = static_cast<HM2D::EdgeData*>(obj);
-		for (int i=0; i<cont->size(); ++i){
-			(*cont)[i]->boundary_type = bnd[i];
-		}
+		auto whole_assign = [&cont](int bt, std::map<int, int>& mp)->void{
+			for (int k=0; k<cont->size(); ++k){
+				mp[k] = bt;
+			}
+		};
+		auto bt_by_index = [&cont](int ind)->int&{
+			return (*cont)[ind]->boundary_type;
+		};
+		c2cpp::assign_boundary_types(bnd, revdif, whole_assign, bt_by_index);
 		return HMSUCCESS;
 	} catch (std::exception& e){
 		add_error_message(e.what());

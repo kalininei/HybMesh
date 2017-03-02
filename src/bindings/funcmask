@@ -9,19 +9,15 @@ $FUNC)
 
 $FUNC(
 	$NAME create_contour
-	$DOC
-		Creates contour from consequitives points
 	$ARG #VECPOINT points
-	$ARG #VECINT bnds
+	$ARG #VECINT bnds=#VALVECINT(0)
 	$RETURN #CONTOUR2D
 $FUNC)
 
 $FUNC(
 	$NAME create_spline_contour
-	$DOC
-		Creates singly connected contour as a parametric cubic spline.
 	$ARG #VECPOINT points
-	$ARG #VECINT bnds
+	$ARG #VECINT bnds=#VALVECINT(0)
 	$ARG #INT nedges=100
 	$RETURN #CONTOUR2D
 $FUNC)
@@ -37,7 +33,7 @@ $FUNC(
 	$NAME add_rect_contour
 	$ARG #POINT p0
 	$ARG #POINT p1
-	$ARG #VECINT bnds
+	$ARG #VECINT bnds=#VALVECINT(0,0,0,0)
 	$RETURN #CONTOUR2D
 $FUNC)
 
@@ -46,7 +42,7 @@ $FUNC(
 	$ARG #POINT center
 	$ARG #DOUBLE radius
 	$ARG #INT n_arc
-	$ARG #INT bnd
+	$ARG #INT bnd=0
 	$RETURN #CONTOUR2D
 $FUNC)
 
@@ -81,6 +77,7 @@ $FUNC)
 
 $FUNC( 
 	$NAME partition_contour_const
+	$TFUN partition_contour
 	$ARG #OBJECT2D cont
 	$ARGHIDDEN "'const'"
 	$ARG #DOUBLE step=1.0
@@ -96,10 +93,11 @@ $FUNC)
 
 $FUNC( 
 	$NAME partition_contour_ref_points
+	$TFUN partition_contour
 	$ARG #OBJECT2D cont
 	$ARGHIDDEN "'ref_points'"
-	$ARGSPLITVEC(0) #VECPOINT ref_points
 	$ARGSPLITVEC(0) #VECDOUBLE steps
+	$ARGSPLITVEC(0) #VECPOINT ref_points
 	$ARG #DOUBLE zero_angle=30.0
 	$ARG #BOOL keep_bnd=#FALSE
 	$ARG #INT nedges=-1
@@ -112,10 +110,11 @@ $FUNC)
 
 $FUNC( 
 	$NAME partition_contour_ref_lengths
+	$TFUN partition_contour
 	$ARG #OBJECT2D cont
 	$ARGHIDDEN "'ref_lengths'"
-	$ARGSPLITVEC(0) #VECPOINT ref_lengths
 	$ARGSPLITVEC(0) #VECDOUBLE steps
+	$ARGSPLITVEC(0) #VECDOUBLE ref_lengths
 	$ARG #DOUBLE zero_angle=30.0
 	$ARG #BOOL keep_bnd=#FALSE
 	$ARG #INT nedges=-1
@@ -132,7 +131,8 @@ $FUNC(
 	$ARG #DOUBLE step
 	$ARG #DOUBLE influence
 	$ARG #VECOBJECT2D ref_conts=#ZEROVECOBJECT2D
-	$ARG #VECPOINT ref_pts=#ZEROVECPOINT
+	$ARGSPLITVEC(0) #VECDOUBLE ref_pts_sz=#ZEROVECDOUBLE
+	$ARGSPLITVEC(0) #VECPOINT ref_pts=#ZEROVECPOINT
 	$ARG #DOUBLE zero_angle=30.0
 	$ARG #DOUBLE power=3.0
 	$RETURN #CONTOUR2D
@@ -140,8 +140,9 @@ $FUNC)
 
 $FUNC(
 	$NAME partition_segment
-	$ARG #DOUBLE pstart
-	$ARG #DOUBLE pend
+	$TFUN _bindoper.partition_segment
+	$ARG #DOUBLE xstart
+	$ARG #DOUBLE xend
 	$ARG #DOUBLE hstart
 	$ARG #DOUBLE hend
 	$ARG #VECDOUBLE hinternal=#ZEROVECDOUBLE
@@ -152,17 +153,27 @@ $FUNC(
 	$NAME connect_subcontours
 	$ARG #VECCONTOUR2D sources
 	$ARG #VECINT fix
-	$ARG #STRING close
+	$ARG #STRING close=#VALSTRING(no)
 	$ARG #BOOL shiftnext=#TRUE
 	$RETURN #CONTOUR2D
 $FUNC)
 
 $FUNC(
 	$NAME add_unf_rect_grid
-	$DOC
-		Creates rectangular grid
+	$ARG #POINT p0
+	$ARG #POINT p1
+	$ARG #INT nx
+	$ARG #INT ny
+	$ARGKW bnd #VECINT bnd=#VALVECINT(0,0,0,0)
+	$RETURN #GRID2D
+$FUNC)
+
+$FUNC(
+	$NAME add_unf_rect_grid1
+	$TFUN add_unf_rect_grid
 	$ARGKW custom_x #VECDOUBLE custom_x
-	$ARGKW custom_x #VECDOUBLE custom_y
+	$ARGKW custom_y #VECDOUBLE custom_y
+	$ARGKW bnd #VECINT bnd=#VALVECINT(0,0,0,0)
 	$RETURN #GRID2D
 $FUNC)
 
@@ -192,6 +203,7 @@ $FUNC)
 
 $FUNC(
 	$NAME add_unf_hex_grid_in_hex
+	$TFUN add_unf_hex_grid
 	$ARGSPLIT(0) #POINT center
 	$ARGSPLIT(0) #DOUBLE hex_radius
 	$ARG #DOUBLE cell_radius
@@ -201,6 +213,7 @@ $FUNC)
 
 $FUNC(
 	$NAME add_unf_hex_grid_in_rect
+	$TFUN add_unf_hex_grid
 	$ARGSPLIT(0) #POINT leftbot
 	$ARGSPLIT(0) #POINT righttop
 	$ARG #DOUBLE cell_radius
@@ -214,13 +227,25 @@ $FUNC(
 	$ARG #POINT p1
 	$ARG #POINT p2
 	$ARG #INT nedge
-	$ARG #INT bnd=0
+	$ARG #VECINT bnd=#VALVECINT(0,0,0)
 	$RETURN #GRID2D
 $FUNC)
 
 $FUNC(
 	$NAME add_custom_rect_grid
 	$ARG #STRING algo
+	$ARG #CONTOUR2D left
+	$ARG #CONTOUR2D bottom
+	$ARG #CONTOUR2D right=#NONECONTOUR2D
+	$ARG #CONTOUR2D top=#NONECONTOUR2D
+	$ARGKW return_invalid #BOOL return_invalid=#FALSE
+	$RETURN #GRID2D
+$FUNC)
+
+$FUNC(
+	$NAME add_custom_rect_grid_htfi
+	$TFUN add_custom_rect_grid
+	$ARGHIDDEN "'hermite_tfi'"
 	$ARG #CONTOUR2D left
 	$ARG #CONTOUR2D bottom
 	$ARG #CONTOUR2D right=#NONECONTOUR2D
@@ -255,7 +280,8 @@ $FUNC(
 	$NAME triangulate_domain
 	$ARG #OBJECT2D domain
 	$ARG #VECOBJECT2D constr=#ZEROVECOBJECT2D
-	$ARG #VECPOINT pts=#ZEROVECPOINT
+	$ARGSPLITVEC(0) #VECDOUBLE pts_size=#ZEROVECDOUBLE
+	$ARGSPLITVEC(0) #VECPOINT pts=#ZEROVECPOINT
 	$ARG #STRING fill=#VALSTRING(3)
 	$RETURN #GRID2D
 $FUNC)
@@ -264,13 +290,13 @@ $FUNC(
 	$NAME pebi_fill
 	$ARG #OBJECT2D domain
 	$ARG #VECOBJECT2D constr=#ZEROVECOBJECT2D
-	$ARG #VECPOINT pts=#ZEROVECPOINT
+	$ARGSPLITVEC(0) #VECDOUBLE pts_size=#ZEROVECDOUBLE
+	$ARGSPLITVEC(0) #VECPOINT pts=#ZEROVECPOINT
 	$RETURN #GRID2D
 $FUNC)
 
 $FUNC(
-	$NAME boundary_grid
-	$TFUN simple_boundary_grid
+	$NAME simple_boundary_grid
 	$ARG #OBJECT2D source
 	$ARG #VECDOUBLE partition
 	$ARG #STRING direction=#VALSTRING(left)
@@ -289,8 +315,7 @@ $FUNC(
 $FUNC)
 
 $FUNC(
-	$NAME unite_grids
-	$TFUN unite_grids1
+	$NAME unite_grids1
 	$ARG #GRID2D basic
 	$ARG #GRID2D secondary
 	$ARG #DOUBLE buffer
@@ -327,8 +352,7 @@ $FUNC)
 $FUNC(
 	$NAME grid3_bnd_to_surface
 	$ARG #GRID3D grid
-	$ARG #BOOL separate=#FALSE
-	$RETURN #VECSURFACE3D
+	$RETURN #SURFACE3D
 $FUNC)
 
 $FUNC(
@@ -351,7 +375,7 @@ $FUNC(
 	$ARG #GRID2D obj
 	$ARG #POINT p1
 	$ARG #POINT p2
-	$ARGHIDDEN "n_phi=None"
+	$ARGHIDDEN "None"
 	$ARG #VECDOUBLE phi
 	$ARG #INT btype1=0
 	$ARG #INT type2=0
@@ -367,78 +391,106 @@ $FUNC(
 $FUNC)
 
 $FUNC(
-	$NAME copy_contour2d
+	$CLASS Contour2D
+	$NAME deepcopy
 	$TFUN copy_geom
-	$ARG #VECCONTOUR2D obj
-	$RETURN #VECCONTOUR2D
+	$ARGHIDDEN #SID
+	$RETURN #CONTOUR2D
 $FUNC)
 
 $FUNC(
-	$NAME copy_grid2d
+	$CLASS Grid2D
+	$NAME deepcopy
 	$TFUN copy_geom
-	$ARG #VECGRID2D obj
-	$RETURN #VECGRID2D
+	$ARGHIDDEN #SID
+	$RETURN #GRID2D
 $FUNC)
 
 $FUNC(
-	$NAME copy_surface3d
+	$CLASS Surface3D
+	$NAME deepcopy
 	$TFUN copy_geom
-	$ARG #VECSURFACE3D obj
-	$RETURN #VECSURFACE3D
+	$ARGHIDDEN #SID
+	$RETURN #SURFACE3D
 $FUNC)
 
 $FUNC(
-	$NAME copy_grid3d
+	$CLASS Grid3D
+	$NAME deepcopy
 	$TFUN copy_geom
-	$ARG #VECGRID3D obj
-	$RETURN #VECGRID3D
+	$ARGHIDDEN #SID
+	$RETURN #GRID3D
 $FUNC)
 
 $FUNC(
-	$NAME move_geom
-	$ARG #VECOBJECT obj
+	$CLASS Object2D
+	$NAME move
+	$TFUN move_geom
+	$ARGHIDDEN #SID
 	$ARG #DOUBLE dx
 	$ARG #DOUBLE dy
-	$ARG #DOUBLE dz=0.0
 	$RETURNNO
 $FUNC)
 
 $FUNC(
-	$NAME scale_geom2d
+	$CLASS Object3D
+	$NAME move
+	$TFUN move_geom
+	$ARGHIDDEN #SID
+	$ARG #DOUBLE dx
+	$ARG #DOUBLE dy
+	$ARG #DOUBLE dz
+	$RETURNNO
+$FUNC)
+
+$FUNC(
+	$CLASS Object2D
+	$NAME scale
 	$TFUN scale_geom
-	$ARG #VECOBJECT2D objs
-	$ARG #DOUBLE xpc=100.0
-	$ARG #DOUBLE ypc=100.0
-	$ARGKW refp #POINT refp=#VALPOINT(0.0,0.0)
+	$ARGHIDDEN #SID
+	$ARG #DOUBLE xpc
+	$ARG #DOUBLE ypc
+	$ARGKW refp #POINT refp
 	$RETURNNO
 $FUNC)
 
 $FUNC(
-	$NAME scale_geom3d
+	$CLASS Object3D
+	$NAME scale
 	$TFUN scale_geom
-	$ARG #VECOBJECT3D objs
-	$ARG #DOUBLE xpc=100.0
-	$ARG #DOUBLE ypc=100.0
-	$ARG #DOUBLE zpc=100.0
-	$ARGKW refp #POINT3 refp=#VALPOINT3(0.0,0.0,0.0)
+	$ARGHIDDEN #SID
+	$ARG #DOUBLE xpc
+	$ARG #DOUBLE ypc
+	$ARG #DOUBLE zpc
+	$ARGKW refp #POINT3 refp
 	$RETURNNO
 $FUNC)
 
 $FUNC(
-	$NAME rotate_geom2d
+	$CLASS Object2D
+	$NAME rotate
 	$TFUN rotate_geom
-	$ARG #VECOBJECT2D objs
+	$ARGHIDDEN #SID
 	$ARG #DOUBLE angle
-	$ARG #POINT center=#VALPOINT(0.0,0.0)
+	$ARG #POINT center
 	$RETURNNO
 $FUNC)
 
 $FUNC(
-	$NAME reflect_geom2d
+	$CLASS Object2D
+	$NAME reflect
 	$TFUN reflect_geom
-	$ARG #VECOBJECT2D objs
+	$ARGHIDDEN #SID
 	$ARG #POINT pnt1
 	$ARG #POINT pnt2
+	$RETURNNO
+$FUNC)
+
+$FUNC(
+	$CLASS ObjectA
+	$NAME free
+	$TFUN remove_geom
+	$ARGHIDDEN #SID
 	$RETURNNO
 $FUNC)
 
@@ -456,7 +508,7 @@ $FUNC)
 
 $FUNC(
 	$NAME export_grid_vtk
-	$ARG #VECGRID2D grids
+	$ARG #GRID2D grid
 	$ARG #STRING fname
 	$RETURNNO
 $FUNC)
@@ -472,7 +524,7 @@ $FUNC)
 
 $FUNC(
 	$NAME export_grid_msh
-	$ARG #VECGRID2D grids
+	$ARG #GRID2D grid
 	$ARG #STRING fname
 	$ARGSPLITVEC(0) #VECINT pp_main=#ZEROVECINT
 	$ARGSPLITVEC(0) #VECINT pp_shadow=#ZEROVECINT
@@ -482,21 +534,21 @@ $FUNC)
 
 $FUNC(
 	$NAME export_grid_gmsh
-	$ARG #VECGRID2D grids
+	$ARG #GRID2D grid
 	$ARG #STRING fname
 	$RETURNNO
 $FUNC)
 
 $FUNC(
 	$NAME export_grid_tecplot
-	$ARG #VECGRID2D grids
+	$ARG #GRID2D grid
 	$ARG #STRING fname
 	$RETURNNO
 $FUNC)
 
 $FUNC(
 	$NAME export3d_grid_vtk
-	$ARG #VECGRID3D grids
+	$ARG #GRID3D grid
 	$ARG #STRING fname_grid=#ZEROSTRING
 	$ARG #STRING fname_surface=#ZEROSTRING
 	$RETURNNO
@@ -504,7 +556,7 @@ $FUNC)
 
 $FUNC(
 	$NAME export3d_grid_msh
-	$ARG #VECGRID3D gid
+	$ARG #GRID3D grid
 	$ARG #STRING fname
 	$ARGSPLITVEC(0) #VECINT pp_main=#ZEROVECINT
 	$ARGSPLITVEC(0) #VECINT pp_shadow=#ZEROVECINT
@@ -515,14 +567,14 @@ $FUNC)
 
 $FUNC(
 	$NAME export3d_grid_tecplot
-	$ARG #VECGRID3D grids
+	$ARG #GRID3D grid
 	$ARG #STRING fname
 	$RETURNNO
 $FUNC)
 
 $FUNC(
 	$NAME export3d_grid_gmsh
-	$ARG #VECGRID3D grids
+	$ARG #GRID3D grid
 	$ARG #STRING fname
 	$RETURNNO
 $FUNC)
@@ -538,7 +590,7 @@ $FUNC)
 
 $FUNC(
 	$NAME export_contour_vtk
-	$ARG #VECCONTOUR2D cont
+	$ARG #OBJECT2D cont
 	$ARG #STRING fname
 	$RETURNNO
 $FUNC)
@@ -553,13 +605,13 @@ $FUNC)
 
 $FUNC(
 	$NAME export_contour_tecplot
-	$ARG #VECCONTOUR2D cont
+	$ARG #OBJECT2D cont
 	$ARG #STRING fname
 	$RETURNNO
 $FUNC)
 
 $FUNC(
-	$NAME export_surface_hmc
+	$NAME export3d_surface_hmc
 	$ARG #VECSURFACE3D surf
 	$ARG #STRING fname
 	$ARG #STRING fmt=#VALSTRING(ascii)
@@ -625,43 +677,10 @@ $FUNC(
 	$RETURN #VECSURFACE3D
 $FUNC)
 
-
-$FUNC(
-	$CLASS Contour2D
-	$NAME dims
-	$TFUN _binding_dims
-	$ARGHIDDEN #SELF(sid)
-	$RETURN #VECINT
-$FUNC)
-
-$FUNC(
-	$CLASS Grid2D
-	$NAME dims
-	$TFUN _binding_dims
-	$ARGHIDDEN #SELF(sid)
-	$RETURN #VECINT
-$FUNC)
-
-$FUNC(
-	$CLASS Surface3D
-	$NAME dims
-	$TFUN _binding_dims
-	$ARGHIDDEN #SELF(sid)
-	$RETURN #VECINT
-$FUNC)
-
-$FUNC(
-	$CLASS Grid3D
-	$NAME dims
-	$TFUN _binding_dims
-	$ARGHIDDEN #SELF(sid)
-	$RETURN #VECINT
-$FUNC)
-
 $FUNC(
 	$CLASS Contour2D
 	$NAME get_point
-	$ARGHIDDEN #SELF(sid)
+	$ARGHIDDEN #SID
 	$ARGHIDDEN "None"
 	$ARG #POINT vclosest=#NONEPOINT
 	$ARG #POINT eclosest=#NONEPOINT
@@ -677,10 +696,18 @@ $FUNC(
 $FUNC)
 
 $FUNC(
+	$CLASS ObjectA
+	$NAME dims
+	$TFUN _bindoper.dims
+	$ARGHIDDEN #SID
+	$RETURN #VECINT
+$FUNC)
+
+$FUNC(
 	$CLASS Grid2D
 	$NAME skewness
-	$TFUN _binding_skewness
-	$ARGHIDDEN #SELF(sid)
+	$TFUN _bindoper.skewness
+	$ARGHIDDEN #SID
 	$ARG #DOUBLE threshold=0.7
 	$RETURNRAW #VEC_INT_DOUBLE
 $FUNC)
@@ -688,13 +715,50 @@ $FUNC)
 $FUNC(
 	$CLASS Surface3D
 	$NAME domain_volume
-	$ARGHIDDEN #SELF(sid)
+	$ARGHIDDEN #SID
 	$RETURN #DOUBLE
 $FUNC)
 
 $FUNC(
 	$CLASS Contour2D
 	$NAME domain_area
-	$ARGHIDDEN #SELF(sid)
+	$ARGHIDDEN #SID
 	$RETURN #DOUBLE
+$FUNC)
+
+$FUNC(
+	$CLASS ObjectA
+	$NAME set_btypes_all
+	$TFUN _bindoper.set_btypes
+	$ARGHIDDEN #SID
+	$ARG #INT btype
+	$RETURNNO
+$FUNC)
+
+$FUNC(
+	$CLASS ObjectA
+	$NAME set_btypes
+	$TFUN _bindoper.set_btypes
+	$ARGHIDDEN #SID
+	$ARG #INT btype
+	$ARG #VECINT edges
+	$RETURNNO
+$FUNC)
+
+$FUNC(
+	$CLASS ObjectA
+	$NAME raw_vertices
+	$TFUN _bindoper.raw_data
+	$ARGHIDDEN #SID
+	$ARGHIDDEN "'vert'"
+	$RETURNRAW #VECDOUBLE
+$FUNC)
+
+$FUNC(
+	$CLASS ObjectA
+	$NAME raw_tab
+	$TFUN _bindoper.raw_data
+	$ARGHIDDEN #SID
+	$ARG #STRING what
+	$RETURNRAW #VECINT
 $FUNC)

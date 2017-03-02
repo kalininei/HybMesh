@@ -76,8 +76,8 @@ class Generator(bindparser.Generator):
         return "Point3({}, {}, {})".format(*args)
 
     @classmethod
-    def _translate_SELF(cls, arg):
-        return "{}".format(arg)
+    def _translate_SID(cls, arg):
+        return cls._worker_call('_tos_string', 'sid');
 
     @classmethod
     def _worker_call(clc, func, *arg):

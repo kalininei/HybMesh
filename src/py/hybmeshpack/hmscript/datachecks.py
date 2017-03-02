@@ -16,7 +16,7 @@ def icheck(iarg, cond):
     except InvalidArgument as e:
         f = inspect.stack()[1][3]
         s1 = "%s=" % nm + repr(value)
-        s2 = "Wrong argument #%i for '%s' given as \n\t%s" % (iarg, f, s1)
+        s2 = "Wrong argument #%i for '%s' given as \n\t%s" % (iarg+1, f, s1)
         s3 = str(e)
         raise InvalidArgument('\n'.join([s2, s3]))
 
@@ -478,3 +478,25 @@ class Func(object):
 
         if "nargs" in self.conditions:
             self.__nargs(value)
+
+
+class Dict(object):
+    def __init__(self, cls1, cls2):
+        self.cls1 = cls1
+        self.cls2 = cls2
+
+    def check_value(self, value):
+        if not isinstance(value, dict):
+            raise InvalidArgument("should be a dictionary")
+
+        try:
+            for k in value.keys():
+                self.cls1.check_value(k)
+        except InvalidArgument as e:
+            raise InvalidArgument("each dict key " + str(e))
+
+        try:
+            for v in value.values():
+                self.cls2.check_value(v)
+        except InvalidArgument as e:
+            raise InvalidArgument("each dict value " + str(e))

@@ -453,20 +453,29 @@ int g2_extract_contour(void* obj, void** ret){
 		return HMERROR;
 	}
 }
-int g2_set_btypes(void* obj, int* bndlist, int for_all_edges){
+
+//set boundary types to contour
+int g2_assign_boundary_types(void* obj, int* bnd, int** revdif){
 	try{
-		auto g = static_cast<HM2D::GridData*>(obj);
-		if (for_all_edges){
-			return c2_set_btypes(&g->vedges, bndlist);
-		} else {
-			auto cont = HM2D::ECol::Assembler::GridBoundary(*g);
-			return c2_set_btypes(&cont, bndlist);
-		}
+		auto grid = static_cast<HM2D::GridData*>(obj);
+		auto whole_assign = [&grid](int bt, std::map<int, int>& mp){
+			for (int k=0; k<grid->vedges.size(); ++k){
+				if (grid->vedges[k]->is_boundary()){
+					mp[k] = bt;
+				}
+			}
+		};
+		auto bt_by_index = [&grid](int ind)->int&{
+			return grid->vedges[ind]->boundary_type;
+		};
+		c2cpp::assign_boundary_types(bnd, revdif, whole_assign, bt_by_index);
+		return HMSUCCESS;
 	} catch (std::exception& e){
 		add_error_message(e.what());
 		return HMERROR;
 	}
 }
+
 int g2_unstructured_fill(void* domain, void* constraint,
 		int nembpts, double* embpts, const char* filler, void** ret){
 	using namespace HM2D::Mesher;
@@ -870,6 +879,40 @@ int g2_tab_bedges(void* obj, int* nret, int** ret){
 		return HMERROR;
 	}
 }
+int g2_tab_edgecell(void* obj, int* ret){
+	try{
+		auto g = static_cast<HM2D::GridData*>(obj);
+		aa::enumerate_ids_pvec(g->vcells);
+		for (auto& e: g->vedges){
+			*ret++ = (e->has_left_cell()) ? e->left.lock()->id
+			                              : -1;
+			*ret++ = (e->has_right_cell()) ? e->right.lock()->id
+			                               :-1;
+		}
+		return HMSUCCESS;
+	} catch (std::exception& e){
+		add_error_message(e.what());
+		return HMERROR;
+	}
+}
+int g2_tab_bndbt(void* obj, int* nret, int** ret2){
+	try{
+		auto g = static_cast<HM2D::GridData*>(obj);
+		auto cont = HM2D::ECol::Assembler::GridBoundary(*g);
+		*nret = 2*cont.size();
+		*ret2 = new int[*nret];
+		aa::enumerate_ids_pvec(g->vedges);
+		for (int i=0; i<cont.size(); ++i){
+			(*ret2)[2*i] = cont[i]->id;
+			(*ret2)[2*i+1] = cont[i]->boundary_type;
+		}
+		return HMSUCCESS;
+	} catch (std::exception& e){
+		add_error_message(e.what());
+		return HMERROR;
+	}
+}
+
 int g2_simplify_bnd(void* obj, double angle, void** ret){
 	try{
 		if (angle<-geps || angle>180+geps) throw std::runtime_error("invalid angle");

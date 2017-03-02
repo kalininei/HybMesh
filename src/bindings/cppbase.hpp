@@ -6,6 +6,8 @@
 #include <limits>
 #include <sstream>
 #include <stdexcept>
+#include <cstdlib>
+#include <functional>
 
 #define DEFAULT_HYBMESH_EXE_PATH "hybmesh"  // >>$EXEPATH
 
@@ -19,12 +21,12 @@ public:
 	struct Grid3D;
 	typedef std::vector<char> VecByte;
 	struct ERuntimeError: public std::runtime_error{
-		ERuntimeError(const char* msg): std::runtime_error(
-			std::string("Hybmesh runtime error:\n") +
+		ERuntimeError(const char* msg) noexcept: std::runtime_error(
+			std::string("Hybmesh runtime error: ") +
 			std::string(msg)){};
 	};
 	struct EUserInterrupt: public std::runtime_error{
-		EUserInterrupt(): std::runtime_error(
+		EUserInterrupt() noexcept: std::runtime_error(
 			std::string("Interrupted by user")){};
 	};
 	struct Point2{
@@ -56,10 +58,7 @@ public:
 private:
 	class Worker{
 		//data
-		int sig_read;
-		int sig_write;
-		int data_read;
-		int data_write;
+		int sig_read, sig_write, data_read, data_write;
 		intptr_t childid;
 		//low level platform specific procedures
 		void require_connection(const char* path);
@@ -74,18 +73,15 @@ private:
 		VecByte _read_buffer();
 	public:
 		//callback
-		void* cb_context;
-		int (*callback)(std::string, std::string, double, double, void*);
-		static int default_callback(std::string, std::string, double, double, void*){
-			return 0;
-		}
+		std::function<int(const std::string&, const std::string&,
+		                  double, double)> callback;
 		//constructor
 		Worker(const char* hybmeshpath){
 			if (hybmeshpath == NULL) require_connection(
 					DEFAULT_HYBMESH_EXE_PATH);
 			else require_connection(hybmeshpath);
-			cb_context = 0;
-			callback = &default_callback;
+			callback = [](const std::string&, const std::string&,
+			              double, double)->int{ return 0; };
 		};
 		~Worker(){
 			break_connection();
@@ -94,7 +90,7 @@ private:
 		//command interface
 		VecByte _apply_command(const std::string& func, const std::string& com);
 		void _apply_callback(const VecByte& buf);
-		// vecbyte -> cpp type
+		// string -> cpp type
 		int _to_int(const std::string&);
 		double _to_double(const std::string&);
 		Point2 _to_point(const std::string&);
@@ -108,6 +104,8 @@ private:
 		std::vector<Grid2D> _to_vecgrid(const std::string&);
 		std::vector<Surface3D> _to_vecsurface(const std::string&);
 		std::vector<Grid3D> _to_vecgrid3(const std::string&);
+		template<class Obj> Obj _to_object(const std::string&);
+		template<class Obj> std::vector<Obj> _to_vecobject(const std::string&);
 		// cpp type -> string
 		std::string _tos_bool(bool);
 		std::string _tos_int(int);
@@ -119,13 +117,13 @@ private:
 		std::string _tos_vecdouble(const std::vector<double>&);
 		std::string _tos_vecstring(const std::vector<std::string>&);
 		std::string _tos_vecpoint(const std::vector<Point2>&);
-		template<class Obj>
-		std::string _tos_object(const Obj&);
-		template<class Obj>
-		std::string _tos_vecobject(const std::vector<Obj>&);
+		std::string _tos_string(const std::string&);
+		template<class Obj> std::string _tos_object(const Obj&);
+		template<class Obj> std::string _tos_vecobject(const std::vector<Obj>&);
 		// vecbyte -> cpp type
 		std::vector<std::pair<int, double> > _to_vec_int_double_raw(const VecByte&);
 		std::vector<double> _to_vecdouble_raw(const VecByte&);
+		std::vector<int> _to_vecint_raw(const VecByte&);
 	};
 
 	Worker _worker;
@@ -139,10 +137,13 @@ public:
 		worker = &_worker;
 	}
 	// ================ callback
-	void assign_callback(int (*fnc)(std::string, std::string, double, double, void*),
-			void* context=NULL){
-		worker->cb_context = context;
-		worker->callback = fnc;
+	void assign_callback(std::function<int(const std::string&, const std::string&,
+		                               double, double)> func){
+		worker->callback = func;
+	}
+	void reset_callback(){
+		worker->callback = [](const std::string&, const std::string&,
+		                      double, double)->int { return 0; };
 	}
 	// ================ Geometrical objects
 	struct Object{
@@ -152,12 +153,15 @@ public:
 		bool isnone() const{
 			return sid.size() == 0 || worker == NULL;
 		}
+		//>>$ObjectA
 	};
 	struct Object2D: public Object{
 		Object2D(std::string sid, Worker* worker): Object(sid, worker){}
+		//>>$Object2D
 	};
 	struct Object3D: public Object{
 		Object3D(std::string sid, Worker* worker): Object(sid, worker){}
+		//>>$Object3D
 	};
 	struct Contour2D: public Object2D{
 		Contour2D(std::string sid, Worker* worker): Object2D(sid, worker){}
@@ -211,61 +215,6 @@ Hybmesh::Point2 Hybmesh::Worker::_to_point(const std::string& s){
 	std::istringstream(s)>>_tmp>>x>>_tmp>>y;
 	return Hybmesh::Point2(x, y);
 }
-Hybmesh::Grid2D Hybmesh::Worker::_to_grid(const std::string& s){
-	if (s == "None" or s == "[]"){
-		return Hybmesh::Grid2D::None();
-	} else if (s[0] == '['){
-		return _to_vecgrid(s)[0];
-	} else{
-		return Hybmesh::Grid2D(s, this);
-	}
-}
-Hybmesh::Contour2D Hybmesh::Worker::_to_cont(const std::string& s){
-	if (s == "None" || s == "[]" || s.size() == 0){
-		return Hybmesh::Contour2D::None();
-	} else if (s[0] == '['){
-		return _to_veccont(s)[0];
-	} else{
-		return Hybmesh::Contour2D(s, this);
-	}
-}
-Hybmesh::Grid3D Hybmesh::Worker::_to_grid3(const std::string& s){
-	if (s == "None" || s == "[]" || s.size() == 0){
-		return Hybmesh::Grid3D::None();
-	} else if (s[0] == '['){
-		return _to_vecgrid3(s)[0];
-	} else{
-		return Hybmesh::Grid3D(s, this);
-	}
-}
-Hybmesh::Surface3D Hybmesh::Worker::_to_surface(const std::string& s){
-	if (s == "None" || s == "[]" || s.size() == 0){
-		return Hybmesh::Surface3D::None();
-	} else if (s[0] == '['){
-		return _to_vecsurface(s)[0];
-	} else{
-		return Hybmesh::Surface3D(s, this);
-	}
-}
-std::vector<std::string> Hybmesh::Worker::__parse_vecstring(const std::string& s){
-	std::vector<std::string> ret;
-	if (s == "[]" || s == "None" || s.size() == 0) return ret;
-	std::string::const_iterator it = s.begin() + s.find('[') + 1;
-	std::string::const_iterator it0 = it;
-	while (it <= s.end()){
-		if (*it == ','){
-			ret.push_back(std::string(it0, it));
-			++it;
-			it0 = it;
-		} else if (*it == ' '){
-			++it;
-			it0 = it;
-		} else {
-			++it;
-		}
-	}
-	return ret;
-}
 std::vector<int> Hybmesh::Worker::_to_vecint(const std::string& s){
 	std::vector<std::string> ss = __parse_vecstring(s);
 	std::vector<int> ret(ss.size());
@@ -274,57 +223,87 @@ std::vector<int> Hybmesh::Worker::_to_vecint(const std::string& s){
 	}
 	return ret;
 }
-std::vector<Hybmesh::Contour2D> Hybmesh::Worker::_to_veccont(const std::string& s){
-	std::vector<Hybmesh::Contour2D> ret;
-	if (s.size() == 0) return ret;
-	if (s[0] != '[') {
-		ret.push_back(_to_cont(s));
+
+//removes ending []; splits by ,; strips substrings from """, "'", " ";
+std::vector<std::string> Hybmesh::Worker::__parse_vecstring(const std::string& s){
+	std::vector<std::string> ret, ret2;
+	if (s == "[]" || s == "None" || s.size() == 0) return ret;
+	std::string::const_iterator it = s.begin();
+	std::string::const_iterator itend = s.end() - 1;
+	//remove []
+	if (*it == '[') ++it;
+	if (*itend == ']') --itend;
+	//split
+	std::string::const_iterator it0 = it;
+	int bracket_level = 0;
+	while (it <= itend){
+		if (*it == '['){
+			++bracket_level;
+		} else if (*it == ']'){
+			--bracket_level;
+		} else if (bracket_level == 0){
+			if (*it == ','){
+				ret.push_back(std::string(it0, it));
+				it0 = it + 1;
+			} else if (it == itend){
+				ret.push_back(std::string(it0, it+1));
+			} else if (*it == ' '){
+				it0 = it + 1;
+			}
+		}
+		++it;
+	}
+	//strip
+	for (size_t i=0; i<ret.size(); ++i){
+		size_t i0 = ret[i].find_first_not_of("\'\" ");
+		size_t i1 = ret[i].find_last_not_of("\'\" ");
+		if (i0 <= i1) ret2.push_back(ret[i].substr(i0, i1 - i0 + 1));
+	}
+	return ret2;
+}
+template<class Obj> Obj Hybmesh::Worker::_to_object(const std::string& s){
+	std::vector<std::string> ss = __parse_vecstring(s);
+	if (ss.size() == 0 || ss[0] == "None"){
+		return Obj::None();
+	} else{
+		return Obj(ss[0], this);
+	}
+}
+template<class Obj> std::vector<Obj> Hybmesh::Worker::_to_vecobject(const std::string& s){
+	std::vector<std::string> ss = __parse_vecstring(s);
+	if (ss.size() == 0){
+		return std::vector<Obj>();
+	} else{
+		std::vector<Obj> ret;
+		for (size_t i=0; i<ss.size(); ++i){
+			ret.push_back(_to_object<Obj>(ss[i]));
+		}
 		return ret;
 	}
-	std::vector<std::string> ss = __parse_vecstring(s);
-	for (size_t i=0; i<ss.size(); ++i){
-		ret.push_back(_to_cont(ss[i]));
-	}
-	return ret;
+}
+Hybmesh::Grid2D Hybmesh::Worker::_to_grid(const std::string& s){
+	return _to_object<Hybmesh::Grid2D>(s);
+}
+Hybmesh::Contour2D Hybmesh::Worker::_to_cont(const std::string& s){
+	return _to_object<Hybmesh::Contour2D>(s);
+}
+Hybmesh::Grid3D Hybmesh::Worker::_to_grid3(const std::string& s){
+	return _to_object<Hybmesh::Grid3D>(s);
+}
+Hybmesh::Surface3D Hybmesh::Worker::_to_surface(const std::string& s){
+	return _to_object<Hybmesh::Surface3D>(s);
+}
+std::vector<Hybmesh::Contour2D> Hybmesh::Worker::_to_veccont(const std::string& s){
+	return _to_vecobject<Hybmesh::Contour2D>(s);
 }
 std::vector<Hybmesh::Grid2D> Hybmesh::Worker::_to_vecgrid(const std::string& s){
-	std::vector<Hybmesh::Grid2D> ret;
-	if (s.size() == 0) return ret;
-	if (s[0] != '[') {
-		ret.push_back(_to_grid(s));
-		return ret;
-	}
-	std::vector<std::string> ss = __parse_vecstring(s);
-	for (size_t i=0; i<ss.size(); ++i){
-		ret.push_back(_to_grid(ss[i]));
-	}
-	return ret;
+	return _to_vecobject<Hybmesh::Grid2D>(s);
 }
 std::vector<Hybmesh::Surface3D> Hybmesh::Worker::_to_vecsurface(const std::string& s){
-	std::vector<Hybmesh::Surface3D> ret;
-	if (s.size() == 0) return ret;
-	if (s[0] != '[') {
-		ret.push_back(_to_surface(s));
-		return ret;
-	}
-	std::vector<std::string> ss = __parse_vecstring(s);
-	for (size_t i=0; i<ss.size(); ++i){
-		ret.push_back(_to_surface(ss[i]));
-	}
-	return ret;
+	return _to_vecobject<Hybmesh::Surface3D>(s);
 }
 std::vector<Hybmesh::Grid3D> Hybmesh::Worker::_to_vecgrid3(const std::string& s){
-	std::vector<Hybmesh::Grid3D> ret;
-	if (s.size() == 0) return ret;
-	if (s[0] != '[') {
-		ret.push_back(_to_grid3(s));
-		return ret;
-	}
-	std::vector<std::string> ss = __parse_vecstring(s);
-	for (size_t i=0; i<ss.size(); ++i){
-		ret.push_back(_to_grid3(ss[i]));
-	}
-	return ret;
+	return _to_vecobject<Hybmesh::Grid3D>(s);
 }
 
 // cpp type -> string
@@ -339,6 +318,11 @@ std::string Hybmesh::Worker::_tos_int(int val){
 std::string Hybmesh::Worker::_tos_double(double val){
 	std::ostringstream os; os.precision(17);
 	os<<val;
+	return os.str();
+}
+std::string Hybmesh::Worker::_tos_string(const std::string& val){
+	std::ostringstream os;
+	os<<'"'<<val<<'"';
 	return os.str();
 }
 std::string Hybmesh::Worker::_tos_point(Point2 val){
@@ -405,7 +389,7 @@ std::string Hybmesh::Worker::_tos_object(const Obj& val){
 template<class Obj>
 std::string Hybmesh::Worker::_tos_vecobject(const std::vector<Obj>& val){
 	std::vector<std::string> rs(val.size());
-	for (size_t i=0; i<val.size(); ++i) rs[i] = _tos_object(val[i]);
+	for (size_t i=0; i<val.size(); ++i) rs[i] = val[i].sid;
 	return _tos_vecstring(rs);
 }
 std::vector<std::pair<int, double> >
@@ -433,6 +417,18 @@ std::vector<double> Hybmesh::Worker::_to_vecdouble_raw(const VecByte& val){
 	}
 	return ret;
 };
+
+std::vector<int> Hybmesh::Worker::_to_vecint_raw(const VecByte& val){
+	const char* ps = &val[0];
+	int sz = *(int*)ps;
+	ps += sizeof(int);
+	std::vector<int> ret(sz);
+	for (int i=0; i<sz; ++i){
+		ret[i] = *(int*)ps;
+		ps += sizeof(int);
+	}
+	return ret;
+}
 
 //command interface
 Hybmesh::VecByte Hybmesh::Worker::_apply_command(
@@ -470,7 +466,7 @@ void Hybmesh::Worker::_apply_callback(const VecByte& buf){
 	const char* n2 = ps; ps+=len2;
 	std::string s1(n1, n1+len1);
 	std::string s2(n2, n2+len2);
-	int r = callback(s1, s2, p1, p2, cb_context);
+	int r = callback(s1, s2, p1, p2);
 	char ret = (r == 0) ? 'G' : 'S';
 	send_signal(ret);
 }
@@ -614,7 +610,9 @@ void Hybmesh::Worker::require_connection(const char* path){
 		close(sig_server2client[0]);
 		close(data_client2server[1]);
 		close(data_server2client[0]);
-		execl(path, path, s0, s1, s2, s3, NULL);
+		int err = execl(path, path, "-px", s0, s1, s2, s3, NULL);
+		if (err == -1) throw ERuntimeError(
+			"failed to launch hybmesh server application");
 		return;
 	} else {
 		/* parent process: client */

@@ -164,35 +164,35 @@ class Generator(object):
     @classmethod
     def _tos_method(cls, tp, argument):
         if tp == '#STRING':
-            return argument
+            fun = '_tos_string'
+        elif tp == '#VECPOINT':
+            fun = '_tos_vecpoint'
+        elif tp == '#VECDOUBLE':
+            fun = '_tos_vecdouble'
+        elif tp == '#POINT':
+            fun = '_tos_point'
+        elif tp == '#POINT3':
+            fun = '_tos_point3'
+        elif tp in ['#GRID2D', '#OBJECT2D', '#CONTOUR2D',
+                    '#GRID3D', '#SURFACE3D']:
+            fun = '_tos_object'
+        elif tp in ['#VECOBJECT2D', '#VECCONTOUR2D', '#VECOBJECT3D',
+                    '#VECGRID3D', '#VECGRID2D', '#VECSURFACE3D',
+                    '#VECOBJECT']:
+            fun = '_tos_vecobject'
+        elif tp == '#INT':
+            fun = '_tos_int'
+        elif tp == '#DOUBLE':
+            fun = '_tos_double'
+        elif tp == '#BOOL':
+            fun = '_tos_bool'
+        elif tp == '#VECINT':
+            fun = '_tos_vecint'
+        elif tp == '#VECSTRING':
+            fun = '_tos_vecstring'
         else:
-            if tp == '#VECPOINT':
-                fun = '_tos_vecpoint'
-            elif tp == '#VECDOUBLE':
-                fun = '_tos_vecdouble'
-            elif tp == '#POINT':
-                fun = '_tos_point'
-            elif tp == '#POINT3':
-                fun = '_tos_point3'
-            elif tp in ['#GRID2D', '#OBJECT2D', '#CONTOUR2D', '#GRID3D']:
-                fun = '_tos_object'
-            elif tp in ['#VECOBJECT2D', '#VECCONTOUR2D', '#VECOBJECT3D',
-                        '#VECGRID3D', '#VECGRID2D', '#VECSURFACE3D',
-                        '#VECOBJECT']:
-                fun = '_tos_vecobject'
-            elif tp == '#INT':
-                fun = '_tos_int'
-            elif tp == '#DOUBLE':
-                fun = '_tos_double'
-            elif tp == '#BOOL':
-                fun = '_tos_bool'
-            elif tp == '#VECINT':
-                fun = '_tos_vecint'
-            elif tp == '#VECSTRING':
-                fun = '_tos_vecstring'
-            else:
-                raise Exception("unknown tos type " + tp)
-            return cls._worker_call(fun, argument)
+            raise Exception("unknown tos type " + tp)
+        return cls._worker_call(fun, argument)
 
     @classmethod
     def _return_method(cls, tp, arg):
@@ -202,6 +202,8 @@ class Generator(object):
             fun = '_to_veccont'
         elif tp == "#GRID2D":
             fun = '_to_grid'
+        elif tp == "#SURFACE3D":
+            fun = '_to_surface'
         elif tp == "#VECSURFACE3D":
             fun = '_to_vecsurface'
         elif tp == "#VECGRID3D":
@@ -228,6 +230,8 @@ class Generator(object):
             fun = '_to_vecdouble_raw'
         elif tp == "#VEC_INT_DOUBLE":
             fun = '_to_vec_int_double_raw'
+        elif tp == "#VECINT":
+            fun = '_to_vecint_raw'
         else:
             raise Exception("unknown rawreturn_method type: " + tp)
         return cls._return_statement(cls._worker_call(fun, arg))
@@ -327,6 +331,24 @@ class Generator(object):
                 raise Exception("unknown argument: " + str(a))
         return subs
 
+    @staticmethod
+    def to_upper_camel_case(nm):
+        cc = nm.split('_')
+        ret = []
+        for s in cc:
+            lst = list(s)
+            lst[0] = lst[0].upper()
+            ret.extend(lst)
+        ret = ''.join(ret)
+        ret = ret.replace('2d', '2D')
+        ret = ret.replace('3d', '3D')
+        return ret
+
+    @staticmethod
+    def to_lower_camel_case(nm):
+        ret = Generator.to_upper_camel_case(nm)
+        ret = ret[0].lower() + ret[1:]
+
     @classmethod
     def _parse_fun(cls, func):
         ret = []
@@ -410,7 +432,8 @@ class Generator(object):
     def parse(self, mask):
         """ fills out strings """
         self.outstrings = {'Hybmesh': [], 'Contour2D': [], 'Grid2D': [],
-                           'Surface3D': [], 'Grid3D': []}
+                           'Surface3D': [], 'Grid3D': [],
+                           'Object2D': [], 'Object3D': [], 'ObjectA': []}
         for f in mask.funcs:
             tar = self.outstrings[f.class_]
             tar.append(self._parse_fun(f))

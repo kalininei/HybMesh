@@ -14,16 +14,18 @@ def cont2(fname, cont, cb=None):
            cont.__class__.__name__, "ASCII"]
     ne, np = cont.n_edges(), cont.n_vertices()
     # Raw data
-    raw_btypes = cont.raw_data('btypes')
-    raw_vert = cont.raw_data('vertices')
-    raw_edgevert = cont.raw_data('edge-vert')
+    raw_btypes = cont.raw_data('bt')
+    raw_vert = cont.raw_data('vert')
+    raw_edgevert = cont.raw_data('edge_vert')
     # Points
     out.append("DATASET UNSTRUCTURED_GRID")
     out.append("POINTS %i float" % np)
-    out.extend(['%s %s 0' % (str(p[0]), str(p[1])) for p in raw_vert])
+    it = iter(raw_vert)
+    out.extend(['%s %s 0' % (str(p[0]), str(p[1])) for p in zip(it, it)])
     # Edges
     out.append("CELLS %i %i" % (ne, 3 * ne))
-    out.extend(['2 %i %i' % (c[0], c[1]) for c in raw_edgevert])
+    it = iter(raw_edgevert)
+    out.extend(['2 %i %i' % (c[0], c[1]) for c in zip(it, it)])
     # CellTypes
     out.append("CELL_TYPES %i" % ne)
     out.extend(['3'] * ne)
@@ -41,15 +43,16 @@ def grid2(fname, grid, cb=None):
            grid.__class__.__name__, "ASCII"]
     np, nc = grid.n_vertices(), grid.n_cells()
     # Raw data
-    raw_vertices = grid.raw_data('vertices')
-    raw_cellsize = grid.raw_data('cellsizes')
-    raw_cellvert = grid.raw_data('cell-vert')
+    raw_vertices = grid.raw_data('vert')
+    raw_cellsize = grid.raw_data('cell_dim')
+    raw_cellvert = grid.raw_data('cell_vert')
 
     # Points
     out.append("DATASET UNSTRUCTURED_GRID")
     out.append("POINTS %i float" % np)
+    it = iter(raw_vertices)
     out.extend(
-        ['%s %s 0' % (str(p[0]), str(p[1])) for p in raw_vertices]
+        ['%s %s 0' % (str(p[0]), str(p[1])) for p in zip(it, it)]
     )
     # Cells
     cd = sum(raw_cellsize) + nc

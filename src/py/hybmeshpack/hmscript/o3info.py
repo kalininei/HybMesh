@@ -1,6 +1,6 @@
 "3D objects information"
 from hybmeshpack.hmscript import flow, hmscriptfun
-from datachecks import (icheck, Grid3D, ASurf3D)
+from datachecks import (icheck, Grid3D, ASurf3D, Surf3D, OneOf)
 
 
 @hmscriptfun
@@ -70,3 +70,26 @@ def domain_volume(sid):
     """
     icheck(0, ASurf3D())
     return flow.receiver.get_any_surface(sid).volume()
+
+
+@hmscriptfun
+def tab_surf3(obj, what):
+    icheck(0, Surf3D())
+    icheck(1, OneOf('vert',
+                    'edge_vert',
+                    'face_dim', 'face_edge', 'face_vert',
+                    'bt'
+                    ))
+    return flow.receiver.get_surface3(obj).raw_data(what)
+
+
+@hmscriptfun
+def tab_grid3(obj, what):
+    icheck(0, Grid3D())
+    icheck(1, OneOf('vert',
+                    'edge_vert',
+                    'face_dim', 'face_edge', 'face_vert', 'face_cell',
+                    'cell_fdim', 'cell_vdim', 'cell_face', 'cell_vert',
+                    'bt', 'bnd', 'bnd_bt',
+                    ))
+    return flow.receiver.get_grid3(obj).raw_data(what)
