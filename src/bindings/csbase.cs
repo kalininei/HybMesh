@@ -137,6 +137,14 @@ public class Hybmesh: IDisposable{
 						typeof(Obj), ss[0], this);
 			}
 		}
+		private Obj[] _to_vecobj<Obj>(string str) where Obj: Object{
+			string[] ss = __parse_vecstring(str);
+			Obj[] ret = new Obj[ss.Length];
+			for (int i=0; i<ss.Length; ++i){
+				ret[i] = _to_object<Obj>(ss[i]);
+			}
+			return ret;
+		}
 		public Grid2D _to_grid(string str){
 			return _to_object<Grid2D>(str);
 		}
@@ -148,18 +156,6 @@ public class Hybmesh: IDisposable{
 		}
 		public Grid3D _to_grid3(string str){
 			return _to_object<Grid3D>(str);
-		}
-		private Obj[] _to_vecobj<Obj>(string str) where Obj: Object{
-			string[] ss = __parse_vecstring(str);
-			if (ss.Length == 0){
-				return new Obj[]{};
-			} else{
-				Obj[] ret = new Obj[ss.Length];
-				for (int i=0; i<ss.Length; ++i){
-					ret[i] = _to_object<Obj>(ss[i]);
-				}
-				return ret;
-			}
 		}
 		public Contour2D[] _to_veccont(string str){
 			return _to_vecobj<Contour2D>(str);
@@ -233,14 +229,14 @@ public class Hybmesh: IDisposable{
 			return '[' + string.Join(", ", val.Select(
 				p=>this._tos_point(p)).ToArray()) + ']';
 		}
-		public string _tos_object<Obj>(Obj val) where Obj: Object{
+		public string _tos_object(Object val){
 			if (val == null) return "None";
 			else return '"' + val.sid + '"';
 		}
-		public string _tos_vecobject<Obj>(Obj[] val) where Obj: Object{
+		public string _tos_vecobject(Object[] val){
 			if (val == null) return "None";
 			return '[' + string.Join(", ", val.Select(
-				p=>this._tos_object<Obj>(p)).ToArray()) + ']';
+				p=>this._tos_object(p)).ToArray()) + ']';
 		}
 		//vecbyte -> cpp type
 		public KeyValuePair<int, double>[] _to_vec_int_double_raw(byte[] val){

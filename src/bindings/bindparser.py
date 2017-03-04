@@ -347,7 +347,7 @@ class Generator(object):
     @staticmethod
     def to_lower_camel_case(nm):
         ret = Generator.to_upper_camel_case(nm)
-        ret = ret[0].lower() + ret[1:]
+        return ret[0].lower() + ret[1:]
 
     @classmethod
     def _parse_fun(cls, func):

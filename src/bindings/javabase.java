@@ -1,19 +1,20 @@
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.util.Arrays;
+import java.util.ArrayList;
 import java.nio.charset.StandardCharsets;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Map;
 import java.util.HashMap;
 
-class Hybmesh{
+class Hybmesh implements AutoCloseable{
 	static {
 		System.loadLibrary("core_hmconnection_java");
 	}
 	public static String hybmesh_exec_path = "build/bin/hybmesh";  //>>$EXEPATH
 
-	class Worker{
+	private static class Worker{
 		// ==== communication library
 		private int connection = -1;
 		private native int require_connection(String path);
@@ -37,7 +38,7 @@ class Hybmesh{
 		private byte[] _read_buffer(){
 			return get_data(connection);
 		}
-		public void  _apply_callback(byte[] buf){
+		private void  _apply_callback(byte[] buf){
 			ByteBuffer stream = ByteBuffer.wrap(buf);
 			stream.order(ByteOrder.nativeOrder());
 			double p1 = stream.getDouble();
@@ -80,30 +81,40 @@ class Hybmesh{
 				}
 			}
 		}
-		// string -> cpp type
+		//removes ending []; splits by ,; strips substrings from """, "'", " ";
 		private String[] __parse_vecstring(String str){
-			String s2 = str.substring(1, str.length()-1);
-			String[] s3 = s2.split(",");
-			for (int i=0; i<s3.length; ++i){
-				s3[i] = s3[i].trim();
+			String s = str.trim();
+			if (s.charAt(0)=='[' && s.charAt(s.length()-1)==']')
+				s = s.substring(1, s.length()-1);
+			if (s == "[]" || s == "None" || s.length() == 0) return new String[]{};
+			//split by ',' keeping sublists [x, y] entries untouched
+			String[] ret1 = s.split(",");
+			for (int i=0; i<ret1.length; ++i){
+				int pos1 = 0;
+				int pos2 = ret1[i].length();
+				while (pos1 < ret1[i].length() &&
+				       (ret1[i].charAt(pos1) == ' ' ||
+				        ret1[i].charAt(pos1) == '"' ||
+				        ret1[i].charAt(pos1) == '\'')) ++pos1;
+				while (pos2 > pos1 &&
+				       (ret1[i].charAt(pos2-1) == ' ' ||
+				        ret1[i].charAt(pos2-1) == '"' ||
+				        ret1[i].charAt(pos2-1) == '\'')) --pos2;
+				if (pos2 > pos1) ret1[i] = ret1[i].substring(pos1, pos2);
+				else ret1[i] = "";
 			}
-			return s3;
-		}
-		private <Obj> Obj[] __parse_vecobject(Class<Obj> type, String str)
-				throws Hybmesh.ERuntimeError{
-			try{
-				String[] s2 = __parse_vecstring(str);
-				@SuppressWarnings("unchecked")
-				Obj[] ret = (Obj[]) Array.newInstance(type, s2.length);
-				Constructor<Obj> ctor = type.getDeclaredConstructor(
-					Hybmesh.class, String.class, Worker.class);
-				for (int i=0; i<s2.length; ++i){
-					ret[i] = ctor.newInstance(s2[i], this);
-				}
-				return ret;
-			} catch (Exception e){
-				throw new Hybmesh.ERuntimeError(e.getMessage());
+			ArrayList<String> ret2 = new ArrayList<String>();
+			int bracket_level=0;
+			for (int i=0; i<ret1.length; ++i){
+				if (ret1[i].length()==0) continue;
+				else if (bracket_level == 0) ret2.add(ret1[i]);
+				else ret2.set(
+					ret2.size()-1, ret2.get(ret2.size()-1)+','+ret1[i]);
+				if (ret1[i].charAt(0) == '[') ++bracket_level;
+				if (ret1[i].charAt(ret1[i].length()-1) == ']') --bracket_level;
 			}
+			String[] ret = new String[ret2.size()];
+			return ret2.toArray(ret);
 		}
 		public int _to_int(String str){
 			return Integer.parseInt(str);
@@ -117,25 +128,39 @@ class Hybmesh{
 			return new Point2(Double.parseDouble(s2[0]),
 					Double.parseDouble(s2[1]));
 		}
+		private <Obj> Obj _to_object(Class<Obj> type, String str)
+				throws Hybmesh.ERuntimeError {
+			String[] ss = __parse_vecstring(str);
+			if (ss.length == 0 || ss[0] == "None") return null;
+			try{
+				Constructor<Obj> ctor = type.getDeclaredConstructor(
+						String.class, Worker.class);
+				return ctor.newInstance(ss[0], this);
+			} catch (Exception e){
+				throw new Hybmesh.ERuntimeError(e.getMessage());
+			}
+		}
+		private <Obj> Obj[] _to_vecobj(Class<Obj> type, String str)
+				throws Hybmesh.ERuntimeError {
+			String[] s2 = __parse_vecstring(str);
+			@SuppressWarnings("unchecked")
+			Obj[] ret = (Obj[]) Array.newInstance(type, s2.length);
+			for (int i=0; i<s2.length; ++i){
+				ret[i] = _to_object(type, s2[i]);
+			}
+			return ret;
+		}
 		public Grid2D _to_grid(String str) throws Hybmesh.ERuntimeError{
-			if (str == "None") return null;
-			else if (str.charAt(0) == '[') return _to_vecgrid(str)[0];
-			else return new Grid2D(str, this);
+			return _to_object(Grid2D.class, str);
 		}
 		public Contour2D _to_cont(String str) throws Hybmesh.ERuntimeError{
-			if (str == "None") return null;
-			else if (str.charAt(0) == '[') return _to_veccont(str)[0];
-			else return new Contour2D(str, this);
+			return _to_object(Contour2D.class, str);
 		}
 		public Grid3D _to_grid3(String str) throws Hybmesh.ERuntimeError{
-			if (str == "None") return null;
-			else if (str.charAt(0) == '[') return _to_vecgrid3(str)[0];
-			else return new Grid3D(str, this);
+			return _to_object(Grid3D.class, str);
 		}
 		public Surface3D _to_surface(String str) throws Hybmesh.ERuntimeError{
-			if (str == "None") return null;
-			else if (str.charAt(0) == '[') return _to_vecsurface(str)[0];
-			else return new Surface3D(str, this);
+			return _to_object(Surface3D.class, str);
 		}
 		public int[] _to_vecint(String str){
 			String[] s2 = __parse_vecstring(str);
@@ -146,20 +171,16 @@ class Hybmesh{
 			return ret;
 		}
 		public Contour2D[] _to_veccont(String str) throws Hybmesh.ERuntimeError{
-			if (str.charAt(0) != '[') return new Contour2D[] {_to_cont(str)};
-			else return __parse_vecobject(Contour2D.class, str);
+			return _to_vecobj(Contour2D.class, str);
 		}
 		public Grid2D[] _to_vecgrid(String str) throws Hybmesh.ERuntimeError{
-			if (str.charAt(0) != '[') return new Grid2D[] {_to_grid(str)};
-			else return __parse_vecobject(Grid2D.class, str);
+			return _to_vecobj(Grid2D.class, str);
 		}
 		public Surface3D[] _to_vecsurface(String str) throws Hybmesh.ERuntimeError{
-			if (str.charAt(0) != '[') return new Surface3D[] {_to_surface(str)};
-			else return __parse_vecobject(Surface3D.class, str);
+			return _to_vecobj(Surface3D.class, str);
 		}
 		public Grid3D[] _to_vecgrid3(String str) throws Hybmesh.ERuntimeError{
-			if (str.charAt(0) != '[') return new Grid3D[] {_to_grid3(str)};
-			else return __parse_vecobject(Grid3D.class, str);
+			return _to_vecobj(Grid3D.class, str);
 		}
 		// cpp type -> string
 		public String _tos_bool(boolean val){
@@ -171,32 +192,43 @@ class Hybmesh{
 		public String _tos_double(double val){
 			return Double.toString(val);
 		}
-		public String _tos_point(Point2 val){
-			return "[" + Double.toString(val.x) + ", " +
-				Double.toString(val.y) + "]";
+		public String _tos_string(String val){
+			if (val == null) return "None";
+			return '"' + val + '"';
 		}
-		public String _tos_point3(Point3 val){
-			return "[" + Double.toString(val.x) + ", " +
-				Double.toString(val.y) + ", " +
-				Double.toString(val.z) + "]";
+		public String _tos_point(IPoint2 val){
+			if (val == null) return "None";
+			return "[" + Double.toString(val.x()) + ", " +
+				Double.toString(val.y()) + "]";
+		}
+		public String _tos_point3(IPoint3 val){
+			if (val == null) return "None";
+			return "[" + Double.toString(val.x()) + ", " +
+				Double.toString(val.y()) + ", " +
+				Double.toString(val.z()) + "]";
 		}
 		public String _tos_vecbyte(byte[] val){
+			if (val == null) return "None";
 			return new String(val, StandardCharsets.UTF_8);
 		}
 		public String _tos_vecint(int[] val){
+			if (val == null) return "None";
 			return Arrays.toString(val);
 		}
 		public String _tos_vecdouble(double[] val){
+			if (val == null) return "None";
 			return Arrays.toString(val);
 		}
 		public String _tos_vecstring(String[] val){
+			if (val == null) return "None";
 			String[] sval = new String[val.length];
 			for (int i=0; i<val.length; ++i){
 				sval[i] = '"' + val[i] + '"';
 			}
 			return Arrays.toString(sval);
 		}
-		public String _tos_vecpoint(Point2[] val){
+		public String _tos_vecpoint(IPoint2[] val){
+			if (val == null) return "None";
 			String[] s = new String[val.length];
 			for (int i=0; i<val.length; ++i){
 				s[i] = _tos_point(val[i]);
@@ -208,10 +240,11 @@ class Hybmesh{
 			else return '"' + val.sid + '"';
 		}
 		public String _tos_vecobject(Hybmesh.Object[] val){
+			if (val == null) return "None";
 			if (val.length == 0) return "[]";
 			String ret = new String();
 			for (int i=0; i<val.length; ++i){
-				ret += val[i].sid + ", ";
+				ret += _tos_object(val[i]) + ", ";
 			}
 			return '[' + ret + ']';
 		}
@@ -228,6 +261,16 @@ class Hybmesh{
 			}
 			return ret;
 		}
+		public int[] _to_vecint_raw(byte[] val){
+			ByteBuffer stream = ByteBuffer.wrap(val);
+			stream.order(ByteOrder.nativeOrder());
+			int sz = stream.getInt();
+			int[] ret = new int[sz];
+			for (int i=0; i<sz; ++i){
+				ret[i] = stream.getInt();
+			}
+			return ret;
+		}
 		public double[] _to_vecdouble_raw(byte[] val){
 			ByteBuffer stream = ByteBuffer.wrap(val);
 			stream.order(ByteOrder.nativeOrder());
@@ -240,10 +283,8 @@ class Hybmesh{
 		}
 		//callback
 		public Hybmesh.ICallback callback;
-		private class DefaultCallback implements Hybmesh.ICallback{
+		public static class DefaultCallback implements Hybmesh.ICallback{
 			public int callback(String n1, String n2, double p1, double p2){
-				System.out.println(n1 + " " + Double.toString(p1) + " --- " +
-						n2 + " " + Double.toString(p2));
 				return 0;
 			}
 		};
@@ -252,23 +293,39 @@ class Hybmesh{
 			connection = require_connection(hybmesh_exec_path);
 			callback = new DefaultCallback();
 		}
-		protected void finalize(){
+		public void dispose(){
 			if (connection != -1){
 				break_connection(connection);
-				connection = -1;
+			}
+			connection = -1;
+		}
+		@Override
+		protected void finalize() throws Throwable{
+			try{
+				dispose();
+			} finally {
+				super.finalize();
 			}
 		}
 	};
+	private final Worker worker;
 
-	Worker worker;
 //public:
-	class ERuntimeError extends Exception{
+	public Hybmesh(){
+		worker=new Worker();
+	};
+	@Override
+	public void close(){
+		worker.dispose();
+	}
+
+	public static class ERuntimeError extends Exception{
 		public static final long serialVersionUID = 1L;
 		public ERuntimeError(String message){
 			super("Hybmesh runtime error:\n" + message);
 		}
 	};
-	class EUserInterrupt extends Exception{
+	public static class EUserInterrupt extends Exception{
 		public static final long serialVersionUID = 1L;
 		public EUserInterrupt(){
 			super("Interrupted by user");
@@ -277,64 +334,82 @@ class Hybmesh{
 	public interface ICallback{
 		public int callback(String n1, String n2, double p1, double p2);
 	}
-
-	public void AssignCallback(ICallback cb){
+	public void assignCallback(ICallback cb){
 		worker.callback = cb;
 	}
-
-	public class Point2{
-		public double x, y;
+	public void resetCallback(){
+		worker.callback = new Worker.DefaultCallback();
+	}
+	public static interface IPoint2{
+		public double x();
+		public double y();
+	};
+	public static interface IPoint3{
+		public double x();
+		public double y();
+		public double z();
+	};
+	public static class Point2 implements IPoint2{
+		double x, y, z;
 		public Point2(double x, double y){
 			this.x = x;
 			this.y = y;
-		};
-	};
-	public class Point3{
-		public double x, y, z;
+		}
+		public double x(){ return x; }
+		public double y(){ return y; }
+	}
+	public static class Point3 implements IPoint3{
+		double x, y, z;
 		public Point3(double x, double y, double z){
 			this.x = x;
 			this.y = y;
 			this.z = z;
-		};
-	};
-	public class Object{
-		public String sid;
-		public Worker worker;
+		}
+		public double x(){ return x; }
+		public double y(){ return y; }
+		public double z(){ return z; }
+	}
+	public static class Object{
+		public final String sid;
+		protected final Worker worker;
 		public Object(String sid_, Worker worker_){
 			sid = sid_;
 			worker = worker_;
 		}
+		//>>$ObjectA
 	};
-	public class Object2D extends Object{
+	public static class Object2D extends Object{
 		public Object2D(String sid, Worker worker){
 			super(sid, worker);
 		}
+		//>>$Object2D
 	};
-	public class Object3D extends Object{
+	public static class Object3D extends Object{
 		public Object3D(String sid, Worker worker){
 			super(sid, worker);
 		}
+		//>>$Object3D
 	};
-	public class Contour2D extends Object2D{
+	public static class Contour2D extends Object2D{
 		public Contour2D(String sid, Worker worker){
 			super(sid, worker);
 		};
 		//>>$Contour2D
 	};
-	public class Grid2D extends Object2D{
+	public static class Grid2D extends Object2D{
 		public Grid2D(String sid, Worker worker){
 			super(sid, worker);
 		};
 		//>>$Grid2D
 	};
-	public class Surface3D extends Object3D{
+	public static class Surface3D extends Object3D{
 		public Surface3D(String sid, Worker worker){
 			super(sid, worker);
 		}
 		//>>$Surface3D
 	};
 
-	public class Grid3D extends Object3D{
+	public static class Grid3D extends Object3D{
 		public Grid3D(String sid, Worker worker){
 			super(sid, worker);
 		}

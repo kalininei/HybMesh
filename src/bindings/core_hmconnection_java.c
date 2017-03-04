@@ -7,32 +7,28 @@ void exception(JNIEnv* env, const char* err){
 	(*env)->ThrowNew(env, Exception, err);
 }
 
-JNIEXPORT jint JNICALL Java_HybMesh_require_1connection(JNIEnv* env, jobject obj){
+JNIEXPORT jint JNICALL Java_Hybmesh_00024Worker_require_1connection(
+		JNIEnv *env, jobject obj, jstring str){
 	const char* server_path;
 	int err;
 	jclass self;
 	jfieldID fid;
-	jstring pth;
 	int ret = -1;
 
 	/* get path to server */
-	self = (*env)->GetObjectClass(env, obj);
-	fid = (*env)->GetFieldID(env, self, "hmserverpath", "Ljava/lang/String;");
-	if (fid == NULL) exception(env, "failed to find object field");
-	pth = (*env)->GetObjectField(env, obj, fid);
-	server_path = (*env)->GetStringUTFChars(env, pth, NULL);
+	server_path = (*env)->GetStringUTFChars(env, str, NULL);
 	if (server_path == NULL) exception(env, "failed to get server application path");
-	printf("called with %s\n", server_path);
 
 	/* create connection */
 	err = HybmeshClientToServer_new(server_path, &ret);
-	(*env)->ReleaseStringUTFChars(env, pth, server_path);
+	(*env)->ReleaseStringUTFChars(env, str, server_path);
 
 	if (err < 0) exception(env, "failed to establish a connection");
 	return (jint)ret;
 }
 
-JNIEXPORT jbyte JNICALL Java_HybMesh_get_1signal(JNIEnv* env, jobject obj, jint fd){
+JNIEXPORT jbyte JNICALL Java_Hybmesh_00024Worker_get_1signal(
+		JNIEnv * env, jobject obj, jint fd){
 	int err;
 	char sig = '0';
 	err = HybmeshClientToServer_get_signal(fd, &sig);
@@ -40,7 +36,8 @@ JNIEXPORT jbyte JNICALL Java_HybMesh_get_1signal(JNIEnv* env, jobject obj, jint 
 	return (jbyte)sig;
 }
 
-JNIEXPORT jbyteArray JNICALL Java_HybMesh_get_1data(JNIEnv* env, jobject obj, jint fd){
+JNIEXPORT jbyteArray JNICALL Java_Hybmesh_00024Worker_get_1data(
+		JNIEnv *env, jobject obj, jint fd){
 	int err;
 	int sz;
 	char* data;
@@ -59,13 +56,14 @@ JNIEXPORT jbyteArray JNICALL Java_HybMesh_get_1data(JNIEnv* env, jobject obj, ji
 	return ret;
 }
 
-JNIEXPORT void JNICALL Java_HybMesh_send_1signal(JNIEnv* env, jobject obj, jint fd, jbyte sig){
+JNIEXPORT void JNICALL Java_Hybmesh_00024Worker_send_1signal(
+		JNIEnv *env, jobject obj, jint fd, jbyte sig){
 	int err = HybmeshClientToServer_send_signal(fd, sig);
 	if (err < 0) exception(env, "failed to send a signal to the pipe");
 }
 
-JNIEXPORT void JNICALL Java_HybMesh_send_1data(
-		JNIEnv* env, jobject obj, jint fd, jbyteArray data){
+JNIEXPORT void JNICALL Java_Hybmesh_00024Worker_send_1data(
+		JNIEnv * env, jobject obj, jint fd, jbyteArray data){
 	char* cdata;
 	int sz;
 	int err;
@@ -80,7 +78,8 @@ JNIEXPORT void JNICALL Java_HybMesh_send_1data(
 	(*env)->ReleaseByteArrayElements(env, data, cdata, 0);
 }
 
-JNIEXPORT void JNICALL Java_HybMesh_break_1connection(JNIEnv* env, jobject obj, jint fd){
+JNIEXPORT void JNICALL Java_Hybmesh_00024Worker_break_1connection(
+		JNIEnv *env, jobject obj, jint fd){
 	int err = HybmeshClientToServer_delete(fd);
 	if (err < 0) exception(env, "failed to break hybmesh connection");
 }

@@ -21,12 +21,12 @@ class Generator(bindparser.Generator):
         'NONECONTOUR2D': 'null',
         'GRID2D': "Grid2D",
         'BOOL': "boolean",
-        'VECPOINT': "Point2[]",
-        'VECPOINT3': "Point3[]",
+        'VECPOINT': "IPoint2[]",
+        'VECPOINT3': "IPoint3[]",
         'VECINT': "int[]",
         'INT': "int",
         'OBJECT2D': "Object2D",
-        'POINT': "Point2",
+        'POINT': "IPoint2",
         'DOUBLE': "double",
         'VECOBJECT2D': "Object2D[]",
         'STRING': "String",
@@ -34,12 +34,13 @@ class Generator(bindparser.Generator):
         'VECCONTOUR2D': "Contour2D[]",
         'CONTOUR2D': "Contour2D",
         'GRID3D': "Grid3D",
+        'SURFACE3D': "Surface3D",
         'VECOBJECT3D': "Object3D[]",
         'VECGRID2D': "Grid2D[]",
         'VECSURFACE3D': "Surface3D[]",
         'VECGRID3D': "Grid3D[]",
         'VECOBJECT': "Object[]",
-        'POINT3': "Point3",
+        'POINT3': "IPoint3",
         'VECSTRING': "String[]",
         'VECBOOL': "boolean[]",
         'VEC_INT_DOUBLE': "Map<Integer, Double>",
@@ -76,8 +77,8 @@ class Generator(bindparser.Generator):
         return "Point3({}, {}, {})".format(*args)
 
     @classmethod
-    def _translate_SELF(cls, arg):
-        return "{}".format(arg)
+    def _translate_SID(cls):
+        return cls._worker_call('_tos_string', 'sid');
 
     @classmethod
     def _worker_call(clc, func, *arg):
@@ -87,10 +88,6 @@ class Generator(bindparser.Generator):
             for i in range(len(arg) - 1):
                 ret = ret + ', ' + arg[i+1]
         return ret + ')'
-
-    @classmethod
-    def _sid_tos(cls, argument):
-        return "{}.sid".format(argument)
 
     @classmethod
     def _return_statement(cls, val):
@@ -103,7 +100,8 @@ class Generator(bindparser.Generator):
         else:
             retval = cls._translate(func.argreturn[1])
 
-        capstring = ["public %s %s(" % (retval, func.name)]
+        funcname = cls.to_lower_camel_case(func.name)
+        capstring = ["public %s %s(" % (retval, funcname)]
 
         defargs = []
         for a in args:
@@ -111,7 +109,7 @@ class Generator(bindparser.Generator):
                 a1, a2 = a.split('=')
                 a = a1
                 if a2 not in ['true', 'false', 'null'] and\
-                        a2[0] not in '-.0123456789"':
+                        a2[0] not in '-.0123456789':
                     defargs.append([a1.split()[1], a2])
             capstring.append(a)
             capstring.append(', ')
@@ -122,8 +120,11 @@ class Generator(bindparser.Generator):
                 ' throws Hybmesh.EUserInterrupt, Hybmesh.ERuntimeError')
         ret = [''.join(capstring)]
         for (k, v) in defargs:
-            ret.append("{arg} = ({arg} != null) ? {arg} : new {val};".format(
-                    arg=k, val=v))
+            if v.startswith("IPoint"):
+                v = v[1:]
+            new = '' if v.startswith('"') else ' new'
+            ret.append("{arg} = ({arg} != null) ? {arg} :{new} {val};".format(
+                    arg=k, val=v, new=new))
         return ret
 
     @classmethod
@@ -173,3 +174,11 @@ class Generator(bindparser.Generator):
     @classmethod
     def _eol_symbol(cls):
         return ';'
+
+    @classmethod
+    def _write(cls, lines, outfn):
+        for i in range(len(lines)):
+            if lines[i].startswith("class Hybmesh"):
+                lines[i] = "public " + lines[i]
+                break
+        return super(Generator, cls)._write(lines, outfn)

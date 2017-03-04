@@ -20,7 +20,7 @@ static void CheckDims(int[] v1, int[] v2){
 
 static int callback(string s1, string s2, double p1, double p2){
 	Console.WriteLine(s1+" "+p1.ToString()+" --- "+s2+" "+p2.ToString());
-	return 1;
+	return 0;
 }
 
 public static void pings(){
