@@ -98,7 +98,7 @@ int HybmeshClientToServer_new(const char* path, int* id){
 	h3 = (intptr_t)data_client2server[0];
 	h4 = (intptr_t)data_server2client[1];
 
-	sprintf(cmd, "%s %lld %lld %lld %lld", path, h1, h2, h3, h4);
+	sprintf(cmd, "%s -px %lld %lld %lld %lld", path, h1, h2, h3, h4);
 	printf("%s\n", cmd);
 
 	if(!CreateProcess( NULL,/* No module name (use command line) */
@@ -170,7 +170,7 @@ int HybmeshClientToServer_new(const char* path, int* id){
 		close(sig_server2client[0]);
 		close(data_client2server[1]);
 		close(data_server2client[0]);
-		execl(path, path, s0, s1, s2, s3, NULL);
+		execl(path, path, "-px", s0, s1, s2, s3, NULL);
 		return 0;
 	} else {
 		/* parent process: client */

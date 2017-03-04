@@ -34,7 +34,8 @@ class Generator(bindparser.Generator):
         'VECCONTOUR2D': "Contour2D[]",
         'CONTOUR2D': "Contour2D",
         'GRID3D': "Grid3D",
-        'VECOBJECT3D': "Object3D",
+        'SURFACE3D': "Surface3D",
+        'VECOBJECT3D': "Object3D[]",
         'VECGRID2D': "Grid2D[]",
         'VECSURFACE3D': "Surface3D[]",
         'VECGRID3D': "Grid3D[]",
@@ -42,7 +43,7 @@ class Generator(bindparser.Generator):
         'POINT3': "Point3",
         'VECSTRING': "String[]",
         'VECBOOL': "bool[]",
-        'VEC_INT_DOUBLE': "KeyValuePair<int, double>",
+        'VEC_INT_DOUBLE': "KeyValuePair<int, double>[]",
     }
 
     @classmethod
@@ -76,7 +77,7 @@ class Generator(bindparser.Generator):
         return "Point3({}, {}, {})".format(*args)
 
     @classmethod
-    def _translate_SID(cls, arg):
+    def _translate_SID(cls):
         return cls._worker_call('_tos_string', 'sid');
 
     @classmethod
@@ -89,10 +90,6 @@ class Generator(bindparser.Generator):
         return ret + ')'
 
     @classmethod
-    def _sid_tos(cls, argument):
-        return "{}.sid".format(argument)
-
-    @classmethod
     def _return_statement(cls, val):
         return "return {}".format(val)
 
@@ -103,7 +100,8 @@ class Generator(bindparser.Generator):
         else:
             retval = cls._translate(func.argreturn[1])
 
-        capstring = ["%s %s(" % (retval, func.name)]
+        funcname = cls.to_upper_camel_case(func.name)
+        capstring = ["public %s %s(" % (retval, funcname)]
 
         defargs = []
         for a in args:

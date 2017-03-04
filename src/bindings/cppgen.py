@@ -90,10 +90,6 @@ class Generator(bindparser.Generator):
         return ret + ')'
 
     @classmethod
-    def _sid_tos(cls, argument):
-        return "{}.sid".format(argument)
-
-    @classmethod
     def _return_statement(cls, val):
         return "return {}".format(val)
 

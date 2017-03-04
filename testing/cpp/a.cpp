@@ -36,11 +36,11 @@ void pings(){
 	auto c2 = hm.grid_bnd_to_contour(g1, false);
 	check_dims(c1.dims(), {4, 4});
 	check_dims(c2.dims(), {8, 8});
-	vector<Hybmesh::Point2> pv(4);
-	pv[0] = Hybmesh::Point2(0, 0);
-	pv[1] = Hybmesh::Point2(1, 2);
-	pv[2] = Hybmesh::Point2(3, 1);
-	pv[3] = Hybmesh::Point2(2, 0);
+	vector<P2> pv(4);
+	pv[0] = P2(0, 0);
+	pv[1] = P2(1, 2);
+	pv[2] = P2(3, 1);
+	pv[3] = P2(2, 0);
 	auto c3 = hm.create_contour(pv, {0, 0, 1});
 	auto c4 = hm.create_contour(pv, {3, 2, 1});
 	check_dims(c3.dims(), {4, 3});
@@ -78,15 +78,15 @@ void pings(){
 	auto c20 = hm.partition_contour_const(c15, 0.01);
 	check_dims(c19.dims(), {400, 400});
 	auto c21 = hm.partition_contour_ref_points(c15, {0.01, 0.5},
-		{Hybmesh::Point2(0, 0), Hybmesh::Point2(1, 1)},
-		30, true, -1, {}, {}, Hybmesh::Point2(0, 0), Hybmesh::Point2(1, 1));
+		{P2(0, 0), P2(1, 1)},
+		30, true, -1, {}, {}, P2(0, 0), P2(1, 1));
 	check_dims(c21.dims(), {18, 18});
 	auto c22 = hm.partition_contour_ref_lengths(c15, {0.01, 0.5},
 		{0, 2},
-		30, true, -1, {}, {}, Hybmesh::Point2(0, 0), Hybmesh::Point2(1, 1));
+		30, true, -1, {}, {}, P2(0, 0), P2(1, 1));
 	check_dims(c21.dims(), c22.dims());
 	auto c23 = hm.matched_partition(c15, 0.1, 0.5, {},
-			{0.01}, {Hybmesh::Point2(0.1, 0.1)});
+			{0.01}, {P2(0.1, 0.1)});
 	check_dims(c23.dims(), {74, 74});
 	auto c24 = hm.partition_segment(0.5, 1.5, 0.1, 0.5, {0.01, 1.0});
 	check_cond(c24.size() == 5 && c24[0] == 0.5);

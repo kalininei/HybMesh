@@ -55,5 +55,5 @@ void break_connection(int id){
 	if (err == 0) exception("native break_connection() failed");
 }
 void free_char_array(char* data){
-	free(data);
+	if (data != NULL) free(data);
 }
