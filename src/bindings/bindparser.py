@@ -272,6 +272,14 @@ class Generator(object):
         return ret
 
     @classmethod
+    def _concat_strings(cls, s1, s2):
+        return '{} + {}'.format(s1, s2);
+
+    @classmethod
+    def _ith(cls, code):
+        return "[i]"
+
+    @classmethod
     def _parse_args(cls, func):
         subs = []
         args = func.args
@@ -285,8 +293,8 @@ class Generator(object):
                     a[1] = cls._translate(a[1])
                 subs.append(a[1])
             elif a[0] == '$ARGKW':
-                subs.append('"{}=" + {}'.format(
-                    a[1], cls._tos_method(a[2], var)))
+                subs.append(cls._concat_strings(
+                    '"{}="'.format(a[1]), cls._tos_method(a[2], var)))
             elif a[0].startswith('$ARGSPLIT('):
                 alla = [a]
                 index = int(a[0][10:-1])
@@ -317,8 +325,9 @@ class Generator(object):
                              cls._vec_size(alla[0][2].split('=')[0])) +
                          cls._open_tag()]
                 for a2 in alla:
+                    code = "#" + a2[1][4:]
                     subs2.append(cls._indent() + cls._tos_method(
-                        "#" + a2[1][4:], a2[2].split('=')[0] + '[i]'))
+                         code, a2[2].split('=')[0] + cls._ith(code)))
                 if cls._close_tag():
                     subs2.append('---' + cls._close_tag())
                 subs2.append('---' + cls._string_pop_begin(

@@ -22,14 +22,9 @@ if (INCLUDE_CS_BINDINGS)
 	add_library(${CS_BINDINGS_TARGET} SHARED
 			client.h client.c
 			core_hmconnection_mcspy.h core_hmconnection_mcspy.c)
-	if(WIN32)
-		set(_TMP ${CS_BINDINGS_TARGET}.dll)
-	else()
-		set(_TMP lib${CS_BINDINGS_TARGET}.so)
-	endif()
 	set(CMDLINE cs odir ${BINDINGSOUT}/cs
 		exepath ${EXE_INSTALL_DIR}/${APPNAME}
-		libpath ${SHARE_INSTALL_DIR}/cs/${_TMP})
+		libpath ${SHARE_INSTALL_DIR}/cs)
 	add_custom_command(
 		OUTPUT ${BINDINGSOUT}/cs/Hybmesh.cs
 		COMMAND ${PYTHON} ${BINDPARSER} ${CMDLINE} 
@@ -80,14 +75,9 @@ if (INCLUDE_PYTHON_BINDINGS)
 		client.h client.c
 		core_hmconnection_mcspy.h core_hmconnection_mcspy.c
 	)
-	if(WIN32)
-		set(_TMP ${PY_BINDINGS_TARGET}.dll)
-	else()
-		set(_TMP lib${PY_BINDINGS_TARGET}.so)
-	endif()
 	set(CMDLINE py odir ${BINDINGSOUT}/py
 		exepath ${EXE_INSTALL_DIR}/${APPNAME}
-		libpath ${SHARE_INSTALL_DIR}/py/${_TMP})
+		libpath ${SHARE_INSTALL_DIR}/py)
 	add_custom_command(
 		OUTPUT ${BINDINGSOUT}/py/Hybmesh.py
 		COMMAND ${PYTHON} ${BINDPARSER} ${CMDLINE} 
@@ -108,7 +98,8 @@ endif()
 
 if (INCLUDE_MATLAB_BINDINGS OR INCLUDE_OCTAVE_BINDINGS)
 	set(CMDLINE m odir ${BINDINGSOUT}/m
-		exepath ${EXE_INSTALL_DIR}/${APPNAME})
+		exepath ${EXE_INSTALL_DIR}/${APPNAME}
+		libpath ${SHARE_INSTALL_DIR}/m)
 	add_custom_command(
 		OUTPUT ${BINDINGSOUT}/m/Hybmesh.m
 		COMMAND ${PYTHON} ${BINDPARSER} ${CMDLINE} 

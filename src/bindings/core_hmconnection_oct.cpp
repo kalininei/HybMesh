@@ -2,6 +2,7 @@
 #include <iostream>
 #include "client.h"
 #include <stdexcept>
+#include <string>
 
 static void check_err(int err, const char* msg){
 	if (err == 0){
@@ -13,40 +14,40 @@ static octave_value_list oct_require_connection(const octave_value_list& args){
 	int id;
 	charNDArray server_path_ar = args(1).char_array_value();
 	char* server_path = server_path_ar.fortran_vec();
-	int err = HybmeshClientToServer_new(server_path, &id);
+	std::string server_path2(server_path, server_path+server_path_ar.nelem());
+	int err = HybmeshClientToServer_new(server_path2.c_str(), &id);
 	check_err(err, "failed to open a hybmesh subprocess");
-	NDArray ret(1);
-	ret(1) = (double)id;
+	NDArray ret(dim_vector(1, 1));
+	ret(0) = (double)id;
 	return octave_value(ret);
 }
 
 static octave_value_list oct_get_signal(const octave_value_list& args){
-	int id = args(1).array_value()(1);
+	int id = args(1).array_value()(0);
 	char sig;
 	int err = HybmeshClientToServer_get_signal(id, &sig);
 	check_err(err, "failed to read a signal from the pipe");
-	charNDArray ret(1);
-	ret(1) = sig;
+	charNDArray ret(dim_vector(1, 1));
+	ret(0) = sig;
 	return octave_value(ret);
 }
 
 static octave_value_list oct_send_signal(const octave_value_list& args){
-	int id = args(1).array_value()(1);
-	char sig = args(2).char_array_value()(1);
+	int id = args(1).array_value()(0);
+	char sig = args(2).char_array_value()(0);
 	int err = HybmeshClientToServer_send_signal(id, sig);
 	check_err(err, "failed to send a signal to the pipe");
 	return octave_value_list();
 }
 
 static octave_value_list oct_get_data(const octave_value_list& args){
-	int id = args(1).array_value()(1);
+	int id = args(1).array_value()(0);
 	int sz;
 
 	int err1 = HybmeshClientToServer_get_data1(id, &sz);
 	check_err(err1, "failed to read data from the pipe");
 
-	charNDArray ret(sz);
-
+	charNDArray ret(dim_vector(1, sz));
 	int err2 = HybmeshClientToServer_get_data2(id, sz, ret.fortran_vec());
 	check_err(err2, "failed to read data from the pipe");
 
@@ -54,7 +55,7 @@ static octave_value_list oct_get_data(const octave_value_list& args){
 }
 
 static octave_value_list oct_send_data(const octave_value_list& args){
-	int id = args(1).array_value()(1);
+	int id = args(1).array_value()(0);
 	charNDArray data = args(2).char_array_value();
 	int sz = data.nelem();
 	int err = HybmeshClientToServer_send_data(id, sz, data.fortran_vec());
@@ -63,9 +64,10 @@ static octave_value_list oct_send_data(const octave_value_list& args){
 }
 
 static octave_value_list oct_break_connection(const octave_value_list& args){
-	int id = args(1).array_value()(1);
+	int id = args(1).array_value()(0);
 	int err = HybmeshClientToServer_delete(id);
 	check_err(err, "failed to close hybmesh connection");
+	return octave_value_list();
 }
 
 // arg0 - procedure code:

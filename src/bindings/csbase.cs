@@ -12,7 +12,7 @@ using System.Linq;
 public class Hybmesh: IDisposable{
 	//Worker class and instance should be private.
 	//But if so Object.worker instance can not be protected (visible for Grid2D, etc).
-	public class Worker: IDisposable{
+	public class Worker{
 		static Worker(){ Hybmesh.load_libs(); }
 		// ==== communication library
 		private int connection = -1;
@@ -34,6 +34,12 @@ public class Hybmesh: IDisposable{
 		private static extern void free_char_array(IntPtr s);
 		public static void ping(){
 			free_char_array(IntPtr.Zero);  //for NULL does nothing
+		}
+		public static void free(){
+			if (connection != -1){
+				break_connection(connection);
+				connection = -1;
+			}
 		}
 		//server communication
 		private void _send_command(string func, string com){
@@ -283,20 +289,6 @@ public class Hybmesh: IDisposable{
 			callback = (string s1, string s2, double p1, double p2) => 0;
 		}
 
-		protected virtual void Dispose(bool disposing){
-			if (connection != -1){
-				break_connection(connection);
-				connection = -1;
-			}
-			if (disposing){ /* release other disposable objects */ }
-		}
-		~Worker(){
-			Dispose(false);
-		}
-		public void Dispose(){
-			Dispose(true);
-			GC.SuppressFinalize(this);
-		}
 	};
 	public readonly Worker worker;
 
@@ -354,10 +346,17 @@ public class Hybmesh: IDisposable{
 	public Hybmesh(){
 		worker = new Worker();
 	}
+	protected virtual void Dispose(bool disposing){
+		worker.free();
+	}
+	~Hybmesh(){
+		Dispose(false);
+	}
 	public void Dispose(){
-		worker.Dispose();
+		Dispose(true);
 		GC.SuppressFinalize(this);
 	}
+
 	//==================== callback
 	public void AssignCallback(DCallback cb){
 		worker.callback = cb;

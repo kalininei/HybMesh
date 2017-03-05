@@ -35,6 +35,7 @@ class Generator(bindparser.Generator):
         'VECCONTOUR2D': "",
         'CONTOUR2D': "",
         'GRID3D': "",
+        'SURFACE3D': "",
         'VECOBJECT3D': "",
         'VECGRID2D': "",
         'VECSURFACE3D': "",
@@ -77,8 +78,8 @@ class Generator(bindparser.Generator):
         return cls._translate_VALVECDOUBLE(*args)
 
     @classmethod
-    def _translate_SELF(cls, arg):
-        return "self.{}".format(arg)
+    def _translate_SID(cls):
+        return cls._worker_call('_tos_string', 'self.sid');
 
     @classmethod
     def _worker_call(clc, func, *arg):
@@ -88,10 +89,6 @@ class Generator(bindparser.Generator):
             for i in range(len(arg) - 1):
                 ret = ret + ', ' + arg[i+1]
         return ret + ')'
-
-    @classmethod
-    def _sid_tos(cls, argument):
-        return "{}.sid".format(argument)
 
     @classmethod
     def _return_statement(cls, val):
@@ -126,13 +123,17 @@ class Generator(bindparser.Generator):
     @classmethod
     def _string_append(cls, indent, var, what, sep):
         if sep:
-            return '{0}{1} = {1} + "{2}" + {3}'.format(indent, var, sep, what)
+            return '{0}{1} = sprintf("%s%s%s", {1}, "{2}", {3})'.format(indent, var, sep, what)
         else:
-            return "{0}{1} = {1} + {2}".format(indent, var, what)
+            return '{0}{1} = sprintf("%s%s", {1}, {2})'.format(indent, var, what)
+
+    @classmethod
+    def _concat_strings(cls, s1, s2):
+        return "sprintf(\"%s%s\", {}, {})".format(s1, s2);
 
     @classmethod
     def _string_into_parant(cls, s, parant):
-        return '{0} = "{1}" + {0} + "{2}"'.format(s, parant[0], parant[1])
+        return '{0} = sprintf("%s%s%s", "{1}", {0}, "{2}")'.format(s, parant[0], parant[1])
 
     @classmethod
     def _vecbyte_init(cls, var, val):
@@ -140,7 +141,16 @@ class Generator(bindparser.Generator):
 
     @classmethod
     def _for_loop(cls, nstring):
-        return "for i in [1:{}]".format(nstring)
+        return "for i=1:{}".format(nstring)
+
+    @classmethod
+    def _ith(cls, code):
+        if code in ["#POINT", "#POINT3"]:
+            return "(i, :)"
+        elif code in ["#CONTOUR2D", "GRID2D", "GRID3D", "SURFACE3D"]:
+            return "{i}"
+        else:
+            return "(i)"
 
     @classmethod
     def _indent(cls):
@@ -148,8 +158,8 @@ class Generator(bindparser.Generator):
 
     @classmethod
     def _string_pop_begin(cls, var, num):
-        s = "if size({0}, 2)>{1} {0} = {0}(num + 1: size({0}, 2)) end"
-        return s.format(var, num)
+        s = "if length({0})>{1} {0} = {0}({2}: length({0})); end"
+        return s.format(var, num, num+1)
 
     @classmethod
     def _eol_symbol(cls):
