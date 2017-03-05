@@ -34,6 +34,7 @@ class Generator(bindparser.Generator):
         'VECCONTOUR2D': "",
         'CONTOUR2D': "",
         'GRID3D': "",
+        'SURFACE3D': "",
         'VECOBJECT3D': "",
         'VECGRID2D': "",
         'VECSURFACE3D': "",
@@ -76,21 +77,17 @@ class Generator(bindparser.Generator):
         return cls._translate_VALVECDOUBLE(*args)
 
     @classmethod
-    def _translate_SELF(cls, arg):
-        return "self.{}".format(arg)
+    def _translate_SID(cls):
+        return cls._worker_call('_tos_string', 'self.sid');
 
     @classmethod
     def _worker_call(clc, func, *arg):
-        ret = 'self.worker.{}('.format(func)
+        ret = 'self._worker.{}('.format(func)
         if len(arg) > 0:
             ret = ret + arg[0]
             for i in range(len(arg) - 1):
                 ret = ret + ', ' + arg[i+1]
         return ret + ')'
-
-    @classmethod
-    def _sid_tos(cls, argument):
-        return "{}.sid".format(argument)
 
     @classmethod
     def _return_statement(cls, val):
