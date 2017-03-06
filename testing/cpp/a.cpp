@@ -19,14 +19,17 @@ void check_dims(const vector<int>& v1, const vector<int>& v2){
 	}
 }
 
-int callback(const std::string& s1, const std::string& s2, double p1, double p2){
+int callback_good(const std::string& s1, const std::string& s2, double p1, double p2){
 	std::cout<<s1<<" "<<p1<<" --- "<<s2<<" "<<p2<<std::endl;
 	return 0;
 }
 
+int callback_bad(const std::string& s1, const std::string& s2, double p1, double p2){
+	std::cout<<s1<<" "<<p1<<" --- "<<s2<<" "<<p2<<std::endl;
+	return p1 > 0.7 ? 1 : 0;
+}
+
 void pings(){
-	//FIXME: exception catch does not work:
-	// neither user interrupt nor runtime errors.
 	Hybmesh hm("../../src/py/hybmesh.py");
 
 	auto g1 = hm.add_unf_rect_grid1({1, 2, 3}, {2, 3, 4});
@@ -122,12 +125,24 @@ void pings(){
 			Hybmesh::Contour2D::None(),
 			Hybmesh::Contour2D::None(),
 			{1, 1, 1, 0.8});
-	hm.assign_callback(callback);
+	hm.assign_callback(callback_bad);
+	try{
+		auto c42 = hm.add_custom_rect_grid("orthogonal", c37, c39);
+	} catch (Hybmesh::EUserInterrupt& e){
+		std::cout<<"Interrupt catched"<<std::endl;
+	}
+	hm.assign_callback(callback_good);
 	auto c42 = hm.add_custom_rect_grid("orthogonal", c37, c39);
 	hm.reset_callback();
 	check_dims(c40.dims(), {121, 220, 100});
 	check_dims(c40.dims(), c41.dims());
 	check_dims(c40.dims(), c42.dims());
+	try{
+		auto c43_ = hm.add_circ_rect_grid(P2(0, 0), -1, 0.05);
+	} catch (Hybmesh::ERuntimeError& e){
+		std::cout<<"Runtime error catched:"<<std::endl;
+		std::cout<<e.what()<<std::endl;
+	}
 	auto c43 = hm.add_circ_rect_grid(P2(0, 0), 1, 0.05);
 	auto c44 = hm.add_circ_rect_grid(P2(0, 0), 1, 0.05, 1., 1., "orthogonal_rect");
 	check_dims(c43.dims(), c44.dims());
@@ -155,7 +170,9 @@ void pings(){
 	auto c57 = hm.add_unf_rect_grid1(c57x, c57x);
 	//FIXME buffers other than 0.0 do not work
 	auto c58 = hm.unite_grids1(c56, c57, 0.0);
+	hm.stdout_verbosity(3);
 	auto c59 = hm.map_grid(c58, c57, {P2(0, 0)}, {P2(0.3, 0.3)});
+	hm.stdout_verbosity(0);
 	hm.heal_grid(c59, 30, 30);
 	auto c60 = hm.exclude_contours(c58, {c57}, "inner");
 	auto c61 = hm.extrude_grid(c60, {0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3});

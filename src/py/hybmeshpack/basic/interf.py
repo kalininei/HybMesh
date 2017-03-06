@@ -28,12 +28,17 @@ class BasicInterface(object):
         self.cur_flow_collection = None
 
     def set_flow(self, flow):
-        # unregister from previous flow messages
-        if self.cur_flow is not None:
-            self.cur_flow.remove_subscriber(self.flow_messages)
+        self.unset_flow()
         # register for cur_flow messages
         self.cur_flow = flow
         self.cur_flow.add_subscriber(self.flow_messages)
+
+    def unset_flow(self):
+        # unregister from previous flow messages
+        if self.cur_flow is not None:
+            self.cur_flow.remove_subscriber(self.flow_messages)
+        self.cur_flow = None
+
 
     # ============ Functions for overriding
     def flow_messages(self, tp, sender, **kwargs):

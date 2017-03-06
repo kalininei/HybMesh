@@ -1,5 +1,5 @@
 from hybmeshpack.hmscript import flow, hmscriptfun
-from datachecks import (icheck, AObject, ZType, NoneOr, List, UInt)
+from datachecks import (icheck, AObject, ZType, NoneOr, List, UInt, OneOf)
 import c2oper
 import o2info
 import o3info
@@ -55,3 +55,8 @@ def raw_data(obj, what):
         return o3info.tab_surf3(obj, what)
     elif t == 'g3':
         return o3info.tab_grid3(obj, what)
+
+@hmscriptfun
+def stdout_verbosity(verb):
+    icheck(0, OneOf(0, 1, 2, 3))
+    flow.set_interface(flow.interface.reset(verb))

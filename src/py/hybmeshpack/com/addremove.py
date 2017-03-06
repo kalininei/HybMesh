@@ -82,7 +82,6 @@ class AbstractAddRemove(command.Command):
         with adding and/or removing objects """
     def __init__(self, argsdict):
         super(AbstractAddRemove, self).__init__(argsdict)
-        self.__addrem = None
 
     def _exec(self):
         self.__addrem = _AddRemoveObjects(*self._addrem_objects())

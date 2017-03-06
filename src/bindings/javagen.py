@@ -21,12 +21,12 @@ class Generator(bindparser.Generator):
         'NONECONTOUR2D': 'null',
         'GRID2D': "Grid2D",
         'BOOL': "boolean",
-        'VECPOINT': "IPoint2[]",
-        'VECPOINT3': "IPoint3[]",
+        'VECPOINT': "Point2[]",
+        'VECPOINT3': "Point3[]",
         'VECINT': "int[]",
         'INT': "int",
         'OBJECT2D': "Object2D",
-        'POINT': "IPoint2",
+        'POINT': "Point2",
         'DOUBLE': "double",
         'VECOBJECT2D': "Object2D[]",
         'STRING': "String",
@@ -40,7 +40,7 @@ class Generator(bindparser.Generator):
         'VECSURFACE3D': "Surface3D[]",
         'VECGRID3D': "Grid3D[]",
         'VECOBJECT': "Object[]",
-        'POINT3': "IPoint3",
+        'POINT3': "Point3",
         'VECSTRING': "String[]",
         'VECBOOL': "boolean[]",
         'VEC_INT_DOUBLE': "Map<Integer, Double>",
@@ -120,8 +120,6 @@ class Generator(bindparser.Generator):
                 ' throws Hybmesh.EUserInterrupt, Hybmesh.ERuntimeError')
         ret = [''.join(capstring)]
         for (k, v) in defargs:
-            if v.startswith("IPoint"):
-                v = v[1:]
             new = '' if v.startswith('"') else ' new'
             ret.append("{arg} = ({arg} != null) ? {arg} :{new} {val};".format(
                     arg=k, val=v, new=new))

@@ -1,32 +1,29 @@
 import java.util.Map;
 
-class Callback implements Hybmesh.ICallback{
+class GoodCallback implements Hybmesh.ICallback{
 	public int callback(String s1, String s2, double p1, double p2){
 		System.out.println(s1+" "+Double.toString(p1)+
 			" --- "+s2+" "+Double.toString(p2));
 		return 0;
 	}
 }
-
-class P2 implements Hybmesh.IPoint2{
-	double _x, _y;
-	public P2(double x, double y){
-		this._x = x;
-		this._y = y;
+class BadCallback implements Hybmesh.ICallback{
+	public int callback(String s1, String s2, double p1, double p2){
+		System.out.println(s1+" "+Double.toString(p1)+
+			" --- "+s2+" "+Double.toString(p2));
+		return (p1<0.7) ? 0 : 1;
 	}
-	public double x(){ return _x; }
-	public double y(){ return _y; }
 }
-class P3 implements Hybmesh.IPoint3{
-	double _x, _y, _z;
-	public P3(double x, double y, double z){
-		this._x = x;
-		this._y = y;
-		this._z = z;
+
+class P2 extends Hybmesh.Point2{
+	public P2(double x, double y){
+		super(x, y);
 	}
-	public double x(){ return _x; }
-	public double y(){ return _y; }
-	public double z(){ return _z; }
+}
+class P3 extends Hybmesh.Point3{
+	public P3(double x, double y, double z){
+		super(x, y, z);
+	}
 }
 
 class a{
@@ -134,12 +131,24 @@ public static void pings(Hybmesh hm) throws Exception{
 	Hybmesh.Grid2D c41 = hm.addCustomRectGridHtfi(c37, c39,
 			null, null,
 			new double[]{1, 1, 1, 0.8}, false);
-	hm.assignCallback(new Callback());
+	hm.assignCallback(new BadCallback());
+	try{
+		Hybmesh.Grid2D c42_ = hm.addCustomRectGrid("orthogonal", c37, c39, null, null, false);
+	} catch (Hybmesh.EUserInterrupt e){
+		System.out.println("User interrupt catched");
+	}
+	hm.assignCallback(new GoodCallback());
 	Hybmesh.Grid2D c42 = hm.addCustomRectGrid("orthogonal", c37, c39, null, null, false);
 	hm.resetCallback();
 	checkdims(c40.dims(), new int[]{121, 220, 100});
 	checkdims(c40.dims(), c41.dims());
 	checkdims(c40.dims(), c42.dims());
+	try{
+		Hybmesh.Grid2D c43_ = hm.addCircRectGrid(new P2(0, 0), 1, 0.05, 1.0, 1.0, "AAAlinear");
+	} catch (Hybmesh.ERuntimeError e){
+		System.out.println("Runtime error catched");
+		System.out.println(e.getMessage());
+	}
 	Hybmesh.Grid2D c43 = hm.addCircRectGrid(new P2(0, 0), 1, 0.05, 1.0, 1.0, "linear");
 	Hybmesh.Grid2D c44 = hm.addCircRectGrid(new P2(0, 0), 1, 0.05, 1.0, 1.0, "orthogonal_rect");
 	checkdims(c43.dims(), c44.dims());
@@ -167,7 +176,9 @@ public static void pings(Hybmesh hm) throws Exception{
 	Hybmesh.Grid2D c57 = hm.addUnfRectGrid1(c57x, c57x, null);
 	//FIXME buffers other than 0.0 do not work
 	Hybmesh.Grid2D c58 = hm.uniteGrids1(c56, c57, 0.0, false, false, 0, "3");
+	hm.stdoutVerbosity(3);
 	Hybmesh.Grid2D c59 = hm.mapGrid(c58, c57, new P2[]{new P2(0, 0)}, new P2[]{new P2(0.3, 0.3)}, null, null, null, false, false);
+	hm.stdoutVerbosity(0);
 	hm.healGrid(c59, 30, 30);
 	Hybmesh.Grid2D c60 = hm.excludeContours(c58, new Hybmesh.Object2D[]{c57}, "inner");
 	Hybmesh.Grid3D c61 = hm.extrudeGrid(c60, new double[]{0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3}, 0, 0);

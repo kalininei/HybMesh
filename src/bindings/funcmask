@@ -1,4 +1,11 @@
 $FUNC(
+	$NAME stdout_verbosity
+	$TFUN _bindoper.stdout_verbosity
+	$ARG #INT verbosity
+	$RETURNNO
+$FUNC)
+
+$FUNC(
 	$NAME grid_bnd_to_contour
 	$DOC
 		Builds contour out of grid boundary

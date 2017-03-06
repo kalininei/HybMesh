@@ -74,15 +74,15 @@ def flow_and_framework_tofile(filename, comflow, fmt="ascii"):
     cb = comflow.interface.ask_for_callback()
     cb1 = cb.subcallback(0, 3)
 
-    cb1._callback("Writing command flow", "", 0, 0)
+    cb1.pycall("Writing command flow", "", 0, 0)
     # write everithing except geometry data data
     r = _root_xml()
     write_command_flow(comflow, r)
     st = ET.SubElement(r.find('FLOW'), "STATE")
     write_framework(comflow.receiver, st)
-    cb1._callback("Writing command flow", "", 0.8, 0)
+    cb1.pycall("Writing command flow", "", 0.8, 0)
     writexml(r, filename, False)
-    cb1._callback("Writing command flow", "Done", 1, 1)
+    cb1.pycall("Writing command flow", "Done", 1, 1)
 
     # add geometry data and write to file
     doc, root = 0, 0
@@ -95,7 +95,7 @@ def flow_and_framework_tofile(filename, comflow, fmt="ascii"):
         raise
     finally:
         cb3 = cb.subcallback(2, 3)
-        cb3._callback("Write to file", "", 0.0, 0)
+        cb3.pycall("Write to file", "", 0.0, 0)
         hmxml.doc_to_file(doc, filename)
         hmxml.close_doc(doc, [root, nd])
-        cb3._callback("Write to file", "Done", 1, 1)
+        cb3.pycall("Write to file", "Done", 1, 1)

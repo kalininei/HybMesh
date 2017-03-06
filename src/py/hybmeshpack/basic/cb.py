@@ -1,6 +1,12 @@
 import ctypes as ct
 
 
+class UserInterrupt(Exception):
+    """Raised when callback returns 1"""
+    def __init__(self):
+        super(UserInterrupt, self).__init__("Interrupted by user")
+
+
 class Callback(object):
     """ Abstract callback function of type
         cb_result callback_fun(*cb_args)
@@ -44,6 +50,14 @@ class Callback(object):
     def get_result(self):
         return self._result
 
+    # this should be called from py side procedures
+    # if callback object is availible.
+    def pycall(self, *args):
+        if self._callback(*args) == 1:
+            raise UserInterrupt()
+
+    # custruct callback delegate for py or c functions.
+    # Its return should be handled. To raise immediately use pycall
     def _get_callback(self):
         def cb(*args):
             return self._callback(*args)
@@ -126,6 +140,10 @@ class ConsoleCallbackCancel2(SilentCallbackCancel2):
             par2 = n2
             self.__prev_n2 = n2
 
+        if len(par1) > n:
+            par1 = par1[:n-3] + '...'
+        if len(par2) > n:
+            par2 = par2[:n-3] + '...'
         par1 = self._supl(par1, '#', len1)
         par1 = self._supl(par1, '-', n)
         if n2 != "Done":

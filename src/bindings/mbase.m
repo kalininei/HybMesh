@@ -123,9 +123,9 @@ classdef HybmeshWorker < handle
 						self._apply_callback(self._read_buffer());
 					%exception return
 					case 'I'
-						error("User interrupted");
+						error("Interrupted by user");
 					case 'E'
-						error(self._read_buffer());
+						error(self._tos_vecbyte(self._read_buffer()));
 					%something went wrong
 					case '0'
 						error("Server stopped working");

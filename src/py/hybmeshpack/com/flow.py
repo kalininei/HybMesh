@@ -2,6 +2,7 @@ import command
 import hybmeshpack.basic.proc as bp
 import hybmeshpack.basic.interf as interf
 from hybmeshpack.gdata.framework import Framework
+from hybmeshpack.basic.cb import UserInterrupt
 
 
 class CommandFlow(bp.AbstractSender):
@@ -12,6 +13,7 @@ class CommandFlow(bp.AbstractSender):
     FAILED_EXECUTION = 3
     UNDO_COMMAND = 4
     TO_ZERO_STATE = 5
+    USER_INTERRUPT = 6
 
     def __init__(self):
         super(CommandFlow, self).__init__()
@@ -27,6 +29,7 @@ class CommandFlow(bp.AbstractSender):
         self.interface = interf.BasicInterface()
 
     def set_interface(self, interface):
+        self.interface.unset_flow()
         self.interface = interface
         self.interface.set_flow(self)
 
@@ -50,14 +53,14 @@ class CommandFlow(bp.AbstractSender):
 
     # removes all commands after curpos, adds the command to list
     # and executes it
-    def exec_command(self, c):
+    def exec_command(self, com):
         # remove all commands from current position to last command
         if (self.can_redo()):
             for c in self._commands[self._curpos + 1:]:
                 c.reset()
             self._commands = self._commands[:self._curpos + 1]
         # addition
-        self.append_command(c)
+        self.append_command(com)
         # execution
         self.exec_next()
 
@@ -82,6 +85,10 @@ class CommandFlow(bp.AbstractSender):
             self._send_message(self.BEFORE_EXECUTION, com=cmd)
             try:
                 res = cmd.do(self.receiver)
+            except UserInterrupt:
+                self._curpos -= 1
+                self._send_message(self.USER_INTERRUPT, com=cmd)
+                return
             except Exception as e:
                 self.interface.error_handler().execution_error(e, cmd)
 

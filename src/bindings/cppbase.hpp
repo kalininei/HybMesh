@@ -9,9 +9,9 @@
 #include <cstdlib>
 #include <functional>
 
+#define DEFAULT_HYBMESH_EXE_PATH "hybmesh"  //>>$EXEPATH
 
 class Hybmesh{
-	static constexpr char default_hybmesh_exe_path[] = "hybmesh";  // >>$EXEPATH
 public:
 	struct Point2;
 	struct Point3;
@@ -78,7 +78,7 @@ private:
 		//constructor
 		Worker(const char* hybmeshpath){
 			if (hybmeshpath == NULL) require_connection(
-					default_hybmesh_exe_path);
+					DEFAULT_HYBMESH_EXE_PATH);
 			else require_connection(hybmeshpath);
 			callback = [](const std::string&, const std::string&,
 			              double, double)->int{ return 0; };

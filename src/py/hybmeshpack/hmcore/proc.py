@@ -1,5 +1,5 @@
 import ctypes as ct
-from hybmeshpack.basic.cb import SilentCallbackCancel2
+from hybmeshpack.basic.cb import SilentCallbackCancel2, UserInterrupt
 from . import CppLibError, cport
 
 
@@ -18,7 +18,10 @@ def ccall_cb(func, cb, *args):
     cb.execute_command()
     if not cb.get_result():
         msg = get_last_cside_error()
-        raise CppLibError(msg)
+        if msg.startswith("User interrupt"):
+            raise UserInterrupt()
+        else:
+            raise CppLibError(msg)
 
 
 def ccall(func, *args):

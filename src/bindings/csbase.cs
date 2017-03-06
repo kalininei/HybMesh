@@ -35,7 +35,7 @@ public class Hybmesh: IDisposable{
 		public static void ping(){
 			free_char_array(IntPtr.Zero);  //for NULL does nothing
 		}
-		public static void free(){
+		public void free(){
 			if (connection != -1){
 				break_connection(connection);
 				connection = -1;

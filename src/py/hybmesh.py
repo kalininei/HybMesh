@@ -55,14 +55,7 @@ def sxexec(argv):
                 raise
         except:
             sys.exit('Invalid verbosity level. See -help.')
-    if verb == 0:
-        hmscript.flow.set_interface(hmscript.ConsoleInterface0())
-    elif verb == 1:
-        hmscript.flow.set_interface(hmscript.ConsoleInterface1())
-    elif verb == 2:
-        hmscript.flow.set_interface(hmscript.ConsoleInterface2())
-    elif verb == 3:
-        hmscript.flow.set_interface(hmscript.ConsoleInterface3())
+    hmscript.flow.set_interface(hmscript.console_interface_factory(verb))
     execfile(fn)
     if verb > 1:
         print "DONE"
@@ -134,13 +127,15 @@ def pxexec(argv):
             sz = struct.unpack('=i', sz)[0]
             args = os.read(data_read, sz)
             try:
-                ##############################3
+                # #############################3
                 print cm, ":", repr(args)
                 ret = eval("hmscript.{}({})".format(cm, args))
             except hmscript.UserInterrupt:
+                print "USER INTERRUPT"
                 # interrupted by callback function
                 os.write(sig_write, "I")
             except Exception as e:
+                print "GENERAL EXCEPTION"
                 # error return
                 s = str(e)
                 os.write(data_write, struct.pack('=i', len(s)) + s)
@@ -158,7 +153,7 @@ def pxexec(argv):
                 else:
                     # regular command which returns python types
                     s = repr(ret)
-                    ##############################3
+                    # #############################3
                     print "return is ", s
                     os.write(data_write, struct.pack('=i', len(s)) + s)
                 os.write(sig_write, "R")

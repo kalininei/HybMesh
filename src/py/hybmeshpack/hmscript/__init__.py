@@ -5,6 +5,7 @@ import struct
 from hybmeshpack.com.flow import CommandFlow
 import hybmeshpack.basic.interf
 import hybmeshpack.basic.cb
+from hybmeshpack.basic.cb import UserInterrupt
 import hybmeshpack.basic.proc
 
 
@@ -24,12 +25,6 @@ class InvalidArgument(ValueError):
         super(InvalidArgument, self).__init__(msg)
 
 
-class UserInterrupt(Exception):
-    """Raised when callback returns 1"""
-    def __init__(self):
-        super(UserInterrupt, self).__init__("Interrupted by user")
-
-
 def hmscriptfun(method):
     """ decorator for interface functions
     for catching exceptions.
@@ -45,9 +40,6 @@ def hmscriptfun(method):
             raise
         except Exception as e:
             exc_info = sys.exc_info()
-            ############################################3
-            import traceback
-            print traceback.format_exc(exc_info[2])
             newe = ExecError(method.__name__, str(e))
             raise newe.__class__, newe, exc_info[2]
     return ret
@@ -65,6 +57,7 @@ class ConsoleErrorHandler(hybmeshpack.basic.interf.DefaultErrorHandler):
         print s
         # traceback
         print ''.join(traceback.format_exc()), '>>>>>>>>>>>>>>>>>>>>>>>'
+        super(ConsoleErrorHandler, self).execution_error(exc, cmd)
 
 
 class ConsoleInterface0(hybmeshpack.basic.interf.BasicInterface):
@@ -77,6 +70,9 @@ class ConsoleInterface0(hybmeshpack.basic.interf.BasicInterface):
         if tp == sender.FAILED_EXECUTION:
             # exception will be catched in hmscript function
             raise Exception
+        elif tp == sender.USER_INTERRUPT:
+            # exception will be catched in hmscript function
+            raise UserInterrupt
 
 
 class ConsoleInterface1(ConsoleInterface0):
@@ -93,20 +89,24 @@ class ConsoleInterface2(ConsoleInterface1):
     """ verbosity=2 mode interface """
     def __init__(self):
         super(ConsoleInterface2, self).__init__()
+        self.show_linenum = True
 
     # overriden functions
     def flow_messages(self, tp, sender, **kwargs):
         if tp == sender.BEFORE_EXECUTION:
             line = kwargs['com'].method_code()
-            for s in traceback.extract_stack()[::-1]:
-                if "hybmeshpack" not in s[0]:
-                    fn = os.path.basename(s[0])
-                    line = "%s (%s:%s)" % (line, fn, s[1])
-                    break
+            if self.show_linenum:
+                for s in traceback.extract_stack()[::-1]:
+                    if "hybmeshpack" not in s[0]:
+                        fn = os.path.basename(s[0])
+                        line = "{} ({}:{})".format(line, fn, s[1])
+                        break
             print line
-        if tp == sender.SUCCESS_EXECUTION:
+        elif tp == sender.SUCCESS_EXECUTION:
             print '--- OK'
-        if tp == sender.FAILED_EXECUTION:
+        elif tp == sender.USER_INTERRUPT:
+            print '--- Interrupted'
+        elif tp == sender.FAILED_EXECUTION:
             print '--- Failed'
         super(ConsoleInterface2, self).flow_messages(
             tp, sender, **kwargs)
@@ -121,59 +121,77 @@ class ConsoleInterface3(ConsoleInterface2):
         return hybmeshpack.basic.cb.ConsoleCallbackCancel2()
 
 
-class PipeInterface(ConsoleInterface0):
-    def __init__(self, sig_read, sig_write, data_read, data_write):
+def console_interface_factory(verbosity):
+    if verbosity == 0:
+        return ConsoleInterface0
+    elif verbosity == 1:
+        return ConsoleInterface1
+    elif verbosity == 2:
+        return ConsoleInterface2
+    elif verbosity == 3:
+        return ConsoleInterface3
+    else:
+        raise Exception("Imposible vertosity: {}".format(verbosity))
+
+
+class PipeInterface(hybmeshpack.basic.interf.BasicInterface):
+
+    def __init__(self, sig_read, sig_write, data_read, data_write,
+                 verbosity=0):
         super(PipeInterface, self).__init__()
         self.p = [sig_read, sig_write, data_read, data_write]
-        self.was_cancelled = False
         self.last_error_message = ""
+        self.messenger = console_interface_factory(verbosity)()
+        self.messenger.show_linenum = False
+        self.callback_base = self.messenger.ask_for_callback().__class__
+        self.error_handler_base = self.messenger.error_handler().__class__
 
-    class Callback(hybmeshpack.basic.cb.SilentCallbackCancel2):
-        def __init__(self, interf):
-            super(PipeInterface.Callback, self).__init__()
-            self.interf = interf
-            self.interf.was_cancelled = False
-
-        def _callback(self, n1, n2, p1, p2):
-            l1, l2 = len(n1), len(n2)
-            ilen = 8 + 8 + 4 + 4 + l1 + l2
-            s = struct.pack('=iddii%is%is' % (l1, l2),
-                            ilen, p1, p2, l1, l2, n1, n2)
-            os.write(self.interf.p[3], s)
-            os.write(self.interf.p[1], "B")
-            r = os.read(self.interf.p[0], 1)
-            if r == "S":
-                self._proceed = False
-                self.was_cancelled = True
-            elif r == "G":
-                self._proceed = True
-            return super(PipeInterface.Callback, self)._callback()
-
-    class ErrorHandler(hybmeshpack.basic.interf.DefaultErrorHandler):
-        def __init__(self, interf):
-            super(PipeInterface.ErrorHandler, self).__init__()
-            self.interf = interf
-
-        def execution_error(self, exc, cmd):
-            #######################
-            ConsoleErrorHandler().execution_error(exc, cmd)
-            self.interf.last_error_message = str(exc)
+    def reset(self, verbosity):
+        return PipeInterface(*self.p, verbosity=verbosity)
 
     def ask_for_callback(self):
-        return self.Callback(self)
+        class LCallback(self.callback_base):
+            def __init__(self, parent):
+                super(LCallback, self).__init__()
+                self.parent = parent
+
+            def _callback(self, n1, n2, p1, p2):
+                l1, l2 = len(n1), len(n2)
+                ilen = 8 + 8 + 4 + 4 + l1 + l2
+                s = struct.pack('=iddii%is%is' % (l1, l2),
+                                ilen, p1, p2, l1, l2, n1, n2)
+                os.write(self.parent.p[3], s)
+                os.write(self.parent.p[1], "B")
+                r = os.read(self.parent.p[0], 1)
+                if r == "S":
+                    self._proceed = False
+                elif r == "G":
+                    self._proceed = True
+                return super(LCallback, self)._callback(n1, n2, p1, p2)
+
+        return LCallback(self)
 
     # overriden functions
     def error_handler(self):
-        return self.ErrorHandler(self)
+
+        class LErrorHandler(self.error_handler_base):
+            def __init__(self, parent):
+                super(LErrorHandler, self).__init__()
+                self.parent = parent
+
+            def execution_error(self, exc, cmd):
+                self.parent.last_error_message = str(exc)
+                return super(LErrorHandler, self).execution_error(exc, cmd)
+
+        return LErrorHandler(self)
 
     # overriden functions
     def flow_messages(self, tp, sender, **kwargs):
         if tp == sender.FAILED_EXECUTION:
             # exception will be catched in hmscript function
-            if self.was_cancelled:
-                raise UserInterrupt()
-            else:
-                raise Exception(self.last_error_message)
+            raise Exception(self.last_error_message)
+
+        self.messenger.flow_messages(tp, sender, **kwargs)
 
 
 # global flow and data

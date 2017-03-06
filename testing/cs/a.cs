@@ -18,16 +18,17 @@ static void CheckDims(int[] v1, int[] v2){
 	}
 }
 
-static int callback(string s1, string s2, double p1, double p2){
+static int good_callback(string s1, string s2, double p1, double p2){
 	Console.WriteLine(s1+" "+p1.ToString()+" --- "+s2+" "+p2.ToString());
 	return 0;
 }
 
-public static void pings(){
-	Hybmesh.hybmesh_exec_path = "../../src/py/hybmesh.py";
-	Hybmesh.hybmesh_lib_path = "../../build/bin";
+static int bad_callback(string s1, string s2, double p1, double p2){
+	Console.WriteLine(s1+" "+p1.ToString()+" --- "+s2+" "+p2.ToString());
+	return (p1 > 0.7) ? 1 : 0;
+}
 
-	var hm = new Hybmesh();
+public static void pings(Hybmesh hm){
 	var g1 = hm.AddUnfRectGrid1(new double[]{1, 2, 3}, new double[]{2, 3, 4});
 	CheckDims(g1.Dims(), new int[]{9, 12, 4});
 	var c1 = hm.GridBndToContour(g1, true);
@@ -118,12 +119,25 @@ public static void pings(){
 	var c41 = hm.AddCustomRectGridHtfi(c37, c39,
 			null, null,
 			new double[]{1, 1, 1, 0.8});
-	hm.AssignCallback(callback);
+	hm.AssignCallback(bad_callback);
+	try{
+		var c42_ = hm.AddCustomRectGrid("orthogonal", c37, c39);
+	} catch (Hybmesh.EUserInterrupt e){
+		Console.WriteLine("Interrupt catched");
+	}
+	hm.AssignCallback(good_callback);
 	var c42 = hm.AddCustomRectGrid("orthogonal", c37, c39);
 	hm.ResetCallback();
 	CheckDims(c40.Dims(), new int[]{121, 220, 100});
 	CheckDims(c40.Dims(), c41.Dims());
 	CheckDims(c40.Dims(), c42.Dims());
+	try{
+		var c43_ = hm.AddCircRectGrid(new P2(0, 0), -1, 0.05);
+	} catch (Hybmesh.ERuntimeError e){
+		Console.WriteLine("Runtime error catched");
+		Console.WriteLine(e.Message);
+	}
+
 	var c43 = hm.AddCircRectGrid(new P2(0, 0), 1, 0.05);
 	var c44 = hm.AddCircRectGrid(new P2(0, 0), 1, 0.05, 1.0, 1.0, "orthogonal_rect");
 	CheckDims(c43.Dims(), c44.Dims());
@@ -151,7 +165,9 @@ public static void pings(){
 	var c57 = hm.AddUnfRectGrid1(c57x, c57x);
 	//FIXME buffers other than 0.0 do not work
 	var c58 = hm.UniteGrids1(c56, c57, 0.0);
+	hm.StdoutVerbosity(3);
 	var c59 = hm.MapGrid(c58, c57, new P2[]{new P2(0, 0)}, new P2[]{new P2(0.3, 0.3)});
+	hm.StdoutVerbosity(0);
 	hm.HealGrid(c59, 30, 30);
 	var c60 = hm.ExcludeContours(c58, new Hybmesh.Object2D[]{c57}, "inner");
 	var c61 = hm.ExtrudeGrid(c60, new double[]{0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3});
@@ -252,7 +268,11 @@ public static void pings(){
 	hm.RemoveAll();
 }
 public static void Main(){
-	pings();
+	Hybmesh.hybmesh_exec_path = "../../src/py/hybmesh.py";
+	Hybmesh.hybmesh_lib_path = "../../build/bin";
+	using (var hm = new Hybmesh()){
+		pings(hm);
+	}
 	Console.WriteLine("Done");
 }
 

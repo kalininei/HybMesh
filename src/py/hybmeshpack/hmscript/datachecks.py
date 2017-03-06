@@ -111,7 +111,8 @@ class Float(object):
     def __grthan(self, value):
         if value < self.conditions['grthan']:
             raise InvalidArgument(
-                "should be greater than %f" % self.conditions['grthan'])
+                "should be greater than {:.16g}".format(
+                    self.conditions['grthan']))
 
     def __within(self, value):
         c = self.conditions['within']
@@ -128,7 +129,8 @@ class Float(object):
             bad = True
         if bad:
             raise InvalidArgument(
-                "should be within %s%f, %f%s" % (c[2][0], c[0], c[1], c[2][1]))
+                "should be within {}{:.16g}, {:.16g}{}".format(
+                    c[2][0], c[0], c[1], c[2][1]))
 
     def check_value(self, value):
         if not isinstance(value, numbers.Real):

@@ -4,6 +4,7 @@
 #include "hmcallback.hpp"
 #include "hmtimer.hpp"
 #include "hmproject.h"
+#include "hmdebug.hpp"
 
 using namespace HMCallback;
 

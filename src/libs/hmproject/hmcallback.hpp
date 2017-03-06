@@ -100,8 +100,12 @@ struct GetDuration{
 //base class for functors with callback
 class ExecutorBase{
 	//used/assigned by FunctionWithCallback<>
-	void init(const char* nm, double dur){ callback->reset(nm, dur); }
-	void fin(){ callback->fin(); }
+	void init(const char* nm, double dur){
+		suppress_done = false;
+		callback->reset(nm, dur);
+	}
+	bool suppress_done;
+	void fin(){ if (!suppress_done) callback->fin(); }
 protected:
 	//used by _run(...) procedures
 	shared_ptr<HMCallback::Caller2> callback;
@@ -155,7 +159,14 @@ class FunctionWithCallback{
 	template<class... Args>
 	TRet<Args...> invoke(Args&&... arg){
 		Beholder<Args...> b(&exe);  //to call exe->fin() before return;
-		return exe._run(std::forward<Args>(arg)...);
+		try{
+			return exe._run(std::forward<Args>(arg)...);
+		} catch (...){
+			//exe->fin calls callback with (100% Done) parameters.
+			//if error we suppress this message
+			exe.suppress_done = true;
+			throw;
+		}
 	}
 
 	//execution with exeisted callback function without reset
@@ -177,7 +188,12 @@ class FunctionWithCallback{
 	TRet<Args...> invoke2(shared_ptr<Caller2> cb, Args&&... arg){
 		exe.set_callback(cb);
 		Beholder<Args...> b(&exe);  //to call exe->fin() before return;
-		return exe._run(std::forward<Args>(arg)...);
+		try{
+			return exe._run(std::forward<Args>(arg)...);
+		} catch(...){
+			exe.suppress_done = true;
+			throw;
+		}
 	}
 public:
 	FunctionWithCallback(): exe(){}

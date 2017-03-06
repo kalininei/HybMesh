@@ -95,12 +95,23 @@ c40 = hm.add_custom_rect_grid("linear", c37, c39);
 c41 = hm.add_custom_rect_grid_htfi(c37, c39,
 		nan, nan,
 		[1, 1, 1, 0.8]);
+hm.assign_callback(@bad_callback);
+try
+	c42 = hm.add_custom_rect_grid("orthogonal", c37, c39);
+catch
+	disp(lasterr)
+end
 hm.assign_callback(@callback);
 c42 = hm.add_custom_rect_grid("orthogonal", c37, c39);
 hm.reset_callback();
 check_dims(c40.dims(), [121, 220, 100]);
 check_dims(c40.dims(), c41.dims());
 check_dims(c40.dims(), c42.dims());
+try
+	c43 = hm.add_circ_rect_grid([0, 0], -1, 0.05);
+catch
+	disp(lasterr)
+end
 c43 = hm.add_circ_rect_grid([0, 0], 1, 0.05);
 c44 = hm.add_circ_rect_grid([0, 0], 1, 0.05, 1., 1., "orthogonal_rect");
 check_dims(c43.dims(), c44.dims());
@@ -127,7 +138,9 @@ c56 = hm.add_unf_rect_grid1(c56x, c56x);
 c57 = hm.add_unf_rect_grid1(c57x, c57x);
 %FIXME buffers other than 0.0 do not work
 c58 = hm.unite_grids1(c56, c57, 0.0);
+hm.stdout_verbosity(3);
 c59 = hm.map_grid(c58, c57, [0, 0], [0.3, 0.3]);
+hm.stdout_verbosity(0);
 hm.heal_grid(c59, 30, 30);
 c60 = hm.exclude_contours(c58, {c57}, "inner");
 c61 = hm.extrude_grid(c60, [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3]);

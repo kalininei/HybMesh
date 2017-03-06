@@ -196,16 +196,16 @@ class Hybmesh implements AutoCloseable{
 			if (val == null) return "None";
 			return '"' + val + '"';
 		}
-		public String _tos_point(IPoint2 val){
+		public String _tos_point(Point2 val){
 			if (val == null) return "None";
-			return "[" + Double.toString(val.x()) + ", " +
-				Double.toString(val.y()) + "]";
+			return "[" + Double.toString(val.x) + ", " +
+				Double.toString(val.y) + "]";
 		}
-		public String _tos_point3(IPoint3 val){
+		public String _tos_point3(Point3 val){
 			if (val == null) return "None";
-			return "[" + Double.toString(val.x()) + ", " +
-				Double.toString(val.y()) + ", " +
-				Double.toString(val.z()) + "]";
+			return "[" + Double.toString(val.x) + ", " +
+				Double.toString(val.y) + ", " +
+				Double.toString(val.z) + "]";
 		}
 		public String _tos_vecbyte(byte[] val){
 			if (val == null) return "None";
@@ -227,7 +227,7 @@ class Hybmesh implements AutoCloseable{
 			}
 			return Arrays.toString(sval);
 		}
-		public String _tos_vecpoint(IPoint2[] val){
+		public String _tos_vecpoint(Point2[] val){
 			if (val == null) return "None";
 			String[] s = new String[val.length];
 			for (int i=0; i<val.length; ++i){
@@ -340,35 +340,21 @@ class Hybmesh implements AutoCloseable{
 	public void resetCallback(){
 		worker.callback = new Worker.DefaultCallback();
 	}
-	public static interface IPoint2{
-		public double x();
-		public double y();
-	};
-	public static interface IPoint3{
-		public double x();
-		public double y();
-		public double z();
-	};
-	public static class Point2 implements IPoint2{
-		double x, y, z;
+	public static class Point2{
+		public double x, y;
 		public Point2(double x, double y){
 			this.x = x;
 			this.y = y;
 		}
-		public double x(){ return x; }
-		public double y(){ return y; }
-	}
-	public static class Point3 implements IPoint3{
-		double x, y, z;
+	};
+	public static class Point3{
+		public double x, y, z;
 		public Point3(double x, double y, double z){
 			this.x = x;
 			this.y = y;
 			this.z = z;
 		}
-		public double x(){ return x; }
-		public double y(){ return y; }
-		public double z(){ return z; }
-	}
+	};
 	public static class Object{
 		public final String sid;
 		protected final Worker worker;

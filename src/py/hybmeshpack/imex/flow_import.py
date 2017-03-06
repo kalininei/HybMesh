@@ -52,7 +52,7 @@ def _load_btypes(fw, node):
 def flow_and_framework_fromfile(filename, flow, cb=None):
     doc, root, statenodes = 0, 0, []
     try:
-        cb._callback("Loading commands", "Reading xml", 0, 0)
+        cb.pycall("Loading commands", "Reading xml", 0, 0)
         doc, root = hmxml.open_doc(filename)
         pstring = hmxml.purged_string(doc)
         pyside_root = ET.fromstring(pstring)
@@ -63,9 +63,9 @@ def flow_and_framework_fromfile(filename, flow, cb=None):
             pyside_flownode = pyside_flownode[0]
 
         # load commands
-        cb._callback("Loading commands", "Parsing", 0.5, 0)
+        cb.pycall("Loading commands", "Parsing", 0.5, 0)
         _load_command_flow(flow, pyside_flownode)
-        cb._callback("Loading commands", "Done", 1, 1)
+        cb.pycall("Loading commands", "Done", 1, 1)
 
         # state
         statenodes = hmxml.query(root, "FLOW/STATE")

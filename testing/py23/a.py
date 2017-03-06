@@ -16,9 +16,14 @@ def check_dims(v1, v2):
                 raise Exception("check failed")
 
 
-def callback(s1, s2, p1, p2):
-    print("{} {} -- {} {}\n".format(s1, p1, s2, p2))
+def good_callback(s1, s2, p1, p2):
+    print("{} {} -- {} {}".format(s1, p1, s2, p2))
     return 0
+
+
+def bad_callback(s1, s2, p1, p2):
+    print("{} {} -- {} {}".format(s1, p1, s2, p2))
+    return 0 if p1 < 0.7 else 1
 
 
 Hybmesh.hybmesh_exec_path = "../../src/py/hybmesh.py"
@@ -116,12 +121,22 @@ with Hybmesh() as hm:
     c40 = hm.add_custom_rect_grid("linear", c37, c39)
     c41 = hm.add_custom_rect_grid_htfi(
         c37, c39, None, None, [1, 1, 1, 0.8])
-    hm.assign_callback(callback)
+    hm.assign_callback(bad_callback)
+    try:
+        c42 = hm.add_custom_rect_grid("orthogonal", c37, c39)
+    except Hybmesh.EUserInterrupt as e:
+        print("User interrupt catched")
+    hm.assign_callback(good_callback)
     c42 = hm.add_custom_rect_grid("orthogonal", c37, c39)
     hm.reset_callback()
     check_dims(c40.dims(), [121, 220, 100])
     check_dims(c40.dims(), c41.dims())
     check_dims(c40.dims(), c42.dims())
+    try:
+        c43 = hm.add_circ_rect_grid([0, 0], -1, 0.05)
+    except Hybmesh.ERuntimeError as e:
+        print("Runtime error catched")
+        print(str(e))
     c43 = hm.add_circ_rect_grid([0, 0], 1, 0.05)
     c44 = hm.add_circ_rect_grid([0, 0], 1, 0.05, 1., 1., "orthogonal_rect")
     check_dims(c43.dims(), c44.dims())
@@ -161,7 +176,9 @@ with Hybmesh() as hm:
                           [0, 45, 90, 180])
     c65 = hm.revolve_grid(c60, [0, 0], [0, 1],
                           [180, 270, 360])
+    hm.stdout_verbosity(3)
     hm.export3d_grid_vtk(c64, "c64.vtk")
+    hm.stdout_verbosity(0)
     hm.export3d_grid_vtk(c65, "c65.vtk")
     c66 = hm.merge_grids3(c64, c65)
     hm.export3d_grid_vtk(c66, "c66.vtk")

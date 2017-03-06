@@ -257,7 +257,7 @@ class Hybmesh(object):
 
     class EUserInterrupt(Exception):
         def __init__(self):
-            super(Hybmesh.ERuntimeError, self).__init__(
+            super(Hybmesh.EUserInterrupt, self).__init__(
                     "Interrupted by user")
 
     def __init__(self):
