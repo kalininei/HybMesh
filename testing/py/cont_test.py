@@ -12,6 +12,7 @@ def check_cont(cont, nn, ne, scont, btypes):
     for k in btypes.keys():
         check(info['btypes'][k] == btypes[k])
 
+
 print "contours unite"
 g1 = hm.add_unf_rect_grid([-1, -1], [1, 1], 10, 10)
 c1 = hm.add_rect_contour([-5, -5], [5, 5], [1, 1, 1, 1])
@@ -64,7 +65,9 @@ def bfun3(x0, y0, x1, y1, bo):
     else:
         return 3
 
+
 hm.set_boundary_type(g3, bfun=bfun3)
+print hm.info_contour(g3)
 check_cont(g3, 20, 20, [10, 10], {1: 10, 2: 5, 3: 5})
 
 print "separate/simplify"
@@ -322,3 +325,10 @@ c1 = hm.partition_contour(
     start=[3, 0], end=[3, 3])
 hm.export_contour_vtk(c1, "c2.vtk")
 check_ascii_file(10535023046019963480, "c2.vtk")
+
+
+c1 = hm.add_rect_contour([0, 0], [1, 1])
+c2 = hm.add_rect_contour([0.5, 0.5], [1.5, 1.5])
+c3 = hm.unite_contours([c1, c2])
+c4 = hm.decompose_contour(c3)
+check(len(c4) == 3)

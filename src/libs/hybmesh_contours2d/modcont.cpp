@@ -175,12 +175,12 @@ struct _TEdgeCrossAnalyser{
 		for (int i=0; i<ecross_set.size(); ++i) if (ecross_set[i].size()>0){
 			auto& st = ecross_set[i];
 			auto& edge = *ecol[i];
+			auto p1 = edge.first();
+			auto p2 = edge.last();
 			if (ISEQ(*st.begin(), 0)) st.erase(st.begin());
 			if (st.size() == 0) continue;
 			if (ISEQ(*st.rbegin(), 1)) st.erase(std::prev(st.end()));
 			if (st.size() == 0) continue;
-			auto p1 = edge.first();
-			auto p2 = edge.last();
 			VertexData pa(1, p1);
 			for (auto ksi: st){
 				pa.push_back(std::make_shared<Vertex>(Point::Weigh(*p1, *p2, ksi)));
@@ -188,12 +188,12 @@ struct _TEdgeCrossAnalyser{
 			pa.push_back(p2);
 			for (int i=0; i<pa.size()-1; ++i){
 				ecol.emplace_back(new Edge(edge));
-				ecol.back()->first() = pa[i];
-				ecol.back()->last() = pa[i+1];
-				//edge with equal bounds will be removed in 
-				//MergePoints procedure
-				edge.first() = edge.last() = pa[0];
+				ecol.back()->vertices[0] = pa[i];
+				ecol.back()->vertices[1] = pa[i+1];
 			}
+			//edge with equal bounds will be removed in 
+			//MergePoints procedure
+			edge.vertices[0] = edge.vertices[1] = pa[0];
 		}
 	}
 };

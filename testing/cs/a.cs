@@ -163,8 +163,7 @@ public static void pings(Hybmesh hm){
 	}
 	var c56 = hm.AddUnfRectGrid1(c56x, c56x);
 	var c57 = hm.AddUnfRectGrid1(c57x, c57x);
-	//FIXME buffers other than 0.0 do not work
-	var c58 = hm.UniteGrids1(c56, c57, 0.0);
+	var c58 = hm.UniteGrids1(c56, c57, 0.1);
 	hm.StdoutVerbosity(3);
 	var c59 = hm.MapGrid(c58, c57, new P2[]{new P2(0, 0)}, new P2[]{new P2(0.3, 0.3)});
 	hm.StdoutVerbosity(0);
@@ -172,10 +171,9 @@ public static void pings(Hybmesh hm){
 	var c60 = hm.ExcludeContours(c58, new Hybmesh.Object2D[]{c57}, "inner");
 	var c61 = hm.ExtrudeGrid(c60, new double[]{0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3});
 	var c62 = hm.Grid3BndToSurface(c61);
-	//FIXME Doesn't work
-	//hm.AssignCallback(callback);
-	//var c63 = hm.TetrahedralFill({c62});
-	//hm.ResetCallback();
+	hm.AssignCallback(good_callback);
+	var c63 = hm.TetrahedralFill(new Hybmesh.Object3D[]{c62});
+	hm.ResetCallback();
 	var c64 = hm.RevolveGrid(c60, new P2(0, 0), new P2(0, 1),
 			new double[]{0, 45, 90, 180});
 	var c65 = hm.RevolveGrid(c60, new P2(0, 0), new P2(0, 1),
@@ -194,7 +192,6 @@ public static void pings(Hybmesh hm){
 
 	hm.AddBoundaryType(1, "bnd1");
 	hm.AddBoundaryType(2, "bnd2");
-	//FIXME fills like result is invalid
 	var c70 = hm.AddUnfRectGrid(new P2(0, 0), new P2(1, 1), 10, 10, new int[]{0, 1, 2, 3});
 	hm.ExportGridMsh(c70, "out.msh", new int[]{0}, new int[]{2}, new bool[]{false});
 
@@ -253,18 +250,17 @@ public static void pings(Hybmesh hm){
 	var c90 = hm.AddRectContour(new P2(1, 1.2), new P2(2, 2), new int[]{0, 1, 2, 3});
 	var c91 = hm.AddRectContour(new P2(0, 0), new P2(1.5, 1.5), new int[]{0, 1, 2, 3});
 	var c92 = hm.UniteContours(new Hybmesh.Contour2D[]{c90, c91});
-	//FIXME decompose doesn't work as expected
 	var c93 = hm.DecomposeContour(c92);
+	CheckCond(c93.Length == 3);
 	var c94 = hm.PickContour(new P2(-1, -1), c93);
 	c94.GetPoint(new P2(-1, -1));
 	c94.GetPoint(null, new P2(0.5, -1));
 	c94.GetPoint(null, null, new P2(1.0, -1));
 
-	//FIXME export all doesn't work
-	//hm.exportAllHmd("out.hmd", "ascii");
-	//hm.removeAll();
-	//hm.importGridHmg("out.hmd", "Grid2D1");
-	//hm.import3dGridHmg("out.hmd", "Grid3D1");
+	hm.ExportAllHmd("out.hmd", "ascii");
+	hm.RemoveAll();
+	hm.ImportGridHmg("out.hmd", "Grid2D_1");
+	hm.Import3DGridHmg("out.hmd", "Grid3D_1");
 	hm.RemoveAll();
 }
 public static void Main(){

@@ -60,8 +60,11 @@ Export::EColWriter::EColWriter(const EdgeData& c,
 	vector<int> bt(c.size(), 0);
 	for (int i=0; i<c.size(); ++i) bt[i] = c[i]->boundary_type;
 	//calculate min and max to select best storage type
-	int minv = *std::min_element(bt.begin(), bt.end());
-	int maxv = *std::max_element(bt.begin(), bt.end());
+	int minv=0, maxv=0;
+	if (bt.begin() != bt.end()){
+		minv = *std::min_element(bt.begin(), bt.end());
+		maxv = *std::max_element(bt.begin(), bt.end());
+	}
 	if (minv == maxv && minv == 0){
 		//pass
 	} else if (minv >-128 && maxv < 128){
@@ -195,8 +198,11 @@ Export::GridWriter::GridWriter(const GridData& g,
 	vector<int> bt(g.vedges.size(), 0);
 	for (int i=0; i<g.vedges.size(); ++i) bt[i] = g.vedges[i]->boundary_type;
 	//calculate min and max to select best storage type
-	int minv = *std::min_element(bt.begin(), bt.end());
-	int maxv = *std::max_element(bt.begin(), bt.end());
+	int minv=0, maxv=0;
+	if (bt.begin() != bt.end()){
+		int minv = *std::min_element(bt.begin(), bt.end());
+		int maxv = *std::max_element(bt.begin(), bt.end());
+	}
 	if (minv == maxv && minv == 0){
 		//pass
 	} else if (minv >-128 && maxv < 128){

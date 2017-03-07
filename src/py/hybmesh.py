@@ -55,7 +55,7 @@ def sxexec(argv):
                 raise
         except:
             sys.exit('Invalid verbosity level. See -help.')
-    hmscript.flow.set_interface(hmscript.console_interface_factory(verb))
+    hmscript.flow.set_interface(hmscript.console_interface_factory(verb)())
     execfile(fn)
     if verb > 1:
         print "DONE"

@@ -168,8 +168,7 @@ void pings(){
 	}
 	auto c56 = hm.add_unf_rect_grid1(c56x, c56x);
 	auto c57 = hm.add_unf_rect_grid1(c57x, c57x);
-	//FIXME buffers other than 0.0 do not work
-	auto c58 = hm.unite_grids1(c56, c57, 0.0);
+	auto c58 = hm.unite_grids1(c56, c57, 0.1);
 	hm.stdout_verbosity(3);
 	auto c59 = hm.map_grid(c58, c57, {P2(0, 0)}, {P2(0.3, 0.3)});
 	hm.stdout_verbosity(0);
@@ -177,10 +176,9 @@ void pings(){
 	auto c60 = hm.exclude_contours(c58, {c57}, "inner");
 	auto c61 = hm.extrude_grid(c60, {0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3});
 	auto c62 = hm.grid3_bnd_to_surface(c61);
-	//FIXME Doesn't work
-	//hm.assign_callback(callback);
-	//auto c63 = hm.tetrahedral_fill({c62});
-	//hm.reset_callback();
+	hm.assign_callback(callback_good);
+	auto c63 = hm.tetrahedral_fill({c62});
+	hm.reset_callback();
 	auto c64 = hm.revolve_grid(c60, P2(0, 0), P2(0, 1),
 			{0, 45, 90, 180});
 	auto c65 = hm.revolve_grid(c60, P2(0, 0), P2(0, 1),
@@ -199,7 +197,6 @@ void pings(){
 
 	hm.add_boundary_type(1, "bnd1");
 	hm.add_boundary_type(2, "bnd2");
-	//FIXME fills like result is invalid
 	auto c70 = hm.add_unf_rect_grid(P2(0, 0), P2(1, 1), 10, 10, {0, 1, 2, 3});
 	hm.export_grid_msh(c70, "out.msh", {0}, {2}, {false});
 
@@ -250,18 +247,17 @@ void pings(){
 	auto c90 = hm.add_rect_contour(P2(1, 1.2), P2(2, 2), {0, 1, 2, 3});
 	auto c91 = hm.add_rect_contour(P2(0, 0), P2(1.5, 1.5), {0, 1, 2, 3});
 	auto c92 = hm.unite_contours({c90, c91});
-	//FIXME decompose doesn't work as expected
 	auto c93 = hm.decompose_contour(c92);
+	check_cond(c93.size() == 3);
 	auto c94 = hm.pick_contour(P2(-1, -1), c93);
 	c94.get_point(P2(-1, -1));
 	c94.get_point(P2::None(), P2(0.5, -1));
 	c94.get_point(P2::None(), P2::None(), P2(1.0, -1));
 
-	//FIXME export all doesn't work
-	//hm.export_all_hmd("out.hmd", "ascii");
-	//hm.remove_all();
-	//hm.import_grid_hmg("out.hmd", "Grid2D_1");
-	//hm.import3d_grid_hmg("out.hmd", "Grid3D_1");
+	hm.export_all_hmd("out.hmd", "ascii");
+	hm.remove_all();
+	hm.import_grid_hmg("out.hmd", "Grid2D_1");
+	hm.import3d_grid_hmg("out.hmd", "Grid3D_1");
 	hm.remove_all();
 }
 

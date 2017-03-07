@@ -5,6 +5,7 @@
 #include "treverter2d.hpp"
 #include "assemble2d.hpp"
 #include "modcont.hpp"
+#include "debug2d.hpp"
 
 using namespace HM2D;
 using namespace HM2D::Contour;

@@ -9,12 +9,12 @@ using namespace HM2D::Impl;
 void ClipperObject::ApplyBoundingBox(const BoundingBox& newbbox){
 	bbox = newbbox;
 	//factor and p0, p1
-	long double maxlen = (long double) std::max(bbox.lenx(), bbox.leny()) / 2.0;
+	long double maxlen = (long double) std::max(bbox.lenx(), bbox.leny()) / 2.0L;
 	if (maxlen<geps){
-		factor = (long double)1.0;
+		factor = 1.0L;
 	} else {
 		factor = (long double)CLIPPER_RESOLUTION / maxlen;
-		factor = std::min(factor, (long double) std::numeric_limits<ClipperLib::cInt>::max()/100.0);
+		factor = std::min(factor, (long double)std::numeric_limits<ClipperLib::cInt>::max()/100.0L);
 	}
 	p0 = newbbox.center();
 }
@@ -89,7 +89,7 @@ bool clipper_heal(ClipperLib::Path& path, const ClipperObject& bbox, bool is_clo
 	//Here we ignore them.
 	//if (is_closed && fabs(ClipperLib::Area(path)) <= 1.0) return false;
 	//integer size which is neglectable in real geometry
-	//long int eps = geps*bbox.factor;
+	//long long eps = geps*bbox.factor;
 	//long int eps = 0;
 	////get rid of edges which turns at 2*pi
 	////get rid of doubling nodes
@@ -131,21 +131,21 @@ bool clipper_heal(ClipperLib::Path& path, const ClipperObject& bbox, bool is_clo
 
 	//If this is a closed area all points of which lie on the same
 	//line return invalid status
-	long int eps = geps*1e-2*sqr(bbox.factor);
+	ClipperLib::cInt eps = (geps*1e-2*bbox.factor)*bbox.factor;
 	auto is_collinear = [&](int i0, int i1, int i2){
-		long int x0 = path[i1].X - path[i0].X;
-		long int x1 = path[i2].X - path[i0].X;
-		long int y0 = path[i1].Y - path[i0].Y;
-		long int y1 = path[i2].Y - path[i0].Y;
-		long int ar = x0*y1 - y0*x1;
+		ClipperLib::cInt x0 = path[i1].X - path[i0].X;
+		ClipperLib::cInt x1 = path[i2].X - path[i0].X;
+		ClipperLib::cInt y0 = path[i1].Y - path[i0].Y;
+		ClipperLib::cInt y1 = path[i2].Y - path[i0].Y;
+		ClipperLib::cInt ar = x0*y1 - y0*x1;
 		return std::abs(ar)<=eps;
 	};
 	if (is_closed){
 		if (path.size() < 3) return false;
 		bool okstatus = false;
-		for (int i1=0; i1<path.size(); ++i1){
-			int i0 = (i1==0) ? path.size()-1 : i1-1;
-			int i2 = (i1==path.size()-1) ? 0 : i1+1;
+		for (size_t i1=0; i1<path.size(); ++i1){
+			size_t i0 = (i1==0) ? path.size()-1 : i1-1;
+			size_t i2 = (i1==path.size()-1) ? 0 : i1+1;
 			if (!is_collinear(i0, i1, i2)) { okstatus = true; break; }
 			
 		}

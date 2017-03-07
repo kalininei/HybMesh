@@ -274,81 +274,55 @@ def add_boundary_type(index, name="boundary1"):
     return index
 
 
-def _setbt_bcont2grid(g, kv):
-    kvcp = copy.deepcopy(kv)
-    kv.clear()
-    bt = g.raw_data('bedges')
-    for conti, gridi in enumerate(bt):
-        if conti in kvcp:
-            kv[gridi] = kvcp[conti]
+def _setbt_b2grid(g, kv):
+    iconts = g.raw_data('bnd')
+    for k in kv.keys():
+        for i, v in enumerate(kv[k]):
+            kv[k][i] = iconts[v]
 
 
-def _setbt_bsurf2grid(g, kv):
-    kvcp = copy.deepcopy(kv)
-    kv.clear()
-    bt = g.raw_data('bfaces')
-    for surfi, gridi in enumerate(bt):
-        if surfi in kvcp:
-            kv[gridi] = kvcp[surfi]
-
-
-def _setbt_args_g2btps(g, btps, kv):
-    _setbt_args_c2btps(g.contour(), btps, kv)
-    _setbt_bcont2grid(g, kv)
+def _setbt_args_g2g3btps(g, btps, kv):
+    _setbt_args_c2s3btps(g.contour(), btps, kv)
+    _setbt_b2grid(g, kv)
 
 
 def _setbt_args_g2bfun(g, bfun, kv):
     _setbt_args_c2bfun(g.contour(), bfun, kv)
-    _setbt_bcont2grid(g, kv)
-
-
-def _setbt_args_g3btps(g, btps, kv):
-    _setbt_args_s3btps(g.surface(), btps, kv)
-    _setbt_bsurf2grid(g, kv)
+    _setbt_b2grid(g, kv)
 
 
 def _setbt_args_g3bfun(g, bfun, kv):
     _setbt_args_s3bfun(g.surface(), bfun, kv)
-    _setbt_bsurf2grid(g, kv)
+    _setbt_b2grid(g, kv)
 
 
-def _setbt_args_s3btps(g, btps, kv):
-    bold = g.raw_data('btypes')
-    for b1, b2 in zip(bold, btps):
+def _setbt_args_c2s3btps(g, btps, kv):
+    bold = g.raw_data('bt')
+    for i, b1, b2 in zip(range(len(bold)), bold, btps):
         if b1 == b2:
             continue
         if b2 not in kv:
             kv[b2] = []
-        kv[b2].append(b1)
+        kv[b2].append(i)
 
 
 def _setbt_args_s3bfun(g, bfun, kv):
-    bold = g.raw_data('btypes')
+    bold = g.raw_data('bt')
     cnt = g.raw_data('centers')
     it = iter(cnt)
-    for b1, x, y, z in zip(bold, it, it, it):
+    for i, b1, x, y, z in zip(range(len(bold)), bold, it, it, it):
         b2 = bfun(x, y, z, b1)
         if b2 is None or b2 == b1:
             continue
         if b2 not in kv:
             kv[b2] = []
-        kv[b2].append(b1)
-
-
-def _setbt_args_c2btps(g, btps, kv):
-    bold = g.raw_data('btypes')
-    for b1, b2 in zip(bold, btps):
-        if b1 == b2:
-            continue
-        if b2 not in kv:
-            kv[b2] = []
-        kv[b2].append(b1)
+        kv[b2].append(i)
 
 
 def _setbt_args_c2bfun(g, bfun, kv):
-    bold = g.raw_data('btypes')
-    vert = g.raw_data('vertices')
-    ev = g.raw_data('edge-vert')
+    bold = g.raw_data('bt')
+    vert = g.raw_data('vert')
+    ev = g.raw_data('edge_vert')
     for i, b1 in enumerate(bold):
         e0, e1 = ev[2*i], ev[2*i+1]
         b2 = bfun(vert[2*e0], vert[2*e0+1],
@@ -357,7 +331,7 @@ def _setbt_args_c2bfun(g, bfun, kv):
             continue
         if b2 not in kv:
             kv[b2] = []
-        kv[b2].append(b1)
+        kv[b2].append(i)
 
 
 @hmscriptfun
@@ -420,22 +394,22 @@ def set_boundary_type(obj, btps=None, bfun=None, bdict=None):
         g = flow.receiver.get_object(obj)
         if t == 'g2':
             if btps is not None:
-                _setbt_args_g2btps(g, btps, args['btypes'])
+                _setbt_args_g2g3btps(g, btps, args['btypes'])
             if bfun is not None:
                 _setbt_args_g2bfun(g, bfun, args['btypes'])
         if t == 'g3':
             if btps is not None:
-                _setbt_args_g3btps(g, btps, args['btypes'])
+                _setbt_args_g2g3btps(g, btps, args['btypes'])
             if bfun is not None:
                 _setbt_args_g3bfun(g, bfun, args['btypes'])
         if t == 'c2':
             if btps is not None:
-                _setbt_args_c2btps(g, btps, args['btypes'])
+                _setbt_args_c2s3btps(g, btps, args['btypes'])
             if bfun is not None:
                 _setbt_args_c2bfun(g, bfun, args['btypes'])
         if t == 's3':
             if btps is not None:
-                _setbt_args_s3btps(g, btps, args['btypes'])
+                _setbt_args_c2s3btps(g, btps, args['btypes'])
             if bfun is not None:
                 _setbt_args_s3bfun(g, bfun, args['btypes'])
     c = com.objcom.SetBType(args)

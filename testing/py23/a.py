@@ -161,17 +161,16 @@ with Hybmesh() as hm:
             c57x.append(0.3 + float(i)/30.)
     c56 = hm.add_unf_rect_grid1(c56x, c56x)
     c57 = hm.add_unf_rect_grid1(c57x, c57x)
-    # FIXME buffers other than 0.0 do not work
-    c58 = hm.unite_grids1(c56, c57, 0.0)
+    c58 = hm.unite_grids1(c56, c57, 0.1)
     c59 = hm.map_grid(c58, c57, [[0, 0]], [[0.3, 0.3]])
+    hm.export_grid_vtk(c58, "c58.vtk");
     hm.heal_grid(c59, 30, 30)
     c60 = hm.exclude_contours(c58, [c57], "inner")
     c61 = hm.extrude_grid(c60, [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3])
     c62 = hm.grid3_bnd_to_surface(c61)
-    # FIXME Doesn't work
-    # hm.assign_callback(callback)
-    # c63 = hm.tetrahedral_fill([c62])
-    # hm.reset_callback()
+    hm.assign_callback(good_callback)
+    c63 = hm.tetrahedral_fill([c62])
+    hm.reset_callback()
     c64 = hm.revolve_grid(c60, [0, 0], [0, 1],
                           [0, 45, 90, 180])
     c65 = hm.revolve_grid(c60, [0, 0], [0, 1],
@@ -192,7 +191,6 @@ with Hybmesh() as hm:
 
     hm.add_boundary_type(1, "bnd1")
     hm.add_boundary_type(2, "bnd2")
-    # FIXME fills like result is invalid
     c70 = hm.add_unf_rect_grid([0, 0], [1, 1], 10, 10, [0, 1, 2, 3])
     hm.export_grid_msh(c70, "out.msh", [0], [2], [False])
 
@@ -241,16 +239,18 @@ with Hybmesh() as hm:
     c90 = hm.add_rect_contour([1, 1.2], [2, 2], [0, 1, 2, 3])
     c91 = hm.add_rect_contour([0, 0], [1.5, 1.5], [0, 1, 2, 3])
     c92 = hm.unite_contours([c90, c91])
-    # FIXME decompose doesn't work as expected
     c93 = hm.decompose_contour(c92)
+    check_cond(len(c93) == 3)
     c94 = hm.pick_contour([-1, -1], c93)
     c94.get_point([-1, -1])
     c94.get_point(None, [0.5, -1])
     c94.get_point(None, None, [1.0, -1])
 
-    # FIXME export all doesn't work
-    # hm.export_all_hmd("out.hmd", "ascii")
-    # hm.remove_all()
-    # hm.import_grid_hmg("out.hmd", "Grid2D_1")
-    # hm.import3d_grid_hmg("out.hmd", "Grid3D_1")
+    hm.stdout_verbosity(3)
+    hm.export_grid_hmg([c55], "c55.hmg")
+    hm.export_all_hmd("out.hmd", "ascii")
+    hm.export_all_hmd("out1.hmd", "bin")
+    hm.remove_all()
+    hm.import_grid_hmg("out.hmd", "Grid2D_1")
+    hm.import3d_grid_hmg("out.hmd", "Grid3D_1")
     hm.remove_all()

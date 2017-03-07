@@ -15,10 +15,22 @@
 #include "MPoint.h"
 #include "MLine.h"
 #include "nan_handler.h"
+#include "GmshMessage.h"
 using namespace HM2D;
 
 HMCallback::FunctionWithCallback<Mesher::TUnstructuredTriangle> Mesher::UnstructuredTriangle;
 HMCallback::FunctionWithCallback<Mesher::TUnstructuredTriangleRecomb> Mesher::UnstructuredTriangleRecomb;
+
+namespace{
+
+class GmshCallback: public GmshMessage{
+	void operator()(std::string level, std::string message) override{
+		std::cout<<level<<": "<<message<<std::endl;
+	}
+};
+GmshCallback gmshcb;
+
+}
 
 namespace{
 Contour::Tree no_crosses_with_priority(const Contour::Tree& source){
@@ -528,13 +540,15 @@ void fill_model_with_2d_recomb(GModel& m, GFace* fc){
 
 GridData gmsh_fill(const Contour::Tree& tree, const std::map<Point, double>& embedded,
 		int algo, HMCallback::Caller2& cb){
+	GModel m;
+	m.setFactory("Gmsh");
 	//2 - auto, 5 - delaunay, 6 - frontal, 8 - delaunay for quads
 	GmshSetOption("Mesh", "Algorithm", 2.0);
 	GmshSetOption("Mesh", "Optimize", 1.0);
 	GmshSetOption("General", "Verbosity", 0.0);
-	GmshSetOption("General", "Verbosity", 10.0);
-	GModel m;
-	m.setFactory("Gmsh");
+	//#########################################
+	//GmshSetOption("General", "Verbosity", 100.0);
+	//GmshSetMessageHandler(&gmshcb);
 
 	auto ae = tree.alledges();
 	auto av = AllVertices(ae);

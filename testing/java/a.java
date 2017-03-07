@@ -174,8 +174,7 @@ public static void pings(Hybmesh hm) throws Exception{
 	}
 	Hybmesh.Grid2D c56 = hm.addUnfRectGrid1(c56x, c56x, null);
 	Hybmesh.Grid2D c57 = hm.addUnfRectGrid1(c57x, c57x, null);
-	//FIXME buffers other than 0.0 do not work
-	Hybmesh.Grid2D c58 = hm.uniteGrids1(c56, c57, 0.0, false, false, 0, "3");
+	Hybmesh.Grid2D c58 = hm.uniteGrids1(c56, c57, 0.1, false, false, 0, "3");
 	hm.stdoutVerbosity(3);
 	Hybmesh.Grid2D c59 = hm.mapGrid(c58, c57, new P2[]{new P2(0, 0)}, new P2[]{new P2(0.3, 0.3)}, null, null, null, false, false);
 	hm.stdoutVerbosity(0);
@@ -183,10 +182,9 @@ public static void pings(Hybmesh hm) throws Exception{
 	Hybmesh.Grid2D c60 = hm.excludeContours(c58, new Hybmesh.Object2D[]{c57}, "inner");
 	Hybmesh.Grid3D c61 = hm.extrudeGrid(c60, new double[]{0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3}, 0, 0);
 	Hybmesh.Surface3D c62 = hm.grid3BndToSurface(c61);
-	//FIXME Doesn't work
-	//hm.assignCallback(callback);
-	//Hybmesh.Grid3D c63 = hm.tetrahedralFill({c62});
-	//hm.resetCallback();
+	hm.assignCallback(new GoodCallback());
+	Hybmesh.Grid3D c63 = hm.tetrahedralFill(new Hybmesh.Object3D[]{c62});
+	hm.resetCallback();
 	Hybmesh.Grid3D c64 = hm.revolveGrid(c60, new P2(0, 0), new P2(0, 1),
 			new double[]{0, 45, 90, 180}, 0, 0, false);
 	Hybmesh.Grid3D c65 = hm.revolveGrid(c60, new P2(0, 0), new P2(0, 1),
@@ -205,7 +203,6 @@ public static void pings(Hybmesh hm) throws Exception{
 
 	hm.addBoundaryType(1, "bnd1");
 	hm.addBoundaryType(2, "bnd2");
-	//FIXME fills like result is invalid
 	Hybmesh.Grid2D c70 = hm.addUnfRectGrid(new P2(0, 0), new P2(1, 1), 10, 10, new int[]{0, 1, 2, 3});
 	hm.exportGridMsh(c70, "out.msh", new int[]{0}, new int[]{2}, new boolean[]{false});
 
@@ -264,18 +261,17 @@ public static void pings(Hybmesh hm) throws Exception{
 	Hybmesh.Contour2D c90 = hm.addRectContour(new P2(1, 1.2), new P2(2, 2), new int[]{0, 1, 2, 3});
 	Hybmesh.Contour2D c91 = hm.addRectContour(new P2(0, 0), new P2(1.5, 1.5), new int[]{0, 1, 2, 3});
 	Hybmesh.Contour2D c92 = hm.uniteContours(new Hybmesh.Contour2D[]{c90, c91});
-	//FIXME decompose doesn't work as expected
 	Hybmesh.Contour2D[] c93 = hm.decomposeContour(c92);
+	checkCond(c93.length == 3);
 	Hybmesh.Contour2D c94 = hm.pickContour(new P2(-1, -1), c93);
 	c94.getPoint(new P2(-1, -1), null, null);
 	c94.getPoint(null, new P2(0.5, -1), null);
 	c94.getPoint(null, null, new P2(1.0, -1));
 
-	//FIXME export all doesn't work
-	//hm.exportAllHmd("out.hmd", "ascii");
-	//hm.removeAll();
-	//hm.importGridHmg("out.hmd", "Grid2D1");
-	//hm.import3dGridHmg("out.hmd", "Grid3D1");
+	hm.exportAllHmd("out.hmd", "ascii");
+	hm.removeAll();
+	hm.importGridHmg("out.hmd", "Grid2D_1", false);
+	hm.import3DGridHmg("out.hmd", "Grid3D_1", false);
 	hm.removeAll();
 }
 

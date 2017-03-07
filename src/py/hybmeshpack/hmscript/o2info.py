@@ -62,7 +62,7 @@ def info_contour(cid):
     sep = [Contour2(s) for s in c2core.quick_separate(cont.cdata)]
     ret['subcont'] = [s.n_edges() for s in sep]
 
-    bt = cont.raw_data('btypes')
+    bt = cont.raw_data('bt')
     ret['btypes'] = {}
     for s in bt:
         if s not in ret['btypes']:

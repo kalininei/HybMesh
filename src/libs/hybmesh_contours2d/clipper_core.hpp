@@ -12,7 +12,7 @@ class ClipperTree;
 
 //area of integer arithmetic computing is within [-Resolution, Resolution] square
 //const ClipperLib::cInt CLIPPER_RESOLUTION = 1e8;
-const ClipperLib::cInt CLIPPER_RESOLUTION = 100.0/geps;
+const ClipperLib::cInt CLIPPER_RESOLUTION = 100.0L/(long double)geps;
 //normalized to [0, 1] distance between true and approximated arcs
 const double ClipperArcTolerance = 0.0001;
 
@@ -26,7 +26,7 @@ struct ClipperObject{
 	Point p0;
 	long double factor;
 
-	ClipperObject(): bbox(0.0, 0.0, 0.0, 0.0), p0(0,0), factor(1.0){}
+	ClipperObject(): bbox(0.0, 0.0, 0.0, 0.0), p0(0,0), factor(1.0L){}
 	ClipperObject(const BoundingBox& bb) { ApplyBoundingBox(bb);}
 
 	//scaling methods

@@ -30,9 +30,11 @@ struct FaceData{
 	std::string boundary_name;   //user boundary name
 
 	static FaceData* zone_by_bindex(vector<FaceData>& fd, int bindex){
-		for (auto& v: fd) { if (v.boundary_index == bindex) return &v; }
-		assert(false);
-		return 0;
+		for (auto& v: fd) {
+			if (v.zone_type == 2) continue; //no interior
+			if (v.boundary_index == bindex) return &v;
+		}
+		throw std::runtime_error("Boundary index is not found");
 	}
 
 	static vector<FaceData> to(GridData& gg, hme::BNamesFun bnames, hme::PeriodicData pd){
