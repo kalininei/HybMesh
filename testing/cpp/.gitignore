@@ -2,5 +2,7 @@
 !.gitignore
 !a.cpp
 !Makefile
+!fromdoc/
+fromdoc/*
 !fromdoc/intro_multithreaded.cpp
 !fromdoc/Makefile

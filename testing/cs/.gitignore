@@ -2,3 +2,7 @@
 !.gitignore
 !a.cs
 !Makefile
+!fromdoc
+fromdoc/*
+!fromdoc/app.cs
+!fromdoc/Makefile
