@@ -323,7 +323,7 @@ public class Hybmesh: IDisposable{
 	[Serializable]
 	public class ERuntimeError: Exception{
 		public ERuntimeError(string message):
-			base("Hybmesh runtime error:\n" + message){}
+			base(message){}
 	};
 	public delegate int DCallback(string s1, string s2, double p1, double p2);
 	public class Point2{

@@ -76,10 +76,10 @@ private:
 		std::function<int(const std::string&, const std::string&,
 		                  double, double)> callback;
 		//constructor
-		Worker(const char* hybmeshpath){
-			if (hybmeshpath == NULL) require_connection(
+		Worker(std::string hybmeshpath){
+			if (hybmeshpath.size() == 0) require_connection(
 					DEFAULT_HYBMESH_EXE_PATH);
-			else require_connection(hybmeshpath);
+			else require_connection(hybmeshpath.c_str());
 			callback = [](const std::string&, const std::string&,
 			              double, double)->int{ return 0; };
 		};
@@ -133,7 +133,7 @@ private:
 	Hybmesh(const Hybmesh&);
 public:
 	// =============== construction/destruction
-	Hybmesh(const char* hybmeshpath=NULL): _worker(hybmeshpath) {
+	Hybmesh(std::string hybmeshpath=""): _worker(hybmeshpath) {
 		worker = &_worker;
 	}
 	// ================ callback
