@@ -62,7 +62,7 @@ struct Caller2{
 	LoopCaller2 looper(double parent_duration, double nloops, std::string caption);
 
 	//output 100%
-	void fin();
+	void fin() noexcept;
 	void subprocess_fin();
 protected:
 	//currant state data

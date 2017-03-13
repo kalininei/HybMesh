@@ -2,4 +2,9 @@
 !.gitignore
 !a.java
 !Makefile
+!fromdoc/
 
+fromdoc/*
+!fromdoc/App.java
+!fromdoc/GridData.java
+!fromdoc/Makefile

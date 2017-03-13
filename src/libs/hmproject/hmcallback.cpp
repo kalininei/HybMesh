@@ -186,13 +186,17 @@ void Caller2::subprocess_step_after(double progress){
 }
 
 
-void Caller2::fin(){
+void Caller2::fin() noexcept{
 	before1(false); before2(false);
 	prog1 = dur1;
 	name2 = "Done";
 	prog2 = 1;
 	dur2 = 1;
-	flush();
+	//this should not throw because it is called from desctructors
+	try{
+		flush();
+	} catch (...){
+	}
 }
 void Caller2::subprocess_fin(){
 	before2(false);
