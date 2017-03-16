@@ -467,13 +467,15 @@ class Generator(object):
             exepath = "exe-not-defined"
         for i in range(len(bb)):
             if ">>$EXEPATH" in bb[i]:
-                s3 = bb[i].split('"')
+                quotes = '"' if '"' in bb[i] else "'"
+                s3 = bb[i].split(quotes)
                 send = '' if s3[2][0] == ' ' else s3[2][0]
-                bb[i] = s3[0] + '"' + exepath + '"' + send
+                bb[i] = s3[0] + quotes + exepath + quotes + send
             elif ">>$LIBPATH" in bb[i]:
-                s3 = bb[i].split('"')
+                quotes = '"' if '"' in bb[i] else "'"
+                s3 = bb[i].split(quotes)
                 send = '' if s3[2][0] == ' ' else s3[2][0]
-                bb[i] = s3[0] + '"' + libpath + '"' + send
+                bb[i] = s3[0] + quotes + libpath + quotes + send
 
         # writing to file
         if not os.path.exists(outdir):

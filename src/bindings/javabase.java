@@ -322,7 +322,7 @@ class Hybmesh implements AutoCloseable{
 	public static class ERuntimeError extends Exception{
 		public static final long serialVersionUID = 1L;
 		public ERuntimeError(String message){
-			super("Hybmesh runtime error:\n" + message);
+			super(message);
 		}
 	};
 	public static class EUserInterrupt extends Exception{

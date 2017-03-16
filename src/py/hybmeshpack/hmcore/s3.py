@@ -86,7 +86,7 @@ def raw_data(obj, what):
     elif what == 'bt':
         ret = (ct.c_int*d[2])()
         ccall(cport.s3_tab_btypes, obj, ret)
-    elif what == 'center':
+    elif what == 'face_center':
         ret = (ct.c_double*(3*d[2]))()
         ccall(cport.s3_tab_centers, obj, ret)
     else:

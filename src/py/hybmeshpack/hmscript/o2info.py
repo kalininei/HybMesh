@@ -207,8 +207,7 @@ def tab_cont2(obj, what):
     icheck(0, Cont2D())
     icheck(1, OneOf('vert',
                     'edge_vert',
-                    'bt'
-                   ))
+                    'bt'))
     return flow.receiver.get_contour2(obj).raw_data(what)
 
 
@@ -218,5 +217,6 @@ def tab_grid2(obj, what):
     icheck(1, OneOf('vert',
                     'edge_vert', 'edge_cell',
                     'cell_dim', 'cell_edge', 'cell_vert',
-                    'bnd', 'bt', 'bnd_bt'))
+                    'bnd', 'bt', 'bnd_bt',
+                    ))
     return flow.receiver.get_grid2(obj).raw_data(what)

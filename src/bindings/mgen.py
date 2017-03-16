@@ -9,7 +9,7 @@ class Generator(bindparser.Generator):
     dictionary = {
         'TRUE': 'true',
         'FALSE': 'false',
-        'ZEROSTRING': '""',
+        'ZEROSTRING': "''",
         'ZEROVECOBJECT2D': '[]',
         'ZEROVECDOUBLE': '[]',
         'ZEROVECSTRING': '[]',
@@ -123,17 +123,17 @@ class Generator(bindparser.Generator):
     @classmethod
     def _string_append(cls, indent, var, what, sep):
         if sep:
-            return '{0}{1} = sprintf("%s%s%s", {1}, "{2}", {3})'.format(indent, var, sep, what)
+            return "{0}{1} = sprintf('%s%s%s', {1}, '{2}', {3})".format(indent, var, sep, what)
         else:
-            return '{0}{1} = sprintf("%s%s", {1}, {2})'.format(indent, var, what)
+            return "{0}{1} = sprintf('%s%s', {1}, {2})".format(indent, var, what)
 
     @classmethod
     def _concat_strings(cls, s1, s2):
-        return "sprintf(\"%s%s\", {}, {})".format(s1, s2);
+        return "sprintf('%s%s', {}, {})".format(s1, s2);
 
     @classmethod
     def _string_into_parant(cls, s, parant):
-        return '{0} = sprintf("%s%s%s", "{1}", {0}, "{2}")'.format(s, parant[0], parant[1])
+        return "{0} = sprintf('%s%s%s', '{1}', {0}, '{2}')".format(s, parant[0], parant[1])
 
     @classmethod
     def _vecbyte_init(cls, var, val):
@@ -167,7 +167,10 @@ class Generator(bindparser.Generator):
 
     @classmethod
     def _write(cls, lines, fn):
-        "removing superfluous ;, breaking into different files"
+        ## " -> '
+        #for i in range(len(lines)):
+        #    lines[i] = lines[i].replace('"', "'")
+        # removing superfluous ;, breaking into different files
         for i, ln in enumerate(lines):
             if ln.endswith('\tend;'):
                 lines[i] = ln[:-1]
@@ -175,7 +178,7 @@ class Generator(bindparser.Generator):
                 lines[i] = ln[:-1]
             elif ln.endswith('];') and '\tfor i' in ln:
                 lines[i] = ln[:-1]
-        "breaking into Hybmesh.m, Worker.m, ...."
+        # breaking into Hybmesh.m, Worker.m, ....
         istart = []
         for i, ln in enumerate(lines):
             if ln.startswith('classdef'):

@@ -2,4 +2,10 @@
 !.gitignore
 !*.m
 !Makefile
+!fromdoc/
+
+fromdoc/*
+!fromdoc/unstruct_tri.m
+!fromdoc/Makefile
+
 

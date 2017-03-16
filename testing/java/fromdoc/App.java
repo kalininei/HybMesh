@@ -121,8 +121,8 @@ public class App extends JFrame implements ActionListener{
 			//call building method with progress bar popup window
 			try{
 				ProgressBarExecutor.execute(new ProgressBarExecutor.IExec(){
-					public Exception run(Hybmesh.ICallback cb){
-						return gd.doMapping(cb, algo);
+					public void run(Hybmesh.ICallback cb) throws Exception{
+						gd.doMapping(cb, algo);
 					}
 				});
 				tab2.validate();
@@ -303,7 +303,7 @@ class Drawer extends JPanel implements MouseListener, MouseMotionListener{
 	}
 }
 
-// Provides static method to call grid building routing with popup progress bar
+// Provides static method to call grid building routine with popup progress-bar/cancel dialog
 class ProgressBarExecutor{
 	public static final long serialVersionUID = 1L;
 
@@ -347,8 +347,12 @@ class ProgressBarExecutor{
 			else if ("p1".equals(nm)) pb1.setValue((Integer)e.getNewValue());
 			else if ("p2".equals(nm)){
 				int v = (Integer)e.getNewValue();
-				if (v < 0) pb2.setIndeterminate(true);
-				else{
+				if (v < 0){
+					// Second progress is not defined for this subprocess.
+					// We put progress bar into indeterminate state with
+					// constantly moving slider.
+					pb2.setIndeterminate(true);
+				} else{
 					pb2.setIndeterminate(false);
 					pb2.setValue(v);
 				}
@@ -364,12 +368,12 @@ class ProgressBarExecutor{
 				firePropertyChange("n2", null, n2);
 				firePropertyChange("p1", null, new Integer((int)(100*p1)));
 				firePropertyChange("p2", null, new Integer((int)(100*p2)));
-				//!!!! Intentinal delay for testing reasons.
+				//!!!! Intentional delay for testing purpose.
 				Thread.sleep(300);
+				return 0;
 			} catch (InterruptedException e){
 				return 1;
 			}
-			return 0;
 		}
 	};
 
@@ -384,20 +388,27 @@ class ProgressBarExecutor{
 			cb.setVisible(true);
 		}
 		@Override
-		public Exception doInBackground(){ return func.run(cb); }
+		public Exception doInBackground(){ 
+			try{
+				func.run(cb);
+				return null;
+			} catch (Exception e){
+				return e;
+			}
+		}
 		@Override
 		public void done(){ cb.setVisible(false); }
 	}
 
 	// Interfaces for grid building routine
 	public static interface IExec{
-		public Exception run(Hybmesh.ICallback cb);
+		public void run(Hybmesh.ICallback cb) throws Exception;
 	}
 
-	// Main static function. Rethrows all grid building exception.
+	// Main static function. Rethrows all grid building exceptions.
 	// If process was cancelled throws Hybmesh.EUserInterrupt.
 	public static void execute(IExec func) throws Exception{
 		Worker worker = new Worker(func, new Popup());
-		if(worker.get() != null) throw worker.get();
+		if (worker.get() != null) throw worker.get();
 	}
 };

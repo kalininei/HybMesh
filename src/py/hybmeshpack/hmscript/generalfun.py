@@ -308,7 +308,7 @@ def _setbt_args_c2s3btps(g, btps, kv):
 
 def _setbt_args_s3bfun(g, bfun, kv):
     bold = g.raw_data('bt')
-    cnt = g.raw_data('centers')
+    cnt = g.raw_data('face_center')
     it = iter(cnt)
     for i, b1, x, y, z in zip(range(len(bold)), bold, it, it, it):
         b2 = bfun(x, y, z, b1)

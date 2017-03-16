@@ -77,8 +77,7 @@ int main(){
 		nx, ny,
 		{1, 2, 3, 4});
 
-	//wait until secondary grid is built
-	//and read it from the file
+	//wait until secondary grid is built and read it from the file
 	builder2.join();
 	std::vector<Hybmesh::Grid2D> g2v=builder1.import_grid_hmg("g2.hmg");
 	Hybmesh::Grid2D g2=g2v[0];
@@ -97,7 +96,7 @@ int main(){
 
 		std::cout<<"Done"<<std::endl;
 	} catch (Hybmesh::ERuntimeError& e){
-		//controlled build exception has occured
+		//controlled hybmesh exception has occured
 		std::cout<<"Failed"<<std::endl;
 		std::cout<<e.what()<<std::endl;
 		return EXIT_FAILURE;

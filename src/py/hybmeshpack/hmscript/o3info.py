@@ -78,7 +78,8 @@ def tab_surf3(obj, what):
     icheck(1, OneOf('vert',
                     'edge_vert',
                     'face_dim', 'face_edge', 'face_vert',
-                    'bt'
+                    'bt',
+                    'face_center'
                     ))
     return flow.receiver.get_surface3(obj).raw_data(what)
 

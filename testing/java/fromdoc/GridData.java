@@ -25,7 +25,7 @@ public class GridData{
 	}
 
 	// Performs mapping. Signature fits ProgressBarExecutor.IExec interface.
-	public Exception doMapping(Hybmesh.ICallback cb, String algo){
+	public void doMapping(Hybmesh.ICallback cb, String algo) throws Exception{
 		hm.assignCallback(cb);
 		try{
 			//1. create target contour
@@ -39,9 +39,6 @@ public class GridData{
 				null, null, algo, false, false);
 			//4. add to result
 			to.fillGrid(ret);
-			return null;
-		} catch (Exception e){
-			return e;
 		} finally {
 			hm.resetCallback();
 		}

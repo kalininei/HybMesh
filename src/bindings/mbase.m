@@ -28,7 +28,7 @@ classdef HybmeshWorker < handle
 		function _send_command(self, func, com)
 			self.send_data(func);
 			self.send_data(com);
-			self.send_signal("C");
+			self.send_signal('C');
 		end
 		function ret=_wait_for_signal(self)
 			ret=self.get_signal(self);
@@ -37,42 +37,42 @@ classdef HybmeshWorker < handle
 			ret = self.get_data();
 		end
 		function _apply_callback(self, buf)
-			p = typecast(buf(1:16), "double");
-			lens = typecast(buf(17:24), "int32");
+			p = typecast(buf(1:16), 'double');
+			lens = typecast(buf(17:24), 'int32');
 			s1 = buf(25:24+lens(1));
 			s2 = buf(25+lens(1):24+lens(1)+lens(2));
 			r = self.callback(s1, s2, p(1), p(2));
 			if r == 0
-				self.send_signal("G");
+				self.send_signal('G');
 			else
-				self.send_signal("S");
+				self.send_signal('S');
 			end
 		end
 
-		% removes ending []; splits by ,; strips substrings from """, "'", " ";
+		% removes ending []; splits by ,; strips substrings from ''', ''', ' ';
 		function ret=__parse_vecstring(~, str)
 			s = strtrim(str);
-			if (s(1)=="[" && s(end)=="]")
+			if (s(1)=='[' && s(end)==']')
 				s = substr(s, 2, length(s)-2);
 			end
-			if (strcmp(s, "[]") || strcmp(s, "None") || length(s) == 0)
+			if (strcmp(s, '[]') || strcmp(s, 'None') || length(s) == 0)
 				ret=[];
 				return;
 			end
 			ret1 = {};
-			for cit = strsplit(s, ",")
+			for cit = strsplit(s, ',')
 				it = char(cit);
 				pos1 = 1;
 				pos2 = length(it);
 				while (pos1 <= length(it) &&
-				       (it(pos1) == " " ||
-				        it(pos1) == "\"" ||
-				        it(pos1) == "\'")) pos1 = pos1 + 1;
+				       (it(pos1) == ' ' ||
+				        it(pos1) == '''' ||
+				        it(pos1) == '''')) pos1 = pos1 + 1;
 				end
 				while (pos2 >= pos1 &&
-				       (it(pos2) == " " ||
-				        it(pos2) == "\"" ||
-				        it(pos2) == "\'")) pos2 = pos2 - 1;
+				       (it(pos2) == ' ' ||
+				        it(pos2) == '''' ||
+				        it(pos2) == '''')) pos2 = pos2 - 1;
 				end
 				if (pos2 >= pos1)
 					ret1{end+1}  = substr(it, pos1, pos2-pos1+1);
@@ -85,10 +85,10 @@ classdef HybmeshWorker < handle
 				if (bracket_level == 0)
 					ret{end+1} = it;
 				else
-					ret{end} = strcat(ret{end}, ",", it);
+					ret{end} = strcat(ret{end}, ',', it);
 				end
-				if (it(1) == "[") bracket_level = bracket_level+1; end
-				if (it(end) == "]") bracket_level = bracket_level-1; end
+				if (it(1) == '[') bracket_level = bracket_level+1; end
+				if (it(end) == ']') bracket_level = bracket_level-1; end
 			end
 		end
 		function ret = isnone(~, obj)
@@ -104,7 +104,7 @@ classdef HybmeshWorker < handle
 			ret.connection=ret.require_connection(exepath);
 		end
 		function free(self)
-			if self.connection != -1
+			if self.connection ~= -1
 				self.break_connection();
 				self.connection = -1;
 			end
@@ -123,14 +123,14 @@ classdef HybmeshWorker < handle
 						self._apply_callback(self._read_buffer());
 					%exception return
 					case 'I'
-						error("Interrupted by user");
+						error('Interrupted by user');
 					case 'E'
 						error(self._tos_vecbyte(self._read_buffer()));
 					%something went wrong
 					case '0'
-						error("Server stopped working");
+						error('Server stopped working');
 					otherwise
-						error("Invalid client instruction");
+						error('Invalid client instruction');
 				end
 			end
 		end
@@ -139,7 +139,7 @@ classdef HybmeshWorker < handle
 			if (length(ss) == 0)
 				ret=nan;
 			else
-				if strcmp(ss{1}, "None")
+				if strcmp(ss{1}, 'None')
 					ret = nan;
 				else
 					ret.sid = ss{1};
@@ -165,7 +165,7 @@ classdef HybmeshWorker < handle
 			ret = str2num(str);
 		end
 		function ret=_to_point(self, str)
-			if (strcmp(str, "None"))
+			if (strcmp(str, 'None'))
 				ret = nan;
 			else
 				ret = str2num(str);
@@ -201,16 +201,16 @@ classdef HybmeshWorker < handle
 		% cpp type -> string
 		function ret=_tos_bool(self, val)
 			if val
-				ret = "True";
+				ret = 'True';
 			else
-				ret = "False";
+				ret = 'False';
 			end
 		end
 		function ret=_tos_string(self, val)
 			if self.isnone(val)
-				ret = "None"
+				ret = 'None'
 			else
-				ret = strcat("'", val, "'");
+				ret = strcat('''', val, '''');
 			end
 		end
 		function ret=_tos_int(self, val)
@@ -221,14 +221,14 @@ classdef HybmeshWorker < handle
 		end
 		function ret=_tos_point(self, val)
 			if (self.isnone(val))
-				ret = "None";
+				ret = 'None';
 			else
 				ret = sprintf('[%.16g, %.16g]', val);
 			end
 		end
 		function ret=_tos_point3(self, val)
 			if (self.isnone(val))
-				ret = "None";
+				ret = 'None';
 			else
 				ret = sprintf('[%.16g, %.16g, %.16g]', val);
 			end
@@ -246,59 +246,59 @@ classdef HybmeshWorker < handle
 		end
 		function ret=_tos_vecstring(self, val)
 			if length(val) == 0
-				ret = "[]";
+				ret = '[]';
 			else
-				as = sprintf("\"%s\", ", val);
+				as = sprintf('''%s'', ', val);
 				ret = strcat('[', as, ']');
 			end
 		end
 		function ret=_tos_vecpoint(self, val)
 			if self.isnone(val)
-				ret = "None"
+				ret = 'None'
 			elseif length(val) == 0
-				ret = "[]";
+				ret = '[]';
 			else
-				ret = sprintf("[%.16g, %.16g], ", val');
+				ret = sprintf('[%.16g, %.16g], ', val');
 				ret = strcat('[', ret, ']');
 			end
 		end
 		function ret=_tos_object(self, val)
 			if self.isnone(val)
-				ret = "None";
+				ret = 'None';
 			else
 				ret = self._tos_string(val.sid);
 			end
 		end
 		function ret=_tos_vecobject(self, val)
 			if self.isnone(val)
-				ret = "None";
+				ret = 'None';
 			elseif length(val) == 0
-				ret = "[]";
+				ret = '[]';
 			else
-				ret = strcat("'", val{1}.sid, "'");
+				ret = strcat('''', val{1}.sid, '''');
 				for i=2:length(val)
-					ret = strcat(ret, ",'", val{i}.sid, "'");
+					ret = strcat(ret, ',''', val{i}.sid, '''');
 				end
-				ret = strcat("[", ret, "]");
+				ret = strcat('[', ret, ']');
 			end
 		end
 		% vecbyte -> cpp typ
 		function ret=_to_vec_int_double_raw(self, val)
-			sz = typecast(val(1:4), "int32");
+			sz = typecast(val(1:4), 'int32');
 			ret = zeros(sz, 2);
 			pos = 5;
 			for i=1:sz
-				ret(i, 1) = typecast(val(pos:pos+3), "int32"); 
+				ret(i, 1) = typecast(val(pos:pos+3), 'int32'); 
 				pos = pos + 4;
-				ret(i, 2) = typecast(val(pos:pos+7), "double"); 
+				ret(i, 2) = typecast(val(pos:pos+7), 'double'); 
 				pos = pos + 8;
 			end
 		end
 		function ret=_to_vecdouble_raw(self, val)
-			ret = typecast(val(5:end), "double");
+			ret = typecast(val(5:end), 'double');
 		end
 		function ret=_to_vecint_raw(self, val)
-			ret = typecast(val(5:end), "int32");
+			ret = typecast(val(5:end), 'int32');
 		end
 	end
 end
@@ -355,14 +355,14 @@ classdef Hybmesh < handle
 	end
 	methods(Static)
 		function ret=hybmesh_exec_path(newpath)
-			persistent path = "hybmesh.exe";  %>>$EXEPATH
+			persistent path = 'hybmesh.exe';  %>>$EXEPATH
 			if nargin
 				path = newpath;
 			end
 			ret = path;
 		end
 		function ret=hybmesh_lib_path(newpath)
-			persistent path = "hybmesh.so";  %>>$LIBPATH
+			persistent path = 'hybmesh.so';  %>>$LIBPATH
 			if nargin
 				path = newpath;
 			end
@@ -370,7 +370,7 @@ classdef Hybmesh < handle
 		end
 	end
 	methods
-		function ret=Hybmesh(path)
+		function ret=Hybmesh()
 			addpath(ret.hybmesh_lib_path());
 			ret.worker = HybmeshWorker(ret.hybmesh_exec_path());
 		end

@@ -41,6 +41,7 @@ class AbstractContour2(basic.GeomObject2):
         what = 'vert' -> [x0, y0, x1, y1, ...]
         what = 'edge_vert' -> [v0, v1, v0, v1, ...]
         what = 'bt' -> [b0, b1, b2, .... ]
+        what = 'edge_lengths' -> [len1, len2, len3, ....]
         """
         return self.contour2()._raw_data(what)
 

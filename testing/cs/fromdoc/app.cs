@@ -3,11 +3,7 @@ using System.Windows.Forms;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.ComponentModel;
-using CBFunc = System.Func<System.String, System.String,
-	System.Double, System.Double, System.Int32>;
-using ExecutorFunc = System.Func<
-	System.Func<System.String, System.String, System.Double, System.Double, System.Int32>,
-	System.Exception>;
+using ExecutorFunc = System.Action<Hybmesh.DCallback>;
 using P2 = Hybmesh.Point2;
 
 class App{
@@ -19,6 +15,7 @@ class App{
 		//create grid storage
 		Builder builder = new Builder();
 		//gui loop
+		Application.EnableVisualStyles();  // to let marquee progress bar work
 		Application.Run(new AppGui.MainForm(builder));
 	}
 }
@@ -64,7 +61,7 @@ class Grid{
 		xy = descriptor.RawVertices();
 		edge_vert = descriptor.RawTab("edge_vert");
 		bnd = descriptor.RawTab("bnd_bt");
-		//boundary box
+		//bounding box
 		_xmin = xy[0]; _xmax = xy[0]; _ymin = xy[1]; _ymax = xy[1];
 		for (int i=0; i<xy.Length; ++i){
 			if (i % 2 == 0 && xy[i]<_xmin) _xmin = xy[i];
@@ -92,6 +89,7 @@ class Builder{
 	public GridProps props_grid2 = new GridProps(10, 10, 0.3, 0.3, 0.5, 0.5);
 	public UniteProps props_unite = new UniteProps(0.1, false);
 
+	/// <summary> builds regular rectangular grid with defined boundary type </summary>
 	Grid BuildGridB(GridProps props, int bnd){
 		return Grid.Build(hm.AddUnfRectGrid(
 			new P2(props.XMin, props.YMin), new P2(props.XMax, props.YMax),
@@ -106,25 +104,23 @@ class Builder{
 		g2 = BuildGridB(props_grid2, 2);
 	}
 
-	// Fills this.result by union of g1 and g2. Does not throw but returns exception if any.
-	// Signature fits ProgressBarExecutor.Exec requirements for visual callback.
-	public Exception UniteGridsOperation(CBFunc cb){
+	/// <summary>
+	/// Fills this.result by union of g1 and g2. Rethrows exceptions if any.
+	/// Signature fits ProgressBarExecutor.Exec requirements for visual callback.
+	/// </summary>
+	public void UniteGridsOperation(Hybmesh.DCallback cb){
 		try{
 			if (g1 == null || g2 == null) throw new Exception(
-					"Source grids have not been built");
-			hm.AssignCallback(cb.Invoke);
-			result = Grid.Build(hm.UniteGrids1(
-				g1.hm, g2.hm,
+					"Source grids have not been built yet");
+			hm.AssignCallback(cb);
+			result = Grid.Build(hm.UniteGrids1(g1.hm, g2.hm,
 				props_unite.Buffer, false, props_unite.FixBoundary));
-			return null;
-		} catch (Exception e){
-			return e;
 		} finally {
 			hm.ResetCallback();
 		}
 	}
 
-	/// <summary> bounding box with respect to all existing grids </summary>
+	/// <summary> Bounding box with respect to all existing grids </summary>
 	public void BBox(out double xmin, out double ymin, out double xmax, out double ymax){
 		xmin=ymin=xmax=ymax=0;
 		//calculate
@@ -142,42 +138,50 @@ class Builder{
 	}
 };
 
+namespace AppGui{
+
 /// <summary>
-/// Provides method to execute Action with popup cancel dialog with a pair of progress bars.
+/// Provides static method to execute Action with popup progress-bar/cancel dialog
 /// </summary>
 class ProgressBarExecutor{
-
 	/// <summary> Needed to execute worker in background and do not hang gui </summary>
 	class BGWorker: BackgroundWorker{
 		ExecutorFunc worker;
-		Action finalizer;
-		CBFunc reporter;
+		CBForm reporter;
 		public Exception result;
 
-		public BGWorker(ExecutorFunc worker, CBFunc reporter, Action finalizer){
+		public BGWorker(ExecutorFunc worker, CBForm reporter){
 			this.worker = worker;
 			this.reporter = reporter;
-			this.finalizer = finalizer;
 			WorkerSupportsCancellation = true;
-			DoWork += EventHandler;
-		}
-		void EventHandler(object sender, DoWorkEventArgs e){
-			e.Result = worker(reporter);
+			WorkerReportsProgress = true;
+			DoWork += Exec;
+			ProgressChanged += Report;
 		}
 		protected override void OnRunWorkerCompleted(RunWorkerCompletedEventArgs e){
 			result = e.Result as Exception;
-			finalizer();
+			reporter.Close();
+		}
+		void Exec(object sender, DoWorkEventArgs e){
+			try{
+				worker(reporter.Callback);
+				e.Result = null;
+			} catch (Exception ee){
+				e.Result = ee;
+			}
+		}
+		void Report(object sender, ProgressChangedEventArgs a){
+			reporter.Report(a.UserState as Tuple<String, String, double, double>);
 		}
 	};
 
-	///<summary> Popup dialog form: progress bar + cancel button </summary>
+	///<summary> Popup dialog form: 2 progress-bars + cancel button </summary>
 	class CBForm: Form{
 		ProgressBar pb1 = new ProgressBar(), pb2 = new ProgressBar();
 		TableLayoutPanel layout = new TableLayoutPanel();
 		Label lab1 = new Label(), lab2 = new Label();
 		Button cancel = new Button();
 		BGWorker bg;
-		bool stopped = false;
 		public Exception ExecError { get { return bg.result; } }
 
 		public CBForm(ExecutorFunc worker){
@@ -186,6 +190,7 @@ class ProgressBarExecutor{
 			lab1.TextAlign = lab2.TextAlign = ContentAlignment.MiddleCenter;
 			lab1.Width = lab2.Width = pb1.Width = pb2.Width = 400;
 			pb1.Maximum = pb2.Maximum = 100;
+			pb2.MarqueeAnimationSpeed = 100;
 			cancel.Text = "Cancel";
 			cancel.Click += OnCancel;
 			layout.AutoSize = true;
@@ -202,24 +207,37 @@ class ProgressBarExecutor{
 			Controls.Add(layout);
 			FormBorderStyle = FormBorderStyle.FixedDialog;
 			CenterToScreen();
-			bg = new BGWorker(worker, Report, Close);
+			bg = new BGWorker(worker, this);
 			bg.RunWorkerAsync();  //Start operation in background
 		}
 		protected override void OnFormClosing(FormClosingEventArgs e){
-			stopped = true; //to stop on forced form close.
+			bg.CancelAsync(); //to stop on forced form close.
 		}
 		void OnCancel(object sender, EventArgs e){
-			stopped = true; //to stop on cancel click.
+			bg.CancelAsync(); //to stop on cancel click.
 		}
 
-		//function passed as CBFunc to worker.
-		int Report(string n1, string n2, double p1, double p2){
-			lab1.Text = n1; lab2.Text = n2;
-			pb1.Value = (p1 < 0) ? 0 : (int)(p1*100);
-			pb2.Value = (p2 < 0) ? 0 : (int)(p2*100);
-			//!!!!! Intentional delay for testing reasons.
+		//function passed as Hybmesh.DCallback
+		public int Callback(string n1, string n2, double p1, double p2){
+			// Can not visualize input arguments from here
+			// because we are in a separate thread. Instead we send a signal.
+			bg.ReportProgress(0, new Tuple<String, String, Double, Double>(
+						n1, n2, p1, p2));
+			//!!!!! Intentional delay for testing purpose.
 			System.Threading.Thread.Sleep(500);
-			return stopped ? 1 : 0;
+			return bg.CancellationPending ? 1 : 0;
+		}
+
+		// Fills form. Called from BGWorker in a gui thread.
+		public void Report(Tuple<String, String, Double, Double> data){
+			lab1.Text = data.Item1; lab2.Text = data.Item2;
+			pb1.Value = (int)(data.Item3*100);
+			if (data.Item4 < 0){
+				pb2.Style = ProgressBarStyle.Marquee;
+			} else{
+				pb2.Style = ProgressBarStyle.Blocks;
+				pb2.Value = (int)(data.Item4*100);
+			}
 		}
 	};
 
@@ -235,15 +253,13 @@ class ProgressBarExecutor{
 	}
 }
 
-namespace AppGui{
-	
 /// <summary> Panel with automatic size and position adjustment. </summary>
 class AppPanel: Panel{
 	double xpos, ypos, xsz, ysz;
-	/// <param name = xpos> Horizontal location normalized to [0, 1]</param> 
-	/// <param name = ypos> Vertical location normalized to [0, 1]</param> 
-	/// <param name = xsz>  Panel width normalized to [0, 1] </param> 
-	/// <param name = ysz>  Panel height normalized to [0, 1] </param> 
+	/// <param name="xpos"> Horizontal location normalized to [0, 1]</param>
+	/// <param name="ypos"> Vertical location normalized to [0, 1]</param>
+	/// <param name="xsz">  Panel width normalized to [0, 1] </param>
+	/// <param name="ysz">  Panel height normalized to [0, 1] </param>
 	public AppPanel(Control parent,
 			double xpos, double ypos, double xsz, double ysz): base(){
 		this.xpos = xpos; this.ypos = ypos; this.xsz = xsz; this.ysz = ysz;
@@ -252,7 +268,6 @@ class AppPanel: Panel{
 		parent.Resize += AutoResize;
 	}
 
-	//protected override void OnResize(EventArgs e){
 	void AutoResize(object sender, EventArgs e){
 		int x = Parent.ClientSize.Width;
 		int y = Parent.ClientSize.Height;
@@ -360,6 +375,8 @@ class MainForm: Form{
 	public Builder builder;
 	Drawer canvas;
 	OptDisplay gui_grid1, gui_grid2, gui_unite;
+
+	// if grid1/grid2/result grid should be drawn.
 	public bool VisibleGrid1{get{return gui_grid1.cap.Checked && builder.g1 != null;}}
 	public bool VisibleGrid2{get{return gui_grid2.cap.Checked && builder.g2 != null;}}
 	public bool VisibleResult{get{return gui_unite.cap.Checked && builder.result != null;}}
@@ -373,7 +390,7 @@ class MainForm: Form{
 				this, 0.7, 0.4, 0.3, 0.4);
 		gui_unite = new OptDisplay("Unite", builder.props_unite,
 					this, 0.7, 0.8, 0.3, 0.2);
-		Text = "App";
+		Text = "HybMesh/c# unite grids demo";
 		Size = new Size(700, 500);
 		CenterToScreen();
 	}

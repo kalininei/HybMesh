@@ -2,4 +2,8 @@
 !.gitignore
 !a.py
 !Makefile
+!fromdoc/
 
+fromdoc/*
+!fromdoc/func_integral.py
+!fromdoc/Makefile

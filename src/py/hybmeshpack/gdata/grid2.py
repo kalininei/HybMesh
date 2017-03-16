@@ -51,6 +51,8 @@ class Grid2(basic.GeomObject2):
         what = 'bnd' -> [e0, e1, ...]
         what = 'bt' -> [b0, b1, ...]
         what = 'bnd_bt' -> [e0, b0, e1, b1, ...]
+        what = 'cell_centers'
+        what = 'cell_areas'
         """
         return g2core.raw_data(self.cdata, what)
 

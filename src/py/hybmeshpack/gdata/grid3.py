@@ -61,6 +61,8 @@ class Grid3(basic.GeomObject3):
         what = 'bt'  -> [f0bt, f1bt, ....]
         what = 'bnd' -> [bf0, bf1, ...]
         what = 'bnd_bt' -> [bf0, bt0, bf1, bt1, ...]
+        what = 'cell_centers',
+        what = 'cell_volumes'
         """
         return g3core.raw_data(self.cdata, what)
 

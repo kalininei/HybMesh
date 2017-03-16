@@ -23,7 +23,8 @@ class AbstractSurface3(basic.GeomObject3):
         what = 'face_edge' -> [f0e0, f0e1, ..., f1e0,..]
         what = 'face_vert' -> [f0v0, f0v1, ..., f1v0,..]
         what = 'bt' -> [b0, b1, b2, ...]
-        what = 'center' -> [x0, y0, z0, x1, ...]
+        what = 'face_centers' -> [x0, y0, z0, x1, ...]
+        what = 'face_areas' -> [area1, area2, ...]
         """
         return self.surface3()._raw_data(what)
 
