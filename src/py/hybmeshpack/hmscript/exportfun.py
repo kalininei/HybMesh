@@ -125,7 +125,7 @@ def export_grid_hmg(gid, fname, fmt='ascii', afields=[]):
 
 @hmscriptfun
 def export_grid_msh(gid, fname, periodic_pairs=[]):
-    """Exports grid to fluent msh format
+    """Exports grid to fluent msh format.
 
     :param gid: 2d grid file identifier or list of identifiers.
 
@@ -162,7 +162,7 @@ def export_grid_msh(gid, fname, periodic_pairs=[]):
 
 @hmscriptfun
 def export_grid_gmsh(gid, fname):
-    """ Exports grid to gmsh ascii format
+    """ Exports grid to gmsh ascii format.
 
     :param gid: single or list of grid identifiers
 
@@ -188,7 +188,7 @@ def export_grid_gmsh(gid, fname):
 
 @hmscriptfun
 def export_grid_tecplot(gid, fname):
-    """exports grid to tecplot ascii \*.dat format
+    """Exports grid to tecplot ascii format.
 
     :param gid: grid identifier or list of identifiers
 
@@ -284,7 +284,7 @@ def export3d_grid_msh(gid, fname, periodic_pairs=[]):
 
 @hmscriptfun
 def export3d_grid_tecplot(gid, fname):
-    """Exports 3D grid to tecplot ascii \*.dat format.
+    """Exports 3D grid to tecplot ascii format.
 
     :param gid: 3D grid file identifier or list of identifiers
 
@@ -435,7 +435,7 @@ def export_contour_hmc(cid, fname, fmt="ascii"):
 
 @hmscriptfun
 def export_contour_tecplot(cid, fname):
-    """Exports contour to tecplot ascii \*.dat format.
+    """Exports contour to tecplot ascii format.
 
     :param cid: contour identifier or list of identifiers,
 

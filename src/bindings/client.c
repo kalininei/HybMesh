@@ -47,10 +47,20 @@ static int get_free_index(){
 	return ret;
 }
 
+static int find_hybmesh(const char* path, char* exepath){
+	sprintf(exepath, "%s/%s", path, "hybmesh");
+	if (access(exepath, X_OK) != -1) return 1;
+	sprintf(exepath, "%s/%s", path, "hybmesh.py");
+	if (access(exepath, X_OK) != -1) return 1;
+	sprintf(exepath, "%s/%s", path, "hybmesh.exe");
+	if (access(exepath, X_OK) != -1) return 1;
+	return 0;
+}
+
 int HybmeshClientToServer_new(const char* path, int* id){
 #ifdef WIN32
 	intptr_t h1, h2, h3, h4;
-	char cmd[1000];
+	char cmd[1000], exepath[1000];
 	HybmeshClientToServer* con;
 	HANDLE client2server[2];
 	HANDLE server2client[2];
@@ -88,7 +98,11 @@ int HybmeshClientToServer_new(const char* path, int* id){
 	h1 = (intptr_t)client2server[0];
 	h2 = (intptr_t)server2client[1];
 
-	sprintf(cmd, "%s -px %lld %lld", path, h1, h2);
+	if (find_hybmesh(path, exepath) == 0){
+		fprintf(stderr, "hybmesh executable is not found at %s\n", path);
+		return 0;
+	}
+	sprintf(cmd, "%s -px %lld %lld", exepath, h1, h2);
 	printf("%s\n", cmd);
 
 	if(!CreateProcess( NULL,/* No module name (use command line) */
@@ -123,7 +137,7 @@ int HybmeshClientToServer_new(const char* path, int* id){
 #else  /* POSIX */
 
 	HybmeshClientToServer* con;
-	char s0[16], s1[16];
+	char s0[16], s1[16], exepath[1000];
 	int client2server[2],  server2client[2];
 	int childid;
 
@@ -148,7 +162,11 @@ int HybmeshClientToServer_new(const char* path, int* id){
 		sprintf(s1, "%d", server2client[1]);
 		close(client2server[1]);
 		close(server2client[0]);
-		execl(path, path, "-px", s0, s1, NULL);
+		if (find_hybmesh(path, exepath) == 0){
+			fprintf(stderr, "hybmesh executable is not found at %s\n", path);
+			return 0;
+		}
+		execl(exepath, exepath, "-px", s0, s1, NULL);
 		return 0;
 	} else {
 		/* parent process: client */

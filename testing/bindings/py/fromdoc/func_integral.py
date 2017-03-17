@@ -2,7 +2,7 @@
 # in the current directory or package subdirectory.
 # Normally this should be omitted.
 import sys
-sys.path.append("../../../build/bindings/py")
+sys.path.append("../../../../build/bindings/py")
 
 import math  # NOQA
 from Hybmesh import Hybmesh  # NOQA
@@ -14,8 +14,8 @@ def expfun(x, y):
 
 
 # set paths
-Hybmesh.hybmesh_exec_path = "../../../src/py/hybmesh.py"
-Hybmesh.hybmesh_lib_path = "../../../build/bin/"
+Hybmesh.hybmesh_exec_path = "../../../../src/py/"
+Hybmesh.hybmesh_lib_path = "../../../../build/bin/"
 
 # create Hybmesh connection under with block to guarantee
 # its destruction after all

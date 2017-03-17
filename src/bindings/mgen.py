@@ -164,3 +164,48 @@ class Generator(commongen.Generator):
     @classmethod
     def _for_loop(cls, nstring):
         return "for i=1:{}".format(nstring)
+
+    @classmethod
+    def _paste_docstring(cls, funccode, func):
+        doclines = [func.name.upper() + '$']
+        indent = cls.__get_indent(funccode[0])
+        # summary
+        doclines.extend(func.summarystring.split('\n'))
+        # arguments types
+        for tp, nm in zip(func._argtypes, func._argnames):
+            doclines.append("  {}: {}".format(nm, cls._doctype(tp)))
+        if func.argreturn[0] != "$RETURNNO":
+            doclines.append("  returns: {}".format(
+                cls._doctype(func.argreturn[1])))
+        # other info
+        if func.docstring:
+            doclines.append("$")
+            doclines.extend(func.docstring.split('\n'))
+
+        funccode.insert(1, '')
+        for i in range(len(doclines)):
+            funccode.insert(i+1, indent + '% ' + doclines[i])
+
+    # ======================= self methods
+    @classmethod
+    def _doctype(cls, tp):
+        s = ''
+        tp = tp[1:]
+        if tp == "VEC_INT_DOUBLE":
+            tp = "[int, double; ...] pairs"
+        if tp.startswith('VEC') and tp[3:8] != "POINT":
+            s = "row vector of "
+            tp = tp[3:]
+        try:
+            tp = {
+                "INT": 'int',
+                "DOUBLE": 'double',
+                "BOOL": 'boolean',
+                "STRING": 'string',
+                "POINT": '2d point as [x, y]',
+                "VECPOINT": '2d points list as [x0, y0; x1, y1; ...]',
+                "VECPOINT3": '3d points list as [x0, y0, z0; x1, y1, z1; ...]',
+                "POINT3": '3d point as [x, y, z]'}[tp]
+        except:
+            pass
+        return s + tp

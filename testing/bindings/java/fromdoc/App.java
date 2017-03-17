@@ -12,7 +12,7 @@ public class App extends JFrame implements ActionListener{
 		try{ 
 			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName()); 
 			// set path to currently used hybmesh executable
-			Hybmesh.hybmesh_exec_path = "../../../src/py/hybmesh.py";
+			Hybmesh.hybmesh_exec_path = "../../../../src/py";
 			GridData gd = new GridData();
 			javax.swing.SwingUtilities.invokeLater(new Runnable() {
 				public void run() { createAndShowGUI(gd); }

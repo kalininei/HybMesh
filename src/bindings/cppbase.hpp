@@ -61,6 +61,7 @@ private:
 		int pipe_read, pipe_write;
 		intptr_t childid;
 		void read_nbytes(char* buf, size_t sz);
+		void find_hybmesh(const char* path, char* exepath);
 		//low level platform specific procedures
 		void require_connection(const char* path);
 		void get_signal(char* sig);
@@ -134,14 +135,18 @@ private:
 	Hybmesh(const Hybmesh&);
 public:
 	// =============== construction/destruction
+	// Establishes hybmesh connection.
+	// If hybmeshpath is not "" uses it as a path to hybmesh executable.
 	Hybmesh(std::string hybmeshpath=""): _worker(hybmeshpath) {
 		worker = &_worker;
 	}
 	// ================ callback
+	// Assigns callback function.
 	void assign_callback(std::function<int(const std::string&, const std::string&,
 		                               double, double)> func){
 		worker->callback = func;
 	}
+	// Sets default silent callback.
 	void reset_callback(){
 		worker->callback = [](const std::string&, const std::string&,
 		                      double, double)->int { return 0; };
@@ -513,9 +518,19 @@ Hybmesh::VecByte Hybmesh::Worker::_read_buffer(){
 
 #endif
 
+void Hybmesh::Worker::find_hybmesh(const char* path, char* exepath){
+	sprintf(exepath, "%s/%s", path, "hybmesh");
+	if (access(exepath, X_OK) != -1) return;
+	sprintf(exepath, "%s/%s", path, "hybmesh.py");
+	if (access(exepath, X_OK) != -1) return;
+	sprintf(exepath, "%s/%s", path, "hybmesh.exe");
+	if (access(exepath, X_OK) != -1) return;
+	throw Hybmesh::ERuntimeError( "hybmesh executable was not found");
+}
+
 void Hybmesh::Worker::require_connection(const char* path){
 #ifdef WIN32 // ====================== WINDOWS IMPLEMENTATION
-	char cmd[1000];
+	char cmd[1000], exepath[1000];
 	HANDLE client2server[2];
 	HANDLE server2client[2];
 	SECURITY_ATTRIBUTES sa;
@@ -544,7 +559,8 @@ void Hybmesh::Worker::require_connection(const char* path){
 	intptr_t h1 = (intptr_t)client2server[0];
 	intptr_t h2 = (intptr_t)server2client[1];
 
-	sprintf(cmd, "%s %lld %lld", path, h1, h2);
+	find_hybmesh(path, exepath);
+	sprintf(cmd, "%s %lld %lld", exepath, h1, h2);
 
 	if(!CreateProcess( NULL,/* No module name (use command line) */
 		cmd,            /* Command line*/
@@ -573,7 +589,7 @@ void Hybmesh::Worker::require_connection(const char* path){
 	CloseHandle(client2server[0]);
 
 #else // ==================== POSIX IMPLEMENTATION
-	char s0[16], s1[16];
+	char s0[16], s1[16], exepath[1000];
 	int client2server[2],  server2client[2];
 	int childid;
 
@@ -591,7 +607,8 @@ void Hybmesh::Worker::require_connection(const char* path){
 		sprintf(s1, "%d", server2client[1]);
 		close(client2server[1]);
 		close(server2client[0]);
-		int err = execl(path, path, "-px", s0, s1, NULL);
+		find_hybmesh(path, exepath);
+		int err = execl(exepath, exepath, "-px", s0, s1, NULL);
 		if (err == -1) throw ERuntimeError(
 			"failed to launch hybmesh server application");
 		return;

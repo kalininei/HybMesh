@@ -8,7 +8,7 @@ from datachecks import (icheck, List, Bool, Point2D, ListOr1,
 
 @hmscriptfun
 def grid_bnd_to_contour(gid, simplify=True):
-    """ Extracts grid boundary to user contour
+    """ Extracts grid boundary to user contour.
 
     :param gid: grid identifier
 
@@ -28,7 +28,7 @@ def grid_bnd_to_contour(gid, simplify=True):
 
 @hmscriptfun
 def create_contour(pnts, bnds=0):
-    """ Create singly connected contour from sequence of points
+    """ Create singly connected contour from sequence of points.
 
     :param list-of-list-of-floats pnts: sequence of points.
        If coordinates of first and last points are equal
@@ -85,7 +85,7 @@ def create_spline_contour(pnts, bnds=0, nedges=100):
 
 @hmscriptfun
 def extract_subcontours(source, plist, project_to="vertex"):
-    """ Extracts singly connected subcontours from given contour
+    """ Extracts singly connected subcontours from given contour.
 
         :param source: source contour identifier
 
@@ -123,7 +123,7 @@ def extract_subcontours(source, plist, project_to="vertex"):
 
 @hmscriptfun
 def add_rect_contour(p0, p1, bnd=0):
-    """Adds four point closed rectangular contour
+    """Adds four point closed rectangular contour.
 
     :param list-of-floats p0:
 
@@ -152,7 +152,7 @@ def add_rect_contour(p0, p1, bnd=0):
 
 @hmscriptfun
 def add_circ_contour(p0, rad, n_arc, bnd=0):
-    """Adds circle contour from given center and radius
+    """Adds circle contour from given center and radius.
 
     :param list-of-floats p0: circle center in [x, y] format
 
@@ -177,7 +177,7 @@ def add_circ_contour(p0, rad, n_arc, bnd=0):
 
 @hmscriptfun
 def add_circ_contour2(p0, p1, p2, n_arc, bnd=0):
-    """Adds circle contour from given arc points
+    """Adds circle contour from given arc points.
 
     :param list-of-floats p0:
 
@@ -216,7 +216,7 @@ def add_circ_contour2(p0, p1, p2, n_arc, bnd=0):
 
 @hmscriptfun
 def add_circ_contour3(p0, p1, curv, n_arc, bnd=0):
-    """Adds circle contour from given arc points and curvature
+    """Adds circle contour from given arc points and curvature.
 
     :param list-of-floats p0:
 

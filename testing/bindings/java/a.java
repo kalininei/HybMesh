@@ -278,7 +278,7 @@ public static void pings(Hybmesh hm) throws Exception{
 public static void main(String[] args) throws Exception{
 	System.out.println("Hello");
 
-	Hybmesh.hybmesh_exec_path = "../../src/py/hybmesh.py";
+	Hybmesh.hybmesh_exec_path = "../../../src/py";
 
 	try(Hybmesh hm = new Hybmesh()){
 		pings(hm);

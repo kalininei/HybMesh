@@ -1,5 +1,11 @@
 $FUNC(
 	$NAME stdout_verbosity
+	$DOC
+		Sets the console output verbosity level.
+		0 - silent [default],
+		1 - error reports,
+		2 - procedure start/end reports,
+		3 - progress bars.
 	$TFUN _bindoper.stdout_verbosity
 	$ARG #INT verbosity
 	$RETURNNO
@@ -7,8 +13,6 @@ $FUNC)
 
 $FUNC(
 	$NAME grid_bnd_to_contour
-	$DOC
-		Builds contour out of grid boundary
 	$ARG #GRID2D grid
 	$ARG #BOOL simplify=#TRUE
 	$RETURN #CONTOUR2D
@@ -148,6 +152,10 @@ $FUNC)
 $FUNC(
 	$NAME partition_segment
 	$TFUN _bindoper.partition_segment
+	$DOC
+		Makes a partition of numeric segment by given
+		recommended step sizes at different locations.
+		See details in hybmeshpack.hmscript.partition_segment().
 	$ARG #DOUBLE xstart
 	$ARG #DOUBLE xend
 	$ARG #DOUBLE hstart
@@ -432,6 +440,7 @@ $FUNC)
 $FUNC(
 	$CLASS Object2D
 	$NAME move
+	$DOC Moves object.
 	$TFUN move_geom
 	$ARGHIDDEN #SID
 	$ARG #DOUBLE dx
@@ -442,6 +451,7 @@ $FUNC)
 $FUNC(
 	$CLASS Object3D
 	$NAME move
+	$DOC Moves object.
 	$TFUN move_geom
 	$ARGHIDDEN #SID
 	$ARG #DOUBLE dx
@@ -453,6 +463,7 @@ $FUNC)
 $FUNC(
 	$CLASS Object2D
 	$NAME scale
+	$DOC Scales object.
 	$TFUN scale_geom
 	$ARGHIDDEN #SID
 	$ARG #DOUBLE xpc
@@ -464,6 +475,7 @@ $FUNC)
 $FUNC(
 	$CLASS Object3D
 	$NAME scale
+	$DOC Scales object.
 	$TFUN scale_geom
 	$ARGHIDDEN #SID
 	$ARG #DOUBLE xpc
@@ -476,6 +488,7 @@ $FUNC)
 $FUNC(
 	$CLASS Object2D
 	$NAME rotate
+	$DOC Rotates object.
 	$TFUN rotate_geom
 	$ARGHIDDEN #SID
 	$ARG #DOUBLE angle
@@ -486,6 +499,7 @@ $FUNC)
 $FUNC(
 	$CLASS Object2D
 	$NAME reflect
+	$DOC Reflects object.
 	$TFUN reflect_geom
 	$ARGHIDDEN #SID
 	$ARG #POINT pnt1
@@ -496,6 +510,8 @@ $FUNC)
 $FUNC(
 	$CLASS ObjectA
 	$NAME free
+	$DOC
+		Removes object from hybmesh context.
 	$TFUN remove_geom
 	$ARGHIDDEN #SID
 	$RETURNNO
@@ -677,7 +693,7 @@ $FUNC(
 $FUNC)
 
 $FUNC(
-	$NAME import_surface_hmc
+	$NAME import3d_surface_hmc
 	$ARG #STRING fname
 	$ARG #STRING surfname=#ZEROSTRING
 	$ARG #BOOL allsurfs=#FALSE
@@ -687,6 +703,8 @@ $FUNC)
 $FUNC(
 	$CLASS Contour2D
 	$NAME get_point
+	$DOC
+		Returns contour point closest to given one.
 	$ARGHIDDEN #SID
 	$ARGHIDDEN "None"
 	$ARG #POINT vclosest=#NONEPOINT
@@ -705,6 +723,12 @@ $FUNC)
 $FUNC(
 	$CLASS ObjectA
 	$NAME dims
+	$DOC
+		Returns integer array representing number of primitives in the object.
+		for Contour2D: [n_vertices, n_edges];
+		for Grid2D:    [n_vertices, n_edges, n_cells];
+		for Surface3D: [n_vertices, n_edges, n_faces];
+		for Grid3D:    [n_vertices, n_edges, n_faces, n_cells];
 	$TFUN _bindoper.dims
 	$ARGHIDDEN #SID
 	$RETURN #VECINT
@@ -713,6 +737,9 @@ $FUNC)
 $FUNC(
 	$CLASS Grid2D
 	$NAME skewness
+	$DOC
+		Returns {cell index: skewness value} pairs for each grid cell
+		which skewness is greater than 'threshold'.
 	$TFUN _bindoper.skewness
 	$ARGHIDDEN #SID
 	$ARG #DOUBLE threshold=0.7
@@ -736,6 +763,8 @@ $FUNC)
 $FUNC(
 	$CLASS ObjectA
 	$NAME set_btypes_all
+	$DOC
+		Sets constant boundary feature to all boundary primitives.
 	$TFUN _bindoper.set_btypes
 	$ARGHIDDEN #SID
 	$ARG #INT btype
@@ -745,6 +774,9 @@ $FUNC)
 $FUNC(
 	$CLASS ObjectA
 	$NAME set_btypes
+	$DOC
+		Sets boundary feature for a given list of boundary primitives indicies.
+		Global indexation of edges including non-boundary ones is used.
 	$TFUN _bindoper.set_btypes
 	$ARGHIDDEN #SID
 	$ARG #INT btype
@@ -755,6 +787,10 @@ $FUNC)
 $FUNC(
 	$CLASS ObjectA
 	$NAME raw_vertices
+	$DOC
+		Returns plain 1D array of vertices coordinates.
+		for 2D object: [x0, y0, x1, y1, ...]
+		for 3D object: [x0, y0, z0, x1, y0, z1, ...]
 	$TFUN _bindoper.raw_data
 	$ARGHIDDEN #SID
 	$ARGHIDDEN "'vert'"
@@ -764,6 +800,14 @@ $FUNC)
 $FUNC(
 	$CLASS ObjectA
 	$NAME raw_tab
+	$DOC
+		Returs plain 1D integer array representing a connectivity table.
+		Certain connectivity table is defined in 'what' string.
+		For acceptable table names see:
+		  for Contour2D: hybmeshpack.hmscript.tab_cont2()
+		  for Grid2D:    hybmeshpack.hmscript.tab_grid2()
+		  for Surface3D: hybmeshpack.hmscript.tab_surf3()
+		  for Grid3D:    hybmeshpack.hmscript.tab_grid3()
 	$TFUN _bindoper.raw_data
 	$ARGHIDDEN #SID
 	$ARG #STRING what

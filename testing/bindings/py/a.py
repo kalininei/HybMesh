@@ -1,5 +1,5 @@
 import sys
-sys.path.append("../../build/bindings/py")
+sys.path.append("../../../build/bindings/py")
 from Hybmesh import Hybmesh  # NOQA
 
 
@@ -26,8 +26,8 @@ def bad_callback(s1, s2, p1, p2):
     return 0 if p1 < 0.7 else 1
 
 
-Hybmesh.hybmesh_exec_path = "../../src/py/hybmesh.py"
-Hybmesh.hybmesh_lib_path = "../../build/bin/"
+Hybmesh.hybmesh_exec_path = "../../../src/py/"
+Hybmesh.hybmesh_lib_path = "../../../build/bin/"
 
 with Hybmesh() as hm:
     g1 = hm.add_unf_rect_grid1([1, 2, 3], [2, 3, 4])

@@ -1,8 +1,8 @@
 addpath("../../build/bindings/m/");
-Hybmesh.hybmesh_exec_path("../../src/py/hybmesh.py");
-Hybmesh.hybmesh_lib_path("../../build/bin/");
+Hybmesh.hybmesh_exec_path("../../../src/py");
+Hybmesh.hybmesh_lib_path("../../../build/bin/");
 
-hm = Hybmesh("../../src/py/hybmesh.py");
+hm = Hybmesh();
 
 g1 = hm.add_unf_rect_grid1([1, 2, 3], [2, 3, 4]);
 dims = g1.dims();

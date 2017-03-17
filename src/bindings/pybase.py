@@ -274,9 +274,16 @@ class Hybmesh(object):
         self._worker.free()
 
     def assign_callback(self, cb):
+        """ Sets callback function.
+
+        :param cb: function of (str, str, float, float)->int
+
+        cb returns 1 for cancel request and 0 otherwise
+        """
         self._worker.callback = cb
 
     def reset_callback(self):
+        """ Resets default silent callback"""
         self._worker.callback = lambda s1, s2, p1, p2: 0
 
     class Object(object):

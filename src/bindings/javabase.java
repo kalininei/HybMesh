@@ -331,15 +331,30 @@ class Hybmesh implements AutoCloseable{
 			super("Interrupted by user");
 		}
 	};
+
+	/**
+	 * Callback function.
+	 *
+	 * Should return 0 to proceed with operation, 1 for cancellation request.
+	 */
 	public interface ICallback{
 		public int callback(String n1, String n2, double p1, double p2);
 	}
+
+	/**
+	 * Assigns non-default callback.
+	 */
 	public void assignCallback(ICallback cb){
 		worker.callback = cb;
 	}
+
+	/**
+	 * Sets default silent callback.
+	 */
 	public void resetCallback(){
 		worker.callback = new Worker.DefaultCallback();
 	}
+
 	public static class Point2{
 		public double x, y;
 		public Point2(double x, double y){

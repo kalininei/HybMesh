@@ -1,6 +1,7 @@
 """Script for assembling binding headers.
 For installation purposes only"""
 import sys
+import inspect
 import commongen
 
 
@@ -11,6 +12,11 @@ class Func(object):
         self.targetfun = None
         self.args = []
         self.argreturn = None
+        self.summarystring = None
+        self.docstring = None
+        self._argnames = []
+        self._argtypes = []
+        self._argdefaults = []
 
     def supplement(self):
         if self.name is None:
@@ -21,6 +27,46 @@ class Func(object):
             self.class_ = 'Hybmesh'
         if self.targetfun is None:
             self.targetfun = self.name
+
+        # documentation data
+        if self.docstring is None:
+            import hybmeshpack.hmscript as hm
+            if '_bindoper' in self.targetfun:
+                f = getattr(hm._bindoper, self.targetfun[10:])
+            else:
+                f = getattr(hm, self.targetfun)
+            if inspect.getdoc(f) is not None:
+                doc = inspect.getdoc(f)
+                isent1, isent2 = doc.find('.'), doc.find('\n\n')
+                if isent1 < 0:
+                    isent1 = isent2
+                if isent2 < 0:
+                    isent2 = isent1
+                isent = min(isent1, isent2)
+                self.docstring = doc[:isent] + '.'
+            else:
+                self.docstring = "not documented yet."
+        if '_bindoper' not in self.targetfun:
+            ainfo = "See details in " +\
+                "hybmeshpack.hmscript.{}().".format(self.targetfun)
+            self.docstring = self.docstring + '\n' + ainfo
+        dd = self.docstring.strip().split('.', 1)
+        self.summarystring = (dd[0]+".").strip()
+        if len(dd) > 1:
+            self.docstring = dd[1].strip()
+            self.docstring = self.docstring.replace('\n', '$\n')
+        else:
+            self.docstring = '$'
+        self.summarystring = self.summarystring.replace('\n', '$\n')
+
+        # _argnames, types, defaults
+        for a in self.args:
+            if a[0] != "$ARGHIDDEN":
+                self._argtypes.append(a[-2])
+                sp = a[-1].split('=')
+                self._argnames.append(sp[0])
+                sp2 = sp[1] if len(sp) > 1 else None
+                self._argdefaults.append(sp2)
 
 
 class MaskParser(object):
@@ -43,6 +89,8 @@ class MaskParser(object):
                     f.class_ = it[1]
                 elif t3 == 'TFU':
                     f.targetfun = it[1]
+                elif t3 == 'DOC':
+                    f.docstring = it[1]
             try:
                 f.supplement()
             except:
@@ -73,6 +121,15 @@ class MaskParser(object):
     @staticmethod
     def __tokenize(lines):
         ret = []
+        # here we remove $DOC section because it should not
+        # be splitted by whitespaces like all others.
+        docstart = lines.find("$DOC")
+        if docstart >= 0:
+            docend = lines.find("$", docstart+4)
+            docstr = lines[docstart+4:docend]
+            docstr = docstr.replace("\t", "").strip()
+            lines = lines[:docstart] + lines[docend:]
+
         words = lines.split()
         toks = []
         for i, w in enumerate(words):
@@ -81,13 +138,19 @@ class MaskParser(object):
         toks.append(len(words))
         for i, itok in enumerate(toks[:-1]):
             ret.append(words[itok: toks[i+1]])
+
+        # bring not splitted $DOC section back
+        if docstart >= 0:
+            ret.append(["$DOC", docstr])
+
         return ret
 
 
 if __name__ == "__main__":
     """possible arguments:
         [py/cpp/java/m/oct/all]
-        [odir /path/to/...]
+        [hmdir /path/to/hybmeshpack/directory]
+        [odir /path/to/output/directory]
         [libpath /path/to/lib/]
         [exepath /path/to/exe/]
     """
@@ -96,6 +159,13 @@ if __name__ == "__main__":
         odir = sys.argv[dirindex + 1]
     except ValueError:
         odir = 'out'
+
+    try:
+        dirindex = sys.argv.index('hmdir')
+        hmdir = sys.argv[dirindex + 1]
+        sys.path.insert(0, hmdir)
+    except ValueError:
+        raise Exception("no hmdir defined")
 
     mask = 'funcmask'
 

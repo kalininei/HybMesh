@@ -10,8 +10,8 @@ class App{
 	/// <summary> Entry point </summary>
 	public static void Main(){
 		//implicitly set needed pathes
-		Hybmesh.hybmesh_exec_path = "../../../src/py/hybmesh.py";
-		Hybmesh.hybmesh_lib_path = "../../../build/bin";
+		Hybmesh.hybmesh_exec_path = "../../../../src/py";
+		Hybmesh.hybmesh_lib_path = "../../../../build/bin";
 		//create grid storage
 		Builder builder = new Builder();
 		//gui loop

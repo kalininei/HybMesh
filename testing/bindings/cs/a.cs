@@ -264,8 +264,8 @@ public static void pings(Hybmesh hm){
 	hm.RemoveAll();
 }
 public static void Main(){
-	Hybmesh.hybmesh_exec_path = "../../src/py/hybmesh.py";
-	Hybmesh.hybmesh_lib_path = "../../build/bin";
+	Hybmesh.hybmesh_exec_path = "../../../src/py";
+	Hybmesh.hybmesh_lib_path = "../../../build/bin";
 	using (var hm = new Hybmesh()){
 		pings(hm);
 	}

@@ -114,3 +114,11 @@ class Generator(commongen.Generator):
     @classmethod
     def _for_loop(cls, nstring):
         return "for (size_t i=0; i<{}; ++i)".format(nstring)
+
+    @classmethod
+    def _paste_docstring(cls, funccode, func):
+        doclines = func.summarystring.split('\n') +\
+                func.docstring.split('\n')
+        indent = cls.__get_indent(funccode[0])
+        for i in range(len(doclines)):
+            funccode.insert(i, indent + '// '+doclines[i])

@@ -38,7 +38,7 @@ double angle0=5;         //least significant angle: only if grid boundaries are 
 std::string filler="3";  //Fill buffer with triangles
 
 //path to hybmesh executable
-std::string hmexec="../../../src/py/hybmesh.py";
+std::string hmexec="../../../../src/py";
 
 //builds secondary grid and saves result into outfn
 void grid_secondary(std::string outfn){

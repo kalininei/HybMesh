@@ -30,7 +30,7 @@ int callback_bad(const std::string& s1, const std::string& s2, double p1, double
 }
 
 void pings(){
-	Hybmesh hm("../../src/py/hybmesh.py");
+	Hybmesh hm("../../../src/py");
 
 	auto g1 = hm.add_unf_rect_grid1({1, 2, 3}, {2, 3, 4});
 	vector<int> dims = g1.dims();

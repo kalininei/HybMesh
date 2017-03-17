@@ -118,3 +118,55 @@ class Generator(commongen.Generator):
     @classmethod
     def _for_loop(cls, nstring):
         return "for i in range({})".format(nstring)
+
+    @classmethod
+    def _paste_docstring(cls, funccode, func):
+        doclines = []
+        indent = cls.__get_indent(funccode[0])
+        # summary
+        doclines.extend(func.summarystring.split('\n'))
+        # arguments types
+        for tp, nm in zip(func._argtypes, func._argnames):
+            doclines.append("$")
+            doclines.append(":param {}: {}".format(nm, cls._doctype(tp)))
+        if func.argreturn[0] != "$RETURNNO":
+            doclines.append("$")
+            doclines.append(":returns: {}".format(
+                cls._doctype(func.argreturn[1])))
+        # other info
+        doclines.append("$")
+        doclines.extend(func.docstring.split('\n'))
+
+        doclines.append('"""')
+        doclines[0] = '""" ' + doclines[0]
+        for i in range(len(doclines)):
+            # paste links to hybmeshpack procedure for sphinx documentation
+            if "hybmeshpack.hmscript." in doclines[i]:
+                istart = doclines[i].find("hybmeshpack.hmscript.")
+                iend = doclines[i].find(")", istart)
+                bb = doclines[i][istart: iend-1]
+                doclines[i] = doclines[i][:istart] + \
+                    ":func:`" + bb + '`' + doclines[i][iend+1:]
+            funccode.insert(i+1, indent + '    ' + doclines[i])
+
+    # ======================= self methods
+    @classmethod
+    def _doctype(cls, tp):
+        s = ''
+        tp = tp[1:]
+        if tp.startswith('VEC'):
+            s = "list of "
+            tp = tp[3:]
+        if tp == "_INT_DOUBLE":
+            tp = "int, double pairs"
+        try:
+            tp = {
+                "INT": 'int',
+                "DOUBLE": 'double',
+                "BOOL": 'boolean',
+                "STRING": 'string',
+                "POINT": '2d point as [x, y]',
+                "POINT3": '3d point as [x, y, z]'}[tp]
+        except:
+            pass
+        return s + tp

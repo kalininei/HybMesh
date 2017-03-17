@@ -141,6 +141,7 @@ class Generator(object):
 
     @classmethod
     def _parse_caption(cls, func):
+        # arguments
         define_args = []
         for a in func.args:
             if a[0] == '$ARGHIDDEN':
@@ -158,6 +159,7 @@ class Generator(object):
             s = s.strip()
             define_args.append(s)
 
+        # assemble caption
         ret = cls._function_caption(define_args, func)
         ret[0] = ret[0] + cls._open_tag()
         return ret
@@ -167,8 +169,10 @@ class Generator(object):
         ret = []
         for lline in lines:
             for line in lline:
-                if len(line.strip()) > 0 and ';:{}(,.'.find(line[-1]) < 0:
+                if len(line.strip()) > 0 and '$;:{}(,.'.find(line[-1]) < 0:
                     line = line + cls._eol_symbol()
+                if line.endswith("$"):
+                    line = line[:-1]
                 if (len(line) > 0):
                     line = indent + line
                 ret.append(line)
@@ -256,10 +260,10 @@ class Generator(object):
     @classmethod
     def _parse_fun(cls, func):
         ret = []
-        # parsing arguments
+        # parsing caption
         ret.extend(cls._parse_caption(func))
 
-        # assemble command
+        # assemble function body
         subs = cls._parse_args(func)
         ret.extend(cls._merge_string_code("comstr", "", ", ", subs, ''))
 
@@ -291,6 +295,10 @@ class Generator(object):
         if cls._close_tag():
             ret.append(cls._close_tag())
         ret.append('')
+
+        # parse docstring
+        cls._paste_docstring(ret, func)
+
         return ret
 
     @classmethod
@@ -503,6 +511,11 @@ class Generator(object):
     @classmethod
     def _for_loop(cls, nstring):
         raise NotImplementedError
+
+    @classmethod
+    def _paste_docstring(cls, funccode, func):
+        # raise NotImplementedError
+        pass
 
     # ====================== interface functions
     @staticmethod

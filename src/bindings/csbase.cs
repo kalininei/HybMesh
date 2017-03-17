@@ -325,7 +325,6 @@ public class Hybmesh: IDisposable{
 		public ERuntimeError(string message):
 			base(message){}
 	};
-	public delegate int DCallback(string s1, string s2, double p1, double p2);
 	public class Point2{
 		public double x, y;
 		public Point2(double x=0, double y=0){
@@ -343,6 +342,8 @@ public class Hybmesh: IDisposable{
 	};
 
 	//=================== construction/destruction
+
+	/// <summary> Establishes hybmesh connection </summary>
 	public Hybmesh(){
 		worker = new Worker();
 	}
@@ -358,9 +359,16 @@ public class Hybmesh: IDisposable{
 	}
 
 	//==================== callback
+	/// <summary> Callback function delegate.
+	/// Returns 0 to continue; 1 to cancel </summary>
+	public delegate int DCallback(string s1, string s2, double p1, double p2);
+
+	/// <summary> Assigns non-default callback </summary>
 	public void AssignCallback(DCallback cb){
 		worker.callback = cb;
 	}
+
+	/// <summary> Sets default silent callback </summary>
 	public void ResetCallback(){
 		worker.callback = (string s1, string s2, double p1, double p2) => 0;
 	}

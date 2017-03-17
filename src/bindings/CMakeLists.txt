@@ -3,7 +3,8 @@ set(BINDPARSER ${CMAKE_CURRENT_SOURCE_DIR}/bindparser.py)
 
 if (INCLUDE_CPP_BINDINGS)
 	set(CMDLINE cpp odir ${BINDINGSOUT}/cpp
-		exepath ${EXE_INSTALL_DIR}/${APPNAME})
+		exepath ${EXE_INSTALL_DIR}
+		hmdir ${CMAKE_SOURCE_DIR}/src/py)
 	add_custom_command(
 		OUTPUT ${BINDINGSOUT}/cpp/Hybmesh.hpp
 		COMMAND ${PYTHON} ${BINDPARSER} ${CMDLINE}
@@ -24,8 +25,9 @@ if (INCLUDE_CS_BINDINGS)
 			client.h client.c
 			core_hmconnection_mcspy.h core_hmconnection_mcspy.c)
 	set(CMDLINE cs odir ${BINDINGSOUT}/cs
-		exepath ${EXE_INSTALL_DIR}/${APPNAME}
-		libpath ${SHARE_INSTALL_DIR}/cs)
+		exepath ${EXE_INSTALL_DIR}
+		libpath ${SHARE_INSTALL_DIR}/cs
+		hmdir ${CMAKE_SOURCE_DIR}/src/py)
 	add_custom_command(
 		OUTPUT ${BINDINGSOUT}/cs/Hybmesh.cs
 		COMMAND ${PYTHON} ${BINDPARSER} ${CMDLINE} 
@@ -53,7 +55,8 @@ if (INCLUDE_JAVA_BINDINGS)
 		PRIVATE ${JNI_INCLUDE_DIRS}
 	)
 	set(CMDLINE java odir ${BINDINGSOUT}/java
-		exepath ${EXE_INSTALL_DIR}/${APPNAME})
+		exepath ${EXE_INSTALL_DIR}
+		hmdir ${CMAKE_SOURCE_DIR}/src/py)
 	add_custom_command(
 		OUTPUT ${BINDINGSOUT}/java/Hybmesh.java
 		COMMAND ${PYTHON} ${BINDPARSER} ${CMDLINE} 
@@ -79,8 +82,9 @@ if (INCLUDE_PYTHON_BINDINGS)
 		core_hmconnection_mcspy.h core_hmconnection_mcspy.c
 	)
 	set(CMDLINE py odir ${BINDINGSOUT}/py
-		exepath ${EXE_INSTALL_DIR}/${APPNAME}
-		libpath ${SHARE_INSTALL_DIR}/py)
+		exepath ${EXE_INSTALL_DIR}
+		libpath ${SHARE_INSTALL_DIR}/py
+		hmdir ${CMAKE_SOURCE_DIR}/src/py)
 	add_custom_command(
 		OUTPUT ${BINDINGSOUT}/py/Hybmesh.py
 		COMMAND ${PYTHON} ${BINDPARSER} ${CMDLINE} 
@@ -102,8 +106,9 @@ endif()
 
 if (INCLUDE_MATLAB_BINDINGS OR INCLUDE_OCTAVE_BINDINGS)
 	set(CMDLINE m odir ${BINDINGSOUT}/m
-		exepath ${EXE_INSTALL_DIR}/${APPNAME}
-		libpath ${SHARE_INSTALL_DIR}/m)
+		exepath ${EXE_INSTALL_DIR}
+		libpath ${SHARE_INSTALL_DIR}/m
+		hmdir ${CMAKE_SOURCE_DIR}/src/py)
 	add_custom_command(
 		OUTPUT ${BINDINGSOUT}/m/Hybmesh.m
 		COMMAND ${PYTHON} ${BINDPARSER} ${CMDLINE} 

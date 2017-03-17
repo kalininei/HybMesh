@@ -1,11 +1,11 @@
 % add directory where Hybmesh.m is located
-addpath('../../../build/bindings/m');
+addpath('../../../../build/bindings/m');
 
 % set hybmesh executable
-Hybmesh.hybmesh_exec_path('../../../src/py/hybmesh.py');
+Hybmesh.hybmesh_exec_path('../../../../src/py');
 
 % set directory where shared library is located
-Hybmesh.hybmesh_lib_path('../../../build/bin/');
+Hybmesh.hybmesh_lib_path('../../../../build/bin/');
 
 % initialize hybmesh object
 hm = Hybmesh();

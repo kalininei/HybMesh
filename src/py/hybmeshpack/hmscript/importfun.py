@@ -36,7 +36,7 @@ def import_grid_hmg(fname, gridname="", allgrids=False):
 
 @hmscriptfun
 def import_grid_msh(fname):
-    """Imports grid from fluent msh file
+    """Imports grid from fluent msh file.
 
        :param str fname: file name
 
@@ -130,7 +130,7 @@ def import_contour_ascii(fname, wbtype=False, force_closed=False):
 
 @hmscriptfun
 def import_contour_hmc(fname, contname="", allconts=False):
-    """Imports contour from hybmesh native format
+    """Imports contour from hybmesh native format.
 
       :param str fname: filename
 
@@ -158,7 +158,7 @@ def import_contour_hmc(fname, contname="", allconts=False):
 
 @hmscriptfun
 def import3d_surface_hmc(fname, srfname="", allsurfs=False):
-    """Imports surface from hybmesh native format
+    """Imports surface from hybmesh native format.
 
       :param str fname: filename
 

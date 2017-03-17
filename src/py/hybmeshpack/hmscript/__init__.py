@@ -2,6 +2,7 @@ import traceback
 import os
 import sys
 import struct
+from functools import wraps
 from hybmeshpack.com.flow import CommandFlow
 import hybmeshpack.basic.interf
 import hybmeshpack.basic.cb
@@ -29,6 +30,7 @@ def hmscriptfun(method):
     """ decorator for interface functions
     for catching exceptions.
     """
+    @wraps(method)
     def ret(*args, **kw):
         try:
             return method(*args, **kw)

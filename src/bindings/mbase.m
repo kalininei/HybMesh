@@ -375,9 +375,14 @@ classdef Hybmesh < handle
 			ret.worker = HybmeshWorker(ret.hybmesh_exec_path());
 		end
 		function assign_callback(self, cb)
+		% Assigns callback function as @(string, string, double, doube)->int
+		% which returns 1 for cancellation request and 0 otherwise.
+
 			self.worker.callback = cb;
 		end
 		function reset_callback(self)
+		% Sets default silent callback
+
 			self.worker.callback = @(~,~,~,~) 0;
 		end
 		function delete(self)

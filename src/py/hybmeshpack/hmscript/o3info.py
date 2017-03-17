@@ -62,7 +62,7 @@ def info_surface(sid):
 
 @hmscriptfun
 def domain_volume(sid):
-    """Calculates area of closed domain bounded by the **s** surface
+    """Calculates area of closed domain bounded by the given surface
 
     :param sid: grid3d or surface identifier
 

@@ -105,8 +105,10 @@ class Generator(commongen.Generator):
             capstring.pop()
         capstring.append(')')
         ret = [''.join(capstring)]
+        func.null_argumets = []
         for (k, v) in defargs:
             ret.append("{arg} = {arg} ?? new {val};".format(arg=k, val=v))
+            func.null_argumets.append([k, v])
         return ret
 
     @classmethod
@@ -136,3 +138,18 @@ class Generator(commongen.Generator):
     @classmethod
     def _for_loop(cls, nstring):
         return "for (int i=0; i<{}; ++i)".format(nstring)
+
+    @classmethod
+    def _paste_docstring(cls, funccode, func):
+        doclines = func.summarystring.split('\n') +\
+                func.docstring.split('\n')
+        indent = cls.__get_indent(funccode[0])
+        dd = [indent + '/// <summary>$']
+        for line in doclines:
+            dd.append(indent + '/// '+line)
+        dd.append(indent + '/// </summary>$')
+        for [k, v] in func.null_argumets:
+            dd.append(indent + '/// <param name="{}">'
+                      'if null then {}</param>$'.format(k, v))
+        for i in range(len(dd)):
+            funccode.insert(i, dd[i])

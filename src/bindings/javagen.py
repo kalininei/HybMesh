@@ -92,6 +92,7 @@ class Generator(commongen.Generator):
         capstring = ["public %s %s(" % (retval, funcname)]
 
         defargs = []
+        func.default_arguments = []
         for a in args:
             if '=' in a:
                 a1, a2 = a.split('=')
@@ -99,6 +100,9 @@ class Generator(commongen.Generator):
                 if a2 not in ['true', 'false', 'null'] and\
                         a2[0] not in '-.0123456789':
                     defargs.append([a1.split()[1], a2])
+                    func.default_arguments.append(['null'] + defargs[-1])
+                else:
+                    func.default_arguments.append(['val', a1.split()[1], a2])
             capstring.append(a)
             capstring.append(', ')
         if capstring[-1] == ', ':
@@ -107,6 +111,7 @@ class Generator(commongen.Generator):
         capstring.append(
                 ' throws Hybmesh.EUserInterrupt, Hybmesh.ERuntimeError')
         ret = [''.join(capstring)]
+
         for (k, v) in defargs:
             new = '' if v.startswith('"') else ' new'
             ret.append("{arg} = ({arg} != null) ? {arg} :{new} {val};".format(
@@ -140,3 +145,25 @@ class Generator(commongen.Generator):
     @classmethod
     def _for_loop(cls, nstring):
         return "for (int i=0; i<{}; ++i)".format(nstring)
+
+    @classmethod
+    def _paste_docstring(cls, funccode, func):
+        doclines = func.summarystring.split('\n') + ['$'] +\
+                func.docstring.split('\n')
+        indent = cls.__get_indent(funccode[0])
+        dd = [indent + '/**$']
+        for line in doclines:
+            dd.append(indent + ' * '+line)
+        if len(func.default_arguments) > 0:
+            dd.append(indent + ' *$')
+        for [tp, k, v] in func.default_arguments:
+            if tp == 'null':
+                dd.append(indent + ' * @param {}'
+                          ' null gives {}$'.format(k, v))
+            else:
+                dd.append(indent + ' * @param {}'
+                          ' default is {}$'.format(k, v))
+
+        dd.append(indent + ' */$')
+        for i in range(len(dd)):
+            funccode.insert(i, dd[i])
