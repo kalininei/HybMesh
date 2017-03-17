@@ -136,10 +136,9 @@ def console_interface_factory(verbosity):
 
 class PipeInterface(hybmeshpack.basic.interf.BasicInterface):
 
-    def __init__(self, sig_read, sig_write, data_read, data_write,
-                 verbosity=0):
+    def __init__(self, pipe_read, pipe_write, verbosity=0):
         super(PipeInterface, self).__init__()
-        self.p = [sig_read, sig_write, data_read, data_write]
+        self.p = [pipe_read, pipe_write]
         self.last_error_message = ""
         self.messenger = console_interface_factory(verbosity)()
         self.messenger.show_linenum = False
@@ -160,8 +159,8 @@ class PipeInterface(hybmeshpack.basic.interf.BasicInterface):
                 ilen = 8 + 8 + 4 + 4 + l1 + l2
                 s = struct.pack('=iddii%is%is' % (l1, l2),
                                 ilen, p1, p2, l1, l2, n1, n2)
-                os.write(self.parent.p[3], s)
                 os.write(self.parent.p[1], "B")
+                os.write(self.parent.p[1], s)
                 r = os.read(self.parent.p[0], 1)
                 if r == "S":
                     self._proceed = False

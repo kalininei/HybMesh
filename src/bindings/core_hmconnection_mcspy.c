@@ -4,7 +4,7 @@
 #include "stdio.h"
 
 static void exception(const char* str){
-	fprintf(stderr, "%s", str);
+	fprintf(stderr, "%s\n", str);
 	exit(EXIT_FAILURE);
 }
 

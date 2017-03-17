@@ -28,9 +28,9 @@ class Hybmesh implements AutoCloseable{
 		private void _send_command(String func, String com){
 			byte[] dt1 = func.getBytes(StandardCharsets.UTF_8);
 			byte[] dt2 = com.getBytes(StandardCharsets.UTF_8);
+			send_signal(connection, (byte)'C');
 			send_data(connection, dt1);
 			send_data(connection, dt2);
-			send_signal(connection, (byte)'C');
 		}
 		private byte _wait_for_signal(){
 			return get_signal(connection);

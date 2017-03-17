@@ -9,10 +9,8 @@ extern "C"{
 
 typedef struct _hybmesh_client2server{
 	int isopen;
-	int sig_read;
-	int sig_write;
-	int data_read;
-	int data_write;
+	int pipe_read;
+	int pipe_write;
 	intptr_t childid;
 } HybmeshClientToServer;
 

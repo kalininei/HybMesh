@@ -8,6 +8,7 @@ if (INCLUDE_CPP_BINDINGS)
 		OUTPUT ${BINDINGSOUT}/cpp/Hybmesh.hpp
 		COMMAND ${PYTHON} ${BINDPARSER} ${CMDLINE}
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/cppbase.hpp
+		        ${CMAKE_CURRENT_SOURCE_DIR}/commongen.py
 		        ${CMAKE_CURRENT_SOURCE_DIR}/cppgen.py
 		        ${CMAKE_CURRENT_SOURCE_DIR}/bindparser.py
 		        ${CMAKE_CURRENT_SOURCE_DIR}/funcmask
@@ -29,6 +30,7 @@ if (INCLUDE_CS_BINDINGS)
 		OUTPUT ${BINDINGSOUT}/cs/Hybmesh.cs
 		COMMAND ${PYTHON} ${BINDPARSER} ${CMDLINE} 
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/csbase.cs
+		        ${CMAKE_CURRENT_SOURCE_DIR}/commongen.py
 		        ${CMAKE_CURRENT_SOURCE_DIR}/csgen.py
 		        ${CMAKE_CURRENT_SOURCE_DIR}/bindparser.py
 		        ${CMAKE_CURRENT_SOURCE_DIR}/funcmask
@@ -56,6 +58,7 @@ if (INCLUDE_JAVA_BINDINGS)
 		OUTPUT ${BINDINGSOUT}/java/Hybmesh.java
 		COMMAND ${PYTHON} ${BINDPARSER} ${CMDLINE} 
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/javabase.java
+		        ${CMAKE_CURRENT_SOURCE_DIR}/commongen.py
 		        ${CMAKE_CURRENT_SOURCE_DIR}/javagen.py
 		        ${CMAKE_CURRENT_SOURCE_DIR}/bindparser.py
 		        ${CMAKE_CURRENT_SOURCE_DIR}/funcmask
@@ -82,6 +85,7 @@ if (INCLUDE_PYTHON_BINDINGS)
 		OUTPUT ${BINDINGSOUT}/py/Hybmesh.py
 		COMMAND ${PYTHON} ${BINDPARSER} ${CMDLINE} 
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/pybase.py
+		        ${CMAKE_CURRENT_SOURCE_DIR}/commongen.py
 		        ${CMAKE_CURRENT_SOURCE_DIR}/pygen.py
 		        ${CMAKE_CURRENT_SOURCE_DIR}/bindparser.py
 		        ${CMAKE_CURRENT_SOURCE_DIR}/funcmask
@@ -104,6 +108,7 @@ if (INCLUDE_MATLAB_BINDINGS OR INCLUDE_OCTAVE_BINDINGS)
 		OUTPUT ${BINDINGSOUT}/m/Hybmesh.m
 		COMMAND ${PYTHON} ${BINDPARSER} ${CMDLINE} 
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/mbase.m
+		        ${CMAKE_CURRENT_SOURCE_DIR}/commongen.py
 		        ${CMAKE_CURRENT_SOURCE_DIR}/mgen.py
 		        ${CMAKE_CURRENT_SOURCE_DIR}/bindparser.py
 		        ${CMAKE_CURRENT_SOURCE_DIR}/funcmask

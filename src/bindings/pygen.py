@@ -1,72 +1,38 @@
-import bindparser
+import commongen
 
 
-class Generator(bindparser.Generator):
+class Generator(commongen.Generator):
     def __init__(self):
         super(Generator, self).__init__()
 
-    dictionary = {
-        'TRUE': 'True',
-        'FALSE': 'False',
-        'ZEROSTRING': '""',
-        'ZEROVECOBJECT2D': '[]',
-        'ZEROVECDOUBLE': '[]',
-        'ZEROVECSTRING': '[]',
-        'ZEROVECINT': '[]',
-        'ZEROVECBOOL': '[]',
-        'ZEROVECPOINT': '[]',
-        'ZEROVECPOINT3': '[]',
-        'ZEROVECCONTOUR2D': '[]',
-        'NONEPOINT': 'None',
-        'NONECONTOUR2D': 'None',
-        'GRID2D': "",
-        'BOOL': "",
-        'VECPOINT': "",
-        'VECPOINT3': "",
-        'VECINT': "",
-        'INT': "",
-        'OBJECT2D': "",
-        'POINT': "",
-        'DOUBLE': "",
-        'VECOBJECT2D': "",
-        'STRING': "",
-        'VECDOUBLE': "",
-        'VECCONTOUR2D': "",
-        'CONTOUR2D': "",
-        'GRID3D': "",
-        'SURFACE3D': "",
-        'VECOBJECT3D': "",
-        'VECGRID2D': "",
-        'VECSURFACE3D': "",
-        'VECGRID3D': "",
-        'VECOBJECT': "",
-        'POINT3': "",
-        'VECSTRING': "",
-        'VECBOOL': "",
-        'VEC_INT_DOUBLE': "",
-    }
+    # =================== virtual methods (could be overwritten)
+    @classmethod
+    def dict_simple(cls):
+        return {
+            'TRUE': "True",
+            'FALSE': "False",
+            'BOOL': "",
+            'INT': "",
+            'DOUBLE': "",
+            'STRING': "",
+        }
 
     @classmethod
-    def __translate_vec(cls, *args):
-        ret = ['[']
-        for a in args:
-            ret.append('%s, ' % str(a))
-        if len(args) > 0:
-            ret[-1] = ret[-1][:-2]
-        ret.append(']')
-        return ''.join(ret)
+    def dict_hm(cls):
+        return {k: "" for k in super(Generator, cls).dict_hm().keys()}
 
     @classmethod
-    def _translate_VALVECINT(cls, *args):
-        return cls.__translate_vec(*args)
+    def dict_zerovec(cls):
+        ret = {k: "[]" for k in super(Generator, cls).dict_zerovec().keys()}
+        ret["ZEROSTRING"] = '""'
+        return ret
 
     @classmethod
-    def _translate_VALVECDOUBLE(cls, *args):
-        return cls.__translate_vec(*args)
-
-    @classmethod
-    def _translate_VALSTRING(cls, arg):
-        return "'%s'" % arg
+    def dict_none(cls):
+        return {
+            'NONEPOINT': 'None',
+            'NONECONTOUR2D': 'None',
+        }
 
     @classmethod
     def _translate_VALPOINT(cls, *args):
@@ -78,7 +44,34 @@ class Generator(bindparser.Generator):
 
     @classmethod
     def _translate_SID(cls):
-        return cls._worker_call('_tos_string', 'self.sid');
+        return cls._worker_call('_tos_string', 'self.sid')
+
+    @classmethod
+    def _indent(cls):
+        return '    '
+
+    @classmethod
+    def _eol_symbol(cls):
+        return ''
+
+    @classmethod
+    def _close_tag(cls):
+        return ''
+
+    @classmethod
+    def _open_tag(cls):
+        return ':'
+
+    # ====================== abstract methods (should be overwritten)
+    @classmethod
+    def _translate_vec(cls, *args):
+        ret = ['[']
+        for a in args:
+            ret.append('%s, ' % str(a))
+        if len(args) > 0:
+            ret[-1] = ret[-1][:-2]
+        ret.append(']')
+        return ''.join(ret)
 
     @classmethod
     def _worker_call(clc, func, *arg):
@@ -90,10 +83,6 @@ class Generator(bindparser.Generator):
         return ret + ')'
 
     @classmethod
-    def _return_statement(cls, val):
-        return "return {}".format(val)
-
-    @classmethod
     def _function_caption(cls, args, func):
         capstring = ["def %s(self, " % func.name]
         for a in args:
@@ -102,14 +91,6 @@ class Generator(bindparser.Generator):
         capstring[-1] = capstring[-1][:-2]
         capstring.append(')')
         return [''.join(capstring)]
-
-    @classmethod
-    def _close_tag(cls):
-        return ''
-
-    @classmethod
-    def _open_tag(cls):
-        return ':'
 
     @classmethod
     def _vec_size(cls, vec):
@@ -127,25 +108,13 @@ class Generator(bindparser.Generator):
             return "{0}{1} = {1} + {2}".format(indent, var, what)
 
     @classmethod
-    def _string_into_parant(cls, s, parant):
-        return "{0} = '{1}' + {0} + '{2}'".format(s, parant[0], parant[1])
-
-    @classmethod
     def _vecbyte_init(cls, var, val):
         return "{} = {}".format(var, val)
-
-    @classmethod
-    def _for_loop(cls, nstring):
-        return "for i in range({})".format(nstring)
-
-    @classmethod
-    def _indent(cls):
-        return '    '
 
     @classmethod
     def _string_pop_begin(cls, var, num):
         return "{0} = {0}[{1}:]".format(var, num)
 
     @classmethod
-    def _eol_symbol(cls):
-        return ''
+    def _for_loop(cls, nstring):
+        return "for i in range({})".format(nstring)

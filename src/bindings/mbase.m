@@ -26,9 +26,9 @@ classdef HybmeshWorker < handle
 	end
 	methods (Access=private)
 		function _send_command(self, func, com)
+			self.send_signal('C');
 			self.send_data(func);
 			self.send_data(com);
-			self.send_signal('C');
 		end
 		function ret=_wait_for_signal(self)
 			ret=self.get_signal(self);

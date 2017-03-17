@@ -58,8 +58,9 @@ public:
 private:
 	class Worker{
 		//data
-		int sig_read, sig_write, data_read, data_write;
+		int pipe_read, pipe_write;
 		intptr_t childid;
+		void read_nbytes(char* buf, size_t sz);
 		//low level platform specific procedures
 		void require_connection(const char* path);
 		void get_signal(char* sig);
@@ -472,9 +473,9 @@ void Hybmesh::Worker::_apply_callback(const VecByte& buf){
 }
 
 void Hybmesh::Worker::_send_command(const std::string& func, const std::string& com){
+	send_signal('C');
 	send_data(func.size(), &func[0]);
 	send_data(com.size(), &com[0]);
-	send_signal('C');
 }
 
 char Hybmesh::Worker::_wait_for_signal(){
@@ -515,10 +516,8 @@ Hybmesh::VecByte Hybmesh::Worker::_read_buffer(){
 void Hybmesh::Worker::require_connection(const char* path){
 #ifdef WIN32 // ====================== WINDOWS IMPLEMENTATION
 	char cmd[1000];
-	HANDLE sig_client2server[2];
-	HANDLE sig_server2client[2];
-	HANDLE data_client2server[2];
-	HANDLE data_server2client[2];
+	HANDLE client2server[2];
+	HANDLE server2client[2];
 	SECURITY_ATTRIBUTES sa;
 	PROCESS_INFORMATION pi;
 	STARTUPINFO si;
@@ -527,33 +526,25 @@ void Hybmesh::Worker::require_connection(const char* path){
 	sa.nLength = sizeof(sa);
 	sa.bInheritHandle = TRUE;
 	sa.lpSecurityDescriptor = NULL;
-	if (!CreatePipe(&sig_client2server[0], &sig_client2server[1], &sa, 0) || 
-	    !CreatePipe(&sig_server2client[0], &sig_server2client[1], &sa, 0) ||
-	    !CreatePipe(&data_client2server[0], &data_client2server[1], &sa, 0) ||
-	    !CreatePipe(&data_server2client[0], &data_server2client[1], &sa, 0)){
+	if (!CreatePipe(&client2server[0], &client2server[1], &sa, 0) || 
+	    !CreatePipe(&server2client[0], &server2client[1], &sa, 0)){
 		return 0;
 	}
 	/* do not inherit client handles */
-	SetHandleInformation(sig_client2server[1], HANDLE_FLAG_INHERIT, 0);
-	SetHandleInformation(sig_server2client[0], HANDLE_FLAG_INHERIT, 0);
-	SetHandleInformation(data_client2server[1], HANDLE_FLAG_INHERIT, 0);
-	SetHandleInformation(data_server2client[0], HANDLE_FLAG_INHERIT, 0);
-	SetHandleInformation(sig_client2server[0], HANDLE_FLAG_INHERIT, 1);
-	SetHandleInformation(sig_server2client[1], HANDLE_FLAG_INHERIT, 1);
-	SetHandleInformation(data_client2server[0], HANDLE_FLAG_INHERIT, 1);
-	SetHandleInformation(data_server2client[1], HANDLE_FLAG_INHERIT, 1);
+	SetHandleInformation(client2server[1], HANDLE_FLAG_INHERIT, 0);
+	SetHandleInformation(server2client[0], HANDLE_FLAG_INHERIT, 0);
+	SetHandleInformation(client2server[0], HANDLE_FLAG_INHERIT, 1);
+	SetHandleInformation(server2client[1], HANDLE_FLAG_INHERIT, 1);
 
 	/* forking */
 	ZeroMemory(&si, sizeof(si));
 	ZeroMemory(&pi, sizeof(pi));
 	si.cb = sizeof(si);
 
-	intptr_t h1 = (intptr_t)sig_client2server[0];
-	intptr_t h2 = (intptr_t)sig_server2client[1];
-	intptr_t h3 = (intptr_t)data_client2server[0];
-	intptr_t h4 = (intptr_t)data_server2client[1];
+	intptr_t h1 = (intptr_t)client2server[0];
+	intptr_t h2 = (intptr_t)server2client[1];
 
-	sprintf(cmd, "%s %lld %lld %lld %lld", path, h1, h2, h3, h4);
+	sprintf(cmd, "%s %lld %lld", path, h1, h2);
 
 	if(!CreateProcess( NULL,/* No module name (use command line) */
 		cmd,            /* Command line*/
@@ -573,27 +564,21 @@ void Hybmesh::Worker::require_connection(const char* path){
 
 	/* fill con */
 	this->childid = (intptr_t)pi.hProcess;
-	this->sig_read = _open_osfhandle((intptr_t)sig_server2client[0], _O_APPEND|_O_RDONLY);
-	this->sig_write = _open_osfhandle((intptr_t)sig_client2server[1], _O_APPEND);
-	this->data_read = _open_osfhandle((intptr_t)data_server2client[0], _O_APPEND|_O_RDONLY);
-	this->data_write = _open_osfhandle((intptr_t)data_client2server[1], _O_APPEND);
+	this->pipe_read = _open_osfhandle((intptr_t)server2client[0], _O_APPEND|_O_RDONLY);
+	this->pipe_write = _open_osfhandle((intptr_t)client2server[1], _O_APPEND);
 
 	/* close unused handles */
 	CloseHandle(pi.hThread);
-	CloseHandle(sig_server2client[1]);
-	CloseHandle(sig_client2server[0]);
-	CloseHandle(data_server2client[1]);
-	CloseHandle(data_client2server[0]);
+	CloseHandle(server2client[1]);
+	CloseHandle(client2server[0]);
 
 #else // ==================== POSIX IMPLEMENTATION
-	char s0[16], s1[16], s2[16], s3[16];
-	int sig_client2server[2],  sig_server2client[2],
-	    data_client2server[2], data_server2client[2];
+	char s0[16], s1[16];
+	int client2server[2],  server2client[2];
 	int childid;
 
 	/* create pipes */
-	if (pipe(sig_client2server)<0 || pipe(sig_server2client)<0 ||
-	    pipe(data_client2server)<0 || pipe(data_server2client)<0){
+	if (pipe(client2server)<0 || pipe(server2client)<0){
 		throw Hybmesh::ERuntimeError("failed to establish a pipe");
 	}
 
@@ -602,52 +587,55 @@ void Hybmesh::Worker::require_connection(const char* path){
 	if (childid < 0) throw Hybmesh::ERuntimeError("failed to fork");
 	else if (childid == 0){
 		/* child process: server */
-		sprintf(s0, "%d", sig_client2server[0]);
-		sprintf(s1, "%d", sig_server2client[1]);
-		sprintf(s2, "%d", data_client2server[0]);
-		sprintf(s3, "%d", data_server2client[1]);
-		close(sig_client2server[1]);
-		close(sig_server2client[0]);
-		close(data_client2server[1]);
-		close(data_server2client[0]);
-		int err = execl(path, path, "-px", s0, s1, s2, s3, NULL);
+		sprintf(s0, "%d", client2server[0]);
+		sprintf(s1, "%d", server2client[1]);
+		close(client2server[1]);
+		close(server2client[0]);
+		int err = execl(path, path, "-px", s0, s1, NULL);
 		if (err == -1) throw ERuntimeError(
 			"failed to launch hybmesh server application");
 		return;
 	} else {
 		/* parent process: client */
-		close(sig_client2server[0]);
-		close(sig_server2client[1]);
-		close(data_client2server[0]);
-		close(data_server2client[1]);
+		close(client2server[0]);
+		close(server2client[1]);
 		this->childid = childid;
-		this->sig_read = sig_server2client[0];
-		this->sig_write = sig_client2server[1];
-		this->data_read = data_server2client[0];
-		this->data_write = data_client2server[1];
+		this->pipe_read = server2client[0];
+		this->pipe_write = client2server[1];
 	}
 
 #endif //POSIX
 }
 
+void Hybmesh::Worker::read_nbytes(char* buf, size_t sz){
+	int rd;
+	while (1){
+		rd = HMPLATFORM_READ(pipe_read, buf, sz);
+		if (rd < 0 || (size_t)rd > sz){
+			throw Hybmesh::ERuntimeError("native read error");
+		} else if (sz == (size_t)rd) return;
+		sz -= rd;
+		buf += rd;
+	}
+}
 
 void Hybmesh::Worker::get_signal(char* sig){
 	*sig = '0';
-	HMPLATFORM_READ(sig_read, sig, 1);
+	read_nbytes(sig, 1);
 }
 void Hybmesh::Worker::get_data(int* sz, char** data){
 	char intbuf[4];
-	HMPLATFORM_READ(data_read, intbuf, 4);
+	read_nbytes(intbuf, 4);
 	*sz = *(int*)intbuf;
 	*data = (char*)malloc(*sz);
-	HMPLATFORM_READ(data_read, *data, *sz);
+	read_nbytes(*data, *sz);
 }
 void Hybmesh::Worker::send_signal(char sig){
-	HMPLATFORM_WRITE(sig_write, &sig, 1);
+	HMPLATFORM_WRITE(pipe_write, &sig, 1);
 }
 void Hybmesh::Worker::send_data(int sz, const char* data){
-	HMPLATFORM_WRITE(data_write, (char*)(&sz), 4);
-	HMPLATFORM_WRITE(data_write, data, sz);
+	HMPLATFORM_WRITE(pipe_write, (char*)(&sz), 4);
+	HMPLATFORM_WRITE(pipe_write, data, sz);
 }
 void Hybmesh::Worker::break_connection(){
 	send_signal('Q');
@@ -656,10 +644,8 @@ void Hybmesh::Worker::break_connection(){
 #else
 	waitpid(childid, NULL, 0);
 #endif
-	HMPLATFORM_CLOSE(sig_read);
-	HMPLATFORM_CLOSE(sig_write);
-	HMPLATFORM_CLOSE(data_read);
-	HMPLATFORM_CLOSE(data_write);
+	HMPLATFORM_CLOSE(pipe_read);
+	HMPLATFORM_CLOSE(pipe_write);
 }
 
 

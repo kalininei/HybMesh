@@ -45,9 +45,9 @@ public class Hybmesh: IDisposable{
 		private void _send_command(string func, string com){
 			byte[] dtfunc = Encoding.UTF8.GetBytes(func);
 			byte[] dtcom = Encoding.UTF8.GetBytes(com);
+			send_signal(connection, (byte)'C');
 			send_data(connection, dtfunc.Length, dtfunc);
 			send_data(connection, dtcom.Length, dtcom);
-			send_signal(connection, (byte)'C');
 		}
 		private byte _wait_for_signal(){
 			return get_signal(connection);

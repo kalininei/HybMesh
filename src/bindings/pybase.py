@@ -51,9 +51,9 @@ class _Worker(object):
 
     # server communication
     def _send_command(self, func, com):
+        self.send_signal('C')
         self.send_data(len(func), func)
         self.send_data(len(com), com)
-        self.send_signal('C')
 
     def _read_buffer(self):
         return self.get_data()

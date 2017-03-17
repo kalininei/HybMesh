@@ -11,11 +11,9 @@ Console interface for HybMesh. Possible arguments:
         1: +execution errors descriptions
         2: +commands start/end reports
         3: +progress bar [default]
--px p1 p2 p3 p4 [-silent]
+-px p1 p2 [-silent]
     Execute hybmesh in a pipe communication mode.
-    p* are open pipe descriptors for
-    1 - read signal, 2 - write signal
-    3 - read data, 4 - write data
+    p* are open pipe descriptors for reading (p1) and writing (p2)
 """
 
 # -x fn.hmp [-sgrid gname fmt fn] [-sproj fn] [-silent]
@@ -100,32 +98,28 @@ def pxexec(argv):
     import os
     import struct
     import ctypes as ct
-    sig_read = int(argv[2])
-    sig_write = int(argv[3])
-    data_read = int(argv[4])
-    data_write = int(argv[5])
+    pipe_read = int(argv[2])
+    pipe_write = int(argv[3])
     if os.name == 'nt':
         import msvcrt
-        sig_read = msvcrt.open_osfhandle(sig_read, os.O_APPEND | os.O_RDONLY)
-        data_read = msvcrt.open_osfhandle(data_read, os.O_APPEND | os.O_RDONLY)
-        sig_write = msvcrt.open_osfhandle(sig_write, os.O_APPEND)
-        data_write = msvcrt.open_osfhandle(data_write, os.O_APPEND)
+        pipe_read = msvcrt.open_osfhandle(pipe_read, os.O_APPEND | os.O_RDONLY)
+        pipe_write = msvcrt.open_osfhandle(pipe_write, os.O_APPEND)
     if '-silent' in argv:
         hmscript.flow.set_interface(hmscript.ConsoleInterface0())
     else:
         hmscript.flow.set_interface(hmscript.PipeInterface(
-                sig_read, sig_write, data_read, data_write))
+                pipe_read, pipe_write))
     while 1:
         # wait for a signal from client
-        s1 = os.read(sig_read, 1)
+        s1 = os.read(pipe_read, 1)
         # command was written to dataread pipe
         if s1 == "C":
-            sz = os.read(data_read, 4)
+            sz = os.read(pipe_read, 4)
             sz = struct.unpack('=i', sz)[0]
-            cm = os.read(data_read, sz)
-            sz = os.read(data_read, 4)
+            cm = os.read(pipe_read, sz)
+            sz = os.read(pipe_read, 4)
             sz = struct.unpack('=i', sz)[0]
-            args = os.read(data_read, sz)
+            args = os.read(pipe_read, sz)
             try:
                 # #############################3
                 print cm, ":", repr(args)
@@ -133,30 +127,31 @@ def pxexec(argv):
             except hmscript.UserInterrupt:
                 print "USER INTERRUPT"
                 # interrupted by callback function
-                os.write(sig_write, "I")
+                os.write(pipe_write, "I")
             except Exception as e:
                 print "GENERAL EXCEPTION"
                 # error return
                 s = str(e)
-                os.write(data_write, struct.pack('=i', len(s)) + s)
-                os.write(sig_write, "E")
+                os.write(pipe_write, "E")
+                os.write(pipe_write, struct.pack('=i', len(s)) + s)
             else:
+                os.write(pipe_write, "R")
                 # normal return
                 if ret is None:
                     # None return
-                    os.write(data_write, '\0\0\0\0')
+                    os.write(pipe_write, '\0\0\0\0')
                 elif isinstance(ret, ct.Array):
+                    #print(ret[:])
                     # command returning ctypes array object
                     rawlen, alen = ct.sizeof(ret), ret._length_
-                    os.write(data_write, struct.pack('=ii', rawlen + 4, alen))
-                    os.write(data_write, ret)
+                    os.write(pipe_write, struct.pack('=ii', rawlen + 4, alen))
+                    os.write(pipe_write, ret)
                 else:
                     # regular command which returns python types
                     s = repr(ret)
                     # #############################3
                     print "return is ", s
-                    os.write(data_write, struct.pack('=i', len(s)) + s)
-                os.write(sig_write, "R")
+                    os.write(pipe_write, struct.pack('=i', len(s)) + s)
         # quit signal
         elif s1 == "Q" or not s1:
             ##########################
@@ -166,7 +161,7 @@ def pxexec(argv):
                 print "server terminated"
             quit()
         else:
-            raise Exception("Invalid instruction for server")
+            raise Exception("Invalid server instruction")
 
 
 def main():
@@ -195,7 +190,7 @@ def main():
         sxexec(sys.argv)
     elif len(sys.argv) >= 3 and '-x' in sys.argv:
         xexec(sys.argv)
-    elif len(sys.argv) >= 6 and sys.argv[1] == '-px':
+    elif len(sys.argv) >= 4 and sys.argv[1] == '-px':
         pxexec(sys.argv)
 
     sys.exit('Invalid options string. See -help.')

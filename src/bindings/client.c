@@ -47,15 +47,13 @@ static int get_free_index(){
 	return ret;
 }
 
-#ifdef WIN32
 int HybmeshClientToServer_new(const char* path, int* id){
+#ifdef WIN32
 	intptr_t h1, h2, h3, h4;
 	char cmd[1000];
 	HybmeshClientToServer* con;
-	HANDLE sig_client2server[2];
-	HANDLE sig_server2client[2];
-	HANDLE data_client2server[2];
-	HANDLE data_server2client[2];
+	HANDLE client2server[2];
+	HANDLE server2client[2];
 	SECURITY_ATTRIBUTES sa;
 	PROCESS_INFORMATION pi;
 	STARTUPINFO si;
@@ -72,33 +70,25 @@ int HybmeshClientToServer_new(const char* path, int* id){
 	sa.nLength = sizeof(sa);
 	sa.bInheritHandle = TRUE;
 	sa.lpSecurityDescriptor = NULL;
-	if (!CreatePipe(&sig_client2server[0], &sig_client2server[1], &sa, 0) || 
-	    !CreatePipe(&sig_server2client[0], &sig_server2client[1], &sa, 0) ||
-	    !CreatePipe(&data_client2server[0], &data_client2server[1], &sa, 0) ||
-	    !CreatePipe(&data_server2client[0], &data_server2client[1], &sa, 0)){
+	if (!CreatePipe(&client2server[0], &client2server[1], &sa, 0) || 
+	    !CreatePipe(&server2client[0], &server2client[1], &sa, 0))
 		return 0;
 	}
 	/* do not inherit client handles */
-	SetHandleInformation(sig_client2server[1], HANDLE_FLAG_INHERIT, 0);
-	SetHandleInformation(sig_server2client[0], HANDLE_FLAG_INHERIT, 0);
-	SetHandleInformation(data_client2server[1], HANDLE_FLAG_INHERIT, 0);
-	SetHandleInformation(data_server2client[0], HANDLE_FLAG_INHERIT, 0);
-	SetHandleInformation(sig_client2server[0], HANDLE_FLAG_INHERIT, 1);
-	SetHandleInformation(sig_server2client[1], HANDLE_FLAG_INHERIT, 1);
-	SetHandleInformation(data_client2server[0], HANDLE_FLAG_INHERIT, 1);
-	SetHandleInformation(data_server2client[1], HANDLE_FLAG_INHERIT, 1);
+	SetHandleInformation(client2server[1], HANDLE_FLAG_INHERIT, 0);
+	SetHandleInformation(server2client[0], HANDLE_FLAG_INHERIT, 0);
+	SetHandleInformation(client2server[0], HANDLE_FLAG_INHERIT, 1);
+	SetHandleInformation(server2client[1], HANDLE_FLAG_INHERIT, 1);
 
 	/* forking */
 	ZeroMemory(&si, sizeof(si));
 	ZeroMemory(&pi, sizeof(pi));
 	si.cb = sizeof(si);
 
-	h1 = (intptr_t)sig_client2server[0];
-	h2 = (intptr_t)sig_server2client[1];
-	h3 = (intptr_t)data_client2server[0];
-	h4 = (intptr_t)data_server2client[1];
+	h1 = (intptr_t)client2server[0];
+	h2 = (intptr_t)server2client[1];
 
-	sprintf(cmd, "%s -px %lld %lld %lld %lld", path, h1, h2, h3, h4);
+	sprintf(cmd, "%s -px %lld %lld", path, h1, h2);
 	printf("%s\n", cmd);
 
 	if(!CreateProcess( NULL,/* No module name (use command line) */
@@ -120,27 +110,21 @@ int HybmeshClientToServer_new(const char* path, int* id){
 
 	/* fill con */
 	con->childid = (intptr_t)pi.hProcess;
-	con->sig_read = _open_osfhandle((intptr_t)sig_server2client[0], _O_APPEND|_O_RDONLY);
-	con->sig_write = _open_osfhandle((intptr_t)sig_client2server[1], _O_APPEND);
-	con->data_read = _open_osfhandle((intptr_t)data_server2client[0], _O_APPEND|_O_RDONLY);
-	con->data_write = _open_osfhandle((intptr_t)data_client2server[1], _O_APPEND);
+	con->pipe_read = _open_osfhandle((intptr_t)sig_server2client[0], _O_APPEND|_O_RDONLY);
+	con->pipe_write = _open_osfhandle((intptr_t)sig_client2server[1], _O_APPEND);
 	con->isopen = 1;
 
 	/* close unused handles */
 	CloseHandle(pi.hThread);
-	CloseHandle(sig_server2client[1]);
-	CloseHandle(sig_client2server[0]);
-	CloseHandle(data_server2client[1]);
-	CloseHandle(data_client2server[0]);
+	CloseHandle(server2client[1]);
+	CloseHandle(client2server[0]);
 }
 
 #else  /* POSIX */
 
-int HybmeshClientToServer_new(const char* path, int* id){
 	HybmeshClientToServer* con;
-	char s0[16], s1[16], s2[16], s3[16];
-	int sig_client2server[2],  sig_server2client[2],
-	    data_client2server[2], data_server2client[2];
+	char s0[16], s1[16];
+	int client2server[2],  server2client[2];
 	int childid;
 
 	*id = get_free_index();
@@ -152,79 +136,83 @@ int HybmeshClientToServer_new(const char* path, int* id){
 	}
 
 	/* create pipes */
-	if (pipe(sig_client2server)<0 || pipe(sig_server2client)<0 ||
-	    pipe(data_client2server)<0 || pipe(data_server2client)<0){
+	if (pipe(client2server)<0 || pipe(server2client)<0)
 		return 0;
-	}
 
 	/* forking */
 	childid = fork();
 	if (childid < 0) return 0;
 	else if (childid == 0){
 		/* child process: server */
-		sprintf(s0, "%d", sig_client2server[0]);
-		sprintf(s1, "%d", sig_server2client[1]);
-		sprintf(s2, "%d", data_client2server[0]);
-		sprintf(s3, "%d", data_server2client[1]);
-		close(sig_client2server[1]);
-		close(sig_server2client[0]);
-		close(data_client2server[1]);
-		close(data_server2client[0]);
-		execl(path, path, "-px", s0, s1, s2, s3, NULL);
+		sprintf(s0, "%d", client2server[0]);
+		sprintf(s1, "%d", server2client[1]);
+		close(client2server[1]);
+		close(server2client[0]);
+		execl(path, path, "-px", s0, s1, NULL);
 		return 0;
 	} else {
 		/* parent process: client */
-		close(sig_client2server[0]);
-		close(sig_server2client[1]);
-		close(data_client2server[0]);
-		close(data_server2client[1]);
+		close(client2server[0]);
+		close(server2client[1]);
 		con->childid = childid;
-		con->sig_read = sig_server2client[0];
-		con->sig_write = sig_client2server[1];
-		con->data_read = data_server2client[0];
-		con->data_write = data_client2server[1];
+		con->pipe_read = server2client[0];
+		con->pipe_write = client2server[1];
 		con->isopen = 1;
 		return 1;
 	}
-}
 #endif
+}
+
+static int read_nbytes(int fd, void* buf, size_t sz){
+	int rd;
+
+	while (1){
+		rd = PLATFORM_READ(fd, buf, sz);
+		if (rd < 0 || rd > sz){
+			fprintf(stderr, "native read error\n");
+			return 0;
+		} else if (sz == rd) return 1;
+		sz -= rd;
+		buf += rd;
+	}
+}
 
 int HybmeshClientToServer_get_signal(int id, char* sig){
 	HybmeshClientToServer* con = hybmesh_connections + id;
 	*sig = '0';
-	PLATFORM_READ(con->sig_read, sig, 1);
+	if (read_nbytes(con->pipe_read, sig, 1) == 0) return 0;
 	return 1;
 }
 
 int HybmeshClientToServer_get_data(int id, int* sz, char** data){
 	HybmeshClientToServer* con = hybmesh_connections + id;
-	PLATFORM_READ(con->data_read, (char*)(sz), 4);
+	if (read_nbytes(con->pipe_read, sz, 4) == 0) return 0;
 	*data = (char*)malloc(*sz);
-	PLATFORM_READ(con->data_read, *data, *sz);
+	if (read_nbytes(con->pipe_read, *data, *sz) == 0) return 0;
 	return 1;
 }
 
 int HybmeshClientToServer_get_data1(int id, int* sz){
 	HybmeshClientToServer* con = hybmesh_connections + id;
-	PLATFORM_READ(con->data_read, (char*)(sz), 4);
+	if (read_nbytes(con->pipe_read, sz, 4) == 0) return 0;
 	return 1;
 }
 int HybmeshClientToServer_get_data2(int id, int sz, char* data){
 	HybmeshClientToServer* con = hybmesh_connections + id;
-	PLATFORM_READ(con->data_read, data, sz);
+	if (read_nbytes(con->pipe_read, data, sz) == 0) return 0;
 	return 1;
 }
 
 int HybmeshClientToServer_send_signal(int id, char sig){
 	HybmeshClientToServer* con = hybmesh_connections + id;
-	PLATFORM_WRITE(con->sig_write, &sig, 1);
+	PLATFORM_WRITE(con->pipe_write, &sig, 1);
 	return 1;
 }
 
 int HybmeshClientToServer_send_data(int id, int sz, char* data){
 	HybmeshClientToServer* con = hybmesh_connections + id;
-	PLATFORM_WRITE(con->data_write, (char*)(&sz), 4);
-	PLATFORM_WRITE(con->data_write, data, sz);
+	PLATFORM_WRITE(con->pipe_write, &sz, 4);
+	PLATFORM_WRITE(con->pipe_write, data, sz);
 	return 1;
 }
 
@@ -236,10 +224,8 @@ int HybmeshClientToServer_delete(int id){
 #else
 	waitpid(con->childid, NULL, 0);
 #endif
-	PLATFORM_CLOSE(con->sig_read);
-	PLATFORM_CLOSE(con->sig_write);
-	PLATFORM_CLOSE(con->data_read);
-	PLATFORM_CLOSE(con->data_write);
+	PLATFORM_CLOSE(con->pipe_read);
+	PLATFORM_CLOSE(con->pipe_write);
 	con->isopen = 0;
 	return 1;
 }

@@ -122,7 +122,7 @@ public static void pings(Hybmesh hm){
 	hm.AssignCallback(bad_callback);
 	try{
 		var c42_ = hm.AddCustomRectGrid("orthogonal", c37, c39);
-	} catch (Hybmesh.EUserInterrupt e){
+	} catch (Hybmesh.EUserInterrupt){
 		Console.WriteLine("Interrupt catched");
 	}
 	hm.AssignCallback(good_callback);
