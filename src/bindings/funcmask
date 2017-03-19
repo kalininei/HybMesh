@@ -311,7 +311,7 @@ $FUNC(
 $FUNC)
 
 $FUNC(
-	$NAME simple_boundary_grid
+	$NAME build_boundary_grid1
 	$ARG #OBJECT2D source
 	$ARG #VECDOUBLE partition
 	$ARG #STRING direction=#VALSTRING(left)
@@ -725,10 +725,11 @@ $FUNC(
 	$NAME dims
 	$DOC
 		Returns integer array representing number of primitives in the object.
-		for Contour2D: [n_vertices, n_edges];
-		for Grid2D:    [n_vertices, n_edges, n_cells];
-		for Surface3D: [n_vertices, n_edges, n_faces];
-		for Grid3D:    [n_vertices, n_edges, n_faces, n_cells];
+
+		* for Contour2D: [n_vertices, n_edges];
+		* for Grid2D:    [n_vertices, n_edges, n_cells];
+		* for Surface3D: [n_vertices, n_edges, n_faces];
+		* for Grid3D:    [n_vertices, n_edges, n_faces, n_cells];
 	$TFUN _bindoper.dims
 	$ARGHIDDEN #SID
 	$RETURN #VECINT
@@ -789,8 +790,9 @@ $FUNC(
 	$NAME raw_vertices
 	$DOC
 		Returns plain 1D array of vertices coordinates.
-		for 2D object: [x0, y0, x1, y1, ...]
-		for 3D object: [x0, y0, z0, x1, y0, z1, ...]
+
+		* for 2D object: [x0, y0, x1, y1, ...]
+		* for 3D object: [x0, y0, z0, x1, y0, z1, ...]
 	$TFUN _bindoper.raw_data
 	$ARGHIDDEN #SID
 	$ARGHIDDEN "'vert'"
@@ -802,12 +804,14 @@ $FUNC(
 	$NAME raw_tab
 	$DOC
 		Returs plain 1D integer array representing a connectivity table.
+
 		Certain connectivity table is defined in 'what' string.
 		For acceptable table names see:
-		  for Contour2D: hybmeshpack.hmscript.tab_cont2()
-		  for Grid2D:    hybmeshpack.hmscript.tab_grid2()
-		  for Surface3D: hybmeshpack.hmscript.tab_surf3()
-		  for Grid3D:    hybmeshpack.hmscript.tab_grid3()
+
+		* for Contour2D: hybmeshpack.hmscript.tab_cont2()
+		* for Grid2D:    hybmeshpack.hmscript.tab_grid2()
+		* for Surface3D: hybmeshpack.hmscript.tab_surf3()
+		* for Grid3D:    hybmeshpack.hmscript.tab_grid3()
 	$TFUN _bindoper.raw_data
 	$ARGHIDDEN #SID
 	$ARG #STRING what

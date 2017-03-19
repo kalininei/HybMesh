@@ -747,28 +747,28 @@ def build_boundary_grid(opts):
 
 
 @hmscriptfun
-def simple_boundary_grid(cont, partition, direction, pstart=None, pend=None,
+def build_boundary_grid1(cont, partition, direction, pstart=None, pend=None,
                          range_angles=[40, 125, 235, 275]):
-    """Builds a singly-connected boundary grid near contour
+    """Builds a singly-connected boundary grid near given contour.
 
-    :params cont: source contour (or grid) identifier
+    :param cont: source contour (or grid) identifier
 
-    :params list-of-float partition: partition in perpendicular direction.
+    :param list-of-float partition: partition in perpendicular direction.
 
-    :params str direction: 'left'/'right'
+    :param str direction: 'left'/'right'
 
-    :params pstart:
+    :param pstart:
 
-    :params pend: points in [x, y] format which define
+    :param pend: points in [x, y] format which define
       the exact segment of the contour for building grid.
       If both are None hence whole contour (or all subcontours) will be used.
 
-    :params range_angles: list of 4 angle values (deg) which define algorithms
+    :param range_angles: list of 4 angle values (deg) which define algorithms
       for contour bends treatment.
 
     :returns: identifier of the newly created grid.
 
-    This is a wrapper for a :func:build_boundary_grid with simplified
+    This is a wrapper for a :func:`build_boundary_grid` with simplified
     interface. It allows to build a boundary grid with constant partition
     options using existing contour segmentation for horizontal stepping.
     """

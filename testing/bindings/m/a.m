@@ -1,6 +1,6 @@
-addpath("../../build/bindings/m/");
-Hybmesh.hybmesh_exec_path("../../../src/py");
-Hybmesh.hybmesh_lib_path("../../../build/bin/");
+addpath('../../build/bindings/m/');
+Hybmesh.hybmesh_exec_path('../../../src/py');
+Hybmesh.hybmesh_lib_path('../../../build/bin/');
 
 hm = Hybmesh();
 

@@ -176,21 +176,22 @@ def skewness(gid, threshold=0.7):
 
     :param gid: grid identifier
 
-    :param float threshold: cells with skewness higher than this
+    :param float threshold: cells with skewness greater than this
        value are considered bad and will be reported.
        Set it to -1 to get skewness for each cell.
 
-    :return: dictionary with keys::
+    :returns:
+       dictionary with keys::
 
-          {'ok': bool,                  # True if no bad_cells were found
-           'max_skew': float,           # maximum skew value in grid
-           'max_skew_cell': int,        # index of cell with maximum skew
-           'bad_cells': [list-of-int],  # list of bad cell indicies
-           'bad_skew': [list-of-float]  # list of bad cell skew values
+         {'ok': bool,                  # True if no bad_cells were found
+          'max_skew': float,           # maximum skew value in grid
+          'max_skew_cell': int,        # index of cell with maximum skew
+          'bad_cells': [list-of-int],  # list of bad cell indicies
+          'bad_skew': [list-of-float]  # list of bad cell skew values
           }
 
-    `bad_cells` and `bad_skew` lists entries correspond to same bad cells
-
+    Respective `bad_cells` and `bad_skew` lists entries correspond
+    to the same cells.
     """
     icheck(0, Grid2D())
     icheck(1, Float())
@@ -204,6 +205,22 @@ def skewness(gid, threshold=0.7):
 
 @hmscriptfun
 def tab_cont2(obj, what):
+    """ Returns plain table for the given contour.
+
+    :param str obj: contour identifier
+
+    :param str what: table name
+
+    :returns: plain ctypes array representing requested table.
+
+    Possible **what** values are:
+
+    * ``'vert'`` - vertex coordinates table,
+    * ``'edge_vert'`` - edge-vertex connectivity: indices of first and
+      last vertices for each edge,
+    * ``'bt'`` - boundary features of each edge.
+
+    """
     icheck(0, Cont2D())
     icheck(1, OneOf('vert',
                     'edge_vert',
@@ -213,6 +230,36 @@ def tab_cont2(obj, what):
 
 @hmscriptfun
 def tab_grid2(obj, what):
+    """ Returns plain table for the given grid.
+
+    :param str obj: grid identifier
+
+    :param str what: table name
+
+    :returns: plain ctypes array representing requested table.
+
+    Possible **what** values are:
+
+    * ``'vert'`` - vertex coordinates table,
+    * ``'edge_vert'`` - edge-vertex connectivity: indices of first and
+      last vertices for each edge,
+    * ``'edge_cell'`` - edge-cell connectivity: indices of left and right
+      cell for each edge. If this is a boundary edge ``-1`` is used to mark
+      boundary edge side,
+    * ``'cell_dim'`` - number of vertices in each cell,
+    * ``'cell_edge'`` - cell-edge connectivity: counterclockwise ordered 
+      edge indices for each cell.
+    * ``'cell_vert'`` - cell-vertex connectivity: counterclockwise ordered 
+      vertex indices for each cell.
+    * ``'bnd'`` - list of boundary edges indices,
+    * ``'bt'`` - boundary types for all edges including internal ones,
+    * ``'bnd_bt'`` - (boundary edge, boundary feature) pairs
+
+    In case of grids with variable cell dimensions
+    ``'cell_edge'`` and ``'cell_vert'`` tables require
+    additional ``'cell_dim'`` table to subdive
+    returned plain array by certain cells.
+    """
     icheck(0, Grid2D())
     icheck(1, OneOf('vert',
                     'edge_vert', 'edge_cell',

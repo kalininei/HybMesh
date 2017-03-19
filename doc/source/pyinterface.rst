@@ -1,7 +1,7 @@
 .. _pyinterf:
 
 Python Interface
-===================
+================
 
 Script Invocation
 -----------------
@@ -42,113 +42,155 @@ So the HybMesh script file should start with an import line
 
 .. py:module:: hybmeshpack.hmscript
 
+Design
+------
+
+All hybmesh operable geometrical objects
+are represented by their internal unique string
+identifiers. To get the full list of all registered identifiers
+use ``'registered_*'`` functions.
+If an identifier leaves current scope
+it doesn't lead to disposing of respective object.
+You should use :func:`remove_geom` function to explicitly
+remove an object. Use :func:`remove_all_but` to
+clean the garbage and leave only those objects 
+which are actually needed.
+
+To get full information about object geometry
+(vertices coordinates and index based connectivity tables) use
+``'tab_*'`` set of functions.
+For performance reasons these functions return ctypes plain 1D arrays.
+Use ordinary ``[i]`` notation to access entries of these arrays
+or convert it to python list by ``pylist = ctypes_array[:]`` line.
+
+Boundary (zone) types are defined by non-negative integers.
+Default zone type (equals ``0``) is used if it was not explicitly defined.
+You could use :func:`add_boundary_type`
+function to link this integer to a string which will be
+used in object export procedures.
+
+Exception Handling
+------------------
+
+All hybmesh function may throw two types of exceptions:
+
+.. autoexception:: ExecError
+.. autoexception:: InvalidArgument
+
+Before execution of any hybmesh function a quick
+input data check is performed. It examines
+argument types, ranges and consistency.
+If it fails than :func:`InvalidArgument` is raised.
+If output verbosity level is not set to zero then
+detailed information regarding this error including
+unity based index of invalid argument, its actual value and program expectations
+will be flushed to console.
+
+If program fails during function execution
+then :func:`ExecError` will be raised.
+Information about function arguments and traceback
+will be printed to console.
+
+Both exceptions could be safely caught and handled.
+
+
 List of Functions
 -----------------
 .. include:: functab
 
-Object Procedures
+General Procedures
 ------------------
 
-These geometric procedures are used for both grid 
-and contour objects addressed via string identifiers
-returned by object constructors.
-
-.. autofunction:: remove_geom
-.. autofunction:: remove_geom
+.. autofunction:: check_compatibility
+.. autofunction:: registered_contours
+.. autofunction:: registered_grids
+.. autofunction:: registered_surfaces
+.. autofunction:: registered_grids3d
+.. autofunction:: registered_btypes
 .. autofunction:: remove_all
 .. autofunction:: remove_all_but
+.. autofunction:: copy_geom
 .. autofunction:: move_geom
 .. autofunction:: rotate_geom
 .. autofunction:: scale_geom
 .. autofunction:: reflect_geom
-.. autofunction:: copy_geom
-
-Contour Procedures
-------------------
-
-Contour procedures could be done for both user and
-grid contours. In the latter case grid identifier
-instead of contour identifier should be used.
-
+.. autofunction:: remove_geom
 .. autofunction:: add_boundary_type
 .. autofunction:: set_boundary_type
+.. autofunction:: partition_segment
+
+
+Contour Operations
+------------------
+
+.. autofunction:: info_contour
+.. autofunction:: tab_cont2
+.. autofunction:: domain_area
+.. autofunction:: get_point
+.. autofunction:: pick_contour
 .. autofunction:: create_contour
 .. autofunction:: create_spline_contour
 .. autofunction:: add_rect_contour
 .. autofunction:: add_circ_contour
 .. autofunction:: add_circ_contour2
 .. autofunction:: add_circ_contour3
-.. autofunction:: grid_bnd_to_contour
-.. autofunction:: simplify_contour
 .. autofunction:: unite_contours
 .. autofunction:: clip_domain
+.. autofunction:: simplify_contour
+.. autofunction:: grid_bnd_to_contour
 .. autofunction:: partition_contour
 .. autofunction:: matched_partition
-.. autofunction:: partition_segment
-.. autofunction:: grid3_bnd_to_surface
 .. autofunction:: decompose_contour
 .. autofunction:: extract_subcontours
 .. autofunction:: connect_subcontours
 
-Grid Procedures
----------------
+2D Grid Operations
+------------------
 
-Prototypes
-++++++++++
-
-Building uniform grids in a primitive areas.
-
+.. autofunction:: info_grid
+.. autofunction:: tab_grid2
+.. autofunction:: skewness
+.. autofunction:: heal_grid
 .. autofunction:: add_unf_rect_grid
 .. autofunction:: add_unf_circ_grid
 .. autofunction:: add_unf_ring_grid
 .. autofunction:: add_unf_hex_grid
 .. autofunction:: add_triangle_grid
-.. autofunction:: stripe
 .. autofunction:: add_custom_rect_grid
 .. autofunction:: add_circ_rect_grid
+.. autofunction:: stripe
 .. autofunction:: triangulate_domain
 .. autofunction:: pebi_fill
-.. autofunction:: tetrahedral_fill
-
-Transformations
-+++++++++++++++
-See :ref:`functionality` for procedures details.
-
-.. autofunction:: exclude_contours
 .. autofunction:: unite_grids
-.. autofunction:: build_boundary_grid
-.. autofunction:: map_grid
+.. autofunction:: unite_grids1
 .. autoclass:: BoundaryGridOptions()
    :members: __init__, uniform_partition, incremental_partition
-.. autofunction:: heal_grid
+.. autofunction:: build_boundary_grid
+.. autofunction:: build_boundary_grid1
+.. autofunction:: exclude_contours
+.. autofunction:: map_grid
+
+
+Surface Operations
+------------------
+
+.. autofunction:: info_surface
+.. autofunction:: tab_surf3
+.. autofunction:: grid3_bnd_to_surface
+.. autofunction:: domain_volume
+
+3D Grid Operations
+------------------
+
+.. autofunction:: info_grid3d
+.. autofunction:: tab_grid3
 .. autofunction:: extrude_grid
 .. autofunction:: revolve_grid
+.. autofunction:: tetrahedral_fill
 .. autofunction:: merge_grids3
 
-Information
------------
-Some general characteristics of program state and geometrical objects could be obtained by
-set of special commands.
-
-.. autofunction:: check_compatibility
-.. autofunction:: info_grid
-.. autofunction:: info_contour
-.. autofunction:: info_grid3d
-.. autofunction:: info_surface
-.. autofunction:: registered_contours
-.. autofunction:: registered_grids
-.. autofunction:: registered_surfaces
-.. autofunction:: registered_grids3d
-.. autofunction:: registered_btypes
-.. autofunction:: domain_area
-.. autofunction:: domain_volume
-.. autofunction:: skewness
-.. autofunction:: get_point
-.. autofunction:: pick_contour
-
-
-Exports
--------
+Export
+------
 
 .. autofunction:: export_grid_hmg
 .. autofunction:: export_grid_vtk
@@ -167,8 +209,8 @@ Exports
 .. autofunction:: export_all_hmd
 .. autofunction:: save_project
 
-Imports
--------
+Import
+------
 
 .. autofunction:: import_grid_hmg
 .. autofunction:: import_grid_msh
@@ -179,10 +221,11 @@ Imports
 .. autofunction:: import_all_hmd
 .. autofunction:: load_project
 
+
 Introductory Examples
 ---------------------
 .. toctree::
-   
+
   intro_example1
   intro_example2
   intro_example3

@@ -159,7 +159,7 @@ class Generator(commongen.Generator):
         for [tp, k, v] in func.default_arguments:
             if tp == 'null':
                 dd.append(indent + ' * @param {}'
-                          ' null gives {}$'.format(k, v))
+                          ' if null then {}$'.format(k, v))
             else:
                 dd.append(indent + ' * @param {}'
                           ' default is {}$'.format(k, v))

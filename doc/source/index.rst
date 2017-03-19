@@ -21,6 +21,7 @@ Contents:
    functionality
    prototypes
    pyinterface
+   oointerface
    fileformats
    vers
 

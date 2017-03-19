@@ -3,41 +3,44 @@
 #include <thread>
 #include <Hybmesh.hpp>
 
-//parameters of basic grid: structured grid in a square
-double x1=0.0;  //bottom left point
+//==== parameters of basic grid: structured grid in a square
+//bottom left point
+double x1=0.0;
 double y1=0.0;
-
-int nx=10;      //segmentation along axis
+//segmentation along axis
+int nx=10;
 int ny=10;
-
-double Lx=1.0;  //sizes of the square
+//sizes of the square
+double Lx=1.0;
 double Ly=1.0;
 
-//parameters of secondary grid: ring-type grid
-double x2=0.5;       //ring center
+//==== parameters of secondary grid: ring-type grid
+//ring center
+double x2=0.5;
 double y2=0.5;
-
-double innerrad=0.1; //ring radii
+//ring radii
+double innerrad=0.1;
 double outerrad=0.3;
-
-double arcstep=0.02; //step size along the arc and radius of a ring
+//step size along the arc and radius of a ring
+double arcstep=0.02;
 double radstep=0.02;
 
-//unite grids options
-double bufsize=0.1;      //Size of the buffer.
+//==== unite grids options
+//Size of the buffer.
+double bufsize=0.1;
+//Leave ring internals blank.
+bool empty_holes=true;
+//Allow shift of secondary grid boundary vertices:
+//only if secondary and basic grid boundaries intersect.
+//allow remeshing of basic grid boundary:
+//only if buffer zone includes basic grid boundary
+bool fix_bnd=false;       
+//least significant angle: only if grid boundaries are remeshed.
+double angle0=5;
+//Fill buffer with triangles
+std::string filler="3";
 
-bool empty_holes=true;   //Leave ring internals blank.
-
-bool fix_bnd=false;      //Allow shift of secondary grid boundary vertices:
-                         //   only if secondary and basic grid boundaries intersect.
-                         //Allow remeshing of basic grid boundary:
-                         //   only if buffer zone includes basic grid boundary
-
-double angle0=5;         //least significant angle: only if grid boundaries are remeshed.
-
-std::string filler="3";  //Fill buffer with triangles
-
-//path to hybmesh executable
+//==== path to hybmesh executable
 std::string hmexec="../../../../src/py";
 
 //builds secondary grid and saves result into outfn
@@ -64,6 +67,7 @@ void grid_secondary(std::string outfn){
 
 int main(){
 	//initialize main builder
+	//Optional hmexec argument could be omitted.
 	Hybmesh builder1(hmexec);
 
 	//launch secondary grid builder in a separate thread

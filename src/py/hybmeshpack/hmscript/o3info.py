@@ -74,6 +74,33 @@ def domain_volume(sid):
 
 @hmscriptfun
 def tab_surf3(obj, what):
+    """ Returns plain table for the given surface.
+
+    :param str obj: surface identifier
+
+    :param str what: table name
+
+    :returns: plain ctypes array representing requested table.
+
+    Possible **what** values are:
+
+    * ``'vert'`` - vertex coordinates table,
+    * ``'face_center'`` - faces center point coordinates table,
+    * ``'edge_vert'`` - edge-vertex connectivity: indices of first and
+      last vertices for each edge,
+    * ``'face_dim'`` - number of vertices in each face,
+    * ``'face_edge'`` - face-edge connectivity: ordered list of edge indicies
+      for each face
+    * ``'face_vert'`` - face-vertex connectivity: ordered list of vertex
+      indices for each face
+    * ``'bt'`` - boundary features of each edge.
+
+    In case of surfaces with variable face dimensions
+    ``'face_edge'`` and ``'face_vert'`` tables require
+    additional ``'face_dim'`` table to subdive
+    returned plain array by certain faces.
+
+    """
     icheck(0, Surf3D())
     icheck(1, OneOf('vert',
                     'edge_vert',
@@ -86,6 +113,41 @@ def tab_surf3(obj, what):
 
 @hmscriptfun
 def tab_grid3(obj, what):
+    """ Returns plain table for the given grid.
+
+    :param str obj: grid identifier
+
+    :param str what: table name
+
+    :returns: plain ctypes array representing requested table.
+
+    Possible **what** values are:
+
+    * ``'vert'`` - vertex coordinates table,
+    * ``'edge_vert'`` - edge-vertex connectivity: indices of first and
+      last vertices for each edge,
+    * ``'face_dim'`` - number of vertices in each face,
+    * ``'face_edge'`` - face-edge connectivity: ordered list of edge indicies
+      for each face
+    * ``'face_vert'`` - face-vertex connectivity: ordered list of vertex
+      indicies for each face
+    * ``'face_cell'`` - face-cell connectivity: indices of left and right
+      cell for each face. If this is a boundary face ``-1`` is used to mark
+      boundary side,
+    * ``'cell_fdim'`` - number of faces in each cell,
+    * ``'cell_vdim'`` - number of vertices in each cell,
+    * ``'cell_face'`` - cell-edge connectivity: edge indices for each cell.
+    * ``'cell_vert'`` - cell-vertex connectivity: vertex indices for each cell.
+      Vertices of simple shaped cells are ordered according to vtk
+      file format. See figure in :func:`export3d_grid_hmg`.
+    * ``'bnd'`` - list of boundary faces indices,
+    * ``'bt'`` - boundary types for all faces including internal ones,
+    * ``'bnd_bt'`` - (boundary face, boundary feature) pairs
+
+    Use ``'face_dim'``, ``'cell_fdim'``, ``'cell_vdim'`` to subdivide
+    plain ``'face_vert'``, ``'face_edge'``, ``'cell_face'``, ``'cell_vert'``
+    arrays by certain faces/cells.
+    """
     icheck(0, Grid3D())
     icheck(1, OneOf('vert',
                     'edge_vert',

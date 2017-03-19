@@ -3,6 +3,7 @@ import os
 import sys
 import struct
 from functools import wraps
+from decorator import decorator
 from hybmeshpack.com.flow import CommandFlow
 import hybmeshpack.basic.interf
 import hybmeshpack.basic.cb
@@ -26,11 +27,11 @@ class InvalidArgument(ValueError):
         super(InvalidArgument, self).__init__(msg)
 
 
-def hmscriptfun(method):
+@decorator
+def hmscriptfun(method, *args, **kw):
     """ decorator for interface functions
     for catching exceptions.
     """
-    @wraps(method)
     def ret(*args, **kw):
         try:
             return method(*args, **kw)
@@ -44,7 +45,7 @@ def hmscriptfun(method):
             exc_info = sys.exc_info()
             newe = ExecError(method.__name__, str(e))
             raise newe.__class__, newe, exc_info[2]
-    return ret
+    return ret(*args, **kw)
 
 
 class ConsoleErrorHandler(hybmeshpack.basic.interf.DefaultErrorHandler):

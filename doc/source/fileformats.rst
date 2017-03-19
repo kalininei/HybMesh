@@ -59,9 +59,11 @@ Numeric values in this string are separated using any amount of any whitespaces.
 For binary data ``format="binary"`` numeric array elements contain a subnode called ``START`` which stores
 a byte position in a binary section where data of this record starts.
 ``char`` arrays use 1 byte per value; ``integer`` and ``float`` arrays -- 4 bytes per value;
-``double`` arrays -- 8 bytes per value.
+``double`` arrays -- 8 bytes per value. 
 For ``dim="variable"`` cases each number representing dimension of an entry is written using 4 bytes as an
 unsigned integer.
+
+All binary data is stored using little-endian format.
 
 .. figure:: g1_for_hmxml.png
    :width: 400 px

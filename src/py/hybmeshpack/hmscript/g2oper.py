@@ -137,7 +137,7 @@ def unite_grids1(base_grid, secondary_grid, buffer_size,
 
     :return: identifier of the newly created grid
 
-    Same as :func:unite_grids for given pair of grids.
+    Same as :func:`unite_grids` without chain superposition support.
     """
     icheck(0, Grid2D())
     icheck(1, Grid2D())
