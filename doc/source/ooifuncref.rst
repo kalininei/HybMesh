@@ -1,5 +1,3 @@
-.. _ooipython:
-
 Functions reference
 -------------------
 

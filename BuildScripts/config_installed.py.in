@@ -8,9 +8,8 @@ if sys.platform.startswith('win') and\
     # if that is windows *.exe program
     libdir = os.path.join(os.path.dirname(exepath), '../lib')
 else:
-    # linux or python windows version
+    # linux or python-windows version
     libdir = '@LIB_INSTALL_DIR@'
-homedir = os.path.expanduser('@HYBMESH_HOMEDIR@')
 version = '@APPVERSION@'
 last_ver_url = 'https://api.github.com/repos/kalininei/HybMesh/releases/latest'
 proj_url = 'https://api.github.com/repos/kalininei/HybMesh/'

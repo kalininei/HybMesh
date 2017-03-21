@@ -53,7 +53,7 @@ def info_surface(sid):
     ret['Nedges'] = s.n_edges()
     ret['Nfaces'] = s.n_faces()
     ret['btypes'] = {}
-    for b in s.raw_data('btypes'):
+    for b in s.raw_data('bt'):
         if b not in ret['btypes']:
             ret['btypes'][b] = 0
         ret['btypes'][b] += 1

@@ -1,3 +1,6 @@
+Java Bindings for HybMesh
+=========================
+
 Usage
 ^^^^^
 
@@ -70,8 +73,36 @@ until it is captured by garbage collector.
   }
 
 For detailed description of all methods consult
-:ref:`python wrapper reference<ooipython>`
+:ref:`python wrapper reference<ooifuncref>`
 and embedded javadocs of ``Hybmesh.java`` file.
+
+Helloworld Example
+^^^^^^^^^^^^^^^^^^
+
+After installation of hybmesh program copy *Hybmesh.java* and the following
+*Test.java* into empty directory.
+
+.. code-block:: java
+     :caption: Test.java
+
+     class Test{
+         public static void main(String[] args) throws Exception{
+             try (Hybmesh hm = new Hybmesh()){
+                 Hybmesh.Grid2D g2 = hm.addUnfRectGrid(
+                         new Hybmesh.Point2(0, 0),
+                         new Hybmesh.Point2(1, 1),
+                         2, 2, null);
+                 System.out.printf("number of cells: %d\n", g2.dims()[2]);
+             }
+         }
+     }
+
+Open terminal at this directory and execute
+
+.. code-block:: bash
+
+    >>> javac Test.java Hybmesh.java
+    >>> java -Djava.library.path=/directory/containing/core_hmconnection_java Test
 
 .. _javaintro:
 

@@ -1,3 +1,6 @@
+Matlab Bindings for HybMesh
+===========================
+
 Usage
 ^^^^^
 
@@ -43,8 +46,28 @@ handled in ``try...catch...end`` blocks.
    set of indices of any kind use C-style indexing.
 
 For detailed description of all methods consult
-:ref:`python wrapper reference<ooipython>`
+the :ref:`Python binding functions reference<ooifuncref>`
 and embedded documentation of wrapper ``*.m`` files.
+
+Helloworld Example
+^^^^^^^^^^^^^^^^^^
+
+After hybmesh installation create the following script
+
+.. code-block:: matlab
+     :caption: hmtest.m
+
+     addpath('directory/containing/Hybmesh.m');
+     
+     hm = Hybmesh();
+     g = hm.add_unf_rect_grid([0, 0], [1, 1], 2, 2);
+     disp(sprintf('number of cells: %i', g.dims()(3)));
+
+To run it in octave execute terminal command
+
+.. code-block:: bash
+
+    octave hmtest.m
 
 Introductory Example
 ^^^^^^^^^^^^^^^^^^^^

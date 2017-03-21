@@ -1,7 +1,7 @@
 .. _pyinterf:
 
-Python Interface
-================
+Python Script Interface
+=======================
 
 Script Invocation
 -----------------

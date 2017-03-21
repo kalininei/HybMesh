@@ -15,7 +15,7 @@ packdir = os.path.join(rootdir, '@PyPack@')
 
 def find_packages(path, relpath):
     """ finds all packages in path and returns it in [path.to.pack]
-        fortmat.
+        formmat.
     """
     ret = []
     for root, dirs, files in os.walk(path):
@@ -24,17 +24,20 @@ def find_packages(path, relpath):
             ret.append(re.sub('^[^A-z0-9_]+', '', root.replace('/', '.')))
     return ret
 
+
 # place config_installed to package directory before setup
-conf_orig = '@CONFIG_PY@'
-conf_src = os.path.join('@PYROOTDIR@', '@PyPack@',
-        os.path.basename(conf_orig))
+conf_orig = '@PYOUTDIR@/setup.cfg'
+conf_src = os.path.join('@PYROOTDIR@', '@PyPack@', os.path.basename(conf_orig))
 shutil.copyfile(conf_orig, conf_src)
 
-setup(name="@APPNAME@",
+setup(
+    name="@APPNAME@",
     version="@APPVERSION@",
+    author = "KalininEI",
+    author_email = "KalininEI@yandex.ru",
+    url = "https://github.com/kalininei/hybmesh",
     package_dir={'': rootdir},
-    packages=find_packages(packdir, rootdir),
-      )
+    packages=find_packages(packdir, rootdir))
 
 # remove config_installed from package directory after setup
 os.remove(conf_src)

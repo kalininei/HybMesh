@@ -1,184 +1,403 @@
-# Creates simple two step installer: Select directory -> OK.
-# Structure of resulting directory is:
+!include "MUI2.nsh"
+!include "LogicLib.nsh"
+
 # APPNAME
-#  | -- LIBDEST
+#  | -- lib
 #  |     | -- ...
 #  |
-#  | -- BINDEST
+#  | -- bin
 #  |     | -- EXENAME, ...
 #  |
-#  | -- APPNAME.lnk (shortcut to EXENAME)
+#  | -- include
+#  |     | -- cpp, cs, m, py, java
+#  |
+#  | -- doc
+#  |     | -- html
+#  |
+#  | -- index.lnk
 #  | -- Uninstall.exe
 #  
-# Cmake variables:
+# Variables parsed by Cmake preprocessor:
+# APPNAME  -- program name
 # NSIS_INSTALLER_NAME  -- name of the resulting installer without .exe
-# NSIS_INSTALLER_APPNAME -- name of the installed application
-# NSIS_INSTALLER_EXENAME -- main executable name relative to BINDEST (with exe). Used for shortcuts creating.
-#
-# NSIS_INSTALLER_DESCRIPTION -- short description
-# NSIS_INSTALLER_BIT  -- "32" or "64". Influences default installation path only.
-#
-# NSIS_INSTALLER_BIN -- list of files which should be installed to bin subdirectory relative to current
-# NSIS_INSTALLER_BINDEST -- path to bin subdirectory relative to installation directory
-# NSIS_INSTALLER_LIB -- list of files which should be installed to lib subdirectory relative to current
-# NSIS_INSTALLER_LIBDEST -- path to lib subdirectory relative to installation directory
-# NSIS_INSTALLER_ICON -- path to *.ico which will be assiciated with shortcuts (Could be empty)
-
+# NSIS_INSTALLER_BIN -- list of files which should be installed to bin subdirectory
+# NSIS_INSTALLER_LIB -- list of files which should be installed to lib subdirectory
+# NSIS_INSTALLER_SHARE -- list of bindings files
+# NSIS_HYBMESHPACK_FILES -- list of files of hybmeshpack
+# EXE_INSTALL_DIR
+# SHARE_INSTALL_DIR
 # 
-# All directories (LIB\BINDEST) are in path\\to\\dir format without slash at the end.
-# LIB and BIN could be given as nsis patterns. /r, /x options are available:
-#	lib\\*.dll  -- all dll's from lib
-#	/r build\\prog\\* -- all files from build\\prog including directories
-#	/x *.sh /r build\\*  -- all from build excluding sh files.
+# LIB, BIN, SHARE could be given as nsis patterns. /r, /x options are available:
+#  lib\\*.dll  -- all dll's from lib
+#  /r build\\prog\\*    -- all files from build\\prog including directories
+#  /x *.sh /r build\\*  -- all from build excluding sh files.
 
+; ============================================
+;       Additional functions
+; ============================================
 
-OutFile "@NSIS_INSTALLER_NAME@.exe"
-
-!define APPNAME "@NSIS_INSTALLER_APPNAME@"
-!define DESCRIPTION "@NSIS_INSTALLER_DESCRIPTION@"
-RequestExecutionLevel admin ;Require admin rights on NT6+ (When UAC is turned on)
-
-!include LogicLib.nsh
-!define ProgBit "@NSIS_INSTALLER_BIT@"
-
-Name "${APPNAME}"
-
-Page directory
-Page instfiles
-
-!macro VerifyUserIsAdmin
-UserInfo::GetAccountType
-pop $0
-${If} $0 != "admin" ;Require admin rights on NT4+
-        messageBox mb_iconstop "Administrator rights required!"
-        setErrorLevel 740 ;ERROR_ELEVATION_REQUIRED
-        quit
-${EndIf}
-!macroend
+; http://nsis.sourceforge.net/More_advanced_replace_text_in_file
+; Push hello #text to be replaced
+; Push blah #replace with
+; Push 3 #start replacing after 3rd occurrence
+; Push all #replace all other occurrences
+; Push C:\temp1.bat #file to replace in
+; Call AdvReplaceInFile
+Function AdvReplaceInFile
+Exch $0 ;file to replace in
+Exch
+Exch $1 ;number to replace after
+Exch
+Exch 2
+Exch $2 ;replace and onwards
+Exch 2
+Exch 3
+Exch $3 ;replace with
+Exch 3
+Exch 4
+Exch $4 ;to replace
+Exch 4
+Push $5 ;minus count
+Push $6 ;universal
+Push $7 ;end string
+Push $8 ;left string
+Push $9 ;right string
+Push $R0 ;file1
+Push $R1 ;file2
+Push $R2 ;read
+Push $R3 ;universal
+Push $R4 ;count (onwards)
+Push $R5 ;count (after)
+Push $R6 ;temp file name
  
-function .onInit
-	setShellVarContext all
-	${If} ${ProgBit} == "64"
-		StrCpy $INSTDIR $PROGRAMFILES64\HybMesh
-	${Else}
-		StrCpy $INSTDIR $PROGRAMFILES32\HybMesh
-	${Endif}
-	!insertmacro VerifyUserIsAdmin
-functionEnd
-
-# default section start; every NSIS script has at least one section.
-Section "install"
-
-# ====== lib
-SetOutPath $INSTDIR\@NSIS_INSTALLER_LIBDEST@
-File @NSIS_INSTALLER_LIB@
-
-# ======= bin
-SetOutPath $INSTDIR\@NSIS_INSTALLER_BINDEST@
-File @NSIS_INSTALLER_BIN@
-
-# ======== doc
-SetOutPath $INSTDIR\doc\html
-File @NSIS_INSTALLER_HTML@
-
-# ======= additional commands
-# make new configuration file depending on install path
-ReadEnvStr $1 PROGRAMDATA
-!define DTDIR "$1\@NSIS_INSTALLER_APPNAME@"
-# FileOpen $0 "$INSTDIR\@NSIS_INSTALLER_BINDEST@\config_hybmesh" w
-# FileWrite $0 "libdir $INSTDIR\@NSIS_INSTALLER_LIBDEST@$\r$\n"
-# FileWrite $0 "homedir ${DTDIR}"
-# FileClose $0
-# create a dummy config file in DTDIR just to be sure dtdir exists.
-# change permission to allow all users write to it
-#FileOpen $0 "${DTDIR}\Config.xml" w
-#FileClose $0
-${IfNot} ${FileExists} "${DTDIR}\*.*"
-	CreateDirectory "${DTDIR}"
-${EndIf}
-AccessControl::GrantOnFile "${DTDIR}" "(S-1-5-32-545)" "FullAccess"
-
-# Shortcuts for bin files. Places ico file to bin directory
-# ${IF} @NSIS_INSTALLER_ICON@ == ""
-# 	!define ShortcutIcon ""
-# ${ELSE}
-# 	File /oname=${APPNAME}.ico @NSIS_INSTALLER_ICON@
-# 	!define /redef ShortcutIcon $INSTDIR\@NSIS_INSTALLER_BINDEST@\${APPNAME}.ico 
-# ${ENDIF}
-
-# CreateDirectory "$SMPROGRAMS\${APPNAME}"
-# CreateShortCut "$SMPROGRAMS\${APPNAME}\${APPNAME}.lnk" \
-# 	"$INSTDIR\@NSIS_INSTALLER_BINDEST@\@NSIS_INSTALLER_EXENAME@" \
-# 	"" "${ShortcutIcon}" "" SW_SHOWMAXIMIZED
-# CreateShortCut "$INSTDIR\${APPNAME}.lnk" \
-# 	"$INSTDIR\@NSIS_INSTALLER_BINDEST@\@NSIS_INSTALLER_EXENAME@" \
-# 	"" "${ShortcutIcon}" "" SW_SHOWMAXIMIZED
-
-
-# Shortcut for index.html file
-# File /oname=$INSTDIR\doc\html\index.html
-CreateShortCut $INSTDIR\index.lnk $INSTDIR\doc\html\index.html
-	
-# ======== uninstaller
-WriteUninstaller $INSTDIR\Uninstall.exe
-CreateShortCut "$SMPROGRAMS\${APPNAME}\Uninstall.lnk" "$INSTDIR\Uninstall.exe"
-
-SectionEnd
-
-# Uninstaller
-Function un.RMDirUP
-	!define RMDirUP '!insertmacro RMDirUPCall'
-	
-	!macro RMDirUPCall _PATH
-		push '${_PATH}'
-		Call un.RMDirUP
-	!macroend
-	
-	; $0 - current folder
-	ClearErrors
-	
-	Exch $0
-	;DetailPrint "ASDF - $0\.."
-	RMDir "$0\.."
-	
-	IfErrors Skip
-	${RMDirUP} "$0\.."
-	Skip:
-	
-	Pop $0
+  GetTempFileName $R6
+  FileOpen $R1 $0 r ;file to search in
+  FileOpen $R0 $R6 w ;temp file
+   StrLen $R3 $4
+   StrCpy $R4 -1
+   StrCpy $R5 -1
+ 
+loop_read:
+ ClearErrors
+ FileRead $R1 $R2 ;read line
+ IfErrors exit
+ 
+   StrCpy $5 0
+   StrCpy $7 $R2
+ 
+loop_filter:
+   IntOp $5 $5 - 1
+   StrCpy $6 $7 $R3 $5 ;search
+   StrCmp $6 "" file_write1
+   StrCmp $6 $4 0 loop_filter
+ 
+StrCpy $8 $7 $5 ;left part
+IntOp $6 $5 + $R3
+IntCmp $6 0 is0 not0
+is0:
+StrCpy $9 ""
+Goto done
+not0:
+StrCpy $9 $7 "" $6 ;right part
+done:
+StrCpy $7 $8$3$9 ;re-join
+ 
+IntOp $R4 $R4 + 1
+StrCmp $2 all loop_filter
+StrCmp $R4 $2 0 file_write2
+IntOp $R4 $R4 - 1
+ 
+IntOp $R5 $R5 + 1
+StrCmp $1 all loop_filter
+StrCmp $R5 $1 0 file_write1
+IntOp $R5 $R5 - 1
+Goto file_write2
+ 
+file_write1:
+ FileWrite $R0 $7 ;write modified line
+Goto loop_read
+ 
+file_write2:
+ FileWrite $R0 $R2 ;write unmodified line
+Goto loop_read
+ 
+exit:
+  FileClose $R0
+  FileClose $R1
+ 
+  SetDetailsPrint none
+  Delete $0
+  Rename $R6 $0
+  Delete $R6
+  SetDetailsPrint lastused
+ 
+Pop $R6
+Pop $R5
+Pop $R4
+Pop $R3
+Pop $R2
+Pop $R1
+Pop $R0
+Pop $9
+Pop $8
+Pop $7
+Pop $6
+Pop $5
+;These values are stored in the stack in the reverse order they were pushed
+Pop $0
+Pop $1
+Pop $2
+Pop $3
+Pop $4
 FunctionEnd
 
-function un.onInit
-	SetShellVarContext all
+; http://nsis.sourceforge.net/mediawiki/index.php?title=StrRep&redirect=no
+; ${StrRep} '$0' 'C:\Documents and Settings\Dan\Desktop\PSCP Frontend.exe' '\' '\\'
+!define StrRep "!insertmacro StrRep"
+!macro StrRep output string old new
+    Push `${string}`
+    Push `${old}`
+    Push `${new}`
+    !ifdef __UNINSTALL__
+        Call un.StrRep
+    !else
+        Call StrRep
+    !endif
+    Pop ${output}
+!macroend
  
-	#Verify the uninstaller - last chance to back out
-	MessageBox MB_OKCANCEL "Remove ${APPNAME}?" IDOK next
-		Abort
-	next:
-	!insertmacro VerifyUserIsAdmin
+!macro Func_StrRep un
+    Function ${un}StrRep
+        Exch $R2 ;new
+        Exch 1
+        Exch $R1 ;old
+        Exch 2
+        Exch $R0 ;string
+        Push $R3
+        Push $R4
+        Push $R5
+        Push $R6
+        Push $R7
+        Push $R8
+        Push $R9
+ 
+        StrCpy $R3 0
+        StrLen $R4 $R1
+        StrLen $R6 $R0
+        StrLen $R9 $R2
+        loop:
+            StrCpy $R5 $R0 $R4 $R3
+            StrCmp $R5 $R1 found
+            StrCmp $R3 $R6 done
+            IntOp $R3 $R3 + 1 ;move offset by 1 to check the next character
+            Goto loop
+        found:
+            StrCpy $R5 $R0 $R3
+            IntOp $R8 $R3 + $R4
+            StrCpy $R7 $R0 "" $R8
+            StrCpy $R0 $R5$R2$R7
+            StrLen $R6 $R0
+            IntOp $R3 $R3 + $R9 ;move offset by length of the replacement string
+            Goto loop
+        done:
+ 
+        Pop $R9
+        Pop $R8
+        Pop $R7
+        Pop $R6
+        Pop $R5
+        Pop $R4
+        Pop $R3
+        Push $R0
+        Push $R1
+        Pop $R0
+        Pop $R1
+        Pop $R0
+        Pop $R2
+        Exch $R1
+    FunctionEnd
+!macroend
+!insertmacro Func_StrRep ""
+;!insertmacro Func_StrRep "un."
+
+!macro adjust_bindings Filename
+  # bin-directory
+  ${StrRep} $0 "$INSTDIR\bin" "\" "/"
+  Push "@EXE_INSTALL_DIR@" #text to be replaced
+  Push "$0" #replace with
+  Push 0 #replace only first occurence
+  Push 1
+  Push "$INSTDIR\include\${Filename}" #file to replace in
+  Call AdvReplaceInFile
+
+  # include-directory
+  ${StrRep} $0 "$INSTDIR\include" "\" "/"
+  Push "@SHARE_INSTALL_DIR@" #text to be replaced
+  Push "$0" #replace with
+  Push 0 #replace only first occurence
+  Push 1
+  Push "$INSTDIR\include\${Filename}" #file to replace in
+  Call AdvReplaceInFile
+!macroend
+
+!macro VerifyUserIsAdmin
+  UserInfo::GetAccountType
+  pop $0
+  ${If} $0 != "admin" ;Require admin rights on NT4+
+    messageBox mb_iconstop "Administrator rights required!"
+    setErrorLevel 740 ;ERROR_ELEVATION_REQUIRED
+    quit
+  ${EndIf}
+!macroend
+
+function .onInit
+  setShellVarContext all
+  StrCpy $INSTDIR $PROGRAMFILES64\HybMesh
+  !insertmacro VerifyUserIsAdmin
+functionEnd
+
+function un.onInit
+  SetShellVarContext all
+  MessageBox MB_OKCANCEL "Remove @APPNAME@?" IDOK +2
+    Abort
+  !insertmacro VerifyUserIsAdmin
 functionEnd
  
-section "Uninstall"
+; =========================================
+;          Definitions
+; =========================================
+OutFile "@NSIS_INSTALLER_NAME@.exe"
+Name "@APPNAME@"
+Var PyExec
+RequestExecutionLevel admin ;Require admin rights on NT6+ (When UAC is turned on)
+
+;!insertmacro MUI_PAGE_WELCOME
+!insertmacro MUI_PAGE_COMPONENTS
+!insertmacro MUI_PAGE_DIRECTORY
+!insertmacro MUI_PAGE_INSTFILES
+;!insertmacro MUI_PAGE_FINISH
+!insertmacro MUI_LANGUAGE "English"
+
+;--------------------------------
+;Descriptions
+;Assign language strings to sections
+!insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
+  !insertmacro MUI_DESCRIPTION_TEXT ${SecRequired} "HybMesh core libraries and executable."
+  !insertmacro MUI_DESCRIPTION_TEXT ${SecDoc} "HybMesh html documentation."
+  !insertmacro MUI_DESCRIPTION_TEXT ${SecBindings} \
+    "High-level programming interfaces for HybMesh. Includes C++, Java, C#(Mono), Python2/3, Matlab(Octave) wrappers."
+  !insertmacro MUI_DESCRIPTION_TEXT ${SecPyPack} \
+    "Also install hybmeshpack as a python package. 64bit Python2 is required."
+!insertmacro MUI_FUNCTION_DESCRIPTION_END
+
+; ===========================================
+;               Installer code
+; ===========================================
+
+Section "Program core" SecRequired
+  SectionIn RO
+  # ====== lib
+  SetOutPath $INSTDIR\lib
+  File @NSIS_INSTALLER_LIB@
+
+  # ======= bin
+  SetOutPath $INSTDIR\bin
+  File @NSIS_INSTALLER_BIN@
+
+  # ======== uninstaller
+  WriteUninstaller $INSTDIR\Uninstall.exe
+SectionEnd
+
+Section "Documentation" SecDoc
+  SetOutPath $INSTDIR\doc\html
+  File @NSIS_INSTALLER_HTML@
+  CreateShortCut $INSTDIR\index.lnk $INSTDIR\doc\html\index.html
+SectionEnd
+
+Section "Bindings" SecBindings
+  # 1) copy as they are
+  SetOutPath $INSTDIR\include
+  File @NSIS_INSTALLER_SHARE@
+
+  # 2) change paths
+  !insertmacro adjust_bindings py\Hybmesh.py
+  !insertmacro adjust_bindings cpp\Hybmesh.hpp
+  !insertmacro adjust_bindings cs\Hybmesh.cs
+  !insertmacro adjust_bindings m\Hybmesh.m
+  !insertmacro adjust_bindings java\Hybmesh.java
+SectionEnd
+
+Section \o "Hybmeshpack" SecPyPack
+  ; --------- copy package to temporary folder
+  SetOutPath $INSTDIR\_tmp\hybmeshpack
+  File @NSIS_HYBMESHPACK_FILES@
+  SetOutPath $INSTDIR\_tmp
+  File @NSIS_HYBMESHPACK_SETUP@
+  ; --------- testing python
+  StrCpy $PyExec "python"  ; initial python path command
+
+check_py_setup:  
+  ClearErrors
+  nsExec::ExecToStack /TIMEOUT=1000 `$PyExec check_python_vers.py` 
+  Pop $0
+  Pop $1
+  StrCmp $0 "timeout" 0 +2
+    StrCpy $1 "Python is not responding.$\r$\n"
+  StrCmp $0 "error" 0 +2
+    StrCpy $1 "Failed to find Python.$\r$\n"  
+
+  StrCpy $2 $1 2  ; compare first 2 chars to omit possible eol symbols
+  StrCmp $2 "OK" proceed_py_setup 0
+
+  MessageBox MB_OKCANCEL "$1$\r$\nWould you like to manually define correct Python executable?" IDOK 0 IDCANCEL finish_py_setup
+  
+  nsDialogs::SelectFileDialog open "C:\" python.exe|python.exe|All|*
+  Pop $0
+  StrCmp $0 "" finish_py_setup 0
+  StrCpy $PyExec $0
+  Goto check_py_setup  
+  
+proceed_py_setup:
+  ; --------- substitute LIBDIR in config_installed
+  ${StrRep} $0 "$INSTDIR\lib" "\" "/"
+  Push "@LIB_INSTALL_DIR@" #text to be replaced
+  Push "$0" #replace with
+  Push 0 #replace only first occurence
+  Push 1
+  Push "$INSTDIR\_tmp\config_installed.py" #file to replace in
+  Call AdvReplaceInFile
+  ; --------- run setup
+  nsExec::ExecToStack /TIMEOUT=10000 `$PyExec setup.py install`
+  Pop $0
+  Pop $1
+  DetailPrint "$PyExec returned: $0"
+  DetailPrint "$1"
+  StrCmp $0 "error" 0 +2
+    MessageBox MB_OK "Failed to install hybmeshpack Python package."
+  StrCmp $0 "timeout" 0 +2
+    MessageBox MB_OK "Failed to install hybmeshpack Python package."
+
+finish_py_setup:
+  ; ----------- remove temporary folder
+  SetOutPath $INSTDIR
+  RMDIR /r $INSTDIR\_tmp
+SectionEnd
+
+; ===========================================
+;               Uninstaller code
+; ===========================================
+
+Section "Uninstall"
+  # Remove files
+  RMDir /r "$INSTDIR\bin"
+  RMDir /r "$INSTDIR\lib"
+  RMDir /r "$INSTDIR\doc"
+  RMDir /r "$INSTDIR\include"
+  delete "$INSTDIR\index.lnk"
  
-	# Remove Start Menu launcher
-#	delete "$SMPROGRAMS\${APPNAME}\${APPNAME}.lnk"
-#	delete "$SMPROGRAMS\${APPNAME}\Uninstall.lnk"
-#	rmDir "$SMPROGRAMS\${APPNAME}"
+  # Always delete uninstaller as the last action
+  delete "$INSTDIR\Uninstall.exe"
  
-	# Remove files
-	RMDir /r "$INSTDIR\@NSIS_INSTALLER_BINDEST@"
-	RMDir /r "$INSTDIR\@NSIS_INSTALLER_LIBDEST@"
-	RMDir /r "$INSTDIR\doc"
-	${RMDirUP} "$INSTDIR\@NSIS_INSTALLER_BINDEST@"   ;remove parents (if each is empty ONLY)
-	${RMDirUP} "$INSTDIR\@NSIS_INSTALLER_LIBDEST@"   ;remove parents (if each is empty ONLY)
-	${RMDirUP} "$INSTDIR\doc"   ;remove parents (if each is empty ONLY)
-	delete "$INSTDIR\index.lnk"
-#	delete "$INSTDIR\${APPNAME}.lnk"
- 
-	# Always delete uninstaller as the last action
-	delete "$INSTDIR\Uninstall.exe"
- 
-	# Try to remove the install directory - this will only happen if it is empty
-	rmDir $INSTDIR
- 
-sectionEnd
+  # Try to remove the install directory - this will only happen if it is empty
+  rmDir $INSTDIR
+SectionEnd

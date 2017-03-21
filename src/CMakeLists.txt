@@ -1,41 +1,37 @@
 # ================ Python distribution
 set(PYROOTDIR "${CMAKE_SOURCE_DIR}/src/py")
+set(SCRIPTSDIR "${CMAKE_SOURCE_DIR}/BuildScripts")
 set(PYOUTDIR "${CMAKE_BINARY_DIR}/python-build")
-set(SETUP_PY_IN "${CMAKE_SOURCE_DIR}/BuildScripts/setup.py.in")
-set(SETUP_PY "${PYOUTDIR}/setup.py")
-set(SETUP_CFG_IN "${CMAKE_SOURCE_DIR}/BuildScripts/setup.cfg.in")
-set(SETUP_CFG "${PYOUTDIR}/setup.cfg")
-set(CONFIG_PY_IN "${CMAKE_SOURCE_DIR}/BuildScripts/config_installed.py.in")
-set(CONFIG_PY "${PYOUTDIR}/config_installed.py")
 # =========================== configuration file 
 if (WIN32)
 	set(LIB_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/lib")
-	set(SHARE_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/share")
-	set(EXE_INSTALL_DIR "#>INSTALLDIR<#/bin")
+	set(SHARE_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/include")
+	set(EXE_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/bin")
 	set(HYBMESH_HOMEDIR "$ENV{PROGRAMDATA}\\hybmesh")
 else()
 	set(LIB_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/lib/${APPNAME}")
-	set(SHARE_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/share/${APPNAME}")
+	set(SHARE_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/include/${APPNAME}")
 	set(EXE_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/bin")
 	set(HYBMESH_HOMEDIR "~/.hybmesh")
 endif()
-configure_file(${CONFIG_PY_IN} ${CONFIG_PY} @ONLY)
-configure_file(${SETUP_PY_IN} ${SETUP_PY} @ONLY)
-configure_file(${SETUP_CFG_IN} ${SETUP_CFG} @ONLY)
 
+configure_file("${SCRIPTSDIR}/config_installed.py.in" "${PYOUTDIR}/config_installed.py" @ONLY)
+configure_file("${SCRIPTSDIR}/setup.py.in" "${PYOUTDIR}/setup.py" @ONLY)
+configure_file("${SCRIPTSDIR}/setup.cfg.in" "${PYOUTDIR}/setup.cfg" @ONLY)
+configure_file("${SCRIPTSDIR}/check_python_vers.py.in" "${PYOUTDIR}/check_python_vers.py" @ONLY)
 
 # ============= for assembling installer
 set(DEPS "${PYROOTDIR}/${PyPack}/__init__.py")
 add_custom_command(
 	OUTPUT ${PYOUTDIR}/timestamp
-	COMMAND ${PYTHON} ${SETUP_PY} build
+	COMMAND ${PYTHON} "${PYOUTDIR}/setup.py" build
 	COMMAND ${CMAKE_COMMAND} -E touch ${PYOUTDIR}/timestamp
 	DEPENDS ${DEPS}
 )
 add_custom_target(pydistr ALL DEPENDS ${PYOUTDIR}/timestamp)
 
 #installs python packages to system
-install(CODE "execute_process(COMMAND ${PYTHON} ${SETUP_PY} install)")
+install(CODE "execute_process(COMMAND ${PYTHON} ${PYOUTDIR}/setup.py install)")
 
 if (WIN32)
 	#install main python script to py directory
@@ -65,28 +61,33 @@ if (WIN32)
 	# ========= assemble installer
 	if (${USE_NSIS})
 		# configuration
-		if(CXX_BITNESS EQUAL 32)
-			set(NSIS_INSTALLER_BIT "32")
-		else()
-			set(NSIS_INSTALLER_BIT "64")
-		endif()
 		set(NSIS_INSTALLER_NAME "${APPNAME}-v${APPVERSION}-win${NSIS_INSTALLER_BIT}") 
-		set(NSIS_INSTALLER_APPNAME "${APPNAME}")
-		set(NSIS_INSTALLER_EXENAME "${MainBin}.exe")
 		
-		set(NSIS_INSTALLER_DESCRIPTION "${APPDESCRIPTION}")
-		string(REPLACE "/" "\\" _TMP "${CMAKE_INSTALL_PREFIX}/bin")
+		string(REPLACE "/" "\\" _TMP "${EXE_INSTALL_DIR}")
 		set(NSIS_INSTALLER_BIN "/r \"${_TMP}\\*\"")
-		set(NSIS_INSTALLER_BINDEST "bin")
-		string(REPLACE "/" "\\" _TMP "${CMAKE_INSTALL_PREFIX}/lib")
+
+		string(REPLACE "/" "\\" _TMP "${LIB_INSTALL_DIR}")
 		set(NSIS_INSTALLER_LIB "\"${_TMP}\\*.dll\"")
-		set(NSIS_INSTALLER_LIBDEST "lib")
+
+		string(REPLACE "/" "\\" _TMP "${SHARE_INSTALL_DIR}")
+		set(NSIS_INSTALLER_SHARE "/r \"${_TMP}\\*\"")
+
 		string(REPLACE "/" "\\" _TMP "${PYINST_ICON}")
 		set(NSIS_INSTALLER_ICON "\"${_TMP}\"")
+
 		string(REPLACE "/" "\\" _TMP ${CMAKE_SOURCE_DIR}/doc/build/html)
 		set(NSIS_INSTALLER_HTML "/r \"${_TMP}\\*\"")
-		configure_file("${CMAKE_SOURCE_DIR}/BuildScripts/make_installer.nsi.in" 
+
+		string(REPLACE "/" "\\" _TMP ${CMAKE_BINARY_DIR}/build/lib/hybmeshpack)
+		set(NSIS_HYBMESHPACK_FILES "/r \"${_TMP}\\*.py\"")
+
+		string(REPLACE "/" "\\" _TMP ${PYOUTDIR})
+		set(NSIS_HYBMESHPACK_SETUP "/r \"${_TMP}\\*.py\"")
+
+		configure_file(
+			"${CMAKE_SOURCE_DIR}/BuildScripts/make_installer.nsi.in" 
 			"${CMAKE_BINARY_DIR}/make_installer.nsi" @ONLY)
+
 		# run at make pack
 		add_custom_target(pack
 			COMMAND ${NSIS} make_installer.nsi

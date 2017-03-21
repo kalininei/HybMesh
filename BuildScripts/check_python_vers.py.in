@@ -1,0 +1,18 @@
+# script is used for windows hybmeshpack installation as a python package
+# prints OK if python version is OK or error message otherwise.
+
+error_string = "Python version is incompatible."
+try:
+    import sys
+    if sys.version_info < (2, 7) or sys.version_info > (3,):
+        error_string = "Python version 2.7<..<3 is required. " +\
+            "Detected version is " + str(sys.version_info[:3]) + "."
+        raise Exception()
+    elif sys.maxsize < 2**33:
+        error_string = "64 bit Python is required."
+        raise Exception()
+except:
+    print(error_string);
+else:
+    print("OK")
+

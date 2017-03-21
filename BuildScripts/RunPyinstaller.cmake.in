@@ -30,5 +30,3 @@ execute_process(COMMAND "@PYINSTALLER@" @PYINST_OPT@
 if(NOT _PRESULT EQUAL 0)
 	message(FATAL_ERROR "PyInstaller error: - ${_PRESULT}\n")
 endif()
-
-

@@ -133,7 +133,7 @@ def raw_data(obj, what):
         nret, ret2 = ct.c_int(), ct.POINTER(ct.c_int)()
         ccall(cport.g2_tab_celledge, obj, ct.byref(nret), ct.byref(ret2))
         ret = move_to_static(nret.value, ret2, int)
-    elif what == 'center':
+    elif what == 'cell_center':
         ret = (ct.c_double * (2*d[2]))()
         ccall(cport.g2_tab_centers, obj, ret)
     elif what == 'bnd':

@@ -2,13 +2,12 @@ import traceback
 import os
 import sys
 import struct
-from functools import wraps
-from decorator import decorator
 from hybmeshpack.com.flow import CommandFlow
 import hybmeshpack.basic.interf
 import hybmeshpack.basic.cb
 from hybmeshpack.basic.cb import UserInterrupt
 import hybmeshpack.basic.proc
+from decorator import decorator
 
 
 class ExecError(Exception):

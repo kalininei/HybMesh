@@ -57,20 +57,16 @@ Couple of (mostly informational) methods
 are implemented as methods of these classes however
 main functionality is provided by the superclass methods.
 
-The UML class diagram representing hybmesh interface is presented
-below.
-
-.. figure:: figs/oointerfaces_uml.png
-   :width: 1200 px
-
 All data representing object geometry is stored on server side
-but could be accessed through :func:`Hybmesh.Hybmesh.raw_vertices`
-and :func:`Hybmesh.Hybmesh.raw_tab` object methods.
+but could be accessed through
+:func:`Object.raw_vertices<Hybmesh.Hybmesh.Object.raw_vertices>`
+and
+:func:`Object.raw_tab<Hybmesh.Hybmesh.Object.raw_tab>` object methods.
 
 Note that if an object is destructed (disposed) in terms
 of target language it does not lead to object
 destruction at server side. To remove object from hybmesh
-operating list use :func:`Hybmesh.Hybmesh.Object.free` member function.
+operating list use :func:`Object.free()<Hybmesh.Hybmesh.Object.free>` member function.
 However even *free()* call does not guarantee release of resources.
 The most reliable way to free memory resources is to
 build all necessary grids, copy them to native side structures
@@ -123,19 +119,22 @@ for cancellation request it should return ``1``, in that case **EUserInterrupt**
 exception will be raised and should be properly handled at the client side.
 
 To assign certain callback function to hybmesh instance use
-:func:`Hybmesh.Hybmesh.assign_callback` method. To reset it to default silent mode
-use :func:`Hybmesh.Hybmesh.reset_callback`.
+:func:`assign_callback<Hybmesh.Hybmesh.assign_callback>` method.
+To reset it to default silent mode
+use :func:`reset_callback<Hybmesh.Hybmesh.reset_callback>`.
 
 :ref:`Java<javaintro>` and :ref:`C#<csintro>` examples
 use hybmesh to build simple
 GUI applications which use :ref:`map grid<gridmappings>` and
-:ref:`unite_grid<gridimp>`
+:ref:`unite grid<gridimp>`
 hybmesh functionality respectively supplemented
 with graphic callback.
 
 By default standard console output of hybmesh is turned off
 but it could be activated using
-:func:`Hybmesh.Hybmesh.stdout_verbosity` method.
+:func:`stdout_verbosity<Hybmesh.Hybmesh.stdout_verbosity>` method.
+
+.. _ooifuncref:
 
 Functions reference
 -------------------
@@ -145,6 +144,12 @@ are the same regardless the language. In fact
 they were generated automatically from
 the same pattern. Therefore in present documentation
 only Python wrapper methods are described.
+
+The UML class diagram representing hybmesh interface structure is presented
+below.
+
+.. figure:: figs/oointerfaces_uml.png
+   :width: 1200 px
 
 .. toctree::
    

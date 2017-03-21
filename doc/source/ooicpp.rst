@@ -1,3 +1,6 @@
+C++ Bindings for HybMesh
+========================
+
 Usage
 ^^^^^
 
@@ -36,10 +39,38 @@ It is used for those hybmesh methods which accept such arguments
 of :func:`Hybmesh.Hybmesh.add_custom_rect_grid`)
 
 For detailed description of all methods see
-:ref:`python wrapper reference<ooipython>`
+:ref:`python wrapper reference<ooifuncref>`
 and documentation in ``Hybmesh.hpp`` file.
 
 .. _cppintro:
+
+Helloworld Example
+^^^^^^^^^^^^^^^^^^
+
+After hybmesh installation create a directory with copied
+*Hybmesh.hpp* and the following *test.cpp* file.
+
+.. code-block:: cpp
+    :caption: test.cpp
+
+    #include <iostream>
+    #include "Hybmesh.hpp"
+    
+    int main(){
+    	Hybmesh hm;
+    	Hybmesh::Grid2D g2 = hm.add_unf_rect_grid(
+    		Hybmesh::Point2(0, 0), Hybmesh::Point2(1, 1), 2, 2);
+    	std::cout<<"number of cells: "<<g2.dims()[2]<<std::endl;
+    }
+
+Open terminal at created directory.
+With gcc compiler run the following terminal commands 
+
+.. code-block:: bash
+
+    >>> g++ -o test test.cpp -std=c++11
+    >>> ./test
+
 
 Introductory Example
 ^^^^^^^^^^^^^^^^^^^^

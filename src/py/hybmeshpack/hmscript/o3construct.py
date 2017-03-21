@@ -112,7 +112,7 @@ def extrude_grid(obj, zcoords, bottombc=0, topbc=0, sidebc=None):
     # calculate boundary types
     if not isinstance(bottombc, int) or not isinstance(topbc, int):
         grid = flow.receiver.get_grid2(obj)
-        cc_pnt = grid.raw_data('centers')
+        cc_pnt = grid.raw_data('cell_center')
     if isinstance(bottombc, int):
         bbot = [bottombc]
     elif callable(bottombc):

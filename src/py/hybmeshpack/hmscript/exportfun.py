@@ -231,9 +231,9 @@ def export3d_grid_vtk(gid, fname_grid=None, fname_surface=None):
     icheck(0, UListOr1(Grid3D()))
     icheck(1, NoneOr(String()))
     icheck(2, NoneOr(String()))
-    if len(fname_grid) == 0:
+    if not fname_grid:
         fname_grid = None
-    if len(fname_surface) == 0:
+    if not fname_surface:
         fname_surface = None
 
     cb = flow.interface.ask_for_callback()

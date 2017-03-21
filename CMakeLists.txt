@@ -26,7 +26,7 @@
 # -- $MainBin -> ${CMAKE_INSTALL_PREFIX}/bin
 # -- $PyPack will be installed as standard python packages
 # -- cpp libs -> ${CMAKE_INSTALL_PREFIX}/lib/${APPNAME}/*.so
-# -- bindings -> ${CMAKE_INSTALL_PREFIX}/share/${APPNAME}/[cpp/java/...]/*
+# -- bindings -> ${CMAKE_INSTALL_PREFIX}/include/${APPNAME}/[cpp/java/...]/*
 # Windows
 # -- $MainGui -> ${CMAKE_INSTALL_PREFIX}/py/$MainGui.py
 # -- cpp libs -> ${CMAKE_INSTALL_PREFIX}/lib/*.dll, *.dll.a
@@ -88,7 +88,7 @@ if (WIN32)
 endif(WIN32)
 
 # ============================ Version
-set(APPVERSION 0.4.6)
+set(APPVERSION 0.5.0)
 
 # =========================== linking libraries flags
 #libGmsh: global definition of BUILD_GMSH, GMSH_TARGET, GMSH_INCLUDE

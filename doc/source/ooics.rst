@@ -1,3 +1,6 @@
+C# Bindings for HybMesh
+=======================
+
 Usage
 ^^^^^
 
@@ -57,8 +60,38 @@ signature with default *null* as it appears in *Hybmesh.cs* file:
 Here if **bnds** argument is given as *null* it will be reassigned to ``int[] {0}`` array.
 
 For detailed description of all methods consult
-:ref:`python wrapper reference<ooipython>`
-and embedded documentation of wrapper ``Hybmesh.cs`` source file.
+:ref:`python wrapper reference<ooifuncref>`
+and embedded documentation of ``Hybmesh.cs`` source file.
+
+Helloworld Example
+^^^^^^^^^^^^^^^^^^
+
+Install hybmesh. Create an empty directory. Copy *Hybmesh.cs* into that directory.
+Create the following file and place it there too.
+
+.. code-block:: c#
+    :caption: Test.cs
+
+    using System;
+    
+    public class Test{
+        public static void Main(){
+            using (Hybmesh hm = new Hybmesh()){
+                Hybmesh.Grid2D g = hm.AddUnfRectGrid(
+                        new Hybmesh.Point2(0, 0),
+                        new Hybmesh.Point2(1, 1),
+                        2, 2);
+                Console.WriteLine(String.Format("number of cells: {0}", g.Dims()[2]));
+            }
+        }
+    }
+
+To compile it with Mono execute in terminal
+
+.. code-block:: bash
+
+    >>> mcs Test.cs Hybmesh.cs
+    >>> mono Test.exe
 
 .. _csintro:
 

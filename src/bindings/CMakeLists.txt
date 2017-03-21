@@ -3,6 +3,7 @@ set(BINDPARSER ${CMAKE_CURRENT_SOURCE_DIR}/bindparser.py)
 
 if (INCLUDE_CPP_BINDINGS)
 	set(CMDLINE cpp odir ${BINDINGSOUT}/cpp
+		vers ${APP_VERSION}
 		exepath ${EXE_INSTALL_DIR}
 		hmdir ${CMAKE_SOURCE_DIR}/src/py)
 	add_custom_command(
@@ -16,8 +17,8 @@ if (INCLUDE_CPP_BINDINGS)
 		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 	)
 	add_custom_target(cpp_bindings_header ALL DEPENDS ${BINDINGSOUT}/cpp/Hybmesh.hpp)
-	install(DIRECTORY ${BINDINGSOUT}/cpp
-	        DESTINATION ${SHARE_INSTALL_DIR})
+	install(FILES ${BINDINGSOUT}/cpp/Hybmesh.hpp
+	        DESTINATION ${SHARE_INSTALL_DIR}/cpp/)
 endif()
 
 if (INCLUDE_CS_BINDINGS)
@@ -25,6 +26,7 @@ if (INCLUDE_CS_BINDINGS)
 			client.h client.c
 			core_hmconnection_mcspy.h core_hmconnection_mcspy.c)
 	set(CMDLINE cs odir ${BINDINGSOUT}/cs
+		vers ${APP_VERSION}
 		exepath ${EXE_INSTALL_DIR}
 		libpath ${SHARE_INSTALL_DIR}/cs
 		hmdir ${CMAKE_SOURCE_DIR}/src/py)
@@ -39,8 +41,8 @@ if (INCLUDE_CS_BINDINGS)
 		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 	)
 	add_custom_target(cs_bindings_header ALL DEPENDS ${BINDINGSOUT}/cs/Hybmesh.cs)
-	install(DIRECTORY ${BINDINGSOUT}/cs
-	        DESTINATION ${SHARE_INSTALL_DIR})
+	install(FILES ${BINDINGSOUT}/cs/Hybmesh.cs
+	        DESTINATION ${SHARE_INSTALL_DIR}/cs)
 	install(TARGETS ${CS_BINDINGS_TARGET}
 	        LIBRARY DESTINATION ${SHARE_INSTALL_DIR}/cs
 	        RUNTIME DESTINATION ${SHARE_INSTALL_DIR}/cs)
@@ -55,6 +57,7 @@ if (INCLUDE_JAVA_BINDINGS)
 		PRIVATE ${JNI_INCLUDE_DIRS}
 	)
 	set(CMDLINE java odir ${BINDINGSOUT}/java
+		vers ${APP_VERSION}
 		exepath ${EXE_INSTALL_DIR}
 		hmdir ${CMAKE_SOURCE_DIR}/src/py)
 	add_custom_command(
@@ -68,8 +71,8 @@ if (INCLUDE_JAVA_BINDINGS)
 		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 	)
 	add_custom_target(java_bindings_header ALL DEPENDS ${BINDINGSOUT}/java/Hybmesh.java)
-	install(DIRECTORY ${BINDINGSOUT}/java
-	        DESTINATION ${SHARE_INSTALL_DIR})
+	install(FILES ${BINDINGSOUT}/java/Hybmesh.java
+	        DESTINATION ${SHARE_INSTALL_DIR}/java/)
 	install(TARGETS ${JAVA_BINDINGS_TARGET}
 	        LIBRARY DESTINATION ${SHARE_INSTALL_DIR}/java
 	        RUNTIME DESTINATION ${SHARE_INSTALL_DIR}/java)
@@ -82,6 +85,7 @@ if (INCLUDE_PYTHON_BINDINGS)
 		core_hmconnection_mcspy.h core_hmconnection_mcspy.c
 	)
 	set(CMDLINE py odir ${BINDINGSOUT}/py
+		vers ${APP_VERSION}
 		exepath ${EXE_INSTALL_DIR}
 		libpath ${SHARE_INSTALL_DIR}/py
 		hmdir ${CMAKE_SOURCE_DIR}/src/py)
@@ -96,8 +100,8 @@ if (INCLUDE_PYTHON_BINDINGS)
 		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 	)
 	add_custom_target(py_bindings_header ALL DEPENDS ${BINDINGSOUT}/py/Hybmesh.py)
-	install(DIRECTORY ${BINDINGSOUT}/py
-	        DESTINATION ${SHARE_INSTALL_DIR})
+	install(FILES ${BINDINGSOUT}/py/Hybmesh.py
+	        DESTINATION ${SHARE_INSTALL_DIR}/py)
 	install(TARGETS ${PY_BINDINGS_TARGET}
 	        LIBRARY DESTINATION ${SHARE_INSTALL_DIR}/py
 	        RUNTIME DESTINATION ${SHARE_INSTALL_DIR}/py)
@@ -106,6 +110,7 @@ endif()
 
 if (INCLUDE_MATLAB_BINDINGS OR INCLUDE_OCTAVE_BINDINGS)
 	set(CMDLINE m odir ${BINDINGSOUT}/m
+		vers ${APP_VERSION}
 		exepath ${EXE_INSTALL_DIR}
 		libpath ${SHARE_INSTALL_DIR}/m
 		hmdir ${CMAKE_SOURCE_DIR}/src/py)
