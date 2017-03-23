@@ -442,3 +442,13 @@ def boundary_layer_grid(opt, cb=None):
     ret = ct.c_void_p()
     ccall_cb(cport.g2_boundary_layer, cb, nopt, c_opt, ct.byref(ret))
     return ret
+
+
+def snap_to_contour(g, c, p1, p2, p3, p4, algo):
+    p1 = list_to_c(p1, float)
+    p2 = list_to_c(p2, float)
+    p3 = list_to_c(p3, float)
+    p4 = list_to_c(p4, float)
+    ret = ct.c_void_p()
+    ccall(cport.g2_snap_to_contour, g, c, p1, p2, p3, p4, algo, ct.byref(ret))
+    return ret

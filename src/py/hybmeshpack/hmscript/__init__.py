@@ -99,7 +99,7 @@ class ConsoleInterface2(ConsoleInterface1):
             line = kwargs['com'].method_code()
             if self.show_linenum:
                 for s in traceback.extract_stack()[::-1]:
-                    if "hybmeshpack" not in s[0]:
+                    if not s[0].startswith('<') and "hybmeshpack" not in s[0]:
                         fn = os.path.basename(s[0])
                         line = "{} ({}:{})".format(line, fn, s[1])
                         break

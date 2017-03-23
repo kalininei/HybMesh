@@ -6,6 +6,7 @@
 #include "treverter2d.hpp"
 #include "healgrid.hpp"
 #include "finder2d.hpp"
+#include "snap_grid2cont.hpp"
 
 using namespace HMMap::Impl;
 

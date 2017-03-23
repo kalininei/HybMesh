@@ -1,8 +1,9 @@
+.. _example1:
 
 Example 1
 =========
 
-This example illustrates HybMesh algorithm for meshing
+This example illustrates usage of HybMesh algorithm for meshing
 domain shown in :ref:`introfig1`
 
 .. _introfig1:
@@ -10,7 +11,7 @@ domain shown in :ref:`introfig1`
 .. figure:: picintro1.png
    :height: 400 px
 
-   fig1. Area for meshing
+   fig1. Meshing area
 
 The building strategy is:
 
@@ -30,5 +31,5 @@ Here is the script:
 |.. figure:: picintro2.png | .. figure:: picintro3.png| .. figure:: picintro4.png|
 |   :height: 400 px        |    :height: 400 px       |    :height: 400 px       |
 |                          |                          |                          |
-|   fig2. Primitive grids  |    fig3. After imposition|    fig4. Final result    |
+|   fig2. Primitive grids  |    fig3. Superposition   |    fig4. Final result    |
 +--------------------------+--------------------------+--------------------------+

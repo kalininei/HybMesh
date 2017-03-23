@@ -121,7 +121,8 @@ Hybmesh superclass
     exclude_contours,
     unite_grids1,
     map_grid,
-    heal_grid
+    heal_grid,
+    snap_grid_to_contour
 
 
 .. rubric:: Surface operations

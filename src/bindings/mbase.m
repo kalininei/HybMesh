@@ -1,9 +1,11 @@
-classdef HybmeshWorker < handle
-	properties(Access={?Hybmesh})
+classdef HybmeshCallerOctave
+	properties (Access={?HybmeshWorker})
 		connection;
-		callback = @(~, ~, ~, ~) 0;
 	end
-	methods(Access=private)
+	methods (Access={?HybmeshWorker})
+		function ret=HybmeshCallerOctave(exepath)
+			ret.connection=ret.require_connection(exepath);
+		end
 		%low level communication
 		function ret=require_connection(~, server_path)
 			ret = core_hmconnection_oct(1, server_path);
@@ -23,18 +25,67 @@ classdef HybmeshWorker < handle
 		function break_connection(self)
 			core_hmconnection_oct(6, self.connection);
 		end
+	end;
+end;
+
+classdef HybmeshCallerMatlab
+	properties (Access={?HybmeshWorker})
+		connection;
+	end
+	methods (Access={?HybmeshWorker})
+		function ret=HybmeshCallerMatlab(exepath)
+			if ~libisloaded('core_hmconnection_matlab')
+				loadlibrary('core_hmconnection_matlab', ...
+					'core_hmconnection_matlab.h');
+			end
+			ret.connection=ret.require_connection(exepath);
+		end
+		%low level communication
+		function ret=require_connection(~, server_path)
+			ret = calllib('core_hmconnection_matlab', ...
+				'require_connection', server_path);
+		end
+		function ret=get_signal(self)
+			ret = calllib('core_hmconnection_matlab', ...
+				'get_signal', self.connection);
+		end
+		function ret = get_data(self)
+			ret = calllib('core_hmconnection_matlab', ...
+				'get_data', self.connection);
+		end
+		function send_signal(self, sig)
+			ret = calllib('core_hmconnection_matlab', ...
+				'send_signal', self.connection);
+		end
+		function send_data(self, data)
+			ret = calllib('core_hmconnection_matlab', ...
+				'send_data', self.connection);
+		end
+		function break_connection(self)
+			ret = calllib('core_hmconnection_matlab', ...
+				'break_connection', self.connection);
+		end
+	end
+end
+
+classdef HybmeshWorker < handle
+	properties(Access=private)
+		caller;
+	end
+	properties(Access={?Hybmesh})
+		callback = @(~, ~, ~, ~) 0;
 	end
 	methods (Access=private)
 		function _send_command(self, func, com)
-			self.send_signal('C');
-			self.send_data(func);
-			self.send_data(com);
+			self.caller.send_signal('C');
+			self.caller.send_data(func);
+			self.caller.send_data(com);
 		end
 		function ret=_wait_for_signal(self)
-			ret=self.get_signal(self);
+			ret=self.caller.get_signal(self);
 		end
 		function ret= _read_buffer(self)
-			ret = self.get_data();
+			ret = self.caller.get_data();
 		end
 		function _apply_callback(self, buf)
 			p = typecast(buf(1:16), 'double');
@@ -43,9 +94,9 @@ classdef HybmeshWorker < handle
 			s2 = buf(25+lens(1):24+lens(1)+lens(2));
 			r = self.callback(s1, s2, p(1), p(2));
 			if r == 0
-				self.send_signal('G');
+				self.caller.send_signal('G');
 			else
-				self.send_signal('S');
+				self.caller.send_signal('S');
 			end
 		end
 
@@ -101,12 +152,22 @@ classdef HybmeshWorker < handle
 	end
 	methods(Access={?Hybmesh, ?HybmeshObject})
 		function ret = HybmeshWorker(exepath)
-			ret.connection=ret.require_connection(exepath);
+			try
+				% try to load matlab procedure
+				ret.caller = HybmeshCallerMatlab(exepath);
+			catch
+				try
+					% try to load octave procedure
+					ret.caller = HybmeshCallerOctave(exepath);
+				catch
+					error('Neither matlab nor octave caller was able to establish hybmesh server connection');
+				end
+			end
 		end
 		function free(self)
-			if self.connection ~= -1
-				self.break_connection();
-				self.connection = -1;
+			if self.caller.connection ~= -1
+				self.caller.break_connection();
+				self.caller.connection = -1;
 			end
 		end
 		function ret=_apply_command(self, func, com)

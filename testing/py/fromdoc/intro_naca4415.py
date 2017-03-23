@@ -1,5 +1,5 @@
 from hybmeshpack import hmscript as hm
-hm.check_compatibility("0.4.0", 2)
+hm.check_compatibility("0.5.0", 2)
 
 # === register boundary types
 global bfoil, bcirc, binp, bout, bleft, bright, btop, bbot
@@ -29,26 +29,20 @@ hm.rotate_geom(foil, -10, [0, 0])
 
 # === build substrate grid
 # Here we need a rectangular grid with refinement at foil location.
-# First we create two straits lines (vertical and horizontal),
-# then we divide them providing desired partition and finally assemble
-# a rectangular grid based on that lines.
-vert = hm.create_contour([[-1, -1], [-1, 1]])
-horiz = hm.create_contour([[-1, -1], [3, -1]])
-vert = hm.partition_contour(
-    vert, "ref_points",
-    [0.2, [-1, -1], 0.03, [-1, -0.2], 0.015, [-1, 0.15], 0.2, [-1, 1]])
-horiz = hm.partition_contour(
-    horiz, "ref_points",
-    [0.2, [-1, -1], 0.03, [-0.2, -1], 0.03, [1.1, -1], 0.2, [3, -1]])
-substrate = hm.add_custom_rect_grid("linear", vert, horiz)
+# First we create two list of doubles defining x and y coordinates,
+vert = hm.partition_segment(-1, 1, 0.2, 0.2, [-0.2, 0.03, 0.15, 0.015])
+horiz = hm.partition_segment(-1, 3, 0.2, 0.2, [-0.2, 0.03, 1.1, 0.03])
+# then build rectangular grid on their basis.
+substrate = hm.add_unf_rect_grid(custom_x=horiz, custom_y=vert)
 
 
-#boundary types for back grid which will be later translated to 3d grid
+# boundary types for back grid which will be later translated to 3d grid
 def _substrate_bfun(x0, y0, x1, y1, bt):
     if abs(x0 - x1) < 1e-12:
         return binp if abs(x0 + 1) < 1e-12 else bout
     else:
         return bbot if abs(y0 + 1) < 1e-12 else btop
+
 
 hm.set_boundary_type(substrate, bfun=_substrate_bfun)
 hm.export_grid_vtk(substrate, "substrate.vtk")
@@ -114,6 +108,7 @@ hm.export3d_grid_msh(
 def testf():
     from hybmeshpack.hmscript import _dbg as hmdbg
     hmdbg.check_ascii_file(2556162334104726686, "res3d.msh", "dev")
+
 
 testf()
 hm.export3d_grid_vtk(res3d, "g1.vtk")

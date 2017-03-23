@@ -133,10 +133,10 @@ class ConsoleCallbackCancel2(SilentCallbackCancel2):
         par1, par2 = '', ''
         len1, len2 = int(n * p1), int(n * p2)
 
-        if n1 != self.__prev_n1:
+        if n1 and n1 != self.__prev_n1:
             par1 = n1
             self.__prev_n1 = n1
-        if n2 != self.__prev_n2:
+        if n2 and n2 != self.__prev_n2:
             par2 = n2
             self.__prev_n2 = n2
 

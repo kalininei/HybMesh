@@ -436,6 +436,7 @@ bool Algos::SplitCell(GridData& grid, int icell, int lnode1, int lnode2){
 }
 
 bool Algos::SplitEdge(GridData& grid, int iedge, const vector<Point>& apoints, bool force){
+	assert(iedge < grid.vedges.size());
 	auto ed = grid.vedges[iedge];
 	auto lc = ed->left.lock();
 	auto rc = ed->right.lock();

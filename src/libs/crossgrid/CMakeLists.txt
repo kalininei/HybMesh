@@ -9,6 +9,7 @@ set (HEADERS
 	modgrid.hpp
 	infogrid.hpp
 	wireframegrid.hpp
+	snap_grid2cont.hpp
 	debug_grid2d.hpp
 )
 
@@ -22,6 +23,7 @@ set (SOURCES
 	modgrid.cpp
 	infogrid.cpp
 	wireframegrid.cpp
+	snap_grid2cont.cpp
 	debug_grid2d.cpp
 )
 

@@ -602,3 +602,28 @@ class StripeGrid(NewGridCommand):
         return g2core.stripe_grid(c.cdata, self.get_option('partition'),
                                   self.get_option('tip'),
                                   self.get_option('bnd'), cb)
+
+
+class SnapToContour(NewGridCommand):
+    def __init__(self, kwargs):
+        super(SnapToContour, self).__init__(kwargs)
+
+    @classmethod
+    def _arguments_types(cls):
+        return {'name': co.BasicOption(str, None),
+                'grid': co.BasicOption(str),
+                'cont': co.BasicOption(str),
+                'gp1': co.Point2Option(),
+                'gp2': co.Point2Option(),
+                'cp1': co.NoneOr(co.Point2Option(), None),
+                'cp2': co.NoneOr(co.Point2Option(), None),
+                'algo': co.BasicOption(str, "add"),
+                }
+
+    def _build_grid(self):
+        g = self.grid2_by_name(self.get_option('grid'))
+        c = self.any_cont_by_name(self.get_option('cont'))
+        p1, p2 = self.get_option('gp1'), self.get_option('gp2')
+        p3, p4 = self.get_option('cp1'), self.get_option('cp2')
+        return g2core.snap_to_contour(
+            g.cdata, c.cdata, p1, p2, p3, p4, self.get_option("algo"))

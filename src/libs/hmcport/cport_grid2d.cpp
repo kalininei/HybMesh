@@ -21,6 +21,8 @@
 #include "export2d_fluent.hpp"
 #include "export2d_tecplot.hpp"
 #include "export2d_hm.hpp"
+#include "snap_grid2cont.hpp"
+#include "treverter2d.hpp"
 
 
 int g2_dims(void* obj, int* ret){
@@ -552,10 +554,10 @@ int g2_custom_rect_grid(const char* algo, void* left, void* bottom, void* right,
 			{"orthogonal", 4},
 			{"linear_tfi", 5},
 			{"hermite_tfi", 6} }[algo]){
-		case 1: 
+		case 1:
 			ret_ = HMMap::LinearRectGrid(left3, bot3, right3, top3);
 			break;
-		case 2: 
+		case 2:
 			ret_ = HMMap::LaplaceRectGrid.WithCallback(
 				cb, left3, bot3, right3, top3, "inverse-laplace");
 			break;
@@ -588,7 +590,7 @@ int g2_custom_rect_grid(const char* algo, void* left, void* bottom, void* right,
 			HM2D::Unscale(e.invalid_grid.vvert, sc_backup);
 			c2cpp::to_pp(e.invalid_grid, ret);
 			return HMSUCCESS;
-		} 
+		}
 		add_error_message(e.what());
 		return HMERROR;
 	} catch (std::runtime_error &e){
@@ -718,7 +720,7 @@ int g2_map_grid(void* base_obj, void* target_obj,
 			case 2: opt.algo = "inverse-laplace"; break;
 			default: throw std::runtime_error("unknown algorithm");
 		}
-		
+
 		HM2D::GridData ret_ = HMMap::MapGrid.WithCallback(cb, *g, *cont,
 				p1, p2, is_reversed, opt);
 		cscale.unscale(&ret_);
@@ -1102,6 +1104,48 @@ int g2_boundary_layer(int nopt, BoundaryLayerGridOption* opt, void** ret, hmcpor
 			}
 		}
 		*ret = new HM2D::GridData(HMBlay::BuildBLayerGrid(vinp));
+		return HMSUCCESS;
+	} catch (std::exception& e){
+		add_error_message(e.what());
+		return HMERROR;
+	}
+}
+
+int g2_snap_to_contour(void* grid, void* contour, double* gp1, double* gp2,
+		double* cp1, double* cp2, const char* algo, void** ret){
+	try{
+		HM2D::GridData* g2 = static_cast<HM2D::GridData*>(grid);
+		HM2D::EdgeData* c2 = static_cast<HM2D::EdgeData*>(contour);
+		Point p1(gp1[0], gp1[1]); Point p2(gp2[0], gp2[1]);
+		Point p3(cp1[0], cp1[1]); Point p4(cp2[0], cp2[1]);
+		//scale
+		Autoscale::D2 sc(g2);
+		sc.add_data(c2);
+		sc.scale(p1); sc.scale(p2); sc.scale(p3); sc.scale(p4);
+		//get grid points
+		auto gbnd = HM2D::ECol::Assembler::GridBoundary(*g2);
+		auto av1 = HM2D::AllVertices(gbnd);
+		auto fnd1 = HM2D::Finder::ClosestPoint(av1, p1);
+		auto fnd2 = HM2D::Finder::ClosestPoint(av1, p2);
+		auto pp1 = av1[std::get<0>(fnd1)].get();
+		auto pp2 = av1[std::get<0>(fnd2)].get();
+		//get subcontour. Make deepcopy to be able to reverse it if needed.
+		auto av2 = HM2D::AllVertices(*c2);
+		auto fnd3 = HM2D::Finder::ClosestPoint(av2, p3);
+		auto pp3 = av2[std::get<0>(fnd3)].get();
+		HM2D::EdgeData subcont;
+		HM2D::DeepCopy(HM2D::Contour::Assembler::Contour1(*c2, pp3), subcont, 0);
+		HM2D::Contour::R::Clockwise::Permanent(subcont, false);
+		if (pp1 != pp2){
+			auto fnd4 = HM2D::Finder::ClosestPoint(av2, p4);
+			auto pp4 = av2[std::get<0>(fnd4)].get();
+			subcont = HM2D::Contour::Assembler::ShrinkContour(subcont, pp3, pp4);
+		}
+		//calculate
+		HM2D::GridData ret_ = HM2D::Grid::Algos::SnapBndSection(
+			*g2, subcont, pp1, pp2, algo);
+		sc.unscale(&ret_);
+		c2cpp::to_pp(ret_, ret);
 		return HMSUCCESS;
 	} catch (std::exception& e){
 		add_error_message(e.what());

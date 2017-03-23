@@ -43,7 +43,7 @@ bool SplitEdge(GridData& grid, int iedge, const vector<Point>& apoints, bool for
 //180 -- deletes all intermediate points
 void SimplifyBoundary(GridData& grid, double angle);
 
-//all cells with dimensin higher than maxdim will be splitted
+//all cells with dimension higher than maxdim will be splitted
 void CutCellDims(GridData& grid, int maxdim);
 
 //removes edges by index and restore grid topology

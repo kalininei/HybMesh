@@ -1,9 +1,10 @@
+.. _example2:
 
 Example 2
 =========
 
 Here we mesh a house-like domain keeping separate boundary features
-for edges which lie on roof, window spans and tube.
+for edges which lie on the roof, window spans and the tube.
 
 .. figure:: picintro5.png
    :height: 400 px

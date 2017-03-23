@@ -26,6 +26,7 @@ Contour operations
 |func-g06|  |func-g07|  |func-g08|  |func-g09|  |func-g10|
 |func-g11|  |func-g12|  |func-g13|  |func-g14|  |func-g15|
 |func-g16|  |func-g17|  |func-g18|  |func-g19|  |func-g20|
+|func-g21|  ..          ..          ..          ..
 =========== =========== =========== =========== ===========
 
 Surface operations
@@ -116,10 +117,11 @@ Import
 .. |func-g14| replace:: :func:`pebi_fill`
 .. |func-g15| replace:: :func:`unite_grids`
 .. |func-g16| replace:: :func:`unite_grids1`
-.. |func-g17| replace:: :func:`build_boundary_grid`
-.. |func-g18| replace:: :func:`build_boundary_grid1`
-.. |func-g19| replace:: :func:`exclude_contours`
-.. |func-g20| replace:: :func:`map_grid`
+.. |func-g17| replace:: :func:`snap_grid_to_contour`
+.. |func-g18| replace:: :func:`build_boundary_grid`
+.. |func-g19| replace:: :func:`build_boundary_grid1`
+.. |func-g20| replace:: :func:`exclude_contours`
+.. |func-g21| replace:: :func:`map_grid`
 
 .. |func-S01| replace:: :func:`info_surface`
 .. |func-S02| replace:: :func:`tab_surf3`

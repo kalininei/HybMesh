@@ -169,6 +169,7 @@ Contour Operations
 .. autofunction:: build_boundary_grid1
 .. autofunction:: exclude_contours
 .. autofunction:: map_grid
+.. autofunction:: snap_grid_to_contour
 
 
 Surface Operations
@@ -224,7 +225,24 @@ Import
 
 Introductory Examples
 ---------------------
+
+* :ref:`Example 1<example1>` uses :func:`exclude_contours`,
+  :func:`unite_grids`,
+  :func:`build_boundary_grid1`.
+* :ref:`Example 2<example2>` uses :func:`unite_grids`. Illustrates boundary
+  features translation.
+* :ref:`Example 3<example3>` uses :func:`build_boundary_grid`. Complicated
+  boundary grid building.
+* :ref:`Example 4<example4>` uses :func:`map_grid`, :func:`snap_grid_to_contour`.
+* :ref:`Example 5<example5>` uses :func:`extrude_grid`, :func:`export3d_grid_msh` with
+  3D periodic conditions.
+* :ref:`Example 6<example6>` uses :func:`partition_contour`, :func:`matched_partition`,
+  :func:`stripe`, :func:`triangulate_domain`, :func:`pebi_fill`.
+  Different approaches to non-regular domain meshing.
+
+
 .. toctree::
+  :hidden:
 
   intro_example1
   intro_example2
@@ -232,8 +250,4 @@ Introductory Examples
   intro_example4
   intro_example5
   intro_example6
-
-.. toctree::
-  :hidden:
-
   examples_include_files

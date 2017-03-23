@@ -1,4 +1,4 @@
-addpath('../../build/bindings/m/');
+addpath('../../../build/bindings/m/');
 Hybmesh.hybmesh_exec_path('../../../src/py');
 Hybmesh.hybmesh_lib_path('../../../build/bin/');
 
@@ -123,8 +123,8 @@ check_cond(abs(c47.domain_area() - c48.domain_area())<1e-8);
 c49 = hm.add_rect_contour([0, 0], [1, 1]);
 c50 = hm.partition_contour_const(c49, 0.1);
 c51 = hm.pebi_fill(c50, [], [0.5], [0.5, 0.5]);
-c52 = hm.simple_boundary_grid(c51, [0, 0.01, 0.02]);
-c53 = hm.simple_boundary_grid(c51, [0, 0.01, 0.02], "right");
+c52 = hm.build_boundary_grid1(c51, [0, 0.01, 0.02]);
+c53 = hm.build_boundary_grid1(c51, [0, 0.01, 0.02], "right");
 check_dims(c52.dims(), c53.dims());
 c54 = hm.exclude_contours(c53, {c51}, "inner");
 c55 = hm.exclude_contours(c53, {c51}, "outer");

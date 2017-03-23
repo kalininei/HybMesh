@@ -817,3 +817,15 @@ $FUNC(
 	$ARG #STRING what
 	$RETURNRAW #VECINT
 $FUNC)
+
+$FUNC(
+	$NAME snap_grid_to_contour
+	$ARG #GRID2D gid
+	$ARG #OBJECT2D cid
+	$ARG #POINT gstart
+	$ARG #POINT gend
+	$ARG #POINT cstart
+	$ARG #POINT cend
+	$ARG #STRING algo=#VALSTRING(add)
+	$RETURN #GRID2D
+$FUNC)

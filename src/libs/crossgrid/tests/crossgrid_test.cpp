@@ -18,6 +18,7 @@
 #include "export2d_hm.hpp"
 #include "export2d_tecplot.hpp"
 #include "import2d_hm.hpp"
+#include "snap_grid2cont.hpp"
 
 using HMTesting::add_check;
 using HMTesting::add_file_check;

@@ -128,6 +128,9 @@ struct BoundaryLayerGridOption{
 };
 int g2_boundary_layer(int nopt, BoundaryLayerGridOption* opt, void** ret, hmcport_callback cb);
 
+int g2_snap_to_contour(void* grid, void* contour, double* gp1, double* gp2,
+		double* cp1, double* cp2, const char* algo, void** ret);
+
 
 /*
 //boundary struct

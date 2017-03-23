@@ -9,6 +9,7 @@
 #include "healgrid.hpp"
 #include "finder2d.hpp"
 #include "clipdomain.hpp"
+#include "snap_grid2cont.hpp"
 
 #define USE_ANALYTICAL_MAPPINGS false
 

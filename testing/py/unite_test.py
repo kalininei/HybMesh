@@ -110,6 +110,35 @@ g21 = hm.unite_grids(g19, [(g20, 0.3)])
 check(hm.info_grid(g21)['Ncells'] == 171)
 hm.remove_all()
 
+print "snap grid checks"
+g1 = hm.add_unf_rect_grid(custom_x=[-0.2, -0.1, 0.0], custom_y=[0, 0.1, 0.2, 0.3])
+g2 = hm.add_unf_rect_grid(custom_x=[0.0, 0.2, 0.4], custom_y=[0, 0.12, 0.18, 0.28])
+g3 = hm.snap_grid_to_contour(g2, g1, [0, 0.28], [0, 0], [0, 0], [0, 0.3])
+g4 = hm.snap_grid_to_contour(g2, g1, [0, 0.28], [0, 0], [0, 0], [0, 0.3], "shift")
+
+c1 = hm.add_circ_contour([0, 0], 1, 128)
+
+g5 = hm.add_unf_circ_grid([0, 0], 1, 10, 10)
+g6 = hm.snap_grid_to_contour(g5, c1, [1, 0], [1, 0], [1, 0], [1, 0])
+
+g7 = hm.add_unf_ring_grid([0, 0], 1.1, 2, 15, 3)
+g8 = hm.snap_grid_to_contour(g7, c1, [1, 0], [1, 0], [1, 0], [1, 0])
+g9 = hm.snap_grid_to_contour(g7, c1, [1, 0], [1, 0], [1, 0], [1, 0], "shift")
+
+c2 = hm.add_circ_contour([0, 0], 1, 7)
+g10 = hm.snap_grid_to_contour(g7, c2, [1, 0], [1, 0], [1, 0], [1, 0])
+g11 = hm.snap_grid_to_contour(g7, c2, [1, 0], [1, 0], [1, 0], [1, 0], "shift")
+g12 = hm.snap_grid_to_contour(g5, c2, [1, 0], [1, 0], [1, 0], [1, 0], "shift")
+
+
+check(hm.info_grid(g3)['Nnodes'] == 14)
+check(hm.info_grid(g4)['Nnodes'] == 12)
+check(hm.info_grid(g6)['Nnodes'] == 227)
+check(hm.info_grid(g8)['Nnodes'] == 187)
+check(hm.info_grid(g9)['Nnodes'] == 173)
+check(hm.info_grid(g10)['Nnodes'] == 66)
+check(hm.info_grid(g11)['Nnodes'] == 52)
+
 print "examples for documentation/functionality"
 g1 = hm.add_unf_rect_grid([0, 0], [1, 1], 10, 10)
 g2 = hm.add_unf_rect_grid([0.7, 0.7], [1.3, 1.7], 20, 30)

@@ -26,7 +26,7 @@ def find_packages(path, relpath):
 
 
 # place config_installed to package directory before setup
-conf_orig = '@PYOUTDIR@/setup.cfg'
+conf_orig = '@PYOUTDIR@/config_installed.py'
 conf_src = os.path.join('@PYROOTDIR@', '@PyPack@', os.path.basename(conf_orig))
 shutil.copyfile(conf_orig, conf_src)
 

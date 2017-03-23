@@ -16,16 +16,15 @@ bwindow = hm.add_boundary_type(3, "Window")
 house_cont = hm.create_contour([[0, 0], [1, 0], [1, 0.7], [0.5, 1.3],
                                 [0, 0.7], [0, 0]], [0, 0, broof, broof, 0])
 
-# build a background rectangular mesh and cut a house silhouette from it.
-# now 'house' grid bears boundary features of 'house_cont'
+# Build a background rectangular mesh and cut a house silhouette from it.
+# Now 'house' grid bears boundary features of 'house_cont'
 back_grid = hm.add_unf_rect_grid([0, 0], [1, 2], 50, 100)
 house = hm.exclude_contours(back_grid, house_cont, "outer")
 
 # A set of ugly cells near the roof appeared as a result of previous operation.
 # To get rid of 'em we build a short single layered boundary grid near the
 # roof section and make a union. 'roof' grid inherits its boundary types
-# from 'house_cont' which is its source and delivers 'em to
-# 'house_wroof' object.
+# from 'house_cont' which is its source and delivers 'em to 'house_wroof' object.
 oproof = hm.BoundaryGridOptions(
     house_cont,
     start_point=[1, 0.7], end_point=[0, 0.7],

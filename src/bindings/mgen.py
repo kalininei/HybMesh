@@ -120,9 +120,9 @@ class Generator(commongen.Generator):
     def _worker_call(clc, func, *arg):
         ret = 'self.worker.{}('.format(func)
         if len(arg) > 0:
-            ret = ret + arg[0]
+            ret = ret + arg[0].replace('"', "'")  # fix _apply_command("..")
             for i in range(len(arg) - 1):
-                ret = ret + ', ' + arg[i+1]
+                ret = ret + ', ' + arg[i+1].replace('"', "'")
         return ret + ')'
 
     @classmethod

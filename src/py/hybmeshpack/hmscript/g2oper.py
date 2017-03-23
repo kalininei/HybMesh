@@ -3,7 +3,7 @@ from hybmeshpack import com
 from hybmeshpack.hmscript import flow, hmscriptfun
 import o2info
 from datachecks import (icheck, List, UListOr1, Bool, UList, Point2D,
-                        Grid2D, OneOf, Float, Tuple, ACont2D)
+                        Grid2D, OneOf, Float, Tuple, ACont2D, NoneOr)
 
 
 @hmscriptfun
@@ -253,6 +253,55 @@ def map_grid(base_grid, target_contour, base_points, target_points,
                              "btypes": btypes,
                              "is_reversed": is_reversed,
                              "return_invalid": return_invalid})
+    flow.exec_command(c)
+    return c.added_grids2()[0]
+
+
+@hmscriptfun
+def snap_grid_to_contour(gid, cid, gstart, gend, cstart, cend, algo="add"):
+    """
+    Snaps grid boundary subsection to contour subsection.
+
+    :param gid: source grid identifier.
+
+    :param cid: target contour identifier.
+
+    :param gstart:
+
+    :param gend: grid boundary start/end points as ``[x, y]``.
+
+    :param cstart:
+
+    :param cend: contour start/end points as ``[x, y]``.
+
+    :param str algo: Intermidiate grid vertices will be:
+
+        * ``'add'`` - projected to contour;
+        * ``'shift'`` - shifted to closest contour vertices.
+
+    :returns: new grid identifier.
+
+    Given end points will be projected to closest objects vertices.
+    To define the whole closed contour let start point
+    be equal to respective end point.
+
+    Note::
+
+      Both grid boundary subcontour and target contour are shrinked
+      in counterclockwise direction by given end points regardless
+      their nesting level.
+    """
+    icheck(0, Grid2D())
+    icheck(1, ACont2D())
+    icheck(2, Point2D())
+    icheck(3, Point2D())
+    icheck(4, Point2D())
+    icheck(5, Point2D())
+    icheck(6, OneOf("add", "shift"))
+    c = com.gridcom.SnapToContour({"grid": gid, "cont": cid,
+                                   "gp1": gstart, "gp2": gend,
+                                   "cp1": cstart, "cp2": cend,
+                                   "algo": algo})
     flow.exec_command(c)
     return c.added_grids2()[0]
 
