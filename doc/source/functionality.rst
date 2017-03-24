@@ -8,51 +8,77 @@ Functionality
 Terminology
 -----------
 
-The program operates with two geometric object types: grid and contour.
-Each contour and each grid has its own unique internal name which
+The program operates with four geometric object types: contour, 2d grid,
+surface, 3d grid. All of these objects are described in a discretized form
+by a set of vertices supplied with connectivity tables.
+Each object has its own unique internal name which
 is used for addressing.
 
 Contour is a set of points connected in a defined order with each contour
 section bearing a boundary type feature. Contour can be open or closed or
 even multiply-connected (bounding a multiply connected domain).
-Their direction could not be set implicitly. In fact
-all contours which bound a domain apply left direction of traversal:
-all outer subcontours are traced counterclockwise and inner ones -
-in the opposite.
+Their direction could not be set implicitly.
 
-Grid is a set of cells which are defined as a sequences of points.
-Grid cell can have arbitrary number of points,
+2D grid is a set of cells which are defined as a sequences of edges.
+Grid cell can have arbitrary number of vertices,
 the only restriction applied to a grid cell is that it can not
 be multiply connected.
+
+Surface is a collection of faces which are given by edges list.
+As well as contours there are no restriction on the surface geometry.
+
+3D grid is a set of 3D cells each of which is a closed surface.
 
 .. warning::
 
   Not every grid format supports arbitrary cells.
   Most FEM grids (like those used in GMsh) could contain
-  only triangular or quadrangular cells. This should be
-  taken into account during grid exporting.
+  only predefined (triangular or quadrangular for 2D) cell types.
+  This should be taken into account during grid exporting.
 
 Each grid contains its own bounding contour which is
-referenced as a grid contour.
+referenced as a grid contour or grid surface.
 It includes all boundary nodes of the grid along with grid boundary features.
-Most procedures which take contour as an invariable input parameter (e.g.
-set boundary types, exclude contour from a grid etc.) could also be done
-using grid contours addressed by a grid internal name.
+Most procedures which take contour/surface as an invariable input parameter (e.g.
+set boundary types, exclude contour from a grid etc.) could also accept
+grid contours addressed by a grid internal name.
 
 Boundary type is a non-geometric object which is defined
 by integer positive boundary index (zero is the default value for non-defined
-segments) and unique boundary name.
+segments) and (optionally) a unique boundary name.
 Grid exporting procedures try to use boundary names and indices
 if export format supports it.
 
-3D grid is defined by arbitrary collection of faces.
-By now it is not operable object. It is only can be constructed,
-exported and deleted.
+Data Access
+-----------
+
+Internal structure of geometric object could not be
+explicitly changed by user. However readlonly access is possible.
+HybMesh :ref:`sctipting interface<pyinterf>` provides a set of *tab* functions
+which return vertices coordinates and different connectivity tables as
+plain 1D arrays by a given table name. See documentation of
+:func:`tab_cont2`, :func:`tab_grid2`, :func:`tab_surf3`, :func:`tab_grid3`
+for details. In :ref:`wrapper interfaces<oointerfaces>`
+some of those tables can be access via
+:func:`get_vertices<Hybmesh.Hybmesh.Object.raw_vertices>`
+and :func:`get_tab<Hybmesh.Hybmesh.Object.raw_tab>` methods.
+Note, that the latter function returns array of integers.
+Hence only tables given by array of integers could be accessed.
+
+An alternative way to read hybmesh geometry is to export it
+to external file using supported format and parse it.
+Currently export to ascii *VTK*, *Tecplot*, *Fluent mesh*, *GMsh*
+formats is implemented. HybMesh also has its own
+:ref:`native data<nativeformat>` format
+which supports both binary and ascii data.
+See :ref:`list<pyinterf-export>` of script interface export functions
+for details.
 
 .. _gridimp:
 
 Grid Superposition
 ------------------
+
 This is the basic HybMesh operation. Generally it takes two independent
 grids which have non-zero domain intersection and composes them into a single grid.
 The domain of resulting grid is exactly equal to the domain of geometrical union of parent grid domains and
@@ -91,8 +117,14 @@ Different operation results depending on relative position of input grids are pr
 
    fig3. Superposition depending on types of given grid intersections.
 
-If grid domains have no proper intersections (two last examples on the picture above) then the
-resulting grid will contain cells from both given grids assembled to a single connectivity table.
+If grid domains have no proper intersections (two last examples on the picture above)
+then the resulting grid will contain cells from both given grids assembled to a
+single connectivity table.
+When grids have zero intersection but a common boundary segment (second example on the
+picture above) buffer will be built.
+For such cases consider using of :ref:`snapping<snapgrid>` function to snap
+base grid to overlaid grid contour and guarantee exact connection of grid domains.
+
 
 Boundary features of superposed grid contour reflect boundary features of given grids.
 If any boundary segment is contained in both *base grid* and *overlaid grid* then priority
@@ -208,16 +240,82 @@ in areas where recombination failed.
 The effect of this options is shown in picture below.
 
 .. figure:: grid_imposition9.png
-   :width: 600 px
+   :width: 400 px
 
    fig. 9. Superposition with buffer fill = '3' (default) and '4'
 
 
 Python interface function: :func:`unite_grids`.
 
+.. _snapgrid:
+
+Grid Snapping
+-------------
+
+This function is designed mostly to 
+be a preprocessor for :ref:`union<gridimp>` of grids
+displaced side by side. However it also could be
+used to adjust grid boundaries.
+
+Consider situation depicted in the figure below.
+Two grids are built in area bounded by a common contour but,
+since they have different partition settings,
+their boundaries are not matched.
+
+.. figure:: snap_grid1.png
+   :width: 600 px
+
+Direct superposition of those grids will result in a grid with
+holes since those holes present in naïve geometrical sum of grid domains.
+To fix that snapping function could be applied to tightly connect
+base grid (source) to imposed grid (target) contour.
+
+Only boundary grid vertices are altered with this procedure.
+If these shifts result in self-intersected grid
+than exception is raised.
+
+Segments Definition
++++++++++++++++++++
+
+User should pass grid boundary and target contour segments
+by definition of start and end points.
+While detecting which point should be dubbed as *start*
+note that all closed contours have **counterclockwise** direction
+(see how end points are marked in the picture above).
+
+Grid boundary will be simply stretched to fit target segment.
+Stretching is performed in such a way that *start*/*end* grid segment
+points shift to the closest contour segment end point, 
+middle source segment point is moved to middle target segment
+point and so on.
+
+To mark the whole closed contour pass equal *start* and *end* points.
+
+Algorithm
++++++++++
+
+Snapping **algo** option defines how grid boundary
+vertex should be projected to target contour.
+If given as **add** then its location
+is computed directly by the stretching function.
+If given as **shift** then it is
+shifted from its computed position to the closest target
+contour point.
+
+Note, that this option regards only
+internal grid segment points. End grid segment points will always be
+shifted to respective end contour points.
+
+The effect of this options is depicted in figure above.
+As a general rule *algo='add'* should be used if
+given grid will be involved in superposition with non-zero buffer;
+for zero buffer union *algo='shift'* is preferred.
+
+Python interface function: :func:`snap_grid_to_contour`.
+
 .. _unstructured-meshing:
 
-Unstructured domain meshing
+Unstructured Domain Meshing
 ---------------------------
 
 HybMesh can be used to build constrained triangulation

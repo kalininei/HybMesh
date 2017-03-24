@@ -261,6 +261,7 @@ def map_grid(base_grid, target_contour, base_points, target_points,
 def snap_grid_to_contour(gid, cid, gstart, gend, cstart, cend, algo="add"):
     """
     Snaps grid boundary subsection to contour subsection.
+    See details in :ref:`snapgrid`.
 
     :param gid: source grid identifier.
 
@@ -287,6 +288,7 @@ def snap_grid_to_contour(gid, cid, gstart, gend, cstart, cend, algo="add"):
 
     After operation checks the validity of the result and throws
     in case of self-intersections.
+
 
     .. note::
 

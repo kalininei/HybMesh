@@ -69,7 +69,7 @@ unpack it, open terminal in the source directory and execute
    >>> sudo make install
 
 After step 2 you may invoke ``make edit_cache`` to edit installation configuration if needed.
-If your system already provides `Gmsh <gmsh.info>`_ shared library you
+If your system already provides `Gmsh <http://gmsh.info>`_ shared library you
 can force HybMesh to use it instead of embedded (somewhat obsolete) one
 by assigning ``FIND_LIBGMSH`` variable.
 To turn off certain wrapper installations use ``INCLUDE_***_BINDINGS`` flags.

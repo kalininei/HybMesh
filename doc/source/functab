@@ -44,6 +44,8 @@ Surface operations
 |func-G06|  ..          ..          ..          ..
 =========== =========== =========== =========== ===========
 
+.. _pyinterf-export:
+
 Export
 ^^^^^^
 
@@ -53,6 +55,8 @@ Export
 |func-e11|  |func-e12|  |func-e13|  |func-e14|  |func-e15|
 |func-e16|  ..          ..          ..          ..
 =========== =========== =========== =========== ===========
+
+.. _pyinterf-import:
 
 Import
 ^^^^^^

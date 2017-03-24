@@ -45,6 +45,8 @@ echo "--- rrj2"
 %HMCOM% others/rrj2.py
 echo "--- botscript1"
 %HMCOM% others/botscript1.py
+echo "--- cave1"
+%HMCOM% others/cave1.py
 
 :final
 pause
