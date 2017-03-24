@@ -4,7 +4,7 @@
 #  |    | - CMakeLists.txt
 #  |    | - [py]
 #  |    |    | - $MainBin.py //main python executable. returns version on --version argument.
-#  |    |    | - [$PyPack]   //python package
+#  |    |    | - [$PyPack]   //hybmeshpack python package
 #  |    |
 #  |    | - [libs]       //c libraries
 #  |    |     | - CMakeLists.txt
@@ -23,17 +23,16 @@
 
 # ========================= Installation strategy
 # Unix:
-# -- $MainBin -> ${CMAKE_INSTALL_PREFIX}/bin
 # -- $PyPack will be installed as standard python packages
+# -- $MainBin -> ${CMAKE_INSTALL_PREFIX}/bin
 # -- cpp libs -> ${CMAKE_INSTALL_PREFIX}/lib/${APPNAME}/*.so
 # -- bindings -> ${CMAKE_INSTALL_PREFIX}/include/${APPNAME}/[cpp/java/...]/*
 # Windows
-# -- $MainGui -> ${CMAKE_INSTALL_PREFIX}/py/$MainGui.py
 # -- cpp libs -> ${CMAKE_INSTALL_PREFIX}/lib/*.dll, *.dll.a
 # -- PyInstaller output binaries, MinGW runtime -> ${CMAKE_INSTALL_PREFIX}/bin
 # -- NSIS installer -> ${CMAKE_INSTALL_PREFIX} (Run "make pack" after "make install")
 
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 2.8)
 
 project(HybMesh C CXX Fortran)
 
@@ -41,16 +40,21 @@ project(HybMesh C CXX Fortran)
 # name of resulting installed executable
 set(APPNAME hybmesh)
 # names of files and directories in the file tree
-#set(MainGui hybmesh-gui)
 set(MainBin hybmesh)
 set(PyPack hybmeshpack)
 # description
 set(APPDESCRIPTION "composite grid generator")
 
 # ========================== Python check
-find_program(PYTHON "python")
-if (NOT PYTHON)
-	message(FATAL_ERROR "Python was not found")
+set(Python_ADDITIONAL_VERSIONS 2.7)
+find_package(PythonInterp 2.7 REQUIRED)
+set(PYTHON ${PYTHON_EXECUTABLE})
+# check decorator
+execute_process(COMMAND ${PYTHON}
+	-c "import decorator"
+	RESULT_VARIABLE _PRESULT)
+if (NOT _PRESULT EQUAL 0)
+	message(FATAL_ERROR "Install decorator python package")
 endif()
 
 # ============================ System checks
@@ -162,7 +166,7 @@ if (WIN32)
 	set(LIBXML2_LIBRARIES "${LIBXML2_WINDIR}libxml2-2.dll;${LIBXML2_WINDIR}libiconv-2.dll")
 	set(LIBXML2_FOUND TRUE)
 else(WIN32)
-	find_package(LIBXML2 REQUIRED)
+	find_package(LibXml2 REQUIRED)
 endif()
 
 # bindings
@@ -235,6 +239,17 @@ set(DSCPACK_TARGET dscpack)
 #libhmcport: global definition of HMCPORT_INCLUDE, HMCPORT_TARGET
 set(HMCPORT_INCLUDE "${CMAKE_SOURCE_DIR}/src/libs/hmcport")
 set(HMCPORT_TARGET hmcport)
+
+# ============================ additional macros
+macro(USE_CXX11)
+  if (CMAKE_VERSION VERSION_LESS "3.1")
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+      set (CMAKE_CXX_FLAGS "--std=gnu++11 ${CMAKE_CXX_FLAGS}")
+    endif ()
+  else ()
+    set (CMAKE_CXX_STANDARD 11)
+  endif ()
+endmacro(USE_CXX11)
 
 # ============================ build source
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)

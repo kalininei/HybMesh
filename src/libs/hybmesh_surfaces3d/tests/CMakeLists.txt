@@ -8,6 +8,8 @@ set (SOURCES
 
 source_group ("Header Files" FILES ${HEADERS})
 source_group ("Source Files" FILES ${SOURCES})
+
+USE_CXX11()
 add_executable (${HYBMESH_SURFACES3D_EXNAME} ${HEADERS} ${SOURCES})
 
 target_link_libraries(${HYBMESH_SURFACES3D_EXNAME} ${HYBMESH_SURFACES3D_TARGET})
@@ -18,8 +20,3 @@ include_directories(${HYBMESH_SURFACES3D_INCLUDE})
 include_directories(${HYBMESH_CONTOURS2D_INCLUDE})
 include_directories(${HMGRID3D_INCLUDE})
 include_directories(${CROSSGRID_INCLUDE})
-
-#C++11
-set_property(TARGET ${HYBMESH_SURFACES3D_EXNAME} PROPERTY CXX_STANDARD 11)
-set_property(TARGET ${HYBMESH_SURFACES3D_EXNAME} PROPERTY CXX_STANDARD_REQUIRED ON)
-

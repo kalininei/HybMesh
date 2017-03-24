@@ -3,7 +3,7 @@ from hybmeshpack import com
 from hybmeshpack.hmscript import flow, hmscriptfun
 import o2info
 from datachecks import (icheck, List, UListOr1, Bool, UList, Point2D,
-                        Grid2D, OneOf, Float, Tuple, ACont2D, NoneOr)
+                        Grid2D, OneOf, Float, Tuple, ACont2D)
 
 
 @hmscriptfun
@@ -274,7 +274,7 @@ def snap_grid_to_contour(gid, cid, gstart, gend, cstart, cend, algo="add"):
 
     :param cend: contour start/end points as ``[x, y]``.
 
-    :param str algo: Intermidiate grid vertices will be:
+    :param str algo: Intermediate grid vertices will be:
 
         * ``'add'`` - projected to contour;
         * ``'shift'`` - shifted to closest contour vertices.
@@ -285,9 +285,12 @@ def snap_grid_to_contour(gid, cid, gstart, gend, cstart, cend, algo="add"):
     To define the whole closed contour let start point
     be equal to respective end point.
 
-    Note::
+    After operation checks the validity of the result and throws
+    in case of self-intersections.
 
-      Both grid boundary subcontour and target contour are shrinked
+    .. note::
+
+      Both grid boundary subcontour and target contour are shrunk
       in counterclockwise direction by given end points regardless
       their nesting level.
     """
@@ -330,9 +333,10 @@ def heal_grid(gid, simplify_boundary=30, convex_cells=-1):
     ``simplify_boundary=-1`` ignores this simplification option.
 
     if ``convex_cells`` is non negative than all concave cells
-    will be turned into convex ones by their division. Paramter represents
-    concave angle at which procedure will be executed. ``0`` provides
-    elimination of all concave segments. ``180`` - only degenerate ones.
+    will be turned into convex ones by their division. This
+    parameter represents concave angle at which procedure will be executed.
+    ``0`` provides elimination of all concave segments.
+    ``180`` - only degenerate ones.
 
     Subprocedures order is:
 

@@ -26,6 +26,7 @@ set (SOURCES
 source_group ("Header Files" FILES ${HEADERS} ${HEADERS})
 source_group ("Source Files" FILES ${SOURCES} ${SOURCES})
 
+USE_CXX11()
 add_library(${HMBLAY_TARGET} SHARED ${HEADERS} ${SOURCES})
 
 # =========== linkage
@@ -45,9 +46,4 @@ install(TARGETS ${HMBLAY_TARGET}
 	RUNTIME DESTINATION ${LIB_INSTALL_DIR}
 	LIBRARY DESTINATION ${LIB_INSTALL_DIR}
 )
-
-#C++11
-set_property(TARGET ${HMBLAY_TARGET} PROPERTY CXX_STANDARD 11)
-set_property(TARGET ${HMBLAY_TARGET} PROPERTY CXX_STANDARD_REQUIRED ON)
-
 add_subdirectory(tests)

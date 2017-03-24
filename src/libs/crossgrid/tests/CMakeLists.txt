@@ -17,7 +17,3 @@ target_link_libraries(${CROSSGRID_EXNAME} ${HMPROJECT_TARGET})
 include_directories(${CommonInclude})
 include_directories(${CROSSGRID_INCLUDE})
 include_directories(${HMCPORT_INCLUDE})
-
-#C++11
-set_property(TARGET ${CROSSGRID_EXNAME} PROPERTY CXX_STANDARD 11)
-set_property(TARGET ${CROSSGRID_EXNAME} PROPERTY CXX_STANDARD_REQUIRED ON)

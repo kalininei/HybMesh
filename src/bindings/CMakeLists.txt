@@ -17,6 +17,7 @@ if (INCLUDE_CPP_BINDINGS)
 		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 	)
 	add_custom_target(cpp_bindings_header ALL DEPENDS ${BINDINGSOUT}/cpp/Hybmesh.hpp)
+	add_dependencies(cpp_bindings_header ${HMCPORT_TARGET})
 	install(FILES ${BINDINGSOUT}/cpp/Hybmesh.hpp
 	        DESTINATION ${SHARE_INSTALL_DIR}/cpp/)
 endif()
@@ -41,6 +42,7 @@ if (INCLUDE_CS_BINDINGS)
 		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 	)
 	add_custom_target(cs_bindings_header ALL DEPENDS ${BINDINGSOUT}/cs/Hybmesh.cs)
+	add_dependencies(cs_bindings_header ${HMCPORT_TARGET})
 	install(FILES ${BINDINGSOUT}/cs/Hybmesh.cs
 	        DESTINATION ${SHARE_INSTALL_DIR}/cs)
 	install(TARGETS ${CS_BINDINGS_TARGET}
@@ -71,6 +73,7 @@ if (INCLUDE_JAVA_BINDINGS)
 		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 	)
 	add_custom_target(java_bindings_header ALL DEPENDS ${BINDINGSOUT}/java/Hybmesh.java)
+	add_dependencies(java_bindings_header ${HMCPORT_TARGET})
 	install(FILES ${BINDINGSOUT}/java/Hybmesh.java
 	        DESTINATION ${SHARE_INSTALL_DIR}/java/)
 	install(TARGETS ${JAVA_BINDINGS_TARGET}
@@ -100,6 +103,7 @@ if (INCLUDE_PYTHON_BINDINGS)
 		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 	)
 	add_custom_target(py_bindings_header ALL DEPENDS ${BINDINGSOUT}/py/Hybmesh.py)
+	add_dependencies(py_bindings_header ${HMCPORT_TARGET})
 	install(FILES ${BINDINGSOUT}/py/Hybmesh.py
 	        DESTINATION ${SHARE_INSTALL_DIR}/py)
 	install(TARGETS ${PY_BINDINGS_TARGET}
@@ -125,6 +129,7 @@ if (INCLUDE_MATLAB_BINDINGS OR INCLUDE_OCTAVE_BINDINGS)
 		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 	)
 	add_custom_target(oct_bindings_header ALL DEPENDS ${BINDINGSOUT}/m/Hybmesh.m)
+	add_dependencies(oct_bindings_header ${HMCPORT_TARGET})
 	install(DIRECTORY ${BINDINGSOUT}/m
 	        DESTINATION ${SHARE_INSTALL_DIR})
 endif()

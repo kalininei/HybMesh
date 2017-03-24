@@ -1,4 +1,4 @@
-#include "../../build/bindings/cpp/Hybmesh.hpp"
+#include "../../../build/bindings/cpp/Hybmesh.hpp"
 #include <iostream>
 #include <vector>
 #include <math.h>
@@ -154,8 +154,8 @@ void pings(){
 	auto c49 = hm.add_rect_contour(P2(0, 0), P2(1, 1));
 	auto c50 = hm.partition_contour_const(c49, 0.1);
 	auto c51 = hm.pebi_fill(c50, {}, {0.5}, {P2(0.5, 0.5)});
-	auto c52 = hm.simple_boundary_grid(c51, {0, 0.01, 0.02});
-	auto c53 = hm.simple_boundary_grid(c51, {0, 0.01, 0.02}, "right");
+	auto c52 = hm.build_boundary_grid1(c51, {0, 0.01, 0.02});
+	auto c53 = hm.build_boundary_grid1(c51, {0, 0.01, 0.02}, "right");
 	check_dims(c52.dims(), c53.dims());
 	auto c54 = hm.exclude_contours(c53, {c51}, "inner");
 	auto c55 = hm.exclude_contours(c53, {c51}, "outer");

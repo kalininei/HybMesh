@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 """
 Console interface for HybMesh. Possible arguments:
 -v -- print version and exit
