@@ -53,11 +53,12 @@ Helloworld Example
 ^^^^^^^^^^^^^^^^^^
 
 After hybmesh installation create the following script
+replacing correct path at the first line.
 
 .. code-block:: matlab
      :caption: hmtest.m
 
-     addpath('directory/containing/Hybmesh.m');
+     addpath('directory/containing/Hybmesh/wrapper');
      
      hm = Hybmesh();
      g = hm.add_unf_rect_grid([0, 0], [1, 1], 2, 2);
@@ -82,7 +83,6 @@ internal call of corresponding GMSH method.
 .. figure:: figs/octaveexample.png
    :width: 300 px
 
-.. literalinclude:: ../../testing/bindings/m/fromdoc/unstruct_tri.m
+.. literalinclude:: ../code_preproc_out-unstruct_tri.m
     :language: matlab
     :tab-width: 4
-

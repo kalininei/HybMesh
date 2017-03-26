@@ -33,8 +33,8 @@ HybMesh application could be installed on **Windows** and **Linux** platforms.
 Currently it provides only scripting interface based on Python2 language syntax.
 Also a set of programming languages wrappers are included in installation
 distributive, so HybMesh could be utilized as an embedded meshing engine
-for **C++**, **C# (Mono)**, **Matlab (Octave)**, **Python 2/3**
-and **Java** applications.
+for **C++** (c++11), **C#** (VisualStudio and Mono), **Matlab** (with Octave support), **Python** (versions 2 and 3)
+and **Java** (7 or higher) applications.
 
 Example Grids
 =============

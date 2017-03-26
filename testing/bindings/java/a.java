@@ -98,8 +98,8 @@ public static void pings(Hybmesh hm) throws Exception{
 	Hybmesh.Contour2D c23 = hm.matchedPartition(c15, 0.1, 0.5, null,
 			new double[]{0.01}, new P2[]{new P2(0.1, 0.1)}, 30, 3);
 	checkdims(c23.dims(), new int[]{74, 74});
-	double[] c24 = hm.partitionSegment(0.5, 1.5, 0.1, 0.5, new double[]{0.01, 1.0});
-	checkCond(c24.length == 5 && c24[0] == 0.5);
+	double[] c24 = hm.partitionSegment(0.5, 1.5, 0.1, 0.5, new double[]{1, 0.01});
+	checkCond(c24.length == 17 && c24[0] == 0.5);
 
 	Hybmesh.Contour2D c25 = hm.createContour(new P2[]{new P2(0, 0), new P2(1, 0), new P2(2, 0)}, null);
 	Hybmesh.Contour2D c26 = hm.createContour(new P2[]{new P2(2, 0.1), new P2(3, 0.1), new P2(4, 1)}, null);
@@ -160,8 +160,8 @@ public static void pings(Hybmesh hm) throws Exception{
 	Hybmesh.Contour2D c49 = hm.addRectContour(new P2(0, 0), new P2(1, 1), null);
 	Hybmesh.Contour2D c50 = hm.partitionContourConst(c49, 0.1, 30, false, -1, null, null, null, null);
 	Hybmesh.Grid2D c51 = hm.pebiFill(c50, null, new double[]{0.5}, new P2[]{new P2(0.5, 0.5)});
-	Hybmesh.Grid2D c52 = hm.simpleBoundaryGrid(c51, new double[]{0, 0.01, 0.02}, "left", null, null, null);
-	Hybmesh.Grid2D c53 = hm.simpleBoundaryGrid(c51, new double[]{0, 0.01, 0.02}, "right", null, null, null);
+	Hybmesh.Grid2D c52 = hm.buildBoundaryGrid1(c51, new double[]{0, 0.01, 0.02}, "left", null, null, null);
+	Hybmesh.Grid2D c53 = hm.buildBoundaryGrid1(c51, new double[]{0, 0.01, 0.02}, "right", null, null, null);
 	checkdims(c52.dims(), c53.dims());
 	Hybmesh.Grid2D c54 = hm.excludeContours(c53, new Hybmesh.Object2D[]{c51}, "inner");
 	Hybmesh.Grid2D c55 = hm.excludeContours(c53, new Hybmesh.Object2D[]{c51}, "outer");

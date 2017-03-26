@@ -229,11 +229,14 @@ class Hybmesh implements AutoCloseable{
 		}
 		public String _tos_vecpoint(Point2[] val){
 			if (val == null) return "None";
-			String[] s = new String[val.length];
+			StringBuilder sb = new StringBuilder();
+			sb.append('[');
 			for (int i=0; i<val.length; ++i){
-				s[i] = _tos_point(val[i]);
+				sb.append(_tos_point(val[i]));
+				if (i != val.length - 1) sb.append(", ");
 			}
-			return '[' + String.join(", ", s) + ']';
+			sb.append(']');
+			return sb.toString();
 		}
 		public String _tos_object(Hybmesh.Object val){
 			if (val == null) return "None";

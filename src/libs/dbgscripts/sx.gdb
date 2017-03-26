@@ -8,7 +8,7 @@ set args ../../src/py/hybmesh.py -sx tmp.py -silent
 #set follow-fork-mode child
 
 set breakpoint pending on
-b snap_grid2cont.cpp:187
+b cport_grid2d.cpp:936
 run
 
 source ../../src/libs/dbgscripts/skiplist

@@ -63,7 +63,10 @@ void pings(){
 	auto c10 = hm.simplify_contour(c2);
 	check_dims(c10.dims(), {4, 4});
 	auto c11 = hm.simplify_contour(c9, 91);
+	hm.export_contour_vtk(c9, "c9.vtk");
+	hm.export_contour_vtk(c11, "c11.vtk");
 	std::cout<<c11.dims()[0]<<" "<<c11.dims()[1]<<std::endl;
+	std::cout<<"THIS FAILS"<<std::endl;
 	check_dims(c11.dims(), {4, 4});
 	auto c12 = hm.unite_contours({c8, c9});
 	check_dims(c12.dims(), {36, 36});
@@ -91,8 +94,8 @@ void pings(){
 	auto c23 = hm.matched_partition(c15, 0.1, 0.5, {},
 			{0.01}, {P2(0.1, 0.1)});
 	check_dims(c23.dims(), {74, 74});
-	auto c24 = hm.partition_segment(0.5, 1.5, 0.1, 0.5, {0.01, 1.0});
-	check_cond(c24.size() == 5 && c24[0] == 0.5);
+	auto c24 = hm.partition_segment(0.5, 1.5, 0.1, 0.5, {1.0, 0.01});
+	check_cond(c24.size() == 17 && c24[0] == 0.5);
 
 	auto c25 = hm.create_contour({P2(0, 0), P2(1, 0), P2(2, 0)});
 	auto c26 = hm.create_contour({P2(2, 0.1), P2(3, 0.1), P2(4, 1)});

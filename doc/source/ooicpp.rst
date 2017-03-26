@@ -18,7 +18,7 @@ Default path is set in wrapper source file through
 
   #define DEFAULT_HYBMESH_EXE_PATH "/hybmesh/install/directory/"
 
-directive.
+macro directive.
 
 To use another path create Hybmesh instance with
 optional string argument:
@@ -85,6 +85,6 @@ The first thread builds rectangular grid, waits until
 secondary thread finishes its job, reads ring grid from file
 and performs grid union.
 
-.. literalinclude:: ../../testing/bindings/cpp/fromdoc/intro_multithreaded.cpp
+.. literalinclude:: ../code_preproc_out-intro_multithreaded.cpp
   :language: c++
   :tab-width: 4

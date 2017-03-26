@@ -77,13 +77,7 @@ outer step sizes. For each cell of the grid it calculates approximate
 center point, computes target function at that point and multiplies the result by
 the cell area.
 
-Here paths to directories containing hybmesh executable and 
-shared library are defined explicitly using relative paths.
-If hybmesh was properly installed in the current system and Hybmesh.py file
-is taken from the installation directory this could be omitted.
-
-The following code could be run both on Python 2 and Python 3
+This code could be run both on Python 2 and Python 3
 interpreters.
 
-.. literalinclude:: ../../testing/bindings/py/fromdoc/func_integral.py
-
+.. literalinclude:: ../code_preproc_out-func_integral.py

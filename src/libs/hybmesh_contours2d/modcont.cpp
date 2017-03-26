@@ -50,7 +50,8 @@ vector<int> break_by_angle(const VertexData& points, int istart, int iend,
 	vector<int> ret {istart};
 	for (int i=istart+1; i<iend; ++i){
 		int div1 = aplus[i-istart] / angle_step;
-		int div2 = (aplus[i+1-istart] - geps)/ angle_step;
+		//int div2 = (aplus[i-istart+1] - geps)/ angle_step;
+		int div2 = aplus[i-istart+1]/ angle_step;
 		if (div2 > div1) ret.push_back(i);
 	}
 	ret.push_back(iend);

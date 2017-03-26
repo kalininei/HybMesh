@@ -162,6 +162,7 @@ inline double DegToAngle(double deg){
 	return ToAngle(deg/180*M_PI);
 }
 inline double AngleAdd(double angle, double add, double eps=0.0){ return ToAngle(angle+add,eps); }
+//p3->p1 counterclockwise turn around p2. Lies in [0, 2 pi]
 inline double Angle(const Point& p1, const Point& p2, const Point& p3){
 	return ToAngle(atan2(p1.y-p2.y, p1.x-p2.x) - atan2(p3.y-p2.y, p3.x-p2.x));
 }

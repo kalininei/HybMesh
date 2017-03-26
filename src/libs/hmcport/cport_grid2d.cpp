@@ -933,7 +933,7 @@ int g2_simplify_bnd(void* obj, double angle, void** ret){
 }
 int g2_convex_cells(void* obj, double angle, void** ret){
 	try{
-		if (angle<-geps || angle>180+geps) throw std::runtime_error("invalid angle");
+		if (angle<-geps || angle>360+geps) throw std::runtime_error("invalid angle");
 		HM2D::GridData* g = static_cast<HM2D::GridData*>(obj);
 		Autoscale::D2 sc(g);
 		HM2D::GridData ret_;

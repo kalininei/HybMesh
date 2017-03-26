@@ -369,7 +369,7 @@ int find_worst_vertex(const EdgeData& cont){
 	return std::max_element(angles.begin(), angles.end()) - angles.begin();
 }
 bool check_connection(const EdgeData& cont, int n1, int n2){
-	if (cont.size()<5) return true;
+	//if (cont.size()<5) return true;
 	Point* p1 = cont[n1]->first().get();
 	Point* p2 = cont[n2]->first().get();
 	double ksi[2];
@@ -389,12 +389,15 @@ int find_best_connection(const EdgeData& cont, int n){
 	double nrm = 1e54;
 	int np = (n == 0) ? cont.size()-1 : n-1;
 	int nn = (n == cont.size()-1) ? 0 : n+1;
+	//a0 is the best angle.
 	double a0 = Angle(*cont[np]->first(), *cont[n]->first(), *cont[nn]->first())/2.0;
 	for (int i=n+2; i<=cont.size()+n-2; ++i){
 		int ii = i % cont.size();
 		if (!check_connection(cont, n, ii)) continue;
+		//check if connection lies within contour
 		double ian = Angle(*cont[np]->first(), *cont[n]->first(), *cont[ii]->first());
-		if (ian >= 2*a0) continue;
+		if (ISEQ(ian, 0) || ISEQGREATER(ian, 2*a0)) continue;
+		//calculate difference from a0. The lower the better.
 		double diff = fabs(a0-ian);
 		if (diff<nrm){nrm=diff; ret=ii;}
 	}

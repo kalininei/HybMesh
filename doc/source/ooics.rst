@@ -117,10 +117,6 @@ execute following commands
      mcs app.cs Hybmesh.cs -r:System.Windows.Forms.dll -r:System.Drawing.dll
      mono app.exe
 
-Do not forget to adjust or remove *App.main()* lines 
-defining custom paths to hybmesh executable
-and *core_hmconnection_cs* library.
-
 Hybmesh function call with progress bar dialog
 is provided by *AppGui.ProgressBarExecutor.Exec()* static method.
 
@@ -131,7 +127,7 @@ is provided by *AppGui.ProgressBarExecutor.Exec()* static method.
   *AppGui.ProgressBarExecutor.CBForm.Callback()*
   function. This delay could be safely removed.
 
-.. literalinclude:: ../../testing/bindings/cs/fromdoc/app.cs
+.. literalinclude:: ../code_preproc_out-app.cs
   :language: c#
   :tab-width: 4
   :caption: app.cs

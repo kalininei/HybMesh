@@ -232,16 +232,26 @@ GridData Algos::SnapBndSection(const GridData& grid, const EdgeData& cont,
 	}
 	Algos::SnapToContour(ret, cont, {}, false);
 
+	//check involved cells for counterclockwise rotation
+	//do this before Heal cause heal will fix that.
+	for (auto e: subc){
+		HM2D::Cell* c = (e->has_left_cell()) ? e->left.lock().get()
+						     : e->right.lock().get();
+		if (Contour::Area(c->edges) < 0) 
+			throw std::runtime_error("Resulting grid is invalid");
+	}
+
 	//shift may result in doubled vertices.
-	HM2D::Grid::Algos::Heal(ret);
+	//do heal before self intersection cross cause doubled points
+	//will ruin SelfCross algorithm.
+	if (snap_strategy == "shift") HM2D::Grid::Algos::Heal(ret);
 
 	//check involved cells for self intersections
 	for (auto e: subc){
 		HM2D::Cell* c = (e->has_left_cell()) ? e->left.lock().get()
 						     : e->right.lock().get();
-		if (std::get<0>(Contour::Finder::SelfCross(c->edges))){
+		if (std::get<0>(Contour::Finder::SelfCross(c->edges)))
 			throw std::runtime_error("Resulting grid is invalid");
-		}
 	}
 
 	return ret;

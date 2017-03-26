@@ -1,13 +1,13 @@
 % add directory where Hybmesh.m is located
 addpath('../../../../build/bindings/m');
-
+% ======= <code_preproc remove vvv>
 % set hybmesh executable.
 % use only if it differs from default.
 Hybmesh.hybmesh_exec_path('../../../../src/py');
-
 % set directory where shared library is located.
 % use only if it differs from default and from listed in addpath
 Hybmesh.hybmesh_lib_path('../../../../build/bin/');
+% ======= <code_preproc remove ^^^>
 
 % initialize hybmesh object
 hm = Hybmesh();

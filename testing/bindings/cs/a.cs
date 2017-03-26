@@ -86,8 +86,8 @@ public static void pings(Hybmesh hm){
 	var c23 = hm.MatchedPartition(c15, 0.1, 0.5, null,
 			new double[]{0.01}, new P2[]{new P2(0.1, 0.1)});
 	CheckDims(c23.Dims(), new int[]{74, 74});
-	var c24 = hm.PartitionSegment(0.5, 1.5, 0.1, 0.5, new double[]{0.01, 1.0});
-	CheckCond(c24.Length == 5 && c24[0] == 0.5);
+	var c24 = hm.PartitionSegment(0.5, 1.5, 0.1, 0.5, new double[]{1.0, 0.01});
+	CheckCond(c24.Length == 17 && c24[0] == 0.5);
 
 	var c25 = hm.CreateContour(new P2[]{new P2(0, 0), new P2(1, 0), new P2(2, 0)});
 	var c26 = hm.CreateContour(new P2[]{new P2(2, 0.1), new P2(3, 0.1), new P2(4, 1)});
@@ -149,8 +149,8 @@ public static void pings(Hybmesh hm){
 	var c49 = hm.AddRectContour(new P2(0, 0), new P2(1, 1));
 	var c50 = hm.PartitionContourConst(c49, 0.1);
 	var c51 = hm.PebiFill(c50, null, new double[]{0.5}, new P2[]{new P2(0.5, 0.5)});
-	var c52 = hm.SimpleBoundaryGrid(c51, new double[]{0, 0.01, 0.02});
-	var c53 = hm.SimpleBoundaryGrid(c51, new double[]{0, 0.01, 0.02}, "right");
+	var c52 = hm.BuildBoundaryGrid1(c51, new double[]{0, 0.01, 0.02});
+	var c53 = hm.BuildBoundaryGrid1(c51, new double[]{0, 0.01, 0.02}, "right");
 	CheckDims(c52.Dims(), c53.Dims());
 	var c54 = hm.ExcludeContours(c53, new Hybmesh.Object2D[]{c51}, "inner");
 	var c55 = hm.ExcludeContours(c53, new Hybmesh.Object2D[]{c51}, "outer");

@@ -89,8 +89,8 @@ with Hybmesh() as hm:
     c23 = hm.matched_partition(
         c15, 0.1, 0.5, [], [0.01], [[0.1, 0.1]])
     check_dims(c23.dims(), [74, 74])
-    c24 = hm.partition_segment(0.5, 1.5, 0.1, 0.5, [0.01, 1.0])
-    check_cond(len(c24) == 5 and c24[0] == 0.5)
+    c24 = hm.partition_segment(0.5, 1.5, 0.1, 0.5, [1.0, 0.01])
+    check_cond(len(c24) == 17 and c24[0] == 0.5)
 
     c25 = hm.create_contour([[0, 0], [1, 0], [2, 0]])
     c26 = hm.create_contour([[2, 0.1], [3, 0.1], [4, 1]])
@@ -148,8 +148,8 @@ with Hybmesh() as hm:
     c49 = hm.add_rect_contour([0, 0], [1, 1])
     c50 = hm.partition_contour_const(c49, 0.1)
     c51 = hm.pebi_fill(c50, [], [0.5], [[0.5, 0.5]])
-    c52 = hm.simple_boundary_grid(c51, [0, 0.01, 0.02])
-    c53 = hm.simple_boundary_grid(c51, [0, 0.01, 0.02], "right")
+    c52 = hm.build_boundary_grid1(c51, [0, 0.01, 0.02])
+    c53 = hm.build_boundary_grid1(c51, [0, 0.01, 0.02], "right")
     check_dims(c52.dims(), c53.dims())
     c54 = hm.exclude_contours(c53, [c51], "inner")
     c55 = hm.exclude_contours(c53, [c51], "outer")

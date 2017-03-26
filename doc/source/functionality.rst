@@ -260,7 +260,7 @@ used to adjust grid boundaries.
 Consider situation depicted in the figure below.
 Two grids are built in area bounded by a common contour but,
 since they have different partition settings,
-their boundaries are not matched.
+their boundaries do not match.
 
 .. figure:: snap_grid1.png
    :width: 600 px
@@ -271,15 +271,15 @@ To fix that snapping function could be applied to tightly connect
 base grid (source) to imposed grid (target) contour.
 
 Only boundary grid vertices are altered with this procedure.
-If these shifts result in self-intersected grid
-than exception is raised.
+If these shifts result in a self-intersected grid
+then an exception is raised.
 
 Segments Definition
 +++++++++++++++++++
 
 User should pass grid boundary and target contour segments
 by definition of start and end points.
-While detecting which point should be dubbed as *start*
+While detecting which point should be dubbed as *start*,
 note that all closed contours have **counterclockwise** direction
 (see how end points are marked in the picture above).
 
@@ -310,6 +310,14 @@ The effect of this options is depicted in figure above.
 As a general rule *algo='add'* should be used if
 given grid will be involved in superposition with non-zero buffer;
 for zero buffer union *algo='shift'* is preferred.
+
+To prepare grid for superposition with zero buffer
+in cases when number of edges in target and source segments does not match,
+use :ref:`heal-grid` functionality with *convex_cells* option preceded by
+*shift* snapping to adjust cells with hanging nodes. See the example below.
+
+.. figure:: snap_grid2.png
+   :width: 600 px
 
 Python interface function: :func:`snap_grid_to_contour`.
 
@@ -403,6 +411,12 @@ See also :ref:`example6`.
 .. _gridclip:
 
 Clip Grid
+---------
+TODO
+
+.. _heal-grid:
+
+Heal Grid
 ---------
 TODO
 

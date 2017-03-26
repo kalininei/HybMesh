@@ -6,6 +6,7 @@ Usage
 
 Java wrapper consists of ``Hybmesh.java`` source file
 and ``core_hmconnection_java`` library.
+To compile it you need Java7 (or higher) development kit.
 Source file can be copied to target application source directory.
 There is no mechanism to define location of shared library
 within java code. To make application see that library
@@ -97,7 +98,7 @@ After installation of hybmesh program copy *Hybmesh.java* and the following
          }
      }
 
-Open terminal at this directory and execute
+Open terminal at this directory and execute (changing directory path to correct one)
 
 .. code-block:: bash
 
@@ -117,15 +118,12 @@ Graphics is written using Java swing library.
 To compile and run this application create a directory
 containing ``App.java`` and ``GridData.java`` files listed below along
 with wrapper ``Hybmesh.java`` source file.
-Then execute following commands
+Then execute following commands (adjusting directory path)
 
 .. code-block:: bash
 
     javac App.java GridData.java Hybmesh.java
     java -Djava.library.path=/path/to/core_hmconnection_java App
-
-Do not forget to adjust (or simply remove) *App.main()* line
-which defines hybmesh executable path.
 
 Here is the screenshot of the program as it appears in KDE system:
 
@@ -163,12 +161,12 @@ by *App.java.ProgressBarExecutor.execute()* static method.
   function. It could be safely removed.
 
 
-.. literalinclude:: ../../testing/bindings/java/fromdoc/App.java
+.. literalinclude:: ../code_preproc_out-App.java
     :language: java
     :caption: App.java
     :tab-width: 4
 
-.. literalinclude:: ../../testing/bindings/java/fromdoc/GridData.java
+.. literalinclude:: ../code_preproc_out-GridData.java
     :language: java
     :caption: GridData.java
     :tab-width: 4

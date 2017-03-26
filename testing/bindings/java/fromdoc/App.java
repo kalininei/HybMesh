@@ -11,10 +11,11 @@ public class App extends JFrame implements ActionListener{
 	public static void main(String[] args){
 		try{ 
 			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName()); 
-			// set path to currently used hybmesh executable
+			// ====== <code_preproc remove vvv>
 			Hybmesh.hybmesh_exec_path = "../../../../src/py";
-			GridData gd = new GridData();
+			// ====== <code_preproc remove ^^^>
 			javax.swing.SwingUtilities.invokeLater(new Runnable() {
+				GridData gd = new GridData();
 				public void run() { createAndShowGUI(gd); }
 			});
 		} catch(Exception e){ 

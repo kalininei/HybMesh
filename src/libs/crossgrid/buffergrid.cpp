@@ -126,8 +126,8 @@ const BoundingBoxFinder& BufferGrid::source_finder() const{
 	}
 	return *_sfinder;
 }
-
-int BufferGrid::is_on_source(const Point& p) const{ //0 - no, 1 - vertex, 2 - on the middle of the edge
+//0 - no, 1 - vertex, 2 - somewhere on the edge
+int BufferGrid::is_on_source(const Point& p) const{ 
 	double ksi;
 	vector<int> susp = source_finder().suspects(p);
 	for (int i: susp){
@@ -159,7 +159,10 @@ EdgeData BufferGrid::define_source_edges(const EdgeData& cont) const{
 	}
 
 	for (auto& e: cont) if (e->first()->id == 1 && e->last()->id == 1){
-		ret.push_back(e);
+		//check also a middle point due to situations when
+		//endpoints lie on source, but the whole segment does not.
+		Point midp = Point::Weigh(*e->first(), *e->last(), 0.5);
+		if (is_on_source(midp) == 2) ret.push_back(e);
 	}
 
 	return ret;

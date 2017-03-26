@@ -141,7 +141,7 @@ def pxexec(argv):
                     # None return
                     os.write(pipe_write, '\0\0\0\0')
                 elif isinstance(ret, ct.Array):
-                    #print(ret[:])
+                    # print("this is", ret[:])
                     # command returning ctypes array object
                     rawlen, alen = ct.sizeof(ret), ret._length_
                     os.write(pipe_write, struct.pack('=ii', rawlen + 4, alen))

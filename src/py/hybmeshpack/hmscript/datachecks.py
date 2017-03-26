@@ -139,6 +139,9 @@ class Float(object):
         if 'grthan' in self.conditions:
             self.__grthan(value)
 
+        if 'within' in self.conditions:
+            self.__within(value)
+
 
 class List(object):
     """ List of objects"""

@@ -1,21 +1,26 @@
+# ===== <code_preproc remove vvv>
+import sys
+# ===== <code_preproc remove ^^^>
+import math
+from Hybmesh import Hybmesh
+
+# ===== <code_preproc remove vvv>
 # This line was added to find Hybmesh.py that is not located
 # in the current directory or package subdirectory.
 # Normally this should be omitted.
-import sys
 sys.path.append("../../../../build/bindings/py")
-
-import math  # NOQA
-from Hybmesh import Hybmesh  # NOQA
-
+# ===== <code_preproc remove ^^^>
 
 # target function: Gaussian hill with the center at [0, 0]
 def expfun(x, y):
     return math.exp(-(x*x + y*y)/(0.25))
 
 
+# ===== <code_preproc remove vvv>
 # set paths
 Hybmesh.hybmesh_exec_path = "../../../../src/py/"
 Hybmesh.hybmesh_lib_path = "../../../../build/bin/"
+# ===== <code_preproc remove ^^^>
 
 # create Hybmesh connection under with block to guarantee
 # its destruction after all

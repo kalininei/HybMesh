@@ -319,7 +319,8 @@ def heal_grid(gid, simplify_boundary=30, convex_cells=-1):
 
     :param float simplify_boundary: angle (deg) in [0, 180].
 
-    :param float convex_cells: angle (deg) in [0, 180]
+    :param float convex_cells: angle (deg) in [0, 360]. Maximum
+      allowed angle in a non-triangle cell.
 
     :return: None
 
@@ -334,11 +335,12 @@ def heal_grid(gid, simplify_boundary=30, convex_cells=-1):
     leads to merging of all doubled boundary edges,
     ``simplify_boundary=-1`` ignores this simplification option.
 
-    if ``convex_cells`` is non negative than all concave cells
-    will be turned into convex ones by their division. This
-    parameter represents concave angle at which procedure will be executed.
-    ``0`` provides elimination of all concave segments.
-    ``180`` - only degenerate ones.
+    if **convex_cells** is non negative than all cells which provide
+    angles greater or equal to this value will be splitted.
+    If ``convex_cells=180`` then all concave cells includings those
+    whith hanging nodes will be processed.
+    If you set ``convex_cells=0`` then all cells will be splitted
+    up to triangles.
 
     Subprocedures order is:
 
@@ -348,7 +350,7 @@ def heal_grid(gid, simplify_boundary=30, convex_cells=-1):
     """
     icheck(0, UListOr1(Grid2D()))
     icheck(1, Float(within=[-1., 180., '[]']))
-    icheck(2, Float(within=[-1., 180., '[]']))
+    icheck(2, Float(within=[-1., 360., '[]']))
 
     if isinstance(gid, list):
         for g in gid:

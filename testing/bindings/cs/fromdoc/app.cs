@@ -9,9 +9,11 @@ using P2 = Hybmesh.Point2;
 class App{
 	/// <summary> Entry point </summary>
 	public static void Main(){
+		// ============ <code_preproc remove vvv>
 		//implicitly set needed pathes
 		Hybmesh.hybmesh_exec_path = "../../../../src/py";
 		Hybmesh.hybmesh_lib_path = "../../../../build/bin";
+		// ============ <code_preproc remove ^^^>
 		//create grid storage
 		Builder builder = new Builder();
 		//gui loop
