@@ -15,7 +15,7 @@ def close_doc(doc, nodes):
 
 
 def query(node, query_string, required="no"):
-    " required = 'no/=0/=1/>0' "
+    " required = 'no/=0/=1/>0'. Returns list of c_void_p."
     rnum = ct.c_int(0)
     rans = ct.POINTER(ct.c_void_p)()
     query_string = query_string.encode('utf-8')
@@ -37,7 +37,7 @@ def query(node, query_string, required="no"):
                         (rnum.value, query_string))
     ret = []
     for i in range(rnum.value):
-        ret.append(rans[i])
+        ret.append(ct.c_void_p(rans[i]))
     free_cside_array(rans, 'void*')
     return ret
 

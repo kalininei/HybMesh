@@ -172,6 +172,7 @@ endif()
 # bindings
 # java
 find_package(JNI)
+message(STATUS ${JAVA_AWT_LIBRARY})
 if (JNI_FOUND)
 	option(INCLUDE_JAVA_BINDINGS "build java bindings" ON)
 	message(STATUS "Java native interface found at ${JAVA_INCLUDE_PATH}")

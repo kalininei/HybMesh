@@ -117,7 +117,7 @@ class Float(object):
     def __within(self, value):
         c = self.conditions['within']
         leq = c[2][0] == "["
-        req = c[2][1] == "["
+        req = c[2][1] == "]"
         bad = False
         if leq and value < c[0]:
             bad = True

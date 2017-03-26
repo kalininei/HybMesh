@@ -78,16 +78,20 @@ check_cont(c8, 10, 10, [10], {1: 5, 2: 5})
 c9 = hm.create_contour([[0, 0], [3, 1], [6, 0], [9, 0],
                         [9, 3], [8, 6], [9, 9], [9, 12]],
                        [1, 1, 1, 1, 1, 2, 1])
-[c10] = hm.simplify_contour(c9, simplify=True, angle=45, separate=True)
+[c10] = hm.simplify_contour(c9, simplify=True, angle=60, separate=True)
 check_cont(c10, 5, 4, [4], {1: 3, 2: 1})
+# hm.export_contour_vtk(c9, "c1.vtk")
+# hm.export_contour_vtk(c10, "c2.vtk")
+# print hm.info_contour(c10)
+# quit()
 c11 = hm.create_contour([[0, 0], [3, 1], [6, 0], [9, 0],
                          [9, 3], [8, 6], [9, 9], [9, 12], [0, 0]],
                         [1, 1, 1, 1, 1, 2, 1, 0])
 c12 = hm.create_contour([[-20, -20], [20, -20], [20, 20],
                          [-20, 20], [-20, 0], [-20, -20]], 22)
 c13 = hm.unite_contours([c11, c12])
-[c14] = hm.simplify_contour(c13, simplify=True, angle=45, separate=False)
-[c15, c16] = hm.simplify_contour(c13, simplify=True, angle=45, separate=True)
+[c14] = hm.simplify_contour(c13, simplify=True, angle=60, separate=False)
+[c15, c16] = hm.simplify_contour(c13, simplify=True, angle=60, separate=True)
 check_cont(c14, 9, 9, [5, 4], {22: 4, 0: 1, 1: 3, 2: 1})
 check_cont(c15, 5, 5, [5], {0: 1, 1: 3, 2: 1})
 check_cont(c16, 4, 4, [4], {22: 4})
@@ -147,6 +151,9 @@ c1 = hm.partition_contour(i2, "const", 0.18, 100)
 c2 = hm.partition_contour(i2, "const", 0.18, 100, True)
 check(hm.info_contour(c1)['Nedges'] == 22)
 check(hm.info_contour(c2)['Nedges'] == 23)
+hm.export_contour_vtk(c1, "c1.vtk")
+hm.export_contour_vtk(c2, "c2.vtk")
+quit()
 
 c1 = hm.partition_contour(i1, "ref_points", [0.18, [0, 0]])
 c2 = hm.partition_contour(i1, "ref_points", [0.01, [0, 0], 0.3, [1, 0]])
@@ -154,7 +161,7 @@ c3 = hm.partition_contour(i3, "ref_points", [0.01, [-1, -1],
                                              0.3, [0, 1]])
 check(hm.info_contour(c1)['Nedges'] == 14)
 check(hm.info_contour(c2)['Nedges'] == 17)
-check(hm.info_contour(c3)['Nedges'] == 72)
+check(hm.info_contour(c3)['Nedges'] == 74)
 
 c1 = hm.partition_contour(i4, "ref_points", [1.0, [0, 0],
                                              1.0, [1, 0],

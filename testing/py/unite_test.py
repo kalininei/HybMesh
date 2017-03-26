@@ -383,3 +383,21 @@ hm.set_boundary_type(g3, 1)
 g4 = hm.unite_grids(g3, [(g2, 0.01)])
 g5 = hm.unite_grids(g1, [(g2, 0.01)])
 check(hm.info_grid(g5)['Ncells'] > 28)
+hm.export_grid_vtk(g1, "g1.vtk")
+hm.export_grid_vtk(g2, "g2.vtk")
+hm.export_grid_vtk(g3, "g3.vtk")
+
+g1 = hm.add_unf_rect_grid(nx=4, ny=4)
+g2 = hm.add_unf_rect_grid([1.1, 0], [2, 0.9], 4, 3)
+hm.set_boundary_type(g1, 1)
+hm.set_boundary_type(g2, 2)
+
+g3 = hm.snap_grid_to_contour(
+    g2, g1, [1.1, 0.9], [1.1, 0], [1, 0], [1, 1], "shift")
+hm.heal_grid(g3, -1, 0)
+check(hm.skewness(g3)['ok'])
+
+g3 = hm.snap_grid_to_contour(
+    g2, g1, [1.1, 0.9], [1.1, 0], [1, 0], [1, 1], "shift")
+hm.heal_grid(g3, -1, 180)
+check(hm.skewness(g3)['ok'] and hm.info_grid(g3)['Ncells'] == 13)

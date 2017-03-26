@@ -65,15 +65,27 @@ unpack it, open terminal in the source directory and execute
 
    >>> mkdir build && cd build
    >>> cmake .. -DCMAKE_BUILD_TYPE=Release
-   >>> make -j8
-   >>> sudo make install
 
-After step 2 you may invoke ``make edit_cache`` to edit installation configuration if needed.
+If Java wrapper is needed but cmake fails to find correct path to JDK
+try to pass it manually. For example
+
+.. code-block:: bash
+  
+  >>> cmake .. -DCMAKE_BUILD_TYPE=Release -DJAVA_HOME=/usr/lib64/jvm/java-7-openjdk
+
+Here you may invoke ``make edit_cache`` to edit installation configuration if needed.
 If your system already provides `Gmsh <http://gmsh.info>`_ shared library you
 can force HybMesh to use it instead of embedded (somewhat obsolete) one
 by assigning ``FIND_LIBGMSH`` variable.
 To turn off certain wrapper installations use ``INCLUDE_***_BINDINGS`` flags.
 Change ``CMAKE_INSTALL_PREFIX`` field to alter target installation path.
+
+To proceed with installation execute
+
+.. code-block:: bash
+
+   >>> make -j8
+   >>> sudo make install
 
 Run ``hybmesh -v`` to check if installation has been done properly.
 This should return installed version of hybmesh.

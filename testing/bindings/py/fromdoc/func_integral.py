@@ -1,15 +1,12 @@
 # ===== <code_preproc remove vvv>
 import sys
-# ===== <code_preproc remove ^^^>
-import math
-from Hybmesh import Hybmesh
-
-# ===== <code_preproc remove vvv>
 # This line was added to find Hybmesh.py that is not located
 # in the current directory or package subdirectory.
 # Normally this should be omitted.
 sys.path.append("../../../../build/bindings/py")
 # ===== <code_preproc remove ^^^>
+import math
+from Hybmesh import Hybmesh
 
 # target function: Gaussian hill with the center at [0, 0]
 def expfun(x, y):
