@@ -26,8 +26,21 @@ if (WIN32)
 	find_library(RUNTIME_LIB4 "libquadmath-0.dll")
 	find_library(RUNTIME_LIB5 "libgfortran-3.dll")
 	find_library(RUNTIME_LIB6 "libgomp-1.dll")
-	install(FILES ${RUNTIME_LIB1} ${RUNTIME_LIB2} ${RUNTIME_LIB3}
+	
+	set(MINGW_RUNTIME_LIBS ${RUNTIME_LIB1} ${RUNTIME_LIB2} ${RUNTIME_LIB3}
 		${RUNTIME_LIB4} ${RUNTIME_LIB5} ${RUNTIME_LIB6} ${SUITESPARSE_LIBRARIES}
-		${LIBXML2_LIBRARIES}
+		${LIBXML2_LIBRARIES})
+		
+	# Copy runtime libs to assembly directory to be able to use hybmesh prior to installation.
+	# This is needed to run bindparser.py. 
+	add_custom_target(MINGW_RUNTIME_BIN_COPY ALL)
+	foreach(_ARG ${MINGW_RUNTIME_LIBS})
+		add_custom_command(TARGET MINGW_RUNTIME_BIN_COPY PRE_BUILD
+			COMMAND ${CMAKE_COMMAND} -E copy ${_ARG} ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}
+		)
+	endforeach()
+	
+	# install
+	install(FILES ${MINGW_RUNTIME_LIBS}
 		DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 endif()

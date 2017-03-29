@@ -61,11 +61,11 @@
 # of the authors and should not be interpreted as representing official policies, 
 # either expressed or implied, of the FreeBSD Project.
 #=============================================================================
-
 find_program(OCTAVE_CONFIG_EXECUTABLE
               NAMES octave-config
-          )
-
+              HINTS ${OCTAVE_HOME}
+                    ${OCTAVE_HOME}/bin/
+)
 
 if (OCTAVE_CONFIG_EXECUTABLE)
   execute_process (COMMAND ${OCTAVE_CONFIG_EXECUTABLE} -p PREFIX
@@ -114,7 +114,7 @@ endif ()
 
 find_program(OCTAVE_EXECUTABLE
               HINTS ${OCTAVE_BIN_PATHS}
-              NAMES octave
+              NAMES octave-cli octave
           )
 
 find_program(OCTAVE_MKOCTFILE
@@ -205,6 +205,3 @@ mark_as_advanced (
   OCTAVE_MINOR_VERSION
   OCTAVE_PATCH_VERSION
 )
-
-
-

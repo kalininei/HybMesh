@@ -121,15 +121,11 @@ def pxexec(argv):
             sz = struct.unpack('=i', sz)[0]
             args = os.read(pipe_read, sz)
             try:
-                # #############################3
-                print cm, ":", repr(args)
                 ret = eval("hmscript.{}({})".format(cm, args))
             except hmscript.UserInterrupt:
-                print "USER INTERRUPT"
                 # interrupted by callback function
                 os.write(pipe_write, "I")
             except Exception as e:
-                print "GENERAL EXCEPTION"
                 # error return
                 s = str(e)
                 os.write(pipe_write, "E")
@@ -149,17 +145,10 @@ def pxexec(argv):
                 else:
                     # regular command which returns python types
                     s = repr(ret)
-                    # #############################3
-                    print "return is ", s
                     os.write(pipe_write, struct.pack('=i', len(s)) + s)
         # quit signal
         elif s1 == "Q" or not s1:
-            ##########################
-            if s1 == "Q":
-                print "normal server quit"
-            else:
-                print "server terminated"
-            quit()
+            sys.exit()
         else:
             raise Exception("Invalid server instruction")
 

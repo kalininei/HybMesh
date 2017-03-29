@@ -1,4 +1,3 @@
-#include "core_hmconnection_mcspy.h"
 #include "client.h"
 #include "stdlib.h"
 #include "stdio.h"

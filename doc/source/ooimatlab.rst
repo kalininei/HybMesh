@@ -45,6 +45,44 @@ handled in ``try...catch...end`` blocks.
    indices as arguments or return
    set of indices of any kind use C-style indexing.
 
+
+Some wrapper functions ending arguments could be omitted
+in order to use their default values. Such arguments along with
+their default values are specified in function documentation.
+For example this is *Hybmesh* method for building rectangular
+grid as it is defined in ``Hybmesh.m`` wrapper file
+
+.. code-block:: matlab
+
+        function ret=add_unf_rect_grid(self, p0, p1, nx, ny, bnd)
+        % ADD_UNF_RECT_GRID
+        % Builds rectangular grid.
+        %   p0: 2d point as [x, y];
+        %   p1: 2d point as [x, y];
+        %   nx: int;
+        %   ny: int;
+        %   bnd: row vector of int. DEFAULT is [0, 0, 0, 0];
+        %   ----
+        %   returns: GRID2D;
+        % 
+        % See details in hybmeshpack.hmscript.add_unf_rect_grid().
+            if (nargin < 6)
+                bnd = [0, 0, 0, 0];
+            end
+            ....
+
+Here the first argument is used to address *Hybmesh* instance.
+The function by itself takes 5 parameters, but also could be
+called with only 4. In the latter case default *bnd = [0, 0, 0, 0]*
+will be used.
+
+*Hybmesh* is a handle class which has a destructor *delete* method.
+Until this method is called hybmesh background executable will not stop working.
+Matlab calls it implicitly when an instance of *Hybmesh* gets out of context.
+However if this instance presents in the global scope, it is recommended to
+destroy it manually either by invocation of *delete* method or using ``clear``
+directive.
+
 For detailed description of all methods consult
 the :ref:`Python binding functions reference<ooifuncref>`
 and embedded documentation of wrapper ``*.m`` files.
@@ -52,23 +90,20 @@ and embedded documentation of wrapper ``*.m`` files.
 Helloworld Example
 ^^^^^^^^^^^^^^^^^^
 
-After hybmesh installation create the following script
-replacing correct path at the first line.
+After successful hybmesh installation create the following file
+replacing path at the first line if needed and run
+it as a usual Matlab/Octave script
 
 .. code-block:: matlab
      :caption: hmtest.m
 
-     addpath('directory/containing/Hybmesh/wrapper');
+     addpath('C:/Program Files/Hybmesh/include/m');
      
      hm = Hybmesh();
      g = hm.add_unf_rect_grid([0, 0], [1, 1], 2, 2);
-     disp(sprintf('number of cells: %i', g.dims()(3)));
-
-To run it in octave execute terminal command
-
-.. code-block:: bash
-
-    octave hmtest.m
+     d = g.dims();
+     fprintf('number of cells: %i\n', d(3));
+     clear hm;
 
 Introductory Example
 ^^^^^^^^^^^^^^^^^^^^

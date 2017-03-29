@@ -142,8 +142,14 @@ public class App extends JFrame implements ActionListener{
 			JOptionPane.showConfirmDialog(this, "Interrupted",
 					"Interrupted", JOptionPane.PLAIN_MESSAGE);
 		} catch (Hybmesh.ERuntimeError ee){
-			JOptionPane.showMessageDialog(this, ee.getMessage(),
-					"Hybmesh runtime error", JOptionPane.ERROR_MESSAGE);
+			JTextArea textArea = new JTextArea(6, 80);
+			textArea.setText(ee.getMessage());
+			textArea.setFont(textArea.getFont().deriveFont(12f));
+			textArea.setEditable(false);
+			JScrollPane scrollPane = new JScrollPane(textArea);
+			final JComponent[] inputs = new JComponent[] { scrollPane };
+			JOptionPane.showMessageDialog(this, inputs,
+				"Hybmesh runtime error", JOptionPane.ERROR_MESSAGE);
 		} catch (Exception ee){
 			JOptionPane.showMessageDialog(this, ee.getMessage(),
 					"Error", JOptionPane.ERROR_MESSAGE);

@@ -98,12 +98,13 @@ After installation of hybmesh program copy *Hybmesh.java* and the following
          }
      }
 
-Open terminal at this directory and execute (changing directory path to correct one)
+Open terminal at this directory and execute replacing *java.library.path* with a correct path and
+using full path to *javac* if needed
 
 .. code-block:: bash
 
     >>> javac Test.java Hybmesh.java
-    >>> java -Djava.library.path=/directory/containing/core_hmconnection_java Test
+    >>> java -Djava.library.path="C:/Program Files/Hybmesh/include/java" Test
 
 .. _javaintro:
 

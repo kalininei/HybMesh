@@ -8,8 +8,12 @@ class _Worker(object):
     def __init__(self):
         super(_Worker, self).__init__()
         self.callback = lambda n1, n2, p1, p2: 0
+        if os.name == 'nt':
+            libname = "core_hmconnection_py.dll"
+        else:
+            libname = "libcore_hmconnection_py.so"
         self.cport = ct.cdll.LoadLibrary(os.path.join(
-                Hybmesh.hybmesh_lib_path, "libcore_hmconnection_py.so"))
+                Hybmesh.hybmesh_lib_path, libname))
         self.connection = self.require_connection(Hybmesh.hybmesh_exec_path)
         self.c_char_data = None
         self.c_char_len = 0

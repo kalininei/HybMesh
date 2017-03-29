@@ -254,3 +254,5 @@ with Hybmesh() as hm:
     hm.import_grid_hmg("out.hmd", "Grid2D_1")
     hm.import3d_grid_hmg("out.hmd", "Grid3D_1")
     hm.remove_all()
+
+print("DONE")

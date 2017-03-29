@@ -1,8 +1,16 @@
+%addpath('C:/Program Files/Hybmesh/include/m');
 addpath('../../../build/bindings/m/');
 Hybmesh.hybmesh_exec_path('../../../src/py');
 Hybmesh.hybmesh_lib_path('../../../build/bin/');
 
 hm = Hybmesh();
+
+g1 = hm.add_unf_rect_grid([0, 0], [1, 1], 2, 2);
+g2 = hm.add_unf_rect_grid([0, 0], [1, 1], 2, 2, [1, 2, 3, 4]);
+c1 = hm.grid_bnd_to_contour(g1);
+c2 = hm.grid_bnd_to_contour(g2);
+check_dims(c1.raw_tab('bt'), [0, 0, 0, 0])
+check_dims(c2.raw_tab('bt'), [1, 2, 3, 4])
 
 g1 = hm.add_unf_rect_grid1([1, 2, 3], [2, 3, 4]);
 dims = g1.dims();
@@ -15,7 +23,7 @@ check_dims(c2.dims(), [8, 8]);
 pv = [0, 0;
       1, 2;
       3, 1;
-      2, 0]
+      2, 0];
 c3 = hm.create_contour(pv, [0, 0, 1]);
 c4 = hm.create_contour(pv, [3, 2, 1]);
 check_dims(c3.dims(), [4, 3]);
@@ -51,16 +59,16 @@ c19 = hm.partition_contour_const(c15, 0.01);
 check_dims(c19.dims(), [400, 400]);
 c20 = hm.partition_contour_const(c15, 0.01);
 check_dims(c19.dims(), [400, 400]);
-c21 = hm.partition_contour_ref_points(c15, [0.01, 0.5],
-	[0, 0; 1, 1],
+c21 = hm.partition_contour_ref_points(c15, [0.01, 0.5], ...
+	[0, 0; 1, 1], ...
 	30, true, -1, [], [], [0, 0], [1, 1]);
 check_dims(c21.dims(), [18, 18]);
-c22 = hm.partition_contour_ref_lengths(c15, [0.01, 0.5],
-	[0, 2],
+c22 = hm.partition_contour_ref_lengths(c15, [0.01, 0.5], ...
+	[0, 2], ...
 	30, true, -1, [], [], [0, 0], [1, 1]);
 check_dims(c21.dims(), c22.dims());
-c23 = hm.matched_partition(c15, 0.1, 0.5, [],
-		[0.01], [0.1, 0.1]);
+c23 = hm.matched_partition(c15, 0.1, 0.5, [], ...
+		0.01, [0.1, 0.1]);
 check_dims(c23.dims(), [74, 74]);
 c24 = hm.partition_segment(0.5, 1.5, 0.1, 0.5, [1.0, 0.01]);
 check_cond(length(c24) == 17 && c24(1) == 0.5);
@@ -92,14 +100,14 @@ c37 = hm.partition_contour_const(c36, 0.1);
 c38 = hm.create_contour([0, 0; 2, -0.1]);
 c39 = hm.partition_contour_const(c38, 0.2);
 c40 = hm.add_custom_rect_grid('linear', c37, c39);
-c41 = hm.add_custom_rect_grid_htfi(c37, c39,
-		nan, nan,
+c41 = hm.add_custom_rect_grid_htfi(c37, c39, ...
+		nan, nan, ...
 		[1, 1, 1, 0.8]);
 hm.assign_callback(@bad_callback);
 try
-	c42 = hm.add_custom_rect_grid('orthogonal', c37, c39);
+	c42 = hm.add_custom_rect_grid('orthogonal', c37, c39); 
 catch
-	disp(lasterr)
+	disp(lasterr) 
 end
 hm.assign_callback(@callback);
 c42 = hm.add_custom_rect_grid('orthogonal', c37, c39);
@@ -108,9 +116,9 @@ check_dims(c40.dims(), [121, 220, 100]);
 check_dims(c40.dims(), c41.dims());
 check_dims(c40.dims(), c42.dims());
 try
-	c43 = hm.add_circ_rect_grid([0, 0], -1, 0.05);
+	c43 = hm.add_circ_rect_grid([0, 0], -1, 0.05); %#ok<*NASGU>
 catch
-	disp(lasterr)
+	disp(lasterr) %#ok<*LERR>
 end
 c43 = hm.add_circ_rect_grid([0, 0], 1, 0.05);
 c44 = hm.add_circ_rect_grid([0, 0], 1, 0.05, 1., 1., 'orthogonal_rect');
@@ -122,7 +130,7 @@ c48 = hm.grid_bnd_to_contour(c46);
 check_cond(abs(c47.domain_area() - c48.domain_area())<1e-8);
 c49 = hm.add_rect_contour([0, 0], [1, 1]);
 c50 = hm.partition_contour_const(c49, 0.1);
-c51 = hm.pebi_fill(c50, [], [0.5], [0.5, 0.5]);
+c51 = hm.pebi_fill(c50, [], 0.5, [0.5, 0.5]);
 c52 = hm.build_boundary_grid1(c51, [0, 0.01, 0.02]);
 c53 = hm.build_boundary_grid1(c51, [0, 0.01, 0.02], 'right');
 check_dims(c52.dims(), c53.dims());
@@ -131,7 +139,7 @@ c55 = hm.exclude_contours(c53, {c51}, 'outer');
 check_dims(c54.dims(), c53.dims());
 check_dims(c55.dims(), [0, 0, 0]);
 for i=1:10
-	c56x(i) = (i-1)/10.;
+	c56x(i) = (i-1)/10.; %#ok<*SAGROW>
 	c57x(i) = 0.3 + (i-1)/30.;
 end
 c56 = hm.add_unf_rect_grid1(c56x, c56x);
@@ -147,9 +155,9 @@ c62 = hm.grid3_bnd_to_surface(c61);
 hm.assign_callback(@callback);
 c63 = hm.tetrahedral_fill({c62});
 hm.reset_callback();
-c64 = hm.revolve_grid(c60, [0, 0], [0, 1],
+c64 = hm.revolve_grid(c60, [0, 0], [0, 1], ...
 		[0, 45, 90, 180]);
-c65 = hm.revolve_grid(c60, [0, 0], [0, 1],
+c65 = hm.revolve_grid(c60, [0, 0], [0, 1], ...
 		[180, 270, 360]);
 hm.export3d_grid_vtk(c64, 'c64.vtk');
 hm.export3d_grid_vtk(c65, 'c65.vtk');
@@ -166,11 +174,11 @@ c69.free();
 hm.add_boundary_type(1, 'bnd1');
 hm.add_boundary_type(2, 'bnd2');
 c70 = hm.add_unf_rect_grid([0, 0], [1, 1], 10, 10, [0, 1, 2, 3]);
-hm.export_grid_msh(c70, 'out.msh', [0], [2], [false]);
+hm.export_grid_msh(c70, 'out.msh', 0, 2, false);
 
 c71 = c70.skewness(-1);
 c72 = c70.skewness(0.1);
-check_cond(length(c71) == 100 && length(c72) == 0);
+check_cond(length(c71) == 100 && isempty(c72));
 
 c70.set_btypes_all(22);
 hm.export_contour_vtk(c70, 'out.vtk');
@@ -239,7 +247,5 @@ hm.import3d_grid_hmg('out.hmd', 'Grid3D_1');
 hm.remove_all();
 
 
-
-
-
 hm.delete();
+disp('DONE');

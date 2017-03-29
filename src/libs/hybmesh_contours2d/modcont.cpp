@@ -145,7 +145,7 @@ EdgeData eal::Simplified(const EdgeData& ecol, double degree_angle, bool bt_nobr
 				int j1 = bba[j];
 				int j2 = bba[j+1];
 				ret.push_back(std::make_shared<Edge>(op[j1], op[j2]));
-				ret.back()->boundary_type = c[j]->boundary_type;
+				ret.back()->boundary_type = c[j1]->boundary_type;
 			}
 		}
 	}

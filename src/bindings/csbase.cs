@@ -12,29 +12,97 @@ using System.Linq;
 public class Hybmesh: IDisposable{
 	//Worker class and instance should be private.
 	//But if so Object.worker instance can not be protected (visible for Grid2D, etc).
+	
 	public class Worker{
-		static Worker(){ Hybmesh.load_libs(); }
+		// Use LoadLibrary/dlopen for core_hmconnection_cs  to be able to set its path on runtime
+		[DllImport("libdl.so")]
+		protected static extern IntPtr dlopen(string filename, int flags);
+		[DllImport("libdl.so")]
+		protected static extern IntPtr dlsym(IntPtr handle, string symbol);
+		[DllImport("kernel32.dll")]
+		protected static extern IntPtr LoadLibrary(string filename);
+		[DllImport("kernel32.dll")]
+		protected static extern IntPtr GetProcAddress(IntPtr hModule, string procname);
+
+		public delegate int DRequireConnection(string s);
+		public delegate byte DGetSignal(int con);
+		public delegate int DGetData(int con, out IntPtr data);
+		public delegate void DSendSignal(int con, byte sig);
+		public delegate void DSendData(int con, int sz, byte[] data);
+		public delegate void DBreakConnection(int con);
+		public delegate void DFreeCharArray(IntPtr s);
+
+		public static DRequireConnection require_connection;
+		public static DGetSignal get_signal;
+		public static DGetData get_data;
+		public static DSendSignal send_signal;
+		public static DSendData send_data;
+		public static DBreakConnection break_connection;
+		public static DFreeCharArray free_char_array;
+
+
+		static Worker(){
+			int p = (int) Environment.OSVersion.Platform;
+			bool IsLinux = (p == 4) || (p == 6) || (p == 128);
+
+			// 1. library name
+			string libp;
+			if (IsLinux){
+				libp = Hybmesh.hybmesh_lib_path + "/libcore_hmconnection_cs.so";
+			} else {
+				libp = Hybmesh.hybmesh_lib_path + "/core_hmconnection_cs.dll";
+			}
+
+			//2. load library
+			IntPtr moduleHandle;
+			if (IsLinux){
+				moduleHandle = dlopen(libp, 2);
+			} else {
+				moduleHandle = LoadLibrary(libp);
+			}
+			if (moduleHandle == IntPtr.Zero){
+				throw new Exception("Failed to load library at " + libp);
+			}
+
+			// 3. load functions pointers
+			IntPtr freq, fgetsig, fsendsig, fgetdata, fsenddata, fbreak, ffree;
+			if (IsLinux){
+				freq = dlsym(moduleHandle, "require_connection");
+				fgetsig = dlsym(moduleHandle, "get_signal");
+				fgetdata = dlsym(moduleHandle, "get_data");
+				fsendsig = dlsym(moduleHandle, "send_signal");
+				fsenddata = dlsym(moduleHandle, "send_data");
+				fbreak = dlsym(moduleHandle, "break_connection");
+				ffree = dlsym(moduleHandle, "free_char_array");
+			} else {
+				freq = GetProcAddress(moduleHandle, "require_connection");
+				fgetsig = GetProcAddress(moduleHandle, "get_signal");
+				fgetdata = GetProcAddress(moduleHandle, "get_data");
+				fsendsig = GetProcAddress(moduleHandle, "send_signal");
+				fsenddata = GetProcAddress(moduleHandle, "send_data");
+				fbreak = GetProcAddress(moduleHandle, "break_connection");
+				ffree = GetProcAddress(moduleHandle, "free_char_array");
+			}
+
+			//4. Assign delegates
+			require_connection = Marshal.GetDelegateForFunctionPointer(
+				freq, typeof(DRequireConnection)) as DRequireConnection;
+			get_signal = Marshal.GetDelegateForFunctionPointer(
+				fgetsig, typeof(DGetSignal)) as DGetSignal;
+			get_data = Marshal.GetDelegateForFunctionPointer(
+				fgetdata, typeof(DGetData)) as DGetData;
+			send_signal = Marshal.GetDelegateForFunctionPointer(
+				fsendsig, typeof(DSendSignal)) as DSendSignal;
+			send_data = Marshal.GetDelegateForFunctionPointer(
+				fsenddata, typeof(DSendData)) as DSendData;
+			break_connection = Marshal.GetDelegateForFunctionPointer(
+				fbreak, typeof(DBreakConnection)) as DBreakConnection;
+			free_char_array = Marshal.GetDelegateForFunctionPointer(
+				ffree, typeof(DFreeCharArray)) as DFreeCharArray;
+		}
+	
 		// ==== communication library
 		private int connection = -1;
-		[DllImport("./libcore_hmconnection_cs.so")] //!!!! relative path.
-		                                            //see Hybmesh.load_libs()
-		private static extern int require_connection(
-			[MarshalAs(UnmanagedType.LPStr)] string server_path);
-		[DllImport("./libcore_hmconnection_cs.so")]
-		private static extern byte get_signal(int con);
-		[DllImport("./libcore_hmconnection_cs.so")]
-		private static extern int get_data(int con, out IntPtr data);
-		[DllImport("./libcore_hmconnection_cs.so")]
-		private static extern void send_signal(int con, byte sig);
-		[DllImport("./libcore_hmconnection_cs.so")]
-		private static extern void send_data(int con, int sz, byte[] data);
-		[DllImport("./libcore_hmconnection_cs.so")]
-		private static extern void break_connection(int con);
-		[DllImport("./libcore_hmconnection_cs.so")]
-		private static extern void free_char_array(IntPtr s);
-		public static void ping(){
-			free_char_array(IntPtr.Zero);  //for NULL does nothing
-		}
 		public void free(){
 			if (connection != -1){
 				break_connection(connection);
@@ -291,19 +359,6 @@ public class Hybmesh: IDisposable{
 
 	};
 	public readonly Worker worker;
-
-	static void load_libs(){
-		//This is called once from Worker class static constructor
-		//Here we load shared libraries with respect to hybmesh_lib_path.
-
-		//force linker to use hybmesh_lib_path by temporal change of wd.
-		string curdir = System.Environment.CurrentDirectory;
-		System.Environment.CurrentDirectory = hybmesh_lib_path;
-		//call any library function to load it.
-		Worker.ping();
-		//place directory back
-		System.Environment.CurrentDirectory = curdir;
-	}
 
 //public:
 	/// <summary> Path to executable (including program file). </summary>

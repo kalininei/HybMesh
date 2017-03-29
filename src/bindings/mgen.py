@@ -47,6 +47,15 @@ class Generator(commongen.Generator):
                 lines[i] = ln[:-1]
             elif ln.endswith('];') and '\tfor i' in ln:
                 lines[i] = ln[:-1]
+
+        # get caption
+        cap = []
+        for ln in lines:
+            if ln.startswith(cls._inline_comment()):
+                cap.append(ln)
+            else:
+                break
+
         # breaking into Hybmesh.m, Worker.m, ....
         istart = []
         for i, ln in enumerate(lines):
@@ -57,7 +66,15 @@ class Generator(commongen.Generator):
             classname = lines[istart[i]].split()[1]
             bb = lines[istart[i]:istart[i+1]]
             mfn = os.path.join(os.path.split(fn)[0], classname + '.m')
+            # caption
+            bb.insert(0, "")
+            for i, line in enumerate(cap):
+                bb.insert(i, line)
             super(Generator, cls)._write(bb, mfn)
+
+    @classmethod
+    def _noeol_lines(cls):
+        return ['end', '.', ';']
 
     @classmethod
     def _concat_strings(cls, s1, s2):
@@ -74,6 +91,7 @@ class Generator(commongen.Generator):
 
     @classmethod
     def _translate_VALSTRING(cls, arg):
+        arg = arg.replace("'", "''")
         return "'%s'" % arg
 
     @classmethod
@@ -86,7 +104,7 @@ class Generator(commongen.Generator):
 
     @classmethod
     def _translate_SID(cls):
-        return cls._worker_call('_tos_string', 'self.sid')
+        return cls._worker_call('tos_string', 'self.sid')
 
     @classmethod
     def _return_statement(cls, val):
@@ -105,35 +123,65 @@ class Generator(commongen.Generator):
     def _open_tag(cls):
         return ''
 
+    @classmethod
+    def _inline_comment(cls):
+        return '%'
+
     # ====================== abstract methods (should be overwritten)
     @classmethod
     def _translate_vec(cls, *args):
-        ret = ['[']
-        for a in args:
-            ret.append('%s, ' % str(a))
-        if len(args) > 0:
+        if len(args) == 0:
+            return '[]'
+        elif len(args) == 1:
+            return str(args[0])
+        else:
+            ret = ['[']
+            for a in args:
+                ret.append('%s, ' % str(a))
             ret[-1] = ret[-1][:-2]
-        ret.append(']')
-        return ''.join(ret)
+            ret.append(']')
+            return ''.join(ret)
 
     @classmethod
     def _worker_call(clc, func, *arg):
+        # strip func from leading underscores. otherwise it leads to
+        # invalid matlab code.
+        while len(func) > 0 and func.startswith('_'):
+            func = func[1:]
         ret = 'self.worker.{}('.format(func)
         if len(arg) > 0:
-            ret = ret + arg[0].replace('"', "'")  # fix _apply_command("..")
+            ret = ret + arg[0].replace('"', "'")  # fix apply_command("..")
             for i in range(len(arg) - 1):
                 ret = ret + ', ' + arg[i+1].replace('"', "'")
         return ret + ')'
 
     @classmethod
     def _function_caption(cls, args, func):
-        capstring = ["function ret=%s(self, " % func.name]
-        for a in args:
+        if func.argreturn[0] == '$RETURNNO':
+            capstring = ["function %s(self, " % func.name]
+        else:
+            capstring = ["function ret=%s(self, " % func.name]
+
+        defargs = []
+        func.default_arguments = {}
+        for i, a in enumerate(args):
+            if '=' in a:
+                a1, a2 = a.split('=')
+                a = a1
+                func.default_arguments[a1] = a2
+                defargs.append([i, a1, a2])
             capstring.append(a)
             capstring.append(', ')
         capstring[-1] = capstring[-1][:-2]
         capstring.append(')')
-        return [''.join(capstring)]
+        ret = [''.join(capstring)]
+
+        for [i, k, v] in defargs:
+            ret.append("if (nargin < {ind})$".format(ind=i+2));
+            ret.append(cls._indent()+"{arg} = {val};".format(arg=k, val=v))
+            ret.append("end$")
+
+        return ret
 
     @classmethod
     def _vec_size(cls, vec):
@@ -158,12 +206,12 @@ class Generator(commongen.Generator):
 
     @classmethod
     def _string_pop_begin(cls, var, num):
-        s = "if length({0})>{1} {0} = {0}({2}: length({0})); end"
+        s = "if length({0})>{1}, {0} = {0}({2}: length({0})); end"
         return s.format(var, num, num+1)
 
     @classmethod
     def _for_loop(cls, nstring):
-        return "for i=1:{}".format(nstring)
+        return "for i=1:{}$".format(nstring)
 
     @classmethod
     def _paste_docstring(cls, funccode, func):
@@ -173,8 +221,14 @@ class Generator(commongen.Generator):
         doclines.extend(func.summarystring.split('\n'))
         # arguments types
         for tp, nm in zip(func._argtypes, func._argnames):
-            doclines.append("  {}: {}".format(nm, cls._doctype(tp)))
+            line = "  {}: {}".format(nm, cls._doctype(tp))
+            if nm in func.default_arguments.keys():
+                line = line + ". DEFAULT is {}".format(
+                    func.default_arguments[nm])
+            doclines.append(line)
+
         if func.argreturn[0] != "$RETURNNO":
+            doclines.append("  ----$")
             doclines.append("  returns: {}".format(
                 cls._doctype(func.argreturn[1])))
         # other info

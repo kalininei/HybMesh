@@ -63,13 +63,20 @@ After hybmesh installation create a directory with copied
     	std::cout<<"number of cells: "<<g2.dims()[2]<<std::endl;
     }
 
-Open terminal at created directory.
-With gcc compiler run the following terminal commands 
+With gcc (or MinGW) compiler open terminal at created directory and
+run the following terminal commands 
 
 .. code-block:: bash
 
     >>> g++ -o test test.cpp -std=c++11
     >>> ./test
+
+With VisualStudio compiler run Developer Command Prompt and invoke
+
+.. code-block:: bash
+
+    >>> cl /EHsc test.cpp
+    >>> test.exe
 
 
 Introductory Example

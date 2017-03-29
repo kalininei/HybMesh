@@ -5,13 +5,13 @@ Python Script Interface
 
 Script Invocation
 -----------------
-HybMesh python script is a normal `python2.7` file which
+HybMesh script is a normal python file which
 supports all capabilities of python language and can be invoked using both
-HybMesh standalone application and python interpreter.
+HybMesh standalone application and *Python 2.7* interpreter.
 The latter demands HybMesh be installed as a python module
 (see :ref:`installation`).
 
-To invoke a script from python interpreter use a command
+To invoke a script from python interpreter use a command (if `python` refers to `python2.7`)
 
 .. code-block:: console
 
@@ -33,12 +33,16 @@ to executable.
 
 HybMesh functionality is scattered across different modules of
 :mod:`hybmeshpack` package. However all imports essential for scripting
-are gathered in ``hybmeshpack.hmscripts.__init__`` module.
-So the HybMesh script file should start with an import line
+are gathered in ``hybmeshpack.hmscripts.__init__``,
+so the HybMesh script file should start with respective import line.
+Below is a helloworld example which creates a ``2x2`` grid and reports its structure.
 
 .. code-block:: python
 
-   from hybmeshpack import hmscript
+   from hybmeshpack import hmscript as hm
+
+   g = hm.add_unf_rect_grid([0, 0], [1, 1], 2, 2)
+   print hm.info_grid(g) 
 
 .. py:module:: hybmeshpack.hmscript
 

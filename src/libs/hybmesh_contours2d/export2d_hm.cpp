@@ -200,8 +200,8 @@ Export::GridWriter::GridWriter(const GridData& g,
 	//calculate min and max to select best storage type
 	int minv=0, maxv=0;
 	if (bt.begin() != bt.end()){
-		int minv = *std::min_element(bt.begin(), bt.end());
-		int maxv = *std::max_element(bt.begin(), bt.end());
+		minv = *std::min_element(bt.begin(), bt.end());
+		maxv = *std::max_element(bt.begin(), bt.end());
 	}
 	if (minv == maxv && minv == 0){
 		//pass

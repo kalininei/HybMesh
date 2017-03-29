@@ -1,12 +1,12 @@
 #include <string>
 #include <iostream>
 #include <thread>
-#include <Hybmesh.hpp>
+#include "Hybmesh.hpp"
 
 //==== parameters of basic grid: structured grid in a square
 //bottom left point
-double x1=0.0;
-double y1=0.0;
+double px1=0.0;
+double py1=0.0;
 //segmentation along axis
 int nx=10;
 int ny=10;
@@ -16,8 +16,8 @@ double Ly=1.0;
 
 //==== parameters of secondary grid: ring-type grid
 //ring center
-double x2=0.5;
-double y2=0.5;
+double px2=0.5;
+double py2=0.5;
 //ring radii
 double innerrad=0.1;
 double outerrad=0.3;
@@ -55,7 +55,7 @@ void grid_secondary(std::string outfn){
 	//build uniform ring grid prototype assigning
 	//5 as its boundary feature
 	Hybmesh::Grid2D g2=builder2.add_unf_ring_grid(
-		Hybmesh::Point2(x2, y2),
+		Hybmesh::Point2(px2, py2),
 		innerrad, outerrad,
 		na, nr, 1.0, {5, 5});
 
@@ -76,8 +76,8 @@ int main(){
 	//build basic grid in the main thread assigning boundary types
 	//1, 2, 3, 4 for left, bottom, right and top sides respectively.
 	Hybmesh::Grid2D g1=builder1.add_unf_rect_grid(
-		Hybmesh::Point2(x1, y1),
-		Hybmesh::Point2(x1+Lx, y1+Ly),
+		Hybmesh::Point2(px1, py1),
+		Hybmesh::Point2(px1+Lx, py1+Ly),
 		nx, ny,
 		{1, 2, 3, 4});
 

@@ -149,7 +149,7 @@ The UML class diagram representing hybmesh interface structure is presented
 below.
 
 .. figure:: figs/oointerfaces_uml.png
-   :width: 1200 px
+   :width: 1000 px
 
 .. toctree::
    

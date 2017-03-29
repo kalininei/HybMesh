@@ -33,7 +33,7 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
     'sphinx.ext.todo',
-    'sphinx.ext.pngmath'
+    'sphinx.ext.imgmath'
 ]
 todo_include_todos = True
 
@@ -51,7 +51,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'HybMesh'
-copyright = u'2016, kalininei'
+copyright = u'2017, KalininEI'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the

@@ -152,4 +152,6 @@ class Generator(commongen.Generator):
             dd.append(indent + '/// <param name="{}">'
                       'if null then {}</param>$'.format(k, v))
         for i in range(len(dd)):
+            if not dd[i].endswith('$'):
+                dd[i] = dd[i] + '$'
             funccode.insert(i, dd[i])

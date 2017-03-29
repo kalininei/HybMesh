@@ -167,10 +167,16 @@ class Generator(object):
     @classmethod
     def _format_out_string(cls, lines, indent):
         ret = []
+        noeol = ['$'] + cls._noeol_lines()
         for lline in lines:
             for line in lline:
-                if len(line.strip()) > 0 and '$;:{}(,.'.find(line[-1]) < 0:
-                    line = line + cls._eol_symbol()
+                stripped = line.strip()
+                if len(stripped) > 0:
+                    for e in noeol:
+                        if stripped.endswith(e):
+                            break
+                    else:
+                        line = line + cls._eol_symbol()
                 if line.endswith("$"):
                     line = line[:-1]
                 if (len(line) > 0):
@@ -190,10 +196,13 @@ class Generator(object):
             elif a[0] == '$ARGHIDDEN':
                 if a[1][0] == '#':
                     a[1] = cls._translate(a[1])
+                elif a[1].startswith('"') and a[1].endswith('"'):
+                    a[1] = cls._translate_VALSTRING(a[1][1:-1])
                 subs.append(a[1])
             elif a[0] == '$ARGKW':
                 subs.append(cls._concat_strings(
-                    '"{}="'.format(a[1]), cls._tos_method(a[2], var)))
+                    cls._translate_VALSTRING('{}='.format(a[1])),
+                    cls._tos_method(a[2], var)))
             elif a[0].startswith('$ARGSPLIT('):
                 alla = [a]
                 index = int(a[0][10:-1])
@@ -218,7 +227,7 @@ class Generator(object):
                         alla.append(c)
                 for a in alla[1:]:
                     args.remove(a)
-                subs2 = ['""',
+                subs2 = [cls._translate_VALSTRING(""),
                          '---' +
                          cls._for_loop(
                              cls._vec_size(alla[0][2].split('=')[0])) +
@@ -420,6 +429,14 @@ class Generator(object):
             f.writelines(lines)
 
     @classmethod
+    def _noeol_lines(cls):
+        """returns set of line endings after which eol symbol is not needed.
+        '$' is a special symbol. If line ends with it, it would be removed
+        and no eol symbol will be added
+        """
+        return ['}', '{', '(', ';', '>', ':', ',']
+
+    @classmethod
     def _concat_strings(cls, s1, s2):
         return '{} + {}'.format(s1, s2)
 
@@ -474,6 +491,10 @@ class Generator(object):
     @classmethod
     def _open_tag(cls):
         return '{'
+
+    @classmethod
+    def _inline_comment(cls):
+        return '//'
 
     # ====================== abstract methods (should be overwritten)
     @classmethod
@@ -548,7 +569,7 @@ class Generator(object):
             while (v[-1][-1] == ''):
                 v[-1].pop()
 
-    def write_to_file(self, basefile, outdir, libpath, exepath):
+    def write_to_file(self, basefile, outdir, libpath, exepath, vers):
         # reading basefile and substitution
         bb = self.__readlines(basefile)
         for k, v in self.outstrings.iteritems():
@@ -573,6 +594,13 @@ class Generator(object):
                 s3 = bb[i].split(quotes)
                 send = '' if s3[2][0] == ' ' else s3[2][0]
                 bb[i] = s3[0] + quotes + libpath + quotes + send
+
+        # add caption
+        s1 = "This file is a part of Hybmesh ({}) distribution.".format(vers)
+        s2 = "https://github.com/KalininEI/HybMesh"
+        bb.insert(0, self._inline_comment() + " " + s1)
+        bb.insert(1, self._inline_comment() + " " + s2)
+        bb.insert(2, "")
 
         # writing to file
         if not os.path.exists(outdir):

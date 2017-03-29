@@ -93,6 +93,13 @@ To compile it with Mono execute in terminal
     >>> mcs Test.cs Hybmesh.cs
     >>> mono Test.exe
 
+With VisualStudio compiler run Developer Command Prompt and invoke
+
+.. code-block:: bash
+
+    >>> csc Test.cs Hybmesh.cs
+    >>> Test.exe
+
 .. _csintro:
 
 Introductory Example
@@ -107,15 +114,22 @@ is used for grid union operation.
 .. figure:: figs/monoexample.png
    :width: 600 px
 
-To run it under Mono create a directory
+To compile this example create a directory
 containing *app.cs* file listed below along
-with *Hybmesh.cs* wrapper file. Then
-execute following commands
+with *Hybmesh.cs* wrapper file.
+On Linux systems execute following commands
 
 .. code-block:: bash
 
      mcs app.cs Hybmesh.cs -r:System.Windows.Forms.dll -r:System.Drawing.dll
      mono app.exe
+
+On Windows use VisualStudio Developer Command Prompt
+
+.. code-block:: bash
+
+    >>> csc app.cs Hybmesh.cs
+    >>> app.exe
 
 Hybmesh function call with progress bar dialog
 is provided by *AppGui.ProgressBarExecutor.Exec()* static method.

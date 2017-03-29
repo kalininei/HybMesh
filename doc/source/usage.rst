@@ -87,13 +87,13 @@ On Windows platforms antivirus may block hybmesh executable.
 To fix that add *hybmesh.exe* to exceptions list.
 
 HybMesh uses internal epsilon for geometrical comparison operations.
-Currently it equals *1e-9* (however, it could be decreased in future).
+Currently it equals *1e-8* (however, it could be decreased in future).
 Working with mesh steps lower than that value will lead to unpredictable
 results.
 Take into account that each operation starts with scaling of involved objects
 into unity square. All that means that if you have an area say in ``[0, 1e4]``
 coordinate range then step sizes should not be greater than *1e-3* for
-reliable work. On the contrary, if area lies in ``[0, 1e-4]`` square
+reliable work. On the contrary, if coordinaties are in ``[0, 1e-4]`` square
 than processing steps of *1e-9* should be reliable.
 
 To minimize computational errors zero point should be somewhere within meshing area.

@@ -62,6 +62,10 @@ class Generator(commongen.Generator):
     def _open_tag(cls):
         return ':'
 
+    @classmethod
+    def _inline_comment(cls):
+        return '#'
+
     # ====================== abstract methods (should be overwritten)
     @classmethod
     def _translate_vec(cls, *args):

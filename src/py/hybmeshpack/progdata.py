@@ -1,10 +1,4 @@
-try:
-    # this is used for installed version of HybMesh
-    # config_installed is generated during installation procedure
-    import config_installed as config
-except Exception:
-    import config as config
-
+from hybmeshpack import config as config
 
 class HybMeshVersion:
     def __init__(self, s):

@@ -81,7 +81,7 @@ int HybmeshClientToServer_new(const char* path, int* id){
 	sa.bInheritHandle = TRUE;
 	sa.lpSecurityDescriptor = NULL;
 	if (!CreatePipe(&client2server[0], &client2server[1], &sa, 0) || 
-	    !CreatePipe(&server2client[0], &server2client[1], &sa, 0))
+	    !CreatePipe(&server2client[0], &server2client[1], &sa, 0)){
 		return 0;
 	}
 	/* do not inherit client handles */
@@ -103,7 +103,6 @@ int HybmeshClientToServer_new(const char* path, int* id){
 		return 0;
 	}
 	sprintf(cmd, "%s -px %lld %lld", exepath, h1, h2);
-	printf("%s\n", cmd);
 
 	if(!CreateProcess( NULL,/* No module name (use command line) */
 		cmd,            /* Command line*/
@@ -119,20 +118,18 @@ int HybmeshClientToServer_new(const char* path, int* id){
 		fprintf(stderr, "CreateProcess failed (%d).\n", GetLastError() );
 		return 0;
 	} else{
-		printf("SubProcess started\n");
 	}
 
 	/* fill con */
 	con->childid = (intptr_t)pi.hProcess;
-	con->pipe_read = _open_osfhandle((intptr_t)sig_server2client[0], _O_APPEND|_O_RDONLY);
-	con->pipe_write = _open_osfhandle((intptr_t)sig_client2server[1], _O_APPEND);
+	con->pipe_read = _open_osfhandle((intptr_t)server2client[0], _O_APPEND|_O_RDONLY);
+	con->pipe_write = _open_osfhandle((intptr_t)client2server[1], _O_APPEND);
 	con->isopen = 1;
 
 	/* close unused handles */
 	CloseHandle(pi.hThread);
 	CloseHandle(server2client[1]);
 	CloseHandle(client2server[0]);
-}
 
 #else  /* POSIX */
 

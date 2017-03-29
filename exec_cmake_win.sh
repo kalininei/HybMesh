@@ -8,6 +8,8 @@ CMMAKE="mingw32-make.exe"
 CMBUILDEXE=1
 #directory with pyinstaller.exe
 CMPYINST_PATH="C:/Python27/Scripts/"
+#directory with octave
+OCTAVE_PATH="C:/Octave/Octave-4.2.0/"
 #build installer with nsis
 CMBUILDINSTALLER=1
 #directory with nsis
@@ -22,5 +24,6 @@ CMINSTALL_PATH="C:/dev/HybMesh"
 	-DUSE_PYINSTALLER:BOOL=$CMBUILDEXE \
 	-DPYINST_HINT_PATH:PATH="$CMPYINST_PATH" \
 	-DNSIS_HINT_PATH:PATH="$CMNSIS_PATH" \
-	-DCMAKE_INSTALL_PREFIX:PATH="$CMINSTALL_PATH"
+	-DCMAKE_INSTALL_PREFIX:PATH="$CMINSTALL_PATH" \
+	-DOCTAVE_HOME:PATH="$OCTAVE_PATH"
 

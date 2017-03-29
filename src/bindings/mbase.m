@@ -25,8 +25,8 @@ classdef HybmeshCallerOctave
 		function break_connection(self)
 			core_hmconnection_oct(6, self.connection);
 		end
-	end;
-end;
+	end
+end
 
 classdef HybmeshCallerMatlab
 	properties (Access={?HybmeshWorker})
@@ -34,35 +34,46 @@ classdef HybmeshCallerMatlab
 	end
 	methods (Access={?HybmeshWorker})
 		function ret=HybmeshCallerMatlab(exepath)
-			if ~libisloaded('core_hmconnection_matlab')
-				loadlibrary('core_hmconnection_matlab', ...
-					'core_hmconnection_matlab.h');
+			if ~libisloaded('libcore_hmconnection_matlab')
+				loadlibrary('libcore_hmconnection_matlab', ...
+					'libcore_hmconnection_matlab.h');
 			end
 			ret.connection=ret.require_connection(exepath);
 		end
 		%low level communication
 		function ret=require_connection(~, server_path)
-			ret = calllib('core_hmconnection_matlab', ...
+			ret = calllib('libcore_hmconnection_matlab', ...
 				'require_connection', server_path);
+			ret = int32(ret);
 		end
 		function ret=get_signal(self)
-			ret = calllib('core_hmconnection_matlab', ...
+			ret = calllib('libcore_hmconnection_matlab', ...
 				'get_signal', self.connection);
+			ret = cast(ret, 'char');
 		end
 		function ret = get_data(self)
-			ret = calllib('core_hmconnection_matlab', ...
-				'get_data', self.connection);
+			sz = calllib('libcore_hmconnection_matlab', ...
+				'get_data1', self.connection);
+			if sz == 0
+				ret = [];
+			else
+				buf = libpointer('voidPtr', zeros(1, sz, 'uint8'));
+				calllib('libcore_hmconnection_matlab', ...
+					'get_data2', self.connection, int32(sz), buf);
+				ret = buf.Value;
+				clear buf;
+			end
 		end
 		function send_signal(self, sig)
-			ret = calllib('core_hmconnection_matlab', ...
-				'send_signal', self.connection);
+			calllib('libcore_hmconnection_matlab', ...
+				'send_signal', self.connection, int8(sig));
 		end
 		function send_data(self, data)
-			ret = calllib('core_hmconnection_matlab', ...
-				'send_data', self.connection);
+			calllib('libcore_hmconnection_matlab', ...
+				'send_data', self.connection, int32(length(data)), data);
 		end
 		function break_connection(self)
-			ret = calllib('core_hmconnection_matlab', ...
+			calllib('libcore_hmconnection_matlab', ...
 				'break_connection', self.connection);
 		end
 	end
@@ -73,21 +84,21 @@ classdef HybmeshWorker < handle
 		caller;
 	end
 	properties(Access={?Hybmesh})
-		callback = @(~, ~, ~, ~) 0;
+		callback = @(a, b, c, d) 0;
 	end
 	methods (Access=private)
-		function _send_command(self, func, com)
+		function send_command(self, func, com)
 			self.caller.send_signal('C');
 			self.caller.send_data(func);
 			self.caller.send_data(com);
 		end
-		function ret=_wait_for_signal(self)
-			ret=self.caller.get_signal(self);
+		function ret=wait_for_signal(self)
+			ret=self.caller.get_signal();
 		end
-		function ret= _read_buffer(self)
+		function ret= read_buffer(self)
 			ret = self.caller.get_data();
 		end
-		function _apply_callback(self, buf)
+		function apply_callback(self, buf)
 			p = typecast(buf(1:16), 'double');
 			lens = typecast(buf(17:24), 'int32');
 			s1 = buf(25:24+lens(1));
@@ -101,46 +112,55 @@ classdef HybmeshWorker < handle
 		end
 
 		% removes ending []; splits by ,; strips substrings from ''', ''', ' ';
-		function ret=__parse_vecstring(~, str)
+		function ret=parse_vecstring(~, str)
 			s = strtrim(str);
 			if (s(1)=='[' && s(end)==']')
-				s = substr(s, 2, length(s)-2);
+				s = s(2:end-1);
 			end
-			if (strcmp(s, '[]') || strcmp(s, 'None') || length(s) == 0)
+			if (strcmp(s, '[]') || strcmp(s, 'None') || isempty(s))
 				ret=[];
 				return;
 			end
 			ret1 = {};
-			for cit = strsplit(s, ',')
+			strrange = strsplit(s, ',');
+			ret1{length(strrange)} = [];
+			iend = 0;
+			for cit = strrange
 				it = char(cit);
 				pos1 = 1;
 				pos2 = length(it);
-				while (pos1 <= length(it) &&
-				       (it(pos1) == ' ' ||
-				        it(pos1) == '''' ||
-				        it(pos1) == '''')) pos1 = pos1 + 1;
+				while (pos1 <= length(it) && ...
+				       (it(pos1) == ' ' || ...
+				        it(pos1) == '''' || ...
+				        it(pos1) == '''')), pos1 = pos1 + 1;
 				end
-				while (pos2 >= pos1 &&
-				       (it(pos2) == ' ' ||
-				        it(pos2) == '''' ||
-				        it(pos2) == '''')) pos2 = pos2 - 1;
+				while (pos2 >= pos1 && ...
+				       (it(pos2) == ' ' || ...
+				        it(pos2) == '''' || ...
+				        it(pos2) == '''')), pos2 = pos2 - 1;
 				end
 				if (pos2 >= pos1)
-					ret1{end+1}  = substr(it, pos1, pos2-pos1+1);
+					iend = iend + 1;
+					ret1{iend} = it(pos1:pos2);
 				end
 			end
-			bracket_level = 0;
 			ret = {};
+			if iend == 0, return; end
+			ret{iend} = [];
+			bracket_level = 0;
+			iend2 = 0;
 			for cit=ret1
 				it = char(cit);
 				if (bracket_level == 0)
-					ret{end+1} = it;
+					iend2 = iend2 + 1;
+					ret{iend2} = it;
 				else
-					ret{end} = strcat(ret{end}, ',', it);
+					ret{iend2} = strcat(ret{iend2}, ',', it);
 				end
-				if (it(1) == '[') bracket_level = bracket_level+1; end
-				if (it(end) == ']') bracket_level = bracket_level-1; end
+				if (it(1) == '['), bracket_level = bracket_level+1; end
+				if (it(end) == ']'), bracket_level = bracket_level-1; end
 			end
+			ret(iend2+1:end) = [];
 		end
 		function ret = isnone(~, obj)
 			if isnumeric(obj) && length(obj) == 1
@@ -170,23 +190,23 @@ classdef HybmeshWorker < handle
 				self.caller.connection = -1;
 			end
 		end
-		function ret=_apply_command(self, func, com)
-			self._send_command(func, com);
+		function ret=apply_command(self, func, com)
+			self.send_command(func, com);
 			while (1)
-				sig = self._wait_for_signal();
+				sig = self.wait_for_signal();
 				switch (sig)
 					%normal return
 					case 'R'
-						ret = self._read_buffer();
+						ret = self.read_buffer();
 						return;
 					%callback
 					case 'B'
-						self._apply_callback(self._read_buffer());
+						self.apply_callback(self.read_buffer());
 					%exception return
 					case 'I'
 						error('Interrupted by user');
 					case 'E'
-						error(self._tos_vecbyte(self._read_buffer()));
+						error(self.tos_vecbyte(self.read_buffer()));
 					%something went wrong
 					case '0'
 						error('Server stopped working');
@@ -195,9 +215,9 @@ classdef HybmeshWorker < handle
 				end
 			end
 		end
-		function ret = _to_object(self, ret, str)
-			ss = self.__parse_vecstring(str);
-			if (length(ss) == 0)
+		function ret = to_object(self, ret, str)
+			ss = self.parse_vecstring(str);
+			if isempty(ss)
 				ret=nan;
 			else
 				if strcmp(ss{1}, 'None')
@@ -208,132 +228,142 @@ classdef HybmeshWorker < handle
 				end
 			end
 		end
-		function ret = _to_vecobject(self, cls, str)
-			ss = self.__parse_vecstring(str);
-			if (length(ss) == 0)
+		function ret = to_vecobject(self, cls, str)
+			ss = self.parse_vecstring(str);
+			if isempty(ss)
 				ret={};
 				return;
 			end
-			for i=[1:length(ss)]
-				ret{i} = self._to_object(cls, ss{i});
+			ret = {};
+			ret{length(ss)} = [];
+			for i=1:length(ss)
+				ret{i} = self.to_object(cls, ss{i});
 			end
 		end
 		% string -> cpp type
-		function ret=_to_int(self, str)
-			ret = str2num(str);
+		function ret=to_int(~, str)
+			ret = str2double(str);
 		end
-		function ret=_to_double(self, str)
-			ret = str2num(str);
+		function ret=to_double(~, str)
+			ret = str2double(str);
 		end
-		function ret=_to_point(self, str)
+		function ret=to_point(~, str)
 			if (strcmp(str, 'None'))
 				ret = nan;
 			else
-				ret = str2num(str);
+				ret = str2num(str);  %#ok<ST2NM>
 			end
 		end
-		function ret=_to_grid(self, str)
-			ret = self._to_object(HybmeshGrid2D, str);
+		function ret=to_grid(self, str)
+			ret = self.to_object(HybmeshGrid2D, str);
 		end
-		function ret=_to_cont(self, str)
-			ret = self._to_object(HybmeshContour2D, str);
+		function ret=to_cont(self, str)
+			ret = self.to_object(HybmeshContour2D, str);
 		end
-		function ret=_to_grid3(self, str)
-			ret = self._to_object(HybmeshGrid3D, str);
+		function ret=to_grid3(self, str)
+			ret = self.to_object(HybmeshGrid3D, str);
 		end
-		function ret=_to_surface(self, str)
-			ret = self._to_object(HybmeshSurface3D, str);
+		function ret=to_surface(self, str)
+			ret = self.to_object(HybmeshSurface3D, str);
 		end
-		function ret=_to_veccont(self, str)
-			ret = self._to_vecobject(HybmeshContour2D, str);
+		function ret=to_veccont(self, str)
+			ret = self.to_vecobject(HybmeshContour2D, str);
 		end
-		function ret=_to_vecgrid(self, str)
-			ret = self._to_vecobject(HybmeshGrid2D, str);
+		function ret=to_vecgrid(self, str)
+			ret = self.to_vecobject(HybmeshGrid2D, str);
 		end
-		function ret=_to_vecsurface(self, str)
-			ret = self._to_vecobject(HybmeshSurface3D, str);
+		function ret=to_vecsurface(self, str)
+			ret = self.to_vecobject(HybmeshSurface3D, str);
 		end
-		function ret=_to_vecgrid3(self, str)
-			ret = self._to_vecobject(HybmeshGrid3D, str);
+		function ret=to_vecgrid3(self, str)
+			ret = self.to_vecobject(HybmeshGrid3D, str);
 		end
-		function ret=_to_vecint(self, str)
-			ret = str2num(str);
+		function ret=to_vecint(~, str)
+			ret = str2num(str);  %#ok<ST2NM>
 		end
 		% cpp type -> string
-		function ret=_tos_bool(self, val)
+		function ret=tos_bool(~, val)
 			if val
 				ret = 'True';
 			else
 				ret = 'False';
 			end
 		end
-		function ret=_tos_string(self, val)
+		function ret=tos_string(self, val)
 			if self.isnone(val)
-				ret = 'None'
+				ret = 'None';
 			else
 				ret = strcat('''', val, '''');
 			end
 		end
-		function ret=_tos_int(self, val)
+		function ret=tos_int(~, val)
 			ret =  sprintf('%i', val);
 		end
-		function ret=_tos_double(self, val)
+		function ret=tos_double(~, val)
 			ret = sprintf('%.16g', val);
 		end
-		function ret=_tos_point(self, val)
+		function ret=tos_point(self, val)
 			if (self.isnone(val))
 				ret = 'None';
 			else
 				ret = sprintf('[%.16g, %.16g]', val);
 			end
 		end
-		function ret=_tos_point3(self, val)
+		function ret=tos_point3(self, val)
 			if (self.isnone(val))
 				ret = 'None';
 			else
 				ret = sprintf('[%.16g, %.16g, %.16g]', val);
 			end
 		end
-		function ret=_tos_vecbyte(self, val)
-			ret = val;
+		function ret=tos_vecbyte(~, val)
+			ret = cast(val, 'char');
 		end
-		function ret=_tos_vecint(self, val)
-			as = sprintf('%i, ', val);
-			ret = strcat('[', as, ']');
+		function ret=tos_vecint(~, val)
+			if isempty(val)
+				ret = '[]';
+			else
+				as = sprintf('%i, ', val);
+				ret = strcat('[', as, ']');
+			end
 		end
-		function ret=_tos_vecdouble(self, val)
-			as = sprintf('%.16g, ', val);
-			ret = strcat('[', as, ']');
+		function ret=tos_vecdouble(~, val)
+			if isempty(val)
+				ret = '[]';
+			else
+				as = sprintf('%.16g, ', val);
+				ret = strcat('[', as, ']');
+			end
 		end
-		function ret=_tos_vecstring(self, val)
-			if length(val) == 0
+		function ret=tos_vecstring(~, val)
+			if isempty(val)
 				ret = '[]';
 			else
 				as = sprintf('''%s'', ', val);
 				ret = strcat('[', as, ']');
 			end
 		end
-		function ret=_tos_vecpoint(self, val)
+		function ret=tos_vecpoint(self, val)
 			if self.isnone(val)
-				ret = 'None'
-			elseif length(val) == 0
+				ret = 'None';
+			elseif isempty(val)
 				ret = '[]';
 			else
 				ret = sprintf('[%.16g, %.16g], ', val');
 				ret = strcat('[', ret, ']');
 			end
 		end
-		function ret=_tos_object(self, val)
+		function ret=tos_object(self, val)
 			if self.isnone(val)
 				ret = 'None';
 			else
-				ret = self._tos_string(val.sid);
+				ret = self.tos_string(val.sid);
 			end
 		end
-		function ret=_tos_vecobject(self, val)
+		function ret=tos_vecobject(self, val)
 			if self.isnone(val)
 				ret = 'None';
-			elseif length(val) == 0
+			elseif isempty(val)
 				ret = '[]';
 			else
 				ret = strcat('''', val{1}.sid, '''');
@@ -344,7 +374,7 @@ classdef HybmeshWorker < handle
 			end
 		end
 		% vecbyte -> cpp typ
-		function ret=_to_vec_int_double_raw(self, val)
+		function ret=to_vec_int_double_raw(~, val)
 			sz = typecast(val(1:4), 'int32');
 			ret = zeros(sz, 2);
 			pos = 5;
@@ -355,11 +385,11 @@ classdef HybmeshWorker < handle
 				pos = pos + 8;
 			end
 		end
-		function ret=_to_vecdouble_raw(self, val)
+		function ret=to_vecdouble_raw(~, val)
 			ret = typecast(val(5:end), 'double');
 		end
-		function ret=_to_vecint_raw(self, val)
-			ret = typecast(val(5:end), 'int32');
+		function ret=to_vecint_raw(~, val)
+			ret = cast(typecast(val(5:end), 'int32'), 'double');
 		end
 	end
 end
@@ -416,14 +446,22 @@ classdef Hybmesh < handle
 	end
 	methods(Static)
 		function ret=hybmesh_exec_path(newpath)
-			persistent path = 'hybmesh.exe';  %>>$EXEPATH
+			mlock;
+			persistent path;
+			if isempty(path)
+				path = 'hybmesh.exe';  %>>$EXEPATH
+			end
 			if nargin
 				path = newpath;
 			end
 			ret = path;
 		end
 		function ret=hybmesh_lib_path(newpath)
-			persistent path = 'hybmesh.so';  %>>$LIBPATH
+			mlock;
+			persistent path;
+			if isempty(path)
+				path = 'hybmesh.so';  %>>$LIBPATH
+			end
 			if nargin
 				path = newpath;
 			end

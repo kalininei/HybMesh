@@ -121,4 +121,6 @@ class Generator(commongen.Generator):
                 func.docstring.split('\n')
         indent = cls.__get_indent(funccode[0])
         for i in range(len(doclines)):
+            if not doclines[i].endswith('$'):
+                doclines[i] = doclines[i] + '$'
             funccode.insert(i, indent + '// '+doclines[i])

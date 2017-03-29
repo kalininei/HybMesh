@@ -153,6 +153,7 @@ if __name__ == "__main__":
         [odir /path/to/output/directory]
         [libpath /path/to/lib/]
         [exepath /path/to/exe/]
+        [vers '0.1.2']
     """
     try:
         dirindex = sys.argv.index('odir')
@@ -181,6 +182,12 @@ if __name__ == "__main__":
     else:
         exepath = None
 
+    if 'vers' in sys.argv:
+        ind = sys.argv.index('vers')
+        vers = 'v. ' + sys.argv[ind+1]
+    else:
+        vers = 'unknown version'
+
     target, base = [], []
     if 'py' in sys.argv or 'all' in sys.argv:
         target.append('py')
@@ -202,4 +209,4 @@ if __name__ == "__main__":
         omask = MaskParser(mask)
         generator = commongen.Generator.factory(t)
         generator.parse(omask)
-        generator.write_to_file(b, odir, libpath, exepath)
+        generator.write_to_file(b, odir, libpath, exepath, vers)

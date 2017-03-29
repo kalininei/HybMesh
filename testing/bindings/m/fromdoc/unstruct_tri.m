@@ -8,7 +8,6 @@ Hybmesh.hybmesh_exec_path('../../../../src/py');
 % use only if it differs from default and from listed in addpath
 Hybmesh.hybmesh_lib_path('../../../../build/bin/');
 % ======= <code_preproc remove ^^^>
-
 % initialize hybmesh object
 hm = Hybmesh();
 
@@ -17,8 +16,7 @@ hm.stdout_verbosity(3);
 
 % define set of points bounding triangulated area
 % first equals last for closed contours.
-points = [
-	0.0, 0.0;
+points = [0.0, 0.0;
 	0.5, 0.1;
 	1.0, 0.2;
 	1.3, 0.7;
@@ -31,8 +29,8 @@ points = [
 cont = hm.create_contour(points);
 
 % perform contour parition using reference points:
-% at point closest to [0, 0] recommended size is 0.05,
-% at point closest to [1, 1] recommended size is 0.2.
+% - at point closest to [0, 0] recommended size is 0.05,
+% - at point closest to [1, 1] recommended size is 0.2.
 domain = hm.partition_contour_ref_points(cont, [0.05, 0.2], [0, 0; 1, 1]);
 
 % add two inner points which should present in result
@@ -54,17 +52,13 @@ tris = grid.raw_tab('cell_vert');
 x=pts(1:2:end);
 y=pts(2:2:end);
 % 2. reshape tris into 2D matrix and add unity to fit native indexing
-tris = reshape(tris, 3, [])' .+ 1;
-
-% save grid to vtk
-hm.export_grid_vtk(grid, "out2.vtk");
+tris = reshape(tris, 3, [])' + 1;
 
 % explicitly free hybmesh handle
-hm.delete();
+clear hm;
 
 % plot data
 triplot(tris, x, y);
-
-% Enter keyboard interactive mode.
-% This stops script from quiting.
+% ======= <code_preproc remove vvv>
 keyboard;
+% ======= <code_preproc remove ^^^>

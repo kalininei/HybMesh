@@ -61,7 +61,7 @@ if (WIN32)
 	# ========= assemble installer
 	if (${USE_NSIS})
 		# configuration
-		set(NSIS_INSTALLER_NAME "${APPNAME}-v${APPVERSION}-win${NSIS_INSTALLER_BIT}") 
+		set(NSIS_INSTALLER_NAME "${APPNAME}-v${APPVERSION}-win64") 
 		
 		string(REPLACE "/" "\\" _TMP "${EXE_INSTALL_DIR}")
 		set(NSIS_INSTALLER_BIN "/r \"${_TMP}\\*\"")

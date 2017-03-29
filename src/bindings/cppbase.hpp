@@ -498,9 +498,9 @@ Hybmesh::VecByte Hybmesh::Worker::_read_buffer(){
 	return ret;
 }
 //=============== low level functionality
-#include "unistd.h"
-#ifdef WIN32
+#if defined(_WIN32) || defined(__CYGWIN__)
 
+#define X_OK 0
 #include "windows.h"
 #include "io.h"
 #include "fcntl.h"
@@ -511,6 +511,7 @@ Hybmesh::VecByte Hybmesh::Worker::_read_buffer(){
 
 #else
 
+#include "unistd.h"
 #include "sys/wait.h"
 #define HMPLATFORM_READ read
 #define HMPLATFORM_WRITE write
@@ -529,7 +530,7 @@ void Hybmesh::Worker::find_hybmesh(const char* path, char* exepath){
 }
 
 void Hybmesh::Worker::require_connection(const char* path){
-#ifdef WIN32 // ====================== WINDOWS IMPLEMENTATION
+#if defined(_WIN32) || defined(__CYGWIN__) // ====================== WINDOWS IMPLEMENTATION
 	char cmd[1000], exepath[1000];
 	HANDLE client2server[2];
 	HANDLE server2client[2];
@@ -543,7 +544,7 @@ void Hybmesh::Worker::require_connection(const char* path){
 	sa.lpSecurityDescriptor = NULL;
 	if (!CreatePipe(&client2server[0], &client2server[1], &sa, 0) || 
 	    !CreatePipe(&server2client[0], &server2client[1], &sa, 0)){
-		return 0;
+		throw Hybmesh::ERuntimeError("failed to create pipes");
 	}
 	/* do not inherit client handles */
 	SetHandleInformation(client2server[1], HANDLE_FLAG_INHERIT, 0);
@@ -560,7 +561,7 @@ void Hybmesh::Worker::require_connection(const char* path){
 	intptr_t h2 = (intptr_t)server2client[1];
 
 	find_hybmesh(path, exepath);
-	sprintf(cmd, "%s %lld %lld", exepath, h1, h2);
+	sprintf(cmd, "%s -px %lld %lld", exepath, (long long)h1, (long long)h2);
 
 	if(!CreateProcess( NULL,/* No module name (use command line) */
 		cmd,            /* Command line*/
@@ -656,7 +657,7 @@ void Hybmesh::Worker::send_data(int sz, const char* data){
 }
 void Hybmesh::Worker::break_connection(){
 	send_signal('Q');
-#ifdef WIN32
+#if defined(_WIN32) || defined(__CYGWIN__)
 	WaitForSingleObject((HANDLE)childid, INFINITE);
 #else
 	waitpid(childid, NULL, 0);

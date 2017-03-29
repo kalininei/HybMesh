@@ -8,8 +8,24 @@ import os
 import os.path
 from distutils.core import setup
 import shutil
+import sys
 
-rootdir = os.path.abspath('@PYROOTDIR@')
+# setup.py can be called either from cmake install procedure or from
+# nsis installer on user windows system.
+# In the latter case option '--from-nsis-installer' should be used.
+if '--from-nsis-installer' in sys.argv:
+    # we are in _tmp folder which contains hybmeshpack with already copied config_installed
+    rootdir = os.path.abspath('.')
+    # remove this option or it will be parsed by setup and reported as bad option.
+    sys.argv.remove('--from-nsis-installer')
+else:
+    rootdir = os.path.abspath('@PYROOTDIR@')
+    # place config_installed to package directory before setup
+    conf_orig = '@PYOUTDIR@/config_installed.py'
+    conf_src = os.path.join('@PYROOTDIR@', '@PyPack@', os.path.basename(conf_orig))
+    shutil.copyfile(conf_orig, conf_src)
+
+
 packdir = os.path.join(rootdir, '@PyPack@')
 
 
@@ -24,11 +40,6 @@ def find_packages(path, relpath):
             ret.append(re.sub('^[^A-z0-9_]+', '', root.replace('/', '.')))
     return ret
 
-
-# place config_installed to package directory before setup
-conf_orig = '@PYOUTDIR@/config_installed.py'
-conf_src = os.path.join('@PYROOTDIR@', '@PyPack@', os.path.basename(conf_orig))
-shutil.copyfile(conf_orig, conf_src)
 
 setup(
     name="@APPNAME@",

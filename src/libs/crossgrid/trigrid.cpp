@@ -546,7 +546,6 @@ GridData gmsh_fill(const Contour::Tree& tree, const std::map<Point, double>& emb
 	GmshSetOption("Mesh", "Algorithm", 2.0);
 	GmshSetOption("Mesh", "Optimize", 1.0);
 	GmshSetOption("General", "Verbosity", 0.0);
-	//#########################################
 	//GmshSetOption("General", "Verbosity", 100.0);
 	//GmshSetMessageHandler(&gmshcb);
 

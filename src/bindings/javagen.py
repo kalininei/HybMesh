@@ -109,7 +109,7 @@ class Generator(commongen.Generator):
             capstring.pop()
         capstring.append(')')
         capstring.append(
-                ' throws Hybmesh.EUserInterrupt, Hybmesh.ERuntimeError')
+            ' throws Hybmesh.EUserInterrupt, Hybmesh.ERuntimeError')
         ret = [''.join(capstring)]
 
         for (k, v) in defargs:
@@ -166,4 +166,6 @@ class Generator(commongen.Generator):
 
         dd.append(indent + ' */$')
         for i in range(len(dd)):
+            if not dd[i].endswith('$'):
+                dd[i] = dd[i] + '$'
             funccode.insert(i, dd[i])
