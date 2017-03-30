@@ -1,4 +1,4 @@
-.. |icon| image::  /home/ek/HybMesh/misc/mainwin_icon.svg
+.. |icon| image::  misc/mainwin_icon.svg
         :height: 100
 
 |icon| HybMesh Grid Generator
@@ -30,26 +30,30 @@ distributive, so HybMesh could be utilized as an embedded meshing engine
 for **C++** (11), **C#** (VisualStudio and Mono), **Matlab** (Octave compatible),
 **Python** (2 and 3) and **Java** (7 or higher) applications.
 
-For installation instructions and user guide, see `HybMesh documentation <http://google.com>`_.
+Latest HybMesh distributives could be found on `releases
+<https://github.com/kalininei/HybMesh/releases>`_ page.
+
+For installation instructions and user guide, see `HybMesh documentation
+<http://kalininei.github.io/HybMesh/index.html>`_.
 
 Example Grids
 =============
 
-.. |e3| image::  /home/ek/HybMesh/doc/source/overview_1.png
+.. |e3| image::  doc/source/overview_1.png
          :height: 300px
 
 
-.. |e4| image::  /home/ek/HybMesh/doc/source/picintro_6_7.png
+.. |e4| image::  doc/source/picintro_6_7.png
          :height: 300px
 
 
 +----------------------------+-----------------------------+
-|  .. image::  /home/ek/HybMesh/doc/source/overview_3.png  |
+|  .. image::  doc/source/overview_3.png                   |
 |          :height: 200px                                  |
 |          :align: center                                  |
 |                                                          |
 +----------------------------+-----------------------------+
-| .. image::  /home/ek/HybMesh/doc/source/overview_2.png   |
+| .. image::  doc/source/overview_2.png                    |
 |          :height: 200px                                  |
 |          :align: center                                  |
 |                                                          |
