@@ -1,0 +1,563 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Grid Prototypes &#8212; HybMesh 0.5.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.5.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Python Script Interface" href="pyinterface.html" />
+    <link rel="prev" title="Functionality" href="functionality.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="pyinterface.html" title="Python Script Interface"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="functionality.html" title="Functionality"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">HybMesh 0.5.0 documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <span class="target" id="module-hybmeshpack.hmscript"><span id="prototypes"></span></span><div class="section" id="grid-prototypes">
+<h1>Grid Prototypes<a class="headerlink" href="#grid-prototypes" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="rectangle-grid">
+<h2>Rectangle Grid<a class="headerlink" href="#rectangle-grid" title="Permalink to this headline">¶</a></h2>
+<p>Builds a rectangular structured grid with given partition along x and y axis.
+User can define partition as number of equidistant segments,
+as a constant step or explicitly define partition by passing
+increasing array of respective coordinates.</p>
+<p>Python interface function: <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.add_unf_rect_grid" title="hybmeshpack.hmscript.add_unf_rect_grid"><code class="xref py py-func docutils literal"><span class="pre">add_unf_rect_grid()</span></code></a>.</p>
+</div>
+<div class="section" id="radial-grid">
+<h2>Radial Grid<a class="headerlink" href="#radial-grid" title="Permalink to this headline">¶</a></h2>
+<p>Builds structured radial grid. Central element could be triangulated or left
+as a regular n-side polygon. Radial and arch partition could be
+defined by number of steps, step size or explicitly. Refinement
+of radius partition could also be applied.</p>
+<p>Python interface function: <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.add_unf_circ_grid" title="hybmeshpack.hmscript.add_unf_circ_grid"><code class="xref py py-func docutils literal"><span class="pre">add_unf_circ_grid()</span></code></a>.</p>
+</div>
+<div class="section" id="ring-grid">
+<h2>Ring Grid<a class="headerlink" href="#ring-grid" title="Permalink to this headline">¶</a></h2>
+<p>Builds structured radial grid in a ring area.
+Refinement of radius partition could also be applied.</p>
+<p>Python interface function: <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.add_unf_ring_grid" title="hybmeshpack.hmscript.add_unf_ring_grid"><code class="xref py py-func docutils literal"><span class="pre">add_unf_ring_grid()</span></code></a>.</p>
+</div>
+<div class="section" id="triangle-grid">
+<h2>Triangle Grid<a class="headerlink" href="#triangle-grid" title="Permalink to this headline">¶</a></h2>
+<p>Builds structured grid in a triangle domain given
+by three points.
+Resulting grid will contain quadrangle cells everywhere except
+area near one of the edges where triangle cells will be built.</p>
+<p>Python interface function: <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.add_triangle_grid" title="hybmeshpack.hmscript.add_triangle_grid"><code class="xref py py-func docutils literal"><span class="pre">add_triangle_grid()</span></code></a>.</p>
+</div>
+<div class="section" id="hexagonal-grid">
+<span id="hexgrid"></span><h2>Hexagonal grid<a class="headerlink" href="#hexagonal-grid" title="Permalink to this headline">¶</a></h2>
+<p>Builds a structured regular hexagonal mesh in hexagonal or rectangular area (see figure below).</p>
+<div class="figure" id="id1">
+<a class="reference internal image-reference" href="_images/proto_hex1.png"><img alt="_images/proto_hex1.png" src="_images/proto_hex1.png" style="width: 500px;" /></a>
+<p class="caption"><span class="caption-text">Regular hexagonal mesh in hexagonal and rectangle areas</span></p>
+</div>
+<p>User defines hexagonal cell radius and area size.
+In case of hexagonal area user passes center of the area and its radius.
+In case of rectangular area two corner points of rectangle should be assigned.
+The algorithm of sizes treatment is shown in the figure below.</p>
+<div class="figure" id="id2">
+<a class="reference internal image-reference" href="_images/proto_hex2.png"><img alt="_images/proto_hex2.png" src="_images/proto_hex2.png" style="width: 700px;" /></a>
+<p class="caption"><span class="caption-text">Regular hexagonal mesh area sizes</span></p>
+</div>
+<p>A special <strong>strict</strong> option defines whether program should
+stretch a grid to inscribe it into a user area.
+Using nomenclature given in the above picture this would guarantee
+<div class="system-message">
+<p class="system-message-title">System Message: WARNING/2 (<tt class="docutils">R^r = R^u</tt>)</p>
+latex exited with error
+[stdout]
+This is pdfTeX, Version 3.1415926-2.5-1.40.14 (TeX Live 2013/TeX Live for SUSE Linux)
+ restricted \write18 enabled.
+entering extended mode
+(./math.tex
+LaTeX2e &lt;2011/06/27&gt;
+Babel &lt;3.9f&gt; and hyphenation patterns for 78 languages loaded.
+(/usr/share/texmf/tex/latex/base/article.cls
+Document Class: article 2007/10/19 v1.4h Standard LaTeX document class
+(/usr/share/texmf/tex/latex/base/size12.clo))
+(/usr/share/texmf/tex/latex/base/inputenc.sty
+(/usr/share/texmf/tex/latex/ucs/utf8x.def))
+(/usr/share/texmf/tex/latex/ucs/ucs.sty
+(/usr/share/texmf/tex/latex/ucs/data/uni-global.def))
+(/usr/share/texmf/tex/latex/amsmath/amsmath.sty
+For additional information on amsmath, use the `?&#8217; option.
+(/usr/share/texmf/tex/latex/amsmath/amstext.sty
+(/usr/share/texmf/tex/latex/amsmath/amsgen.sty))
+(/usr/share/texmf/tex/latex/amsmath/amsbsy.sty)
+(/usr/share/texmf/tex/latex/amsmath/amsopn.sty))
+(/usr/share/texmf/tex/latex/amscls/amsthm.sty)
+(/usr/share/texmf/tex/latex/amsfonts/amssymb.sty
+(/usr/share/texmf/tex/latex/amsfonts/amsfonts.sty))
+
+! LaTeX Error: File `anyfontsize.sty&#8217; not found.
+
+Type X to quit or &lt;RETURN&gt; to proceed,
+or enter new name. (Default extension: sty)
+
+Enter file name: 
+! Emergency stop.
+&lt;read *&gt; 
+         
+l.9 \usepackage
+               {bm}^^M
+No pages of output.
+Transcript written on math.log.
+</div>
+ for hexagonal area and <div class="system-message">
+<p class="system-message-title">System Message: WARNING/2 (<tt class="docutils">H_x^r = H_x^u</tt>)</p>
+latex exited with error
+[stdout]
+This is pdfTeX, Version 3.1415926-2.5-1.40.14 (TeX Live 2013/TeX Live for SUSE Linux)
+ restricted \write18 enabled.
+entering extended mode
+(./math.tex
+LaTeX2e &lt;2011/06/27&gt;
+Babel &lt;3.9f&gt; and hyphenation patterns for 78 languages loaded.
+(/usr/share/texmf/tex/latex/base/article.cls
+Document Class: article 2007/10/19 v1.4h Standard LaTeX document class
+(/usr/share/texmf/tex/latex/base/size12.clo))
+(/usr/share/texmf/tex/latex/base/inputenc.sty
+(/usr/share/texmf/tex/latex/ucs/utf8x.def))
+(/usr/share/texmf/tex/latex/ucs/ucs.sty
+(/usr/share/texmf/tex/latex/ucs/data/uni-global.def))
+(/usr/share/texmf/tex/latex/amsmath/amsmath.sty
+For additional information on amsmath, use the `?&#8217; option.
+(/usr/share/texmf/tex/latex/amsmath/amstext.sty
+(/usr/share/texmf/tex/latex/amsmath/amsgen.sty))
+(/usr/share/texmf/tex/latex/amsmath/amsbsy.sty)
+(/usr/share/texmf/tex/latex/amsmath/amsopn.sty))
+(/usr/share/texmf/tex/latex/amscls/amsthm.sty)
+(/usr/share/texmf/tex/latex/amsfonts/amssymb.sty
+(/usr/share/texmf/tex/latex/amsfonts/amsfonts.sty))
+
+! LaTeX Error: File `anyfontsize.sty&#8217; not found.
+
+Type X to quit or &lt;RETURN&gt; to proceed,
+or enter new name. (Default extension: sty)
+
+Enter file name: 
+! Emergency stop.
+&lt;read *&gt; 
+         
+l.9 \usepackage
+               {bm}^^M
+No pages of output.
+Transcript written on math.log.
+</div>
+,
+<div class="system-message">
+<p class="system-message-title">System Message: WARNING/2 (<tt class="docutils">H_y^r = H_y^u</tt>)</p>
+latex exited with error
+[stdout]
+This is pdfTeX, Version 3.1415926-2.5-1.40.14 (TeX Live 2013/TeX Live for SUSE Linux)
+ restricted \write18 enabled.
+entering extended mode
+(./math.tex
+LaTeX2e &lt;2011/06/27&gt;
+Babel &lt;3.9f&gt; and hyphenation patterns for 78 languages loaded.
+(/usr/share/texmf/tex/latex/base/article.cls
+Document Class: article 2007/10/19 v1.4h Standard LaTeX document class
+(/usr/share/texmf/tex/latex/base/size12.clo))
+(/usr/share/texmf/tex/latex/base/inputenc.sty
+(/usr/share/texmf/tex/latex/ucs/utf8x.def))
+(/usr/share/texmf/tex/latex/ucs/ucs.sty
+(/usr/share/texmf/tex/latex/ucs/data/uni-global.def))
+(/usr/share/texmf/tex/latex/amsmath/amsmath.sty
+For additional information on amsmath, use the `?&#8217; option.
+(/usr/share/texmf/tex/latex/amsmath/amstext.sty
+(/usr/share/texmf/tex/latex/amsmath/amsgen.sty))
+(/usr/share/texmf/tex/latex/amsmath/amsbsy.sty)
+(/usr/share/texmf/tex/latex/amsmath/amsopn.sty))
+(/usr/share/texmf/tex/latex/amscls/amsthm.sty)
+(/usr/share/texmf/tex/latex/amsfonts/amssymb.sty
+(/usr/share/texmf/tex/latex/amsfonts/amsfonts.sty))
+
+! LaTeX Error: File `anyfontsize.sty&#8217; not found.
+
+Type X to quit or &lt;RETURN&gt; to proceed,
+or enter new name. (Default extension: sty)
+
+Enter file name: 
+! Emergency stop.
+&lt;read *&gt; 
+         
+l.9 \usepackage
+               {bm}^^M
+No pages of output.
+Transcript written on math.log.
+</div>
+ for rectangular area. In the latter case
+this would most likely make grid cells non-regular (slightly stretched in x or y direction).
+But this procedure could be a handy tool to prepare this grid
+for clipping with user rectangle. With such stretch all boundary cells
+will be cut through their middle axis (see figure below).</p>
+<div class="figure" id="id3">
+<a class="reference internal image-reference" href="_images/proto_hex3.png"><img alt="_images/proto_hex3.png" src="_images/proto_hex3.png" style="width: 500px;" /></a>
+<p class="caption"><span class="caption-text">Clipped hexagonal mesh built in rectangle area with different <strong>strict</strong> settings.</span></p>
+</div>
+<p>Python interface function: <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.add_unf_hex_grid" title="hybmeshpack.hmscript.add_unf_hex_grid"><code class="xref py py-func docutils literal"><span class="pre">add_unf_hex_grid()</span></code></a>.</p>
+</div>
+<div class="section" id="square-in-circle">
+<span id="circrect-grid"></span><h2>Square in Circle<a class="headerlink" href="#square-in-circle" title="Permalink to this headline">¶</a></h2>
+<p>This creates a quadrangular cell grid in a circular area in such a way that
+the resulting grid contains uniform square grid in the center of defined
+area which is extended by a ring-like grid towards the outer circular boundary as
+it is shown in the figure below.</p>
+<div class="figure" id="id4">
+<a class="reference internal image-reference" href="_images/proto_circrect.png"><img alt="_images/proto_circrect.png" src="_images/proto_circrect.png" style="width: 600px;" /></a>
+<p class="caption"><span class="caption-text">Square in circle grids built with different options</span></p>
+</div>
+<p>Geometry of the circular area is defined by the center point and radius.
+Partition is calculated using the approximate size of outer boundary step
+passed by user. Since the grid in the ring part of the area is built in a
+<div class="system-message">
+<p class="system-message-title">System Message: WARNING/2 (<tt class="docutils">\pi/4</tt>)</p>
+latex exited with error
+[stdout]
+This is pdfTeX, Version 3.1415926-2.5-1.40.14 (TeX Live 2013/TeX Live for SUSE Linux)
+ restricted \write18 enabled.
+entering extended mode
+(./math.tex
+LaTeX2e &lt;2011/06/27&gt;
+Babel &lt;3.9f&gt; and hyphenation patterns for 78 languages loaded.
+(/usr/share/texmf/tex/latex/base/article.cls
+Document Class: article 2007/10/19 v1.4h Standard LaTeX document class
+(/usr/share/texmf/tex/latex/base/size12.clo))
+(/usr/share/texmf/tex/latex/base/inputenc.sty
+(/usr/share/texmf/tex/latex/ucs/utf8x.def))
+(/usr/share/texmf/tex/latex/ucs/ucs.sty
+(/usr/share/texmf/tex/latex/ucs/data/uni-global.def))
+(/usr/share/texmf/tex/latex/amsmath/amsmath.sty
+For additional information on amsmath, use the `?&#8217; option.
+(/usr/share/texmf/tex/latex/amsmath/amstext.sty
+(/usr/share/texmf/tex/latex/amsmath/amsgen.sty))
+(/usr/share/texmf/tex/latex/amsmath/amsbsy.sty)
+(/usr/share/texmf/tex/latex/amsmath/amsopn.sty))
+(/usr/share/texmf/tex/latex/amscls/amsthm.sty)
+(/usr/share/texmf/tex/latex/amsfonts/amssymb.sty
+(/usr/share/texmf/tex/latex/amsfonts/amsfonts.sty))
+
+! LaTeX Error: File `anyfontsize.sty&#8217; not found.
+
+Type X to quit or &lt;RETURN&gt; to proceed,
+or enter new name. (Default extension: sty)
+
+Enter file name: 
+! Emergency stop.
+&lt;read *&gt; 
+         
+l.9 \usepackage
+               {bm}^^M
+No pages of output.
+Transcript written on math.log.
+</div>
+ sector, resulting number of steps along outer boundary will be divisible
+by 8.</p>
+<p>Size of the inner square is defined by a parameter <em>a</em> equals the ratio
+of circle radius to square side length. Its default value is unity and, apparently, it can not be greater than <div class="system-message">
+<p class="system-message-title">System Message: WARNING/2 (<tt class="docutils">\sqrt2</tt>)</p>
+latex exited with error
+[stdout]
+This is pdfTeX, Version 3.1415926-2.5-1.40.14 (TeX Live 2013/TeX Live for SUSE Linux)
+ restricted \write18 enabled.
+entering extended mode
+(./math.tex
+LaTeX2e &lt;2011/06/27&gt;
+Babel &lt;3.9f&gt; and hyphenation patterns for 78 languages loaded.
+(/usr/share/texmf/tex/latex/base/article.cls
+Document Class: article 2007/10/19 v1.4h Standard LaTeX document class
+(/usr/share/texmf/tex/latex/base/size12.clo))
+(/usr/share/texmf/tex/latex/base/inputenc.sty
+(/usr/share/texmf/tex/latex/ucs/utf8x.def))
+(/usr/share/texmf/tex/latex/ucs/ucs.sty
+(/usr/share/texmf/tex/latex/ucs/data/uni-global.def))
+(/usr/share/texmf/tex/latex/amsmath/amsmath.sty
+For additional information on amsmath, use the `?&#8217; option.
+(/usr/share/texmf/tex/latex/amsmath/amstext.sty
+(/usr/share/texmf/tex/latex/amsmath/amsgen.sty))
+(/usr/share/texmf/tex/latex/amsmath/amsbsy.sty)
+(/usr/share/texmf/tex/latex/amsmath/amsopn.sty))
+(/usr/share/texmf/tex/latex/amscls/amsthm.sty)
+(/usr/share/texmf/tex/latex/amsfonts/amssymb.sty
+(/usr/share/texmf/tex/latex/amsfonts/amsfonts.sty))
+
+! LaTeX Error: File `anyfontsize.sty&#8217; not found.
+
+Type X to quit or &lt;RETURN&gt; to proceed,
+or enter new name. (Default extension: sty)
+
+Enter file name: 
+! Emergency stop.
+&lt;read *&gt; 
+         
+l.9 \usepackage
+               {bm}^^M
+No pages of output.
+Transcript written on math.log.
+</div>
+.</p>
+<p>Additionally user can define refinement coefficient for the ring grid in a radius direction.
+This coefficient approximately equals the ratio of the first
+step in a radial direction at <div class="system-message">
+<p class="system-message-title">System Message: WARNING/2 (<tt class="docutils">\pi/4</tt>)</p>
+latex exited with error
+[stdout]
+This is pdfTeX, Version 3.1415926-2.5-1.40.14 (TeX Live 2013/TeX Live for SUSE Linux)
+ restricted \write18 enabled.
+entering extended mode
+(./math.tex
+LaTeX2e &lt;2011/06/27&gt;
+Babel &lt;3.9f&gt; and hyphenation patterns for 78 languages loaded.
+(/usr/share/texmf/tex/latex/base/article.cls
+Document Class: article 2007/10/19 v1.4h Standard LaTeX document class
+(/usr/share/texmf/tex/latex/base/size12.clo))
+(/usr/share/texmf/tex/latex/base/inputenc.sty
+(/usr/share/texmf/tex/latex/ucs/utf8x.def))
+(/usr/share/texmf/tex/latex/ucs/ucs.sty
+(/usr/share/texmf/tex/latex/ucs/data/uni-global.def))
+(/usr/share/texmf/tex/latex/amsmath/amsmath.sty
+For additional information on amsmath, use the `?&#8217; option.
+(/usr/share/texmf/tex/latex/amsmath/amstext.sty
+(/usr/share/texmf/tex/latex/amsmath/amsgen.sty))
+(/usr/share/texmf/tex/latex/amsmath/amsbsy.sty)
+(/usr/share/texmf/tex/latex/amsmath/amsopn.sty))
+(/usr/share/texmf/tex/latex/amscls/amsthm.sty)
+(/usr/share/texmf/tex/latex/amsfonts/amssymb.sty
+(/usr/share/texmf/tex/latex/amsfonts/amsfonts.sty))
+
+! LaTeX Error: File `anyfontsize.sty&#8217; not found.
+
+Type X to quit or &lt;RETURN&gt; to proceed,
+or enter new name. (Default extension: sty)
+
+Enter file name: 
+! Emergency stop.
+&lt;read *&gt; 
+         
+l.9 \usepackage
+               {bm}^^M
+No pages of output.
+Transcript written on math.log.
+</div>
+ to the outer boundary step. Values less than
+unity lead to a refinement towards the outer boundary.</p>
+<p>Four algorithms of building ring part of the grid are implemented:</p>
+<ul class="simple">
+<li><strong>Linear algorithm</strong>. Radial lines are created by linear connection of corresponding points on outer an inner segments.
+Then these lines are divided keeping constant reference weights of each step.</li>
+<li><strong>Laplace algorithm</strong>. An algebraic mapping from a uniform square grid to the sector area is built in such a way
+that each boundary sector vertex be mapped to a uniform square boundary vertex.</li>
+<li><strong>Orthogonal with uniform rectangle grid</strong>. An orthogonal mapping from a rectangle to the sector area is built.
+Arc grid lines are built starting from the predefined vertices of the shortest radius line.
+Radial grid lines start from the predefined square sides vertices.</li>
+<li><strong>Orthogonal with uniform circular grid</strong>. The same as the previous but radial lines start
+from outer circle vertices.</li>
+</ul>
+<p>The first, second and third algorithms give uniform grid within inner square;
+the first, second and forth - uniform outer circle partition.
+Only last two algorithms build an orthogonal grid.</p>
+<p>Python interface function: <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.add_circ_rect_grid" title="hybmeshpack.hmscript.add_circ_rect_grid"><code class="xref py py-func docutils literal"><span class="pre">add_circ_rect_grid()</span></code></a>.</p>
+</div>
+<div class="section" id="custom-rectangle-grid">
+<span id="custom-rect-grid"></span><h2>Custom Rectangle Grid<a class="headerlink" href="#custom-rectangle-grid" title="Permalink to this headline">¶</a></h2>
+<p>Builds a structured quadrangle grid within an area bounded by four curvilinear sides.</p>
+<p>For the sake of clarity let us denote four basic contours as <em>left</em>, <em>bottom</em>, <em>right</em>, and <em>top</em>.
+This nomenclature is conventional, it doesn&#8217;t reflect real geometrical position but only the fact that horizontal grid lines
+will connect vertices from <em>left</em> and <em>right</em> contour and vertical lines - vertices from <em>bottom</em> and
+<em>top</em> contours. Boundary vertices of resulting grid will equal input contour vertices, hence
+number of cells in resulting grid is defined by the partition of passed contour.</p>
+<p>There is no need to exactly connect contours before passing &#8216;em to grid constructor.
+The direction of passed contours also doesn&#8217;t matter. The program will try to translate
+and stretch contours to build a closed domain with minimum translation distance possible. The order of input
+contour transformations is:</p>
+<ol class="arabic simple">
+<li>place the <em>left</em> contour as it is;</li>
+<li>connect the <em>bottom</em> contour with the <em>left</em> contour bottom point;</li>
+<li>connect the <em>top</em> contour with the <em>left</em> contour top point;</li>
+<li>connect the <em>right</em> contour with the <em>bottom</em> contour right point;</li>
+<li>stretch the <em>right</em> contour so its upper point fits <em>top</em> contour right point.</li>
+</ol>
+<p>As a result of these modifications</p>
+<ul class="simple">
+<li>for the contour passed as <em>left</em> both position and shape are preserved,</li>
+<li>for the <em>top</em> and <em>bottom</em> contours shape is preserved,</li>
+<li>for the <em>right</em> both position and shape could be changed.</li>
+</ul>
+<p>The definition of <em>right</em> and/or <em>top</em> contours could be omitted. If so then the <em>right</em>/<em>top</em> contour will be built
+by parallel translation of the <em>left</em>/<em>bottom</em> one. The resulting domains built by different input contours are shown
+in figure below.</p>
+<div class="figure" id="id5">
+<a class="reference internal image-reference" href="_images/proto_custom_rect1.png"><img alt="_images/proto_custom_rect1.png" src="_images/proto_custom_rect1.png" style="width: 600px;" /></a>
+<p class="caption"><span class="caption-text">Assembling closed domain based on not connected base contours</span></p>
+</div>
+<p>Boundary features of resulting grid are inherited from the boundary features of input contours.</p>
+<p>Six algorithms of building internal grid nodes are implemented. Examples of grids built
+using different algorithms is shown in figure below.</p>
+<div class="figure" id="id6">
+<a class="reference internal image-reference" href="_images/proto_custom_rect2.png"><img alt="_images/proto_custom_rect2.png" src="_images/proto_custom_rect2.png" style="width: 600px;" /></a>
+<p class="caption"><span class="caption-text">Custom rectangular grids built using different algorithms.
+Passed contours vertices are shown by magenta marks.</span></p>
+</div>
+<p><strong>Linear algorithm</strong>. Corresponding vertices from opposite contours are connected by
+straight lines and grid cells are built on intersection points. This is
+the fastest algorithm although it doesn&#8217;t provide smoothing near the curvilinear
+edges, hence it should be used only if input contours are straight lines.</p>
+<p><strong>Linear transfinite interpolation (TFI).</strong> An algebraic mapping which
+uses boolean sum of linear weighted transformations built between opposite contours.</p>
+<p><strong>Hermite transfinite interpolation.</strong> The same as previous but
+weighted transformations between opposite contours are built
+using cubic polynomials providing perpendicular grid lines.
+For this algorithm user has to
+define perpendicularity coefficients for each given contour.
+The greater this coefficient the further the influence of
+corresponding contour propagates inward the domain. The effect
+of this coefficient is illustrated in figure below.
+Note that the resulting grid will not be orthogonal but
+only close to it.</p>
+<div class="figure" id="id7">
+<a class="reference internal image-reference" href="_images/proto_custom_rect3.png"><img alt="_images/proto_custom_rect3.png" src="_images/proto_custom_rect3.png" style="width: 500px;" /></a>
+<p class="caption"><span class="caption-text">Hermite interpolation with different perpendicularity coefficients <em>w</em>
+for bottom boundary. Coefficients for left, right and top segments
+were set to zero.</span></p>
+</div>
+<p><strong>Direct/Inverse Laplace algorithm</strong>. Mapping from
+unit square to input domain is built using the <em>direct</em> or <em>inverse laplace</em> algorithm.
+To build a grid line (horizontal or vertical) first its start points are defined
+in physical domain, then these points are translated into unit domain where they
+are connected by a straight line which is finally mapped back to the physical domain.
+Explanation of algebraic mapping building, difference between <em>direct</em> and <em>inverse</em>
+algorithms and their limitations can be found in <a class="reference internal" href="functionality.html#laplace-map-algo"><span class="std std-ref">Algorithms</span></a>.
+Since unit square is used as a <em>base domain</em> then the <em>inverse</em> algorithm always gives
+valid results whereas the <em>direct</em> may fail due to grid self-intersections.</p>
+<p><strong>Orthogonal algorithm</strong>. This method builds an orthogonal mapping from
+input domain to the unit square based on a solution of Laplace equation with mixed boundary conditions.
+To build a vertical line first
+a start point in physical area is defined by a vertex of the <em>bottom</em> contour.
+Then this point is translated into the unit domain from which a strictly vertical
+line is built and mapped back into the physical area. Horizontal grid lines
+built in the similar way starting from vertices of the <em>left</em> contour.
+The resulting grid is guaranteed to be orthogonal disregarding the grid edges straightening.</p>
+<p>Linear, tfi and Laplace algorithms demand equal partition of opposite contours.
+Orthogonal algorithm completely ignores partition of <em>right</em> and <em>top</em> contours.</p>
+<p>Python interface function: <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.add_custom_rect_grid" title="hybmeshpack.hmscript.add_custom_rect_grid"><code class="xref py py-func docutils literal"><span class="pre">add_custom_rect_grid()</span></code></a>.</p>
+</div>
+<div class="section" id="boundary-grids">
+<span id="bgrids"></span><h2>Boundary Grids<a class="headerlink" href="#boundary-grids" title="Permalink to this headline">¶</a></h2>
+<p>TODO</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Grid Prototypes</a><ul>
+<li><a class="reference internal" href="#rectangle-grid">Rectangle Grid</a></li>
+<li><a class="reference internal" href="#radial-grid">Radial Grid</a></li>
+<li><a class="reference internal" href="#ring-grid">Ring Grid</a></li>
+<li><a class="reference internal" href="#triangle-grid">Triangle Grid</a></li>
+<li><a class="reference internal" href="#hexagonal-grid">Hexagonal grid</a></li>
+<li><a class="reference internal" href="#square-in-circle">Square in Circle</a></li>
+<li><a class="reference internal" href="#custom-rectangle-grid">Custom Rectangle Grid</a></li>
+<li><a class="reference internal" href="#boundary-grids">Boundary Grids</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="functionality.html"
+                        title="previous chapter">Functionality</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="pyinterface.html"
+                        title="next chapter">Python Script Interface</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/prototypes.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="pyinterface.html" title="Python Script Interface"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="functionality.html" title="Functionality"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">HybMesh 0.5.0 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, KalininEI.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.3.
+    </div>
+  </body>
+</html>

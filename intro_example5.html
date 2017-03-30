@@ -1,0 +1,247 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Example 5 &#8212; HybMesh 0.5.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.5.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Example 6" href="intro_example6.html" />
+    <link rel="prev" title="Example 4" href="intro_example4.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="intro_example6.html" title="Example 6"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="intro_example4.html" title="Example 4"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">HybMesh 0.5.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="pyinterface.html" accesskey="U">Python Script Interface</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="example-5">
+<span id="example5"></span><h1>Example 5<a class="headerlink" href="#example-5" title="Permalink to this headline">¶</a></h1>
+<div class="line-block">
+<div class="line">3D grid around an airfoil with circular vortex generator is
+built by extrusion of 2D grid in z direction.</div>
+<div class="line">Airfoil data is loaded from external file (<a class="reference internal" href="examples_include_files.html#naca4415-airfoil"><span class="std std-ref">NACA 4415</span></a>).</div>
+<div class="line">Resulting grid is saved to fluent *.msh format with
+periodical merging of top-bottom and right-left surfaces.</div>
+</div>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/picintro11.png"><img alt="_images/picintro11.png" src="_images/picintro11.png" style="width: 700px;" /></a>
+</div>
+<p>Resulting 3D grid</p>
+<hr class="docutils" />
+<div class="figure">
+<a class="reference internal image-reference" href="_images/picintro9.png"><img alt="_images/picintro9.png" src="_images/picintro9.png" style="width: 700px;" /></a>
+</div>
+<p>2D grid</p>
+<hr class="docutils" />
+<div class="figure">
+<a class="reference internal image-reference" href="_images/picintro10.png"><img alt="_images/picintro10.png" src="_images/picintro10.png" style="width: 700px;" /></a>
+</div>
+<p>2D grid in detail</p>
+<hr class="docutils" />
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">hybmeshpack</span> <span class="k">import</span> <span class="n">hmscript</span> <span class="k">as</span> <span class="n">hm</span>
+<span class="n">hm</span><span class="o">.</span><span class="n">check_compatibility</span><span class="p">(</span><span class="s2">&quot;0.5.0&quot;</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+
+<span class="c1"># === register boundary types</span>
+<span class="k">global</span> <span class="n">bfoil</span><span class="p">,</span> <span class="n">bcirc</span><span class="p">,</span> <span class="n">binp</span><span class="p">,</span> <span class="n">bout</span><span class="p">,</span> <span class="n">bleft</span><span class="p">,</span> <span class="n">bright</span><span class="p">,</span> <span class="n">btop</span><span class="p">,</span> <span class="n">bbot</span>
+<span class="n">bfoil</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">add_boundary_type</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;foil&quot;</span><span class="p">)</span>
+<span class="n">bcirc</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">add_boundary_type</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;vortex-generator&quot;</span><span class="p">)</span>
+<span class="n">binp</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">add_boundary_type</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="s2">&quot;input&quot;</span><span class="p">)</span>
+<span class="n">bout</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">add_boundary_type</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="s2">&quot;output&quot;</span><span class="p">)</span>
+<span class="n">bleft</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">add_boundary_type</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="s2">&quot;left&quot;</span><span class="p">)</span>
+<span class="n">bright</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">add_boundary_type</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="s2">&quot;right&quot;</span><span class="p">)</span>
+<span class="n">btop</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">add_boundary_type</span><span class="p">(</span><span class="mi">7</span><span class="p">,</span> <span class="s2">&quot;top&quot;</span><span class="p">)</span>
+<span class="n">bbot</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">add_boundary_type</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="s2">&quot;bottom&quot;</span><span class="p">)</span>
+
+<span class="c1"># load 2d airfoil coordinates from external file</span>
+<span class="c1"># to xy float array as [ [x0, y0], [x1, y1], ..... ]</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;../external_files/naca4415.dat&#39;</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">())</span>
+    <span class="n">it</span> <span class="o">=</span> <span class="nb">iter</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+    <span class="n">xy</span> <span class="o">=</span> <span class="p">[[</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">it</span><span class="p">,</span> <span class="n">it</span><span class="p">)]</span>
+
+<span class="c1"># build a contour from read points.</span>
+<span class="c1"># xy[0] = xy[-1] hence resulting contour will be closed.</span>
+<span class="c1"># Otherwise we&#39;d have to call xy.append(xy[0][:]) manually.</span>
+<span class="n">foil</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">create_contour</span><span class="p">(</span><span class="n">xy</span><span class="p">,</span> <span class="n">bfoil</span><span class="p">)</span>
+
+<span class="c1"># rotate at 10 degrees</span>
+<span class="n">hm</span><span class="o">.</span><span class="n">rotate_geom</span><span class="p">(</span><span class="n">foil</span><span class="p">,</span> <span class="o">-</span><span class="mi">10</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+
+<span class="c1"># === build substrate grid</span>
+<span class="c1"># Here we need a rectangular grid with refinement at foil location.</span>
+<span class="c1"># First we create two list of doubles defining x and y coordinates,</span>
+<span class="n">vert</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">partition_segment</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="p">[</span><span class="o">-</span><span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.03</span><span class="p">,</span> <span class="mf">0.15</span><span class="p">,</span> <span class="mf">0.015</span><span class="p">])</span>
+<span class="n">horiz</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">partition_segment</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="p">[</span><span class="o">-</span><span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.03</span><span class="p">,</span> <span class="mf">1.1</span><span class="p">,</span> <span class="mf">0.03</span><span class="p">])</span>
+<span class="c1"># then build rectangular grid on their basis.</span>
+<span class="n">substrate</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">add_unf_rect_grid</span><span class="p">(</span><span class="n">custom_x</span><span class="o">=</span><span class="n">horiz</span><span class="p">,</span> <span class="n">custom_y</span><span class="o">=</span><span class="n">vert</span><span class="p">)</span>
+
+
+<span class="c1"># boundary types for back grid which will be later translated to 3d grid</span>
+<span class="k">def</span> <span class="nf">_substrate_bfun</span><span class="p">(</span><span class="n">x0</span><span class="p">,</span> <span class="n">y0</span><span class="p">,</span> <span class="n">x1</span><span class="p">,</span> <span class="n">y1</span><span class="p">,</span> <span class="n">bt</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">x0</span> <span class="o">-</span> <span class="n">x1</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">1e-12</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">binp</span> <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">x0</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">1e-12</span> <span class="k">else</span> <span class="n">bout</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">bbot</span> <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">y0</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">1e-12</span> <span class="k">else</span> <span class="n">btop</span>
+
+
+<span class="n">hm</span><span class="o">.</span><span class="n">set_boundary_type</span><span class="p">(</span><span class="n">substrate</span><span class="p">,</span> <span class="n">bfun</span><span class="o">=</span><span class="n">_substrate_bfun</span><span class="p">)</span>
+<span class="n">hm</span><span class="o">.</span><span class="n">export_grid_vtk</span><span class="p">(</span><span class="n">substrate</span><span class="p">,</span> <span class="s2">&quot;substrate.vtk&quot;</span><span class="p">)</span>
+
+<span class="c1"># === build boundary grid around the foil</span>
+<span class="c1"># First we make custom repartition of the foil to use</span>
+<span class="c1"># all contour vertices for boundary grid.</span>
+<span class="c1"># Assign recommended partition distance to points on foil contour:</span>
+<span class="n">foilpart</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="mf">0.01</span><span class="p">,</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span>     <span class="c1"># frontal point</span>
+    <span class="mf">0.03</span><span class="p">,</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.17</span><span class="p">],</span>   <span class="c1"># backward point</span>
+    <span class="mf">0.01</span><span class="p">,</span> <span class="p">[</span><span class="mf">0.25</span><span class="p">,</span> <span class="mf">0.64</span><span class="p">],</span>   <span class="c1"># upper boundary below vortex generator (finer)</span>
+    <span class="mf">0.05</span><span class="p">,</span> <span class="p">[</span><span class="mf">0.5</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.17</span><span class="p">],</span>   <span class="c1"># lower boundary (coarser)</span>
+<span class="p">]</span>
+<span class="n">foil</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">partition_contour</span><span class="p">(</span><span class="n">foil</span><span class="p">,</span> <span class="s2">&quot;ref_points&quot;</span><span class="p">,</span> <span class="n">foilpart</span><span class="p">)</span>
+
+<span class="c1"># create boundary grid around foil using contour partition</span>
+<span class="c1"># obtained above as a horizontal boundary grid partition</span>
+<span class="n">foilgrid_bo</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">BoundaryGridOptions</span><span class="p">(</span><span class="n">foil</span><span class="p">,</span> <span class="n">direction</span><span class="o">=</span><span class="s2">&quot;right&quot;</span><span class="p">,</span>
+                                     <span class="n">bnd_stepping</span><span class="o">=</span><span class="s2">&quot;no&quot;</span><span class="p">)</span>
+<span class="n">foilgrid_bo</span><span class="o">.</span><span class="n">incremental_partition</span><span class="p">(</span><span class="mf">0.002</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">,</span> <span class="mi">7</span><span class="p">)</span>
+<span class="n">foilgrid</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">build_boundary_grid</span><span class="p">(</span><span class="n">foilgrid_bo</span><span class="p">)</span>
+
+
+<span class="c1"># === boundary grid around vortex generator</span>
+<span class="n">vgen</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">add_circ_contour</span><span class="p">([</span><span class="mf">0.25</span><span class="p">,</span> <span class="mf">0.12</span><span class="p">],</span> <span class="mf">0.015</span><span class="p">,</span> <span class="mi">32</span><span class="p">,</span> <span class="n">bcirc</span><span class="p">)</span>
+<span class="c1"># build boundary grid</span>
+<span class="n">vgen_bo</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">BoundaryGridOptions</span><span class="p">(</span><span class="n">vgen</span><span class="p">,</span> <span class="n">direction</span><span class="o">=</span><span class="s2">&quot;right&quot;</span><span class="p">,</span>
+                                 <span class="n">bnd_step</span><span class="o">=</span><span class="mf">0.006</span><span class="p">,</span> <span class="n">bnd_stepping</span><span class="o">=</span><span class="s2">&quot;const&quot;</span><span class="p">)</span>
+<span class="n">vgen_bo</span><span class="o">.</span><span class="n">incremental_partition</span><span class="p">(</span><span class="mf">0.002</span><span class="p">,</span> <span class="mf">1.2</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+<span class="n">vgengrid</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">build_boundary_grid</span><span class="p">(</span><span class="n">vgen_bo</span><span class="p">)</span>
+<span class="n">hm</span><span class="o">.</span><span class="n">heal_grid</span><span class="p">(</span><span class="n">vgengrid</span><span class="p">)</span>  <span class="c1"># get rid of hanging boundary nodes</span>
+
+<span class="c1"># === union</span>
+<span class="n">res2d</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">unite_grids</span><span class="p">(</span><span class="n">substrate</span><span class="p">,</span> <span class="p">[(</span><span class="n">foilgrid</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">),</span> <span class="p">(</span><span class="n">vgengrid</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">)],</span> <span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># === wake region</span>
+<span class="c1"># mesh resolution in the wake region of vortex generator is not fine enough.</span>
+<span class="c1"># So we apply a patch grid to this region.</span>
+<span class="n">vgen_wakegrid</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">add_unf_rect_grid</span><span class="p">([</span><span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.09</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.15</span><span class="p">],</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">7</span><span class="p">)</span>
+<span class="n">res2d</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">unite_grids</span><span class="p">(</span><span class="n">res2d</span><span class="p">,</span> <span class="p">[(</span><span class="n">vgen_wakegrid</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">)],</span> <span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># check if final 2d is fine and stop script if there are bad cells</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="n">hm</span><span class="o">.</span><span class="n">skewness</span><span class="p">(</span><span class="n">res2d</span><span class="p">)[</span><span class="s1">&#39;ok&#39;</span><span class="p">]:</span>
+    <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;2d grid contains highly skewed cells&quot;</span><span class="p">)</span>
+
+<span class="c1"># === 3d grid</span>
+<span class="c1"># Since we intend to set periodic conditions on z-faces there is no</span>
+<span class="c1"># need to refine grid towards them. So we use uniform grid in z direction</span>
+<span class="n">zmin</span><span class="p">,</span> <span class="n">zmax</span><span class="p">,</span> <span class="n">nz</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mi">20</span>
+<span class="n">z_grid</span> <span class="o">=</span> <span class="p">[</span><span class="n">zmin</span> <span class="o">+</span> <span class="n">i</span> <span class="o">*</span> <span class="p">(</span><span class="n">zmax</span> <span class="o">-</span> <span class="n">zmin</span><span class="p">)</span> <span class="o">/</span> <span class="n">nz</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nz</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)]</span>
+<span class="n">res3d</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">extrude_grid</span><span class="p">(</span><span class="n">res2d</span><span class="p">,</span> <span class="n">z_grid</span><span class="p">,</span> <span class="n">bleft</span><span class="p">,</span> <span class="n">bright</span><span class="p">)</span>
+
+<span class="c1"># now we export this grid to fluent msh format keeping periodic conditions</span>
+<span class="c1"># on left/right and top/bottom surface pairs</span>
+<span class="n">hm</span><span class="o">.</span><span class="n">export3d_grid_msh</span><span class="p">(</span>
+    <span class="n">res3d</span><span class="p">,</span> <span class="s2">&quot;res3d.msh&quot;</span><span class="p">,</span>
+    <span class="n">periodic_pairs</span><span class="o">=</span><span class="p">[</span><span class="n">bleft</span><span class="p">,</span> <span class="n">bright</span><span class="p">,</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+                    <span class="n">btop</span><span class="p">,</span> <span class="n">bbot</span><span class="p">,</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">]])</span>
+</pre></div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="intro_example4.html"
+                        title="previous chapter">Example 4</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="intro_example6.html"
+                        title="next chapter">Example 6</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/intro_example5.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="intro_example6.html" title="Example 6"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="intro_example4.html" title="Example 4"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">HybMesh 0.5.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="pyinterface.html" >Python Script Interface</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, KalininEI.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.3.
+    </div>
+  </body>
+</html>

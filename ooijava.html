@@ -1,0 +1,914 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Java Bindings for HybMesh &#8212; HybMesh 0.5.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.5.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Matlab Bindings for HybMesh" href="ooimatlab.html" />
+    <link rel="prev" title="C++ Bindings for HybMesh" href="ooicpp.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="ooimatlab.html" title="Matlab Bindings for HybMesh"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="ooicpp.html" title="C++ Bindings for HybMesh"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">HybMesh 0.5.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="oointerface.html" accesskey="U">High-Level Programming Interfaces</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="java-bindings-for-hybmesh">
+<h1>Java Bindings for HybMesh<a class="headerlink" href="#java-bindings-for-hybmesh" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="usage">
+<h2>Usage<a class="headerlink" href="#usage" title="Permalink to this headline">¶</a></h2>
+<p>Java wrapper consists of <code class="docutils literal"><span class="pre">Hybmesh.java</span></code> source file
+and <code class="docutils literal"><span class="pre">core_hmconnection_java</span></code> library.
+To compile it you need Java7 (or higher) development kit.
+Source file can be copied to target application source directory.
+There is no mechanism to define location of shared library
+within java code. To make application see that library
+it should be run with <code class="docutils literal"><span class="pre">-Djava.library.path</span></code> flag as</p>
+<div class="highlight-bat"><div class="highlight"><pre><span></span>java -Djava.library.path=directory/containing/core_hmconnection_java Application
+</pre></div>
+</div>
+<p>To set custom path of hybmesh executable assign static property</p>
+<div class="highlight-java"><div class="highlight"><pre><span></span><span class="n">Hybmesh</span><span class="o">.</span><span class="na">hybmesh_exec_path</span> <span class="o">=</span> <span class="s">&quot;directory/containing/hybmesh&quot;</span><span class="o">;</span>
+</pre></div>
+</div>
+<p>before the first use of <strong>Hybmesh</strong> class.</p>
+<p>Besides basic geometrical and exception classes
+Hybmesh superclass also provides 2 additional nested classes defining 2D
+and 3D Point which are used to pass point arguments to hybmesh methods.</p>
+<p>Unfortunately Java lacks default function argument notation
+which is heavily used by Hybmesh design.
+So all arguments should be defined making function calls somewhat bulky.</p>
+<p>Default argument values which are normally used
+by other interfaces are listed in respective javadocs.
+For non-primitive data types (i.e. geometrical objects,
+arrays, strings etc.) arguments with default values can be assigned
+with <code class="docutils literal"><span class="pre">null</span></code>. If so they will be automatically reassigned
+to their default values.</p>
+<p>For example this is a function for importing surface as it is
+defined in <code class="docutils literal"><span class="pre">Hybmesh.java</span></code> file.</p>
+<div class="highlight-java"><div class="highlight"><pre><span></span><span class="cm">/**</span>
+<span class="cm"> * Imports surface from hybmesh native format.</span>
+<span class="cm"> *</span>
+<span class="cm"> * See details in hybmeshpack.hmscript.import3d_surface_hmc().</span>
+<span class="cm"> *</span>
+<span class="cm"> * @param surfname if null then &quot;&quot;</span>
+<span class="cm"> * @param allsurfs default is false</span>
+<span class="cm"> */</span>
+<span class="kd">public</span> <span class="n">Surface3D</span><span class="o">[]</span> <span class="nf">import3DSurfaceHmc</span><span class="o">(</span><span class="n">String</span> <span class="n">fname</span><span class="o">,</span> <span class="n">String</span> <span class="n">surfname</span><span class="o">,</span> <span class="kt">boolean</span> <span class="n">allsurfs</span><span class="o">)</span>
+        <span class="kd">throws</span> <span class="n">Hybmesh</span><span class="o">.</span><span class="na">EUserInterrupt</span><span class="o">,</span> <span class="n">Hybmesh</span><span class="o">.</span><span class="na">ERuntimeError</span><span class="o">{</span>
+    <span class="c1">// ....</span>
+<span class="o">}</span>
+</pre></div>
+</div>
+<p>Here the <strong>fname</strong> argument should be defined by user, <strong>surfname</strong> could be
+assigned with <code class="docutils literal"><span class="pre">null</span></code> (which will lead to default empty string),
+<strong>allsurfs</strong> should be explicitly set to <code class="docutils literal"><span class="pre">false</span></code> to provide default behavior.</p>
+<p><strong>Hybmesh</strong> class implements <em>Autocloseable</em> interface so
+superclass instances can be created within
+try-with-resources block to guarantee
+subprocess exit at its end. Otherwise it won&#8217;t be closed
+until it is captured by garbage collector.</p>
+<div class="highlight-java"><div class="highlight"><pre><span></span><span class="k">try</span> <span class="o">(</span><span class="n">Hybmesh</span> <span class="n">hm</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Hybmesh</span><span class="o">()){</span>
+    <span class="c1">//....</span>
+<span class="o">}</span>
+</pre></div>
+</div>
+<p>For detailed description of all methods consult
+<a class="reference internal" href="oointerface.html#ooifuncref"><span class="std std-ref">python wrapper reference</span></a>
+and embedded javadocs of <code class="docutils literal"><span class="pre">Hybmesh.java</span></code> file.</p>
+</div>
+<div class="section" id="helloworld-example">
+<h2>Helloworld Example<a class="headerlink" href="#helloworld-example" title="Permalink to this headline">¶</a></h2>
+<p>After installation of hybmesh program copy <em>Hybmesh.java</em> and the following
+<em>Test.java</em> into empty directory.</p>
+<div class="literal-block-wrapper docutils container" id="id1">
+<div class="code-block-caption"><span class="caption-text">Test.java</span><a class="headerlink" href="#id1" title="Permalink to this code">¶</a></div>
+<div class="highlight-java"><div class="highlight"><pre><span></span><span class="kd">class</span> <span class="nc">Test</span><span class="o">{</span>
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">Exception</span><span class="o">{</span>
+        <span class="k">try</span> <span class="o">(</span><span class="n">Hybmesh</span> <span class="n">hm</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Hybmesh</span><span class="o">()){</span>
+            <span class="n">Hybmesh</span><span class="o">.</span><span class="na">Grid2D</span> <span class="n">g2</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="na">addUnfRectGrid</span><span class="o">(</span>
+                    <span class="k">new</span> <span class="n">Hybmesh</span><span class="o">.</span><span class="na">Point2</span><span class="o">(</span><span class="mi">0</span><span class="o">,</span> <span class="mi">0</span><span class="o">),</span>
+                    <span class="k">new</span> <span class="n">Hybmesh</span><span class="o">.</span><span class="na">Point2</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">1</span><span class="o">),</span>
+                    <span class="mi">2</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="kc">null</span><span class="o">);</span>
+            <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">printf</span><span class="o">(</span><span class="s">&quot;number of cells: %d\n&quot;</span><span class="o">,</span> <span class="n">g2</span><span class="o">.</span><span class="na">dims</span><span class="o">()[</span><span class="mi">2</span><span class="o">]);</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</pre></div>
+</div>
+</div>
+<p>Open terminal at this directory and execute replacing <em>java.library.path</em> with a correct path and
+using full path to <em>javac</em> if needed</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>&gt;&gt;&gt; javac Test.java Hybmesh.java
+&gt;&gt;&gt; java -Djava.library.path<span class="o">=</span><span class="s2">&quot;C:/Program Files/Hybmesh/include/java&quot;</span> Test
+</pre></div>
+</div>
+</div>
+<div class="section" id="introductory-example">
+<span id="javaintro"></span><h2>Introductory Example<a class="headerlink" href="#introductory-example" title="Permalink to this headline">¶</a></h2>
+<p>This example illustrates the creation of toy GUI
+application which makes <a class="reference internal" href="functionality.html#gridmappings"><span class="std std-ref">mapping</span></a> of regular unit square
+grid into user-defined quadrangle with additional custom mapping points.
+Graphics is written using Java swing library.</p>
+<p>To compile and run this application create a directory
+containing <code class="docutils literal"><span class="pre">App.java</span></code> and <code class="docutils literal"><span class="pre">GridData.java</span></code> files listed below along
+with wrapper <code class="docutils literal"><span class="pre">Hybmesh.java</span></code> source file.
+Then execute following commands (adjusting directory path)</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>javac App.java GridData.java Hybmesh.java
+java -Djava.library.path<span class="o">=</span>/path/to/core_hmconnection_java App
+</pre></div>
+</div>
+<p>Here is the screenshot of the program as it appears in KDE system:</p>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/javaexample.png"><img alt="_images/javaexample.png" src="_images/javaexample.png" style="width: 600px;" /></a>
+</div>
+<p>To define custom mapping points turn on <em>Add refpoints</em> button
+and click on the contours.
+By turning on <em>Move refpoints</em> you can drag defined points
+along contours and move target contour base vertices with the mouse.
+With <em>Remove refpoints</em> click on defined points to delete them.
+Basic grid segmentation is defined in a dialog activated by <em>Basic grid</em> button.
+Grid mapping is performed at <em>Run mapping</em> click.</p>
+<p>All defined points are indexed. The number and order of points
+in basic and target contours should match as this is a requirement
+of Grid mapping algorithm.</p>
+<p>In this application Grid mapping procedure provides creation
+of Progress graphic dialog with cancellation support.</p>
+<p>Program source consists of two files:</p>
+<ul class="simple">
+<li>App.java contains visual interface code,</li>
+<li>GridData.java contains code needed to build and store hybmesh grids.</li>
+</ul>
+<p>Procedure call with graphical callback support is provided
+by <em>App.java.ProgressBarExecutor.execute()</em> static method.</p>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">For illustration and testing purposes callback function of current
+application provides intentional 0.3 second delay which
+is defined in <em>App.java:ProgressBarExecutor.Popup.callback()</em>
+function. It could be safely removed.</p>
+</div>
+<div class="literal-block-wrapper docutils container" id="id2">
+<div class="code-block-caption"><span class="caption-text">App.java</span><a class="headerlink" href="#id2" title="Permalink to this code">¶</a></div>
+<div class="highlight-java"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">java.util.ArrayList</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">javax.swing.*</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">java.beans.*</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">java.awt.*</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">java.awt.event.*</span><span class="o">;</span>
+
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">App</span> <span class="kd">extends</span> <span class="n">JFrame</span> <span class="kd">implements</span> <span class="n">ActionListener</span><span class="o">{</span>
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">long</span> <span class="n">serialVersionUID</span> <span class="o">=</span> <span class="mi">1L</span><span class="o">;</span>
+
+    <span class="c1">// Entry point</span>
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">){</span>
+        <span class="k">try</span><span class="o">{</span> 
+            <span class="n">UIManager</span><span class="o">.</span><span class="na">setLookAndFeel</span><span class="o">(</span><span class="n">UIManager</span><span class="o">.</span><span class="na">getSystemLookAndFeelClassName</span><span class="o">());</span> 
+            <span class="n">javax</span><span class="o">.</span><span class="na">swing</span><span class="o">.</span><span class="na">SwingUtilities</span><span class="o">.</span><span class="na">invokeLater</span><span class="o">(</span><span class="k">new</span> <span class="n">Runnable</span><span class="o">()</span> <span class="o">{</span>
+                <span class="n">GridData</span> <span class="n">gd</span> <span class="o">=</span> <span class="k">new</span> <span class="n">GridData</span><span class="o">();</span>
+                <span class="kd">public</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span> <span class="n">createAndShowGUI</span><span class="o">(</span><span class="n">gd</span><span class="o">);</span> <span class="o">}</span>
+            <span class="o">});</span>
+        <span class="o">}</span> <span class="k">catch</span><span class="o">(</span><span class="n">Exception</span> <span class="n">e</span><span class="o">){</span> 
+            <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span> 
+        <span class="o">}</span> 
+    <span class="o">}</span>
+
+    <span class="n">Drawer</span> <span class="n">tab1</span><span class="o">,</span> <span class="n">tab2</span><span class="o">;</span>
+    <span class="n">GridData</span> <span class="n">gd</span><span class="o">;</span>
+    <span class="n">JToggleButton</span> <span class="n">togAdd</span><span class="o">,</span> <span class="n">togMove</span><span class="o">,</span> <span class="n">togRem</span><span class="o">;</span>
+
+    <span class="kd">private</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">createAndShowGUI</span><span class="o">(</span><span class="n">GridData</span> <span class="n">gd</span><span class="o">){</span>
+        <span class="n">JFrame</span> <span class="n">app</span> <span class="o">=</span> <span class="k">new</span> <span class="n">App</span><span class="o">(</span><span class="n">gd</span><span class="o">);</span>
+        <span class="n">app</span><span class="o">.</span><span class="na">pack</span><span class="o">();</span>
+        <span class="n">app</span><span class="o">.</span><span class="na">setLocationRelativeTo</span><span class="o">(</span><span class="kc">null</span><span class="o">);</span>
+        <span class="n">app</span><span class="o">.</span><span class="na">setVisible</span><span class="o">(</span><span class="kc">true</span><span class="o">);</span>
+    <span class="o">}</span>
+
+    <span class="n">App</span><span class="o">(</span><span class="n">GridData</span> <span class="n">gd</span><span class="o">){</span>
+        <span class="kd">super</span><span class="o">(</span><span class="s">&quot;Hybmesh/java mapping demo&quot;</span><span class="o">);</span>
+        <span class="k">this</span><span class="o">.</span><span class="na">gd</span> <span class="o">=</span> <span class="n">gd</span><span class="o">;</span>
+        <span class="n">setDefaultCloseOperation</span><span class="o">(</span><span class="n">JFrame</span><span class="o">.</span><span class="na">EXIT_ON_CLOSE</span><span class="o">);</span>
+        <span class="c1">//Create the toolbar.</span>
+        <span class="n">JToolBar</span> <span class="n">toolbar</span> <span class="o">=</span> <span class="k">new</span> <span class="n">JToolBar</span><span class="o">();</span>
+        <span class="n">toolbar</span><span class="o">.</span><span class="na">setFloatable</span><span class="o">(</span><span class="kc">false</span><span class="o">);</span>
+        <span class="n">addButtons</span><span class="o">(</span><span class="n">toolbar</span><span class="o">);</span>
+    
+        <span class="c1">//Create split pane</span>
+        <span class="n">tab1</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Drawer</span><span class="o">(</span><span class="n">gd</span><span class="o">.</span><span class="na">from</span><span class="o">,</span> <span class="k">this</span><span class="o">);</span>
+        <span class="n">tab2</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Drawer</span><span class="o">(</span><span class="n">gd</span><span class="o">.</span><span class="na">to</span><span class="o">,</span> <span class="k">this</span><span class="o">);</span>
+        <span class="n">JSplitPane</span> <span class="n">splitPane</span> <span class="o">=</span> <span class="k">new</span> <span class="n">JSplitPane</span><span class="o">(</span>
+            <span class="n">JSplitPane</span><span class="o">.</span><span class="na">HORIZONTAL_SPLIT</span><span class="o">,</span> <span class="n">tab1</span><span class="o">,</span> <span class="n">tab2</span><span class="o">);</span>
+        <span class="n">splitPane</span><span class="o">.</span><span class="na">setDividerLocation</span><span class="o">(</span><span class="mi">400</span><span class="o">);</span>
+
+        <span class="c1">//main panel</span>
+        <span class="n">add</span><span class="o">(</span><span class="k">new</span> <span class="n">JPanel</span><span class="o">(</span><span class="k">new</span> <span class="n">BorderLayout</span><span class="o">()));</span>
+        <span class="n">getContentPane</span><span class="o">().</span><span class="na">setPreferredSize</span><span class="o">(</span><span class="k">new</span> <span class="n">Dimension</span><span class="o">(</span><span class="mi">800</span><span class="o">,</span> <span class="mi">400</span><span class="o">));</span>
+        <span class="n">getContentPane</span><span class="o">().</span><span class="na">add</span><span class="o">(</span><span class="n">toolbar</span><span class="o">,</span> <span class="n">BorderLayout</span><span class="o">.</span><span class="na">PAGE_START</span><span class="o">);</span>
+        <span class="n">getContentPane</span><span class="o">().</span><span class="na">add</span><span class="o">(</span><span class="n">splitPane</span><span class="o">,</span> <span class="n">BorderLayout</span><span class="o">.</span><span class="na">CENTER</span><span class="o">);</span>
+    <span class="o">}</span>
+
+    <span class="c1">// checks for what toggle button is pressed now. Used in Drawer mouse click handle.</span>
+    <span class="kd">public</span> <span class="kt">boolean</span> <span class="nf">statusAddRef</span><span class="o">(){</span> <span class="k">return</span> <span class="n">togAdd</span><span class="o">.</span><span class="na">isSelected</span><span class="o">();</span> <span class="o">}</span>
+    <span class="kd">public</span> <span class="kt">boolean</span> <span class="nf">statusMoveRef</span><span class="o">(){</span> <span class="k">return</span> <span class="n">togMove</span><span class="o">.</span><span class="na">isSelected</span><span class="o">();</span> <span class="o">}</span>
+    <span class="kd">public</span> <span class="kt">boolean</span> <span class="nf">statusRemoveRef</span><span class="o">(){</span> <span class="k">return</span> <span class="n">togRem</span><span class="o">.</span><span class="na">isSelected</span><span class="o">();</span> <span class="o">}</span>
+
+    <span class="kt">void</span> <span class="nf">addButtons</span><span class="o">(</span><span class="n">JToolBar</span> <span class="n">jtb</span><span class="o">){</span>
+        <span class="n">setButton</span><span class="o">(</span><span class="n">togAdd</span> <span class="o">=</span> <span class="k">new</span> <span class="n">JToggleButton</span><span class="o">(</span><span class="s">&quot;Add refpoints&quot;</span><span class="o">),</span> <span class="s">&quot;add&quot;</span><span class="o">,</span> <span class="n">jtb</span><span class="o">);</span>
+        <span class="n">setButton</span><span class="o">(</span><span class="n">togMove</span> <span class="o">=</span> <span class="k">new</span> <span class="n">JToggleButton</span><span class="o">(</span><span class="s">&quot;Move refpoints&quot;</span><span class="o">),</span> <span class="s">&quot;move&quot;</span><span class="o">,</span> <span class="n">jtb</span><span class="o">);</span>
+        <span class="n">setButton</span><span class="o">(</span><span class="n">togRem</span> <span class="o">=</span> <span class="k">new</span> <span class="n">JToggleButton</span><span class="o">(</span><span class="s">&quot;Remove refpoints&quot;</span><span class="o">),</span> <span class="s">&quot;remove&quot;</span><span class="o">,</span> <span class="n">jtb</span><span class="o">);</span>
+        <span class="n">jtb</span><span class="o">.</span><span class="na">addSeparator</span><span class="o">();</span>
+        <span class="n">setButton</span><span class="o">(</span><span class="k">new</span> <span class="n">JButton</span><span class="o">(</span><span class="s">&quot;Basic grid&quot;</span><span class="o">),</span> <span class="s">&quot;basic&quot;</span><span class="o">,</span> <span class="n">jtb</span><span class="o">);</span>
+        <span class="n">setButton</span><span class="o">(</span><span class="k">new</span> <span class="n">JButton</span><span class="o">(</span><span class="s">&quot;Run mapping&quot;</span><span class="o">),</span> <span class="s">&quot;run&quot;</span><span class="o">,</span> <span class="n">jtb</span><span class="o">);</span>
+    <span class="o">}</span>
+
+    <span class="kt">void</span> <span class="nf">setButton</span><span class="o">(</span><span class="n">AbstractButton</span> <span class="n">b</span><span class="o">,</span> <span class="n">String</span> <span class="n">act</span><span class="o">,</span> <span class="n">JToolBar</span> <span class="n">jtb</span><span class="o">){</span>
+        <span class="n">jtb</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="n">b</span><span class="o">);</span>
+        <span class="n">b</span><span class="o">.</span><span class="na">setActionCommand</span><span class="o">(</span><span class="n">act</span><span class="o">);</span>
+        <span class="n">b</span><span class="o">.</span><span class="na">addActionListener</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
+    <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">actionPerformed</span><span class="o">(</span><span class="n">ActionEvent</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">String</span> <span class="n">cmd</span> <span class="o">=</span> <span class="n">e</span><span class="o">.</span><span class="na">getActionCommand</span><span class="o">();</span>
+        <span class="k">if</span> <span class="o">(</span><span class="s">&quot;add&quot;</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">cmd</span><span class="o">)){</span>
+            <span class="n">togMove</span><span class="o">.</span><span class="na">setSelected</span><span class="o">(</span><span class="kc">false</span><span class="o">);</span> <span class="n">togRem</span><span class="o">.</span><span class="na">setSelected</span><span class="o">(</span><span class="kc">false</span><span class="o">);</span>
+        <span class="o">}</span> <span class="k">else</span> <span class="k">if</span> <span class="o">(</span><span class="s">&quot;move&quot;</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">cmd</span><span class="o">)){</span>
+            <span class="n">togAdd</span><span class="o">.</span><span class="na">setSelected</span><span class="o">(</span><span class="kc">false</span><span class="o">);</span> <span class="n">togRem</span><span class="o">.</span><span class="na">setSelected</span><span class="o">(</span><span class="kc">false</span><span class="o">);</span>
+        <span class="o">}</span> <span class="k">else</span> <span class="k">if</span> <span class="o">(</span><span class="s">&quot;remove&quot;</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">cmd</span><span class="o">)){</span>
+            <span class="n">togAdd</span><span class="o">.</span><span class="na">setSelected</span><span class="o">(</span><span class="kc">false</span><span class="o">);</span> <span class="n">togMove</span><span class="o">.</span><span class="na">setSelected</span><span class="o">(</span><span class="kc">false</span><span class="o">);</span>
+        <span class="o">}</span> <span class="k">else</span> <span class="k">if</span> <span class="o">(</span><span class="s">&quot;basic&quot;</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">cmd</span><span class="o">)){</span>
+            <span class="c1">//Build a dialog to ask new dimensions of the basic grid</span>
+            <span class="n">JSpinner</span> <span class="n">nxField</span> <span class="o">=</span> <span class="k">new</span> <span class="n">JSpinner</span><span class="o">(</span><span class="k">new</span> <span class="n">SpinnerNumberModel</span><span class="o">(</span><span class="mi">10</span><span class="o">,</span> <span class="mi">1</span><span class="o">,</span> <span class="mi">99</span><span class="o">,</span> <span class="mi">1</span><span class="o">));</span>
+            <span class="n">JSpinner</span> <span class="n">nyField</span> <span class="o">=</span> <span class="k">new</span> <span class="n">JSpinner</span><span class="o">(</span><span class="k">new</span> <span class="n">SpinnerNumberModel</span><span class="o">(</span><span class="mi">10</span><span class="o">,</span> <span class="mi">1</span><span class="o">,</span> <span class="mi">99</span><span class="o">,</span> <span class="mi">1</span><span class="o">));</span>
+            <span class="kd">final</span> <span class="n">JComponent</span><span class="o">[]</span> <span class="n">inputs</span> <span class="o">=</span> <span class="k">new</span> <span class="n">JComponent</span><span class="o">[]</span> <span class="o">{</span>
+                <span class="k">new</span> <span class="n">JLabel</span><span class="o">(</span><span class="s">&quot;Nx&quot;</span><span class="o">),</span> <span class="n">nxField</span><span class="o">,</span>
+                <span class="k">new</span> <span class="n">JLabel</span><span class="o">(</span><span class="s">&quot;Ny&quot;</span><span class="o">),</span> <span class="n">nyField</span><span class="o">,</span>
+            <span class="o">};</span>
+            <span class="kt">int</span> <span class="n">result</span> <span class="o">=</span> <span class="n">JOptionPane</span><span class="o">.</span><span class="na">showConfirmDialog</span><span class="o">(</span><span class="k">this</span><span class="o">,</span> <span class="n">inputs</span><span class="o">,</span>
+                <span class="s">&quot;Enter grid segmentation&quot;</span><span class="o">,</span> <span class="n">JOptionPane</span><span class="o">.</span><span class="na">PLAIN_MESSAGE</span><span class="o">);</span>
+            <span class="k">if</span> <span class="o">(</span><span class="n">result</span> <span class="o">!=</span> <span class="n">JOptionPane</span><span class="o">.</span><span class="na">OK_OPTION</span><span class="o">)</span> <span class="k">return</span><span class="o">;</span>
+            <span class="c1">// call builder function. It could throw.</span>
+            <span class="k">try</span><span class="o">{</span>
+                <span class="kt">int</span> <span class="n">nx</span> <span class="o">=</span> <span class="o">(</span><span class="kt">int</span><span class="o">)</span><span class="n">nxField</span><span class="o">.</span><span class="na">getValue</span><span class="o">();</span>
+                <span class="kt">int</span> <span class="n">ny</span> <span class="o">=</span> <span class="o">(</span><span class="kt">int</span><span class="o">)</span><span class="n">nyField</span><span class="o">.</span><span class="na">getValue</span><span class="o">();</span>
+                <span class="n">gd</span><span class="o">.</span><span class="na">setBasicSegmentation</span><span class="o">(</span><span class="n">nx</span><span class="o">,</span> <span class="n">ny</span><span class="o">);</span>
+                <span class="n">tab1</span><span class="o">.</span><span class="na">validate</span><span class="o">();</span>
+                <span class="n">tab1</span><span class="o">.</span><span class="na">repaint</span><span class="o">();</span>
+            <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">ee</span><span class="o">){</span>
+                <span class="n">handleException</span><span class="o">(</span><span class="n">ee</span><span class="o">);</span>
+            <span class="o">}</span>
+        <span class="o">}</span> <span class="k">else</span> <span class="k">if</span> <span class="o">(</span><span class="s">&quot;run&quot;</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">cmd</span><span class="o">)){</span>
+            <span class="c1">//build a dialog to set mapping method</span>
+            <span class="n">String</span><span class="o">[]</span> <span class="n">algos</span> <span class="o">=</span> <span class="o">{</span><span class="s">&quot;Direct Laplace&quot;</span><span class="o">,</span> <span class="s">&quot;Inverse Laplace&quot;</span><span class="o">};</span>
+            <span class="n">JComboBox</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span> <span class="n">algoField</span> <span class="o">=</span> <span class="k">new</span> <span class="n">JComboBox</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;(</span><span class="n">algos</span><span class="o">);</span>
+            <span class="kd">final</span> <span class="n">JComponent</span><span class="o">[]</span> <span class="n">inputs</span> <span class="o">=</span> <span class="k">new</span> <span class="n">JComponent</span><span class="o">[]</span> <span class="o">{</span>
+                <span class="k">new</span> <span class="n">JLabel</span><span class="o">(</span><span class="s">&quot;Algorithm&quot;</span><span class="o">),</span> <span class="n">algoField</span>
+            <span class="o">};</span>
+            <span class="k">if</span> <span class="o">(</span><span class="n">JOptionPane</span><span class="o">.</span><span class="na">showConfirmDialog</span><span class="o">(</span><span class="kc">null</span><span class="o">,</span> <span class="n">inputs</span><span class="o">,</span> <span class="s">&quot;Map grid options&quot;</span><span class="o">,</span>
+                <span class="n">JOptionPane</span><span class="o">.</span><span class="na">PLAIN_MESSAGE</span><span class="o">)</span> <span class="o">!=</span> <span class="n">JOptionPane</span><span class="o">.</span><span class="na">OK_OPTION</span><span class="o">)</span> <span class="k">return</span><span class="o">;</span>
+
+            <span class="n">String</span> <span class="n">ta</span> <span class="o">=</span> <span class="o">(</span><span class="n">String</span><span class="o">)</span><span class="n">algoField</span><span class="o">.</span><span class="na">getSelectedItem</span><span class="o">();</span>
+            <span class="kd">final</span> <span class="n">String</span> <span class="n">algo</span> <span class="o">=</span> <span class="o">(</span><span class="n">algos</span><span class="o">[</span><span class="mi">0</span><span class="o">].</span><span class="na">equals</span><span class="o">(</span><span class="n">ta</span><span class="o">))</span> <span class="o">?</span> <span class="s">&quot;direct_laplace&quot;</span>
+                                                      <span class="o">:</span> <span class="s">&quot;inverse_laplace&quot;</span><span class="o">;</span>
+            <span class="c1">//call building method with progress bar popup window</span>
+            <span class="k">try</span><span class="o">{</span>
+                <span class="n">ProgressBarExecutor</span><span class="o">.</span><span class="na">execute</span><span class="o">(</span><span class="k">new</span> <span class="n">ProgressBarExecutor</span><span class="o">.</span><span class="na">IExec</span><span class="o">(){</span>
+                    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">(</span><span class="n">Hybmesh</span><span class="o">.</span><span class="na">ICallback</span> <span class="n">cb</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">Exception</span><span class="o">{</span>
+                        <span class="n">gd</span><span class="o">.</span><span class="na">doMapping</span><span class="o">(</span><span class="n">cb</span><span class="o">,</span> <span class="n">algo</span><span class="o">);</span>
+                    <span class="o">}</span>
+                <span class="o">});</span>
+                <span class="n">tab2</span><span class="o">.</span><span class="na">validate</span><span class="o">();</span>
+                <span class="n">tab2</span><span class="o">.</span><span class="na">repaint</span><span class="o">();</span>
+            <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">ee</span><span class="o">){</span>
+                <span class="n">handleException</span><span class="o">(</span><span class="n">ee</span><span class="o">);</span>
+            <span class="o">}</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+
+    <span class="c1">// shows message boxes for errors which have occured in grid building routines</span>
+    <span class="kt">void</span> <span class="nf">handleException</span><span class="o">(</span><span class="n">Exception</span> <span class="n">e</span><span class="o">){</span>
+        <span class="k">try</span><span class="o">{</span>
+            <span class="k">throw</span> <span class="n">e</span><span class="o">;</span>
+        <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Hybmesh</span><span class="o">.</span><span class="na">EUserInterrupt</span> <span class="n">ee</span><span class="o">){</span>
+            <span class="n">JOptionPane</span><span class="o">.</span><span class="na">showConfirmDialog</span><span class="o">(</span><span class="k">this</span><span class="o">,</span> <span class="s">&quot;Interrupted&quot;</span><span class="o">,</span>
+                    <span class="s">&quot;Interrupted&quot;</span><span class="o">,</span> <span class="n">JOptionPane</span><span class="o">.</span><span class="na">PLAIN_MESSAGE</span><span class="o">);</span>
+        <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Hybmesh</span><span class="o">.</span><span class="na">ERuntimeError</span> <span class="n">ee</span><span class="o">){</span>
+            <span class="n">JTextArea</span> <span class="n">textArea</span> <span class="o">=</span> <span class="k">new</span> <span class="n">JTextArea</span><span class="o">(</span><span class="mi">6</span><span class="o">,</span> <span class="mi">80</span><span class="o">);</span>
+            <span class="n">textArea</span><span class="o">.</span><span class="na">setText</span><span class="o">(</span><span class="n">ee</span><span class="o">.</span><span class="na">getMessage</span><span class="o">());</span>
+            <span class="n">textArea</span><span class="o">.</span><span class="na">setFont</span><span class="o">(</span><span class="n">textArea</span><span class="o">.</span><span class="na">getFont</span><span class="o">().</span><span class="na">deriveFont</span><span class="o">(</span><span class="mi">12</span><span class="n">f</span><span class="o">));</span>
+            <span class="n">textArea</span><span class="o">.</span><span class="na">setEditable</span><span class="o">(</span><span class="kc">false</span><span class="o">);</span>
+            <span class="n">JScrollPane</span> <span class="n">scrollPane</span> <span class="o">=</span> <span class="k">new</span> <span class="n">JScrollPane</span><span class="o">(</span><span class="n">textArea</span><span class="o">);</span>
+            <span class="kd">final</span> <span class="n">JComponent</span><span class="o">[]</span> <span class="n">inputs</span> <span class="o">=</span> <span class="k">new</span> <span class="n">JComponent</span><span class="o">[]</span> <span class="o">{</span> <span class="n">scrollPane</span> <span class="o">};</span>
+            <span class="n">JOptionPane</span><span class="o">.</span><span class="na">showMessageDialog</span><span class="o">(</span><span class="k">this</span><span class="o">,</span> <span class="n">inputs</span><span class="o">,</span>
+                <span class="s">&quot;Hybmesh runtime error&quot;</span><span class="o">,</span> <span class="n">JOptionPane</span><span class="o">.</span><span class="na">ERROR_MESSAGE</span><span class="o">);</span>
+        <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">ee</span><span class="o">){</span>
+            <span class="n">JOptionPane</span><span class="o">.</span><span class="na">showMessageDialog</span><span class="o">(</span><span class="k">this</span><span class="o">,</span> <span class="n">ee</span><span class="o">.</span><span class="na">getMessage</span><span class="o">(),</span>
+                    <span class="s">&quot;Error&quot;</span><span class="o">,</span> <span class="n">JOptionPane</span><span class="o">.</span><span class="na">ERROR_MESSAGE</span><span class="o">);</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="c1">// Transforms coordingate from screen to physical</span>
+<span class="kd">class</span> <span class="nc">CoordinateTransform</span><span class="o">{</span>
+    <span class="kt">int</span> <span class="n">margin</span> <span class="o">=</span> <span class="mi">20</span><span class="o">;</span>
+    <span class="n">Rectangle</span> <span class="n">canvas</span><span class="o">;</span>
+    <span class="kt">double</span> <span class="n">xmin</span><span class="o">,</span> <span class="n">xmax</span><span class="o">,</span> <span class="n">ymin</span><span class="o">,</span> <span class="n">ymax</span><span class="o">;</span>
+
+    <span class="kd">public</span> <span class="nf">CoordinateTransform</span><span class="o">(</span><span class="n">Rectangle</span> <span class="n">canvas</span><span class="o">,</span>
+            <span class="kt">double</span> <span class="n">xmin</span><span class="o">,</span> <span class="kt">double</span> <span class="n">ymin</span><span class="o">,</span> <span class="kt">double</span> <span class="n">xmax</span><span class="o">,</span> <span class="kt">double</span> <span class="n">ymax</span><span class="o">){</span>
+        <span class="k">this</span><span class="o">.</span><span class="na">canvas</span> <span class="o">=</span> <span class="n">canvas</span><span class="o">;</span>
+        <span class="k">this</span><span class="o">.</span><span class="na">xmin</span> <span class="o">=</span> <span class="n">xmin</span><span class="o">;</span> <span class="k">this</span><span class="o">.</span><span class="na">xmax</span> <span class="o">=</span> <span class="n">xmax</span><span class="o">;</span>
+        <span class="k">this</span><span class="o">.</span><span class="na">ymin</span> <span class="o">=</span> <span class="n">ymin</span><span class="o">;</span> <span class="k">this</span><span class="o">.</span><span class="na">ymax</span> <span class="o">=</span> <span class="n">ymax</span><span class="o">;</span>
+        <span class="c1">//adjust bounding box to keep aspect ratio.</span>
+        <span class="kt">double</span> <span class="n">rel1</span> <span class="o">=</span> <span class="o">(</span><span class="kt">double</span><span class="o">)</span><span class="n">canvas</span><span class="o">.</span><span class="na">height</span><span class="o">/</span><span class="n">canvas</span><span class="o">.</span><span class="na">width</span><span class="o">;</span>
+        <span class="kt">double</span> <span class="n">Ly</span> <span class="o">=</span> <span class="n">rel1</span> <span class="o">*</span> <span class="o">(</span><span class="n">xmax</span> <span class="o">-</span> <span class="n">xmin</span><span class="o">)</span> <span class="o">-</span> <span class="o">(</span><span class="n">ymax</span> <span class="o">-</span> <span class="n">ymin</span><span class="o">);</span>
+        <span class="kt">double</span> <span class="n">Lx</span> <span class="o">=</span> <span class="o">(</span><span class="n">ymax</span><span class="o">-</span><span class="n">ymin</span><span class="o">)/</span><span class="n">rel1</span> <span class="o">-</span> <span class="o">(</span><span class="n">xmax</span> <span class="o">-</span> <span class="n">xmin</span><span class="o">);</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">Ly</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="o">){</span>
+            <span class="k">this</span><span class="o">.</span><span class="na">ymin</span> <span class="o">-=</span> <span class="n">Ly</span><span class="o">/</span><span class="mi">2</span><span class="o">;</span> <span class="k">this</span><span class="o">.</span><span class="na">ymax</span> <span class="o">+=</span> <span class="n">Ly</span><span class="o">/</span><span class="mi">2</span><span class="o">;</span>
+        <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+            <span class="k">this</span><span class="o">.</span><span class="na">xmin</span> <span class="o">-=</span> <span class="n">Lx</span><span class="o">/</span><span class="mi">2</span><span class="o">;</span> <span class="k">this</span><span class="o">.</span><span class="na">xmax</span> <span class="o">+=</span> <span class="n">Lx</span><span class="o">/</span><span class="mi">2</span><span class="o">;</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+    <span class="kd">public</span> <span class="kt">int</span> <span class="nf">x</span><span class="o">(</span><span class="kt">double</span> <span class="n">rx</span><span class="o">){</span>
+        <span class="k">return</span> <span class="o">(</span><span class="kt">int</span><span class="o">)((</span><span class="n">canvas</span><span class="o">.</span><span class="na">width</span><span class="o">-</span><span class="mi">2</span><span class="o">*</span><span class="n">margin</span><span class="o">)*(</span><span class="n">rx</span><span class="o">-</span><span class="n">xmin</span><span class="o">)/(</span><span class="n">xmax</span><span class="o">-</span><span class="n">xmin</span><span class="o">))</span> <span class="o">+</span> <span class="n">margin</span><span class="o">;</span>
+    <span class="o">}</span>
+    <span class="kd">public</span> <span class="kt">int</span> <span class="nf">y</span><span class="o">(</span><span class="kt">double</span> <span class="n">ry</span><span class="o">){</span>
+        <span class="k">return</span> <span class="o">(</span><span class="kt">int</span><span class="o">)((</span><span class="n">canvas</span><span class="o">.</span><span class="na">height</span><span class="o">-</span><span class="mi">2</span><span class="o">*</span><span class="n">margin</span><span class="o">)*(</span><span class="n">ymax</span><span class="o">-</span><span class="n">ry</span><span class="o">)/(</span><span class="n">ymax</span><span class="o">-</span><span class="n">ymin</span><span class="o">))</span> <span class="o">+</span> <span class="n">margin</span><span class="o">;</span>
+    <span class="o">}</span>
+    <span class="kd">public</span> <span class="kt">double</span> <span class="nf">realx</span><span class="o">(</span><span class="kt">int</span> <span class="n">x</span><span class="o">){</span>
+        <span class="k">return</span> <span class="o">(</span><span class="kt">double</span><span class="o">)(</span><span class="n">x</span><span class="o">-</span><span class="n">margin</span><span class="o">)/(</span><span class="n">canvas</span><span class="o">.</span><span class="na">width</span><span class="o">-</span><span class="mi">2</span><span class="o">*</span><span class="n">margin</span><span class="o">)*(</span><span class="n">xmax</span><span class="o">-</span><span class="n">xmin</span><span class="o">)+</span><span class="n">xmin</span><span class="o">;</span>
+    <span class="o">}</span>
+    <span class="kd">public</span> <span class="kt">double</span> <span class="nf">realy</span><span class="o">(</span><span class="kt">int</span> <span class="n">y</span><span class="o">){</span>
+        <span class="k">return</span> <span class="o">-((</span><span class="kt">double</span><span class="o">)(</span><span class="n">y</span><span class="o">-</span><span class="n">margin</span><span class="o">)/(</span><span class="n">canvas</span><span class="o">.</span><span class="na">height</span><span class="o">-</span><span class="mi">2</span><span class="o">*</span><span class="n">margin</span><span class="o">)*(</span><span class="n">ymax</span><span class="o">-</span><span class="n">ymin</span><span class="o">)-</span><span class="n">ymax</span><span class="o">);</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="c1">// Component for drawing grid, contour and vertices</span>
+<span class="kd">class</span> <span class="nc">Drawer</span> <span class="kd">extends</span> <span class="n">JPanel</span> <span class="kd">implements</span> <span class="n">MouseListener</span><span class="o">,</span> <span class="n">MouseMotionListener</span><span class="o">{</span>
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">long</span> <span class="n">serialVersionUID</span> <span class="o">=</span> <span class="mi">1L</span><span class="o">;</span>
+    <span class="n">GridData</span><span class="o">.</span><span class="na">Grid</span> <span class="n">target</span><span class="o">;</span>
+    <span class="n">CoordinateTransform</span> <span class="n">transf</span><span class="o">;</span>
+    <span class="n">App</span> <span class="n">app</span><span class="o">;</span>
+    <span class="kt">int</span> <span class="n">moved_point</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="o">;</span>
+    <span class="kt">int</span> <span class="n">point_radius</span> <span class="o">=</span> <span class="mi">6</span><span class="o">;</span>
+
+    <span class="kd">public</span> <span class="nf">Drawer</span><span class="o">(</span><span class="n">GridData</span><span class="o">.</span><span class="na">Grid</span> <span class="n">target</span><span class="o">,</span> <span class="n">App</span> <span class="n">app</span><span class="o">){</span>
+        <span class="k">this</span><span class="o">.</span><span class="na">target</span> <span class="o">=</span> <span class="n">target</span><span class="o">;</span>
+        <span class="k">this</span><span class="o">.</span><span class="na">app</span> <span class="o">=</span> <span class="n">app</span><span class="o">;</span>
+        <span class="n">addMouseListener</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
+        <span class="n">addMouseMotionListener</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
+        <span class="n">setBackground</span><span class="o">(</span><span class="n">Color</span><span class="o">.</span><span class="na">WHITE</span><span class="o">);</span>
+    <span class="o">}</span>
+
+    <span class="kt">void</span> <span class="nf">refreshTransf</span><span class="o">(){</span>
+        <span class="n">Rectangle</span> <span class="n">rect</span> <span class="o">=</span> <span class="n">getBounds</span><span class="o">();</span>
+        <span class="n">transf</span> <span class="o">=</span> <span class="k">new</span> <span class="n">CoordinateTransform</span><span class="o">(</span><span class="n">rect</span><span class="o">,</span>
+                <span class="n">target</span><span class="o">.</span><span class="na">minX</span><span class="o">(),</span> <span class="n">target</span><span class="o">.</span><span class="na">minY</span><span class="o">(),</span> <span class="n">target</span><span class="o">.</span><span class="na">maxX</span><span class="o">(),</span> <span class="n">target</span><span class="o">.</span><span class="na">maxY</span><span class="o">());</span>
+    <span class="o">}</span>
+
+    <span class="kt">void</span> <span class="nf">paintGrid</span><span class="o">(</span><span class="n">Graphics2D</span> <span class="n">g</span><span class="o">){</span>
+        <span class="n">g</span><span class="o">.</span><span class="na">setColor</span><span class="o">(</span><span class="n">Color</span><span class="o">.</span><span class="na">BLACK</span><span class="o">);</span>
+        <span class="n">g</span><span class="o">.</span><span class="na">setStroke</span><span class="o">(</span><span class="k">new</span> <span class="n">BasicStroke</span><span class="o">(</span><span class="mi">1</span><span class="o">));</span>
+        <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="o">;</span> <span class="n">i</span><span class="o">&lt;</span><span class="n">target</span><span class="o">.</span><span class="na">edge_vert</span><span class="o">.</span><span class="na">length</span><span class="o">;</span> <span class="n">i</span><span class="o">+=</span><span class="mi">2</span><span class="o">){</span>
+            <span class="n">g</span><span class="o">.</span><span class="na">drawLine</span><span class="o">(</span><span class="n">transf</span><span class="o">.</span><span class="na">x</span><span class="o">(</span><span class="n">target</span><span class="o">.</span><span class="na">vertices</span><span class="o">[</span><span class="mi">2</span><span class="o">*</span><span class="n">target</span><span class="o">.</span><span class="na">edge_vert</span><span class="o">[</span><span class="n">i</span><span class="o">]]),</span>
+                <span class="n">transf</span><span class="o">.</span><span class="na">y</span><span class="o">(</span><span class="n">target</span><span class="o">.</span><span class="na">vertices</span><span class="o">[</span><span class="mi">2</span><span class="o">*</span><span class="n">target</span><span class="o">.</span><span class="na">edge_vert</span><span class="o">[</span><span class="n">i</span><span class="o">]+</span><span class="mi">1</span><span class="o">]),</span>
+                <span class="n">transf</span><span class="o">.</span><span class="na">x</span><span class="o">(</span><span class="n">target</span><span class="o">.</span><span class="na">vertices</span><span class="o">[</span><span class="mi">2</span><span class="o">*</span><span class="n">target</span><span class="o">.</span><span class="na">edge_vert</span><span class="o">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="o">]]),</span>
+                <span class="n">transf</span><span class="o">.</span><span class="na">y</span><span class="o">(</span><span class="n">target</span><span class="o">.</span><span class="na">vertices</span><span class="o">[</span><span class="mi">2</span><span class="o">*</span><span class="n">target</span><span class="o">.</span><span class="na">edge_vert</span><span class="o">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="o">]+</span><span class="mi">1</span><span class="o">]));</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+
+    <span class="kt">void</span> <span class="nf">paintContour</span><span class="o">(</span><span class="n">Graphics2D</span> <span class="n">g</span><span class="o">){</span>
+        <span class="n">g</span><span class="o">.</span><span class="na">setColor</span><span class="o">(</span><span class="n">Color</span><span class="o">.</span><span class="na">BLUE</span><span class="o">);</span>
+        <span class="n">g</span><span class="o">.</span><span class="na">setStroke</span><span class="o">(</span><span class="k">new</span> <span class="n">BasicStroke</span><span class="o">(</span><span class="mi">3</span><span class="o">));</span>
+        <span class="kt">int</span><span class="o">[]</span> <span class="n">x</span> <span class="o">=</span> <span class="k">new</span> <span class="kt">int</span><span class="o">[</span><span class="mi">4</span><span class="o">],</span> <span class="n">y</span> <span class="o">=</span> <span class="k">new</span> <span class="kt">int</span><span class="o">[</span><span class="mi">4</span><span class="o">];</span>
+        <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="o">;</span> <span class="n">i</span><span class="o">&lt;</span><span class="mi">4</span><span class="o">;</span> <span class="o">++</span><span class="n">i</span><span class="o">){</span>
+            <span class="n">x</span><span class="o">[</span><span class="n">i</span><span class="o">]</span> <span class="o">=</span> <span class="n">transf</span><span class="o">.</span><span class="na">x</span><span class="o">(</span><span class="n">target</span><span class="o">.</span><span class="na">corner_vert</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">i</span><span class="o">).</span><span class="na">x</span><span class="o">);</span>
+            <span class="n">y</span><span class="o">[</span><span class="n">i</span><span class="o">]</span> <span class="o">=</span> <span class="n">transf</span><span class="o">.</span><span class="na">y</span><span class="o">(</span><span class="n">target</span><span class="o">.</span><span class="na">corner_vert</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">i</span><span class="o">).</span><span class="na">y</span><span class="o">);</span>
+        <span class="o">}</span>
+        <span class="n">g</span><span class="o">.</span><span class="na">drawPolygon</span><span class="o">(</span><span class="n">x</span><span class="o">,</span> <span class="n">y</span><span class="o">,</span> <span class="mi">4</span><span class="o">);</span>
+    <span class="o">}</span>
+
+    <span class="kt">void</span> <span class="nf">drawPoint</span><span class="o">(</span><span class="n">Graphics2D</span> <span class="n">g</span><span class="o">,</span> <span class="n">Hybmesh</span><span class="o">.</span><span class="na">Point2</span> <span class="n">p</span><span class="o">,</span> <span class="n">String</span> <span class="n">s</span><span class="o">){</span>
+        <span class="n">g</span><span class="o">.</span><span class="na">fillOval</span><span class="o">(</span><span class="n">transf</span><span class="o">.</span><span class="na">x</span><span class="o">(</span><span class="n">p</span><span class="o">.</span><span class="na">x</span><span class="o">)-</span><span class="n">point_radius</span><span class="o">,</span> <span class="n">transf</span><span class="o">.</span><span class="na">y</span><span class="o">(</span><span class="n">p</span><span class="o">.</span><span class="na">y</span><span class="o">)-</span><span class="n">point_radius</span><span class="o">,</span>
+            <span class="mi">2</span><span class="o">*</span><span class="n">point_radius</span><span class="o">,</span> <span class="mi">2</span><span class="o">*</span><span class="n">point_radius</span><span class="o">);</span>
+        <span class="n">g</span><span class="o">.</span><span class="na">drawString</span><span class="o">(</span><span class="n">s</span><span class="o">,</span> <span class="n">transf</span><span class="o">.</span><span class="na">x</span><span class="o">(</span><span class="n">p</span><span class="o">.</span><span class="na">x</span><span class="o">)+</span><span class="n">point_radius</span><span class="o">,</span> <span class="n">transf</span><span class="o">.</span><span class="na">y</span><span class="o">(</span><span class="n">p</span><span class="o">.</span><span class="na">y</span><span class="o">));</span>
+    <span class="o">}</span>
+    <span class="kt">void</span> <span class="nf">paintPoints</span><span class="o">(</span><span class="n">Graphics2D</span> <span class="n">g</span><span class="o">){</span>
+        <span class="n">g</span><span class="o">.</span><span class="na">setColor</span><span class="o">(</span><span class="n">Color</span><span class="o">.</span><span class="na">BLACK</span><span class="o">);</span>
+        <span class="n">g</span><span class="o">.</span><span class="na">setStroke</span><span class="o">(</span><span class="k">new</span> <span class="n">BasicStroke</span><span class="o">(</span><span class="mi">3</span><span class="o">));</span>
+        <span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">Hybmesh</span><span class="o">.</span><span class="na">Point2</span><span class="o">&gt;</span> <span class="n">pts</span> <span class="o">=</span> <span class="n">target</span><span class="o">.</span><span class="na">corner_vert</span><span class="o">;</span>
+        <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="o">;</span> <span class="n">i</span><span class="o">&lt;</span><span class="n">pts</span><span class="o">.</span><span class="na">size</span><span class="o">();</span> <span class="o">++</span><span class="n">i</span><span class="o">){</span>
+            <span class="n">drawPoint</span><span class="o">(</span><span class="n">g</span><span class="o">,</span> <span class="n">pts</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">i</span><span class="o">),</span> <span class="n">Integer</span><span class="o">.</span><span class="na">toString</span><span class="o">(</span><span class="n">i</span><span class="o">));</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+    <span class="kt">void</span> <span class="nf">paintUPoints</span><span class="o">(</span><span class="n">Graphics2D</span> <span class="n">g</span><span class="o">){</span>
+        <span class="n">g</span><span class="o">.</span><span class="na">setColor</span><span class="o">(</span><span class="n">Color</span><span class="o">.</span><span class="na">BLUE</span><span class="o">);</span>
+        <span class="n">g</span><span class="o">.</span><span class="na">setStroke</span><span class="o">(</span><span class="k">new</span> <span class="n">BasicStroke</span><span class="o">(</span><span class="mi">3</span><span class="o">));</span>
+        <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="o">;</span> <span class="n">i</span><span class="o">&lt;</span><span class="n">target</span><span class="o">.</span><span class="na">user_defined_vert</span><span class="o">.</span><span class="na">size</span><span class="o">();</span> <span class="o">++</span><span class="n">i</span><span class="o">){</span>
+            <span class="n">drawPoint</span><span class="o">(</span><span class="n">g</span><span class="o">,</span> <span class="n">target</span><span class="o">.</span><span class="na">udefToPoint</span><span class="o">(</span><span class="n">i</span><span class="o">),</span> <span class="n">Integer</span><span class="o">.</span><span class="na">toString</span><span class="o">(</span><span class="mi">4</span><span class="o">+</span><span class="n">i</span><span class="o">));</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">paintComponent</span><span class="o">(</span><span class="n">Graphics</span> <span class="n">g</span><span class="o">){</span>
+        <span class="kd">super</span><span class="o">.</span><span class="na">paintComponent</span><span class="o">(</span><span class="n">g</span><span class="o">);</span>
+        <span class="n">refreshTransf</span><span class="o">();</span>
+        <span class="c1">//1) grid</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">target</span><span class="o">.</span><span class="na">hm_grid</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="n">paintGrid</span><span class="o">((</span><span class="n">Graphics2D</span><span class="o">)</span><span class="n">g</span><span class="o">);</span>
+        <span class="c1">//2) contour</span>
+        <span class="n">paintContour</span><span class="o">((</span><span class="n">Graphics2D</span><span class="o">)</span><span class="n">g</span><span class="o">);</span>
+        <span class="c1">//3) corner points</span>
+        <span class="n">paintPoints</span><span class="o">((</span><span class="n">Graphics2D</span><span class="o">)</span><span class="n">g</span><span class="o">);</span>
+        <span class="c1">//4) user defined points</span>
+        <span class="n">paintUPoints</span><span class="o">((</span><span class="n">Graphics2D</span><span class="o">)</span><span class="n">g</span><span class="o">);</span>
+    <span class="o">}</span>
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">mouseClicked</span><span class="o">(</span><span class="n">MouseEvent</span> <span class="n">e</span><span class="o">){</span> <span class="o">}</span>
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">mouseExited</span><span class="o">(</span><span class="n">MouseEvent</span> <span class="n">e</span><span class="o">){</span> <span class="o">}</span>
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">mouseEntered</span><span class="o">(</span><span class="n">MouseEvent</span> <span class="n">e</span><span class="o">){</span> <span class="o">}</span>
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">mousePressed</span><span class="o">(</span><span class="n">MouseEvent</span> <span class="n">e</span><span class="o">){</span>
+        <span class="kt">double</span> <span class="n">x</span> <span class="o">=</span> <span class="n">transf</span><span class="o">.</span><span class="na">realx</span><span class="o">(</span><span class="n">e</span><span class="o">.</span><span class="na">getX</span><span class="o">()),</span> <span class="n">y</span> <span class="o">=</span> <span class="n">transf</span><span class="o">.</span><span class="na">realy</span><span class="o">(</span><span class="n">e</span><span class="o">.</span><span class="na">getY</span><span class="o">());</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">app</span><span class="o">.</span><span class="na">statusAddRef</span><span class="o">()){</span>
+            <span class="n">target</span><span class="o">.</span><span class="na">addUserDefinedPoint</span><span class="o">(</span><span class="n">x</span><span class="o">,</span> <span class="n">y</span><span class="o">);</span>
+            <span class="n">validate</span><span class="o">();</span>
+            <span class="n">repaint</span><span class="o">();</span>
+        <span class="o">}</span> <span class="k">else</span> <span class="k">if</span> <span class="o">(</span><span class="n">app</span><span class="o">.</span><span class="na">statusMoveRef</span><span class="o">()){</span>
+            <span class="n">moved_point</span> <span class="o">=</span> <span class="n">target</span><span class="o">.</span><span class="na">closestVertex</span><span class="o">(</span><span class="n">x</span><span class="o">,</span> <span class="n">y</span><span class="o">);</span>
+        <span class="o">}</span> <span class="k">else</span> <span class="k">if</span> <span class="o">(</span><span class="n">app</span><span class="o">.</span><span class="na">statusRemoveRef</span><span class="o">()){</span>
+            <span class="kt">int</span> <span class="n">rem_point</span> <span class="o">=</span> <span class="n">target</span><span class="o">.</span><span class="na">closestVertex</span><span class="o">(</span><span class="n">x</span><span class="o">,</span> <span class="n">y</span><span class="o">);</span>
+            <span class="n">target</span><span class="o">.</span><span class="na">removeVertex</span><span class="o">(</span><span class="n">rem_point</span><span class="o">);</span>
+            <span class="n">validate</span><span class="o">();</span>
+            <span class="n">repaint</span><span class="o">();</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">mouseReleased</span><span class="o">(</span><span class="n">MouseEvent</span> <span class="n">e</span><span class="o">){</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">app</span><span class="o">.</span><span class="na">statusMoveRef</span><span class="o">()){</span> <span class="n">moved_point</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="o">;</span> <span class="o">}</span>
+    <span class="o">}</span>
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">mouseMoved</span><span class="o">(</span><span class="n">MouseEvent</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span> <span class="o">}</span>
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">mouseDragged</span><span class="o">(</span><span class="n">MouseEvent</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">moved_point</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="o">){</span>
+            <span class="kt">double</span> <span class="n">x</span> <span class="o">=</span> <span class="n">transf</span><span class="o">.</span><span class="na">realx</span><span class="o">(</span><span class="n">e</span><span class="o">.</span><span class="na">getX</span><span class="o">()),</span> <span class="n">y</span> <span class="o">=</span> <span class="n">transf</span><span class="o">.</span><span class="na">realy</span><span class="o">(</span><span class="n">e</span><span class="o">.</span><span class="na">getY</span><span class="o">());</span>
+            <span class="n">target</span><span class="o">.</span><span class="na">moveVertex</span><span class="o">(</span><span class="n">moved_point</span><span class="o">,</span> <span class="n">x</span><span class="o">,</span> <span class="n">y</span><span class="o">);</span>
+            <span class="n">validate</span><span class="o">();</span>
+            <span class="n">repaint</span><span class="o">();</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="c1">// Provides static method to call grid building routine with popup progress-bar/cancel dialog</span>
+<span class="kd">class</span> <span class="nc">ProgressBarExecutor</span><span class="o">{</span>
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">long</span> <span class="n">serialVersionUID</span> <span class="o">=</span> <span class="mi">1L</span><span class="o">;</span>
+
+    <span class="c1">//Popup window form.</span>
+    <span class="kd">static</span> <span class="kd">class</span> <span class="nc">Popup</span> <span class="kd">extends</span> <span class="n">JDialog</span> <span class="kd">implements</span> <span class="n">Hybmesh</span><span class="o">.</span><span class="na">ICallback</span><span class="o">,</span>
+                                                  <span class="n">PropertyChangeListener</span><span class="o">{</span>
+        <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">long</span> <span class="n">serialVersionUID</span> <span class="o">=</span> <span class="mi">1L</span><span class="o">;</span>
+        <span class="n">JLabel</span> <span class="n">lab1</span><span class="o">,</span> <span class="n">lab2</span><span class="o">;</span>
+        <span class="n">JProgressBar</span> <span class="n">pb1</span><span class="o">,</span> <span class="n">pb2</span><span class="o">;</span>
+        <span class="kt">boolean</span> <span class="n">isCancelled</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+
+        <span class="kd">public</span> <span class="nf">Popup</span><span class="o">(){</span>
+            <span class="kd">super</span><span class="o">((</span><span class="n">JFrame</span><span class="o">)</span><span class="kc">null</span><span class="o">,</span> <span class="s">&quot;Hybmesh operation&quot;</span><span class="o">,</span> <span class="kc">true</span><span class="o">);</span>
+            <span class="n">setDefaultCloseOperation</span><span class="o">(</span><span class="n">DO_NOTHING_ON_CLOSE</span><span class="o">);</span>
+            <span class="n">lab1</span> <span class="o">=</span> <span class="k">new</span> <span class="n">JLabel</span><span class="o">(</span><span class="s">&quot;n1&quot;</span><span class="o">);</span>
+            <span class="n">lab2</span> <span class="o">=</span> <span class="k">new</span> <span class="n">JLabel</span><span class="o">(</span><span class="s">&quot;n2&quot;</span><span class="o">);</span>
+            <span class="n">pb1</span> <span class="o">=</span> <span class="k">new</span> <span class="n">JProgressBar</span><span class="o">(</span><span class="mi">0</span><span class="o">,</span> <span class="mi">100</span><span class="o">);</span>
+            <span class="n">pb2</span> <span class="o">=</span> <span class="k">new</span> <span class="n">JProgressBar</span><span class="o">(</span><span class="mi">0</span><span class="o">,</span> <span class="mi">100</span><span class="o">);</span>
+            <span class="n">JButton</span> <span class="n">cancel_button</span> <span class="o">=</span> <span class="k">new</span> <span class="n">JButton</span><span class="o">(</span><span class="s">&quot;Cancel&quot;</span><span class="o">);</span>
+            <span class="n">cancel_button</span><span class="o">.</span><span class="na">addActionListener</span><span class="o">(</span><span class="k">new</span> <span class="n">ActionListener</span><span class="o">(){</span>
+                <span class="kd">public</span> <span class="kt">void</span> <span class="nf">actionPerformed</span><span class="o">(</span><span class="n">ActionEvent</span> <span class="n">e</span><span class="o">){</span>
+                    <span class="n">isCancelled</span> <span class="o">=</span> <span class="kc">true</span><span class="o">;</span>
+                <span class="o">}</span>
+            <span class="o">});</span>
+            <span class="n">JOptionPane</span> <span class="n">pane</span> <span class="o">=</span> <span class="k">new</span> <span class="n">JOptionPane</span><span class="o">(</span>
+                <span class="k">new</span> <span class="n">Object</span><span class="o">[]{</span><span class="n">lab1</span><span class="o">,</span> <span class="n">pb1</span><span class="o">,</span> <span class="n">lab2</span><span class="o">,</span> <span class="n">pb2</span><span class="o">},</span>
+                <span class="n">JOptionPane</span><span class="o">.</span><span class="na">PLAIN_MESSAGE</span><span class="o">,</span>
+                <span class="n">JOptionPane</span><span class="o">.</span><span class="na">DEFAULT_OPTION</span><span class="o">,</span> <span class="kc">null</span><span class="o">,</span>
+                <span class="k">new</span> <span class="n">Object</span><span class="o">[]{</span><span class="n">cancel_button</span><span class="o">});</span>
+            <span class="n">setContentPane</span><span class="o">(</span><span class="n">pane</span><span class="o">);</span>
+            <span class="n">setSize</span><span class="o">(</span><span class="k">new</span> <span class="n">Dimension</span><span class="o">(</span><span class="mi">400</span><span class="o">,</span> <span class="mi">200</span><span class="o">));</span>
+            <span class="n">setResizable</span><span class="o">(</span><span class="kc">false</span><span class="o">);</span>
+            <span class="n">setLocationRelativeTo</span><span class="o">(</span><span class="kc">null</span><span class="o">);</span>
+            <span class="n">addPropertyChangeListener</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
+        <span class="o">}</span>
+        <span class="nd">@Override</span>
+        <span class="kd">public</span> <span class="kt">void</span> <span class="nf">propertyChange</span><span class="o">(</span><span class="n">PropertyChangeEvent</span> <span class="n">e</span><span class="o">){</span>
+            <span class="n">String</span> <span class="n">nm</span> <span class="o">=</span> <span class="n">e</span><span class="o">.</span><span class="na">getPropertyName</span><span class="o">();</span>
+            <span class="k">if</span> <span class="o">(</span><span class="s">&quot;n1&quot;</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">nm</span><span class="o">))</span> <span class="n">lab1</span><span class="o">.</span><span class="na">setText</span><span class="o">((</span><span class="n">String</span><span class="o">)</span><span class="n">e</span><span class="o">.</span><span class="na">getNewValue</span><span class="o">());</span>
+            <span class="k">else</span> <span class="k">if</span> <span class="o">(</span><span class="s">&quot;n2&quot;</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">nm</span><span class="o">))</span> <span class="n">lab2</span><span class="o">.</span><span class="na">setText</span><span class="o">((</span><span class="n">String</span><span class="o">)</span><span class="n">e</span><span class="o">.</span><span class="na">getNewValue</span><span class="o">());</span>
+            <span class="k">else</span> <span class="k">if</span> <span class="o">(</span><span class="s">&quot;p1&quot;</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">nm</span><span class="o">))</span> <span class="n">pb1</span><span class="o">.</span><span class="na">setValue</span><span class="o">((</span><span class="n">Integer</span><span class="o">)</span><span class="n">e</span><span class="o">.</span><span class="na">getNewValue</span><span class="o">());</span>
+            <span class="k">else</span> <span class="k">if</span> <span class="o">(</span><span class="s">&quot;p2&quot;</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">nm</span><span class="o">)){</span>
+                <span class="kt">int</span> <span class="n">v</span> <span class="o">=</span> <span class="o">(</span><span class="n">Integer</span><span class="o">)</span><span class="n">e</span><span class="o">.</span><span class="na">getNewValue</span><span class="o">();</span>
+                <span class="k">if</span> <span class="o">(</span><span class="n">v</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="o">){</span>
+                    <span class="c1">// Second progress is not defined for this subprocess.</span>
+                    <span class="c1">// We put progress bar into indeterminate state with</span>
+                    <span class="c1">// constantly moving slider.</span>
+                    <span class="n">pb2</span><span class="o">.</span><span class="na">setIndeterminate</span><span class="o">(</span><span class="kc">true</span><span class="o">);</span>
+                <span class="o">}</span> <span class="k">else</span><span class="o">{</span>
+                    <span class="n">pb2</span><span class="o">.</span><span class="na">setIndeterminate</span><span class="o">(</span><span class="kc">false</span><span class="o">);</span>
+                    <span class="n">pb2</span><span class="o">.</span><span class="na">setValue</span><span class="o">(</span><span class="n">v</span><span class="o">);</span>
+                <span class="o">}</span>
+            <span class="o">}</span>
+        <span class="o">}</span>
+        <span class="nd">@Override</span>
+        <span class="kd">public</span> <span class="kt">int</span> <span class="nf">callback</span><span class="o">(</span><span class="n">String</span> <span class="n">n1</span><span class="o">,</span> <span class="n">String</span> <span class="n">n2</span><span class="o">,</span> <span class="kt">double</span> <span class="n">p1</span><span class="o">,</span> <span class="kt">double</span> <span class="n">p2</span><span class="o">){</span>
+            <span class="k">try</span><span class="o">{</span>
+                <span class="k">if</span> <span class="o">(</span><span class="n">isCancelled</span><span class="o">)</span> <span class="k">throw</span> <span class="k">new</span> <span class="n">InterruptedException</span><span class="o">();</span>
+                <span class="c1">//Using events to change window components because</span>
+                <span class="c1">//this function is called from a thread separated from gui.</span>
+                <span class="n">firePropertyChange</span><span class="o">(</span><span class="s">&quot;n1&quot;</span><span class="o">,</span> <span class="kc">null</span><span class="o">,</span> <span class="n">n1</span><span class="o">);</span>
+                <span class="n">firePropertyChange</span><span class="o">(</span><span class="s">&quot;n2&quot;</span><span class="o">,</span> <span class="kc">null</span><span class="o">,</span> <span class="n">n2</span><span class="o">);</span>
+                <span class="n">firePropertyChange</span><span class="o">(</span><span class="s">&quot;p1&quot;</span><span class="o">,</span> <span class="kc">null</span><span class="o">,</span> <span class="k">new</span> <span class="n">Integer</span><span class="o">((</span><span class="kt">int</span><span class="o">)(</span><span class="mi">100</span><span class="o">*</span><span class="n">p1</span><span class="o">)));</span>
+                <span class="n">firePropertyChange</span><span class="o">(</span><span class="s">&quot;p2&quot;</span><span class="o">,</span> <span class="kc">null</span><span class="o">,</span> <span class="k">new</span> <span class="n">Integer</span><span class="o">((</span><span class="kt">int</span><span class="o">)(</span><span class="mi">100</span><span class="o">*</span><span class="n">p2</span><span class="o">)));</span>
+                <span class="c1">//!!!! Intentional delay for testing purpose.</span>
+                <span class="n">Thread</span><span class="o">.</span><span class="na">sleep</span><span class="o">(</span><span class="mi">300</span><span class="o">);</span>
+                <span class="k">return</span> <span class="mi">0</span><span class="o">;</span>
+            <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">InterruptedException</span> <span class="n">e</span><span class="o">){</span>
+                <span class="k">return</span> <span class="mi">1</span><span class="o">;</span>
+            <span class="o">}</span>
+        <span class="o">}</span>
+    <span class="o">};</span>
+
+    <span class="c1">// Backgroung worker which runs building routine in a separate thread.</span>
+    <span class="kd">static</span> <span class="kd">class</span> <span class="nc">Worker</span> <span class="kd">extends</span> <span class="n">SwingWorker</span><span class="o">&lt;</span><span class="n">Exception</span><span class="o">,</span> <span class="n">Void</span><span class="o">&gt;{</span>
+        <span class="n">IExec</span> <span class="n">func</span><span class="o">;</span>
+        <span class="n">Popup</span> <span class="n">cb</span><span class="o">;</span>
+        <span class="n">Worker</span><span class="o">(</span><span class="n">IExec</span> <span class="n">func</span><span class="o">,</span> <span class="n">Popup</span> <span class="n">cb</span><span class="o">){</span>
+            <span class="k">this</span><span class="o">.</span><span class="na">func</span> <span class="o">=</span> <span class="n">func</span><span class="o">;</span>
+            <span class="k">this</span><span class="o">.</span><span class="na">cb</span> <span class="o">=</span> <span class="n">cb</span><span class="o">;</span>
+            <span class="n">execute</span><span class="o">();</span>
+            <span class="n">cb</span><span class="o">.</span><span class="na">setVisible</span><span class="o">(</span><span class="kc">true</span><span class="o">);</span>
+        <span class="o">}</span>
+        <span class="nd">@Override</span>
+        <span class="kd">public</span> <span class="n">Exception</span> <span class="nf">doInBackground</span><span class="o">(){</span> 
+            <span class="k">try</span><span class="o">{</span>
+                <span class="n">func</span><span class="o">.</span><span class="na">run</span><span class="o">(</span><span class="n">cb</span><span class="o">);</span>
+                <span class="k">return</span> <span class="kc">null</span><span class="o">;</span>
+            <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">e</span><span class="o">){</span>
+                <span class="k">return</span> <span class="n">e</span><span class="o">;</span>
+            <span class="o">}</span>
+        <span class="o">}</span>
+        <span class="nd">@Override</span>
+        <span class="kd">public</span> <span class="kt">void</span> <span class="nf">done</span><span class="o">(){</span> <span class="n">cb</span><span class="o">.</span><span class="na">setVisible</span><span class="o">(</span><span class="kc">false</span><span class="o">);</span> <span class="o">}</span>
+    <span class="o">}</span>
+
+    <span class="c1">// Interfaces for grid building routine</span>
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kd">interface</span> <span class="nc">IExec</span><span class="o">{</span>
+        <span class="kd">public</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">(</span><span class="n">Hybmesh</span><span class="o">.</span><span class="na">ICallback</span> <span class="n">cb</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">Exception</span><span class="o">;</span>
+    <span class="o">}</span>
+
+    <span class="c1">// Main static function. Rethrows all grid building exceptions.</span>
+    <span class="c1">// If process was cancelled throws Hybmesh.EUserInterrupt.</span>
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">execute</span><span class="o">(</span><span class="n">IExec</span> <span class="n">func</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">Exception</span><span class="o">{</span>
+        <span class="n">Worker</span> <span class="n">worker</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Worker</span><span class="o">(</span><span class="n">func</span><span class="o">,</span> <span class="k">new</span> <span class="n">Popup</span><span class="o">());</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">worker</span><span class="o">.</span><span class="na">get</span><span class="o">()</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="k">throw</span> <span class="n">worker</span><span class="o">.</span><span class="na">get</span><span class="o">();</span>
+    <span class="o">}</span>
+<span class="o">};</span>
+</pre></div>
+</div>
+</div>
+<div class="literal-block-wrapper docutils container" id="id3">
+<div class="code-block-caption"><span class="caption-text">GridData.java</span><a class="headerlink" href="#id3" title="Permalink to this code">¶</a></div>
+<div class="highlight-java"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">java.util.ArrayList</span><span class="o">;</span>
+<span class="kn">import static</span> <span class="nn">java.lang.Math.*</span><span class="o">;</span>
+
+<span class="c1">// Stores left and right grids and defined points</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">GridData</span><span class="o">{</span>
+    <span class="n">Hybmesh</span> <span class="n">hm</span><span class="o">;</span>
+    <span class="n">Grid</span> <span class="n">from</span><span class="o">,</span> <span class="n">to</span><span class="o">;</span>
+
+    <span class="kd">public</span> <span class="nf">GridData</span><span class="o">()</span> <span class="kd">throws</span> <span class="n">Exception</span><span class="o">{</span>
+        <span class="c1">// Establish hybmesh connection</span>
+        <span class="n">hm</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Hybmesh</span><span class="o">();</span>
+        <span class="c1">// build base grid with default partition</span>
+        <span class="n">from</span> <span class="o">=</span> <span class="n">Grid</span><span class="o">.</span><span class="na">sqrGrid</span><span class="o">(</span><span class="n">hm</span><span class="o">,</span> <span class="mi">10</span><span class="o">,</span> <span class="mi">10</span><span class="o">);</span>
+        <span class="n">to</span> <span class="o">=</span> <span class="n">Grid</span><span class="o">.</span><span class="na">sqrContour</span><span class="o">();</span>
+        <span class="n">from</span><span class="o">.</span><span class="na">allow_contour_move</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+        <span class="n">to</span><span class="o">.</span><span class="na">allow_contour_move</span> <span class="o">=</span> <span class="kc">true</span><span class="o">;</span>
+    <span class="o">}</span>
+
+    <span class="c1">// Sets basic grid segmentation</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">setBasicSegmentation</span><span class="o">(</span><span class="kt">int</span> <span class="n">nx</span><span class="o">,</span> <span class="kt">int</span> <span class="n">ny</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">Exception</span><span class="o">{</span>
+        <span class="n">Grid</span> <span class="n">tmp</span> <span class="o">=</span> <span class="n">Grid</span><span class="o">.</span><span class="na">sqrGrid</span><span class="o">(</span><span class="n">hm</span><span class="o">,</span> <span class="n">nx</span><span class="o">,</span> <span class="n">ny</span><span class="o">);</span>
+        <span class="n">from</span><span class="o">.</span><span class="na">hm_grid</span> <span class="o">=</span> <span class="n">tmp</span><span class="o">.</span><span class="na">hm_grid</span><span class="o">;</span>
+        <span class="n">from</span><span class="o">.</span><span class="na">vertices</span> <span class="o">=</span> <span class="n">tmp</span><span class="o">.</span><span class="na">vertices</span><span class="o">;</span>
+        <span class="n">from</span><span class="o">.</span><span class="na">edge_vert</span> <span class="o">=</span> <span class="n">tmp</span><span class="o">.</span><span class="na">edge_vert</span><span class="o">;</span>
+    <span class="o">}</span>
+
+    <span class="c1">// Performs mapping. Signature fits ProgressBarExecutor.IExec interface.</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">doMapping</span><span class="o">(</span><span class="n">Hybmesh</span><span class="o">.</span><span class="na">ICallback</span> <span class="n">cb</span><span class="o">,</span> <span class="n">String</span> <span class="n">algo</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">Exception</span><span class="o">{</span>
+        <span class="n">hm</span><span class="o">.</span><span class="na">assignCallback</span><span class="o">(</span><span class="n">cb</span><span class="o">);</span>
+        <span class="k">try</span><span class="o">{</span>
+            <span class="c1">//1. create target contour</span>
+            <span class="n">Hybmesh</span><span class="o">.</span><span class="na">Contour2D</span> <span class="n">target_contour</span> <span class="o">=</span> <span class="n">to</span><span class="o">.</span><span class="na">mainContour</span><span class="o">(</span><span class="n">hm</span><span class="o">);</span>
+            <span class="c1">//2. assemble base and target points</span>
+            <span class="n">Hybmesh</span><span class="o">.</span><span class="na">Point2</span><span class="o">[]</span> <span class="n">base_points</span> <span class="o">=</span> <span class="n">from</span><span class="o">.</span><span class="na">allVertices</span><span class="o">();</span>
+            <span class="n">Hybmesh</span><span class="o">.</span><span class="na">Point2</span><span class="o">[]</span> <span class="n">target_points</span> <span class="o">=</span> <span class="n">to</span><span class="o">.</span><span class="na">allVertices</span><span class="o">();</span>
+            <span class="c1">//3. do mapping</span>
+            <span class="n">Hybmesh</span><span class="o">.</span><span class="na">Grid2D</span> <span class="n">ret</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="na">mapGrid</span><span class="o">(</span>
+                <span class="n">from</span><span class="o">.</span><span class="na">hm_grid</span><span class="o">,</span> <span class="n">target_contour</span><span class="o">,</span> <span class="n">base_points</span><span class="o">,</span> <span class="n">target_points</span><span class="o">,</span>
+                <span class="kc">null</span><span class="o">,</span> <span class="kc">null</span><span class="o">,</span> <span class="n">algo</span><span class="o">,</span> <span class="kc">false</span><span class="o">,</span> <span class="kc">false</span><span class="o">);</span>
+            <span class="c1">//4. add to result</span>
+            <span class="n">to</span><span class="o">.</span><span class="na">fillGrid</span><span class="o">(</span><span class="n">ret</span><span class="o">);</span>
+        <span class="o">}</span> <span class="k">finally</span> <span class="o">{</span>
+            <span class="n">hm</span><span class="o">.</span><span class="na">resetCallback</span><span class="o">();</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+
+    <span class="c1">//Grid data storage</span>
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kd">class</span> <span class="nc">Grid</span><span class="o">{</span>
+        <span class="kt">double</span><span class="o">[]</span> <span class="n">vertices</span><span class="o">;</span>
+        <span class="kt">int</span><span class="o">[]</span> <span class="n">edge_vert</span><span class="o">;</span>
+        <span class="n">Hybmesh</span><span class="o">.</span><span class="na">Grid2D</span> <span class="n">hm_grid</span><span class="o">=</span><span class="kc">null</span><span class="o">;</span>
+        <span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">Hybmesh</span><span class="o">.</span><span class="na">Point2</span><span class="o">&gt;</span> <span class="n">corner_vert</span><span class="o">;</span>
+        <span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">Double</span><span class="o">&gt;</span> <span class="n">user_defined_vert</span><span class="o">;</span>
+        <span class="kt">boolean</span> <span class="n">allow_contour_move</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+
+        <span class="kd">public</span> <span class="kt">void</span> <span class="nf">fillGrid</span><span class="o">(</span><span class="n">Hybmesh</span><span class="o">.</span><span class="na">Grid2D</span> <span class="n">hm_grid</span><span class="o">){</span>
+            <span class="k">try</span><span class="o">{</span>
+                <span class="k">this</span><span class="o">.</span><span class="na">hm_grid</span> <span class="o">=</span> <span class="n">hm_grid</span><span class="o">;</span>
+                <span class="n">vertices</span> <span class="o">=</span> <span class="n">hm_grid</span><span class="o">.</span><span class="na">rawVertices</span><span class="o">();</span>
+                <span class="n">edge_vert</span> <span class="o">=</span> <span class="n">hm_grid</span><span class="o">.</span><span class="na">rawTab</span><span class="o">(</span><span class="s">&quot;edge_vert&quot;</span><span class="o">);</span>
+            <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">e</span><span class="o">){</span>
+                <span class="k">this</span><span class="o">.</span><span class="na">hm_grid</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span> <span class="n">vertices</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span> <span class="n">edge_vert</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+            <span class="o">}</span>
+        <span class="o">}</span>
+        
+        <span class="c1">// Bounding box coordinates</span>
+        <span class="kd">public</span> <span class="kt">double</span> <span class="nf">minX</span><span class="o">(){</span>
+            <span class="k">return</span> <span class="n">min</span><span class="o">(</span><span class="n">min</span><span class="o">(</span><span class="n">corner_vert</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="mi">0</span><span class="o">).</span><span class="na">x</span><span class="o">,</span> <span class="n">corner_vert</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="mi">1</span><span class="o">).</span><span class="na">x</span><span class="o">),</span>
+                <span class="n">min</span><span class="o">(</span><span class="n">corner_vert</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="mi">2</span><span class="o">).</span><span class="na">x</span><span class="o">,</span> <span class="n">corner_vert</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="mi">3</span><span class="o">).</span><span class="na">x</span><span class="o">));</span>
+        <span class="o">}</span>
+        <span class="kd">public</span> <span class="kt">double</span> <span class="nf">minY</span><span class="o">(){</span>
+            <span class="k">return</span> <span class="n">min</span><span class="o">(</span><span class="n">min</span><span class="o">(</span><span class="n">corner_vert</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="mi">0</span><span class="o">).</span><span class="na">y</span><span class="o">,</span> <span class="n">corner_vert</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="mi">1</span><span class="o">).</span><span class="na">y</span><span class="o">),</span>
+                <span class="n">min</span><span class="o">(</span><span class="n">corner_vert</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="mi">2</span><span class="o">).</span><span class="na">y</span><span class="o">,</span> <span class="n">corner_vert</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="mi">3</span><span class="o">).</span><span class="na">y</span><span class="o">));</span>
+        <span class="o">}</span>
+        <span class="kd">public</span> <span class="kt">double</span> <span class="nf">maxX</span><span class="o">(){</span>
+            <span class="k">return</span> <span class="n">max</span><span class="o">(</span><span class="n">max</span><span class="o">(</span><span class="n">corner_vert</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="mi">0</span><span class="o">).</span><span class="na">x</span><span class="o">,</span> <span class="n">corner_vert</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="mi">1</span><span class="o">).</span><span class="na">x</span><span class="o">),</span>
+                <span class="n">max</span><span class="o">(</span><span class="n">corner_vert</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="mi">2</span><span class="o">).</span><span class="na">x</span><span class="o">,</span> <span class="n">corner_vert</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="mi">3</span><span class="o">).</span><span class="na">x</span><span class="o">));</span>
+        <span class="o">}</span>
+        <span class="kd">public</span> <span class="kt">double</span> <span class="nf">maxY</span><span class="o">(){</span>
+            <span class="k">return</span> <span class="n">max</span><span class="o">(</span><span class="n">max</span><span class="o">(</span><span class="n">corner_vert</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="mi">0</span><span class="o">).</span><span class="na">y</span><span class="o">,</span> <span class="n">corner_vert</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="mi">1</span><span class="o">).</span><span class="na">y</span><span class="o">),</span>
+                <span class="n">max</span><span class="o">(</span><span class="n">corner_vert</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="mi">2</span><span class="o">).</span><span class="na">y</span><span class="o">,</span> <span class="n">corner_vert</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="mi">3</span><span class="o">).</span><span class="na">y</span><span class="o">));</span>
+        <span class="o">}</span>
+
+        <span class="c1">// corner + user-defined vertices</span>
+        <span class="kd">public</span> <span class="n">Hybmesh</span><span class="o">.</span><span class="na">Point2</span><span class="o">[]</span> <span class="nf">allVertices</span><span class="o">(){</span>
+            <span class="n">Hybmesh</span><span class="o">.</span><span class="na">Point2</span><span class="o">[]</span> <span class="n">ret</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Hybmesh</span><span class="o">.</span><span class="na">Point2</span><span class="o">[</span><span class="mi">4</span> <span class="o">+</span> <span class="n">user_defined_vert</span><span class="o">.</span><span class="na">size</span><span class="o">()];</span>
+            <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="o">;</span> <span class="n">i</span><span class="o">&lt;</span><span class="mi">4</span><span class="o">;</span> <span class="o">++</span><span class="n">i</span><span class="o">)</span> <span class="n">ret</span><span class="o">[</span><span class="n">i</span><span class="o">]</span> <span class="o">=</span> <span class="n">corner_vert</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">i</span><span class="o">);</span>
+            <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="o">;</span> <span class="n">i</span><span class="o">&lt;</span><span class="n">user_defined_vert</span><span class="o">.</span><span class="na">size</span><span class="o">();</span> <span class="o">++</span><span class="n">i</span><span class="o">){</span>
+                <span class="n">ret</span><span class="o">[</span><span class="n">i</span><span class="o">+</span><span class="mi">4</span><span class="o">]</span> <span class="o">=</span> <span class="n">udefToPoint</span><span class="o">(</span><span class="n">i</span><span class="o">);</span>
+            <span class="o">}</span>
+            <span class="k">return</span> <span class="n">ret</span><span class="o">;</span>
+        <span class="o">}</span>
+        <span class="c1">// creates a hybmesh contour object from four corner points</span>
+        <span class="kd">public</span> <span class="n">Hybmesh</span><span class="o">.</span><span class="na">Contour2D</span> <span class="nf">mainContour</span><span class="o">(</span><span class="n">Hybmesh</span> <span class="n">hm</span><span class="o">){</span>
+            <span class="k">try</span><span class="o">{</span>
+                <span class="n">Hybmesh</span><span class="o">.</span><span class="na">Point2</span><span class="o">[]</span> <span class="n">ret</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Hybmesh</span><span class="o">.</span><span class="na">Point2</span><span class="o">[</span><span class="mi">5</span><span class="o">];</span>
+                <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="o">;</span> <span class="n">i</span><span class="o">&lt;</span><span class="mi">4</span><span class="o">;</span> <span class="o">++</span><span class="n">i</span><span class="o">)</span> <span class="n">ret</span><span class="o">[</span><span class="n">i</span><span class="o">]</span> <span class="o">=</span> <span class="n">corner_vert</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">i</span><span class="o">);</span>
+                <span class="n">ret</span><span class="o">[</span><span class="mi">4</span><span class="o">]</span> <span class="o">=</span> <span class="n">ret</span><span class="o">[</span><span class="mi">0</span><span class="o">];</span>
+                <span class="k">return</span> <span class="n">hm</span><span class="o">.</span><span class="na">createContour</span><span class="o">(</span><span class="n">ret</span><span class="o">,</span> <span class="kc">null</span><span class="o">);</span>
+            <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">e</span><span class="o">){</span>
+                <span class="k">return</span> <span class="kc">null</span><span class="o">;</span>
+            <span class="o">}</span>
+        <span class="o">}</span>
+
+        <span class="c1">// indexed user-defined point to physical point</span>
+        <span class="n">Hybmesh</span><span class="o">.</span><span class="na">Point2</span> <span class="nf">udefToPoint</span><span class="o">(</span><span class="kt">int</span> <span class="n">index</span><span class="o">){</span>
+            <span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">Hybmesh</span><span class="o">.</span><span class="na">Point2</span><span class="o">&gt;</span> <span class="n">pts</span> <span class="o">=</span> <span class="n">corner_vert</span><span class="o">;</span>
+            <span class="kt">double</span> <span class="n">w</span> <span class="o">=</span> <span class="n">user_defined_vert</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">index</span><span class="o">);</span>
+            <span class="kt">int</span> <span class="n">i1</span><span class="o">,</span> <span class="n">i2</span><span class="o">;</span>
+            <span class="k">if</span> <span class="o">(</span><span class="n">w</span> <span class="o">&gt;</span> <span class="mi">3</span><span class="o">){</span> <span class="n">w</span><span class="o">-=</span><span class="mi">3</span><span class="o">;</span> <span class="n">i1</span> <span class="o">=</span> <span class="mi">3</span><span class="o">;</span> <span class="n">i2</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="o">}</span>
+            <span class="k">else</span> <span class="k">if</span> <span class="o">(</span><span class="n">w</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="o">)</span> <span class="o">{</span> <span class="n">w</span><span class="o">-=</span><span class="mi">2</span><span class="o">;</span> <span class="n">i1</span> <span class="o">=</span> <span class="mi">2</span><span class="o">;</span> <span class="n">i2</span> <span class="o">=</span> <span class="mi">3</span><span class="o">;}</span>
+            <span class="k">else</span> <span class="k">if</span> <span class="o">(</span><span class="n">w</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="o">)</span> <span class="o">{</span> <span class="n">w</span><span class="o">-=</span><span class="mi">1</span><span class="o">;</span> <span class="n">i1</span> <span class="o">=</span> <span class="mi">1</span><span class="o">;</span> <span class="n">i2</span> <span class="o">=</span> <span class="mi">2</span><span class="o">;}</span>
+            <span class="k">else</span> <span class="o">{</span> <span class="n">w</span><span class="o">-=</span><span class="mi">0</span><span class="o">;</span> <span class="n">i1</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i2</span> <span class="o">=</span> <span class="mi">1</span><span class="o">;}</span>
+            <span class="k">return</span> <span class="k">new</span> <span class="n">Hybmesh</span><span class="o">.</span><span class="na">Point2</span><span class="o">((</span><span class="mi">1</span><span class="o">-</span><span class="n">w</span><span class="o">)*</span><span class="n">pts</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">i1</span><span class="o">).</span><span class="na">x</span> <span class="o">+</span> <span class="o">(</span><span class="n">w</span><span class="o">)*</span><span class="n">pts</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">i2</span><span class="o">).</span><span class="na">x</span><span class="o">,</span>
+                    <span class="o">(</span><span class="mi">1</span><span class="o">-</span><span class="n">w</span><span class="o">)*</span><span class="n">pts</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">i1</span><span class="o">).</span><span class="na">y</span> <span class="o">+</span> <span class="o">(</span><span class="n">w</span><span class="o">)*</span><span class="n">pts</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">i2</span><span class="o">).</span><span class="na">y</span><span class="o">);</span>
+        <span class="o">}</span>
+        
+        <span class="c1">//squared distance betwen two points</span>
+        <span class="kt">double</span> <span class="nf">meas</span><span class="o">(</span><span class="n">Hybmesh</span><span class="o">.</span><span class="na">Point2</span> <span class="n">p</span><span class="o">,</span> <span class="kt">double</span> <span class="n">x</span><span class="o">,</span> <span class="kt">double</span> <span class="n">y</span><span class="o">){</span>
+            <span class="k">return</span> <span class="o">(</span><span class="n">p</span><span class="o">.</span><span class="na">x</span> <span class="o">-</span> <span class="n">x</span><span class="o">)*(</span><span class="n">p</span><span class="o">.</span><span class="na">x</span> <span class="o">-</span> <span class="n">x</span><span class="o">)</span> <span class="o">+</span> <span class="o">(</span><span class="n">p</span><span class="o">.</span><span class="na">y</span> <span class="o">-</span> <span class="n">y</span><span class="o">)*(</span><span class="n">p</span><span class="o">.</span><span class="na">y</span> <span class="o">-</span> <span class="n">y</span><span class="o">);</span>
+        <span class="o">}</span>
+        <span class="c1">// projects point to contours i-th section.</span>
+        <span class="c1">// returns {squared distance to section, [0, 1] coordinate of the closest point}</span>
+        <span class="kt">double</span><span class="o">[]</span> <span class="nf">sect_project</span><span class="o">(</span><span class="kt">double</span> <span class="n">x</span><span class="o">,</span> <span class="kt">double</span> <span class="n">y</span><span class="o">,</span> <span class="kt">int</span> <span class="n">isec</span><span class="o">){</span>
+            <span class="n">Hybmesh</span><span class="o">.</span><span class="na">Point2</span> <span class="n">p1</span> <span class="o">=</span> <span class="n">corner_vert</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">isec</span><span class="o">);</span>
+            <span class="n">Hybmesh</span><span class="o">.</span><span class="na">Point2</span> <span class="n">p2</span> <span class="o">=</span> <span class="n">corner_vert</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">isec</span> <span class="o">==</span> <span class="mi">3</span> <span class="o">?</span> <span class="mi">0</span> <span class="o">:</span> <span class="n">isec</span> <span class="o">+</span> <span class="mi">1</span><span class="o">);</span>
+            <span class="kt">double</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">p2</span><span class="o">.</span><span class="na">x</span> <span class="o">-</span> <span class="n">p1</span><span class="o">.</span><span class="na">x</span><span class="o">,</span> <span class="n">ay</span> <span class="o">=</span> <span class="n">p2</span><span class="o">.</span><span class="na">y</span> <span class="o">-</span> <span class="n">p1</span><span class="o">.</span><span class="na">y</span><span class="o">;</span>
+            <span class="kt">double</span> <span class="n">bx</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-</span> <span class="n">p1</span><span class="o">.</span><span class="na">x</span><span class="o">,</span> <span class="n">by</span> <span class="o">=</span> <span class="n">y</span> <span class="o">-</span> <span class="n">p1</span><span class="o">.</span><span class="na">y</span><span class="o">;</span>
+            <span class="kt">double</span> <span class="n">ksi</span><span class="o">=(</span><span class="n">ax</span><span class="o">*</span><span class="n">bx</span><span class="o">+</span><span class="n">ay</span><span class="o">*</span><span class="n">by</span><span class="o">)/(</span><span class="n">ax</span><span class="o">*</span><span class="n">ax</span> <span class="o">+</span> <span class="n">ay</span><span class="o">*</span><span class="n">ay</span><span class="o">);</span>
+            <span class="k">if</span> <span class="o">(</span><span class="n">ksi</span><span class="o">&gt;=</span><span class="mi">1</span><span class="o">)</span> <span class="o">{</span> <span class="k">return</span> <span class="k">new</span> <span class="kt">double</span><span class="o">[]</span> <span class="o">{</span><span class="n">meas</span><span class="o">(</span><span class="n">p2</span><span class="o">,</span> <span class="n">x</span><span class="o">,</span> <span class="n">y</span><span class="o">),</span> <span class="mf">1.0</span><span class="o">};</span> <span class="o">}</span>
+            <span class="k">else</span> <span class="k">if</span> <span class="o">(</span><span class="n">ksi</span><span class="o">&lt;=</span><span class="mi">0</span><span class="o">)</span> <span class="o">{</span> <span class="k">return</span> <span class="k">new</span> <span class="kt">double</span><span class="o">[]{</span><span class="n">meas</span><span class="o">(</span><span class="n">p1</span><span class="o">,</span> <span class="n">x</span><span class="o">,</span> <span class="n">y</span><span class="o">),</span> <span class="mf">0.0</span><span class="o">};</span> <span class="o">}</span> 
+            <span class="k">else</span><span class="o">{</span>
+                <span class="kt">double</span><span class="o">[]</span> <span class="n">A</span> <span class="o">=</span> <span class="k">new</span> <span class="kt">double</span><span class="o">[]{</span>
+                    <span class="n">p1</span><span class="o">.</span><span class="na">y</span><span class="o">-</span><span class="n">p2</span><span class="o">.</span><span class="na">y</span><span class="o">,</span> <span class="n">p2</span><span class="o">.</span><span class="na">x</span><span class="o">-</span><span class="n">p1</span><span class="o">.</span><span class="na">x</span><span class="o">,</span> <span class="n">p1</span><span class="o">.</span><span class="na">x</span><span class="o">*</span><span class="n">p2</span><span class="o">.</span><span class="na">y</span><span class="o">-</span><span class="n">p1</span><span class="o">.</span><span class="na">y</span><span class="o">*</span><span class="n">p2</span><span class="o">.</span><span class="na">x</span><span class="o">};</span>
+                <span class="kt">double</span> <span class="n">d0</span> <span class="o">=</span> <span class="n">A</span><span class="o">[</span><span class="mi">0</span><span class="o">]*</span><span class="n">x</span><span class="o">+</span><span class="n">A</span><span class="o">[</span><span class="mi">1</span><span class="o">]*</span><span class="n">y</span><span class="o">+</span><span class="n">A</span><span class="o">[</span><span class="mi">2</span><span class="o">];</span>
+                <span class="n">d0</span> <span class="o">*=</span> <span class="n">d0</span><span class="o">;</span> <span class="n">d0</span> <span class="o">/=</span> <span class="o">(</span><span class="n">A</span><span class="o">[</span><span class="mi">0</span><span class="o">]*</span><span class="n">A</span><span class="o">[</span><span class="mi">0</span><span class="o">]</span> <span class="o">+</span> <span class="n">A</span><span class="o">[</span><span class="mi">1</span><span class="o">]*</span><span class="n">A</span><span class="o">[</span><span class="mi">1</span><span class="o">]);</span>
+                <span class="k">return</span> <span class="k">new</span> <span class="kt">double</span><span class="o">[]{</span><span class="n">d0</span><span class="o">,</span> <span class="n">ksi</span><span class="o">};</span>
+            <span class="o">}</span>
+        <span class="o">}</span>
+        <span class="c1">// gives [0, 4] contour coordinate of given point where</span>
+        <span class="c1">// [0, 1] are normalized coordinates for the first section,</span>
+        <span class="c1">// [1, 2]           --- // ---       for the secont section, etc.</span>
+        <span class="n">Double</span> <span class="nf">calcUserDefinedPoint</span><span class="o">(</span><span class="kt">double</span> <span class="n">x</span><span class="o">,</span> <span class="kt">double</span> <span class="n">y</span><span class="o">){</span>
+            <span class="c1">//find closest contour section</span>
+            <span class="kt">double</span><span class="o">[]</span> <span class="n">d1</span> <span class="o">=</span> <span class="n">sect_project</span><span class="o">(</span><span class="n">x</span><span class="o">,</span> <span class="n">y</span><span class="o">,</span> <span class="mi">0</span><span class="o">);</span>
+            <span class="kt">double</span><span class="o">[]</span> <span class="n">d2</span> <span class="o">=</span> <span class="n">sect_project</span><span class="o">(</span><span class="n">x</span><span class="o">,</span> <span class="n">y</span><span class="o">,</span> <span class="mi">1</span><span class="o">);</span>
+            <span class="kt">double</span><span class="o">[]</span> <span class="n">d3</span> <span class="o">=</span> <span class="n">sect_project</span><span class="o">(</span><span class="n">x</span><span class="o">,</span> <span class="n">y</span><span class="o">,</span> <span class="mi">2</span><span class="o">);</span>
+            <span class="kt">double</span><span class="o">[]</span> <span class="n">d4</span> <span class="o">=</span> <span class="n">sect_project</span><span class="o">(</span><span class="n">x</span><span class="o">,</span> <span class="n">y</span><span class="o">,</span> <span class="mi">3</span><span class="o">);</span>
+            <span class="k">if</span> <span class="o">(</span><span class="n">d1</span><span class="o">[</span><span class="mi">0</span><span class="o">]</span> <span class="o">&lt;=</span> <span class="n">d2</span><span class="o">[</span><span class="mi">0</span><span class="o">]</span> <span class="o">&amp;&amp;</span> <span class="n">d1</span><span class="o">[</span><span class="mi">0</span><span class="o">]</span> <span class="o">&lt;=</span> <span class="n">d3</span><span class="o">[</span><span class="mi">0</span><span class="o">]</span> <span class="o">&amp;&amp;</span> <span class="n">d1</span><span class="o">[</span><span class="mi">0</span><span class="o">]</span> <span class="o">&lt;=</span> <span class="n">d4</span><span class="o">[</span><span class="mi">0</span><span class="o">]){</span>
+                <span class="k">return</span> <span class="k">new</span> <span class="n">Double</span><span class="o">(</span><span class="n">d1</span><span class="o">[</span><span class="mi">1</span><span class="o">]);</span>
+            <span class="o">}</span> <span class="k">else</span> <span class="k">if</span> <span class="o">(</span><span class="n">d2</span><span class="o">[</span><span class="mi">0</span><span class="o">]</span> <span class="o">&lt;=</span> <span class="n">d1</span><span class="o">[</span><span class="mi">0</span><span class="o">]</span> <span class="o">&amp;&amp;</span> <span class="n">d2</span><span class="o">[</span><span class="mi">0</span><span class="o">]</span> <span class="o">&lt;=</span> <span class="n">d3</span><span class="o">[</span><span class="mi">0</span><span class="o">]</span> <span class="o">&amp;&amp;</span> <span class="n">d2</span><span class="o">[</span><span class="mi">0</span><span class="o">]</span> <span class="o">&lt;=</span> <span class="n">d4</span><span class="o">[</span><span class="mi">0</span><span class="o">]){</span>
+                <span class="k">return</span> <span class="k">new</span> <span class="n">Double</span><span class="o">(</span><span class="n">d2</span><span class="o">[</span><span class="mi">1</span><span class="o">]+</span><span class="mf">1.0</span><span class="o">);</span>
+            <span class="o">}</span> <span class="k">else</span> <span class="k">if</span> <span class="o">(</span><span class="n">d3</span><span class="o">[</span><span class="mi">0</span><span class="o">]</span> <span class="o">&lt;=</span> <span class="n">d1</span><span class="o">[</span><span class="mi">0</span><span class="o">]</span> <span class="o">&amp;&amp;</span> <span class="n">d3</span><span class="o">[</span><span class="mi">0</span><span class="o">]</span> <span class="o">&lt;=</span> <span class="n">d2</span><span class="o">[</span><span class="mi">0</span><span class="o">]</span> <span class="o">&amp;&amp;</span> <span class="n">d3</span><span class="o">[</span><span class="mi">0</span><span class="o">]</span> <span class="o">&lt;=</span> <span class="n">d4</span><span class="o">[</span><span class="mi">0</span><span class="o">]){</span>
+                <span class="k">return</span> <span class="k">new</span> <span class="n">Double</span><span class="o">(</span><span class="n">d3</span><span class="o">[</span><span class="mi">1</span><span class="o">]+</span><span class="mf">2.0</span><span class="o">);</span>
+            <span class="o">}</span> <span class="k">else</span><span class="o">{</span>
+                <span class="k">return</span> <span class="k">new</span> <span class="n">Double</span><span class="o">(</span><span class="n">d4</span><span class="o">[</span><span class="mi">1</span><span class="o">]+</span><span class="mf">3.0</span><span class="o">);</span>
+            <span class="o">}</span>
+        <span class="o">}</span>
+        <span class="c1">// adds a point to the user defined list</span>
+        <span class="kd">public</span> <span class="kt">void</span> <span class="nf">addUserDefinedPoint</span><span class="o">(</span><span class="kt">double</span> <span class="n">x</span><span class="o">,</span> <span class="kt">double</span> <span class="n">y</span><span class="o">){</span>
+            <span class="n">user_defined_vert</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="n">calcUserDefinedPoint</span><span class="o">(</span><span class="n">x</span><span class="o">,</span> <span class="n">y</span><span class="o">));</span>
+        <span class="o">}</span>
+
+        <span class="c1">// finds index of closest given vertex.</span>
+        <span class="c1">// [0, 1, 2, 3] - are indicies of corner points, all other - user defined ones.</span>
+        <span class="kd">public</span> <span class="kt">int</span> <span class="nf">closestVertex</span><span class="o">(</span><span class="kt">double</span> <span class="n">x</span><span class="o">,</span> <span class="kt">double</span> <span class="n">y</span><span class="o">){</span>
+            <span class="kt">int</span> <span class="n">ret</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="o">;</span>
+            <span class="kt">double</span> <span class="n">meas_min</span> <span class="o">=</span> <span class="mf">1e100</span><span class="o">;</span>
+            <span class="c1">//corner vertices</span>
+            <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="o">;</span> <span class="n">i</span><span class="o">&lt;</span><span class="mi">4</span><span class="o">;</span> <span class="o">++</span><span class="n">i</span><span class="o">){</span>
+                <span class="kt">double</span> <span class="n">m</span> <span class="o">=</span> <span class="n">meas</span><span class="o">(</span><span class="n">corner_vert</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">i</span><span class="o">),</span> <span class="n">x</span><span class="o">,</span> <span class="n">y</span><span class="o">);</span>
+                <span class="k">if</span> <span class="o">(</span><span class="n">m</span> <span class="o">&lt;=</span> <span class="n">meas_min</span><span class="o">){</span> <span class="n">meas_min</span> <span class="o">=</span> <span class="n">m</span><span class="o">;</span> <span class="n">ret</span> <span class="o">=</span> <span class="n">i</span><span class="o">;</span> <span class="o">}</span>
+            <span class="o">}</span>
+            <span class="c1">//user vertices</span>
+            <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="o">;</span> <span class="n">i</span><span class="o">&lt;</span><span class="n">user_defined_vert</span><span class="o">.</span><span class="na">size</span><span class="o">();</span> <span class="o">++</span><span class="n">i</span><span class="o">){</span>
+                <span class="kt">double</span> <span class="n">m</span> <span class="o">=</span> <span class="n">meas</span><span class="o">(</span><span class="n">udefToPoint</span><span class="o">(</span><span class="n">i</span><span class="o">),</span> <span class="n">x</span><span class="o">,</span> <span class="n">y</span><span class="o">);</span>
+                <span class="k">if</span> <span class="o">(</span><span class="n">m</span> <span class="o">&lt;=</span> <span class="n">meas_min</span><span class="o">){</span> <span class="n">meas_min</span> <span class="o">=</span> <span class="n">m</span><span class="o">;</span> <span class="n">ret</span> <span class="o">=</span> <span class="n">i</span><span class="o">+</span><span class="mi">4</span><span class="o">;</span> <span class="o">}</span>
+            <span class="o">}</span>
+            <span class="k">return</span> <span class="n">ret</span><span class="o">;</span>
+        <span class="o">}</span>
+
+        <span class="c1">// moves indexed vertex to x, y location. </span>
+        <span class="c1">// Corner points are moved only if allow_contour_move is true.</span>
+        <span class="kd">public</span> <span class="kt">void</span> <span class="nf">moveVertex</span><span class="o">(</span><span class="kt">int</span> <span class="n">ivert</span><span class="o">,</span> <span class="kt">double</span> <span class="n">x</span><span class="o">,</span> <span class="kt">double</span> <span class="n">y</span><span class="o">){</span>
+            <span class="k">if</span> <span class="o">(</span><span class="n">ivert</span> <span class="o">&lt;</span> <span class="mi">4</span><span class="o">){</span>
+                <span class="c1">//corner point</span>
+                <span class="k">if</span> <span class="o">(</span><span class="n">allow_contour_move</span><span class="o">){</span>
+                    <span class="n">corner_vert</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">ivert</span><span class="o">).</span><span class="na">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">;</span>
+                    <span class="n">corner_vert</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">ivert</span><span class="o">).</span><span class="na">y</span> <span class="o">=</span> <span class="n">y</span><span class="o">;</span>
+                <span class="o">}</span>
+            <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+                <span class="n">user_defined_vert</span><span class="o">.</span><span class="na">set</span><span class="o">(</span><span class="n">ivert</span><span class="o">-</span><span class="mi">4</span><span class="o">,</span> <span class="n">calcUserDefinedPoint</span><span class="o">(</span><span class="n">x</span><span class="o">,</span> <span class="n">y</span><span class="o">));</span>
+            <span class="o">}</span>
+        <span class="o">}</span>
+        <span class="c1">//removes indexed points. Corner points (ivert &lt; 4) can not be removed</span>
+        <span class="kd">public</span> <span class="kt">void</span> <span class="nf">removeVertex</span><span class="o">(</span><span class="kt">int</span> <span class="n">ivert</span><span class="o">){</span>
+            <span class="k">if</span> <span class="o">(</span><span class="n">ivert</span> <span class="o">&gt;=</span> <span class="mi">4</span><span class="o">){</span>
+                <span class="n">user_defined_vert</span><span class="o">.</span><span class="na">remove</span><span class="o">(</span><span class="n">ivert</span><span class="o">-</span><span class="mi">4</span><span class="o">);</span>
+            <span class="o">}</span>
+        <span class="o">}</span>
+
+        <span class="c1">// initilaizes Grid object with zero grid and 4 corner points</span>
+        <span class="kd">public</span> <span class="kd">static</span> <span class="n">Grid</span> <span class="nf">sqrContour</span><span class="o">(){</span>
+            <span class="n">Grid</span> <span class="n">ret</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Grid</span><span class="o">();</span>
+            <span class="n">ret</span><span class="o">.</span><span class="na">user_defined_vert</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">Double</span><span class="o">&gt;();</span>
+            <span class="n">ret</span><span class="o">.</span><span class="na">corner_vert</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">Hybmesh</span><span class="o">.</span><span class="na">Point2</span><span class="o">&gt;();</span>
+            <span class="n">ret</span><span class="o">.</span><span class="na">corner_vert</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="k">new</span> <span class="n">Hybmesh</span><span class="o">.</span><span class="na">Point2</span><span class="o">(</span><span class="mi">0</span><span class="o">,</span> <span class="mi">0</span><span class="o">));</span>
+            <span class="n">ret</span><span class="o">.</span><span class="na">corner_vert</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="k">new</span> <span class="n">Hybmesh</span><span class="o">.</span><span class="na">Point2</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">0</span><span class="o">));</span>
+            <span class="n">ret</span><span class="o">.</span><span class="na">corner_vert</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="k">new</span> <span class="n">Hybmesh</span><span class="o">.</span><span class="na">Point2</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">1</span><span class="o">));</span>
+            <span class="n">ret</span><span class="o">.</span><span class="na">corner_vert</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="k">new</span> <span class="n">Hybmesh</span><span class="o">.</span><span class="na">Point2</span><span class="o">(</span><span class="mi">0</span><span class="o">,</span> <span class="mi">1</span><span class="o">));</span>
+            <span class="k">return</span> <span class="n">ret</span><span class="o">;</span>
+        <span class="o">}</span>
+
+        <span class="c1">// initializes Grid object with unity grid and 4 corner points</span>
+        <span class="kd">public</span> <span class="kd">static</span> <span class="n">Grid</span> <span class="nf">sqrGrid</span><span class="o">(</span><span class="n">Hybmesh</span> <span class="n">hm</span><span class="o">,</span> <span class="kt">int</span> <span class="n">nx</span><span class="o">,</span> <span class="kt">int</span> <span class="n">ny</span><span class="o">)</span>
+                <span class="kd">throws</span> <span class="n">Hybmesh</span><span class="o">.</span><span class="na">EUserInterrupt</span><span class="o">,</span> <span class="n">Hybmesh</span><span class="o">.</span><span class="na">ERuntimeError</span><span class="o">{</span>
+            <span class="n">Grid</span> <span class="n">ret</span> <span class="o">=</span> <span class="n">sqrContour</span><span class="o">();</span>
+            <span class="n">ret</span><span class="o">.</span><span class="na">fillGrid</span><span class="o">(</span><span class="n">hm</span><span class="o">.</span><span class="na">addUnfRectGrid</span><span class="o">(</span>
+                <span class="n">ret</span><span class="o">.</span><span class="na">corner_vert</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="mi">0</span><span class="o">),</span> <span class="n">ret</span><span class="o">.</span><span class="na">corner_vert</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="mi">2</span><span class="o">),</span> <span class="n">nx</span><span class="o">,</span> <span class="n">ny</span><span class="o">,</span> <span class="kc">null</span><span class="o">));</span>
+            <span class="k">return</span> <span class="n">ret</span><span class="o">;</span>
+        <span class="o">}</span>
+    <span class="o">};</span>
+<span class="o">};</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Java Bindings for HybMesh</a><ul>
+<li><a class="reference internal" href="#usage">Usage</a></li>
+<li><a class="reference internal" href="#helloworld-example">Helloworld Example</a></li>
+<li><a class="reference internal" href="#introductory-example">Introductory Example</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="ooicpp.html"
+                        title="previous chapter">C++ Bindings for HybMesh</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="ooimatlab.html"
+                        title="next chapter">Matlab Bindings for HybMesh</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/ooijava.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="ooimatlab.html" title="Matlab Bindings for HybMesh"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="ooicpp.html" title="C++ Bindings for HybMesh"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">HybMesh 0.5.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="oointerface.html" >High-Level Programming Interfaces</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, KalininEI.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.3.
+    </div>
+  </body>
+</html>
