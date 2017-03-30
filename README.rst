@@ -1,8 +1,6 @@
 .. |icon| image::  misc/mainwin_icon.svg
-        :height: 100
 
-|icon|
-HybMesh Grid Generator
+|icon| HybMesh Grid Generator
 =============================
 
 HybMesh is a general-purpose grid generator
@@ -40,22 +38,18 @@ For installation instructions and user guide, see `HybMesh documentation
 Example Grids
 =============
 
-.. |e3| image::  doc/source/overview_1.png
-         :height: 100px
+.. |e3| image::  doc/source/overview_1_300.png
 
 
-.. |e4| image::  doc/source/picintro_6_7.png
-         :height: 100px
+.. |e4| image::  doc/source/picintro_6_7_300.png
 
 
 +----------------------------+-----------------------------+
-|  .. image::  doc/source/overview_3.png                   |
-|          :height: 70px                                   |
+|  .. image::  doc/source/overview_3_200.png               |
 |          :align: center                                  |
 |                                                          |
 +----------------------------+-----------------------------+
-| .. image::  doc/source/overview_2.png                    |
-|          :height: 70px                                   |
+| .. image::  doc/source/overview_2_200.png                |
 |          :align: center                                  |
 |                                                          |
 +----------------------------+-----------------------------+
