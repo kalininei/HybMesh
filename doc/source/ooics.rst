@@ -16,7 +16,7 @@ Assign static properties
   Hybmesh.hybmesh_lib_path = "directory/containing/core_hmconnection_cs";
 
 prior to first **Hybmesh** instance creation to define
-custom paths if they differ from default ones.
+custom paths if they differ from default ones given in *Hybmesh.cs* file.
 
 Besides basic geometrical and exception classes
 Hybmesh superclass also provides 2 additional nested classes defining 2D
@@ -117,12 +117,13 @@ is used for grid union operation.
 To compile this example create a directory
 containing *app.cs* file listed below along
 with *Hybmesh.cs* wrapper file.
-On Linux systems execute following commands
+On Linux systems execute the following commands
+(you will need ``mono-winforms`` libraries)
 
 .. code-block:: bash
 
-     mcs app.cs Hybmesh.cs -r:System.Windows.Forms.dll -r:System.Drawing.dll
-     mono app.exe
+     >>> mcs app.cs Hybmesh.cs -r:System.Windows.Forms.dll -r:System.Drawing.dll
+     >>> mono app.exe
 
 On Windows use VisualStudio Developer Command Prompt
 

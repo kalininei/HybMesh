@@ -67,11 +67,11 @@ fin3 = hm.triangulate_domain(
 # partition of radii of radial grids, where 30 is a grid radius providing
 # its steps increasing from w_size to dom_size.
 seg_part = hm.partition_segment(0, 30, w_size, dom_size)
-# Then we build those grids passing arch size (=dom_size) and explicitly
+# Then we build those grids passing arc size (=dom_size) and explicitly
 # defining radius partition
-gw1 = hm.add_unf_circ_grid(w1, custom_rads=seg_part, custom_archs=dom_size)
-gw2 = hm.add_unf_circ_grid(w2, custom_rads=seg_part, custom_archs=dom_size)
-gw3 = hm.add_unf_circ_grid(w3, custom_rads=seg_part, custom_archs=dom_size)
+gw1 = hm.add_unf_circ_grid(w1, custom_rads=seg_part, custom_arcs=dom_size)
+gw2 = hm.add_unf_circ_grid(w2, custom_rads=seg_part, custom_arcs=dom_size)
+gw3 = hm.add_unf_circ_grid(w3, custom_rads=seg_part, custom_arcs=dom_size)
 
 # Build crack 1D partition. Here we pass contours of radial grids
 # as partition conditions.
@@ -109,11 +109,11 @@ fin5 = hm.pebi_fill(parea, [pcrack],
 # Build radial grids without triangulation of center cell
 seg_part = hm.partition_segment(0, 30, w_size, dom_size)
 gw1 = hm.add_unf_circ_grid(w1, is_trian=False,
-                           custom_rads=seg_part, custom_archs=dom_size)
+                           custom_rads=seg_part, custom_arcs=dom_size)
 gw2 = hm.add_unf_circ_grid(w2, is_trian=False,
-                           custom_rads=seg_part, custom_archs=dom_size)
+                           custom_rads=seg_part, custom_arcs=dom_size)
 gw3 = hm.add_unf_circ_grid(w3, is_trian=False,
-                           custom_rads=seg_part, custom_archs=dom_size)
+                           custom_rads=seg_part, custom_arcs=dom_size)
 
 # Build fracture partition respecting sizes of radial grids
 pcrack = hm.matched_partition(

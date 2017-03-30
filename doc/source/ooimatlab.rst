@@ -110,7 +110,7 @@ Introductory Example
 
 In this example a simple unstructured triangle grid
 in custom polygon is built and displayed.
-Grid step sizes is defined by reference point boundary partition
+Grid step sizes are defined by reference point boundary partition
 and two embedded point conditions.
 The unstructured triangulation is performed by
 internal call of corresponding GMSH method.

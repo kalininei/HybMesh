@@ -18,7 +18,8 @@ The following packages (with their dependencies) should be already present in th
 * Blas, Lapack, SuiteSparse libraries with development headers.
 * libxml2 with development headers.
 
-Additionally you will need Octave and Java Development Kit to install
+Additionally you will need Octave with liboctave development headers and
+Java Development Kit to install
 Octave and Java bindings respectively. Other wrappers
 could be built without native tools. 
 
@@ -87,7 +88,7 @@ To proceed with installation execute
 
 .. code-block:: bash
 
-   >>> make -j8
+   >>> make
    >>> sudo make install
 
 Run ``hybmesh -v`` to check if installation has been done properly.
@@ -102,7 +103,7 @@ Summary
 As a result of the above procedure (with default ``CMAKE_INSTALL_PREFIX=/usr/local/``):
 
 * ``hybmeshpack`` is installed as ordinary Python2 package,
-* hybmesh executable is copied to ``/usr/local/hybmesh``,
+* hybmesh executable is copied to ``/usr/local/bin/``,
 * Wrappers are copied to ``/usr/local/include/hybmesh/*`` subdirectories,
 * Additional libraries are installed into ``/usr/local/lib/hybmesh``.
 

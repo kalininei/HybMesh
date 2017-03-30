@@ -1,4 +1,4 @@
-#!/usr/bin/sh
+#!/usr/bin/env sh
 #HMCOM="python ../../src/py/hybmesh.py -verbosity 0 -sx"
 HMCOM="hybmesh -silent -sx"
 

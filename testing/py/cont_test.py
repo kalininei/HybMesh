@@ -149,11 +149,10 @@ check(hm.info_contour(c2)['Nedges'] == 13)
 
 c1 = hm.partition_contour(i2, "const", 0.18, 100)
 c2 = hm.partition_contour(i2, "const", 0.18, 100, True)
-check(hm.info_contour(c1)['Nedges'] == 22)
+check(hm.info_contour(c1)['Nedges'] == 24)
 check(hm.info_contour(c2)['Nedges'] == 23)
 hm.export_contour_vtk(c1, "c1.vtk")
 hm.export_contour_vtk(c2, "c2.vtk")
-quit()
 
 c1 = hm.partition_contour(i1, "ref_points", [0.18, [0, 0]])
 c2 = hm.partition_contour(i1, "ref_points", [0.01, [0, 0], 0.3, [1, 0]])

@@ -127,7 +127,7 @@ rads = [0, rad-layheight]
 for b in list(reversed(blay))[1:]:
     rads.append(rad-b)
 
-g = hm.add_unf_circ_grid(pc, custom_archs=arc, custom_rads=rads,
+g = hm.add_unf_circ_grid(pc, custom_arcs=arc, custom_rads=rads,
                          is_trian=False)
 
 gfiller = hm.add_circ_rect_grid(pc, rad-1.3*layheight, internal_step)

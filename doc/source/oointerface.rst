@@ -30,13 +30,13 @@ those default values are not correct (for example
 if the program was transfered from another system) they
 could be changed either by manual edit of those files
 or at runtime. See respective language chapters
-and introductory examples for details.
+and for details.
 
 Source files include very brief documentation on
 their public methods. It contains method summary
 and a link to the low-level interface function which
 is used. To get detailed information on any needed function
-find respective entry at :ref:`pyinterf` section.
+find respective entry at :ref:`Python script interface<pyfunclist>` section.
 
 General Design
 --------------

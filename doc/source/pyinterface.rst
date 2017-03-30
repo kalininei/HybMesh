@@ -84,8 +84,8 @@ All hybmesh function may throw two types of exceptions:
 Before execution of any hybmesh function a quick
 input data check is performed. It examines
 argument types, ranges and consistency.
-If it fails than :func:`InvalidArgument` is raised.
-If output verbosity level is not set to zero then
+If it fails then :func:`InvalidArgument` is raised.
+If output verbosity level is not set to zero, then
 detailed information regarding this error including
 unity based index of invalid argument, its actual value and program expectations
 will be flushed to console.
@@ -97,6 +97,7 @@ will be printed to console.
 
 Both exceptions could be safely caught and handled.
 
+.. _pyfunclist:
 
 List of Functions
 -----------------

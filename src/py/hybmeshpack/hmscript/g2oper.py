@@ -286,15 +286,6 @@ def snap_grid_to_contour(gid, cid, gstart, gend, cstart, cend, algo="add"):
     To define the whole closed contour let start point
     be equal to respective end point.
 
-    After operation checks the validity of the result and throws
-    in case of self-intersections.
-
-
-    .. note::
-
-      Both grid boundary subcontour and target contour are shrunk
-      in counterclockwise direction by given end points regardless
-      their nesting level.
     """
     icheck(0, Grid2D())
     icheck(1, ACont2D())

@@ -245,7 +245,7 @@ The effect of this options is shown in picture below.
    fig. 9. Superposition with buffer fill = '3' (default) and '4'
 
 
-Python interface function: :func:`unite_grids`.
+Python interface function: :func:`unite_grids`, :func:`unite_grids1`.
 
 .. _snapgrid:
 
@@ -266,9 +266,10 @@ their boundaries do not match.
    :width: 600 px
 
 Direct superposition of those grids will result in a grid with
-holes since those holes present in naïve geometrical sum of grid domains.
+holes since those holes present in naïve geometrical sum of grid domains
+(see the last picture in the figure above).
 To fix that snapping function could be applied to tightly connect
-base grid (source) to imposed grid (target) contour.
+base grid contour (blue one) to imposed grid contour (red one).
 
 Only boundary grid vertices are altered with this procedure.
 If these shifts result in a self-intersected grid
@@ -281,6 +282,7 @@ User should pass grid boundary and target contour segments
 by definition of start and end points.
 While detecting which point should be dubbed as *start*,
 note that all closed contours have **counterclockwise** direction
+regardless of their nesting level
 (see how end points are marked in the picture above).
 
 Grid boundary will be simply stretched to fit target segment.

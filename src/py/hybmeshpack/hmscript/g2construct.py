@@ -68,7 +68,7 @@ def add_unf_rect_grid(p0=[0, 0], p1=[1, 1], nx=3, ny=3,
 
 @hmscriptfun
 def add_unf_circ_grid(p0, rad=1.0, na=8, nr=4, coef=1.0, is_trian=True,
-                      custom_rads=[], custom_archs=[], bnd=0):
+                      custom_rads=[], custom_arcs=[], bnd=0):
     """Builds circular grid.
 
     :param list-of-floats p0: center coordinate as [x, y]
@@ -89,8 +89,8 @@ def add_unf_circ_grid(p0, rad=1.0, na=8, nr=4, coef=1.0, is_trian=True,
     :param float-or-list-of-floats custom_rads:
         user defined radious partition
 
-    :param float-or-list-of-floats custom_archs:
-        user defined arch partition
+    :param float-or-list-of-floats custom_arcs:
+        user defined arc partition
 
     :param int bnd: boundary type for outer contour
 
@@ -106,14 +106,14 @@ def add_unf_circ_grid(p0, rad=1.0, na=8, nr=4, coef=1.0, is_trian=True,
     last entry of this list will be the radius of the resulting grid
     and **rad** parameter will also be ignored.
 
-    If **custom_archs** is given as a single value it shows the
-    constant step along outer arch and **na** will be ignored.
+    If **custom_arcs** is given as a single value it shows the
+    constant step along outer arc and **na** will be ignored.
     If it is an increasing list of floats, it shows partition of
-    outer arch. It can be given in degrees or radians or any other
-    relative units. Program treats **custom_archs[-1]**-**custom_archs[0]**
+    outer arc. It can be given in degrees or radians or any other
+    relative units. Program treats **custom_arcs[-1]**-**custom_arcs[0]**
     difference as a full circle length and normalizes all other entries
     to this length. First and last entries of this array provides
-    the same arch segment (last = first + 2*pi) hence to
+    the same arc segment (last = first + 2*pi) hence to
     get partition of n segments you should define n+1 entries.
 
     Use :func:`partition_segment` to conveniently define **custom\_** fields
@@ -131,15 +131,15 @@ def add_unf_circ_grid(p0, rad=1.0, na=8, nr=4, coef=1.0, is_trian=True,
 
     custom_rads = custom_rads if isinstance(custom_rads, list)\
         else [custom_rads]
-    custom_archs = custom_archs if isinstance(custom_archs, list)\
-        else [custom_archs]
+    custom_arcs = custom_arcs if isinstance(custom_arcs, list)\
+        else [custom_arcs]
     c = com.gridcom.AddUnfCircGrid({
         "p0": p0, "rad": rad,
         "na": na, "nr": nr,
         "coef": coef,
         "is_trian": is_trian,
         "custom_r": custom_rads,
-        "custom_a": custom_archs,
+        "custom_a": custom_arcs,
         "bnd": bnd})
     flow.exec_command(c)
     return c.added_grids2()[0]

@@ -198,3 +198,21 @@ Versions History
      :func:`partition_contour`
    * *is_reversed* for :func:`map_grid`
    * *return_invalid* for :func:`add_custom_rect_grid`
+
+
+* **0.5.0**:
+   New features:
+
+   * Object oriented programming interfaces for C++, C#, Matlab, Java and Python languages
+   * Windows installation as a Python2.7 package
+   * Readonly access to geometric data of hybmesh objects
+   * Grid to contour snapping algorithm
+   * Consistent exceptions mechanism
+   * More advanced standard output verbosity level control
+   * Simplified function signatures for building boundary grids and grid union
+
+   New python interface functions:
+
+   * :func:`tab_cont2`, :func:`tab_grid2`, :func:`tab_surf3`, :func:`tab_grid3`
+   * :func:`snap_grid_to_contour`
+   * :func:`unite_grids1`, :func:`build_boundary_grid1`

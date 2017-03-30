@@ -40,17 +40,17 @@ checkdict(hm.info_grid(g1), {'Ncells': 12})
 g1 = hm.add_unf_circ_grid([0, 0], 1, 6, 6, custom_rads=[0.5, 0.9, 1.5])
 checkdict(hm.info_grid(g1), {'Ncells': 18})
 
-g1 = hm.add_unf_circ_grid([0, 0], 2, 6, 6, custom_archs=[0.1])
+g1 = hm.add_unf_circ_grid([0, 0], 2, 6, 6, custom_arcs=[0.1])
 checkdict(hm.info_grid(g1), {'Ncells': 756})
 
 g1 = hm.add_unf_circ_grid([0, 0], 2, 6, 6,
-                          custom_archs=[0.1, 0.2, 0.4, 0.7, 1])
+                          custom_arcs=[0.1, 0.2, 0.4, 0.7, 1])
 hm.export_grid_vtk(g1, "g1.vtk")
 check_ascii_file(2412524644655691911, "g1.vtk")
 
 g1 = hm.add_unf_circ_grid([0, 0], 2, 6, 6,
                           custom_rads=[0.1, 0.2, 0.3, 0.4],
-                          custom_archs=[45, 90, 180, 270, 405])
+                          custom_arcs=[45, 90, 180, 270, 405])
 hm.export_grid_vtk(g1, "g1.vtk")
 check_ascii_file(3910146618867135684, "g1.vtk")
 
