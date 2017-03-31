@@ -1,0 +1,333 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Example 6 &#8212; HybMesh 0.5.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.5.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="External Files" href="examples_include_files.html" />
+    <link rel="prev" title="Example 5" href="intro_example5.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="examples_include_files.html" title="External Files"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="intro_example5.html" title="Example 5"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">HybMesh 0.5.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="pyinterface.html" accesskey="U">Python Script Interface</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="example-6">
+<span id="example6"></span><h1>Example 6<a class="headerlink" href="#example-6" title="Permalink to this headline">¶</a></h1>
+<p>In the present example a grid for a typical oil reservoir simulation problem will be built.
+The modeling area is a square which contains three well sites and a fracture contour (or horizontal well contour) (see fig. 1 below).
+Flow patterns of such problems provide very large fluid velocity gradients near wells and fractures hence it
+is a common practice to build grids with substantial refinement towards well and fracture locations.</p>
+<div class="align-center figure" id="id1">
+<a class="reference internal image-reference" href="_images/picintro_6_1.png"><img alt="_images/picintro_6_1.png" src="_images/picintro_6_1.png" style="width: 400px;" /></a>
+<p class="caption"><span class="caption-text">fig. 1</span></p>
+</div>
+<p>Required grid depends on a numerical method. First lets assume we build a grid which
+will be used in a linear finite element solver. Hence we need a grid which contains
+only triangle/quadrangle cells, well locations are its vertices and fracture contour segments
+coincide with its edges.</p>
+<p>The simplest straightforward approach is to use unstructured conditional triangulation.
+Hybmesh script for that algorithm contains three lines (operations):</p>
+<ul class="simple">
+<li>fracture contour partition;</li>
+<li>domain contour partition;</li>
+<li>conditional domain triangulation.</li>
+</ul>
+<div class="align-center figure" id="id2">
+<a class="reference internal image-reference" href="_images/picintro_6_2.png"><img alt="_images/picintro_6_2.png" src="_images/picintro_6_2.png" style="width: 400px;" /></a>
+<p class="caption"><span class="caption-text">fig. 2</span></p>
+</div>
+<p>The resulting grid (depicted in fig. 2) has at least two evident flaws. First the refinement from the upper well towards
+the upper domain segment is very coarse. It happened because we have explicitly defined partition of domain boundary without
+taking well locations into account. Another problem is that the region between two lower wells is meshed too fine because
+even far away from their sites these wells remain the closest cell size detection sources.</p>
+<p>To overcome those flaws we will use conditional 1D partition of domain boundary and place a supplementary
+cell size condition between two lower wells. Furthermore we will use recombine algorithm to
+turn our triangle mesh to a mesh containing mostly quadrangle cells. The result is shown in figure 3.</p>
+<div class="align-center figure" id="id3">
+<a class="reference internal image-reference" href="_images/picintro_6_3.png"><img alt="_images/picintro_6_3.png" src="_images/picintro_6_3.png" style="width: 400px;" /></a>
+<p class="caption"><span class="caption-text">fig. 3</span></p>
+</div>
+<p>Despite we&#8217;ve defined mesh refinement in the regions of high fluid flow velocities the numerical solution
+could still be imperfect because of usage of unstructured grids near well bores. We can increase
+solution accuracy by building a radial grids around wells which are known to provide better solution for radial symmetric flows
+thus using locally structured approach to grid generation.
+So we build three radial grid prototypes to treat well zones, stripe grid prototype in a fracture zone
+and impose them onto a regular quadrangle substrate grid. Result is shown in figure 4.</p>
+<div class="align-center figure" id="id4">
+<a class="reference internal image-reference" href="_images/picintro_6_4.png"><img alt="_images/picintro_6_4.png" src="_images/picintro_6_4.png" style="width: 400px;" /></a>
+<p class="caption"><span class="caption-text">fig. 4</span></p>
+</div>
+<p>Now we&#8217;ll illustrate usage of Hybmesh for finite volume grid generation.
+Such grids can contain arbitrary cells (regular polygons are preferred).
+Well sites should lie in the centers of cells. Location of fracture contour
+depends on numerical algorithm. We will place it to the cell centers too (as it would
+be if this is a horizontal well contour).</p>
+<p>As before we can use simple straightforward approach by
+execution of conditional unstructured griding routine with
+perpendicular bisector cells (figure 5) or apply locally structured approach (figure 6).
+We also can utilize any of those 2D grids to build 3D ones using simple extrusion algorithm (figure 7).</p>
+<div class="align-center figure" id="id5">
+<a class="reference internal image-reference" href="_images/picintro_6_5.png"><img alt="_images/picintro_6_5.png" src="_images/picintro_6_5.png" style="width: 400px;" /></a>
+<p class="caption"><span class="caption-text">fig. 5</span></p>
+</div>
+<div class="align-center figure" id="id6">
+<a class="reference internal image-reference" href="_images/picintro_6_6.png"><img alt="_images/picintro_6_6.png" src="_images/picintro_6_6.png" style="width: 400px;" /></a>
+<p class="caption"><span class="caption-text">fig. 6</span></p>
+</div>
+<div class="align-center figure" id="id7">
+<a class="reference internal image-reference" href="_images/picintro_6_7.png"><img alt="_images/picintro_6_7.png" src="_images/picintro_6_7.png" style="width: 400px;" /></a>
+<p class="caption"><span class="caption-text">fig. 7</span></p>
+</div>
+<hr class="docutils" />
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">hybmeshpack</span> <span class="k">import</span> <span class="n">hmscript</span> <span class="k">as</span> <span class="n">hm</span>
+<span class="c1"># This script was created for hybmesh 0.4.5.</span>
+<span class="c1"># If running version of hybmesh is not compatible with this version</span>
+<span class="c1"># an exception will be raised at this line.</span>
+<span class="n">hm</span><span class="o">.</span><span class="n">check_compatibility</span><span class="p">(</span><span class="s2">&quot;0.4.5&quot;</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+
+<span class="c1"># ====================== Input data</span>
+<span class="c1"># define wells coordinates</span>
+<span class="n">w1</span> <span class="o">=</span> <span class="p">[</span><span class="mi">100</span><span class="p">,</span> <span class="mi">250</span><span class="p">]</span>
+<span class="n">w2</span> <span class="o">=</span> <span class="p">[</span><span class="mi">223</span><span class="p">,</span> <span class="mi">171</span><span class="p">]</span>
+<span class="n">w3</span> <span class="o">=</span> <span class="p">[</span><span class="mi">158</span><span class="p">,</span> <span class="mi">52</span><span class="p">]</span>
+
+<span class="c1"># area and fracture coordinates</span>
+<span class="n">area_pts</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">300</span><span class="p">,</span> <span class="mi">300</span><span class="p">]</span>
+<span class="n">crack_pts</span> <span class="o">=</span> <span class="p">[</span><span class="mi">50</span><span class="p">,</span> <span class="mi">30</span><span class="p">],</span> <span class="p">[</span><span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">],</span> <span class="p">[</span><span class="mi">130</span><span class="p">,</span> <span class="mi">150</span><span class="p">],</span> <span class="p">[</span><span class="mi">260</span><span class="p">,</span> <span class="mi">260</span><span class="p">]</span>
+
+<span class="c1"># meshing options</span>
+<span class="n">w_size</span> <span class="o">=</span> <span class="mi">1</span>      <span class="c1"># grid cell size near well zones</span>
+<span class="n">dom_size</span> <span class="o">=</span> <span class="mi">10</span>   <span class="c1"># grid cell size in outer domain</span>
+<span class="n">crack_size</span> <span class="o">=</span> <span class="mi">5</span>  <span class="c1"># grid cell size along fracture</span>
+
+<span class="c1"># building geometric entities</span>
+<span class="c1"># (see fig.1)</span>
+<span class="n">area</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">add_rect_contour</span><span class="p">(</span><span class="o">*</span><span class="n">area_pts</span><span class="p">)</span>
+<span class="n">crack</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">create_spline_contour</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">crack_pts</span><span class="p">))</span>
+
+
+<span class="c1"># ======================= FEM mesh</span>
+<span class="c1"># 1. Unstructured triangulation</span>
+<span class="c1"># make 1D partition of geometry using recommended sizes</span>
+<span class="n">pcrack</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">partition_contour</span><span class="p">(</span><span class="n">crack</span><span class="p">,</span> <span class="s1">&#39;const&#39;</span><span class="p">,</span> <span class="n">crack_size</span><span class="p">)</span>
+<span class="n">parea</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">partition_contour</span><span class="p">(</span><span class="n">area</span><span class="p">,</span> <span class="s1">&#39;const&#39;</span><span class="p">,</span> <span class="n">dom_size</span><span class="p">)</span>
+
+<span class="c1"># build unstructured conditional triangulation of the domain so</span>
+<span class="c1"># that all well points and fracture edges be preserved as grid entities</span>
+<span class="c1"># and cell sizes near well be equal to w_size</span>
+<span class="c1"># (see fig.2)</span>
+<span class="n">fin2</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">triangulate_domain</span><span class="p">(</span>
+    <span class="n">parea</span><span class="p">,</span> <span class="p">[</span><span class="n">pcrack</span><span class="p">],</span> <span class="p">[</span><span class="n">w_size</span><span class="p">,</span> <span class="n">w1</span><span class="p">,</span> <span class="n">w_size</span><span class="p">,</span> <span class="n">w2</span><span class="p">,</span> <span class="n">w_size</span><span class="p">,</span> <span class="n">w3</span><span class="p">])</span>
+
+<span class="c1"># 2. Quadrangulation with boundaries refinement</span>
+<span class="c1"># make 1D partition of a crack keeping in mind mesh refinement</span>
+<span class="c1"># near well sites.</span>
+<span class="n">pcrack</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">matched_partition</span><span class="p">(</span>
+    <span class="n">crack</span><span class="p">,</span> <span class="n">crack_size</span><span class="p">,</span> <span class="mi">80</span><span class="p">,</span> <span class="p">[],</span> <span class="p">[</span><span class="n">w_size</span><span class="p">,</span> <span class="n">w1</span><span class="p">,</span> <span class="n">w_size</span><span class="p">,</span> <span class="n">w2</span><span class="p">,</span> <span class="n">w_size</span><span class="p">,</span> <span class="n">w3</span><span class="p">])</span>
+
+<span class="c1"># make 1D partition of an outer area keeping in mind mesh sizes</span>
+<span class="c1"># at fracture and well sites</span>
+<span class="n">parea</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">matched_partition</span><span class="p">(</span>
+    <span class="n">area</span><span class="p">,</span> <span class="n">dom_size</span><span class="p">,</span> <span class="mi">80</span><span class="p">,</span> <span class="p">[</span><span class="n">pcrack</span><span class="p">],</span> <span class="p">[</span><span class="n">w_size</span><span class="p">,</span> <span class="n">w1</span><span class="p">,</span> <span class="n">w_size</span><span class="p">,</span> <span class="n">w2</span><span class="p">,</span> <span class="n">w_size</span><span class="p">,</span> <span class="n">w3</span><span class="p">])</span>
+
+<span class="c1"># place a supplementary point triangulation condition to</span>
+<span class="c1"># reduce cell size in region between w2 and w3.</span>
+<span class="n">psup</span> <span class="o">=</span> <span class="p">[(</span><span class="n">w2</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">w3</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="p">(</span><span class="n">w2</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">w3</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">/</span> <span class="mi">2</span><span class="p">]</span>
+<span class="n">p_size</span> <span class="o">=</span> <span class="mf">0.4</span> <span class="o">*</span> <span class="n">dom_size</span>
+
+<span class="c1"># build triangle/quadrangle mesh with respect to wells and fracture positions</span>
+<span class="c1"># see fig.3</span>
+<span class="n">fin3</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">triangulate_domain</span><span class="p">(</span>
+    <span class="n">parea</span><span class="p">,</span> <span class="p">[</span><span class="n">pcrack</span><span class="p">],</span>
+    <span class="p">[</span><span class="n">w_size</span><span class="p">,</span> <span class="n">w1</span><span class="p">,</span> <span class="n">w_size</span><span class="p">,</span> <span class="n">w2</span><span class="p">,</span> <span class="n">w_size</span><span class="p">,</span> <span class="n">w3</span><span class="p">,</span> <span class="n">p_size</span><span class="p">,</span> <span class="n">psup</span><span class="p">],</span> <span class="n">fill</span><span class="o">=</span><span class="s2">&quot;4&quot;</span><span class="p">)</span>
+
+<span class="c1"># 3. Partly structured approach</span>
+<span class="c1"># Build radial grids around well sites. We want them to provide refinement</span>
+<span class="c1"># towards center.</span>
+<span class="c1"># Hence first we build a numeric list from 0 to 30 representing</span>
+<span class="c1"># partition of radii of radial grids, where 30 is a grid radius providing</span>
+<span class="c1"># its steps increasing from w_size to dom_size.</span>
+<span class="n">seg_part</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">partition_segment</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="n">w_size</span><span class="p">,</span> <span class="n">dom_size</span><span class="p">)</span>
+<span class="c1"># Then we build those grids passing arc size (=dom_size) and explicitly</span>
+<span class="c1"># defining radius partition</span>
+<span class="n">gw1</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">add_unf_circ_grid</span><span class="p">(</span><span class="n">w1</span><span class="p">,</span> <span class="n">custom_rads</span><span class="o">=</span><span class="n">seg_part</span><span class="p">,</span> <span class="n">custom_arcs</span><span class="o">=</span><span class="n">dom_size</span><span class="p">)</span>
+<span class="n">gw2</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">add_unf_circ_grid</span><span class="p">(</span><span class="n">w2</span><span class="p">,</span> <span class="n">custom_rads</span><span class="o">=</span><span class="n">seg_part</span><span class="p">,</span> <span class="n">custom_arcs</span><span class="o">=</span><span class="n">dom_size</span><span class="p">)</span>
+<span class="n">gw3</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">add_unf_circ_grid</span><span class="p">(</span><span class="n">w3</span><span class="p">,</span> <span class="n">custom_rads</span><span class="o">=</span><span class="n">seg_part</span><span class="p">,</span> <span class="n">custom_arcs</span><span class="o">=</span><span class="n">dom_size</span><span class="p">)</span>
+
+<span class="c1"># Build crack 1D partition. Here we pass contours of radial grids</span>
+<span class="c1"># as partition conditions.</span>
+<span class="n">pcrack</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">matched_partition</span><span class="p">(</span><span class="n">crack</span><span class="p">,</span> <span class="n">crack_size</span><span class="p">,</span> <span class="mi">80</span><span class="p">,</span> <span class="p">[</span><span class="n">gw1</span><span class="p">,</span> <span class="n">gw2</span><span class="p">,</span> <span class="n">gw3</span><span class="p">])</span>
+
+<span class="c1"># Build a stripe grid prototype around fracture contour.</span>
+<span class="c1"># Again we build numeric list for partition in a perpendicular direction and</span>
+<span class="c1"># then explicitly pass it to building routine.</span>
+<span class="n">seg_part</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">partition_segment</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="n">w_size</span><span class="p">,</span> <span class="n">crack_size</span><span class="p">)</span>
+<span class="n">gcrack</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">stripe</span><span class="p">(</span><span class="n">pcrack</span><span class="p">,</span> <span class="n">seg_part</span><span class="p">,</span> <span class="s1">&#39;radial&#39;</span><span class="p">)</span>
+
+<span class="c1"># Build regular quadrangle grid prototype for outer area</span>
+<span class="n">garea</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">add_unf_rect_grid</span><span class="p">(</span>
+    <span class="n">area_pts</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">area_pts</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">custom_x</span><span class="o">=</span><span class="n">dom_size</span><span class="p">,</span> <span class="n">custom_y</span><span class="o">=</span><span class="n">dom_size</span><span class="p">)</span>
+
+<span class="c1"># Finally we unite all built prototypes with buffer size = 10 and</span>
+<span class="c1"># quadrangle/triangle buffer fill algorithm.</span>
+<span class="c1"># see fig.4</span>
+<span class="n">fin4</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">unite_grids</span><span class="p">(</span><span class="n">garea</span><span class="p">,</span> <span class="p">[(</span><span class="n">gw1</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="p">(</span><span class="n">gw2</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="p">(</span><span class="n">gw3</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="p">(</span><span class="n">gcrack</span><span class="p">,</span> <span class="mi">10</span><span class="p">)],</span>
+                      <span class="n">buffer_fill</span><span class="o">=</span><span class="s1">&#39;4&#39;</span><span class="p">)</span>
+
+<span class="c1"># ======================== FVM mesh</span>
+<span class="c1"># 1. Unstructured fill</span>
+<span class="c1"># Create partitions of crack and area</span>
+<span class="n">pcrack</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">partition_contour</span><span class="p">(</span><span class="n">crack</span><span class="p">,</span> <span class="s1">&#39;const&#39;</span><span class="p">,</span> <span class="n">crack_size</span><span class="p">)</span>
+<span class="n">parea</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">partition_contour</span><span class="p">(</span><span class="n">area</span><span class="p">,</span> <span class="s1">&#39;const&#39;</span><span class="p">,</span> <span class="n">dom_size</span><span class="p">)</span>
+
+<span class="c1"># Fill domain with perpendicular bisector grid so</span>
+<span class="c1"># that well and crack vertices coordinates be centers of cells</span>
+<span class="c1"># see fig.5</span>
+<span class="n">fin5</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">pebi_fill</span><span class="p">(</span><span class="n">parea</span><span class="p">,</span> <span class="p">[</span><span class="n">pcrack</span><span class="p">],</span>
+                    <span class="p">[</span><span class="n">w_size</span><span class="p">,</span> <span class="n">w1</span><span class="p">,</span> <span class="n">w_size</span><span class="p">,</span> <span class="n">w2</span><span class="p">,</span> <span class="n">w_size</span><span class="p">,</span> <span class="n">w3</span><span class="p">])</span>
+
+<span class="c1"># 2. Partly structured pebi</span>
+<span class="c1"># Build radial grids without triangulation of center cell</span>
+<span class="n">seg_part</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">partition_segment</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="n">w_size</span><span class="p">,</span> <span class="n">dom_size</span><span class="p">)</span>
+<span class="n">gw1</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">add_unf_circ_grid</span><span class="p">(</span><span class="n">w1</span><span class="p">,</span> <span class="n">is_trian</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                           <span class="n">custom_rads</span><span class="o">=</span><span class="n">seg_part</span><span class="p">,</span> <span class="n">custom_arcs</span><span class="o">=</span><span class="n">dom_size</span><span class="p">)</span>
+<span class="n">gw2</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">add_unf_circ_grid</span><span class="p">(</span><span class="n">w2</span><span class="p">,</span> <span class="n">is_trian</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                           <span class="n">custom_rads</span><span class="o">=</span><span class="n">seg_part</span><span class="p">,</span> <span class="n">custom_arcs</span><span class="o">=</span><span class="n">dom_size</span><span class="p">)</span>
+<span class="n">gw3</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">add_unf_circ_grid</span><span class="p">(</span><span class="n">w3</span><span class="p">,</span> <span class="n">is_trian</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                           <span class="n">custom_rads</span><span class="o">=</span><span class="n">seg_part</span><span class="p">,</span> <span class="n">custom_arcs</span><span class="o">=</span><span class="n">dom_size</span><span class="p">)</span>
+
+<span class="c1"># Build fracture partition respecting sizes of radial grids</span>
+<span class="n">pcrack</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">matched_partition</span><span class="p">(</span>
+    <span class="n">crack</span><span class="p">,</span> <span class="n">crack_size</span><span class="p">,</span> <span class="mi">80</span><span class="p">,</span> <span class="p">[</span><span class="n">gw1</span><span class="p">,</span> <span class="n">gw2</span><span class="p">,</span> <span class="n">gw3</span><span class="p">])</span>
+
+<span class="c1"># Build stripe prototype near fracture contour. Note that we</span>
+<span class="c1"># use perpendicular partition list (seg_part) starting from positive</span>
+<span class="c1"># number so that fracture coordinates stay in the centers of cells.</span>
+<span class="n">seg_part</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">partition_segment</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="n">w_size</span><span class="p">,</span> <span class="n">crack_size</span><span class="p">)[</span><span class="mi">1</span><span class="p">:]</span>
+<span class="n">gcrack</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">stripe</span><span class="p">(</span><span class="n">pcrack</span><span class="p">,</span> <span class="n">seg_part</span><span class="p">,</span> <span class="s1">&#39;radial&#39;</span><span class="p">)</span>
+
+<span class="c1"># Build a regular hexagonal mesh a substrate grid and then cut it</span>
+<span class="c1"># with domain contour. We use `strict` option to guarantee domain</span>
+<span class="c1"># quadrangle nodes be centers of cells. Hence we get rid of problems</span>
+<span class="c1"># of possible creation of tiny cells as a result of a grid cut routine</span>
+<span class="c1"># (a side effect of using that option is that the resulting cells are</span>
+<span class="c1"># not strictly regular).</span>
+<span class="n">garea</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">add_unf_hex_grid</span><span class="p">([[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">300</span><span class="p">,</span> <span class="mi">300</span><span class="p">]],</span> <span class="n">dom_size</span><span class="p">,</span> <span class="n">strict</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">garea</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">exclude_contours</span><span class="p">(</span><span class="n">garea</span><span class="p">,</span> <span class="n">area</span><span class="p">,</span> <span class="s1">&#39;outer&#39;</span><span class="p">)</span>
+
+<span class="c1"># Make grid imposition</span>
+<span class="c1"># See fig.6</span>
+<span class="n">fin6</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">unite_grids</span><span class="p">(</span><span class="n">garea</span><span class="p">,</span> <span class="p">[(</span><span class="n">gw1</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="p">(</span><span class="n">gw2</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="p">(</span><span class="n">gw3</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="p">(</span><span class="n">gcrack</span><span class="p">,</span> <span class="mi">10</span><span class="p">)],</span>
+                      <span class="n">buffer_fill</span><span class="o">=</span><span class="s1">&#39;4&#39;</span><span class="p">)</span>
+
+<span class="c1"># 3D grid by extrusion to z = [0, 1, 2, ..., 15]</span>
+<span class="c1"># See fig.7</span>
+<span class="n">zcoords</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">15</span><span class="p">)]</span>
+<span class="n">fin7</span> <span class="o">=</span> <span class="n">hm</span><span class="o">.</span><span class="n">extrude_grid</span><span class="p">(</span><span class="n">fin6</span><span class="p">,</span> <span class="n">zcoords</span><span class="p">)</span>
+
+</pre></div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="intro_example5.html"
+                        title="previous chapter">Example 5</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="examples_include_files.html"
+                        title="next chapter">External Files</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/intro_example6.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="examples_include_files.html" title="External Files"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="intro_example5.html" title="Example 5"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">HybMesh 0.5.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="pyinterface.html" >Python Script Interface</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, KalininEI.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.3.
+    </div>
+  </body>
+</html>

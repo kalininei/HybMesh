@@ -1,0 +1,314 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>C++ Bindings for HybMesh &#8212; HybMesh 0.5.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.5.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Java Bindings for HybMesh" href="ooijava.html" />
+    <link rel="prev" title="Python Bindings for HybMesh" href="ooipython.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="ooijava.html" title="Java Bindings for HybMesh"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="ooipython.html" title="Python Bindings for HybMesh"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">HybMesh 0.5.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="oointerface.html" accesskey="U">High-Level Programming Interfaces</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="c-bindings-for-hybmesh">
+<h1>C++ Bindings for HybMesh<a class="headerlink" href="#c-bindings-for-hybmesh" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="usage">
+<h2>Usage<a class="headerlink" href="#usage" title="Permalink to this headline">¶</a></h2>
+<p>Unlike all other wrappers C++ interface contains only single header file <code class="docutils literal"><span class="pre">Hybmesh.hpp</span></code>
+without any other dependencies.
+It could be copied into client application project directory
+or included directed from its location.
+To build that file C++ compiler should be set to support C++11 standard.</p>
+<p>Since there is no dynamically linked libraries only a
+directory containing Hybmesh executable should be defined.
+Default path is set in wrapper source file through</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="cp">#define DEFAULT_HYBMESH_EXE_PATH &quot;/hybmesh/install/directory/&quot;</span>
+</pre></div>
+</div>
+<p>macro directive.</p>
+<p>To use another path create Hybmesh instance with
+optional string argument:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="n">Hybmesh</span> <span class="nf">hm</span><span class="p">(</span><span class="s">&quot;custom/hm/path/&quot;</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>Besides basic geometrical and exception classes
+Hybmesh superclass also provides 2 additional nested classes defining 2D
+and 3D Point which are used to pass point arguments to hybmesh methods.</p>
+<p>All geometric nested classes (including point classes) provide
+special static method <code class="docutils literal"><span class="pre">None()</span></code> which returns a respective
+object that is treated as <code class="docutils literal"><span class="pre">None-object</span></code>.
+It is used for those hybmesh methods which accept such arguments
+(for example <strong>right</strong> and <strong>top</strong> contour arguments
+of <a class="reference internal" href="ooifuncref.html#Hybmesh.Hybmesh.add_custom_rect_grid" title="Hybmesh.Hybmesh.add_custom_rect_grid"><code class="xref py py-func docutils literal"><span class="pre">Hybmesh.Hybmesh.add_custom_rect_grid()</span></code></a>)</p>
+<p>For detailed description of all methods see
+<a class="reference internal" href="oointerface.html#ooifuncref"><span class="std std-ref">python wrapper reference</span></a>
+and documentation in <code class="docutils literal"><span class="pre">Hybmesh.hpp</span></code> file.</p>
+</div>
+<div class="section" id="helloworld-example">
+<span id="cppintro"></span><h2>Helloworld Example<a class="headerlink" href="#helloworld-example" title="Permalink to this headline">¶</a></h2>
+<p>After hybmesh installation create a directory with copied
+<em>Hybmesh.hpp</em> and the following <em>test.cpp</em> file.</p>
+<div class="literal-block-wrapper docutils container" id="id1">
+<div class="code-block-caption"><span class="caption-text">test.cpp</span><a class="headerlink" href="#id1" title="Permalink to this code">¶</a></div>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;iostream&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&quot;Hybmesh.hpp&quot;</span><span class="cp"></span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(){</span>
+    <span class="n">Hybmesh</span> <span class="n">hm</span><span class="p">;</span>
+    <span class="n">Hybmesh</span><span class="o">::</span><span class="n">Grid2D</span> <span class="n">g2</span> <span class="o">=</span> <span class="n">hm</span><span class="p">.</span><span class="n">add_unf_rect_grid</span><span class="p">(</span>
+            <span class="n">Hybmesh</span><span class="o">::</span><span class="n">Point2</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">Hybmesh</span><span class="o">::</span><span class="n">Point2</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">);</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="o">&lt;&lt;</span><span class="s">&quot;number of cells: &quot;</span><span class="o">&lt;&lt;</span><span class="n">g2</span><span class="p">.</span><span class="n">dims</span><span class="p">()[</span><span class="mi">2</span><span class="p">]</span><span class="o">&lt;&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div>
+<p>With gcc (or MinGW) compiler open terminal at created directory and
+run the following terminal commands</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>&gt;&gt;&gt; g++ -o <span class="nb">test</span> test.cpp -std<span class="o">=</span>c++11
+&gt;&gt;&gt; ./test
+</pre></div>
+</div>
+<p>With VisualStudio compiler run Developer Command Prompt and invoke</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>&gt;&gt;&gt; cl /EHsc test.cpp
+&gt;&gt;&gt; test.exe
+</pre></div>
+</div>
+</div>
+<div class="section" id="introductory-example">
+<h2>Introductory Example<a class="headerlink" href="#introductory-example" title="Permalink to this headline">¶</a></h2>
+<p>In the following example a unite operation between
+regular rectangular grid and ring grid is performed.
+Two grids are built by different Hybmesh instances
+in two different threads in parallel.</p>
+<p>The secondary thread builds ring grid and saves it to file.
+The first thread builds rectangular grid, waits until
+secondary thread finishes its job, reads ring grid from file
+and performs grid union.</p>
+<div class="highlight-c++"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;string&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;iostream&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;thread&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&quot;Hybmesh.hpp&quot;</span><span class="cp"></span>
+
+<span class="c1">//==== parameters of basic grid: structured grid in a square</span>
+<span class="c1">//bottom left point</span>
+<span class="kt">double</span> <span class="n">px1</span><span class="o">=</span><span class="mf">0.0</span><span class="p">;</span>
+<span class="kt">double</span> <span class="n">py1</span><span class="o">=</span><span class="mf">0.0</span><span class="p">;</span>
+<span class="c1">//segmentation along axis</span>
+<span class="kt">int</span> <span class="n">nx</span><span class="o">=</span><span class="mi">10</span><span class="p">;</span>
+<span class="kt">int</span> <span class="n">ny</span><span class="o">=</span><span class="mi">10</span><span class="p">;</span>
+<span class="c1">//sizes of the square</span>
+<span class="kt">double</span> <span class="n">Lx</span><span class="o">=</span><span class="mf">1.0</span><span class="p">;</span>
+<span class="kt">double</span> <span class="n">Ly</span><span class="o">=</span><span class="mf">1.0</span><span class="p">;</span>
+
+<span class="c1">//==== parameters of secondary grid: ring-type grid</span>
+<span class="c1">//ring center</span>
+<span class="kt">double</span> <span class="n">px2</span><span class="o">=</span><span class="mf">0.5</span><span class="p">;</span>
+<span class="kt">double</span> <span class="n">py2</span><span class="o">=</span><span class="mf">0.5</span><span class="p">;</span>
+<span class="c1">//ring radii</span>
+<span class="kt">double</span> <span class="n">innerrad</span><span class="o">=</span><span class="mf">0.1</span><span class="p">;</span>
+<span class="kt">double</span> <span class="n">outerrad</span><span class="o">=</span><span class="mf">0.3</span><span class="p">;</span>
+<span class="c1">//step size along the arc and radius of a ring</span>
+<span class="kt">double</span> <span class="n">arcstep</span><span class="o">=</span><span class="mf">0.02</span><span class="p">;</span>
+<span class="kt">double</span> <span class="n">radstep</span><span class="o">=</span><span class="mf">0.02</span><span class="p">;</span>
+
+<span class="c1">//==== unite grids options</span>
+<span class="c1">//Size of the buffer.</span>
+<span class="kt">double</span> <span class="n">bufsize</span><span class="o">=</span><span class="mf">0.1</span><span class="p">;</span>
+<span class="c1">//Leave ring internals blank.</span>
+<span class="kt">bool</span> <span class="n">empty_holes</span><span class="o">=</span><span class="nb">true</span><span class="p">;</span>
+<span class="c1">//Allow shift of secondary grid boundary vertices:</span>
+<span class="c1">//only if secondary and basic grid boundaries intersect.</span>
+<span class="c1">//allow remeshing of basic grid boundary:</span>
+<span class="c1">//only if buffer zone includes basic grid boundary</span>
+<span class="kt">bool</span> <span class="n">fix_bnd</span><span class="o">=</span><span class="nb">false</span><span class="p">;</span>       
+<span class="c1">//least significant angle: only if grid boundaries are remeshed.</span>
+<span class="kt">double</span> <span class="n">angle0</span><span class="o">=</span><span class="mi">5</span><span class="p">;</span>
+<span class="c1">//Fill buffer with triangles</span>
+<span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">filler</span><span class="o">=</span><span class="s">&quot;3&quot;</span><span class="p">;</span>
+
+<span class="c1">//==== path to hybmesh executable</span>
+<span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">hmexec</span><span class="o">=</span><span class="s">&quot;../../../../src/py&quot;</span><span class="p">;</span>
+
+<span class="c1">//builds secondary grid and saves result into outfn</span>
+<span class="kt">void</span> <span class="nf">grid_secondary</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">outfn</span><span class="p">){</span>
+    <span class="c1">//initialize builder</span>
+    <span class="n">Hybmesh</span> <span class="n">builder2</span><span class="p">(</span><span class="n">hmexec</span><span class="p">);</span>
+    
+    <span class="c1">//calculate number of segmens in arc and radius directions.</span>
+    <span class="kt">int</span> <span class="n">na</span> <span class="o">=</span> <span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="mf">3.1415926</span> <span class="o">*</span> <span class="n">innerrad</span><span class="p">)</span><span class="o">/</span><span class="n">arcstep</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">nr</span> <span class="o">=</span> <span class="p">(</span><span class="n">outerrad</span><span class="o">-</span><span class="n">innerrad</span><span class="p">)</span><span class="o">/</span><span class="n">radstep</span><span class="p">;</span>
+
+    <span class="c1">//build uniform ring grid prototype assigning</span>
+    <span class="c1">//5 as its boundary feature</span>
+    <span class="n">Hybmesh</span><span class="o">::</span><span class="n">Grid2D</span> <span class="n">g2</span><span class="o">=</span><span class="n">builder2</span><span class="p">.</span><span class="n">add_unf_ring_grid</span><span class="p">(</span>
+        <span class="n">Hybmesh</span><span class="o">::</span><span class="n">Point2</span><span class="p">(</span><span class="n">px2</span><span class="p">,</span> <span class="n">py2</span><span class="p">),</span>
+        <span class="n">innerrad</span><span class="p">,</span> <span class="n">outerrad</span><span class="p">,</span>
+        <span class="n">na</span><span class="p">,</span> <span class="n">nr</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="p">{</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">});</span>
+
+    <span class="c1">//export to native ascii file.</span>
+    <span class="c1">//Initializer list {g2} converts g2 to single valued vector.</span>
+    <span class="n">builder2</span><span class="p">.</span><span class="n">export_grid_hmg</span><span class="p">({</span><span class="n">g2</span><span class="p">},</span> <span class="n">outfn</span><span class="p">);</span>
+<span class="p">}</span>
+
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(){</span>
+    <span class="c1">//initialize main builder</span>
+    <span class="c1">//Optional hmexec argument could be omitted.</span>
+    <span class="n">Hybmesh</span> <span class="n">builder1</span><span class="p">(</span><span class="n">hmexec</span><span class="p">);</span>
+
+    <span class="c1">//launch secondary grid builder in a separate thread</span>
+    <span class="n">std</span><span class="o">::</span><span class="kr">thread</span> <span class="n">builder2</span><span class="p">(</span><span class="n">grid_secondary</span><span class="p">,</span> <span class="s">&quot;g2.hmg&quot;</span><span class="p">);</span>
+
+    <span class="c1">//build basic grid in the main thread assigning boundary types</span>
+    <span class="c1">//1, 2, 3, 4 for left, bottom, right and top sides respectively.</span>
+    <span class="n">Hybmesh</span><span class="o">::</span><span class="n">Grid2D</span> <span class="n">g1</span><span class="o">=</span><span class="n">builder1</span><span class="p">.</span><span class="n">add_unf_rect_grid</span><span class="p">(</span>
+        <span class="n">Hybmesh</span><span class="o">::</span><span class="n">Point2</span><span class="p">(</span><span class="n">px1</span><span class="p">,</span> <span class="n">py1</span><span class="p">),</span>
+        <span class="n">Hybmesh</span><span class="o">::</span><span class="n">Point2</span><span class="p">(</span><span class="n">px1</span><span class="o">+</span><span class="n">Lx</span><span class="p">,</span> <span class="n">py1</span><span class="o">+</span><span class="n">Ly</span><span class="p">),</span>
+        <span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">,</span>
+        <span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">});</span>
+
+    <span class="c1">//wait until secondary grid is built and read it from the file</span>
+    <span class="n">builder2</span><span class="p">.</span><span class="n">join</span><span class="p">();</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Hybmesh</span><span class="o">::</span><span class="n">Grid2D</span><span class="o">&gt;</span> <span class="n">g2v</span><span class="o">=</span><span class="n">builder1</span><span class="p">.</span><span class="n">import_grid_hmg</span><span class="p">(</span><span class="s">&quot;g2.hmg&quot;</span><span class="p">);</span>
+    <span class="n">Hybmesh</span><span class="o">::</span><span class="n">Grid2D</span> <span class="n">g2</span><span class="o">=</span><span class="n">g2v</span><span class="p">[</span><span class="mi">0</span><span class="p">];</span>
+
+    <span class="c1">//turn on console output for unite operation</span>
+    <span class="n">builder1</span><span class="p">.</span><span class="n">stdout_verbosity</span><span class="p">(</span><span class="mi">3</span><span class="p">);</span>
+
+    <span class="k">try</span><span class="p">{</span>
+        <span class="c1">//unite</span>
+        <span class="n">Hybmesh</span><span class="o">::</span><span class="n">Grid2D</span> <span class="n">result</span><span class="o">=</span><span class="n">builder1</span><span class="p">.</span><span class="n">unite_grids1</span><span class="p">(</span>
+            <span class="n">g1</span><span class="p">,</span> <span class="n">g2</span><span class="p">,</span> <span class="n">bufsize</span><span class="p">,</span>
+            <span class="n">empty_holes</span><span class="p">,</span> <span class="n">fix_bnd</span><span class="p">,</span> <span class="n">angle0</span><span class="p">,</span> <span class="n">filler</span><span class="p">);</span>
+
+        <span class="c1">//save the result</span>
+        <span class="n">builder1</span><span class="p">.</span><span class="n">export_grid_vtk</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="s">&quot;result.vtk&quot;</span><span class="p">);</span>
+
+        <span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="o">&lt;&lt;</span><span class="s">&quot;Done&quot;</span><span class="o">&lt;&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+    <span class="p">}</span> <span class="k">catch</span> <span class="p">(</span><span class="n">Hybmesh</span><span class="o">::</span><span class="n">ERuntimeError</span><span class="o">&amp;</span> <span class="n">e</span><span class="p">){</span>
+        <span class="c1">//controlled hybmesh exception has occured</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="o">&lt;&lt;</span><span class="s">&quot;Failed&quot;</span><span class="o">&lt;&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="o">&lt;&lt;</span><span class="n">e</span><span class="p">.</span><span class="n">what</span><span class="p">()</span><span class="o">&lt;&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+        <span class="k">return</span> <span class="n">EXIT_FAILURE</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="k">return</span> <span class="n">EXIT_SUCCESS</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">C++ Bindings for HybMesh</a><ul>
+<li><a class="reference internal" href="#usage">Usage</a></li>
+<li><a class="reference internal" href="#helloworld-example">Helloworld Example</a></li>
+<li><a class="reference internal" href="#introductory-example">Introductory Example</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="ooipython.html"
+                        title="previous chapter">Python Bindings for HybMesh</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="ooijava.html"
+                        title="next chapter">Java Bindings for HybMesh</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/ooicpp.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="ooijava.html" title="Java Bindings for HybMesh"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="ooipython.html" title="Python Bindings for HybMesh"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">HybMesh 0.5.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="oointerface.html" >High-Level Programming Interfaces</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, KalininEI.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.3.
+    </div>
+  </body>
+</html>

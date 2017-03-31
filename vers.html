@@ -1,0 +1,360 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Versions History &#8212; HybMesh 0.5.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.5.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Native File Formats" href="fileformats.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="fileformats.html" title="Native File Formats"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">HybMesh 0.5.0 documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-hybmeshpack.hmscript">
+<span id="versions-history"></span><h1>Versions History<a class="headerlink" href="#module-hybmeshpack.hmscript" title="Permalink to this headline">¶</a></h1>
+<ul>
+<li><dl class="first docutils">
+<dt><strong>0.2.1</strong>:</dt>
+<dd><p class="first last">basic python script interface introduced</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt><strong>0.3.0</strong>:</dt>
+<dd><p class="first">New algorithms:</p>
+<ul class="simple">
+<li>grid mapping</li>
+<li>zero angle approximation for grid superposition</li>
+<li>geometry reflection over a straight line</li>
+<li>vertex and corner projection types were added for boundary
+source contour start/end point definition</li>
+</ul>
+<p>New geometry constructors:</p>
+<ul class="simple">
+<li>grid in a triangle area</li>
+<li>circle contour defined by three points and
+by two points with curvature coefficient</li>
+</ul>
+<p>New python interface functions:</p>
+<ul class="simple">
+<li><a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.remove_all_but" title="hybmeshpack.hmscript.remove_all_but"><code class="xref py py-func docutils literal"><span class="pre">remove_all_but()</span></code></a></li>
+<li><a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.reflect_geom" title="hybmeshpack.hmscript.reflect_geom"><code class="xref py py-func docutils literal"><span class="pre">reflect_geom()</span></code></a></li>
+<li><a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.add_circ_contour2" title="hybmeshpack.hmscript.add_circ_contour2"><code class="xref py py-func docutils literal"><span class="pre">add_circ_contour2()</span></code></a></li>
+<li><a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.add_circ_contour3" title="hybmeshpack.hmscript.add_circ_contour3"><code class="xref py py-func docutils literal"><span class="pre">add_circ_contour3()</span></code></a></li>
+<li><a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.add_triangle_grid" title="hybmeshpack.hmscript.add_triangle_grid"><code class="xref py py-func docutils literal"><span class="pre">add_triangle_grid()</span></code></a></li>
+<li><a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.map_grid" title="hybmeshpack.hmscript.map_grid"><code class="xref py py-func docutils literal"><span class="pre">map_grid()</span></code></a></li>
+</ul>
+<p>Python interface functions with new options:</p>
+<ul class="last simple">
+<li><em>zero_angle_approx</em> for <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.unite_grids" title="hybmeshpack.hmscript.unite_grids"><code class="xref py py-func docutils literal"><span class="pre">unite_grids()</span></code></a></li>
+<li><em>project_to</em> for <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.BoundaryGridOptions" title="hybmeshpack.hmscript.BoundaryGridOptions"><code class="xref py py-class docutils literal"><span class="pre">BoundaryGridOptions</span></code></a></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt><strong>0.4.0</strong>:</dt>
+<dd><p class="first">New algorithms:</p>
+<ul class="simple">
+<li>extrude 2D grid in z direction</li>
+<li>3D grid export to vtk and fluent msh formats</li>
+<li>partition contour with constant and reference point defined step</li>
+<li>fluent export with given periodic conditions</li>
+<li>build rectangular grid on the basis of two or four open contours</li>
+</ul>
+<p>New python interface functions:</p>
+<ul class="simple">
+<li><a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.extrude_grid" title="hybmeshpack.hmscript.extrude_grid"><code class="xref py py-func docutils literal"><span class="pre">extrude_grid()</span></code></a></li>
+<li><a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.partition_contour" title="hybmeshpack.hmscript.partition_contour"><code class="xref py py-func docutils literal"><span class="pre">partition_contour()</span></code></a></li>
+<li><a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.export3d_grid_vtk" title="hybmeshpack.hmscript.export3d_grid_vtk"><code class="xref py py-func docutils literal"><span class="pre">export3d_grid_vtk()</span></code></a></li>
+<li><a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.export3d_grid_msh" title="hybmeshpack.hmscript.export3d_grid_msh"><code class="xref py py-func docutils literal"><span class="pre">export3d_grid_msh()</span></code></a></li>
+<li><a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.add_custom_rect_grid" title="hybmeshpack.hmscript.add_custom_rect_grid"><code class="xref py py-func docutils literal"><span class="pre">add_custom_rect_grid()</span></code></a></li>
+</ul>
+<p>Python interface functions with new options:</p>
+<ul class="last simple">
+<li><em>periodic_pairs</em> for <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.export_grid_msh" title="hybmeshpack.hmscript.export_grid_msh"><code class="xref py py-func docutils literal"><span class="pre">export_grid_msh()</span></code></a></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt><strong>0.4.1</strong>:</dt>
+<dd><p class="first">New algorithms:</p>
+<ul class="simple">
+<li>build 3D grid by revolution of 2D grid around arbitrary <cite>xy</cite> vector</li>
+<li>2D/3D grid export to tecplot ascii *.dat format</li>
+</ul>
+<p>New geometry constructors:</p>
+<ul class="simple">
+<li>quadrangle grid in a circle area</li>
+</ul>
+<p>New python interface functions:</p>
+<ul class="last simple">
+<li><a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.revolve_grid" title="hybmeshpack.hmscript.revolve_grid"><code class="xref py py-func docutils literal"><span class="pre">revolve_grid()</span></code></a></li>
+<li><a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.add_circ_rect_grid" title="hybmeshpack.hmscript.add_circ_rect_grid"><code class="xref py py-func docutils literal"><span class="pre">add_circ_rect_grid()</span></code></a></li>
+<li><a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.export3d_grid_tecplot" title="hybmeshpack.hmscript.export3d_grid_tecplot"><code class="xref py py-func docutils literal"><span class="pre">export3d_grid_tecplot()</span></code></a></li>
+<li><a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.export_grid_tecplot" title="hybmeshpack.hmscript.export_grid_tecplot"><code class="xref py py-func docutils literal"><span class="pre">export_grid_tecplot()</span></code></a></li>
+<li><a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.export_contour_tecplot" title="hybmeshpack.hmscript.export_contour_tecplot"><code class="xref py py-func docutils literal"><span class="pre">export_contour_tecplot()</span></code></a></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt><strong>0.4.2</strong>:</dt>
+<dd><p class="first">New algorithms:</p>
+<ul class="simple">
+<li>inverse Laplace algorithm for grid mapping,</li>
+<li>Laplace and orthogonal algorithms for custom rectangular grid constructor,</li>
+<li>Laplace and orthogonal algorithms for quadrangle grid in a circle area constructor.</li>
+</ul>
+<p>Python interface functions with new options:</p>
+<ul class="last simple">
+<li><em>algo</em> = <code class="docutils literal"><span class="pre">direct_laplace</span></code>, <code class="docutils literal"><span class="pre">inverse_laplace</span></code> for <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.map_grid" title="hybmeshpack.hmscript.map_grid"><code class="xref py py-func docutils literal"><span class="pre">map_grid()</span></code></a>,</li>
+<li><em>return_invalid</em> for <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.map_grid" title="hybmeshpack.hmscript.map_grid"><code class="xref py py-func docutils literal"><span class="pre">map_grid()</span></code></a>,</li>
+<li><em>algo</em> = <code class="docutils literal"><span class="pre">laplace</span></code>, <code class="docutils literal"><span class="pre">orthogonal_circ</span></code>, <code class="docutils literal"><span class="pre">orthogonal_rect</span></code> for <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.add_circ_rect_grid" title="hybmeshpack.hmscript.add_circ_rect_grid"><code class="xref py py-func docutils literal"><span class="pre">add_circ_rect_grid()</span></code></a>,</li>
+<li><em>algo</em> = <code class="docutils literal"><span class="pre">direct_laplace</span></code>, <code class="docutils literal"><span class="pre">inverse_laplace</span></code>, <code class="docutils literal"><span class="pre">orthogonal</span></code> for <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.add_custom_rect_grid" title="hybmeshpack.hmscript.add_custom_rect_grid"><code class="xref py py-func docutils literal"><span class="pre">add_custom_rect_grid()</span></code></a>.</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt><strong>0.4.3</strong>:</dt>
+<dd><p class="first">New algorithms:</p>
+<ul class="simple">
+<li>linear and hermite transfinite interpolations</li>
+<li>fixed number of edges for contour partition</li>
+</ul>
+<p>Python interface functions with new options:</p>
+<ul class="last simple">
+<li><em>algo</em> = <code class="docutils literal"><span class="pre">linear_tfi</span></code>, <code class="docutils literal"><span class="pre">hermite_tfi</span></code> for <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.add_custom_rect_grid" title="hybmeshpack.hmscript.add_custom_rect_grid"><code class="xref py py-func docutils literal"><span class="pre">add_custom_rect_grid()</span></code></a>,</li>
+<li><em>hermite_tfi_w</em> for <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.add_custom_rect_grid" title="hybmeshpack.hmscript.add_custom_rect_grid"><code class="xref py py-func docutils literal"><span class="pre">add_custom_rect_grid()</span></code></a>,</li>
+<li><em>nedges</em> for <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.partition_contour" title="hybmeshpack.hmscript.partition_contour"><code class="xref py py-func docutils literal"><span class="pre">partition_contour()</span></code></a>.</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt><strong>0.4.4</strong>:</dt>
+<dd><p class="first">New algorithms:</p>
+<ul class="simple">
+<li>create contour using parametric splines</li>
+</ul>
+<p>New python interface functions:</p>
+<ul class="last simple">
+<li><a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.create_spline_contour" title="hybmeshpack.hmscript.create_spline_contour"><code class="xref py py-func docutils literal"><span class="pre">create_spline_contour()</span></code></a></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt><strong>0.4.5</strong>:</dt>
+<dd><p class="first">New features:</p>
+<ul class="simple">
+<li>unite grids with buffer filled with recombined mostly quadrangular mesh</li>
+<li>constrained unstructured meshing with triangle, recombined and pebi grids</li>
+<li>rectangle and radial grid prototypes with custom segmentation</li>
+<li>procedure for concave cells removing</li>
+<li>matched contour partition with 2D size conditions</li>
+<li>numeric segment partition</li>
+<li>native file formats introduced and described</li>
+<li>export 3d grid to gmsh format</li>
+<li>exporting list of 2d grids or contours to one file of any supported format</li>
+<li>importing data from native files</li>
+</ul>
+<p>New geometry constructors:</p>
+<ul class="simple">
+<li>stripe grid prototype</li>
+<li>regular hexagonal grid prototype</li>
+</ul>
+<p>New python interface functions:</p>
+<ul class="simple">
+<li><a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.triangulate_domain" title="hybmeshpack.hmscript.triangulate_domain"><code class="xref py py-func docutils literal"><span class="pre">triangulate_domain()</span></code></a></li>
+<li><a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.pebi_fill" title="hybmeshpack.hmscript.pebi_fill"><code class="xref py py-func docutils literal"><span class="pre">pebi_fill()</span></code></a></li>
+<li><a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.stripe" title="hybmeshpack.hmscript.stripe"><code class="xref py py-func docutils literal"><span class="pre">stripe()</span></code></a></li>
+<li><a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.add_unf_hex_grid" title="hybmeshpack.hmscript.add_unf_hex_grid"><code class="xref py py-func docutils literal"><span class="pre">add_unf_hex_grid()</span></code></a></li>
+<li><a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.partition_segment" title="hybmeshpack.hmscript.partition_segment"><code class="xref py py-func docutils literal"><span class="pre">partition_segment()</span></code></a></li>
+<li><a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.matched_partition" title="hybmeshpack.hmscript.matched_partition"><code class="xref py py-func docutils literal"><span class="pre">matched_partition()</span></code></a></li>
+<li><a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.export_all_hmd" title="hybmeshpack.hmscript.export_all_hmd"><code class="xref py py-func docutils literal"><span class="pre">export_all_hmd()</span></code></a></li>
+<li><a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.export3d_grid_gmsh" title="hybmeshpack.hmscript.export3d_grid_gmsh"><code class="xref py py-func docutils literal"><span class="pre">export3d_grid_gmsh()</span></code></a></li>
+<li><a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.export3d_grid_hmg" title="hybmeshpack.hmscript.export3d_grid_hmg"><code class="xref py py-func docutils literal"><span class="pre">export3d_grid_hmg()</span></code></a></li>
+<li><a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.import_grid_hmg" title="hybmeshpack.hmscript.import_grid_hmg"><code class="xref py py-func docutils literal"><span class="pre">import_grid_hmg()</span></code></a></li>
+<li><a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.import_contour_hmc" title="hybmeshpack.hmscript.import_contour_hmc"><code class="xref py py-func docutils literal"><span class="pre">import_contour_hmc()</span></code></a></li>
+<li><a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.import_all_hmd" title="hybmeshpack.hmscript.import_all_hmd"><code class="xref py py-func docutils literal"><span class="pre">import_all_hmd()</span></code></a></li>
+<li><a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.load_project" title="hybmeshpack.hmscript.load_project"><code class="xref py py-func docutils literal"><span class="pre">load_project()</span></code></a></li>
+<li><a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.registered_grids3d" title="hybmeshpack.hmscript.registered_grids3d"><code class="xref py py-func docutils literal"><span class="pre">registered_grids3d()</span></code></a></li>
+</ul>
+<p>Python interface functions with new options:</p>
+<ul class="last simple">
+<li><em>buffer_fill</em> for <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.unite_grids" title="hybmeshpack.hmscript.unite_grids"><code class="xref py py-func docutils literal"><span class="pre">unite_grids()</span></code></a></li>
+<li><em>custom_x, custom_y</em> for <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.add_unf_rect_grid" title="hybmeshpack.hmscript.add_unf_rect_grid"><code class="xref py py-func docutils literal"><span class="pre">add_unf_rect_grid()</span></code></a></li>
+<li><em>custom_rads, custom_archs</em> for <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.add_unf_circ_grid" title="hybmeshpack.hmscript.add_unf_circ_grid"><code class="xref py py-func docutils literal"><span class="pre">add_unf_circ_grid()</span></code></a></li>
+<li><em>crosses</em> for <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.partition_contour" title="hybmeshpack.hmscript.partition_contour"><code class="xref py py-func docutils literal"><span class="pre">partition_contour()</span></code></a></li>
+<li><em>convex_cells</em> for <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.heal_grid" title="hybmeshpack.hmscript.heal_grid"><code class="xref py py-func docutils literal"><span class="pre">heal_grid()</span></code></a></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt><strong>0.4.6</strong>:</dt>
+<dd><p class="first">New features:</p>
+<ul class="simple">
+<li>forced connection of not connected open contours
+using shifting and stretching</li>
+<li>decomposition of multiply connected edges into simple contours</li>
+<li>subdivision of given contour into subcontours with user defined
+end points</li>
+<li>building contour segmentation using recommended sizes defined by
+length or normalized length contour coordinates</li>
+<li>definition of target contour segment and fixed points for contour
+partition algorithm</li>
+<li>mapping of grids into reflected domains</li>
+<li>finding of an object point closest to the user defined site</li>
+<li>calculation of 3D domain volume</li>
+<li>selection of contour closest to user defined point</li>
+<li>extraction of grid surface</li>
+<li>building tetrahedral mesh in closed 3D domain with arbitrary faces</li>
+<li>exporting and importing of surfaces to native file format</li>
+<li>merging of 3D grids with coincident boundaries</li>
+</ul>
+<p>New python interface functions:</p>
+<ul class="simple">
+<li><a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.grid3_bnd_to_surface" title="hybmeshpack.hmscript.grid3_bnd_to_surface"><code class="xref py py-func docutils literal"><span class="pre">grid3_bnd_to_surface()</span></code></a></li>
+<li><a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.decompose_contour" title="hybmeshpack.hmscript.decompose_contour"><code class="xref py py-func docutils literal"><span class="pre">decompose_contour()</span></code></a></li>
+<li><a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.extract_subcontours" title="hybmeshpack.hmscript.extract_subcontours"><code class="xref py py-func docutils literal"><span class="pre">extract_subcontours()</span></code></a></li>
+<li><a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.connect_subcontours" title="hybmeshpack.hmscript.connect_subcontours"><code class="xref py py-func docutils literal"><span class="pre">connect_subcontours()</span></code></a></li>
+<li><a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.merge_grids3" title="hybmeshpack.hmscript.merge_grids3"><code class="xref py py-func docutils literal"><span class="pre">merge_grids3()</span></code></a></li>
+<li><a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.info_grid3d" title="hybmeshpack.hmscript.info_grid3d"><code class="xref py py-func docutils literal"><span class="pre">info_grid3d()</span></code></a></li>
+<li><a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.info_surface" title="hybmeshpack.hmscript.info_surface"><code class="xref py py-func docutils literal"><span class="pre">info_surface()</span></code></a></li>
+<li><a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.get_point" title="hybmeshpack.hmscript.get_point"><code class="xref py py-func docutils literal"><span class="pre">get_point()</span></code></a></li>
+<li><a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.domain_volume" title="hybmeshpack.hmscript.domain_volume"><code class="xref py py-func docutils literal"><span class="pre">domain_volume()</span></code></a></li>
+<li><a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.pick_contour" title="hybmeshpack.hmscript.pick_contour"><code class="xref py py-func docutils literal"><span class="pre">pick_contour()</span></code></a></li>
+<li><a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.export3d_surface_hmc" title="hybmeshpack.hmscript.export3d_surface_hmc"><code class="xref py py-func docutils literal"><span class="pre">export3d_surface_hmc()</span></code></a></li>
+<li><a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.import3d_surface_hmc" title="hybmeshpack.hmscript.import3d_surface_hmc"><code class="xref py py-func docutils literal"><span class="pre">import3d_surface_hmc()</span></code></a></li>
+<li><a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.tetrahedral_fill" title="hybmeshpack.hmscript.tetrahedral_fill"><code class="xref py py-func docutils literal"><span class="pre">tetrahedral_fill()</span></code></a></li>
+<li><a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.registered_surfaces" title="hybmeshpack.hmscript.registered_surfaces"><code class="xref py py-func docutils literal"><span class="pre">registered_surfaces()</span></code></a></li>
+</ul>
+<p>Python interface functions with new options:</p>
+<ul class="last simple">
+<li><em>keep_pts</em>, <em>start</em>, <em>end</em>, <em>algo</em> = <code class="docutils literal"><span class="pre">ref_weights</span></code>, <code class="docutils literal"><span class="pre">ref_lengths</span></code> for
+<a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.partition_contour" title="hybmeshpack.hmscript.partition_contour"><code class="xref py py-func docutils literal"><span class="pre">partition_contour()</span></code></a></li>
+<li><em>is_reversed</em> for <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.map_grid" title="hybmeshpack.hmscript.map_grid"><code class="xref py py-func docutils literal"><span class="pre">map_grid()</span></code></a></li>
+<li><em>return_invalid</em> for <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.add_custom_rect_grid" title="hybmeshpack.hmscript.add_custom_rect_grid"><code class="xref py py-func docutils literal"><span class="pre">add_custom_rect_grid()</span></code></a></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt><strong>0.5.0</strong>:</dt>
+<dd><p class="first">New features:</p>
+<ul class="simple">
+<li>Object oriented programming interfaces for C++, C#, Matlab, Java and Python languages</li>
+<li>Windows installation as a Python2.7 package</li>
+<li>Readonly access to geometric data of hybmesh objects</li>
+<li>Grid to contour snapping algorithm</li>
+<li>Consistent exceptions mechanism</li>
+<li>More advanced standard output verbosity level control</li>
+<li>Simplified function signatures for building boundary grids and grid union</li>
+</ul>
+<p>New python interface functions:</p>
+<ul class="last simple">
+<li><a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.tab_cont2" title="hybmeshpack.hmscript.tab_cont2"><code class="xref py py-func docutils literal"><span class="pre">tab_cont2()</span></code></a>, <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.tab_grid2" title="hybmeshpack.hmscript.tab_grid2"><code class="xref py py-func docutils literal"><span class="pre">tab_grid2()</span></code></a>, <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.tab_surf3" title="hybmeshpack.hmscript.tab_surf3"><code class="xref py py-func docutils literal"><span class="pre">tab_surf3()</span></code></a>, <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.tab_grid3" title="hybmeshpack.hmscript.tab_grid3"><code class="xref py py-func docutils literal"><span class="pre">tab_grid3()</span></code></a></li>
+<li><a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.snap_grid_to_contour" title="hybmeshpack.hmscript.snap_grid_to_contour"><code class="xref py py-func docutils literal"><span class="pre">snap_grid_to_contour()</span></code></a></li>
+<li><a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.unite_grids1" title="hybmeshpack.hmscript.unite_grids1"><code class="xref py py-func docutils literal"><span class="pre">unite_grids1()</span></code></a>, <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.build_boundary_grid1" title="hybmeshpack.hmscript.build_boundary_grid1"><code class="xref py py-func docutils literal"><span class="pre">build_boundary_grid1()</span></code></a></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="fileformats.html"
+                        title="previous chapter">Native File Formats</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/vers.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="fileformats.html" title="Native File Formats"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">HybMesh 0.5.0 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, KalininEI.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.3.
+    </div>
+  </body>
+</html>
