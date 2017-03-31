@@ -1,4 +1,4 @@
-.. |icon| image::  misc/mainwin_icon.svg
+.. |icon| image::  misc/mainwin_icon_100.png
 
 |icon| HybMesh Grid Generator
 =============================
