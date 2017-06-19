@@ -162,7 +162,7 @@ EdgeData BufferGrid::define_source_edges(const EdgeData& cont) const{
 		//check also a middle point due to situations when
 		//endpoints lie on source, but the whole segment does not.
 		Point midp = Point::Weigh(*e->first(), *e->last(), 0.5);
-		if (is_on_source(midp) == 2) ret.push_back(e);
+		if (is_on_source(midp) > 0) ret.push_back(e);
 	}
 
 	return ret;

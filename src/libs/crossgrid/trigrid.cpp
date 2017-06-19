@@ -644,44 +644,33 @@ GridData Mesher::TUnstructuredTriangle::_run(const Contour::Tree& source){
 }
 
 namespace{
+//This is a heavy workaround for gmsh recombination algorithm failures.
 void recomb_heal(GridData& grid){
-	auto process = [&](int ic1, int ic2, int n1, int n2){
+	auto process = [&](int ic1, int ic2)->bool{
+		//Removing all doubled edges
+		//See others/botscript1.py, others/unite_grids1.py examples.
 		Cell* c1 = grid.vcells[ic1].get();
 		Cell* c2 = grid.vcells[ic2].get();
-		Contour::Algos::Reverse(c2->edges);
-		auto op1 = Contour::OrderedPoints1(c1->edges);
-		auto op2 = Contour::OrderedPoints1(c2->edges);
-		int loc1=-1, loc2=-1;
-		for (int j=0; j<c1->edges.size(); ++j){
-			if (op1[j]->id == n1){
-				loc1 = j; break;
-			}
-		}
-		for (int j=0; j<c2->edges.size(); ++j){
-			if (op2[j]->id == n1){
-				loc2 = j; break;
-			}
-		}
-		assert(loc1 >= 0 && loc2 >= 0);
-		std::rotate(c2->edges.begin(), c2->edges.begin()+loc2, c2->edges.end());
-		c1->edges.erase(c1->edges.begin()+loc1);
-		c1->edges.insert(c1->edges.begin()+loc1, c2->edges.begin(), c2->edges.end()-1);
-		for (int i=0; i<c1->edges.size(); ++i){
-			if (c1->edges[i]->has_left_cell() && c1->edges[i]->left.lock().get() == c2){
-				c1->edges[i]->left.reset();
-			}
-			if (c1->edges[i]->has_right_cell() && c1->edges[i]->right.lock().get() == c2){
-				c1->edges[i]->right.reset();
-			}
-			if (HM2D::Contour::CorrectlyDirectedEdge(c1->edges, i)){
-				c1->edges[i]->left = grid.vcells[ic1];
-			} else {
-				c1->edges[i]->right = grid.vcells[ic2];
-			}
+		aa::constant_ids_pvec(c1->edges, 0);
+		aa::constant_ids_pvec(c2->edges, 0);
+		for (auto e: c1->edges) ++e->id;
+		for (auto e: c2->edges) ++e->id;
+		EdgeData ee;
+		for (auto e: c1->edges) if (e->id == 1) ee.push_back(e);
+		for (auto e: c2->edges) if (e->id == 1) ee.push_back(e);
+		ee = HM2D::Contour::Assembler::Contour1(ee);
+		//if ee is not a good cell return error status.
+		if (!HM2D::Contour::IsClosed(ee)) return false;
+		if (std::get<0>(Contour::Finder::SelfCross(ee))) return false;
+		Contour::R::Clockwise::Permanent(ee, false);
+		c1->edges = ee;
+		for (auto e: c1->edges){
+			e->left = grid.vcells[ic1];
+			if (e->right.lock().get() == c2) e->right.reset();
 		}
 		grid.vcells[ic2]=nullptr;
 		Grid::Algos::RestoreFromCells(grid);
-		return !std::get<0>(Contour::Finder::SelfCross(c1->edges));
+		return true;
 	};
 
 	for (int tries=0; tries<100; ++tries){
@@ -695,7 +684,7 @@ void recomb_heal(GridData& grid){
 				int p2 = op[i+1]->id;
 				auto er = used_edges[p1].emplace(p2, ic);
 				if (er.second==false){
-					if (process(ic, er.first->second, p1, p2)) goto NEXT_TRY;
+					if (process(ic, er.first->second)) goto NEXT_TRY;
 					else goto ERR_OUT;
 				}
 			}

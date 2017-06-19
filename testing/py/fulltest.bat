@@ -47,6 +47,8 @@ echo "--- botscript1"
 %HMCOM% others/botscript1.py
 echo "--- cave1"
 %HMCOM% others/cave1.py
+echo "--- unite_grids1"
+%HMCOM% others/unite_grids1.py
 
 :final
 pause
