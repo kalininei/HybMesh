@@ -90,8 +90,9 @@ CrossAll(const EdgeData& c1, const EdgeData& c2);
 //finds first self cross (with respect to length of c1)
 //returns <0>: if cross was found
 //        <1>: cross point
-//        <2,3>: normalized length coordinate of intersection
-std::tuple<bool, Point, double, double>
+//        <2,3>: normalized section length coordinates of intersection
+//        <4,5>: local indices of crossed sections
+std::tuple<bool, Point, double, double, int, int>
 SelfCross(const EdgeData& c1);
 
 //Calculate points position with respect to contour.

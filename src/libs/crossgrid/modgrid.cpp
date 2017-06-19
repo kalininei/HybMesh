@@ -497,7 +497,7 @@ bool Algos::SplitEdge(GridData& grid, int iedge, const vector<Point>& apoints, b
 	return true;
 }
 
-//all cells with dimensin higher than maxdim will be splitted
+//all cells with dimension higher than maxdim will be splitted
 void Algos::CutCellDims(GridData& grid, int maxdim){
 	assert(maxdim >= 3);
 

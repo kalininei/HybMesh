@@ -252,7 +252,7 @@ vector<std::tuple<bool, Point, double, double>>
 Contour::Finder::CrossAll(const EdgeData& c1, const EdgeData& c2){
 	return cross_core(c1, c2, false);
 }
-std::tuple<bool, Point, double, double>
+std::tuple<bool, Point, double, double, int, int>
 Contour::Finder::SelfCross(const EdgeData& c1){
 	double ksi[2];
 	bool closed = IsClosed(c1);
@@ -266,9 +266,9 @@ Contour::Finder::SelfCross(const EdgeData& c1){
 			return std::make_tuple(
 				true, Point::Weigh(*c1[i]->pfirst(),
 				                   *c1[i]->plast(), ksi[0]),
-				ksi[0], ksi[1]);
+				ksi[0], ksi[1], i, j);
 	}
-	return std::make_tuple(false, Point(0, 0), 0., 0.);
+	return std::make_tuple(false, Point(0, 0), 0., 0., 0, 0);
 }
 
 Finder::RasterizeEdges::RasterizeEdges(const EdgeData& ed, const BoundingBox& bb, double step){

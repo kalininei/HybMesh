@@ -646,9 +646,26 @@ GridData Mesher::TUnstructuredTriangle::_run(const Contour::Tree& source){
 namespace{
 //This is a heavy workaround for gmsh recombination algorithm failures.
 void recomb_heal(GridData& grid){
-	auto process = [&](int ic1, int ic2)->bool{
-		//Removing all doubled edges
-		//See others/botscript1.py, others/unite_grids1.py examples.
+	auto get_adjacent_cells = [&](Edge* e, int& c1, int& c2){
+		aa::enumerate_ids_pvec(grid.vcells);
+		c1 = -1; c2 = -1;
+		if (e->has_left_cell()) c1=e->left.lock()->id;
+		if (e->has_right_cell()) c2=e->right.lock()->id;
+		//we cannot rely of left/right only because
+		//self crossing cells with unspecified edge direction can be passed here.
+		if (c2 == c1) c2 = -1;
+		if ((c1>-1 && c2>-1) || (c1==-1 && c2==-1)) return;
+		c1 = std::max(c1, c2); c2 = -1;
+		for (int i=0; i<grid.vcells.size(); ++i){
+			if (HM2D::Finder::Contains(grid.vcells[i]->edges, e) && i!=c1){
+				c2 = i;
+				return;
+			}
+		}
+	};
+	std::function<bool(int, int)> process = [&](int ic1, int ic2)->bool{
+		//This procedire connects ic1 and ic2 cells by removing common
+		//edges and reassembling other edges.
 		Cell* c1 = grid.vcells[ic1].get();
 		Cell* c2 = grid.vcells[ic2].get();
 		aa::constant_ids_pvec(c1->edges, 0);
@@ -659,9 +676,8 @@ void recomb_heal(GridData& grid){
 		for (auto e: c1->edges) if (e->id == 1) ee.push_back(e);
 		for (auto e: c2->edges) if (e->id == 1) ee.push_back(e);
 		ee = HM2D::Contour::Assembler::Contour1(ee);
-		//if ee is not a good cell return error status.
+		//if ee is not closed cell return error status.
 		if (!HM2D::Contour::IsClosed(ee)) return false;
-		if (std::get<0>(Contour::Finder::SelfCross(ee))) return false;
 		Contour::R::Clockwise::Permanent(ee, false);
 		c1->edges = ee;
 		for (auto e: c1->edges){
@@ -670,7 +686,18 @@ void recomb_heal(GridData& grid){
 		}
 		grid.vcells[ic2]=nullptr;
 		Grid::Algos::RestoreFromCells(grid);
-		return true;
+		auto cc = Contour::Finder::SelfCross(ee);
+		// If resuling cell has no self crosses it's ok to quit the function.
+		// See others/botscript1.py
+		if (!std::get<0>(cc)) return true;
+		// if there is a cross we have to analyse each of crossed edges
+		// and delete it if it has two adjacent cells.
+		// See others/unite_grids1.py, others/rrj2 (UNITE1 and UNITE4).
+		get_adjacent_cells(ee[std::get<4>(cc)].get(), ic1, ic2);
+		if (ic2 > -1) return process(ic1, ic2);
+		get_adjacent_cells(ee[std::get<5>(cc)].get(), ic1, ic2);
+		if (ic2 > -1) return process(ic1, ic2);
+		return false;
 	};
 
 	for (int tries=0; tries<100; ++tries){
@@ -690,14 +717,16 @@ void recomb_heal(GridData& grid){
 			}
 		}
 		//no changes in current try => grid is fine.
-		if (tries > 0) Grid::Algos::CutCellDims(grid, 4);
+		if (tries > 0){
+			Grid::Algos::CutCellDims(grid, 4);
+			Grid::Algos::NoConcaveCells(grid, 175);
+		}
 		return;
 NEXT_TRY:
 		continue; 
 	}
 ERR_OUT:
-	throw std::runtime_error("cannot restore correct grid from gmsh output");
-
+	throw std::runtime_error("cannot restore correct grid from gmsh recombination procedure output");
 }
 
 void guarantee_edges(GridData& grid, const EdgeData& edges){
