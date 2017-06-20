@@ -15,7 +15,7 @@ struct GraphLine{
 	GraphLine(int a, int b):i0(a), i1(b) { if (i0>i1) std::swap(i0,i1); }
 	int i0, i1;
 	void set(int a, int b) { i0=a; i1=b; if (i0>i1) std::swap(i0, i1); }
-	bool has_node(int i) const noexcept { return (i0==i || i1 ==i); }
+	bool has_node(int i) const  { return (i0==i || i1 ==i); }
 };
 inline bool operator<(const GraphLine& x, const GraphLine& y){
 	return (x.i0!=y.i0) ? (x.i0<y.i0) : (x.i1<y.i1);
@@ -62,8 +62,8 @@ private:
 	vector<GraphLine> lines;
 	
 	// ==== info
-	Point& ednode0(int i) noexcept { return nodes[lines[i].i0]; }
-	Point& ednode1(int i) noexcept { return nodes[lines[i].i1]; }
+	Point& ednode0(int i)  { return nodes[lines[i].i0]; }
+	Point& ednode1(int i)  { return nodes[lines[i].i1]; }
 
 	// ===== algorithms
 	//Imposes wireframe @imp_graph upon @main_graph. 
@@ -83,12 +83,12 @@ private:
 		vector<int>,   // ig_nodes
 		vector<double> // crossnodes
 	> impResT;
-	static impResT impose(const PtsGraph& main_graph, const PtsGraph& imp_graph, double eps);
+	static impResT impose(const PtsGraph& main_graph, const PtsGraph& imp_graph);
 	
 	// subprocedure for togrid() function
 	static GridData intrusion_algo(const vector<GridData>& grids);
 private:
-	static impResT _impose_impl(const PtsGraph& main_graph, const PtsGraph& imp_graph, double eps);
+	static impResT _impose_impl(const PtsGraph& main_graph, const PtsGraph& imp_graph);
 
 	friend struct PtsGraphAccel;
 	friend struct SubGraph;
@@ -123,18 +123,18 @@ private:
 
 typedef std::array<int, 2> Tind2;
 struct Tind2Proc{
-	Tind2Proc(int nx, int ny) noexcept: Nx(nx), Ny(ny), N(nx*ny), indicies(Ny){
+	Tind2Proc(int nx, int ny) : Nx(nx), Ny(ny), N(nx*ny), indicies(Ny){
 		for (int iy=0; iy<Ny; ++iy){
 			indicies[iy].resize(Nx);
 			std::iota(indicies[iy].begin(), indicies[iy].end(), iy*Nx);
 		}
 	}
-	int size()  const noexcept { return N; }
-	int sizex() const noexcept { return Nx; }
-	int sizey() const noexcept { return Ny; }
+	int size()  const  { return N; }
+	int sizex() const  { return Nx; }
+	int sizey() const  { return Ny; }
 	//get plain index procedures
-	int gindex(Tind2 ind) const noexcept { return indicies[ind[1]][ind[0]]; }
-	std::list<int> gindex(Tind2 ind1, Tind2 ind2) const noexcept {
+	int gindex(Tind2 ind) const  { return indicies[ind[1]][ind[0]]; }
+	std::list<int> gindex(Tind2 ind1, Tind2 ind2) const  {
 		if (ind1[0]>ind2[0]) std::swap(ind1[0], ind2[0]);
 		if (ind1[1]>ind2[1]) std::swap(ind1[1], ind2[1]);
 		std::list<int> ret;
@@ -146,7 +146,7 @@ struct Tind2Proc{
 		return ret;
 	}
 	//get index
-	Tind2 get_tind(double ix, double iy) const noexcept {
+	Tind2 get_tind(double ix, double iy) const  {
 		Tind2 ret = {{int(ix), int(iy)}};
 		if (ret[0]<0) ret[0]=0; else if (ret[0]>=Nx) ret[0]=Nx-1;
 		if (ret[1]<0) ret[1]=0; else if (ret[1]>=Ny) ret[1]=Ny-1;
@@ -164,9 +164,8 @@ struct PtsGraphAccel{
 	//Auxilliary grid partition Naux x Naux
 	constexpr static const int Naux = 100;
 	//constructors
-	//e -- nodes comparison epsilon
-	PtsGraphAccel(PtsGraph& g, const Point& pmin, const Point& pmax, double e) noexcept;
-	PtsGraphAccel(PtsGraph& g,  double e) noexcept;
+	PtsGraphAccel(PtsGraph& g, const Point& pmin, const Point& pmax) ;
+	PtsGraphAccel(PtsGraph& g) ;
 	//Adds the point to the node vector if it lies further then @eps from existing node.
 	//Returns a tuple which describes added point position:
 	//<0> -- type of addition:
@@ -175,13 +174,13 @@ struct PtsGraphAccel{
 	//       = 2 -- node was moved to the edge of a graph and added to the @nodes end
 	//<1> -- array index of added node. Equals last array index if <0>==0, 2
 	//       and equals equivalent node index if @p was close to existing node (<0>==1).  
-	std::tuple<int, int>  add_point(const Point& p) noexcept;
+	std::tuple<int, int>  add_point(const Point& p) ;
 	//Adds new graph connection.
-	void add_connection(int i1, int i2) noexcept;
+	void add_connection(int i1, int i2) ;
 	
 	//finds graph line with contains point &p.
 	//Returns lineIndex+lineWeight of the node or -1 if there is no such graph line.
-	double find_gline(const Point& p) const noexcept;
+	double find_gline(const Point& p) const ;
 private:
 	//Data
 	const double eps;
@@ -191,33 +190,33 @@ private:
 	Point p0;
 	double hx, hy;
 	//construction
-	void init(Point pmin, Point pmax) noexcept;
+	void init(Point pmin, Point pmax) ;
 
 	//additional functionality for PtsGraph data access
-	Point ednodep(int i) noexcept { 
+	Point ednodep(int i)  { 
 	       Point& p0 = G->ednode0(i); Point& p1 = G->ednode1(i);
 	       return Point(std::max(p0.x, p1.x)+eps,
 	       	     std::max(p0.y, p1.y)+eps);
 	}
-	Point ednodem(int i) noexcept { 
+	Point ednodem(int i)  { 
 		Point& p0 = G->ednode0(i); Point& p1 = G->ednode1(i);
 		return Point(std::min(p0.x, p1.x)-eps,
 			     std::min(p0.y, p1.y)-eps);
 	}
 
-	Tind2 point_sqind(const Point& p) const noexcept{
+	Tind2 point_sqind(const Point& p) const {
 		return  ip.get_tind((p.x-p0.x)/hx, (p.y-p0.y)/hy);
 	}
-	std::set<int> candidates_edges(const Point& p0, const Point& p1) const noexcept{
+	std::set<int> candidates_edges(const Point& p0, const Point& p1) const {
 		std::set<int> ret;
 		auto gind = ip.gindex(point_sqind(p0), point_sqind(p1));
 		for (auto i: gind) ret.insert(edmap[i].begin(), edmap[i].end());
 		return ret;
 	}
-	std::set<int> candidates_edges(const Point& p0) const noexcept{
+	std::set<int> candidates_edges(const Point& p0) const {
 		return edmap[ ip.gindex(point_sqind(p0)) ];
 	}
-	std::set<int> candidates_points(Point p0, Point p1) const noexcept{
+	std::set<int> candidates_points(Point p0, Point p1) const {
 		//add epsilons to widen square if p0, p1 line is parallel to x or y axis
 		if (fabs(p0.x-p1.x)<eps) { p0.x+=eps; p1.x-=eps; }
 		if (fabs(p0.y-p1.y)<eps) { p0.y+=eps; p1.y-=eps; }
@@ -230,44 +229,34 @@ private:
 
 	//add new data to original graph and search data
 	//returns the index of newly added node
-	int add_graph_node(const Point& p) noexcept;
-	int break_graph_line(int iline, double ksi) noexcept;
-	int break_graph_line(int iline, const Point& p) noexcept;
+	int add_graph_node(const Point& p) ;
+	int break_graph_line(int iline, double ksi) ;
+	int break_graph_line(int iline, const Point& p) ;
 	//adds edge to data and graph which can intersect existing one
-	void add_clear_connection(int i1, int i2) noexcept;
+	void add_clear_connection(int i1, int i2) ;
 	//adds non-intersecting edge to data and graph
-	void add_graph_edge(int i0, int i1) noexcept;
+	void add_graph_edge(int i0, int i1) ;
 	//resets existing edge
-	void reset_graph_edge(int i0, int i1, int iline) noexcept;
+	void reset_graph_edge(int i0, int i1, int iline) ;
 	
 	// ====================== data for accelerated search procedures
 	//add data which already exists in G to search data
-	void add_node_to_map(int inode) noexcept { 
-		ndfinder[G->nodes[inode]]=inode; 
+	void add_node_to_map(int inode)  { 
+		ndfinder.add(G->nodes[inode], inode);
 		ndmap[ ip.gindex(point_sqind(G->nodes[inode])) ].insert(inode);
 	}
-	void add_edge_to_map(int iline) noexcept{
+	void add_edge_to_map(int iline) {
 		Tind2 i0 = point_sqind(ednodem(iline)), i1 = point_sqind(ednodep(iline));
 		for (auto k: ip.gindex(i0,i1)) edmap[k].insert(iline);
 	}
-	void delete_edge_from_map(int iline) noexcept{
+	void delete_edge_from_map(int iline) {
 		Tind2 i0 = point_sqind(ednodem(iline)), i1 = point_sqind(ednodep(iline));
 		for (auto k: ip.gindex(i0,i1)) edmap[k].erase(iline);
 	}
 	//edges collection: square -> edge set
 	vector<std::set<int>> edmap;
 	vector<std::set<int>> ndmap;
-	//nodes collection
-	struct NodeCompareT{
-		explicit NodeCompareT(double e):eps(e){}
-		const double eps;
-		bool operator()(const Point& p1, const Point& p2){
-			if (p1.x+eps<p2.x) return true;
-			else if (p1.x-eps>p2.x) return false;
-			else return (p1.y+eps<p2.y);
-		}
-	} nodecomp;
-	std::map<Point, int, NodeCompareT> ndfinder;
+	CoordinateMap2D<int> ndfinder;
 };
 
 }}}

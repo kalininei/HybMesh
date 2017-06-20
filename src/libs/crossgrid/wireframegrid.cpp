@@ -34,7 +34,7 @@ PtsGraph::PtsGraph(const HM2D::EdgeData& cc){
 	for (auto e: cc) lines.push_back(GraphLine(e->first()->id, e->last()->id));
 }
 
-auto PtsGraph::_impose_impl(const PtsGraph& main_graph, const PtsGraph& imp_graph, double eps)
+auto PtsGraph::_impose_impl(const PtsGraph& main_graph, const PtsGraph& imp_graph)
 		-> impResT {
 	auto ret = impResT(main_graph, vector<int>(), vector<double>());
 	auto& G=std::get<0>(ret);
@@ -46,7 +46,7 @@ auto PtsGraph::_impose_impl(const PtsGraph& main_graph, const PtsGraph& imp_grap
 	BoundingBox bb1 = BoundingBox::Build(main_graph.nodes.begin(), main_graph.nodes.end());
 	BoundingBox bb2 = BoundingBox::Build(imp_graph.nodes.begin(), imp_graph.nodes.end());
 	bb1.widen(bb2);
-	PtsGraphAccel Accel(G, bb1.pmin(), bb1.pmax(), eps);
+	PtsGraphAccel Accel(G, bb1.pmin(), bb1.pmax());
 
 	vector<int> crnodes_ind;
 	//add points from g; fill ig_nodes array
@@ -69,16 +69,16 @@ auto PtsGraph::_impose_impl(const PtsGraph& main_graph, const PtsGraph& imp_grap
 
 	//calculate cross_nodes coordinates
 	cross_nodes=vector<double>(G.Nnodes(), -1);
-	const PtsGraphAccel AccelMainG(const_cast<PtsGraph&>(main_graph),eps);
+	const PtsGraphAccel AccelMainG(const_cast<PtsGraph&>(main_graph));
 	for (int i: crnodes_ind){
 		cross_nodes[i] = AccelMainG.find_gline(G.nodes[i]);
 	}
 	return ret;
 }
 
-auto PtsGraph::impose(const PtsGraph& main_graph, const PtsGraph& imp_graph, double eps) -> impResT{
+auto PtsGraph::impose(const PtsGraph& main_graph, const PtsGraph& imp_graph) -> impResT{
 	//parallel implementation?
-	return _impose_impl(main_graph, imp_graph, eps);
+	return _impose_impl(main_graph, imp_graph);
 }
 
 //PtsGrapth::togrid specific routines and classes
@@ -470,18 +470,18 @@ std::tuple<
 	return ret;
 };
 // =============================== PtsGraphAccel
-PtsGraphAccel::PtsGraphAccel(PtsGraph& g, const Point& pmin, const Point& pmax, double e) noexcept:
-		eps(e), epsPnt(e,e), ip(Tind2Proc(Naux, Naux)), G(&g), nodecomp(e), ndfinder(nodecomp)
+PtsGraphAccel::PtsGraphAccel(PtsGraph& g, const Point& pmin, const Point& pmax) :
+		eps(geps), epsPnt(geps,geps), ip(Tind2Proc(Naux, Naux)), G(&g)
 {
 	init(pmin, pmax);
 }
-PtsGraphAccel::PtsGraphAccel(PtsGraph& g,  double e) noexcept:
-		eps(e), epsPnt(e,e), ip(Tind2Proc(Naux,Naux)), G(&g), nodecomp(e), ndfinder(nodecomp)
+PtsGraphAccel::PtsGraphAccel(PtsGraph& g) :
+		eps(geps), epsPnt(geps,geps), ip(Tind2Proc(Naux,Naux)), G(&g)
 {
 	auto bb = BoundingBox::Build(G->nodes.begin(), G->nodes.end());
 	init(bb.pmin(), bb.pmax());
 }
-void PtsGraphAccel::init(Point pmin, Point pmax) noexcept{
+void PtsGraphAccel::init(Point pmin, Point pmax) {
 	pmin-=epsPnt; pmax+=epsPnt;
 	p0 = pmin;
 	hx = (pmax.x - pmin.x)/ip.sizex();
@@ -493,11 +493,11 @@ void PtsGraphAccel::init(Point pmin, Point pmax) noexcept{
 	for (int i = 0; i<G->Nlines(); ++i) add_edge_to_map(i);
 }
 
-std::tuple<int, int>  PtsGraphAccel::add_point(const Point& p) noexcept{
+std::tuple<int, int>  PtsGraphAccel::add_point(const Point& p) {
 	//find equal point
 	auto fnd = ndfinder.find(p);
 	if (fnd != ndfinder.end()){
-		return std::make_tuple(1, fnd->second);
+		return std::make_tuple(1, fnd.data());
 	}
 	//find equal edge
 	double ksi;
@@ -511,38 +511,38 @@ std::tuple<int, int>  PtsGraphAccel::add_point(const Point& p) noexcept{
 	return std::make_tuple(0, add_graph_node(p));
 }
 
-int PtsGraphAccel::add_graph_node(const Point& p) noexcept{
+int PtsGraphAccel::add_graph_node(const Point& p) {
 	G->nodes.push_back(p);
 	add_node_to_map(G->Nnodes()-1);
 	return G->Nnodes()-1;
 }
 
-int PtsGraphAccel::break_graph_line(int iline, double ksi) noexcept{
+int PtsGraphAccel::break_graph_line(int iline, double ksi) {
 	int reti = add_graph_node(Point::Weigh(G->ednode0(iline), G->ednode1(iline), ksi));
 	add_graph_edge(reti, G->lines[iline].i1);
 	reset_graph_edge(G->lines[iline].i0, reti, iline);
 	return reti;
 }
 
-int PtsGraphAccel::break_graph_line(int iline, const Point& p) noexcept{
+int PtsGraphAccel::break_graph_line(int iline, const Point& p) {
 	int reti = add_graph_node(p);
 	add_graph_edge(reti, G->lines[iline].i1);
 	reset_graph_edge(G->lines[iline].i0, reti, iline);
 	return reti;
 }
 
-void PtsGraphAccel::add_graph_edge(int i0, int i1) noexcept{
+void PtsGraphAccel::add_graph_edge(int i0, int i1) {
 	G->lines.push_back(GraphLine(i0,i1));
 	add_edge_to_map(G->Nlines()-1);
 }
 
-void PtsGraphAccel::reset_graph_edge(int i0, int i1, int iline) noexcept{
+void PtsGraphAccel::reset_graph_edge(int i0, int i1, int iline) {
 	delete_edge_from_map(iline);
 	G->lines[iline].set(i0, i1);
 	add_edge_to_map(iline);
 }
 
-void PtsGraphAccel::add_connection(int i0, int i1) noexcept{
+void PtsGraphAccel::add_connection(int i0, int i1) {
 	if (i1<i0) std::swap(i0,i1);
 	else if (i0==i1) return;
 	//find all points which lie on i0, i1 line
@@ -565,7 +565,7 @@ void PtsGraphAccel::add_connection(int i0, int i1) noexcept{
 	}
 }
 
-void PtsGraphAccel::add_clear_connection(int i0, int i1) noexcept{
+void PtsGraphAccel::add_clear_connection(int i0, int i1) {
 	//find intersections
 	Point &p0 = G->nodes[i0], &p1 = G->nodes[i1];
 	auto ce = candidates_edges(G->nodes[i0], G->nodes[i1]);
@@ -592,7 +592,7 @@ void PtsGraphAccel::add_clear_connection(int i0, int i1) noexcept{
 	add_graph_edge(i0, i1);
 }
 
-double PtsGraphAccel::find_gline(const Point& p) const noexcept{
+double PtsGraphAccel::find_gline(const Point& p) const {
 	double ksi;
 	for (auto ind: candidates_edges(p)){
 		if (isOnSection(p, G->ednode0(ind), G->ednode1(ind), ksi, eps)) return ind+ksi;
@@ -638,7 +638,7 @@ void PtsGraph::delete_unused_points(){
 PtsGraph PtsGraph::cut(const PtsGraph& wmain, const Contour::Tree& conts, int dir){
 	auto ccut = PtsGraph(conts.alledges());
 	//get the imposition: wmain + conts
-	auto ires = impose(wmain, ccut, geps);
+	auto ires = impose(wmain, ccut);
 	PtsGraph& pg = std::get<0>(ires);
 	
 	//TODO: need better algorithm
@@ -688,7 +688,7 @@ PtsGraph PtsGraph::cut(const PtsGraph& wmain, const Contour::Tree& conts, int di
 
 void PtsGraph::add_edges(const EdgeData& c){
 	PtsGraph pgr(c);
-	auto ires = std::get<0>(impose(*this, pgr, geps));
+	auto ires = std::get<0>(impose(*this, pgr));
 	nodes = ires.nodes;
 	lines = ires.lines;
 }
@@ -710,6 +710,6 @@ void PtsGraph::exclude_lines(const std::set<int>& exlines){
 }
 
 PtsGraph PtsGraph::overlay(const PtsGraph& wmain, const PtsGraph& wsec){
-	auto ret = impose(wmain, wsec, geps);
+	auto ret = impose(wmain, wsec);
 	return std::get<0>(ret);
 }

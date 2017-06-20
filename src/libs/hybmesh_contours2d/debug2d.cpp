@@ -145,6 +145,13 @@ void Debug::save_vertices_vtk(const VertexData& c){
 
 	HM2D::Export::VerticesVTK(c, "_dbgout.vtk");
 }
+void Debug::save_vertices_vtk(const vector<Point>& c){
+	VertexData vd(c.size());
+	for (int i=0; i<c.size(); ++i){
+		vd[i] = shared_ptr<Vertex>(new Vertex(c[i]));
+	}
+	return Debug::save_vertices_vtk(vd);
+}
 void Debug::save_vertices_vtk(const EdgeData& c){
 	auto av = allvertices(c);
 	save_vertices_vtk(av);

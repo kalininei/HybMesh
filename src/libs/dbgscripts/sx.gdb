@@ -8,7 +8,7 @@ set args ../../src/py/hybmesh.py -sx tmp.py -silent
 #set follow-fork-mode child
 
 set breakpoint pending on
-b trigrid.cpp:667
+b wireframegrid.cpp:498
 run
 
 source ../../src/libs/dbgscripts/skiplist

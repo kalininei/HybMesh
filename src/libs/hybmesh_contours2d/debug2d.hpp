@@ -32,6 +32,7 @@ struct Debug: public HMDebug{
 	static void save_edges_vtk_id(const EdgeData& c);
 
 	static void save_vertices_vtk(const VertexData& c);
+	static void save_vertices_vtk(const vector<Point>& c);
 	static void save_vertices_vtk_id(const VertexData& c);
 	static void save_vertices_vtk(const EdgeData& c);
 	static void save_vertices_vtk_id(const EdgeData& c);
