@@ -8,6 +8,7 @@
 #include "treverter2d.hpp"
 #include "infogrid.hpp"
 #include "debug_grid2d.hpp"
+
 using namespace HM2D;
 using namespace HM2D::Grid;
 
@@ -146,6 +147,15 @@ void Algos::MergeBoundaries(const GridData& from, GridData& to){
 		}
 	}
 	MergeTo(from, to);
+}
+
+namespace{
+
+struct EdgeAsPoint0{
+	static double x(const shared_ptr<Edge>& e){ return e->vertices[0]->x; }
+	static double y(const shared_ptr<Edge>& e){ return e->vertices[0]->y; }
+};
+
 }
 
 void Algos::MergeTo(const GridData& from, GridData& to){

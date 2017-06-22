@@ -11,6 +11,7 @@
 #include "tetramesh_preproc.hpp"
 #include "debug3d.hpp"
 #include "treverter3d.hpp"
+#include "nodes_compare.h"
 using namespace HM3D::Mesher;
 using namespace HM3D;
 
@@ -266,6 +267,8 @@ void equal_vertices(const HM3D::GridData& grid, GFace* gf, const FaceData& surf,
 		it->id = 0;
 	}
 	assert(s.size() == g.size());
+
+	/*
 	auto vertsort = [](shared_ptr<HM3D::Vertex> a, shared_ptr<HM3D::Vertex> b)->bool{
 		if (ISLOWER(a->x, b->x)) return true;
 		else if (ISLOWER(b->x, a->x)) return false;
@@ -279,6 +282,17 @@ void equal_vertices(const HM3D::GridData& grid, GFace* gf, const FaceData& surf,
 	svert.resize(svert.size()+s.size());
 	std::copy(g.begin(), g.end(), gfvert.end() - g.size());
 	std::copy(s.begin(), s.end(), svert.end() - s.size());
+	*/
+
+	auto s_set = point3_set_pointers(s);
+	svert.reserve(svert.size()+s.size());
+	gfvert.reserve(gfvert.size()+g.size());
+	for (int i=0; i<s.size(); ++i){
+		int sfnd = s_set.find(g[i]->x, g[i]->y, g[i]->z);
+		assert(sfnd>-1);
+		svert.push_back(s[sfnd]);
+		gfvert.push_back(g[i]);
+	}
 }
 
 HM3D::GridData gmsh_fill(const Surface::Tree& tree, const FaceData& cond,

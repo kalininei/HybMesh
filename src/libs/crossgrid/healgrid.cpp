@@ -6,6 +6,7 @@
 #include "contabs2d.hpp"
 #include "finder2d.hpp"
 #include "clipdomain.hpp"
+#include "nodes_compare.h"
 
 using namespace HM2D;
 using namespace HM2D::Grid;
@@ -134,30 +135,25 @@ void Algos::Heal(GridData& from){
 	};
 
 	//--- merge congruent vertices
-	VertexData av = from.vvert;
-	std::sort(av.begin(), av.end(), _less);
-	auto ur = std::unique(av.begin(), av.end(),
-		[](const shared_ptr<Vertex>& a, const shared_ptr<Vertex>& b)
-			{return *a == *b; });
-	if (ur == av.end()) return;
+	auto nset = point2_set_pointers(from.vvert);
+	vector<std::pair<int, int>> from_to = nset.verbose_unique();
+	if (from_to.size() == 0) return;
 
-	av.resize(ur - av.begin());
-	aa::constant_ids_pvec(from.vvert, 0);
-	aa::constant_ids_pvec(av, 1);
+	aa::constant_ids_pvec(from.vvert, -1);
+	for (auto it: from_to){
+		from.vvert[it.first]->id = it.second;
+		from.vvert[it.second]->id = -2;
+	}
 
 	for (auto& e: from.vedges)
-	for (auto& v: e->vertices){
-		if (v->id == 0) {
-			v = *std::lower_bound(av.begin(), av.end(), v, _less);
-			v->id = 2;
-		}
-	}
+	for (auto& v: e->vertices) 
+		if (v->id > -1) v = from.vvert[v->id];
 
 	//--- merge congruent edges
 	//zero size edges and suspicios edges
 	EdgeData zedges, susedges;
 	for (auto& e: from.vedges)
-	if (e->vertices[0]->id == 2 && e->vertices[1]->id == 2){
+	if (e->vertices[0]->id == -2 && e->vertices[1]->id == -2){
 		if (e->vertices[0] == e->vertices[1]) zedges.push_back(e);
 		else susedges.push_back(e);
 	}

@@ -8,6 +8,7 @@
 #include <map>
 #include "primitives2d.hpp"
 #include "contour_tree.hpp"
+#include "nodes_compare.h"
 
 namespace HM2D{ namespace Grid{ namespace Impl{
 

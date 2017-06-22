@@ -3,10 +3,10 @@
 
 source ../../src/libs/dbgscripts/hmout.gdb
 
-file ./crossgrid_test
+file ./hmblay_test
 
 set breakpoint pending on
-b trigrid.cpp:532
+b unite_grids.cpp:231
 run
 
 # source ../../src/libs/dbgscripts/skiplist

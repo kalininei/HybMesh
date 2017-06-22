@@ -3,6 +3,7 @@
 #include "primitives2d.hpp"
 #include "contabs2d.hpp"
 #include "contour_tree.hpp"
+#include "nodes_compare.h"
 
 namespace HM2D{ namespace Finder{
 
@@ -45,8 +46,11 @@ public:
 
 //vertex match searcher.
 //ids features are not touched by this implementation
+//input data order and coordinates should not be changed while using VertexMatch
 class VertexMatch{
-	VertexData srt;
+	const VertexData* srt;
+	Point2Set<shared_ptr<Vertex>,
+	          PointerPoint2Access<shared_ptr<Vertex>>> point2_set;
 public:
 	VertexMatch(const VertexData& vd);
 	shared_ptr<Vertex> find(const Point& p);

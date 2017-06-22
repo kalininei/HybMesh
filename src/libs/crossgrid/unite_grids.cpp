@@ -10,7 +10,9 @@
 #include "healgrid.hpp"
 #include "finder2d.hpp"
 #include "assemble2d.hpp"
+#include "nodes_compare.h"
 #include "debug_grid2d.hpp"
+
 using namespace HM2D;
 using namespace HM2D::Grid;
 

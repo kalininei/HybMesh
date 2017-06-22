@@ -125,20 +125,12 @@ Finder::EdgeFinder::find(Vertex* v1, Vertex* v2){
 }
 
 // ================== VertexFinder
-Finder::VertexMatch::VertexMatch(const VertexData& vd): srt(vd){
-	auto _less = [](const shared_ptr<Vertex>& p1,
-			const shared_ptr<Vertex>& p2)->bool{
-		return *p1 < *p2;
-	};
-	std::sort(srt.begin(), srt.end(), _less);
+Finder::VertexMatch::VertexMatch(const VertexData& vd): srt(&vd), point2_set(vd){
 }
 shared_ptr<Vertex> Finder::VertexMatch::find(const Point& p){
-	auto _less = [](const shared_ptr<Vertex>& p1, const Point& p2)->bool{
-		return *p1 < p2;
-	};
-	auto fnd = std::lower_bound(srt.begin(), srt.end(), p, _less);
-	if (fnd != srt.end() && **fnd == p) return *fnd;
-	else return nullptr;
+	int ind = point2_set.find(p.x, p.y);
+	if (ind < 0) return nullptr;
+	else return (*srt)[ind];
 }
 
 VertexData Finder::VertexMatch::find(const vector<Point>& p){

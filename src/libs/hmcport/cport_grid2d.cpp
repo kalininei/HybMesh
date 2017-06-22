@@ -487,13 +487,13 @@ int g2_unstructured_fill(void* domain, void* constraint,
 
 		Autoscale::D2 sc(dom);
 		if (con!=0) sc.add_data(con);
-		std::map<Point, double> ep;
+		CoordinateMap2D<double> ep;
 		for (int i=0; i<nembpts; ++i){
 			Point p(embpts[3*i], embpts[3*i+1]);
 			double sz = embpts[3*i+2];
 			sc.scale(p);
 			sc.scale(sz);
-			ep.emplace(p, sz);
+			ep.add(p, sz);
 		}
 
 		auto etree = HM2D::Contour::Tree::Assemble(*dom);

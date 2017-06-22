@@ -49,6 +49,8 @@ echo "--- cave1"
 %HMCOM% others/cave1.py
 echo "--- unite_grids1"
 %HMCOM% others/unite_grids1.py
+echo "--- fullcyl"
+%HMCOM% others/fullcyl.py
 
 :final
 pause

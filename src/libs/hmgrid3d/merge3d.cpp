@@ -2,6 +2,7 @@
 #include "debug3d.hpp"
 #include "surface.hpp"
 #include "assemble3d.hpp"
+#include "nodes_compare.h"
 
 using namespace HM3D;
 
@@ -101,10 +102,8 @@ void assemble_duplicate_faces(FaceData& ffrom, FaceData& fto, vector<int>& from,
 	//We do it using comparison of the sum of all face points.
 	vector<Point3> from_candidates_cnt(from_candidates.size(), Point3(0, 0, 0));
 	vector<Point3> to_candidates_cnt(to_candidates.size(), Point3(0, 0, 0));
-	vector<Point3*> fromptr(from_candidates.size());
-	vector<Point3*> toptr(to_candidates.size());
+
 	for (int i=0; i<from_candidates.size(); ++i){
-		fromptr[i] = &from_candidates_cnt[i];
 		auto f = ffrom[from_candidates[i]];
 		for (auto e: f->edges){
 			from_candidates_cnt[i] += *e->first();
@@ -112,27 +111,20 @@ void assemble_duplicate_faces(FaceData& ffrom, FaceData& fto, vector<int>& from,
 		}
 	}
 	for (int i=0; i<to_candidates.size(); ++i){
-		toptr[i] = &to_candidates_cnt[i];
 		auto f = fto[to_candidates[i]];
 		for (auto e: f->edges){
 			to_candidates_cnt[i] += *e->first();
 			to_candidates_cnt[i] += *e->last();
 		}
 	}
-	std::sort(fromptr.begin(), fromptr.end(), ptrsort);
-	std::sort(toptr.begin(), toptr.end(), ptrsort);
 
-	auto itfrom = fromptr.begin(), itto = toptr.begin();
-	while (itfrom != fromptr.end() && itto != toptr.end()){
-		if (ptrsort(*itfrom, *itto)) ++itfrom;
-		else if (ptrsort(*itto, *itfrom)) ++itto;
-		else{
-			int ind1 = *itfrom - &from_candidates_cnt[0];
-			from.push_back(from_candidates[ind1]);
-			int ind2 = *itto - &to_candidates_cnt[0];
-			to.push_back(to_candidates[ind2]);
-			++itto; ++itfrom;
-		}
+	auto from_set = point3_set_coords(from_candidates_cnt);
+	for (int i=0; i<to_candidates_cnt.size(); ++i){
+		auto& pto = to_candidates_cnt[i];
+		int fromfnd = from_set.find(pto.x, pto.y, pto.z);
+		if (fromfnd == -1) continue;
+		from.push_back(from_candidates[fromfnd]);
+		to.push_back(to_candidates[i]);
 	}
 }
 
@@ -239,26 +231,22 @@ GridData HM3D::Grid::Algos::MergeGrids(const GridData& _g1, const GridData& _g2)
 	DeepCopy(_g1, g1);
 	DeepCopy(_g2, g2);
 
-	//assemble coincident points
+	//assemble coincident points on grid surfaces
+	vector<int> vfrom, vto;
+
 	auto srf1 = Surface::Assembler::GridSurface(g1);
 	auto srf2 = Surface::Assembler::GridSurface(g2);
 	auto pc1 = AllVertices(srf1);
 	auto pc2 = AllVertices(srf2);
-
 	aa::enumerate_ids_pvec(g1.vvert);
 	aa::enumerate_ids_pvec(g2.vvert);
 
-	vector<Point3*> pp1(pc1.size());
-	for (int i=0; i<pc1.size(); ++i) pp1[i] = pc1[i].get();
-	std::sort(pp1.begin(), pp1.end(), ptrsort);
-
-	vector<int> vfrom, vto;
-	for (auto& p: pc2){
-		auto fnd = std::lower_bound(pp1.begin(), pp1.end(), p.get(), ptrsort);
-		if (fnd!=pp1.end() && !ptrsort(p.get(), *fnd)){
-			vfrom.push_back(static_cast<Vertex*>(*fnd)->id);
-			vto.push_back(p->id);
-		}
+	auto pc1set = point3_set_pointers(pc1);
+	for (auto it2: pc2){
+		int fnd = pc1set.find(it2->x, it2->y, it2->z);
+		if (fnd == -1) continue;
+		vfrom.push_back(pc1[fnd]->id);
+		vto.push_back(it2->id);
 	}
 
 	MergeGrid(g1, g2, vfrom, vto);

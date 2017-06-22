@@ -3,6 +3,7 @@
 #include "hmcallback.hpp"
 #include "primitives2d.hpp"
 #include "contour_tree.hpp"
+#include "nodes_compare.h"
 
 namespace HM2D{ namespace Mesher{
 
@@ -23,7 +24,7 @@ struct TUnstructuredTriangle: public HMCallback::ExecutorBase{
 	HMCB_SET_DEFAULT_DURATION(100);
 
 	GridData _run(const Contour::Tree& source);
-	GridData _run(const Contour::Tree& source, const std::map<Point, double>& embedded);
+	GridData _run(const Contour::Tree& source, const CoordinateMap2D<double>& embedded);
 };
 extern HMCallback::FunctionWithCallback<TUnstructuredTriangle> UnstructuredTriangle;
 
@@ -32,7 +33,7 @@ struct TUnstructuredTriangleRecomb: public HMCallback::ExecutorBase{
 	HMCB_SET_DEFAULT_DURATION(110);
 
 	GridData _run(const Contour::Tree& source);
-	GridData _run(const Contour::Tree& source, const std::map<Point, double>& embedded);
+	GridData _run(const Contour::Tree& source, const CoordinateMap2D<double>& embedded);
 };
 extern HMCallback::FunctionWithCallback<TUnstructuredTriangleRecomb> UnstructuredTriangleRecomb;
 

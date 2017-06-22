@@ -351,7 +351,7 @@ GridData Constructor::RegularHexagonal(Point cnt1, Point cnt2, double cr, bool s
 
 HMCallback::FunctionWithCallback<Mesher::TUnstructuredPebi> Mesher::UnstructuredPebi;
 
-GridData Mesher::TUnstructuredPebi::_run(const Contour::Tree& source, const std::map<Point, double>& embedded){
+GridData Mesher::TUnstructuredPebi::_run(const Contour::Tree& source, const CoordinateMap2D<double>& embedded){
 	//triangulation
 	auto cb = callback->subrange(100, 100);
 	GridData tri = UnstructuredTriangle.UseCallback(cb, source, embedded);
@@ -361,5 +361,5 @@ GridData Mesher::TUnstructuredPebi::_run(const Contour::Tree& source, const std:
 }
 
 GridData Mesher::TUnstructuredPebi::_run(const Contour::Tree& source){
-	return _run(source, std::map<Point, double>());
+	return _run(source, CoordinateMap2D<double>());
 }

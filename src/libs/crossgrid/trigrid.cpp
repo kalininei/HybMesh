@@ -475,7 +475,7 @@ vector<GEdge*> fill_model_with_1d(
 }
 
 GFace* assemble_face(GModel& m, const Contour::Tree& tree, vector<vector<GEdge*>>& g_edges,
-		const std::map<Point, double>& embedded){
+		const CoordinateMap2D<double>& embedded){
 	vector<vector<GEdge*>> fedges(1);
 	//root
 	for (int i=0; i<tree.nodes.size(); ++i) if (tree.nodes[i]->level % 2 == 0){
@@ -494,10 +494,10 @@ GFace* assemble_face(GModel& m, const Contour::Tree& tree, vector<vector<GEdge*>
 		for (auto e: g_edges[i]) fc->addEmbeddedEdge(e);
 	}
 	//embedded points
-	for (auto& p: embedded){
-		if (tree.whereis(p.first) != INSIDE) continue;
-		auto added = m.addVertex(p.first.x, p.first.y, 0, p.second);
-		auto mv = new MVertex(p.first.x, p.first.y, 0, added);
+	for (auto it=embedded.begin(); it!=embedded.end(); ++it){
+		if (tree.whereis(it.point()) != INSIDE) continue;
+		auto added = m.addVertex(it.x(), it.y(), 0, it.data());
+		auto mv = new MVertex(it.x(), it.y(), 0, added);
 		added->mesh_vertices.push_back(mv);
 		added->points.push_back(new MPoint(mv));
 		fc->addEmbeddedVertex(added);
@@ -538,7 +538,7 @@ void fill_model_with_2d_recomb(GModel& m, GFace* fc){
 	}
 }
 
-GridData gmsh_fill(const Contour::Tree& tree, const std::map<Point, double>& embedded,
+GridData gmsh_fill(const Contour::Tree& tree, const CoordinateMap2D<double>& embedded,
 		int algo, HMCallback::Caller2& cb){
 	GModel m;
 	m.setFactory("Gmsh");
@@ -601,7 +601,7 @@ GridData gmsh_fill(const Contour::Tree& tree, const std::map<Point, double>& emb
 }
 
 //uses 100 units of callback
-GridData gmsh_builder(const Contour::Tree& source, const std::map<Point, double>& embedded, int algo,
+GridData gmsh_builder(const Contour::Tree& source, const CoordinateMap2D<double>& embedded, int algo,
 		shared_ptr<HMCallback::Caller2> callback){
 	if (source.roots().size() == 0) return GridData(); 
 
@@ -635,12 +635,12 @@ GridData gmsh_builder(const Contour::Tree& source, const std::map<Point, double>
 
 }
 
-GridData Mesher::TUnstructuredTriangle::_run(const Contour::Tree& source, const std::map<Point, double>& embedded){
+GridData Mesher::TUnstructuredTriangle::_run(const Contour::Tree& source, const CoordinateMap2D<double>& embedded){
 	return gmsh_builder(source, embedded, 0, callback);
 }
 
 GridData Mesher::TUnstructuredTriangle::_run(const Contour::Tree& source){
-	return _run(source, std::map<Point, double>());
+	return _run(source, CoordinateMap2D<double>());
 }
 
 namespace{
@@ -815,7 +815,7 @@ void guarantee_edges(GridData& grid, const EdgeData& edges){
 }
 };
 
-GridData Mesher::TUnstructuredTriangleRecomb::_run(const Contour::Tree& source, const std::map<Point, double>& embedded){
+GridData Mesher::TUnstructuredTriangleRecomb::_run(const Contour::Tree& source, const CoordinateMap2D<double>& embedded){
 	GridData ret = gmsh_builder(source, embedded, 1, callback);
 
 	callback->step_after(10, "Recombination check");
@@ -836,5 +836,5 @@ GridData Mesher::TUnstructuredTriangleRecomb::_run(const Contour::Tree& source, 
 }
 
 GridData Mesher::TUnstructuredTriangleRecomb::_run(const Contour::Tree& source){
-	return _run(source, std::map<Point, double>());
+	return _run(source, CoordinateMap2D<double>());
 }

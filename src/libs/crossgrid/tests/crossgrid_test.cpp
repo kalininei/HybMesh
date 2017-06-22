@@ -673,10 +673,10 @@ void test21(){
 			"Recombined mesh with polyline constraint 2");
 	// ===
 	auto t8 = tree_w_constraints({outer5}, {}, 0.1);
-	std::map<Point, double> emb;
-	emb[Point(0.3, 0.3)] = 0.01;
-	emb[Point(0.7, 0.7)] = 0.2;
-	emb[Point(1.3, 1.3)] = 0.01;
+	CoordinateMap2D<double> emb;
+	emb.add(0.3, 0.3, 0.01);
+	emb.add(0.7, 0.7, 0.2);
+	emb.add(1.3, 1.3, 0.01);
 	auto g8 = HM2D::Mesher::UnstructuredTriangle(t8, emb);
 	add_check(has_point(Point(0.3, 0.3), g8) && has_point(Point(0.7, 0.7), g8),
 			"Embedded points");
@@ -814,7 +814,7 @@ void test24(){
 		auto g1 = HM2D::Grid::Constructor::TriToPebi(trig);
 		HM2D::Export::GridVTK(trig, "g1.vtk");
 		HM2D::Export::GridVTK(g1, "g2.vtk");
-		add_file_check(12000597432173859271U, "g2.vtk", "pebi points out of area");
+		add_check(maxskew(g1)<0.7, "pebi points out of area");
 	}
 }
 void test25(){
