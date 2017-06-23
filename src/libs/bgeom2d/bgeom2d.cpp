@@ -39,6 +39,18 @@ double Point::meas_line(const Point& p, const Point& L1, const Point& L2) noexce
 	return d0;
 }
 
+double Point::signed_meas_line(const Point& p, const Point& L1, const Point& L2) noexcept{
+	if (L1 == L2) return Point::meas(p, L1);
+	Vect a = L2-L1, b = p - L1;
+	double A[3] = { L1.y-L2.y, L2.x-L1.x, vecCrossZ(L1,L2) };
+	double d0=A[0]*p.x+A[1]*p.y+A[2];
+
+	bool positive = (d0 > 0);
+	d0*=d0; d0/=(A[0]*A[0]+A[1]*A[1]);
+
+	return positive ? d0 : -d0;
+}
+
 bool isOnSection(const Point& p, const Point& start, const Point& end, double& ksi, double eps) noexcept{
 	ksi = gbig;
 	//check if p is ouside section square
@@ -354,6 +366,16 @@ vector<int> BoundingBoxFinder::suspects(const Point& bb) const{
 		get_xstart(bb.x), get_xend(bb.x),
 		get_ystart(bb.y), get_yend(bb.y));
 }
+vector<int> BoundingBoxFinder::suspects(const Point& p1, const Point& p2) const{
+	vector<int> ret;
+	for (auto s: sqrs_by_segment(p1, p2)){
+		std::copy(data[s].begin(), data[s].end(), std::back_inserter(ret));
+	}
+	std::sort(ret.begin(), ret.end());
+	auto iend = std::unique(ret.begin(), ret.end());
+	ret.resize(iend - ret.begin());
+	return ret;
+}
 vector<int> BoundingBoxFinder::sqrs_by_bbox(const BoundingBox& bb) const{
 	vector<int> ret;
 	for (int j=get_ystart(bb.ymin); j<=get_yend(bb.ymax); ++j)
@@ -427,7 +449,7 @@ vector<int> BoundingBoxFinder::allsuspects(int x0, int x1, int y0, int y1) const
 	for (int iy=y0; iy<=y1; ++iy){
 		addsuspects(ix, iy, ret);
 	}
-	//no dublicates
+	//no duplicates
 	std::sort(ret.begin(), ret.end());
 	auto iend = std::unique(ret.begin(), ret.end());
 	ret.resize(iend - ret.begin());

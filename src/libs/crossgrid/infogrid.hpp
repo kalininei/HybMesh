@@ -2,6 +2,7 @@
 #define HYBMESH_INFOGRID_HPP
 #include "primitives2d.hpp"
 #include "contour_tree.hpp"
+#include "hmcallback.hpp"
 
 namespace HM2D{ namespace Grid{
 
@@ -13,8 +14,16 @@ vector<double> CellAreas(const GridData& grid);
 
 //extracts cells which are fully inside (what = INSIDE) or
 //fully outside (what = OUTSIDE) of given domain
-CellData ExtractCells(const GridData& grid, const Contour::Tree& domain, int what);
-CellData ExtractCells(const GridData& grid, const EdgeData& domain, int what);
+struct TExtractCells: public HMCallback::ExecutorBase{
+	HMCB_SET_PROCNAME("Extract cells");
+	HMCB_SET_DEFAULT_DURATION(100);
+
+	CellData _run(const GridData& grid, const Contour::Tree& domain, int what);
+	CellData _run(const GridData& grid, const EdgeData& domain, int what);
+private:
+	CellData extract_bound(const CellData& suspcells, const EdgeData& nted);
+};
+extern HMCallback::FunctionWithCallback<TExtractCells> ExtractCells;
 
 //calculate skewness
 vector<double> Skewness(const GridData& grid);

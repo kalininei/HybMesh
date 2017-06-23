@@ -61,6 +61,7 @@ class RasterizeEdges{
 	std::shared_ptr<BoundingBoxFinder> bbf;
 	//true for squares which contain an edge
 	vector<bool> black_squares;
+
 public:
 	RasterizeEdges(const EdgeData& ed, const BoundingBox& bb, double step);
 

@@ -19,6 +19,7 @@
 #include "export2d_tecplot.hpp"
 #include "import2d_hm.hpp"
 #include "snap_grid2cont.hpp"
+#include "inscribe_grid.hpp"
 
 using HMTesting::add_check;
 using HMTesting::add_file_check;
@@ -962,34 +963,96 @@ void test26(){
 	}
 }
 
+void test27(){
+	std::cout<<"27. Cells substraction"<<std::endl;
+	{
+		auto g1 = HM2D::Grid::Constructor::RectGrid01(100, 100);
+		auto c1 = HM2D::Contour::Constructor::FromPoints(
+				{0.333,0.4354, 0.8,0.6, 1.1,1.8}, true);
+		HM2D::Contour::Tree t1;
+		t1.add_contour(c1);
+
+		auto g2 = HM2D::Grid::Algos::SubstractCells(
+			g1, t1, HM2D::Grid::Algos::SubstractCellsAlgo::PARTLY_INSIDE);
+		add_check(g2.vcells.size() == 8347 && g2.vvert.size() == 8636, "partly inside");
+		auto g3 = HM2D::Grid::Algos::SubstractCells(
+			g1, t1, HM2D::Grid::Algos::SubstractCellsAlgo::PARTLY_OUTSIDE);
+		add_check(g3.vcells.size() == 1463 && g3.vvert.size() == 1573, "partly outside");
+
+		auto g4 = HM2D::Grid::Algos::SubstractCells(
+			g1, t1, HM2D::Grid::Algos::SubstractCellsAlgo::FULLY_INSIDE);
+		add_check(g4.vcells.size() == 8537 && g4.vvert.size() == 8824, "fully inside");
+
+		auto g5 = HM2D::Grid::Algos::SubstractCells(
+			g1, t1, HM2D::Grid::Algos::SubstractCellsAlgo::CROSS);
+		add_check(g5.vcells.size() == 9789 && g5.vvert.size() == 10188, "cross");
+
+		auto g6 = HM2D::Grid::Algos::SubstractCells(
+			g1, t1, HM2D::Grid::Algos::SubstractCellsAlgo::NO_CROSS);
+		add_check(g6.vcells.size() == 211 && g6.vvert.size() == 413, "no cross");
+	}
+	{
+		auto g1 = HM2D::Grid::Constructor::RectGrid01(124, 102);
+		auto c1 = HM2D::Contour::Constructor::FromPoints(
+				{0.2,15./102., 0.5,15./102., 0.9,0.2, 0.8,0.8, 0.1,0.84}, true);
+		auto c2 = HM2D::Contour::Constructor::Circle(16, 0.1, Point(0.5,0.5));
+		auto c3 = HM2D::Contour::Constructor::Rectangle(Point(-0.3,-0.3), Point(0.15, 0.15));
+		auto c4 = HM2D::Contour::Constructor::FromPoints({0.46,0.5, 0.5,0.5, 0.53,0.47}, false);
+		HM2D::Contour::Tree t1;
+		t1.add_contour(c1); t1.add_contour(c2);
+		t1.add_contour(c3); t1.add_contour(c4);
+
+		auto g2 = HM2D::Grid::Algos::SubstractCells(
+			g1, t1, HM2D::Grid::Algos::SubstractCellsAlgo::NO_CROSS);
+		add_check(g2.vcells.size() == 521 && g2.vvert.size() == 1003, "multilevel, no_cross");
+
+		auto g3 = HM2D::Grid::Algos::SubstractCells(
+			g1, t1, HM2D::Grid::Algos::SubstractCellsAlgo::FULLY_OUTSIDE);
+		add_check(g3.vcells.size() == 5947 && g3.vvert.size() == 6199, "multilevel, fully outside");
+
+		for (auto& pnt: g1.vvert) pnt->set(vecRotate(*pnt, 37/180.0*M_PI));
+		for (auto& pnt: HM2D::AllVertices(t1.alledges())) pnt->set(vecRotate(*pnt, 37/180.0*M_PI));
+
+		g2 = HM2D::Grid::Algos::SubstractCells(
+			g1, t1, HM2D::Grid::Algos::SubstractCellsAlgo::NO_CROSS);
+		add_check(g2.vcells.size() == 521 && g2.vvert.size() == 1003, "multilevel, no_cross, rotated");
+
+		g3 = HM2D::Grid::Algos::SubstractCells(
+			g1, t1, HM2D::Grid::Algos::SubstractCellsAlgo::FULLY_OUTSIDE);
+		add_check(g3.vcells.size() == 5947 && g3.vvert.size() == 6199, "multilevel, fully outside, rotated");
+
+	}
+}
+
 int main(){
-	test0();
-	test1();
-	test2();
-	test3();
-	test4();
-	test5();
-	test6();
-	test7();
-	test8();
-	test9();
-	test10();
-	test11();
-	test12();
-	test13();
-	test14();
-	test15();
-	test16();
-	test17();
-	test18();
-	test19();
-	test20();
-	test21();
-	test22();
-	test23();
-	test24();
-	test25();
-	test26();
+	//test0();
+	//test1();
+	//test2();
+	//test3();
+	//test4();
+	//test5();
+	//test6();
+	//test7();
+	//test8();
+	//test9();
+	//test10();
+	//test11();
+	//test12();
+	//test13();
+	//test14();
+	//test15();
+	//test16();
+	//test17();
+	//test18();
+	//test19();
+	//test20();
+	//test21();
+	//test22();
+	//test23();
+	//test24();
+	//test25();
+	//test26();
+	test27();
 
 	HMTesting::check_final_report();
 	std::cout<<"DONE"<<std::endl;

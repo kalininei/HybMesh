@@ -12,6 +12,7 @@ EdgeData Circle(int N, Point cnt, Point point_on_curve);
 
 EdgeData FromPoints(const vector<double>& pnt, bool force_closed=false);
 EdgeData FromPoints(const vector<Point>& pnt, bool force_closed=false);
+EdgeData Rectangle(Point botleft, Point topright);
 
 //returns deep copies
 EdgeData FromContours(const vector<EdgeData>& conts,

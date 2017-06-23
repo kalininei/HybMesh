@@ -10,6 +10,7 @@ set (HEADERS
 	infogrid.hpp
 	wireframegrid.hpp
 	snap_grid2cont.hpp
+	inscribe_grid.hpp
 	debug_grid2d.hpp
 )
 
@@ -24,6 +25,7 @@ set (SOURCES
 	infogrid.cpp
 	wireframegrid.cpp
 	snap_grid2cont.cpp
+	inscribe_grid.cpp
 	debug_grid2d.cpp
 )
 

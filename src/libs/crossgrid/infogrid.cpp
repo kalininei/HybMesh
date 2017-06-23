@@ -139,16 +139,20 @@ vector<int> define_squares_positions(const BoundingBoxFinder& bf,
 
 }
 
-CellData Grid::ExtractCells(const GridData& grid, const Contour::Tree& domain, int what){
+HMCallback::FunctionWithCallback<Grid::TExtractCells> Grid::ExtractCells;
+
+CellData Grid::TExtractCells::_run(const GridData& grid, const Contour::Tree& domain, int what){
 	if (domain.roots().size() == 0){
-		if (what == INSIDE) return {};
+		if (what == INSIDE || what == BOUND) return {};
 		else return grid.vcells;
 	}
 	if (grid.vcells.size() == 0) return {};
+	callback->step_after(20, "Box precessing", 8, 1);
 	//all good cells will be stored in ret
 	CellData ret;
 	//tree simplification
 	Contour::Tree nt = Contour::Algos::Simplified(domain);
+	if (what != BOUND) nt.remove_detached();
 	EdgeData nted = nt.alledges();
 	//calculate bounding boxes for all cells
 	vector<BoundingBox> gridbb(grid.vcells.size());
@@ -157,6 +161,7 @@ CellData Grid::ExtractCells(const GridData& grid, const Contour::Tree& domain, i
 	}
 
 	//leave only those cells which lie inside domain box
+	callback->subprocess_step_after(1);
 	auto bbox2 = HM2D::BBox(nted);
 	std::vector<int> outercells = filter_by_bbox(gridbb, bbox2);
 	aa::constant_ids_pvec(grid.vcells, 0);
@@ -175,6 +180,7 @@ CellData Grid::ExtractCells(const GridData& grid, const Contour::Tree& domain, i
 	if (icells.size() == 0) return ret;
 
 	//build finder
+	callback->subprocess_step_after(2);
 	BoundingBox bbox({HM2D::BBox(ivert), bbox2});
 	BoundingBoxFinder bfinder(bbox, bbox.maxlen()/30);
 	aa::enumerate_ids_pvec(grid.vcells);
@@ -184,14 +190,22 @@ CellData Grid::ExtractCells(const GridData& grid, const Contour::Tree& domain, i
 
 	//get square positions
 	//0 - inactive, 1 - inside, 2 - outside, 3 - undefined
+	callback->subprocess_step_after(3);
 	vector<int> sqrpos = define_squares_positions(bfinder, nt, nted);
 
 	//fill cell ids
+	callback->subprocess_step_after(1);
 	for (int i=0; i<sqrpos.size(); ++i) if (sqrpos[i] == 1 || sqrpos[i] == 2){
 		for (int k: bfinder.sqr_entries(i)) icells[k]->id = sqrpos[i];
 	}
 	for (int i=0; i<sqrpos.size(); ++i) if (sqrpos[i] == 3){
 		for (int k: bfinder.sqr_entries(i)) icells[k]->id = 3;
+	}
+
+	if (what == BOUND){
+		callback->step_after(80, "Matching cells");
+		aa::keep_by_id(icells, 3);
+		return extract_bound(icells, nted);
 	}
 
 	//add good cells to result
@@ -204,6 +218,7 @@ CellData Grid::ExtractCells(const GridData& grid, const Contour::Tree& domain, i
 	ivert = AllVertices(icells);
 
 	//Sorting vertices
+	callback->step_after(25, "Sorting points");
 	vector<Point> pivert(ivert.size());
 	for (int i=0; i<ivert.size(); ++i) pivert[i].set(*ivert[i]);
 	vector<int> srt = Contour::Finder::SortOutPoints(nt, pivert);
@@ -211,6 +226,7 @@ CellData Grid::ExtractCells(const GridData& grid, const Contour::Tree& domain, i
 
 	//analyzing undefined cells: if it contains bad point
 	//it is undoubtedly bad, else add cell for the next check query (suspcells).
+	callback->step_after(55, "Sorting cells", 10, 7);
 	CellData suspcells;
 	int badid = (what == INSIDE) ? OUTSIDE : INSIDE;
 	for (auto c: icells){
@@ -233,6 +249,7 @@ CONTINUE1:
 
 	//even if all points are good, cell could be not fully good.
 	//we do explicit intersection check here to be sure.
+	callback->subprocess_step_after(3);
 	if (suspcells.size() > 0){
 		EdgeData suspedges = AllEdges(suspcells);
 		aa::constant_ids_pvec(suspedges, 0);
@@ -273,7 +290,43 @@ CONTINUE2:
 	return ret;
 }
 
-CellData Grid::ExtractCells(const GridData& grid, const EdgeData& domain, int what){
+CellData Grid::TExtractCells::extract_bound(const CellData& suspcells, const EdgeData& nted){
+	CellData ret;
+	EdgeData suspedges = AllEdges(suspcells);
+	BoundingBox bb=HM2D::BBox(nted);
+
+	aa::constant_ids_pvec(suspedges, 0);
+	Finder::RasterizeEdges domainfinder(nted, bb, bb.maxlen()/30);
+	double ksieta[2];
+	for (auto& e: suspedges){
+		Point p1 = *e->pfirst(), p2 = *e->plast();
+		for (int isus: domainfinder.bbfinder().suspects(p1, p2)){
+			Point *n1 = nted[isus]->pfirst(), *n2 = nted[isus]->plast();
+			double m1 = Point::signed_meas_line(p1, *n1, *n2);
+			double m2 = Point::signed_meas_line(p2, *n1, *n2);
+			if (fabs(m1)<geps*geps){
+				if (isOnSection(p1, *n1, *n2, ksieta[0])) {e->id = 1; break; }
+			}
+			if (fabs(m2)<geps*geps){
+				if (isOnSection(p2, *n1, *n2, ksieta[0])) {e->id = 1; break; }
+			}
+			if (m1 < 0 && m2 < 0) continue;
+			if (m1 > 0 && m2 > 0) continue;
+			if (SectCross(*n1, *n2, p1, p2, ksieta)){ e->id = 1; break; }
+		}
+	}
+	for (auto& c: suspcells){
+		//edge intersection check
+		for (auto& e: c->edges) if (e->id != 0){
+			ret.push_back(c);
+			break;
+		}
+	}
+
+	return ret;
+}
+
+CellData Grid::TExtractCells::_run(const GridData& grid, const EdgeData& domain, int what){
 	assert(Contour::IsContour(domain) && Contour::IsClosed(domain));
 	Contour::Tree tree;
 	tree.add_contour(domain);

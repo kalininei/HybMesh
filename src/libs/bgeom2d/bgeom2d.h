@@ -30,6 +30,8 @@ struct Point{
 	static double meas_section(const Point& p, const Point& L1, const Point& L2, double& ksi) noexcept;
 	//measure from p to [L1, L2] line
 	static double meas_line(const Point& p, const Point& L1, const Point& L2) noexcept;
+	//p lies to the left => positive return; to the right => negative return
+	static double signed_meas_line(const Point& p, const Point& L1, const Point& L2) noexcept;
 	//normalized line equation
 	static std::array<double, 3> line_eq(const Point& p1, const Point& p2) noexcept;
 
@@ -273,6 +275,7 @@ struct BoundingBoxFinder{
 	void raw_addentry(const vector<int>& isqr);
 	vector<int> suspects(const BoundingBox& bb) const;
 	vector<int> suspects(const Point& bb) const;
+	vector<int> suspects(const Point&, const Point&) const;
 
 	//data access
 	vector<int> sqrs_by_entry(int e) const;

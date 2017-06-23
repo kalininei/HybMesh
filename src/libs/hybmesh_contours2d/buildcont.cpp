@@ -46,6 +46,10 @@ EdgeData cns::FromPoints(const vector<Point>& pnt, bool force_closed){
 	if (*p[0] == *p.back()) p.back() = p[0];
 	return Contour::Assembler::Contour1(p, force_closed);
 }
+EdgeData cns::Rectangle(Point botleft, Point topright){
+	return cns::FromPoints({botleft, Point(topright.x, botleft.y),
+			topright, Point(botleft.x, topright.y)}, true);
+}
 
 EdgeData cns::CutContour(const EdgeData& cont, const Point& pstart, int direction, double len){
 	if (direction == -1){
