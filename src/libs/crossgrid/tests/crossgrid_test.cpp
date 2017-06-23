@@ -20,6 +20,7 @@
 #include "import2d_hm.hpp"
 #include "snap_grid2cont.hpp"
 #include "inscribe_grid.hpp"
+#include "partcont.hpp"
 
 using HMTesting::add_check;
 using HMTesting::add_file_check;
@@ -83,6 +84,35 @@ bool check_convexity(void* g, int nconv_cells, int hang_cells){
 	auto r = number_of_nonconv_cells(g);
 	return (r.first == nconv_cells && r.second == hang_cells);
 }
+
+bool has_edges(const HM2D::EdgeData& gd, const HM2D::VertexData& pts, const std::vector<int>& edges){
+	vector<bool> ret(edges.size()/2, false);
+
+	for (auto& e: gd){
+		for (int i=0; i<ret.size(); ++i) if (!ret[i]){
+			if ((*e->pfirst()==*pts[edges[2*i]] && *e->plast()==*pts[edges[2*i+1]]) ||
+			    (*e->pfirst()==*pts[edges[2*i+1]] && *e->plast()==*pts[edges[2*i]])){
+				ret[i] = true;
+				break;
+			}
+
+		}
+	}
+	return std::all_of(ret.begin(), ret.end(), [](bool a){return a;});
+}
+
+bool edge_len_within(const HM2D::EdgeData& ed, double minlen, double maxlen){
+	double l0 = ed[0]->length(), l1 = ed[0]->length();
+	for (auto e: ed){
+		double len = e->length();
+		if (len < l0) l0 = len;
+		if (len > l1) l1 = len;
+	}
+	//std::cout<<l0<<" "<<l1<<std::endl;
+	if (l0<minlen || l1>maxlen) return false;
+	else return true;
+}
+
 void* grid_construct(int npoints, int ncells, double* points, int* cells){
 	int* cellsizes = new int[ncells];
 	int* it=cells;
@@ -1024,6 +1054,99 @@ void test27(){
 	}
 }
 
+void test28(){
+	std::cout<<"28. Inscribe grids"<<std::endl;
+	{
+		auto g1 = HM2D::Grid::Constructor::RectGrid01(10, 10);
+		auto c1 = HM2D::Contour::Constructor::Circle(32, 0.44, Point(0.72, 0.61));
+		HM2D::Contour::Tree t1;
+		t1.add_contour(c1);
+		auto g2 = HM2D::Grid::Algos::InscribeGrid(g1, t1,
+			HM2D::Grid::Algos::OptInscribe(0.2, true, 0, true, 0.0));
+		add_check(fabs(HM2D::Contour::Area(c1) - HM2D::Grid::Area(g2))<1e-12 &&
+			has_edges(g2.vedges, g1.vvert, {83,84, 84,73, 73,74}),
+				"square grid into intersecting circle");
+
+		auto g3 = HM2D::Grid::Algos::InscribeGrid(g1, t1,
+			HM2D::Grid::Algos::OptInscribe(0.2, false, 0, true, 0.0));
+		add_check(fabs(0.48329 - HM2D::Grid::Area(g3))<1e-2 &&
+			has_edges(g3.vedges, g1.vvert, {0,1, 99,100}) &&
+			has_edges(g3.vedges, HM2D::AllVertices(c1), {11,12, 19,20}),
+				"square grid outside intersecting circle");
+		HM2D::Export::GridVTK(g3, "g2.vtk");
+	}
+	{
+		auto g1 = HM2D::Grid::Constructor::RegularHexagonal(Point(-1.1, -1.0), Point(2.04, 2.11), 0.05, true);
+		auto gc1 = HM2D::Grid::Constructor::RectGrid01(11, 11);
+		auto c1 = HM2D::Contour::Tree::GridBoundary(gc1);
+
+		auto g2 = HM2D::Grid::Algos::InscribeGrid(g1, c1,
+			HM2D::Grid::Algos::OptInscribe(0.1, true, 0, true, 0.0));
+		add_check(fabs(1.0 - HM2D::Grid::Area(g2))<1e-12 &&
+			has_edges(g2.vedges, g1.vvert, {1779,1692, 1922,1963}) &&
+			has_edges(g2.vedges, HM2D::AllVertices(c1.alledges()), {1,2, 33,34}),
+				"inside, keep source");
+		auto g3 = HM2D::Grid::Algos::InscribeGrid(g1, c1,
+			HM2D::Grid::Algos::OptInscribe(0.1, true, 0, false, 0.0));
+		add_check(fabs(1.0 - HM2D::Grid::Area(g3))<1e-12 &&
+			has_edges(g3.vedges, g1.vvert, {1779,1692, 1922,1963}) &&
+			edge_len_within(g3.vedges, 0.03, 0.075),
+				"inside, don't keep source");
+		HM2D::Contour::Tree t2; t2.add_contour(HM2D::Contour::Constructor::Rectangle(Point(0,0), Point(1,1)));
+		auto g4 = HM2D::Grid::Algos::InscribeGrid(g1, t2,
+			HM2D::Grid::Algos::OptInscribe(0.1, false, 1, false, 0.0));
+		add_check(fabs(HM2D::Grid::Area(g1) - 1. - HM2D::Grid::Area(g4))<1e-12 &&
+			has_edges(g4.vedges, g1.vvert, {1770,1769}) &&
+			edge_len_within(g4.vedges, 0.015, 0.15),
+				"outside, don't keep source");
+
+	}
+	{
+		auto g1 = HM2D::Grid::Constructor::Ring(Point(0, 0), 3, 0.5, 64, 20);
+		HM2D::Contour::Tree t1;
+		t1.add_contour(HM2D::Contour::Constructor::Rectangle(Point(-1.7, -1.7), Point(1.81, 1.83)));
+		t1.add_contour(HM2D::Contour::Constructor::Circle(32, 0.3, Point(0.8, 0.8)));
+		t1.add_contour(HM2D::Contour::Constructor::Rectangle(Point(-1.2, -1.2), Point(-0.3, -0.3)));
+		for (auto e: t1.nodes[0]->contour) e->boundary_type = 1;
+		for (auto e: t1.nodes[1]->contour) e->boundary_type = 2;
+		for (auto e: t1.nodes[2]->contour) e->boundary_type = 3;
+		for (auto e: HM2D::ECol::Assembler::GridBoundary(g1)) e->boundary_type = 4;
+
+		auto g2 = HM2D::Grid::Algos::InscribeGrid(g1, t1,
+			HM2D::Grid::Algos::OptInscribe(0.3, true, 0, false, 30.0));
+		auto cg2 = HM2D::Contour::Assembler::GridBoundary(g2);
+		std::sort(cg2.begin(), cg2.end(), [](const HM2D::EdgeData& a, const HM2D::EdgeData& b){ return HM2D::Contour::Length(a)<HM2D::Contour::Length(b); });
+		add_check(fabs(t1.area() - HM2D::Grid::Area(g2))<1e-1 &&
+			has_edges(g2.vedges, g1.vvert, {1056,1120, 648,584}) &&
+			cg2.size() == 3 &&
+			std::all_of(cg2[0].begin(), cg2[0].end(), [](const shared_ptr<HM2D::Edge>& e){ return e->boundary_type == 2; }) &&
+			std::all_of(cg2[1].begin(), cg2[1].end(), [](const shared_ptr<HM2D::Edge>& e){ return e->boundary_type == 3; }) &&
+			std::all_of(cg2[2].begin(), cg2[2].end(), [](const shared_ptr<HM2D::Edge>& e){ return e->boundary_type == 1; }),
+				"multilevel, inside");
+
+		auto g3 = HM2D::Grid::Algos::InscribeGrid(g1, t1,
+			HM2D::Grid::Algos::OptInscribe(0.1, false, 0, false, 30.0));
+		add_check(fabs(16.9189 - HM2D::Grid::Area(g3))<1e-2, "multilevel, outside");
+	}
+}
+
+void test29(){
+	//{
+	//        auto g1 = HM2D::Grid::Constructor::RectGrid01(14, 14);
+	//        auto c1 = HM2D::Contour::Constructor::FromPoints({0.4,0.2, 0.8,0.8}, false);
+	//        std::map<double, double> mp {{0, 0.05}, {1, 0.1}};
+	//        auto c2 = HM2D::Contour::Algos::WeightedPartition(mp, c1);
+	//        HM2D::Contour::Tree t2; t2.add_detached_contour(c2);
+
+	//        auto g2 = HM2D::Grid::Algos::InscribeGrid(g1, t2,
+	//                HM2D::Grid::Algos::OptInscribe(0.2, true, 0, true, 0.0));
+
+	//        HM2D::Export::GridVTK(g1, "g1.vtk");
+	//        HM2D::Export::ContourVTK(t2.alledges(), "c1.vtk");
+	//        HM2D::Export::GridVTK(g2, "g2.vtk");
+	//}
+}
+
 int main(){
 	//test0();
 	//test1();
@@ -1052,7 +1175,9 @@ int main(){
 	//test24();
 	//test25();
 	//test26();
-	test27();
+	//test27();
+	test28();
+	//test29();
 
 	HMTesting::check_final_report();
 	std::cout<<"DONE"<<std::endl;

@@ -35,7 +35,7 @@ struct OptInscribe{
 
 	double buffer_size; // shift
 	bool inside;        // leave internal(=true) or external(=false) cont area
-	int fillalgo;       // 0-triangle, 1-recombined, 3-no
+	int fillalgo;       // 0-triangle, 1-recombined, 99-no
 	bool keep_cont;     // whether to use contour nodes(=true) or make contour partition
 	double angle0;      // significant angle for contour partition (only for keep_cont=true)
 };
@@ -44,7 +44,7 @@ struct TInscribeGrid: public HMCallback::ExecutorBase{
 	HMCB_SET_PROCNAME("Inscribe Grid");
 	HMCB_SET_DEFAULT_DURATION(100);
 
-	GridData _run(const GridData& base, const Contour::Tree& cont, const OptInscribe& opt);
+	GridData _run(const GridData& base, const Contour::Tree& cont, OptInscribe opt);
 };
 extern HMCallback::FunctionWithCallback<TInscribeGrid> InscribeGrid;
 

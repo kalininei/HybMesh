@@ -226,6 +226,7 @@ void Algos::Heal(GridData& from){
 }
 
 void Algos::RestoreFromCells(GridData& g){
+	//remove null cells
 	auto r1 = std::remove_if(g.vcells.begin(), g.vcells.end(),
 			[](shared_ptr<Cell> c){ return c==nullptr; });
 	g.vcells.resize(r1 - g.vcells.begin());
@@ -249,6 +250,17 @@ void Algos::RestoreFromCells(GridData& g){
 	aa::constant_ids_pvec(av, 0);
 	aa::keep_by_id(g.vedges, 0);
 	aa::keep_by_id(g.vvert, 0);
+
+	//remove edge neighbours which are absent in cell list
+	for (auto e: g.vedges){
+		if (e->has_left_cell()) e->left.lock()->id = 1;
+		if (e->has_right_cell()) e->right.lock()->id = 1;
+	}
+	aa::constant_ids_pvec(g.vcells, 0);
+	for (auto e: g.vedges){
+		if (e->has_left_cell() && e->left.lock()->id!=0) e->left.reset();
+		if (e->has_right_cell() && e->right.lock()->id!=0) e->right.reset();
+	}
 }
 
 void Algos::RemoveShortEdges(GridData& grid, double ref_len){

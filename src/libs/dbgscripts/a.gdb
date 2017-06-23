@@ -6,7 +6,7 @@ source ../../src/libs/dbgscripts/hmout.gdb
 file ./crossgrid_test
 
 set breakpoint pending on
-b inscribe_grid.cpp: 20
+b inscribe_grid.cpp:145
 run
 
 # source ../../src/libs/dbgscripts/skiplist

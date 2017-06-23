@@ -265,15 +265,17 @@ EdgeData repart_cont(const EdgeData& cont, double sz0, double sz1,
 }
 
 vector<std::pair<Point, double>> sort_out_sources(const EdgeData& source,
-		const vector<std::pair<Point, double>>& input){
+		const vector<std::pair<Point, double>>& input, bool remove_inner){
 	aa::RestoreIds<EdgeData> rr(source);
 
 	vector<Point> pp(input.size());
 	for (int i=0; i<input.size(); ++i) pp[i] = input[i].first;
 	vector<int> srt = Contour::Finder::SortOutPoints(source, pp);
 	vector<std::pair<Point, double>> ret;
-	for (int i=0; i<srt.size(); ++i) if (srt[i] != OUTSIDE){
-		ret.push_back(input[i]);
+	for (int i=0; i<srt.size(); ++i){
+		if ((remove_inner && srt[i] != OUTSIDE) || (!remove_inner && srt[i] != INSIDE)){
+			ret.push_back(input[i]);
+		}
 	}
 	return ret;
 }
@@ -306,7 +308,7 @@ EdgeData start_from_id1(const EdgeData& source){
 };
 
 EdgeData Mesher::RepartSourceById(const EdgeData& source,
-		const vector<std::pair<Point, double>>& size_src){
+		const vector<std::pair<Point, double>>& size_src, int src_sort_algo){
 	assert(Contour::IsClosed(source));
 	Contour::R::Clockwise cc(source, false);
 	EdgeData ret;
@@ -320,9 +322,19 @@ EdgeData Mesher::RepartSourceById(const EdgeData& source,
 	VertexData keep_pts = assemble_keep_pts(source);
 
 	//sort out only those size_src which lie inside source
-	vector<std::pair<Point, double>>
-	size_src2 = sort_out_sources(source, size_src);
+	vector<std::pair<Point, double>> size_src2;
+	if (src_sort_algo == 0) size_src2 = size_src;
+	else size_src2 = sort_out_sources(source, size_src, src_sort_algo==1);
 
+	//if no size_src and no id=1 edges then return source since
+	//there is no input size data.
+	if (size_src2.size() == 0 &&
+	    std::all_of(source.begin(), source.end(),
+		    [](const shared_ptr<Edge>& e){return e->id != 1;})){
+		DeepCopy(source, ret, 0);
+		return ret;
+	}
+	
 	//find any edge with id = 1 to start assembling from it
 	EdgeData src2 = start_from_id1(source);
 
@@ -348,7 +360,6 @@ EdgeData Mesher::RepartSourceById(const EdgeData& source,
 			ret.insert(ret.end(), repart.begin(), repart.end());
 		}
 	}
-
 	return ret;
 }
 

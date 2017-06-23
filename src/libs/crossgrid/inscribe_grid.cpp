@@ -1,6 +1,14 @@
 #include "inscribe_grid.hpp"
 #include "infogrid.hpp"
 #include "healgrid.hpp"
+#include "clipdomain.hpp"
+#include "trigrid.hpp"
+#include "modgrid.hpp"
+#include "assemble2d.hpp"
+#include "treverter2d.hpp"
+#include "finder2d.hpp"
+#include "modcont.hpp"
+#include "hmtimer.hpp"
 
 using namespace HM2D;
 using namespace HM2D::Grid;
@@ -65,7 +73,128 @@ GridData Algos::TSubstractCells::_run(const GridData& base, const Contour::Tree&
 	return ret;
 }
 
-GridData Algos::TInscribeGrid::_run(const GridData& base, const Contour::Tree& cont,
-		const OptInscribe& opt){
+namespace{
 
+void segment_triarea(Contour::Tree& triarea, const EdgeData& keep_edges, double angle0){
+	auto ae = triarea.alledges();
+	auto av = HM2D::AllVertices(ae);
+
+	//Significant edges
+	EdgeData sig_edges;
+	auto bb = HM2D::BBox(HM2D::AllVertices(keep_edges));
+	Finder::RasterizeEdges rast(keep_edges, bb, bb.maxlen()/30);
+	aa::constant_ids_pvec(av, 0);
+	double ksi;
+	for (auto v: av){
+		for (int isusp: rast.bbfinder().suspects(*v)){
+			auto esusp = keep_edges[isusp];
+			if (isOnSection(*v, *esusp->pfirst(), *esusp->plast(), ksi)){
+				v->id = 1;
+				break;
+			}
+		}
+	}
+	for (auto e: ae) if (e->pfirst()->id == 1 && e->plast()->id == 1){
+		Point pmid = Point::Weigh(*e->pfirst(), *e->plast(), 0.5);
+		for (int isusp: rast.bbfinder().suspects(pmid)){
+			auto esusp = keep_edges[isusp];
+			if (isOnSection(pmid, *esusp->pfirst(), *esusp->plast(), ksi)){
+				sig_edges.push_back(e);
+				break;
+			}
+		}
+	}
+
+	//Significant vertices
+	VertexData sig_vertices;
+	if (angle0 >= 0){
+		EdgeData nonsig_edges = ae;
+		aa::constant_ids_pvec(nonsig_edges, 0);
+		aa::constant_ids_pvec(sig_edges, 1);
+		aa::keep_by_id(nonsig_edges, 0);
+		for (auto c: Contour::Assembler::SimpleContours(nonsig_edges)){
+			for (auto v: AllVertices(ECol::Algos::Simplified(c, angle0))){
+				sig_vertices.push_back(v);
+			}
+		}
+	}
+	//sources
+	std::vector<std::pair<Point, double>> src;
+	for (auto e: keep_edges){
+		src.emplace_back(e->center(), e->length());
+	}
+
+	//do segmentation using id=1 to keep needed primitives
+	aa::constant_ids_pvec(av, 0);
+	aa::constant_ids_pvec(ae, 0);
+	aa::constant_ids_pvec(sig_vertices, 1);
+	aa::constant_ids_pvec(sig_edges, 1);
+	for (auto c: triarea.bound_contours()){
+		c->contour = Mesher::RepartSourceById(c->contour, src,
+			c->isinner() ? 2 : 1);
+	}
+}
+
+}
+
+GridData Algos::TInscribeGrid::_run(const GridData& base, const Contour::Tree& cont2,
+		OptInscribe opt){
+	Contour::Tree cont = cont2; cont.remove_detached();
+	//1) Throw away cells which are outside cont
+	auto cb1 = callback->bottom_line_subrange(20);
+	auto g1algo = opt.inside ? Algos::SubstractCellsAlgo::PARTLY_OUTSIDE
+	                         : Algos::SubstractCellsAlgo::PARTLY_INSIDE;
+	GridData g1 = SubstractCells.WithCallback(cb1, base, cont, g1algo);
+
+	//2) offsetting
+	//delta >> geps to avoid geometry errors
+	callback->step_after(10, "Offset");
+	opt.buffer_size = std::max(1e3*geps, opt.buffer_size);
+	Contour::Tree bzone;
+	for (auto& c: cont.bound_contours()){
+		Contour::R::Clockwise rc(c->contour, false);
+		double delta = opt.buffer_size;
+		if (opt.inside) delta*=-1;
+		if (c->isinner()) delta*=-1;
+		Contour::Tree t1 = Contour::Algos::Offset(
+			c->contour,
+			delta,
+			Contour::Algos::OffsetTp::RC_CLOSED_POLY);
+		t1.add_contour(c->contour);
+		bzone = Contour::Clip::Union(bzone, t1);
+	}
+
+	//3) Throw away cells within the buffer
+	auto cb3 = callback->bottom_line_subrange(20);
+	GridData g2 = SubstractCells.WithCallback(cb3, g1, bzone, Algos::SubstractCellsAlgo::PARTLY_INSIDE);
+	if (opt.fillalgo == 99) return g2;
+
+	//4) Assemble triangulation area
+	callback->step_after(10, "Triangulation area");
+	Contour::Tree triarea = Contour::Tree::DeepCopy(cont);
+	for (auto c: Contour::Assembler::GridBoundary(g2)){
+		triarea.add_contour(c);
+	}
+	if (!opt.inside){
+		triarea = Contour::Clip::Difference(Contour::Tree::GridBoundary(base), triarea);
+	}
+
+	//5) 1D segmentation of triangulation area
+	EdgeData keep_edges = ECol::Assembler::GridBoundary(g2);
+	if (opt.keep_cont){
+		for (auto e: cont.alledges()) keep_edges.push_back(e);
+	}
+	segment_triarea(triarea, keep_edges, opt.angle0);
+	
+	//6) Triangulation
+	auto cb6 = callback->bottom_line_subrange(20);
+	GridData g3;
+	if (opt.fillalgo == 0) g3 = Mesher::UnstructuredTriangle.WithCallback(cb6, triarea);
+	else if (opt.fillalgo == 1) g3 = Mesher::UnstructuredTriangleRecomb.WithCallback(cb6, triarea);
+
+	//7) Merging
+	callback->step_after(10, "Merging");
+	Grid::Algos::MergeTo(g2, g3);
+	
+	return g3;
 }

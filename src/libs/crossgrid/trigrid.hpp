@@ -15,7 +15,11 @@ Contour::Tree PrepareSource(const EdgeData& source, double defsize = -1);
 //does calculations for a single closed contour with given source points
 //!!!! all edges and vertices with id = 1 will not be changed and used as size sources.
 //creates new edges, but uses source vertices if possible
-EdgeData RepartSourceById(const EdgeData& source, const vector<std::pair<Point, double>>& src);
+//src_sort_algo = 1: use only src which lie inside source
+//              = 2:                        outside
+//                0: use whole src
+EdgeData RepartSourceById(const EdgeData& source, const vector<std::pair<Point, double>>& src,
+		int src_sort_algo=1);
 
 //unstructured meshing procedures fills domain using existing boundary segmentation.
 //all detached tree nodes will be treated as constraints
