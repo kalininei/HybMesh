@@ -164,7 +164,6 @@ void Debug::save_grid_vtk(const GridData& c){
 
 	HM2D::Export::GridVTK(c, "_dbgout.vtk");
 }
-
 void Debug::save_cells_vtk(const CellData& data){
 	std::map<int, weak_ptr<Cell>> oldleft;
 	std::map<int, weak_ptr<Cell>> oldright;

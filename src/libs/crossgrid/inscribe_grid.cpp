@@ -9,12 +9,14 @@
 #include "finder2d.hpp"
 #include "modcont.hpp"
 #include "hmtimer.hpp"
+#include "buildcont.hpp"
 
 using namespace HM2D;
 using namespace HM2D::Grid;
 
 HMCallback::FunctionWithCallback<Algos::TSubstractCells> Algos::SubstractCells;
 HMCallback::FunctionWithCallback<Algos::TInscribeGrid> Algos::InscribeGrid;
+HMCallback::FunctionWithCallback<Algos::TInsertConstraints> Algos::InsertConstraints;
 
 GridData Algos::TSubstractCells::_run(const GridData& base, const Contour::Tree& cont, SubstractCellsAlgo algo){
 	auto invert_extraction = [&](const CellData& extr)->CellData{
@@ -75,7 +77,9 @@ GridData Algos::TSubstractCells::_run(const GridData& base, const Contour::Tree&
 
 namespace{
 
-void segment_triarea(Contour::Tree& triarea, const EdgeData& keep_edges, double angle0){
+void segment_triarea(Contour::Tree& triarea, const EdgeData& keep_edges,
+		const std::vector<std::pair<Point, double>>& src,
+		double angle0){
 	auto ae = triarea.alledges();
 	auto av = HM2D::AllVertices(ae);
 
@@ -117,11 +121,6 @@ void segment_triarea(Contour::Tree& triarea, const EdgeData& keep_edges, double 
 				sig_vertices.push_back(v);
 			}
 		}
-	}
-	//sources
-	std::vector<std::pair<Point, double>> src;
-	for (auto e: keep_edges){
-		src.emplace_back(e->center(), e->length());
 	}
 
 	//do segmentation using id=1 to keep needed primitives
@@ -184,7 +183,12 @@ GridData Algos::TInscribeGrid::_run(const GridData& base, const Contour::Tree& c
 	if (opt.keep_cont){
 		for (auto e: cont.alledges()) keep_edges.push_back(e);
 	}
-	segment_triarea(triarea, keep_edges, opt.angle0);
+	//sources
+	std::vector<std::pair<Point, double>> src;
+	for (auto e: keep_edges){
+		src.emplace_back(e->center(), e->length());
+	}
+	segment_triarea(triarea, keep_edges, src, opt.angle0);
 	
 	//6) Triangulation
 	auto cb6 = callback->bottom_line_subrange(20);
@@ -197,4 +201,96 @@ GridData Algos::TInscribeGrid::_run(const GridData& base, const Contour::Tree& c
 	Grid::Algos::MergeTo(g2, g3);
 	
 	return g3;
+}
+
+GridData Algos::TInsertConstraints::_run(const GridData& base,
+		const vector<EdgeData>& cont,
+		const vector<std::pair<Point, double>>& pnt,
+		Algos::OptInsertConstraints opt){
+	//offsetting from polylines
+	opt.buffer_size = std::max(1e3*geps, opt.buffer_size);
+	Contour::Tree bzone;
+	for (auto& c: cont){
+		Contour::R::Clockwise rc(c, false);
+		Contour::Tree t1 = Contour::Algos::Offset(
+			c, opt.buffer_size,
+			Contour::Algos::OffsetTp::RC_OPEN_ROUND);
+		bzone = Contour::Clip::Union(t1, bzone);
+	}
+	//offsetting from points
+	for (auto& p: pnt){
+		auto cp = Contour::Constructor::Circle(32, 1e3*geps, p.first);
+		Contour::Tree t1 = Contour::Algos::Offset(cp,
+			std::max(1e3*geps, opt.buffer_size-1e3*geps),
+			Contour::Algos::OffsetTp::RC_CLOSED_POLY);
+		bzone = Contour::Clip::Union(t1, bzone);
+	}
+
+	//remove cells under the offset
+	//TODO: consider moving this block to InscribeProcedure
+	CellData needed_cells = ExtractCells(base, bzone, OUTSIDE);
+	aa::constant_ids_pvec(base.vcells, 0);
+	aa::constant_ids_pvec(needed_cells, 1);
+	CellData not_needed_cells;
+	not_needed_cells.reserve(base.vcells.size() - needed_cells.size());
+	for (auto& c: base.vcells) if (c->id==0) not_needed_cells.push_back(c);
+	GridData g2, g3;
+	DeepCopy(needed_cells, g2.vcells);
+	RestoreFromCells(g2);
+	if (opt.fillalgo == 99) return g2;
+	DeepCopy(not_needed_cells, g3.vcells);
+	RestoreFromCells(g3);
+
+	//triangulation area
+	Contour::Tree triarea = Contour::Tree::GridBoundary(g3);
+	EdgeData keep_edges = ECol::Assembler::GridBoundary(g2);
+	std::vector<std::pair<Point, double>> src_tri;
+	for (auto& p: pnt) if (p.second > 0){
+		src_tri.push_back(p);
+	}
+	if (opt.keep_cont) for (auto& c: cont){
+		for (auto& e: c){
+			src_tri.emplace_back(e->center(), e->length());
+		}
+	}
+	segment_triarea(triarea, keep_edges, src_tri, opt.angle0);
+
+	//part constraints
+	vector<EdgeData> cont2 = cont;
+	if (!opt.keep_cont){
+		//TODO
+	}
+
+	//calculate point constraint sizes
+	CoordinateMap2D<double> pnt2;
+	for (auto& p: pnt){
+		double v = p.second;
+		if (v <= 0){
+			//TODO
+		}
+		pnt2.add(p.first, v);
+	}
+
+	//Triangulation
+	for (auto& c: cont2) triarea.add_detached_contour(c);
+	GridData g4;
+	if (opt.fillalgo == 0) g4 = Mesher::UnstructuredTriangle(triarea, pnt2);
+	else if (opt.fillalgo == 1) g4 = Mesher::UnstructuredTriangleRecomb(triarea, pnt2);
+	
+	//Merge
+	Grid::Algos::MergeTo(g2, g4);
+
+	return  g4;
+}
+
+GridData Algos::TInsertConstraints::_run(const GridData& base,
+		const vector<EdgeData>& cont,
+		Algos::OptInsertConstraints opt){
+	return _run(base, cont, vector<std::pair<Point, double>>(), opt);
+}
+
+GridData Algos::TInsertConstraints::_run(const GridData& base,
+		const vector<std::pair<Point, double>>& pnt,
+		Algos::OptInsertConstraints opt){
+	return _run(base, {}, pnt, opt);
 }

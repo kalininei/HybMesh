@@ -2,6 +2,7 @@
 set (HEADERS
 	hmcompute.hpp
 	spmat.hpp
+	densemat.hpp
 	piecewise.hpp
 	partition01.hpp
 	hmgraph.hpp
@@ -10,6 +11,7 @@ set (HEADERS
 set (SOURCES
 	hmcompute.cpp
 	spmat.cpp
+	densemat.cpp
 	partition01.cpp
 	hmgraph.cpp
 )

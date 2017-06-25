@@ -4,6 +4,7 @@ set (HEADERS
 	femgrid43.hpp
 	femassembly.hpp
 	hmfdm.hpp
+	laplace_bem2d.hpp
 )
 
 set (SOURCES
@@ -11,6 +12,7 @@ set (SOURCES
 	femgrid43.cpp
 	femassembly.cpp
 	hmfdm.cpp
+	laplace_bem2d.cpp
 )
 
 source_group ("Header Files" FILES ${HEADERS} ${HEADERS})

@@ -1,7 +1,7 @@
 #include "hmfdm.hpp"
 using namespace HMFdm;
 
-void LaplasSolver::set_predef_value(int i, int j, double val){
+void LaplaceSolver::set_predef_value(int i, int j, double val){
 	int gi = glob_index(i, j);
 	auto fnd = predefined_values.find(gi);
 	if (fnd == predefined_values.end()){
@@ -14,7 +14,7 @@ void LaplasSolver::set_predef_value(int i, int j, double val){
 	}
 }
 
-void LaplasSolver::SetBndValues(Bnd b, const std::function<double(int, int)>& f){
+void LaplaceSolver::SetBndValues(Bnd b, const std::function<double(int, int)>& f){
 	switch (b){
 		case Bnd::All:
 			SetBndValues(Bnd::Bottom, f);
@@ -41,19 +41,19 @@ void LaplasSolver::SetBndValues(Bnd b, const std::function<double(int, int)>& f)
 	};
 }
 
-void LaplasSolver::Solve(vector<double>& ans){
+void LaplaceSolver::Solve(vector<double>& ans){
 	if (was_init() == false) initialize();
 	assemble_rhs();
 	solver->Solve(rhs, ans);
 }
 
-void LaplasSolver::assemble_rhs(){
+void LaplaceSolver::assemble_rhs(){
 	rhs.resize(N());
 	std::fill(rhs.begin(), rhs.end(), 0.0);
 	for (auto& v: predefined_values) rhs[v.first] = v.second;
 }
 
-void LaplasSolver::initialize(){
+void LaplaceSolver::initialize(){
 	HMMath::Mat m;
 	m.data.resize(N());
 	//internal, left, right

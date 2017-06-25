@@ -5,7 +5,7 @@ using namespace HMFem;
 namespace{
 
 // =========================== 3 node cells
-shared_ptr<HMMath::LocMat> LaplasLocalMatrix3(const HM2D::VertexData& points){
+shared_ptr<HMMath::LocMat> LaplaceLocalMatrix3(const HM2D::VertexData& points){
 	assert(points.size() == 3);
 	shared_ptr<HMMath::LocMat3Sym> ret(new HMMath::LocMat3Sym());
 	const double &x1 = points[0]->x, &x2 = points[1]->x, &x3 = points[2]->x;
@@ -198,7 +198,7 @@ double stiff4(const HM2D::VertexData& pts, int i, int j, double k, double e){
 	return (d1dx*d2dx+d1dy*d2dy)/modj;
 }
 
-shared_ptr<HMMath::LocMat> LaplasLocalMatrix4(const HM2D::VertexData& points){
+shared_ptr<HMMath::LocMat> LaplaceLocalMatrix4(const HM2D::VertexData& points){
 	using namespace std::placeholders;
 	assert(points.size() == 4);
 	shared_ptr<HMMath::LocMat4Sym> ret(new HMMath::LocMat4Sym());
@@ -226,9 +226,9 @@ shared_ptr<HMMath::LocMat> FullMassLocalMatrix4(const HM2D::VertexData& points){
 	_THROW_NOT_IMP_;
 }
 
-shared_ptr<HMMath::LocMat> LaplasLocalMatrix(const HM2D::VertexData& points){
-	if (points.size() == 3) return LaplasLocalMatrix3(points);
-	else return LaplasLocalMatrix4(points);
+shared_ptr<HMMath::LocMat> LaplaceLocalMatrix(const HM2D::VertexData& points){
+	if (points.size() == 3) return LaplaceLocalMatrix3(points);
+	else return LaplaceLocalMatrix4(points);
 }
 shared_ptr<HMMath::LocMat> FullMassLocalMatrix(const HM2D::VertexData& points){
 	if (points.size() == 3) return FullMassLocalMatrix3(points);
@@ -250,7 +250,7 @@ shared_ptr<HMMath::LocMat> DDyLocalMatrix(const HM2D::VertexData& points){
 namespace{
 
 shared_ptr<HMMath::Mat> GlobAssembly(const HM2D::GridData& grid, 
-		decltype(LaplasLocalMatrix)& fun){
+		decltype(LaplaceLocalMatrix)& fun){
 	aa::enumerate_ids_pvec(grid.vvert);
 	shared_ptr<HMMath::Mat> ret(new HMMath::Mat());
 	for (int i=0; i<grid.vcells.size(); ++i){
@@ -265,8 +265,8 @@ shared_ptr<HMMath::Mat> GlobAssembly(const HM2D::GridData& grid,
 }
 
 }
-shared_ptr<HMMath::Mat> Assemble::PureLaplas(const HM2D::GridData& grid){
-	return GlobAssembly(grid, LaplasLocalMatrix);
+shared_ptr<HMMath::Mat> Assemble::PureLaplace(const HM2D::GridData& grid){
+	return GlobAssembly(grid, LaplaceLocalMatrix);
 }
 
 shared_ptr<HMMath::Mat> Assemble::FullMass(const HM2D::GridData& grid){

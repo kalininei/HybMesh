@@ -29,7 +29,7 @@ void reflect_and_merge(HM2D::GridData& g, Point p1, Point p2){
 
 HM2D::GridData laplace_algo(HM2D::EdgeData& left, HM2D::EdgeData& bot,
 		HM2D::EdgeData& right, HM2D::EdgeData& top){
-	return HMMap::FDMLaplasRectGrid(left, bot, right, top);
+	return HMMap::FDMLaplaceRectGrid(left, bot, right, top);
 }
 
 HM2D::GridData linear_algo(HM2D::EdgeData& left, HM2D::EdgeData& bot,

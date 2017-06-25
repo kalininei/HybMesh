@@ -26,7 +26,8 @@ extern HMCallback::FunctionWithCallback<TSubstractCells> SubstractCells;
 
 
 struct OptInscribe{
-	OptInscribe(double buffer_size, bool inside,
+	OptInscribe(double buffer_size,
+		bool inside,
 		int fillalgo=0,
 		bool keep_cont=true,
 		double angle0=0)
@@ -47,6 +48,37 @@ struct TInscribeGrid: public HMCallback::ExecutorBase{
 	GridData _run(const GridData& base, const Contour::Tree& cont, OptInscribe opt);
 };
 extern HMCallback::FunctionWithCallback<TInscribeGrid> InscribeGrid;
+
+
+struct OptInsertConstraints{
+	OptInsertConstraints(double buffer_size,
+		int fillalgo=0,
+		bool keep_cont=true,
+		double angle0=0)
+	: buffer_size(buffer_size), fillalgo(fillalgo),
+	  keep_cont(keep_cont), angle0(angle0){}
+
+	double buffer_size;  // shift
+	bool keep_cont;      //use line constraint segmentation(=true) or repart(=false);
+	double angle0;      // significant angle for contour partition (only for keep_cont=true)
+	int fillalgo;       // 0-triangle, 1-recombined, 99-no
+};
+struct TInsertConstraints: public HMCallback::ExecutorBase{
+	HMCB_SET_PROCNAME("Insert constraints");
+	HMCB_SET_DEFAULT_DURATION(100);
+
+	GridData _run(const GridData& base,
+			const vector<EdgeData>& cont,             //Line constraint
+			const vector<std::pair<Point, double>>& pnt,   //Point + recommended step (-1 for auto step)
+			OptInsertConstraints opt);
+	GridData _run(const GridData& base,
+			const vector<EdgeData>& cont,
+			OptInsertConstraints opt);
+	GridData _run(const GridData& base,
+			const vector<std::pair<Point, double>>& pnt,
+			OptInsertConstraints opt);
+};
+extern HMCallback::FunctionWithCallback<TInsertConstraints> InsertConstraints;
 
 
 }}}

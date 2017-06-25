@@ -8,7 +8,7 @@
 namespace HMFem{
 
 //Solution of (nabla^2)f = 0 equation.
-class LaplasProblem{
+class LaplaceProblem{
 	typedef std::function<double(const HM2D::Vertex*)> TDirFunc;
 	typedef std::function<double(const HM2D::Vertex*, const HM2D::Vertex*)> TNeuFunc;
 	struct TNeuData{
@@ -57,9 +57,9 @@ class LaplasProblem{
 public:
 	//constructors:
 	//build laplas operator
-	LaplasProblem(const HM2D::GridData& g);
+	LaplaceProblem(const HM2D::GridData& g);
 	//using prebuilt laplas matrix
-	LaplasProblem(const HM2D::GridData& g, shared_ptr<HMMath::Mat> lap);
+	LaplaceProblem(const HM2D::GridData& g, shared_ptr<HMMath::Mat> lap);
 
 	//boundary conditions: using vector of grid points
 	void ClearBC();
@@ -80,7 +80,7 @@ public:
 	//solve Ax=0 with rebuilding of rhs vector with bc
 	void QuickSolve_BC(vector<double>& ans);
 
-	//f - is the solution of Laplas problem.
+	//f - is the solution of Laplace problem.
 	//pnt should be sorted as an open path ( pnt[0]->pnt[back] )
 	//Neumann conditions should exist on edges adjacent to this path.
 	//Otherwise dfdn=0 on that edges is assumed.

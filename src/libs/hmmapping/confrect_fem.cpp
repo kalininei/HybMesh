@@ -106,16 +106,16 @@ void ToRect::TBuild::DoMapping(ToRect& r){
 	r.v.resize(r.grid->vvert.size(), 0.0);
 	//1) assemble pure laplas operator
 	callback->step_after(10, "Laplace operator");
-	auto laplas = Assemble::PureLaplas(*r.grid);
-	//2.1) Laplas problem for u
+	auto laplas = Assemble::PureLaplace(*r.grid);
+	//2.1) Laplace problem for u
 	callback->step_after(10, "U-problem");
-	auto ulaplas = LaplasProblem(*r.grid, laplas);
+	auto ulaplas = LaplaceProblem(*r.grid, laplas);
 	ulaplas.SetDirichlet(ExtractPoints(*r.grid, r.ileft), [](const HM2D::Vertex*){ return 0; });
 	ulaplas.SetDirichlet(ExtractPoints(*r.grid, r.iright), [](const HM2D::Vertex*){ return 1; });
 	ulaplas.Solve(r.u);
-	//2.2) Laplas problem for v
+	//2.2) Laplace problem for v
 	callback->step_after(10, "V-problem");
-	auto vlaplas = LaplasProblem(*r.grid, laplas);
+	auto vlaplas = LaplaceProblem(*r.grid, laplas);
 	vlaplas.SetDirichlet(ExtractPoints(*r.grid, r.ibottom), [](const HM2D::Vertex*){ return 0; });
 	vlaplas.SetDirichlet(ExtractPoints(*r.grid, r.itop), [](const HM2D::Vertex*){ return 1; });
 	vlaplas.Solve(r.v);
@@ -211,7 +211,7 @@ void ToAnnulus::BuildGrid1(const vector<Point>& outer_path, const vector<Point>&
 
 void ToAnnulus::DoMappingU(){
 	//laplas problem
-	auto ulaplas = HMFem::LaplasProblem(*grid);
+	auto ulaplas = HMFem::LaplaceProblem(*grid);
 	//dirichlet: one on inner, zero on outer
 	ulaplas.SetDirichlet(ExtractPoints(*grid, outer), [](const HM2D::Vertex*){return 0.0;});
 	ulaplas.SetDirichlet(ExtractPoints(*grid, inner), [](const HM2D::Vertex*){return 1.0;});
@@ -426,9 +426,9 @@ void ToAnnulus::BuildGrid2(const vector<Point>& outer_path,
 
 void ToAnnulus::DoMapping(){
 	//laplas matrix
-	auto lap = HMFem::Assemble::PureLaplas(*grid);
+	auto lap = HMFem::Assemble::PureLaplace(*grid);
 	//laplas problem for v
-	auto vlaplas = HMFem::LaplasProblem(*grid, lap);
+	auto vlaplas = HMFem::LaplaceProblem(*grid, lap);
 	//dirichlet: 2*pi on razor_oi, zero on razor_io
 	vlaplas.SetDirichlet(raz_io, [](const HM2D::Vertex*){return 0.0;});
 	vlaplas.SetDirichlet(raz_oi, [](const HM2D::Vertex*){return 2.0*M_PI;});
@@ -437,7 +437,7 @@ void ToAnnulus::DoMapping(){
 	vlaplas.Solve(v);
 
 	//laplas problem for u
-	auto ulaplas = HMFem::LaplasProblem(*grid, lap);
+	auto ulaplas = HMFem::LaplaceProblem(*grid, lap);
 	//dirichlet: 1 on top, _module on bot
 	ulaplas.SetDirichlet(outer, [](const HM2D::Vertex*){return 1;});
 	ulaplas.SetDirichlet(inner, [&](const HM2D::Vertex*){return _module;});

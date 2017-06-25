@@ -4,11 +4,11 @@
 
 using namespace HMFem;
 
-const HM2D::Vertex* LaplasProblem::get_boundary_point(const Point& p) const{
+const HM2D::Vertex* LaplaceProblem::get_boundary_point(const Point& p) const{
 	int ind = get_boundary_point_index(p);
 	return grid->vvert[ind].get();
 }
-int LaplasProblem::get_boundary_point_index(const Point& p) const{
+int LaplaceProblem::get_boundary_point_index(const Point& p) const{
 	if (_bp.size() == 0){
 		auto be = HM2D::ECol::Assembler::GridBoundary(*grid);
 		auto av = HM2D::AllVertices(be);
@@ -21,24 +21,24 @@ int LaplasProblem::get_boundary_point_index(const Point& p) const{
 	return fnd->id;
 }
 
-LaplasProblem::LaplasProblem(const HM2D::GridData& g):
+LaplaceProblem::LaplaceProblem(const HM2D::GridData& g):
 		grid(&g),
-		laplas_mat(HMFem::Assemble::PureLaplas(*grid)),
+		laplas_mat(HMFem::Assemble::PureLaplace(*grid)),
 		solution_mat(),
 		rhs(grid->vvert.size(), 0.0){}
 
-LaplasProblem::LaplasProblem(const HM2D::GridData& g, shared_ptr<HMMath::Mat> lap):
+LaplaceProblem::LaplaceProblem(const HM2D::GridData& g, shared_ptr<HMMath::Mat> lap):
 		grid(&g), laplas_mat(lap),
 		solution_mat(),
 		rhs(grid->vvert.size(), 0.0){}
 
-void LaplasProblem::ClearBC(){
+void LaplaceProblem::ClearBC(){
 	_neufunc.clear();
 	_dirfunc.clear();
 	neumann_data.clear();
 	dirichlet_data.clear();
 }
-void LaplasProblem::SetDirichlet(const HM2D::VertexData& pts, TDirFunc f){
+void LaplaceProblem::SetDirichlet(const HM2D::VertexData& pts, TDirFunc f){
 	_dirfunc.push_back(f);
 	for (auto p: pts){
 		int ind = get_boundary_point_index(*p);
@@ -46,22 +46,22 @@ void LaplasProblem::SetDirichlet(const HM2D::VertexData& pts, TDirFunc f){
 		dirichlet_data.insert(dt);
 	}
 }
-void LaplasProblem::SetDirichlet(const vector<int>& pts, TDirFunc f){
+void LaplaceProblem::SetDirichlet(const vector<int>& pts, TDirFunc f){
 	_dirfunc.push_back(f);
 	for (auto ind: pts){
 		TDirData dt {ind, &_dirfunc.back()};
 		dirichlet_data.insert(dt);
 	}
 }
-void LaplasProblem::SetDirichlet(const HM2D::EdgeData& pts, TDirFunc f){
+void LaplaceProblem::SetDirichlet(const HM2D::EdgeData& pts, TDirFunc f){
 	SetDirichlet(HM2D::AllVertices(pts), f);
 }
 
-void LaplasProblem::SetNeumann(const HM2D::VertexData& pts, TNeuFunc f){
+void LaplaceProblem::SetNeumann(const HM2D::VertexData& pts, TNeuFunc f){
 	_THROW_NOT_IMP_;
 }
 
-void LaplasProblem::RebuildSolutionMatrix(){
+void LaplaceProblem::RebuildSolutionMatrix(){
 	std::fill(rhs.begin(), rhs.end(), 0.0);
 	solution_mat = *laplas_mat;
 
@@ -87,17 +87,17 @@ void LaplasProblem::RebuildSolutionMatrix(){
 }
 
 //solve Ax=0
-void LaplasProblem::Solve(vector<double>& ans){
+void LaplaceProblem::Solve(vector<double>& ans){
 	RebuildSolutionMatrix();
 	QuickSolve(ans);
 }
 
 
-void LaplasProblem::QuickSolve(vector<double>& ans){
+void LaplaceProblem::QuickSolve(vector<double>& ans){
 	solver->Solve(rhs, ans);
 }
 
-void LaplasProblem::QuickSolve_BC(vector<double>& ans){
+void LaplaceProblem::QuickSolve_BC(vector<double>& ans){
 	std::fill(rhs.begin(), rhs.end(), 0.0);
 
 	//Neumann
@@ -120,7 +120,7 @@ void LaplasProblem::QuickSolve_BC(vector<double>& ans){
 	solver->Solve(rhs, ans);
 }
 
-double LaplasProblem::IntegralDfDn(const vector<const HM2D::Vertex*>& pnt,
+double LaplaceProblem::IntegralDfDn(const vector<const HM2D::Vertex*>& pnt,
 		const vector<double>& f){
 	//we assume that pnt are ordered in such a way that
 	//each pair <pnt[i], pnt[i+1]> forms an edge
@@ -178,7 +178,7 @@ double LaplasProblem::IntegralDfDn(const vector<const HM2D::Vertex*>& pnt,
 	return std::accumulate(lk_dfdn.begin(), lk_dfdn.end(), 0.0);
 }
 
-double LaplasProblem::IntegralDfDn(const HM2D::EdgeData& pnt, const vector<double>& f){
+double LaplaceProblem::IntegralDfDn(const HM2D::EdgeData& pnt, const vector<double>& f){
 	vector<const HM2D::Vertex*> pts2; pts2.reserve(pnt.size());
 	for(auto p: HM2D::Contour::OrderedPoints(pnt))
 		pts2.push_back(get_boundary_point(*p));

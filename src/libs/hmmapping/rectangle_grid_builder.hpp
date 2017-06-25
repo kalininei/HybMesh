@@ -29,7 +29,7 @@ struct TLaplaceRectGrid: public HMCallback::ExecutorBase{
 };
 extern HMCallback::FunctionWithCallback<TLaplaceRectGrid> LaplaceRectGrid;
 
-HM2D::GridData FDMLaplasRectGrid(HM2D::EdgeData& left, HM2D::EdgeData& bot,
+HM2D::GridData FDMLaplaceRectGrid(HM2D::EdgeData& left, HM2D::EdgeData& bot,
 	HM2D::EdgeData& right, HM2D::EdgeData& top);
 
 HM2D::GridData LinearTFIRectGrid(HM2D::EdgeData& left, HM2D::EdgeData& bot,

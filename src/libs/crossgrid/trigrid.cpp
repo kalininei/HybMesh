@@ -177,6 +177,7 @@ bool is_valueble(Point p1, const EdgeData& cont){
 
 void find_closest(const EdgeData& cont, const Point& p, const vector<std::pair<Point, double>>& src,
 		double& dist, double& sz){
+	//FIXME: Very slow for InscribeGrid procedure
 	dist = 1e200; sz = 1e200; Point pbest;
 	auto ce = Finder::ClosestEdge(cont, p);
 	Point *p1 = cont[std::get<0>(ce)]->pfirst();
@@ -261,7 +262,8 @@ EdgeData repart_cont(const EdgeData& cont, double sz0, double sz1,
 		const VertexData& keep_pts,
 		const vector<std::pair<Point, double>>& src){
 	std::map<double, double> weights = build_weights(cont, sz0, sz1, src);
-	return Contour::Algos::WeightedPartition(weights, cont, keep_pts);
+	auto ret = Contour::Algos::WeightedPartition(weights, cont, keep_pts);
+	return ret;
 }
 
 vector<std::pair<Point, double>> sort_out_sources(const EdgeData& source,

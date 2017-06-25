@@ -8,9 +8,10 @@ using namespace HM2D;
 namespace{
 
 template<class C>
-void add_vtk_data(const vector<C>& data, std::string name, std::string fn, bool is_first = false){
+void add_vtk_data(const vector<C>& data, std::string name, std::string fn, bool is_cell, bool is_first){
 	std::ofstream f(fn, std::ios_base::app);
-	if (is_first) f<<"CELL_DATA "<<data.size()<<std::endl;
+	if (is_first && is_cell) f<<"CELL_DATA "<<data.size()<<std::endl;
+	if (is_first && !is_cell) f<<"POINT_DATA "<<data.size()<<std::endl;
 	std::string tp = (std::is_same<C, int>::value) ? " int 1" : " float 1";
 	f<<"SCALARS "<<name<<tp<<std::endl;
 	f<<"LOOKUP_TABLE default"<<std::endl;
@@ -105,6 +106,17 @@ void Export::GridVTK(const GridData& g, std::string fn){
 	fs<<"CELL_TYPES  "<<g.vcells.size()<<std::endl;
 	for (int i=0;i<g.vcells.size();++i) fs<<7<<std::endl;
 	fs.close();
+}
+
+void Export::GridCDataVTK(const GridData& g, const vector<double>& dt, std::string fn){
+	assert(dt.size() == g.vcells.size());
+	GridVTK(g, fn);
+	add_vtk_data(dt, "cell_data", fn, true, true);
+}
+void Export::GridVDataVTK(const GridData& g, const vector<double>& dt, std::string fn){
+	assert(dt.size() == g.vvert.size());
+	GridVTK(g, fn);
+	add_vtk_data(dt, "vertex_data", fn, false, true);
 }
 
 void Export::BoundaryVTK(const GridData& g, std::string fn){

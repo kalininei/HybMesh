@@ -24,6 +24,8 @@ struct Debug: public HMDebug{
 
 	//to vtk format
 	static void save_grid_vtk(const GridData& c);
+	static void save_grid_cell_data_vtk(const GridData& c, const vector<double>& dt);
+	static void save_grid_vertex_data_vtk(const GridData& c, const vector<double>& dt);
 	static void save_cells_vtk(const CellData& c);
 	static void save_cells_vtk_id(const CellData& c);
 

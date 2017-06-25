@@ -11,6 +11,8 @@ void VerticesVTK(const VertexData& data, std::string fn);
 
 
 void GridVTK(const GridData& g, std::string fn);
+void GridCDataVTK(const GridData& g, const vector<double>& dt, std::string fn);
+void GridVDataVTK(const GridData& g, const vector<double>& dt, std::string fn);
 
 void BoundaryVTK(const GridData& g, std::string fn);
 

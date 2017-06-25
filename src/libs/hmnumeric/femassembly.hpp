@@ -9,7 +9,7 @@ namespace HMFem{
 namespace Assemble{
 
 //== grad(p_i) . grad(p_j)
-shared_ptr<HMMath::Mat> PureLaplas(const HM2D::GridData& grid);
+shared_ptr<HMMath::Mat> PureLaplace(const HM2D::GridData& grid);
 
 //== p_i * p_j
 shared_ptr<HMMath::Mat> FullMass(const HM2D::GridData& grid);

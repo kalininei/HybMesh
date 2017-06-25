@@ -11,6 +11,10 @@
 #include "trigrid.hpp"
 #include "finder2d.hpp"
 #include "infogrid.hpp"
+#include "laplace_bem2d.hpp"
+#include "hmtimer.hpp"
+#include "treverter2d.hpp"
+#include "densemat.hpp"
 using HMTesting::add_check;
 
 double maxskew(const HM2D::GridData& g){
@@ -38,7 +42,7 @@ void test01(){
 		auto contbot = HM2D::Contour::Assembler::ShrinkContour(cont, cp1, cp2);
 		auto conttop = HM2D::Contour::Assembler::ShrinkContour(cont, cp3, cp4);
 
-		auto p = HMFem::LaplasProblem(*g);
+		auto p = HMFem::LaplaceProblem(*g);
 		p.SetDirichlet(contbot, [](const HM2D::Vertex* p){ return 1.0; });
 		p.SetDirichlet(conttop, [](const HM2D::Vertex* p){ return 6.0; });
 
@@ -189,11 +193,66 @@ void test03(){
 	}
 };
 
+void test04(){
+	std::cout<<"03. Bem with constant elements"<<std::endl;
+	{
+		HMMath::DenseMat mat(3);
+		mat.val(0, 0) = 7; mat.val(0, 1) = 2; mat.val(0, 2) = 3;
+		mat.val(1, 0) = 3; mat.val(1, 1) = 4; mat.val(1, 2) = 1;
+		mat.val(2, 0) = 1; mat.val(2, 1) = 3; mat.val(2, 2) = 9;
+		std::vector<double> rhs {0, 1, 2}, ans {0, 0, 0};
+		HMMath::DenseSolver slv(mat);
+		slv.Solve(rhs, ans);
+		add_check(fabs(mat.RowMultVec(ans, 0)-rhs[0])<1e-12 &&
+			fabs(mat.RowMultVec(ans, 1)-rhs[1])<1e-12 &&
+			fabs(mat.RowMultVec(ans, 2)-rhs[2])<1e-12, "dense matrix solver");
+	}
+	{
+		double step = 0.02;
+		auto c1 = HM2D::Contour::Constructor::Rectangle(Point(0,0), Point(2, 1));
+		auto c2 = HM2D::Contour::Constructor::Circle(16, 0.2, Point(1.3, 0.6));
+		HM2D::Contour::R::ReallyDirect::Permanent(c1);
+		HM2D::Contour::R::ReallyRevert::Permanent(c2);
+
+		c1 = HM2D::Contour::Algos::Partition(step, c1, HM2D::Contour::Algos::PartitionTp::KEEP_SHAPE);
+		c2 = HM2D::Contour::Algos::Partition(step, c2, HM2D::Contour::Algos::PartitionTp::KEEP_SHAPE);
+
+		for (auto e: c1) e->boundary_type = 1;
+		for (auto e: c2) e->boundary_type = 2;
+
+		HM2D::Contour::Tree t1;
+		t1.add_contour(c1);
+		t1.add_contour(c2);
+
+		HM2D::GridData g3 = HM2D::Mesher::UnstructuredTriangle(t1);
+
+		HMBem::LaplaceCE2D bemslv(t1);
+		int it = 0;
+		for (auto e: t1.alledges()){
+			double dv = e->boundary_type == 1 ? 1 : 2;
+			bemslv.dirichlet_value(it++, dv);
+		}
+		bemslv.Solve();
+
+		double integral = 0.0;
+		for (auto& c: g3.vcells){
+			Point cnt(0.0, 0.0);
+			for (auto p: HM2D::AllVertices(c->edges)) cnt += *p;
+			cnt /= 3;
+			double v = bemslv.internal_value_at(cnt.x, cnt.y);
+			integral += HM2D::Contour::Area(c->edges)*v;
+		}
+		add_check(fabs(integral - 2.28922)<1e-2, "bem for dirichlet poisson problem");
+	}
+};
+
 
 int main(){
 	test01();
 	test02();
 	test03();
+	test04();
+
 
 	HMTesting::check_final_report();
 	std::cout<<"DONE"<<std::endl;

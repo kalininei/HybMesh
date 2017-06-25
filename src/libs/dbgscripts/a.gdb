@@ -3,10 +3,10 @@
 
 source ../../src/libs/dbgscripts/hmout.gdb
 
-file ./crossgrid_test
+file ./hmnumeric_test
 
 set breakpoint pending on
-b inscribe_grid.cpp:145
+b laplace_bem2d.cpp:102
 run
 
 # source ../../src/libs/dbgscripts/skiplist

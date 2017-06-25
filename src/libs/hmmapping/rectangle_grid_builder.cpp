@@ -337,7 +337,7 @@ HM2D::GridData HMMap::TOrthogonalRectGrid::_run(HM2D::EdgeData& _left, HM2D::Edg
 	return ret;
 }
 
-HM2D::GridData HMMap::FDMLaplasRectGrid(HM2D::EdgeData& _left, HM2D::EdgeData& _bot,
+HM2D::GridData HMMap::FDMLaplaceRectGrid(HM2D::EdgeData& _left, HM2D::EdgeData& _bot,
 	HM2D::EdgeData& _right, HM2D::EdgeData& _top){
 	if (_left.size() != _right.size() || _bot.size() != _top.size())
 		throw std::runtime_error("right/top contours should have same number "
@@ -369,28 +369,28 @@ HM2D::GridData HMMap::FDMLaplasRectGrid(HM2D::EdgeData& _left, HM2D::EdgeData& _
 	}
 
 	//fdm solver
-	auto slv = HMFdm::LaplasSolver(x, y);
+	auto slv = HMFdm::LaplaceSolver(x, y);
 	//x problem
 	vector<double> xcoords(x.size() * y.size(), 0);
-	slv.SetBndValues(HMFdm::LaplasSolver::Bnd::Top,
+	slv.SetBndValues(HMFdm::LaplaceSolver::Bnd::Top,
 			[&topop](int i, int j){ return topop[i]->x; });
-	slv.SetBndValues(HMFdm::LaplasSolver::Bnd::Bottom,
+	slv.SetBndValues(HMFdm::LaplaceSolver::Bnd::Bottom,
 			[&botop](int i, int j){ return botop[i]->x; });
-	slv.SetBndValues(HMFdm::LaplasSolver::Bnd::Left,
+	slv.SetBndValues(HMFdm::LaplaceSolver::Bnd::Left,
 			[&leftop](int i, int j){ return leftop[j]->x; });
-	slv.SetBndValues(HMFdm::LaplasSolver::Bnd::Right,
+	slv.SetBndValues(HMFdm::LaplaceSolver::Bnd::Right,
 			[&rightop](int i, int j){ return rightop[j]->x; });
 	slv.Solve(xcoords);
 
 	//y problem
 	vector<double> ycoords(x.size() * y.size(), 0);
-	slv.SetBndValues(HMFdm::LaplasSolver::Bnd::Top,
+	slv.SetBndValues(HMFdm::LaplaceSolver::Bnd::Top,
 			[&topop](int i, int j){ return topop[i]->y; });
-	slv.SetBndValues(HMFdm::LaplasSolver::Bnd::Bottom,
+	slv.SetBndValues(HMFdm::LaplaceSolver::Bnd::Bottom,
 			[&botop](int i, int j){ return botop[i]->y; });
-	slv.SetBndValues(HMFdm::LaplasSolver::Bnd::Left,
+	slv.SetBndValues(HMFdm::LaplaceSolver::Bnd::Left,
 			[&leftop](int i, int j){ return leftop[j]->y; });
-	slv.SetBndValues(HMFdm::LaplasSolver::Bnd::Right,
+	slv.SetBndValues(HMFdm::LaplaceSolver::Bnd::Right,
 			[&rightop](int i, int j){ return rightop[j]->y; });
 	slv.Solve(ycoords);
 

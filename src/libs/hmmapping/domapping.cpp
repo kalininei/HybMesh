@@ -30,7 +30,7 @@ HM2D::GridData DoMapping::run(HMCallback::Caller2& cb){
 	prepare_grid();
 	//assemble fem problem
 	cb.step_after(15, "FEM assembling");
-	laplace.reset(new HMFem::LaplasProblem(*g3));
+	laplace.reset(new HMFem::LaplaceProblem(*g3));
 
 	//solve direct problems
 	//resulting u, v are functions defined in g3 at mapped_outer domain

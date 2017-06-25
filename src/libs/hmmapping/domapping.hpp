@@ -34,7 +34,7 @@ protected:
 	//those are filled by prepare_grid and its subroutines
 	shared_ptr<HM2D::GridData> g3;   //triangle grid
 	HM2D::Contour::Tree g3outer;  //triangle grid borders
-	shared_ptr<HMFem::LaplasProblem> laplace; //laplace problem
+	shared_ptr<HMFem::LaplaceProblem> laplace; //laplace problem
 
 	MappedContourCollection mcol;   //contour mapper: from g3 contour to contdata contour
 
@@ -89,7 +89,7 @@ private:
 	//those are filled by prepare_grid and its subroutines
 	shared_ptr<HM2D::GridData> g3;   //triangle grid within mapped_outer
 	HM2D::Contour::Tree g3outer;  //triangle grid borders
-	shared_ptr<HMFem::LaplasProblem> laplace; //laplace problem
+	shared_ptr<HMFem::LaplaceProblem> laplace; //laplace problem
 
 	MappedContourCollection mcol;   //contour mapper: from g3 contour to inpgrid contour
 
