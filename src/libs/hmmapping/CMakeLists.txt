@@ -37,18 +37,20 @@ add_library(${HMMAPPING_TARGET} SHARED ${HEADERS} ${SOURCES})
 
 # =========== linkage
 target_link_libraries(${HMMAPPING_TARGET} ${HMPROJECT_TARGET})
+target_link_libraries(${HMMAPPING_TARGET} ${HMMATH_TARGET})
 target_link_libraries(${HMMAPPING_TARGET} ${BGEOM2D_TARGET})
 target_link_libraries(${HMMAPPING_TARGET} ${HYBMESH_CONTOURS2D_TARGET})
-target_link_libraries(${HMMAPPING_TARGET} ${CROSSGRID_TARGET})
+target_link_libraries(${HMMAPPING_TARGET} ${HMGRID2D_TARGET})
 target_link_libraries(${HMMAPPING_TARGET} ${HMNUMERIC_TARGET})
-target_link_libraries(${HMMAPPING_TARGET} ${HMMATH_TARGET})
+target_link_libraries(${HMMAPPING_TARGET} ${CROSSGRID_TARGET})
 
 include_directories(${HMPROJECT_INCLUDE})
+include_directories(${HMMATH_INCLUDE})
 include_directories(${BGEOM2D_INCLUDE})
 include_directories(${HYBMESH_CONTOURS2D_INCLUDE})
-include_directories(${CROSSGRID_INCLUDE})
+include_directories(${HMGRID2D_INCLUDE})
 include_directories(${HMNUMERIC_INCLUDE})
-include_directories(${HMMATH_INCLUDE})
+include_directories(${CROSSGRID_INCLUDE})
 
 install(TARGETS ${HMMAPPING_TARGET}
 	RUNTIME DESTINATION ${LIB_INSTALL_DIR}

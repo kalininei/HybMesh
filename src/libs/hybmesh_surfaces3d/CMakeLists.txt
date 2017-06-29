@@ -44,12 +44,12 @@ add_library(${HYBMESH_SURFACES3D_TARGET} SHARED ${HEADERS} ${SOURCES})
 
 # =========== linkage
 target_link_libraries(${HYBMESH_SURFACES3D_TARGET} ${HMPROJECT_TARGET})
-target_link_libraries(${HYBMESH_SURFACES3D_TARGET} ${BGEOM2D_TARGET})
 target_link_libraries(${HYBMESH_SURFACES3D_TARGET} ${HMMATH_TARGET})
+target_link_libraries(${HYBMESH_SURFACES3D_TARGET} ${BGEOM2D_TARGET})
 
 include_directories(${HMPROJECT_INCLUDE})
-include_directories(${BGEOM2D_INCLUDE})
 include_directories(${HMMATH_INCLUDE})
+include_directories(${BGEOM2D_INCLUDE})
 
 install(TARGETS ${HYBMESH_SURFACES3D_TARGET}
 	RUNTIME DESTINATION ${LIB_INSTALL_DIR}

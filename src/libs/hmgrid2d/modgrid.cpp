@@ -7,7 +7,6 @@
 #include "finder2d.hpp"
 #include "treverter2d.hpp"
 #include "infogrid.hpp"
-#include "debug_grid2d.hpp"
 
 using namespace HM2D;
 using namespace HM2D::Grid;

@@ -23,8 +23,6 @@ shared_ptr<HMMath::Mat> DDx(const HM2D::GridData& grid);
 //== dp_j /dy * p_i 
 shared_ptr<HMMath::Mat> DDy(const HM2D::GridData& grid);
 
-
-
 }//Assemble
 
 

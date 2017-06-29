@@ -10,6 +10,7 @@
 #include "modcont.hpp"
 #include "hmtimer.hpp"
 #include "buildcont.hpp"
+#include "sizefun.hpp"
 
 using namespace HM2D;
 using namespace HM2D::Grid;
@@ -77,9 +78,7 @@ GridData Algos::TSubstractCells::_run(const GridData& base, const Contour::Tree&
 
 namespace{
 
-void segment_triarea(Contour::Tree& triarea, const EdgeData& keep_edges,
-		const std::vector<std::pair<Point, double>>& src,
-		double angle0){
+void id1_to_significant_prims(Contour::Tree& triarea, const EdgeData& keep_edges, double angle0){
 	auto ae = triarea.alledges();
 	auto av = HM2D::AllVertices(ae);
 
@@ -128,10 +127,6 @@ void segment_triarea(Contour::Tree& triarea, const EdgeData& keep_edges,
 	aa::constant_ids_pvec(ae, 0);
 	aa::constant_ids_pvec(sig_vertices, 1);
 	aa::constant_ids_pvec(sig_edges, 1);
-	for (auto c: triarea.bound_contours()){
-		c->contour = Mesher::RepartSourceById(c->contour, src,
-			c->isinner() ? 2 : 1);
-	}
 }
 
 }
@@ -184,11 +179,8 @@ GridData Algos::TInscribeGrid::_run(const GridData& base, const Contour::Tree& c
 		for (auto e: cont.alledges()) keep_edges.push_back(e);
 	}
 	//sources
-	std::vector<std::pair<Point, double>> src;
-	for (auto e: keep_edges){
-		src.emplace_back(e->center(), e->length());
-	}
-	segment_triarea(triarea, keep_edges, src, opt.angle0);
+	id1_to_significant_prims(triarea, keep_edges, opt.angle0);
+	ApplySizeFunction(triarea);
 	
 	//6) Triangulation
 	auto cb6 = callback->bottom_line_subrange(20);
@@ -227,7 +219,6 @@ GridData Algos::TInsertConstraints::_run(const GridData& base,
 	}
 
 	//remove cells under the offset
-	//TODO: consider moving this block to InscribeProcedure
 	CellData needed_cells = ExtractCells(base, bzone, OUTSIDE);
 	aa::constant_ids_pvec(base.vcells, 0);
 	aa::constant_ids_pvec(needed_cells, 1);
@@ -243,36 +234,27 @@ GridData Algos::TInsertConstraints::_run(const GridData& base,
 
 	//triangulation area
 	Contour::Tree triarea = Contour::Tree::GridBoundary(g3);
+	for (auto& c: cont) triarea.add_detached_contour(c);
 	EdgeData keep_edges = ECol::Assembler::GridBoundary(g2);
-	std::vector<std::pair<Point, double>> src_tri;
-	for (auto& p: pnt) if (p.second > 0){
-		src_tri.push_back(p);
+	//id=1 to edges and vertices which should be kept
+	id1_to_significant_prims(triarea, keep_edges, opt.angle0);
+	bool force_sizefun = false;
+	vector<std::pair<Point, double>> src_tri;
+	for (auto& p: pnt) {
+		if (p.second > 0) src_tri.push_back(p);
+		else { force_sizefun = true; }
 	}
-	if (opt.keep_cont) for (auto& c: cont){
-		for (auto& e: c){
-			src_tri.emplace_back(e->center(), e->length());
-		}
-	}
-	segment_triarea(triarea, keep_edges, src_tri, opt.angle0);
+	auto sfun = ApplySizeFunction(triarea, src_tri, force_sizefun);
 
-	//part constraints
-	vector<EdgeData> cont2 = cont;
-	if (!opt.keep_cont){
-		//TODO
-	}
-
-	//calculate point constraint sizes
+	//calculate point constraint sizes if they were not given
 	CoordinateMap2D<double> pnt2;
 	for (auto& p: pnt){
 		double v = p.second;
-		if (v <= 0){
-			//TODO
-		}
+		if (v <= 0) v = sfun->sz(p.first);
 		pnt2.add(p.first, v);
 	}
 
 	//Triangulation
-	for (auto& c: cont2) triarea.add_detached_contour(c);
 	GridData g4;
 	if (opt.fillalgo == 0) g4 = Mesher::UnstructuredTriangle(triarea, pnt2);
 	else if (opt.fillalgo == 1) g4 = Mesher::UnstructuredTriangleRecomb(triarea, pnt2);

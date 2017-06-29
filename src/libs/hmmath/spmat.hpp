@@ -81,7 +81,10 @@ public:
 class SuiteSparseQRSolver: public MatSolve{
 	void* slv;
 public:
-	SuiteSparseQRSolver(const Mat& m, Options opt);
+	// solver for square matrix
+	SuiteSparseQRSolver(const Mat& m, Options opt=Options());
+	// solver for non-square matrix
+	SuiteSparseQRSolver(const Mat& m, int Ncols);
 	~SuiteSparseQRSolver();
 	void Solve(const vector<double>& rhs, vector<double>& x) override;
 };

@@ -150,6 +150,7 @@ void SeidelSolver::Solve(const vector<double>& rhs, vector<double>& u){
 namespace QRImpl{
 
 struct SPQR{
+	int Ncol;
 	SPQR(): A(0), x(0), b(0), QR(0){ cholmod_l_start(&common); }
 	~SPQR(){
 		if (A!=0) {cholmod_l_free_sparse(&A, &common); A=0;}
@@ -159,9 +160,10 @@ struct SPQR{
 		if (QR!=0) {SuiteSparseQR_C_free(&QR, &common); QR=0;}
 		cholmod_l_finish(&common);
 	}
-	void InitMat(const Mat& m){
+	void InitMat(const Mat& m, int ncol=-1){
+		Ncol = (ncol==-1) ? m.rows() : ncol;
 		cholmod_triplet *T = cholmod_l_allocate_triplet(
-			m.rows(), m.rows(), m.nnz(), 0, CHOLMOD_REAL, &common);
+			m.rows(), Ncol, m.nnz(), 0, CHOLMOD_REAL, &common);
 		int irow = 0, cur = 0;
 		for (auto& row: m.data){
 			int nrow = row.size();
@@ -197,7 +199,7 @@ struct SPQR{
 		if (x == 0) return 0;
 
 		//copy solution
-		std::copy((double*)x->x, (double*)x->x+A->nrow, v);
+		std::copy((double*)x->x, (double*)x->x+A->ncol, v);
 		cholmod_l_free_dense(&y, &common); y = 0;
 		cholmod_l_free_dense(&x, &common); x = 0;
 		
@@ -218,6 +220,14 @@ SuiteSparseQRSolver::SuiteSparseQRSolver(const Mat& m, Options opt): MatSolve(m)
 	slv1->InitSlv();
 	slv = slv1;
 }
+
+SuiteSparseQRSolver::SuiteSparseQRSolver(const Mat& m, int Ncols): MatSolve(m){
+	auto slv1 = new QRImpl::SPQR();
+	slv1->InitMat(m, Ncols);
+	slv1->InitSlv();
+	slv = slv1;
+}
+
 SuiteSparseQRSolver::~SuiteSparseQRSolver(){
 	delete static_cast<QRImpl::SPQR*>(slv);
 }

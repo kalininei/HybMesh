@@ -36,6 +36,7 @@ target_link_libraries(${HMCPORT_TARGET} ${HMMAPPING_TARGET})
 target_link_libraries(${HMCPORT_TARGET} ${HMBLAY_TARGET})
 target_link_libraries(${HMCPORT_TARGET} ${HYBMESH_SURFACES3D_TARGET})
 target_link_libraries(${HMCPORT_TARGET} ${HMGRID3D_TARGET})
+target_link_libraries(${HMCPORT_TARGET} ${HMGRID2D_TARGET})
 
 include_directories(${HMPROJECT_INCLUDE})
 include_directories(${BGEOM2D_INCLUDE})
@@ -46,6 +47,8 @@ include_directories(${HMMAPPING_INCLUDE})
 include_directories(${HMBLAY_INCLUDE})
 include_directories(${HYBMESH_SURFACES3D_INCLUDE})
 include_directories(${HMGRID3D_INCLUDE})
+include_directories(${HMGRID2D_INCLUDE})
+
 
 install(TARGETS ${HMCPORT_TARGET}
 	RUNTIME DESTINATION ${LIB_INSTALL_DIR}

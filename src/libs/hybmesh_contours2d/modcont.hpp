@@ -45,6 +45,7 @@ void Connect(EdgeData& to, const EdgeData& from);
 
 //creates new edge connecting last point and ed
 void AddLastPoint(EdgeData& to, shared_ptr<Vertex> ed);
+void AddFirstPoint(EdgeData& to, shared_ptr<Vertex> ed);
 
 }}
 

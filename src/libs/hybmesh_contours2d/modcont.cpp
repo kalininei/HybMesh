@@ -362,12 +362,16 @@ void cal::AddLastPoint(EdgeData& to, std::shared_ptr<Vertex> p){
 	auto p0 = Last(to);
 	to.push_back(std::make_shared<Edge>(p0, p));
 }
+void cal::AddFirstPoint(EdgeData& to, shared_ptr<Vertex> p){
+	auto p0 = First(to);
+	to.insert(to.begin(), std::make_shared<Edge>(p, p0));
+}
 
 
 void cal::Connect(EdgeData& to, const EdgeData& from){
 	auto self0 = First(to), self1 = Last(to);
 	auto target0 = First(from), target1 = Last(from);
-	//choosing option for unition
+	//choosing option for union
 	if (to.size() == 0 || from.size() == 0 ) goto COPY12;
 	else if (self0 == self1 || target0 == target1) goto THROW;
 	else if (from.size() == 1 &&

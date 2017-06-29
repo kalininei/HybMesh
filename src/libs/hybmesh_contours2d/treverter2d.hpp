@@ -7,9 +7,10 @@ namespace HM2D{
 	
 namespace Contour{ namespace R{
 
+class Reverter{ };
 //this reverses edges and
 //forces correct direction of points within edges
-class ReallyRevert{
+class ReallyRevert: public Reverter{
 	EdgeData* obj;
 	std::vector<bool> reverted_edges;
 	bool permanent;
@@ -28,7 +29,7 @@ public:
 	}
 };
 
-class ReallyDirect{
+class ReallyDirect: public Reverter{
 	EdgeData* obj;
 	std::vector<bool> reverted_edges;
 	bool permanent;
@@ -50,7 +51,7 @@ public:
 //sets first point of contour closest to given one.
 //for open contours chooses only between first and last points.
 //makes reversions of all edges.
-class ForceFirst{
+class ForceFirst: public Reverter{
 	EdgeData* obj;
 	int oldstart;
 	std::unique_ptr<ReallyDirect> really_direct;
@@ -76,7 +77,7 @@ public:
 
 //forces clockwise or counterclockwise direction of closed contour
 //for open contours makes direct reverse
-class Clockwise{
+class Clockwise: public Reverter{
 	std::unique_ptr<ReallyDirect> really_direct;
 	std::unique_ptr<ReallyRevert> really_revert;
 public:
@@ -100,7 +101,7 @@ public:
 
 //forces counterclockwise for even level tree nodes
 //and clockwise for odd level tree nodes
-class RevertTree{
+class RevertTree: public Reverter{
 	std::list<std::unique_ptr<Clockwise>> really_clockwise;
 	std::list<std::unique_ptr<ReallyDirect>> really_direct;
 public:
@@ -123,7 +124,7 @@ public:
 
 //all edges which has single cell connection will be
 //reverted so that it is a left cell
-class LeftCells{
+class LeftCells: public Reverter{
 	vector<int> reverted_edges_inds;
 	EdgeData* obj;
 public:

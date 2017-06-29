@@ -7,6 +7,7 @@
 #include "trigrid.hpp"
 #include "finder2d.hpp"
 #include "buildcont.hpp"
+#include "treverter2d.hpp"
 
 using namespace HMFem;
 
@@ -23,7 +24,7 @@ void Grid43::AddSegments(HM2D::GridData& grid, const vector<vector<Point>>& pts)
 		auto& pe = pts[i];
 		shared_ptr<HM2D::Vertex> fnd1 = vfnd.find(pe[0]);
 		shared_ptr<HM2D::Vertex> fnd2 = vfnd.find(pe.back());
-		assert(fnd1 != nullptr && fnd2 != nullptr);
+		if (fnd1 == nullptr || fnd2 == nullptr) continue;
 		ppsplit.emplace_back(fnd1.get(), fnd2.get(),
 			vector<Point>(pts[i].begin()+1, pts[i].end()-1));
 	}
@@ -88,6 +89,14 @@ Grid43::Approximator::Approximator(const HM2D::GridData* g, int n): grid(g){
 		icellvert[ic][1] = cellvert[ic][1]->id;
 		icellvert[ic][2] = cellvert[ic][2]->id;
 		if (!is3[ic]) icellvert[ic][3] = cellvert[ic][3]->id;
+	}
+	for (auto& e: HM2D::ECol::Assembler::GridBoundary(*g)){
+		e->pfirst()->id = -1;
+		e->plast()->id = -1;
+	}
+	isbnd.resize(grid->vvert.size(), false);
+	for (int i=0; i<isbnd.size(); ++i){
+		isbnd[i] = grid->vvert[i]->id == -1;
 	}
 };
 Point Grid43::Approximator::LocalCoordinates(int c, Point p) const{
@@ -272,6 +281,187 @@ vector<double> Grid43::Approximator::BndVals(const Point& p, const vector<const 
 	return ret;
 }
 
+Grid43::Approximator::NodePos Grid43::Approximator::FindNodePos(Point p) const{
+	assert(std::all_of(is3.begin(), is3.end(), [](bool a){ return a; }));
+	Grid43::Approximator::NodePos ret;
+	try {
+		double& k = ret.ksieta.x;
+		double& e = ret.ksieta.y;
+		ret.ncell = FindPositive(p, ret.ksieta);
+		//have to check once more because FindPositive may return result
+		//even for outer points.
+		if (k<-geps || k>1+geps || e<-geps || e>1-k+geps) throw EOutOfArea();
+		int inode = -1, iedge = -1;
+		if (fabs(k)<geps){
+			if (fabs(e)<geps){
+				inode = 0;
+			} else if (fabs(e-1)<geps){
+				inode = 2;
+			} else {
+				iedge = 2;
+			}
+		} else if (fabs(e)<geps){
+			if (fabs(k-1)<geps){
+				inode = 1;
+			} else {
+				iedge = 0;
+			}
+		} else if (fabs(k+e-1.)<geps){
+				iedge = 1;
+		} else {
+			ret.pos = ret.Internal;
+			return ret;
+		}
+		if (inode >= 0){
+			ret.nvert = icellvert[ret.ncell][inode];
+			ret.pos = (isbnd[ret.nvert]) ? ret.BndVertex : ret.InternalVertex;
+		} else {
+			int next = (iedge==2) ? 0 : iedge+1;
+			ret.nve1 = icellvert[ret.ncell][iedge];
+			ret.nve2 = icellvert[ret.ncell][next];
+			if (grid->vcells[ret.ncell]->edges[iedge]->is_boundary()){
+				ret.pos = ret.BndEdge;
+			} else ret.pos = ret.InternalEdge;
+		}
+	} catch (EOutOfArea){
+		ret.pos = ret.Out;
+	}
+	return ret;
+}
+
+shared_ptr<HM2D::Vertex> Grid43::GuaranteePoint(HM2D::GridData& grid, Point pts,
+		HMFem::Grid43::Approximator& approx){
+	HMFem::Grid43::Approximator::NodePos pos;
+	return GuaranteePoint(grid, pts, approx, pos);
+}
+
+shared_ptr<HM2D::Vertex> Grid43::GuaranteePoint(HM2D::GridData& grid, Point pts,
+		HMFem::Grid43::Approximator& approx,
+		HMFem::Grid43::Approximator::NodePos& pos){
+	auto reassemble_cell = [&](int ic, shared_ptr<HM2D::Edge> e0, shared_ptr<HM2D::Edge> e1,
+			shared_ptr<HM2D::Edge> e2, int v0, int v1, int v2){
+		bool new_cell = false;
+		if (grid.vcells.size() < ic+1){
+			grid.vcells.resize(ic+1);
+			grid.vcells[ic].reset(new HM2D::Cell());
+			approx.cellvert.resize(ic+1);
+			approx.icellvert.resize(ic+1);
+			approx.is3.resize(ic+1, true);
+			new_cell = true;
+		}
+		grid.vcells[ic]->edges.resize(3);
+		grid.vcells[ic]->edges[0] = e0;
+		grid.vcells[ic]->edges[1] = e1;
+		grid.vcells[ic]->edges[2] = e2;
+		approx.icellvert[ic][0] = v0;
+		approx.icellvert[ic][1] = v1;
+		approx.icellvert[ic][2] = v2;
+		approx.cellvert[ic][0] = grid.vvert[v0].get();
+		approx.cellvert[ic][1] = grid.vvert[v1].get();
+		approx.cellvert[ic][2] = grid.vvert[v2].get();
+		if (new_cell) approx.cfinder->addentry(HM2D::BBox(grid.vcells[ic]->edges));
+	};
+
+	auto direct_cell = [&](int ic, int ind){
+		if (ind == approx.icellvert[ic][0]) return;
+		int istart = (ind == approx.icellvert[ic][1]) ? 1 : 2;
+		std::rotate(approx.cellvert[ic].begin(),
+				approx.cellvert[ic].begin()+istart,
+				approx.cellvert[ic].begin()+3);
+		std::rotate(approx.icellvert[ic].begin(),
+				approx.icellvert[ic].begin()+istart,
+				approx.icellvert[ic].begin()+3);
+		std::rotate(grid.vcells[ic]->edges.begin(),
+				grid.vcells[ic]->edges.begin()+istart,
+				grid.vcells[ic]->edges.end());
+		HM2D::Contour::R::ReallyDirect::Permanent(grid.vcells[ic]->edges);
+	};
+	auto set_neighbour = [&](int ie, int left, int right){
+		if (left>=0) grid.vedges[ie]->left = grid.vcells[left];
+		if (right>=0) grid.vedges[ie]->right = grid.vcells[right];
+	};
+	auto change_neighbour = [&](shared_ptr<HM2D::Edge> ed, int from, int to){
+		if (ed->left.lock() == grid.vcells[from]) ed->left = grid.vcells[to];
+		else ed->right = grid.vcells[to];
+	};
+
+	pos = approx.FindNodePos(pts);
+
+	switch (pos.pos){
+	case Approximator::NodePos::Out: return nullptr;
+	case Approximator::NodePos::BndVertex: return grid.vvert[pos.nvert];
+	case Approximator::NodePos::InternalVertex: return grid.vvert[pos.nvert];
+	}
+
+	int Nv = grid.vvert.size(), Ne = grid.vedges.size(), Nc = grid.vcells.size();
+	auto ret = std::make_shared<HM2D::Vertex>(pts);
+	approx.isbnd.push_back(pos.pos == pos.BndEdge);
+	grid.vvert.push_back(ret);
+
+	switch (pos.pos){
+	case Approximator::NodePos::BndEdge:
+	case Approximator::NodePos::InternalEdge:{
+		direct_cell(pos.ncell, pos.nve1);
+		HM2D::EdgeData& oe = grid.vcells[pos.ncell]->edges;
+		auto icv = approx.icellvert[pos.ncell];
+		grid.vcells[pos.ncell]->edges[0]->vertices[1] = ret;
+		grid.vedges.push_back(std::make_shared<HM2D::Edge>(ret, grid.vvert[icv[1]])); //Ne
+		grid.vedges.push_back(std::make_shared<HM2D::Edge>(ret, grid.vvert[icv[2]])); //Ne+1
+		reassemble_cell(Nc, grid.vedges[Ne], oe[1], grid.vedges[Ne+1], //Nc
+				Nv, icv[1], icv[2]);
+		reassemble_cell(pos.ncell, oe[0], grid.vedges[Ne+1], oe[2],
+				icv[0], Nv, icv[2]);
+
+		set_neighbour(Ne, Nc, -1);
+		set_neighbour(Ne+1, pos.ncell, Nc);
+		change_neighbour(grid.vcells[Nc]->edges[1], pos.ncell, Nc);
+		if (pos.pos == Approximator::NodePos::BndEdge) break;
+		//second cell for non-boundary edges
+		auto c2 = oe[0]->left.lock();
+		if (c2 == grid.vcells[pos.ncell]) c2 = oe[0]->right.lock();
+		int c2i = std::find(grid.vcells.begin(), grid.vcells.end(), c2) -
+			grid.vcells.begin();
+		direct_cell(c2i, pos.nve1);
+		auto icv2 = approx.icellvert[c2i];
+		HM2D::EdgeData& oe2 = grid.vcells[c2i]->edges;
+		grid.vedges.push_back(std::make_shared<HM2D::Edge>(ret, grid.vvert[icv2[1]])); //Ne+2
+		reassemble_cell(Nc+1, grid.vedges[Ne], grid.vedges[Ne+2], oe2[1], //Nc+1
+				icv2[2], Nv, icv2[1]);
+		reassemble_cell(c2i, oe2[0], grid.vedges[Ne+2], oe2[2],
+				icv2[0], icv2[1], Nv);
+		set_neighbour(Ne, Nc, Nc+1);
+		set_neighbour(Ne+2, Nc+1, c2i);
+		change_neighbour(grid.vcells[Nc+1]->edges[2], c2i, Nc+1);
+
+		break;
+	}
+	case Approximator::NodePos::Internal:{
+		HM2D::EdgeData& oe = grid.vcells[pos.ncell]->edges;
+		auto icv = approx.icellvert[pos.ncell];
+
+		grid.vedges.push_back(std::make_shared<HM2D::Edge>(ret, grid.vvert[icv[0]])); //Ne
+		grid.vedges.push_back(std::make_shared<HM2D::Edge>(ret, grid.vvert[icv[1]])); //Ne+1
+		grid.vedges.push_back(std::make_shared<HM2D::Edge>(ret, grid.vvert[icv[2]])); //Ne+2
+
+		reassemble_cell(Nc,  oe[1], grid.vedges[Ne+2], grid.vedges[Ne+1],  //Nc
+				icv[1], icv[2], Nv);
+		reassemble_cell(Nc+1, oe[2], grid.vedges[Ne], grid.vedges[Ne+2], //Nc+1
+				icv[2], icv[0], Nv);
+		reassemble_cell(pos.ncell, oe[0], grid.vedges[Ne+1], grid.vedges[Ne],
+				icv[0], icv[1], Nv);
+		
+		set_neighbour(Ne, pos.ncell, Nc+1);
+		set_neighbour(Ne+1, Nc, pos.ncell);
+		set_neighbour(Ne+2, Nc+1, Nc);
+		change_neighbour(grid.vcells[Nc]->edges[0], pos.ncell, Nc);
+		change_neighbour(grid.vcells[Nc+1]->edges[0], pos.ncell, Nc+1);
+		break;
+	}
+	}
+	return ret;
+}
+
+
 // ============================ Isoline Builder
 Grid43::IsolineBuilder::IsolineBuilder(shared_ptr<HM2D::GridData>& grid43,
 		shared_ptr<Grid43::Approximator> approx43){
@@ -351,17 +541,21 @@ HM2D::EdgeData Grid43::IsolineBuilder::FromPoint(Point pstart, const vector<doub
 }
 
 HMCallback::FunctionWithCallback<HMFem::TAuxGrid3> HMFem::AuxGrid3;
-double TAuxGrid3::step_estimate(const HM2D::Contour::Tree& tree, int nrec){
+double TAuxGrid3::step_estimate(const HM2D::Contour::Tree& tree, int nrec, double hrec){
+	if (nrec <= 0) return hrec;
 	double area = tree.area();
 	double triarea = area/2/nrec;
 	//from an area of equilateral triangle
-	return sqrt(2.3094017677*triarea);
+	double hrec2 = sqrt(2.3094017677*triarea);
+	if (hrec <= 0) return hrec2;
+	return std::max(hrec, hrec2);
 }
 
 void TAuxGrid3::input(const HM2D::Contour::Tree& _tree, const vector<HM2D::EdgeData>& _constraints){
 	clear();
 	//deep copy edges input to internal structure
 	tree = HM2D::Contour::Tree::DeepCopy(_tree);
+	tree.remove_detached();
 	constraints.reserve(_constraints.size());
 	for (auto& c: _constraints){
 		constraints.emplace_back(new HM2D::EdgeData());
@@ -506,17 +700,17 @@ void TAuxGrid3::adopt_complicated_connections(HM2D::Contour::Tree& tree,
 		aa::enumerate_ids_pvec(node->contour);
 		HM2D::Contour::Algos::SplitEdge(node->contour, cont[de]->id, {pnew});
 	}
-	//check once more time
+	//check one more time
 	return adopt_complicated_connections(tree, lost);
 }
 
 HM2D::GridData HMFem::TAuxGrid3::_run(const HM2D::Contour::Tree& _tree,
 		const vector<HM2D::EdgeData>& _constraints,
-		int nrec, int nmax){
+		int nrec, int nmax, double hrec){
 	assert(nrec<nmax);
 	//1)
 	callback->step_after(5, "Estimate step");
-	double hest = step_estimate(_tree, nrec);
+	double hest = step_estimate(_tree, nrec, hrec);
 	//2)
 	callback->step_after(15, "Adopt boundary");
 	input(_tree, _constraints);
@@ -547,11 +741,11 @@ void HMFem::TAuxGrid3::clear(){
 	mandatory_points.clear();
 }
 
-HM2D::GridData HMFem::TAuxGrid3::_run(const HM2D::Contour::Tree& tree, int nrec, int nmax){
-	return _run(tree, {}, nrec, nmax);
+HM2D::GridData HMFem::TAuxGrid3::_run(const HM2D::Contour::Tree& tree, int nrec, int nmax, double hrec){
+	return _run(tree, {}, nrec, nmax, hrec);
 }
-HM2D::GridData HMFem::TAuxGrid3::_run(const HM2D::EdgeData& cont, int nrec, int nmax){
+HM2D::GridData HMFem::TAuxGrid3::_run(const HM2D::EdgeData& cont, int nrec, int nmax, double hrec){
 	HM2D::Contour::Tree tree;
 	tree.add_contour(cont);
-	return _run(tree, nrec, nmax);
+	return _run(tree, nrec, nmax, hrec);
 }

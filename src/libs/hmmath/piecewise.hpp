@@ -1,4 +1,5 @@
 #ifndef HMMATH_PIECEWISE_HPP
+#define HMMATH_PIECEWISE_HPP
 #include "hmproject.h"
 #include "addalgo.hpp"
 
@@ -187,13 +188,23 @@ public:
 			}
 		}
 	}
+	std::map<double, double> to_map() const{
+		std::map<double, double> ret;
+		for (auto& it: _data){
+			if (fabs(it.first) != inf()){
+				double val = it.second(it.first);
+				ret.emplace(it.first, val);
+			}
+		}
+		return ret;
+	}
 	double operator()(double x) const { return value(x)(x); }
 	void operator*=(double x){ for (auto& it: _data){ it.second.a*=x; it.second.b*=x; }; }
 
 	friend std::ostream& operator<<(std::ostream& str, const LinearPiecewise& f);
 };
 
-std::ostream& operator<<(std::ostream& str, const LinearPiecewise& f){
+inline std::ostream& operator<<(std::ostream& str, const LinearPiecewise& f){
 	if (f.n() == 0) return str;
 	str<<"Linear Piecewise Function:";
 	auto it = std::next(f._data.begin());

@@ -25,14 +25,15 @@ add_library(${HMNUMERIC_TARGET} SHARED ${HEADERS} ${SOURCES})
 target_link_libraries(${HMNUMERIC_TARGET} ${HMPROJECT_TARGET})
 target_link_libraries(${HMNUMERIC_TARGET} ${HMMATH_TARGET})
 target_link_libraries(${HMNUMERIC_TARGET} ${BGEOM2D_TARGET})
-target_link_libraries(${HMNUMERIC_TARGET} ${CROSSGRID_TARGET})
 target_link_libraries(${HMNUMERIC_TARGET} ${HYBMESH_CONTOURS2D_TARGET})
+target_link_libraries(${HMNUMERIC_TARGET} ${HMGRID2D_TARGET})
+
 
 include_directories(${HMPROJECT_INCLUDE})
 include_directories(${HMMATH_INCLUDE})
 include_directories(${BGEOM2D_INCLUDE})
-include_directories(${CROSSGRID_INCLUDE})
 include_directories(${HYBMESH_CONTOURS2D_INCLUDE})
+include_directories(${HMGRID2D_INCLUDE})
 
 install(TARGETS ${HMNUMERIC_TARGET}
 	RUNTIME DESTINATION ${LIB_INSTALL_DIR}

@@ -684,7 +684,6 @@ void test16(){
 	}
 }
 
-
 int main(){
 	std::cout<<"hybmesh_contours2d testing"<<std::endl;
 	test1();

@@ -7,6 +7,7 @@
 namespace HM2D{ namespace Contour{
 
 struct Tree{
+	Tree(const vector<EdgeData>& dt={}) { for (auto& it: dt) add_contour(it); }
 	struct TNode{
 		EdgeData contour;
 		weak_ptr<TNode> parent;

@@ -13,6 +13,8 @@ USE_CXX11()
 add_executable (${HMGRID3D_EXNAME} ${HEADERS} ${SOURCES})
 
 target_link_libraries(${HMGRID3D_EXNAME} ${HMGRID3D_TARGET})
+target_link_libraries(${HMGRID3D_EXNAME} ${CROSSGRID_TARGET})
 
 include_directories(${CommonInclude})
 include_directories(${HMGRID3D_INCLUDE})
+include_directories(${CROSSGRID_INCLUDE})

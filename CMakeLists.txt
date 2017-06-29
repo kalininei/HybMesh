@@ -220,6 +220,9 @@ set(HMBLAY_TARGET hmblay)
 #libhybmesh_surfaces3d: global definition of HYBMESH_SURFACES3D_INCLUDE, HYBMESH_SURFACES3D_TARGET
 set(HYBMESH_SURFACES3D_INCLUDE "${CMAKE_SOURCE_DIR}/src/libs/hybmesh_surfaces3d")
 set(HYBMESH_SURFACES3D_TARGET hybmesh_surfaces3d)
+#libhmgrid2d: global definition of HMGRID2D_INCLUDE, HMGRID2D_TARGET
+set(HMGRID2D_INCLUDE "${CMAKE_SOURCE_DIR}/src/libs/hmgrid2d")
+set(HMGRID2D_TARGET hmgrid2d)
 #libhmgrid3d: global definition of HMGRID3D_INCLUDE, HMGRID3D_TARGET
 set(HMGRID3D_INCLUDE "${CMAKE_SOURCE_DIR}/src/libs/hmgrid3d")
 set(HMGRID3D_TARGET hmgrid3d)

@@ -1,6 +1,7 @@
 #include "laplace_bem2d.hpp"
 #include "densemat.hpp"
 #include "treverter2d.hpp"
+#include "hmtimer.hpp"
 
 using namespace HMBem;
 

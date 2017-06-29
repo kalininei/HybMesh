@@ -24,6 +24,7 @@ EdgeData Contour1(const EdgeData& col, const Point* pnt_start=0, const Point* pn
 EdgeData Contour1(const VertexData& pnt, bool force_closed=false);
 
 //assemble contour from another contour.
+//for closed contours goes along con direction
 EdgeData ShrinkContour(const EdgeData& con, const Point* pnt_start, const Point* pnt_end);
 
 //build first grid boundary found

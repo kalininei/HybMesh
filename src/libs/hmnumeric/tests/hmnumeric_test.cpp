@@ -208,7 +208,7 @@ void test04(){
 			fabs(mat.RowMultVec(ans, 2)-rhs[2])<1e-12, "dense matrix solver");
 	}
 	{
-		double step = 0.02;
+		double step = 0.005;
 		auto c1 = HM2D::Contour::Constructor::Rectangle(Point(0,0), Point(2, 1));
 		auto c2 = HM2D::Contour::Constructor::Circle(16, 0.2, Point(1.3, 0.6));
 		HM2D::Contour::R::ReallyDirect::Permanent(c1);
@@ -245,7 +245,6 @@ void test04(){
 		add_check(fabs(integral - 2.28922)<1e-2, "bem for dirichlet poisson problem");
 	}
 };
-
 
 int main(){
 	test01();

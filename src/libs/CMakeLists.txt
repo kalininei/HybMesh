@@ -2,16 +2,17 @@ set(CMAKE_INSTALL_RPATH ${CMAKE_INSTALL_RPATH}${LIB_INSTALL_DIR})
 
 add_subdirectory(external)
 add_subdirectory(hmproject)
+add_subdirectory(hmmath)
 add_subdirectory(bgeom2d)
 add_subdirectory(hybmesh_contours2d)
-add_subdirectory(crossgrid)
-add_subdirectory(hmblay)
-add_subdirectory(hmmath)
-add_subdirectory(hmmapping)
 add_subdirectory(hybmesh_surfaces3d)
+add_subdirectory(hmgrid2d)
 add_subdirectory(hmgrid3d)
-add_subdirectory(hmcport)
 add_subdirectory(hmnumeric)
+add_subdirectory(crossgrid)
+add_subdirectory(hmmapping)
+add_subdirectory(hmblay)
+add_subdirectory(hmcport)
 
 
 #copy mingw runtime libraries to binary directory

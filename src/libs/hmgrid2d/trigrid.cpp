@@ -177,7 +177,6 @@ bool is_valueble(Point p1, const EdgeData& cont){
 
 void find_closest(const EdgeData& cont, const Point& p, const vector<std::pair<Point, double>>& src,
 		double& dist, double& sz){
-	//FIXME: Very slow for InscribeGrid procedure
 	dist = 1e200; sz = 1e200; Point pbest;
 	auto ce = Finder::ClosestEdge(cont, p);
 	Point *p1 = cont[std::get<0>(ce)]->pfirst();
@@ -310,7 +309,7 @@ EdgeData start_from_id1(const EdgeData& source){
 };
 
 EdgeData Mesher::RepartSourceById(const EdgeData& source,
-		const vector<std::pair<Point, double>>& size_src, int src_sort_algo){
+		const vector<std::pair<Point, double>>& size_src){
 	assert(Contour::IsClosed(source));
 	Contour::R::Clockwise cc(source, false);
 	EdgeData ret;
@@ -325,8 +324,7 @@ EdgeData Mesher::RepartSourceById(const EdgeData& source,
 
 	//sort out only those size_src which lie inside source
 	vector<std::pair<Point, double>> size_src2;
-	if (src_sort_algo == 0) size_src2 = size_src;
-	else size_src2 = sort_out_sources(source, size_src, src_sort_algo==1);
+	sort_out_sources(source, size_src, true);
 
 	//if no size_src and no id=1 edges then return source since
 	//there is no input size data.
@@ -356,7 +354,7 @@ EdgeData Mesher::RepartSourceById(const EdgeData& source,
 			double sz0=-1, sz1=-1;
 			if (itprev != src2.begin()) sz0 = (*(itprev-1))->length();
 			if (it != src2.end()) sz1 = (*it)->length();
-			else sz1 = (*src2.begin())->length();
+			else if ((*src2.begin())->id==1) sz1 = (*src2.begin())->length();
 			//repartition
 			EdgeData repart = repart_cont(group, sz0, sz1, keep_pts, size_src2);
 			ret.insert(ret.end(), repart.begin(), repart.end());
