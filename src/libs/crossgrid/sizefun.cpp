@@ -345,17 +345,24 @@ struct TriBasedSizeFun: public SizeFun{
 
 void extract_vital_id1(const Contour::Tree& source, EdgeData& vital_edges, VertexData& vital_vertices){
 	for (auto n: source.nodes)
-	for (auto e: n->contour)
-		if (e->id == 1) {
-			vital_edges.push_back(e);
-			//we don't need to explicitly define
-			//edge end points as needed
+	for (auto e: n->contour) if (e->id == 1) {
+		vital_edges.push_back(e);
+		//we don't need to explicitly define
+		//edge end points as needed
+		e->pfirst()->id = 0;
+		e->plast()->id = 0;
+	}
+	for (auto n: source.nodes)
+	for (auto e: n->contour) if (e->id != 1) {
+		if (e->pfirst()->id == 1) {
+			vital_vertices.push_back(e->vertices[0]);
 			e->pfirst()->id = 0;
-			e->plast()->id = 0;
-		} else {
-			if (e->pfirst()->id == 1) vital_vertices.push_back(e->vertices[0]);
-			if (e->plast()->id == 1) vital_vertices.push_back(e->vertices[1]);
 		}
+		if (e->plast()->id == 1) {
+			vital_vertices.push_back(e->vertices[1]);
+			e->plast()->id = 0;
+		}
+	}
 }
 
 VertexData get_source_vertices(const EdgeData& cnt){
@@ -655,6 +662,7 @@ shared_ptr<SizeFun> build_size_function1(const Contour::Tree& source, const Edge
 	aa::keep_by_id(vital_detached, 1);
 	remove_bound_cross_edges(vital_detached, source);
 	remove_outer_edges(vital_detached, source);
+
 	int n = (vital_detached.size() + vital_bound.size() + psrc2.size());
 	if (n == 0) return std::shared_ptr<SizeFun>(new InvalidSizeFun());
 
@@ -697,10 +705,51 @@ shared_ptr<SizeFun> build_size_function(const Contour::Tree& source, const EdgeD
 	}
 }
 
-//this could possibly rebuild size function due to vital vertices condition
-void boundary_repart(shared_ptr<SizeFun>& sfun, Contour::Tree& source,
-		const EdgeData& vital_edges,
-		const VertexData& vital_vertices){
+void check_edges_vitality(shared_ptr<SizeFun> sfun, 
+		const HM2D::EdgeData& src, const HM2D::EdgeData& reparted,
+		const HM2D::VertexData& vv,
+		vector<HM2D::EdgeData>& ret_src, vector<HM2D::EdgeData>& ret_to){
+	shared_ptr<HM2D::Contour::R::Reverter> rev;
+	if (HM2D::Contour::IsClosed(src)){
+		rev.reset(new  HM2D::Contour::R::ForceFirst(src, *HM2D::Contour::First(reparted)));
+	}
+	aa::constant_ids_pvec(HM2D::AllVertices(reparted), 0);
+	aa::constant_ids_pvec(vv, 1);
+	vector<int> new_vital;
+	for (int i=0; i<reparted.size(); ++i){
+		if (reparted[i]->pfirst()->id == 1 && reparted[i]->plast()->id == 1){
+			try{ //may raise due to InvalidSizeFun
+				double true_len = reparted[i]->length();
+				double sfun_len = sfun->sz(reparted[i]->center());
+				if (sfun_len / true_len >= 2.) new_vital.push_back(i);
+			} catch (std::runtime_error) {}
+		}
+	}
+	if (new_vital.size() == 0) return; 
+	auto op1 = HM2D::Contour::OrderedPoints(src);
+	auto op2 = HM2D::Contour::OrderedPoints(reparted);
+	auto itop1 = op1.begin();
+	for (int k: new_vital){
+		auto p1 = op2[k], p2 = op2[k+1];
+		while (itop1 != op1.end() && *itop1 != p1) ++itop1;
+		assert(itop1 != op1.end());
+		int ifirst = itop1 - op1.begin();
+		while (itop1 != op1.end() && *itop1 != p2) ++itop1;
+		assert(itop1 != op1.end());
+		int isecond = itop1 - op1.begin();
+		ret_to.push_back(HM2D::EdgeData {reparted[k]});
+		ret_src.emplace_back();
+		for (int i=ifirst; i<isecond; ++i) ret_src.back().push_back(src[i]);
+	}
+}
+
+//first makes partition of the source using given sfun.
+//then makes a check if edge length between vital_vertices (if any) satisfies sfun condition.
+//If everything is fine builds weighted partition of source and returns true,
+//else inserts edges between vital_vertices, adds them to vital_edge and returns false
+//so that sfun can be rebuilt using new source and new vital_edge list.
+bool boundary_repart(const shared_ptr<SizeFun>& sfun, Contour::Tree& source,
+		EdgeData& vital_edges, const VertexData& vital_vertices){
 	EdgeData partlist = source.alledges();
 	//get list of contours for repartition
 	aa::constant_ids_pvec(partlist, 0);
@@ -757,9 +806,29 @@ void boundary_repart(shared_ptr<SizeFun>& sfun, Contour::Tree& source,
 		if (bmap.size() > 0) conts2[i] = HM2D::Contour::Algos::WeightedPartition(bmap, conts[i], vv[i]);
 		else HM2D::DeepCopy(conts[i], conts2[i], 0);
 	}
+
+	//make a check for resultin edges bounded by vital vertices.
+	//from, to is a list of conts/conts2 respective edges so that
+	//each of conts2[i] contains single edge bounded by vital vertices.
+	bool ret = true;
+	vector<HM2D::EdgeData> from, to;
+	vector<int> new_iconts;
+	for (int i=0; i<conts.size(); ++i) if (vv[i].size() > 1){
+		int szold = from.size();
+		check_edges_vitality(sfun, conts[i], conts2[i], vv[i], from, to);
+		for (int j=szold; j<from.size(); ++j) new_iconts.push_back(iconts[i]);
+	}
+	if (from.size() > 0){
+		for (auto& it: to) vital_edges.push_back(it[0]);
+		std::swap(from, conts);
+		std::swap(to, conts2);
+		std::swap(iconts, new_iconts);
+		ret = false;
+	}
+	
 	//substitute conts2 to source
 	aa::constant_ids_pvec(source.alledges(), 0);
-	aa::constant_ids_pvec(partlist, 1);
+	for (auto& ic: conts) for (auto& ie: ic) ie->id = 1;
 	for (int i=0; i<source.nodes.size(); ++i){
 		aa::remove_by_id(source.nodes[i]->contour, 1);
 	}
@@ -769,6 +838,7 @@ void boundary_repart(shared_ptr<SizeFun>& sfun, Contour::Tree& source,
 	}
 	for (auto& n: source.nodes)
 		n->contour = HM2D::Contour::Assembler::Contour1(n->contour);
+	return ret;
 }
 
 }
@@ -776,8 +846,8 @@ void boundary_repart(shared_ptr<SizeFun>& sfun, Contour::Tree& source,
 shared_ptr<SizeFun> Grid::BuildSizeFunction(const Contour::Tree& source,
 		const vector<std::pair<Point, double>>& psrc){
 	EdgeData vital_edges;
-	for (auto& n: source.nodes) for (auto& e: n->contour)
-		if (e->id == 1) vital_edges.push_back(e);
+	for (auto& n: source.nodes)
+	for (auto& e: n->contour) if (e->id == 1) vital_edges.push_back(e);
 	return build_size_function(source, vital_edges, psrc);
 }
 
@@ -796,7 +866,16 @@ shared_ptr<SizeFun> Grid::ApplySizeFunction(Contour::Tree& source,
 	auto sfun = build_size_function(source, vital_edges, psrc);
 
 	// do repartition
-	if (need_repart) boundary_repart(sfun, source, vital_edges, vital_vertices);
+	if (need_repart) {
+		int tries = 0;
+		while (tries < 10 && !boundary_repart(sfun, source, vital_edges, vital_vertices)){
+			sfun = build_size_function(source, vital_edges, psrc);
+			++tries;
+		}
+		if (tries >= 10) throw std::runtime_error(
+			"Failed to satisfy 'keep vertex' condition "
+			"while building size function");
+	}
 
 	return sfun;
 }

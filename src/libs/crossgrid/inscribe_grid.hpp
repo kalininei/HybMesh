@@ -38,7 +38,7 @@ struct OptInscribe{
 	bool inside;        // leave internal(=true) or external(=false) cont area
 	int fillalgo;       // 0-triangle, 1-recombined, 99-no
 	bool keep_cont;     // whether to use contour nodes(=true) or make contour partition
-	double angle0;      // significant angle for contour partition (only for keep_cont=true)
+	double angle0;      // significant angle for contour partition (only for keep_cont=false)
 };
 
 struct TInscribeGrid: public HMCallback::ExecutorBase{
@@ -60,7 +60,7 @@ struct OptInsertConstraints{
 
 	double buffer_size;  // shift
 	bool keep_cont;      //use line constraint segmentation(=true) or repart(=false);
-	double angle0;      // significant angle for contour partition (only for keep_cont=true)
+	double angle0;      // significant angle for contour partition
 	int fillalgo;       // 0-triangle, 1-recombined, 99-no
 };
 struct TInsertConstraints: public HMCallback::ExecutorBase{
@@ -68,8 +68,8 @@ struct TInsertConstraints: public HMCallback::ExecutorBase{
 	HMCB_SET_DEFAULT_DURATION(100);
 
 	GridData _run(const GridData& base,
-			const vector<EdgeData>& cont,             //Line constraint
-			const vector<std::pair<Point, double>>& pnt,   //Point + recommended step (-1 for auto step)
+			const vector<EdgeData>& cont,                //Line constraint
+			const vector<std::pair<Point, double>>& pnt, //Point + recommended step (-1 for auto step)
 			OptInsertConstraints opt);
 	GridData _run(const GridData& base,
 			const vector<EdgeData>& cont,

@@ -304,13 +304,15 @@ int BoundingBox::relation(const BoundingBox& bb) const{
 }
 
 BoundingBoxFinder::BoundingBoxFinder(const BoundingBox& area, double L){
+	double Lx = std::max(geps, area.lenx());
+	double Ly = std::max(geps, area.leny());
 	totaldata = 0;
 	x0 = area.xmin;
 	y0 = area.ymin;
-	mx = std::ceil(area.lenx()/L)+1;
-	my = std::ceil(area.leny()/L)+1;
-	hx = area.lenx()/(mx-1);
-	hy = area.leny()/(my-1);
+	mx = std::ceil(Lx/L)+1;
+	my = std::ceil(Ly/L)+1;
+	hx = Lx/(mx-1);
+	hy = Ly/(my-1);
 	data.resize((mx+1)*(my+1));
 }
 void BoundingBoxFinder::addentry(const BoundingBox& e){

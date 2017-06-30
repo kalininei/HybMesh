@@ -78,7 +78,8 @@ GridData Algos::TSubstractCells::_run(const GridData& base, const Contour::Tree&
 
 namespace{
 
-void id1_to_significant_prims(Contour::Tree& triarea, const EdgeData& keep_edges, double angle0){
+void id1_to_significant_prims(Contour::Tree& triarea, const EdgeData& keep_edges,
+		const VertexData& keep_vert, double angle0){
 	auto ae = triarea.alledges();
 	auto av = HM2D::AllVertices(ae);
 
@@ -116,17 +117,36 @@ void id1_to_significant_prims(Contour::Tree& triarea, const EdgeData& keep_edges
 		aa::constant_ids_pvec(sig_edges, 1);
 		aa::keep_by_id(nonsig_edges, 0);
 		for (auto c: Contour::Assembler::SimpleContours(nonsig_edges)){
-			for (auto v: AllVertices(ECol::Algos::Simplified(c, angle0))){
+			for (auto v: AllVertices(ECol::Algos::Simplified(c, angle0, false, keep_vert))){
 				sig_vertices.push_back(v);
 			}
 		}
-	}
+	} else sig_vertices = av;
 
 	//do segmentation using id=1 to keep needed primitives
 	aa::constant_ids_pvec(av, 0);
 	aa::constant_ids_pvec(ae, 0);
 	aa::constant_ids_pvec(sig_vertices, 1);
 	aa::constant_ids_pvec(sig_edges, 1);
+}
+
+VertexData add_tree_crosses(HM2D::Contour::Tree& tree){
+	VertexData ret;
+	int n = tree.nodes.size();
+	for (int i=0; i<n; ++i)
+	for (int j=i+1; j<n; ++j){
+		if (tree.nodes[i]->isbound() && tree.nodes[j]->isbound()) continue;
+		auto& c1 = tree.nodes[i]->contour;
+		auto& c2 = tree.nodes[j]->contour;
+		auto crosses = HM2D::Contour::Finder::CrossAll(c1, c2);
+		for (auto& c: crosses){
+			auto res1 = HM2D::Contour::Algos::GuaranteePoint(c1, std::get<1>(c));
+			auto res2 = HM2D::Contour::Algos::GuaranteePoint(c2, std::get<1>(c));
+			ret.push_back(std::get<1>(res1));
+			ret.push_back(std::get<1>(res2));
+		}
+	}
+	return ret;
 }
 
 }
@@ -179,7 +199,7 @@ GridData Algos::TInscribeGrid::_run(const GridData& base, const Contour::Tree& c
 		for (auto e: cont.alledges()) keep_edges.push_back(e);
 	}
 	//sources
-	id1_to_significant_prims(triarea, keep_edges, opt.angle0);
+	id1_to_significant_prims(triarea, keep_edges, {}, opt.angle0);
 	ApplySizeFunction(triarea);
 	
 	//6) Triangulation
@@ -211,10 +231,8 @@ GridData Algos::TInsertConstraints::_run(const GridData& base,
 	}
 	//offsetting from points
 	for (auto& p: pnt){
-		auto cp = Contour::Constructor::Circle(32, 1e3*geps, p.first);
-		Contour::Tree t1 = Contour::Algos::Offset(cp,
-			std::max(1e3*geps, opt.buffer_size-1e3*geps),
-			Contour::Algos::OffsetTp::RC_CLOSED_POLY);
+		auto crc = Contour::Constructor::Circle(32, opt.buffer_size, p.first);
+		Contour::Tree t1; t1.add_contour(crc);
 		bzone = Contour::Clip::Union(t1, bzone);
 	}
 
@@ -235,18 +253,23 @@ GridData Algos::TInsertConstraints::_run(const GridData& base,
 	//triangulation area
 	Contour::Tree triarea = Contour::Tree::GridBoundary(g3);
 	for (auto& c: cont) triarea.add_detached_contour(c);
-	EdgeData keep_edges = ECol::Assembler::GridBoundary(g2);
+	//paste crosses
+	VertexData cr_points = add_tree_crosses(triarea);
 	//id=1 to edges and vertices which should be kept
-	id1_to_significant_prims(triarea, keep_edges, opt.angle0);
+	if (opt.keep_cont) aa::constant_ids_pvec(triarea.alledges(), 1);
+	else { id1_to_significant_prims(triarea, ECol::Assembler::GridBoundary(g2), cr_points, opt.angle0); }
+	for (auto& v: cr_points) v->id = 1;
+	//build point constraints and check if we will need explicit size function in future.
 	bool force_sizefun = false;
 	vector<std::pair<Point, double>> src_tri;
 	for (auto& p: pnt) {
 		if (p.second > 0) src_tri.push_back(p);
 		else { force_sizefun = true; }
 	}
+	//generate 1D mesh
 	auto sfun = ApplySizeFunction(triarea, src_tri, force_sizefun);
 
-	//calculate point constraint sizes if they were not given
+	//calculate point constraint sizes if they were not given using sfun.
 	CoordinateMap2D<double> pnt2;
 	for (auto& p: pnt){
 		double v = p.second;
