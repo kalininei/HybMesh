@@ -107,6 +107,59 @@ bool SectCrossWRenorm(const Point& p1S, const Point& p1E, const Point& p2S, cons
 	return ret;
 }
 
+TSectCrossGeps SectCrossGeps(const Point& P1, const Point& P2, Point A, Point B){
+	TSectCrossGeps r;
+	//Line equation
+	double E12[3] = { P1.y-P2.y, P2.x-P1.x, vecCrossZ(P1,P2) };
+	double Lp = sqrt(E12[0]*E12[0]+E12[1]*E12[1]);
+	//distance from A to P1-P2 Line
+	double AP1P2 = (E12[0]*A.x + E12[1]*A.y + E12[2])/Lp;
+	double L_AP1P2 = (E12[1]!=0) ? (Lp*(A.x-P1.x)-AP1P2*E12[0])/E12[1]
+	                             : (P2.y>P1.y) ? A.y-P1.y : P1.y-A.y;
+
+	//distance from B to P1-P2 line
+	double BP1P2 = (E12[0]*B.x + E12[1]*B.y + E12[2])/Lp;
+	double L_BP1P2 = (E12[1]!=0) ? (Lp*(B.x-P1.x)-BP1P2*E12[0])/E12[1]
+	                             : (P2.y>P1.y) ? B.y-P1.y : P1.y-B.y;
+	//projecting, posA
+	if (AP1P2<-geps) r.posA = 4;
+	else if (AP1P2<geps){
+		if (L_AP1P2<-geps) r.posA = -2;
+		else if (L_AP1P2<geps) r.posA = -1;
+		else if (L_AP1P2<Lp-geps) r.posA = 0;
+		else if (L_AP1P2<Lp+geps) r.posA = 1;
+		else r.posA = 2;
+	} else r.posA = 3;
+	//projecting, posB
+	if (BP1P2<-geps) r.posB = 4;
+	else if (BP1P2<geps){
+		if (L_BP1P2<-geps) r.posB = -2;
+		else if (L_BP1P2<geps) r.posB = -1;
+		else if (L_BP1P2<Lp-geps) r.posB = 0;
+		else if (L_BP1P2<Lp+geps) r.posB = 1;
+		else r.posB = 2;
+	} else r.posB = 3;
+	//segment position
+	if (r.a_on_line() && r.b_on_line()) r.posAB = 0;
+	else if (fabs(AP1P2-BP1P2)<geps) r.posAB = 1;
+	else {
+		r.posAB = 2;
+		//coordinate on P1-P2
+		double L_Cross = -AP1P2*(L_BP1P2-L_AP1P2)/(BP1P2-AP1P2)+L_AP1P2;
+		if (L_Cross < -geps) r.ksi=-2;
+		else if (L_Cross < geps) r.ksi=-1;
+		else if (L_Cross < Lp-geps) r.ksi=0;
+		else if (L_Cross < Lp+geps) r.ksi=1;
+		else r.ksi=2;
+		//coordinate on A-B
+		if (r.a_on_line()) r.eta = -1;
+		else if (r.b_on_line()) r.eta = 1;
+		else if (r.posB != r.posA) r.eta = 0;
+		else r.eta = 2; //without sign determination
+	}
+	return r;
+}
+
 int LinePointWhereIs(const Point& p, const Point& L1, const Point& L2) noexcept{
 	if (L1 == L2) return -1;
 	double A[3] = { L1.y-L2.y, L2.x-L1.x, vecCrossZ(L1,L2) };
@@ -442,6 +495,15 @@ vector<int> BoundingBoxFinder::sqrs_by_segment(const Point& p1, const Point& p2)
 		for (int j=ymn; j<ymx; ++j) app(ileft + i, j);
 	}
 
+	return ret;
+}
+
+vector<int> BoundingBoxFinder::sqr_entries(const std::vector<int>& isqr){
+	vector<int> ret;
+	for (auto& v: isqr) ret.insert(ret.end(), data[v].begin(), data[v].end());
+	std::sort(ret.begin(), ret.end());
+	auto it = std::unique(ret.begin(), ret.end());
+	ret.resize(it-ret.begin());
 	return ret;
 }
 

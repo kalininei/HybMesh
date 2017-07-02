@@ -3,10 +3,11 @@
 
 source ../../src/libs/dbgscripts/hmout.gdb
 
-file ./crossgrid_test
+file ./hmblay_test
 
 set breakpoint pending on
-b sizefun.cpp:736
+b infogrid.cpp:519 if nnn==8
+#b hmblay_test.cpp:619
 run
 
 

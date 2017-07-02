@@ -2,8 +2,12 @@
 #include "contour_tree.hpp"
 #include "modcont.hpp"
 #include "finder2d.hpp"
+#include "clipdomain.hpp"
+#include "assemble2d.hpp"
+#include "hmtimer.hpp"
 
 using namespace HM2D;
+using namespace HM2D::Finder;
 namespace hg=HM2D::Grid;
 
 double hg::Area(const GridData& grid){
@@ -52,279 +56,446 @@ vector<double> hg::Skewness(const GridData& grid){
 }
 
 namespace{
-//returns list of fully outer b indicies
-std::vector<int> filter_by_bbox(const vector<BoundingBox>& b, const BoundingBox& bbox){
-	std::vector<int> ret;
-	for (int i=0; i<b.size(); ++i){
-		if (!bbox.has_common_points(b[i])) ret.push_back(i);
+
+class ExtractRunner{
+	const int RasterN = 30;
+	int what;
+	CellData icells;
+	EdgeData iedges;
+	VertexData iverts;
+	Contour::Tree ntdom;
+	EdgeData dom_edges;
+	vector<BoundingBox> gridbb;
+	vector<BoundingBox> contbb;
+	shared_ptr<RasterizeEdges> domraster;
+	vector<int> raster_groups;
+	vector<int> group_tp;   //0-undefined, 1-good, 2-bad
+	vector<int> edge_pos;   //0-undefined, 1-good, 2-bad, 3-uncertain
+	vector<int> cell_pos;   //0-undefined, 1-good, 2-bad, 3-uncertain, 4-fully uncertain
+	
+	bool sqrs_all_good(const vector<int>& sn){
+		return std::all_of(sn.begin(), sn.end(),
+				[&](int a){ return group_tp[raster_groups[a]] == 1; });
 	}
-	return ret;
-}
-vector<int> fill_group(int first, vector<bool>& used, int nx, int ny){
-	std::array<int, 4> adj;
-	auto fill_adj = [&nx, &ny, &adj](int i){
-		int ix = i % nx;
-		int iy = i / nx;
-		adj[0] = (ix != 0) ? (iy*nx+ix-1) : -1;
-		adj[1] = (ix != nx-1) ? (iy*nx+ix+1) : -1;
-		adj[2] = (iy != 0) ? ((iy-1)*nx+ix) : -1;
-		adj[3] = (iy != ny-1) ? ((iy+1)*nx+ix) : -1;
+	bool sqrs_all_bad(const vector<int>& sn){
+		return std::all_of(sn.begin(), sn.end(),
+				[&](int a){ return group_tp[raster_groups[a]] == 2; });
+	}
+
+	vector<vector<int>> _edge_squares;
+	vector<bool> _has_edge_squares;
+	vector<int>& edge_squares(int ied){
+		if (!_has_edge_squares[ied]){
+			_has_edge_squares[ied] = true;
+			_edge_squares[ied] = domraster->bbfinder().sqrs_by_segment(
+				*iedges[ied]->pfirst(), *iedges[ied]->plast());
+		}
+		return _edge_squares[ied];
+	}
+
+	CellData cells_by_tp(int tp){
+		CellData ret;
+		for (int i=0; i<icells.size(); ++i) if (cell_pos[i] == tp){
+			ret.push_back(icells[i]);
+		}
+		return ret;
+	}
+public:
+	CellData Result;
+
+	ExtractRunner(const GridData& grid, const Contour::Tree& domain, int _what){
+		what=_what;
+		//get needed domain contours
+		ntdom = domain;
+		if (what != BOUND) ntdom.remove_detached();
+		ntdom = Contour::Algos::Simplified(ntdom);
+		//initial checks
+		if (ntdom.nodes.size() == 0){
+			if (what==OUTSIDE) Result=grid.vcells;
+			return;
+		}
+		if (grid.vcells.size() == 0) return;
+
+		//process bounding boxes and raterization.
+		//fills all class internal data
+		//#########
+		icells = cells_by_tp(11);
+		sort_by_bb(grid, domain);
+		if (icells.size() == 0) return;
+
+		//cell edges bounding box checks
+		using_edge_bb();
+
+		//cell edges cross checks
+		using_edge_crosses();
+	
+		//cells which has intersections at edge nodes or
+		//tangent intercections
+		process_uncertain_cells();
+	
+		//check for domain areas which lie fully within cells
+		detect_fully_inside_contours();
+
+		//process cells with points liying on domain boundary (fully uncertain)
+		if (what != BOUND) inner_point_check();
+	
+		//assemble result
+		for (int i=0; i<icells.size(); ++i){
+			if (cell_pos[i] != 2) Result.push_back(icells[i]);
+		}
+	}
+
+	void sort_by_bb(const GridData& grid, const Contour::Tree& domain){
+		//domain bounding box
+		for (int i=0; i<ntdom.nodes.size(); ++i){
+			contbb.push_back(HM2D::BBox(ntdom.nodes[i]->contour));
+		}
+		BoundingBox domainbb(contbb);
+
+		//gridcells bounding box (+filtering cells out of domain bb)
+		for (int i=0; i<grid.vcells.size(); ++i){
+			auto& cell = grid.vcells[i];
+			auto bb = HM2D::BBox(cell->edges);
+			auto pos = domainbb.relation(bb);
+			if (pos <= 1) {
+				icells.push_back(cell);
+				gridbb.push_back(bb);
+			} else if (pos == 2 || pos == 4){
+				//cell bb contain or intersects domain bb
+				//this is either an outer or a bad cell
+				if (what!=INSIDE){
+					icells.push_back(cell);
+					gridbb.push_back(bb);
+				}
+			} else if (pos == 3){
+				//cell outside domain => good cell only for OUSIDE
+				if (what!=INSIDE) Result.push_back(cell);
+			}
+		}
+		if (icells.size() == 0) return;
+		BoundingBox meshareabb(gridbb);
+
+		//remove domain contours which lie outside mesharea domain
+		std::set<int> to_remove;
+		for (int i=0; i<ntdom.nodes.size(); ++i){
+			auto rel = meshareabb.relation(contbb[i]);
+			if (rel == 3) to_remove.insert(i);
+		}
+		assert(to_remove.size() < ntdom.nodes.size());
+		if (to_remove.size() > 0){
+			aa::remove_entries(ntdom.nodes, to_remove);
+			aa::remove_entries(contbb, to_remove);
+			domainbb = contbb[0];
+			for (int i=1; i<contbb.size(); ++i){
+				domainbb.widen(contbb[i]);
+			}
+		}
+
+		//rasterization
+		dom_edges = ntdom.alledges();
+		domraster.reset(new RasterizeEdges(dom_edges, domainbb, domainbb.maxlen()/RasterN));
+
+		raster_groups = domraster->colour_squares(what!=BOUND);
+		if (what == BOUND){
+			group_tp = std::vector<int>{0, 1};
+		} else {
+			int ngroups = *max_element(raster_groups.begin(),
+						raster_groups.end()) + 1;
+			group_tp.resize(ngroups, 0);
+			for (int i=1; i<ngroups; ++i){
+				int ns = std::find(raster_groups.begin(),
+					raster_groups.end(), i)-raster_groups.begin();
+				assert(ns < raster_groups.size());
+				int pos = ntdom.whereis(
+					domraster->bbfinder().sqr_center(ns));
+				if (pos==what) group_tp[i]=1;
+				else group_tp[i] = 2;
+			}
+		}
+
+		//sort cells using rasterization
+		for (int i=0; i<icells.size(); ++i){
+			vector<int> sq = domraster->bbfinder().sqrs_by_bbox(
+					gridbb[i]);
+			assert(sq.size() != 0);
+			//all are good
+			if (sqrs_all_good(sq)){
+				Result.push_back(icells[i]);
+				icells[i].reset();
+			}
+			//all are bad
+			if (sqrs_all_bad(sq)) icells[i].reset();
+		}
+
+		//restore all other data
+		supplement_data();
+
+		aa::constant_ids_pvec(grid.vcells, -1);
+		aa::constant_ids_pvec(grid.vedges, -1);
+		aa::constant_ids_pvec(grid.vvert, -1);
+		aa::enumerate_ids_pvec(icells);
+		aa::enumerate_ids_pvec(iedges);
+		aa::enumerate_ids_pvec(iverts);
+	}
+
+	void supplement_data(){
+		std::set<int> to_remove;
+		for (int i=0; i<icells.size(); ++i)
+			if (icells[i] == nullptr) to_remove.insert(i);
+		aa::remove_entries(icells, to_remove);
+		aa::remove_entries(gridbb, to_remove);
+		iedges = AllEdges(icells);
+		iverts=AllVertices(iedges);
+		edge_pos.resize(iedges.size(), 0);
+		cell_pos.resize(icells.size(), 0);
+		_edge_squares.resize(iedges.size());
+		_has_edge_squares.resize(iedges.size(), false);
+		_vert_pos.resize(iverts.size(), -1);
+		_dom_internal.resize(ntdom.nodes.size());
+	}
+
+	bool has_cross(const EdgeData& closed, const EdgeData& another){
+		auto ca = Contour::Finder::CrossAll(another, closed);
+		if (ca.size() == 0) return false;
+		vector<double> candw; candw.reserve(ca.size()+2);
+		for (int i=0; i<ca.size()-1; ++i){
+			candw.push_back((std::get<2>(ca[i]) + std::get<2>(ca[i+1]))/2);
+		}
+		if (HM2D::Contour::IsClosed(another)){
+			double a = (std::get<2>(ca[0]) + std::get<2>(ca.back()))/2.0;
+			if (a>1) a-=1;
+			candw.push_back(a);
+		} else {
+			candw.push_back( (std::get<2>(ca[0]))/2. );
+			candw.push_back( (std::get<2>(ca.back()) + 1.0)/2. );
+		}
+		vector<Point> candp = Contour::WeightPoints(another, candw);
+
+		for (int i=0; i<candp.size(); ++i){
+			int pos = HM2D::Contour::Finder::WhereIs(closed, candp[i]);
+			if (pos == INSIDE) return true;
+		}
+		return false;
+	}
+	
+	//Sorting edge using bounding box and cross detections
+	vector<int> _vert_pos;
+	int vert_pos(int i){
+		if (what == BOUND) return 1;
+		if (_vert_pos[i] == -1){
+			auto sq = domraster->bbfinder().sqrs_by_point(*iverts[i]);
+			if (sq.size() == 0) _vert_pos[i] = what!=INSIDE ? 1 : 2;
+			else if (sqrs_all_good(sq)) _vert_pos[i] = 1;
+			else if (sqrs_all_bad(sq)) _vert_pos[i] = 2;
+			else{
+				int pos = ntdom.whereis(*iverts[i]);
+				if (pos == BOUND) _vert_pos[i] = 0;
+				else if (pos == what) _vert_pos[i] = 1;
+				else _vert_pos[i] = 2;
+			}
+		}
+		return _vert_pos[i];
+	}
+
+	vector<shared_ptr<Point>> _dom_internal;
+	const Point& dom_internal(int ic){
+		if (!_dom_internal[ic]){
+			auto& cnt = ntdom.nodes[ic]->contour;
+			Point cp;
+			if (HM2D::Contour::IsClosed(cnt)){
+				cp = Point(HM2D::Contour::InnerPoint(cnt));
+			} else {
+				cp = cnt[0]->center();
+			}
+			_dom_internal[ic].reset(new Point(cp));
+		}
+		return *_dom_internal[ic];
+	}
+
+	void good_edge(int i){
+		edge_pos[i] = 1;
+	};
+	bool has_right_cell(int i){
+		return iedges[i]->has_right_cell() && iedges[i]->right.lock()->id!=-1;
+	}
+	bool has_left_cell(int i){
+		return iedges[i]->has_left_cell() && iedges[i]->left.lock()->id!=-1;
+	}
+	void uncertain_edge(int i){
+		edge_pos[i] = 3;
+		if (has_right_cell(i)) {
+			if (cell_pos[iedges[i]->right.lock()->id] != 2)
+				cell_pos[iedges[i]->right.lock()->id] = 3;
+		}
+		if (has_left_cell(i)) {
+			if (cell_pos[iedges[i]->left.lock()->id] != 2)
+				cell_pos[iedges[i]->left.lock()->id] = 3;
+		}
+	};
+	void bad_edge(int i){
+		edge_pos[i] = 2;
+		if (has_right_cell(i)) {
+			cell_pos[iedges[i]->right.lock()->id] = 2;
+		}
+		if (has_left_cell(i)) {
+			cell_pos[iedges[i]->left.lock()->id] = 2;
+		}
 	};
 
-	vector<int> ret(1, first); used[first] = true;
-	int uu=0;
-	while (uu<ret.size()){
-		fill_adj(ret[uu]);
-		for (auto a: adj) if (a != -1 && !used[a]){
-			ret.push_back(a);
-			used[a] = true;
+	void analyze_edge_bbox(int i){
+		if (edge_pos[i] != 0) return;
+		auto edge = iedges[i];
+		//if any end point is bad => edge is bad
+		if (vert_pos(edge->pfirst()->id) == 2) return bad_edge(i);
+		if (vert_pos(edge->plast()->id) == 2) return bad_edge(i);
+		//if all finder squares are good => edge is good
+		vector<int>& sqrs = edge_squares(i);
+		if (sqrs_all_good(sqrs)) return good_edge(i);
+		if (sqrs_all_bad(sqrs)) return bad_edge(i);
+	};
+
+	void analyze_edge_cross(int i){
+		if (edge_pos[i] != 0) return;
+		auto& ed = iedges[i];
+		bool may_be_uncertain = false;
+		for (int is: domraster->bbfinder().sqr_entries(edge_squares(i))){
+			auto& ded = dom_edges[is];
+			auto cr = SectCrossGeps(*ded->pfirst(), *ded->plast(), *ed->pfirst(), *ed->plast());
+			if (cr.inner_cross()) return bad_edge(i);
+			if (cr.has_contact()) may_be_uncertain = true;
 		}
-		++uu;
+		if (may_be_uncertain) return uncertain_edge(i);
+		else return good_edge(i);
+	};
+
+	bool domain_node_inside_cell(int icell, int icont, bool can_be_bound){
+		const Point& wh = (can_be_bound) ? dom_internal(icont)
+		                                 : *HM2D::Contour::First(ntdom.nodes[icont]->contour);
+		auto pos = HM2D::Contour::Finder::WhereIs(icells[icell]->edges, wh);
+		return pos == INSIDE;
 	}
 
-	return ret;
-}
-
-vector<vector<int>> squares_group(const BoundingBoxFinder& fn, const vector<int>& tp){
-	vector<bool> used(tp.size(), false);
-	vector<vector<int>> ret;
-	for (int i=0; i<tp.size(); ++i) if (tp[i] != -1) used[i] = true;
-
-	while (1){
-		int first = std::find(used.begin(), used.end(), false)-used.begin();
-		if (first >= used.size()) break;
-		ret.push_back(fill_group(first, used, fn.nx(), fn.ny()));
-	}
-
-	return ret;
-}
-
-vector<int> define_squares_positions(const BoundingBoxFinder& bf,
-		const Contour::Tree& tree, const EdgeData& tree_edges){
-	//0 - inactive, 1 - inside, 2 - outside, 3 - undefined
-	vector<int> ret(bf.nsqr(), -1);
-
-	//set undefined to those which contains tree edges
-	for (auto e: tree_edges){
-		for (int i: bf.sqrs_by_bbox(BoundingBox(*e->first(), *e->last()))){
-			ret[i] = 3;
+	void using_edge_bb(){
+		//bad cells detection
+		vector<bool> usede(iedges.size(), false);
+		for (int i=0; i<icells.size(); ++i){
+			auto cell = icells[i];
+			int j=0;
+			while (cell_pos[i] == 0 && j<cell->edges.size()){
+				int ie = cell->edges[j++]->id;
+				if (usede[ie]) continue;
+				else usede[ie] = true;
+				analyze_edge_bbox(ie);
+			}
 		}
 	}
 
-	//set inactive to those which do not contain any grid cells
-	for (int i=0; i<bf.nsqr(); ++i) if (bf.sqr_entries(i).size() == 0){
-		ret[i] = 0;
+	void using_edge_crosses(){
+		//bad and uncertain cells detection
+		vector<bool> usede(iedges.size(), false);
+		for (int i=0; i<icells.size(); ++i){
+			auto cell = icells[i];
+			int j=0;
+			while (cell_pos[i] == 0 && j<cell->edges.size()){
+				int ie = cell->edges[j++]->id;
+				if (usede[ie]) continue;
+				else usede[ie] = true;
+				analyze_edge_cross(ie);
+			}
+		}
 	}
 
-	//group all left squares
-	vector<vector<int>> groups = squares_group(bf, ret);
+	void detect_fully_inside_contours(){
+		//undefined, uncertain => good or bad cells
+		//Here all cells with pos = 0 have no edges which cross, are tangent to
+		//domain contours or contain bad end points. So most likely these are
+		//good cells except for cases when some domain contour lies fully inside those cells. 
+		vector<int> last_level_dom;
+		for (int i=0; i<ntdom.nodes.size(); ++i){
+			if (ntdom.nodes[i]->children.size() == 0)
+				last_level_dom.push_back(i);
+		}
+		for (int i=0; i<icells.size(); ++i) if (cell_pos[i] == 0 || cell_pos[i] >= 3){
+			auto cell = icells[i];
+			for (int j=0; j<last_level_dom.size(); ++j){
+				int idom = last_level_dom[j];
+				int bbpos = gridbb[i].relation(contbb[idom]);
+				if (cell_pos[i]==4 && bbpos == 0){
+					//equality:
+					//not sure, but seems that above check is enough
+					//since process_uncertain_cell wiped out all other cases.
+					if ((ntdom.nodes[idom]->isinner() && what == INSIDE) ||
+					    (ntdom.nodes[idom]->isouter() && what == OUTSIDE)){
+						cell_pos[i] = 2;
+					} else {
+						cell_pos[i] = 1;
+					}
+					break;
+				} else if (bbpos <= 1 && domain_node_inside_cell(i, idom, cell_pos[i]>=3)){
+					cell_pos[i] = 2;
+					break;
+				}
+			}
+		}
+	}
 
-	//get feature for each group
-	vector<Point> gpoints;
-	for (auto& g: groups){
-		gpoints.push_back(bf.sqr_center(g[0]));
+	void process_uncertain_cells(){
+		//uncertain => uncertain, fully uncertain or bad
+		//after that procedure cells marked as non-bad do not have
+		//intersective crosses but only tangent ones.
+		for (int i=0; i<icells.size(); ++i) if (cell_pos[i] == 3){
+			//take all connected contours within cell box
+			//and analyze position of points between possible crosses.
+			//If any is inside then this is a bad cell.
+			HM2D::EdgeData ae;
+			for (int s: domraster->bbfinder().suspects(gridbb[i])){
+				ae.push_back(dom_edges[s]);
+			}
+			for (auto& c: HM2D::Contour::Assembler::SimpleContours(ae)){
+				if (has_cross(icells[i]->edges, c)){
+					cell_pos[i] = 2;
+					break;
+				}
+			}
+		}
+		//detect cells with all nodes lying on domain bnd.
+		aa::enumerate_ids_pvec(iverts);
+		if (what != BOUND)
+		for (int i=0; i<icells.size(); ++i) if (cell_pos[i] == 3){
+			cell_pos[i] = 4;
+			for (auto& p: HM2D::Contour::OrderedPoints1(icells[i]->edges)){
+				if (vert_pos(p->id) != 0){
+					cell_pos[i] = 3;
+					break;
+				}
+			}
+		}
 	}
-	vector<int> gf = Contour::Finder::SortOutPoints(tree, gpoints);
-	for (auto& i: gf){
-		if (i==INSIDE) i = 1;
-		else if (i==OUTSIDE) i = 2;
-		else i = 3;
+	void inner_point_check(){
+		for (int i=0; i<icells.size(); ++i) if (cell_pos[i] == 4){
+			Point p = HM2D::Contour::InnerPoint(icells[i]->edges);
+			int pos = ntdom.whereis(p);
+			if ((pos == INSIDE && what == OUTSIDE) ||
+			    (pos == OUTSIDE && what == INSIDE)){
+				cell_pos[i] = 2;
+			} else {
+				cell_pos[i] = 1;
+			}
+		}
 	}
-	for (int i=0; i<groups.size(); ++i){
-		for (auto ib: groups[i]) ret[ib] = gf[i];
-	}
-
-	return ret;
-}
+};
 
 }
 
 HMCallback::FunctionWithCallback<Grid::TExtractCells> Grid::ExtractCells;
 
 CellData Grid::TExtractCells::_run(const GridData& grid, const Contour::Tree& domain, int what){
-	if (domain.roots().size() == 0){
-		if (what == INSIDE || what == BOUND) return {};
-		else return grid.vcells;
-	}
-	if (grid.vcells.size() == 0) return {};
-	callback->step_after(20, "Box precessing", 8, 1);
-	//all good cells will be stored in ret
-	CellData ret;
-	//tree simplification
-	Contour::Tree nt = Contour::Algos::Simplified(domain);
-	if (what != BOUND) nt.remove_detached();
-	EdgeData nted = nt.alledges();
-	//calculate bounding boxes for all cells
-	vector<BoundingBox> gridbb(grid.vcells.size());
-	for (int i=0; i<grid.vcells.size(); ++i){
-		gridbb[i] = BBox(grid.vcells[i]->edges);
-	}
-
-	//leave only those cells which lie inside domain box
-	callback->subprocess_step_after(1);
-	auto bbox2 = HM2D::BBox(nted);
-	std::vector<int> outercells = filter_by_bbox(gridbb, bbox2);
-	aa::constant_ids_pvec(grid.vcells, 0);
-	for (auto i: outercells) grid.vcells[i]->id=1;
-	CellData icells;
-	std::copy_if(grid.vcells.begin(), grid.vcells.end(), std::back_inserter(icells),
-			[](const shared_ptr<Cell>& c){ return c->id == 0; });
-	VertexData ivert=AllVertices(icells);
-
-	//add excluded cells to result if we want to exclude inner domain area
-	if (what == OUTSIDE)
-	std::copy_if(grid.vcells.begin(), grid.vcells.end(), std::back_inserter(ret),
-			[](const shared_ptr<Cell>& c){ return c->id == 1; });
-
-	//return if no cells to process
-	if (icells.size() == 0) return ret;
-
-	//build finder
-	callback->subprocess_step_after(2);
-	BoundingBox bbox({HM2D::BBox(ivert), bbox2});
-	BoundingBoxFinder bfinder(bbox, bbox.maxlen()/30);
-	aa::enumerate_ids_pvec(grid.vcells);
-	for (auto c: icells){
-		bfinder.addentry(gridbb[c->id]);
-	}
-
-	//get square positions
-	//0 - inactive, 1 - inside, 2 - outside, 3 - undefined
-	callback->subprocess_step_after(3);
-	vector<int> sqrpos = define_squares_positions(bfinder, nt, nted);
-
-	//fill cell ids
-	callback->subprocess_step_after(1);
-	for (int i=0; i<sqrpos.size(); ++i) if (sqrpos[i] == 1 || sqrpos[i] == 2){
-		for (int k: bfinder.sqr_entries(i)) icells[k]->id = sqrpos[i];
-	}
-	for (int i=0; i<sqrpos.size(); ++i) if (sqrpos[i] == 3){
-		for (int k: bfinder.sqr_entries(i)) icells[k]->id = 3;
-	}
-
-	if (what == BOUND){
-		callback->step_after(80, "Matching cells");
-		aa::keep_by_id(icells, 3);
-		return extract_bound(icells, nted);
-	}
-
-	//add good cells to result
-	int goodid = (what == INSIDE) ? 1 : 2;
-	std::copy_if(icells.begin(), icells.end(), std::back_inserter(ret),
-			[&goodid](const shared_ptr<Cell>& c){ return c->id == goodid; });
-
-	//leave only undefined cells
-	aa::keep_by_id(icells, 3);
-	ivert = AllVertices(icells);
-
-	//Sorting vertices
-	callback->step_after(25, "Sorting points");
-	vector<Point> pivert(ivert.size());
-	for (int i=0; i<ivert.size(); ++i) pivert[i].set(*ivert[i]);
-	vector<int> srt = Contour::Finder::SortOutPoints(nt, pivert);
-	for (int i=0; i<ivert.size(); ++i) ivert[i]->id = srt[i];
-
-	//analyzing undefined cells: if it contains bad point
-	//it is undoubtedly bad, else add cell for the next check query (suspcells).
-	callback->step_after(55, "Sorting cells", 10, 7);
-	CellData suspcells;
-	int badid = (what == INSIDE) ? OUTSIDE : INSIDE;
-	for (auto c: icells){
-		//vertices check
-		for (auto e: c->edges)
-		for (auto v: e->vertices){
-			if (v->id == badid) goto CONTINUE1;
-		}
-		//inner point check
-		{
-			Point ip = Contour::InnerPoint(c->edges);
-			if (domain.whereis(ip) == badid) goto CONTINUE1;
-		}
-
-		//add cell for future checks
-		suspcells.push_back(c);
-CONTINUE1:
-		continue;
-	}
-
-	//even if all points are good, cell could be not fully good.
-	//we do explicit intersection check here to be sure.
-	callback->subprocess_step_after(3);
-	if (suspcells.size() > 0){
-		EdgeData suspedges = AllEdges(suspcells);
-		aa::constant_ids_pvec(suspedges, 0);
-		BoundingBox bb=HM2D::BBox(nted);
-		BoundingBoxFinder domainfinder(bb, bb.maxlen()/30);
-		for (auto& e: nted){
-			domainfinder.addentry(BoundingBox(*e->pfirst(), *e->plast()));
-		}
-		double ksieta[2];
-		for (auto& e: suspedges){
-			//shrink edge to eliminate non-crossing intersection
-			Point p1 = Point::Weigh(*e->pfirst(), *e->plast(), 2.*geps);
-			Point p2 = Point::Weigh(*e->pfirst(), *e->plast(), 1.-2.*geps);
-			for (auto isus: domainfinder.suspects(BoundingBox(p1, p2))){
-				Point *n1 = nted[isus]->pfirst(), *n2 = nted[isus]->plast();
-				//ignore parallel sections
-				int w1 = LinePointWhereIs(p1, *n1, *n2);
-				int w2 = LinePointWhereIs(p2, *n1, *n2);
-				if ((w1 == 0 && w2 == 2) || (w2 == 0 && w1 == 2))
-				if (SectCross(*n1, *n2, p1, p2, ksieta)){
-					e->id = 1;
-					break;
-				}
-			}
-		}
-		for (auto& c: suspcells){
-
-			//edge intersection check
-			for (auto& e: c->edges){
-				if (e->id != 0) goto CONTINUE2;
-			}
-			ret.push_back(c);
-CONTINUE2:
-			continue;
-		}
-	}
-
-	return ret;
+	HMTimer::Tic("ExtractCells");
+	auto r = ExtractRunner(grid, domain, what);
+	HMTimer::Toc("ExtractCells");
+	return r.Result;
 }
 
-CellData Grid::TExtractCells::extract_bound(const CellData& suspcells, const EdgeData& nted){
-	CellData ret;
-	EdgeData suspedges = AllEdges(suspcells);
-	BoundingBox bb=HM2D::BBox(nted);
-
-	aa::constant_ids_pvec(suspedges, 0);
-	Finder::RasterizeEdges domainfinder(nted, bb, bb.maxlen()/30);
-	double ksieta[2];
-	for (auto& e: suspedges){
-		Point p1 = *e->pfirst(), p2 = *e->plast();
-		for (int isus: domainfinder.bbfinder().suspects(p1, p2)){
-			Point *n1 = nted[isus]->pfirst(), *n2 = nted[isus]->plast();
-			double m1 = Point::signed_meas_line(p1, *n1, *n2);
-			double m2 = Point::signed_meas_line(p2, *n1, *n2);
-			if (fabs(m1)<geps*geps){
-				if (isOnSection(p1, *n1, *n2, ksieta[0])) {e->id = 1; break; }
-			}
-			if (fabs(m2)<geps*geps){
-				if (isOnSection(p2, *n1, *n2, ksieta[0])) {e->id = 1; break; }
-			}
-			if (m1 < 0 && m2 < 0) continue;
-			if (m1 > 0 && m2 > 0) continue;
-			if (SectCross(*n1, *n2, p1, p2, ksieta)){ e->id = 1; break; }
-		}
-	}
-	for (auto& c: suspcells){
-		//edge intersection check
-		for (auto& e: c->edges) if (e->id != 0){
-			ret.push_back(c);
-			break;
-		}
-	}
-
-	return ret;
-}
 
 CellData Grid::TExtractCells::_run(const GridData& grid, const EdgeData& domain, int what){
 	assert(Contour::IsContour(domain) && Contour::IsClosed(domain));

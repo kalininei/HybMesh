@@ -755,7 +755,13 @@ bool boundary_repart(const shared_ptr<SizeFun>& sfun, Contour::Tree& source,
 	aa::constant_ids_pvec(partlist, 0);
 	aa::constant_ids_pvec(vital_edges, 1);
 	aa::keep_by_id(partlist, 0);
-	auto conts = HM2D::Contour::Assembler::SimpleContours(partlist);
+	vector<HM2D::EdgeData> conts;
+	for (auto& n: source.nodes){
+		auto c2 = HM2D::Contour::Assembler::SimpleContours(
+				aa::copy_by_id(n->contour, 0));
+		conts.insert(conts.end(), c2.begin(), c2.end());
+	}
+	//auto conts = HM2D::Contour::Assembler::SimpleContours(partlist);
 	//assign conts to source contours
 	for (int i=0; i<source.nodes.size(); ++i) aa::constant_ids_pvec(source.nodes[i]->contour, i);
 	vector<int> iconts;

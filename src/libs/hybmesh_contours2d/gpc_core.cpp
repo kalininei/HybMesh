@@ -49,21 +49,18 @@ GpcTree::GpcTree(const EdgeData& inp): poly{0, 0, 0}{
 }
 
 GpcTree::GpcTree(const Contour::Tree& inp): poly{0, 0, 0}{
-	int nc = inp.nodes.size();
+	int nc = 0;
+	for (auto& n: inp.bound_contours()){
+		if (n->contour.size()>2) ++nc;
+	}
 	poly.num_contours = nc;
 	poly.hole = (int*)malloc(sizeof(int)*nc);
 	poly.contour = (gpc_vertex_list*)malloc(sizeof(gpc_vertex_list)*nc);
 	int i=0;
-	for (auto node: inp.nodes){
+	for (auto node: inp.bound_contours()){
 		if (node->contour.size()<3) continue;
 		//holes
-		bool is_inner = true;
-		auto upper = node.get();
-		while (!upper->parent.expired()){
-			upper = upper->parent.lock().get();
-			is_inner = !is_inner;
-		}
-		poly.hole[i] = is_inner?0:1;
+		poly.hole[i] = node->isouter();
 		//contours
 		gpc_fill_vertex_list(poly.contour[i++], node->contour);
 	}

@@ -11,6 +11,7 @@
 #include "hmtimer.hpp"
 #include "buildcont.hpp"
 #include "sizefun.hpp"
+#include "wireframegrid.hpp"
 
 using namespace HM2D;
 using namespace HM2D::Grid;
@@ -18,6 +19,7 @@ using namespace HM2D::Grid;
 HMCallback::FunctionWithCallback<Algos::TSubstractCells> Algos::SubstractCells;
 HMCallback::FunctionWithCallback<Algos::TInscribeGrid> Algos::InscribeGrid;
 HMCallback::FunctionWithCallback<Algos::TInsertConstraints> Algos::InsertConstraints;
+HMCallback::FunctionWithCallback<Algos::TSubstractArea> Algos::SubstractArea;
 
 GridData Algos::TSubstractCells::_run(const GridData& base, const Contour::Tree& cont, SubstractCellsAlgo algo){
 	auto invert_extraction = [&](const CellData& extr)->CellData{
@@ -57,13 +59,13 @@ GridData Algos::TSubstractCells::_run(const GridData& base, const Contour::Tree&
 	}
 	case SubstractCellsAlgo::CROSS:
 	{
-		CellData badcells = ExtractCells.WithCallback(cb1, base, cont, BOUND);
-		goodcells = invert_extraction(badcells);
+		goodcells = ExtractCells.WithCallback(cb1, base, cont, BOUND);
 		break;
 	}
 	case SubstractCellsAlgo::NO_CROSS:
 	{
-		goodcells = ExtractCells.WithCallback(cb1, base, cont, BOUND);
+		CellData badcells = ExtractCells.WithCallback(cb1, base, cont, BOUND);
+		goodcells = invert_extraction(badcells);
 		break;
 	}
 	}
@@ -220,6 +222,7 @@ GridData Algos::TInsertConstraints::_run(const GridData& base,
 		const vector<std::pair<Point, double>>& pnt,
 		Algos::OptInsertConstraints opt){
 	//offsetting from polylines
+	callback->step_after(10, "Offset");
 	opt.buffer_size = std::max(1e3*geps, opt.buffer_size);
 	Contour::Tree bzone;
 	for (auto& c: cont){
@@ -237,7 +240,8 @@ GridData Algos::TInsertConstraints::_run(const GridData& base,
 	}
 
 	//remove cells under the offset
-	CellData needed_cells = ExtractCells(base, bzone, OUTSIDE);
+	auto cb1 = callback->bottom_line_subrange(20);
+	CellData needed_cells = ExtractCells.WithCallback(cb1, base, bzone, OUTSIDE);
 	aa::constant_ids_pvec(base.vcells, 0);
 	aa::constant_ids_pvec(needed_cells, 1);
 	CellData not_needed_cells;
@@ -251,6 +255,7 @@ GridData Algos::TInsertConstraints::_run(const GridData& base,
 	RestoreFromCells(g3);
 
 	//triangulation area
+	callback->step_after(35, "Assemble buffer area", 3, 1);
 	Contour::Tree triarea = Contour::Tree::GridBoundary(g3);
 	for (auto& c: cont) triarea.add_detached_contour(c);
 	//paste crosses
@@ -267,6 +272,7 @@ GridData Algos::TInsertConstraints::_run(const GridData& base,
 		else { force_sizefun = true; }
 	}
 	//generate 1D mesh
+	callback->subprocess_step_after(2);
 	auto sfun = ApplySizeFunction(triarea, src_tri, force_sizefun);
 
 	//calculate point constraint sizes if they were not given using sfun.
@@ -278,11 +284,13 @@ GridData Algos::TInsertConstraints::_run(const GridData& base,
 	}
 
 	//Triangulation
+	auto cb2 = callback->bottom_line_subrange(30);
 	GridData g4;
-	if (opt.fillalgo == 0) g4 = Mesher::UnstructuredTriangle(triarea, pnt2);
-	else if (opt.fillalgo == 1) g4 = Mesher::UnstructuredTriangleRecomb(triarea, pnt2);
+	if (opt.fillalgo == 0) g4 = Mesher::UnstructuredTriangle.WithCallback(cb2, triarea, pnt2);
+	else if (opt.fillalgo == 1) g4 = Mesher::UnstructuredTriangleRecomb.WithCallback(cb2, triarea, pnt2);
 	
 	//Merge
+	callback->step_after(5, "Merge");
 	Grid::Algos::MergeTo(g2, g4);
 
 	return  g4;
@@ -299,3 +307,161 @@ GridData Algos::TInsertConstraints::_run(const GridData& base,
 		Algos::OptInsertConstraints opt){
 	return _run(base, {}, pnt, opt);
 }
+
+namespace{
+
+vector<Contour::Tree> split_tree(const Contour::Tree& area, const GridData& g, bool is_inner){
+	Contour::Tree rt = Contour::Tree::DeepCopy(area, 1);
+	rt.remove_detached();
+	//force is_inner=false by addition new contour to c
+	if (is_inner == true){
+		//auto bbox = HM2D::BBox(g.vvert, 1.);
+		auto bbox = HM2D::BBox(area.alledges(), 1.);
+		for (auto& v: g.vvert) bbox.widen(*v);
+		EdgeData bcont = HM2D::Contour::Constructor::FromPoints(
+			{bbox.xmin,bbox.ymin, bbox.xmax,bbox.ymin,
+			 bbox.xmax,bbox.ymax, bbox.xmin,bbox.ymax}, true);
+		rt.add_detached_contour(bcont);
+		for (auto& n: rt.roots()){
+			n->parent = rt.nodes.back();
+			rt.nodes.back()->children.push_back(n);
+		}
+		for (auto& n: rt.nodes) n->level+=1;
+	}
+	//crop
+	vector<Contour::Tree> ret = Contour::Tree::CropLevel01(rt);
+
+	return ret;
+}
+
+}
+//##########################################################
+GridData Algos::TSubstractArea::_run(const GridData& ginp, const Contour::Tree& area, bool is_inner){
+	//temporary remove those which will not be affected by substraction
+	CellData not_needed = ExtractCells(ginp, area, is_inner ? INSIDE : OUTSIDE);
+	CellData needed = ExtractCells(ginp, area, is_inner ? OUTSIDE : INSIDE);
+	aa::constant_ids_pvec(ginp.vcells, 0);
+	aa::constant_ids_pvec(needed, 1);
+	aa::constant_ids_pvec(not_needed, 1);
+	CellData ambigious = aa::copy_by_id(ginp.vcells, 0);
+
+	GridData gamb;
+	HM2D::DeepCopy(ambigious, gamb.vcells, 2);
+	RestoreFromCells(gamb);
+	GridData gneeded;
+	HM2D::DeepCopy(needed, gneeded.vcells, 2);
+	RestoreFromCells(gneeded);
+
+
+	callback->step_after(5, "Domains processing");
+	Contour::Tree gcont = Contour::Tree::GridBoundary(gamb);
+	vector<Contour::Tree> tarea = split_tree(area, gamb, is_inner);
+	
+	vector<GridData> gg;
+	callback->step_after(85, "Substraction", tarea.size()*7);
+	for (int i=0; i<tarea.size(); ++i){
+		//building a graph
+		callback->subprocess_step_after(1);
+		Impl::PtsGraph graph(gamb);
+
+		//add contour edges
+		callback->subprocess_step_after(1);
+		for (auto& n: tarea[i].nodes){
+			graph.add_edges(n->contour);
+		}
+
+		//exclude edges
+		callback->subprocess_step_after(1);
+		graph.exclude_area(gcont, OUTSIDE);
+
+		callback->subprocess_step_after(1);
+		graph.exclude_area(tarea[i], OUTSIDE);
+
+		callback->subprocess_step_after(1);
+		gg.push_back(graph.togrid());
+	
+		//remove elements which can present in the grid due
+		//to outer contour exclusion
+		callback->subprocess_step_after(1);
+		if (tarea[i].nodes.size()>1) Algos::RemoveCells(gg.back(), tarea[i], OUTSIDE);
+
+		callback->subprocess_step_after(1);
+		if (gcont.nodes.size()>1) Algos::RemoveCells(gg.back(), gcont, OUTSIDE);
+	}
+	callback->subprocess_fin();
+
+	//assembling the result
+	callback->step_after(5, "Assembling the result");
+	for (int i=1; i<gg.size(); ++i){
+		Algos::ShallowAdd(gg[i], gg[0]);
+	}
+	Algos::MergeTo(gneeded, gg[0]);
+
+	callback->step_after(5, "Assign boundary types");
+	//place area boundary before grid boundary to
+	//guarantee higher priority of area edges.
+	EdgeData cd = area.alledges_bound();
+	EdgeData gd = HM2D::ECol::Assembler::GridBoundary(ginp);
+	cd.insert(cd.end(), gd.begin(), gd.end());
+	EdgeData rd = HM2D::ECol::Assembler::GridBoundary(gg[0]);
+	HM2D::ECol::Algos::AssignBTypes(cd, rd);
+
+	return gg[0];
+}
+
+/*
+GridData Algos::TSubstractArea::_run(const GridData& g1, const Contour::Tree& area, bool is_inner){
+	callback->step_after(5, "Domains processing");
+	Contour::Tree gcont = Contour::Tree::GridBoundary(g1);
+	vector<Contour::Tree> tarea = split_tree(area, g1, is_inner);
+	
+	vector<GridData> gg;
+	callback->step_after(85, "Substraction", tarea.size()*7);
+	for (int i=0; i<tarea.size(); ++i){
+		//building a graph
+		callback->subprocess_step_after(1);
+		Impl::PtsGraph graph(g1);
+
+		//add contour edges
+		callback->subprocess_step_after(1);
+		for (auto& n: tarea[i].nodes){
+			graph.add_edges(n->contour);
+		}
+
+		//exclude edges
+		callback->subprocess_step_after(1);
+		graph.exclude_area(gcont, OUTSIDE);
+
+		callback->subprocess_step_after(1);
+		graph.exclude_area(tarea[i], OUTSIDE);
+
+		callback->subprocess_step_after(1);
+		gg.push_back(graph.togrid());
+	
+		//remove elements which can present in the grid due
+		//to outer contour exclusion
+		callback->subprocess_step_after(1);
+		if (tarea[i].nodes.size()>1) Algos::RemoveCells(gg.back(), tarea[i], OUTSIDE);
+
+		callback->subprocess_step_after(1);
+		Algos::RemoveCells(gg.back(), gcont, OUTSIDE);
+	}
+	callback->subprocess_fin();
+
+	//assembling the result
+	callback->step_after(5, "Assembling the result");
+	for (int i=1; i<gg.size(); ++i){
+		Algos::ShallowAdd(gg[i], gg[0]);
+	}
+
+	callback->step_after(5, "Assign boundary types");
+	//place area boundary before grid boundary to
+	//guarantee higher priority of area edges.
+	EdgeData cd = area.alledges_bound();
+	EdgeData gd = HM2D::ECol::Assembler::GridBoundary(g1);
+	cd.insert(cd.end(), gd.begin(), gd.end());
+	EdgeData rd = HM2D::ECol::Assembler::GridBoundary(gg[0]);
+	HM2D::ECol::Algos::AssignBTypes(cd, rd);
+	return gg[0];
+}
+*/

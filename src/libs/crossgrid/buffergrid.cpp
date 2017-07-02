@@ -10,7 +10,9 @@
 #include "treverter2d.hpp"
 #include "clipdomain.hpp"
 #include "finder2d.hpp"
+#include "sizefun.hpp"
 #include "debug_grid2d.hpp"
+#include "hmtimer.hpp"
 
 using namespace HM2D;
 using namespace HM2D::Grid;
@@ -218,55 +220,6 @@ void remove_vertex(Vertex* v, GridData& from, HM2D::EdgeData& bnded){
 
 }
 
-//namespace {
-//void rr2(Vertex* v, GridData* orig){
-//        auto bnded = ECol::Assembler::GridBoundary(*orig);
-//        aa::enumerate_ids_pvec(orig->vedges);
-//        //find edges
-//        Edge *e1 = 0, *e2 = 0;
-//        auto it = bnded.begin();
-//        while (it != bnded.end()){
-//                if ((*it)->pfirst() == v || (*it)->plast() == v){
-//                        e1 = it->get();
-//                        break;
-//                }
-//                ++it;
-//        }
-//        ++it;
-//        while (it != bnded.end()){
-//                if ((*it)->pfirst() == v || (*it)->plast() == v){
-//                        e2 = it->get();
-//                        break;
-//                }
-//                ++it;
-//        }
-//        assert(e1 != 0 && e2 != 0);
-//        //find cells
-//        //e1 and e2 should have same adjacent cells
-//        if (e1->no_left_cell()) e1->reverse();
-//        if (e2->no_left_cell()) e2->reverse();
-//        Cell *c1 = e1->left.lock().get();
-//        assert(e2->left.lock().get() == c1);
-
-//        //build new edge
-//        shared_ptr<Edge> newe(new Edge(*e1));
-//        if (e1->plast() == e2->pfirst()) newe->vertices[1] = e2->last();
-//        else if (e1->plast() == e2->plast()) newe->vertices[1] = e2->first();
-//        else if (e1->pfirst() == e2->pfirst()) newe->vertices[0] = e2->last();
-//        else newe->vertices[0] = e2->first();
-
-//        //cell->edge connectivity
-//        int i0 = aa::shpvec_ifind(c1->edges, e1);
-//        int i1 = aa::shpvec_ifind(c1->edges, e2);
-//        c1->edges[i0] = newe;
-//        c1->edges.erase(c1->edges.begin()+i1);
-	
-//        //remove edges from vedges
-//        orig->vedges[e1->id] = newe;
-//        orig->vedges.erase(orig->vedges.begin()+e2->id);
-//}
-//}
-
 void BufferGrid::remove_vertices_from_orig(const VertexData& vd){
 	auto bnded = ECol::Assembler::GridBoundary(*orig);
 	int bndedlen = bnded.size();
@@ -358,9 +311,11 @@ void BufferGrid::build_size_sources(const splitR& s, vector<std::pair<Point, dou
 	}
 }
 
+//#####################################3
 Contour::Tree BufferGrid::triangulation_boundary(){
-	//get buffer cells boundary
 	auto ginv = std::make_shared<Constructor::InvokeGrid>(*this);
+	/*
+	//get buffer cells boundary
 	vector<EdgeData> conts = Contour::Assembler::GridBoundary(ginv->grid);
 	ginv.reset();
 
@@ -382,6 +337,25 @@ Contour::Tree BufferGrid::triangulation_boundary(){
 	//assemble tree
 	Contour::Tree ret;
 	for (auto& c: conts) { ret.add_contour(std::move(c)); }
+	*/
+
+	//get triangulation boundary
+	Contour::Tree ret = Contour::Tree::GridBoundary(ginv->grid);
+	ginv.reset();
+
+	vector<splitR> splitted(ret.nodes.size());
+	for (int i=0; i<ret.nodes.size(); ++i)
+		splitted[i] = split_edges(ret.nodes[i]->contour);
+	auto ae = ret.alledges();
+	auto av = HM2D::AllVertices(ae);
+	aa::constant_ids_pvec(ae, 0);
+	aa::constant_ids_pvec(av, 0);
+	for (int i=0; i<splitted.size(); ++i){
+		aa::constant_ids_pvec(splitted[i].bsource, 1);
+		aa::constant_ids_pvec(splitted[i].bgrid, 1);
+		aa::constant_ids_pvec(splitted[i].keep_points, 1);
+	}
+	HM2D::Grid::ApplySizeFunction(ret);
 
 	return ret;
 }

@@ -683,7 +683,7 @@ int c2_extract_subcontours(void* obj, int nplist, double* plist, void** ret){
 		HM2D::EdgeData* src=nullptr;
 		double mind = 1e32;
 		for (auto& c: et){
-			auto ce1 = HM2D::Finder::ClosestEdge(*ss, p0[0]);
+			auto ce1 = HM2D::Finder::ClosestEdge(c, p0[0]);
 			if (std::get<0>(ce1) >= 0)
 			if (std::get<1>(ce1) < mind){
 				mind = std::get<1>(ce1);

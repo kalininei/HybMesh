@@ -14,6 +14,8 @@ vector<double> CellAreas(const GridData& grid);
 
 //extracts cells which are fully inside (what = INSIDE) or
 //fully outside (what = OUTSIDE) of given domain
+//if (what == BOUND) then cells which cross domain will be extracted.
+//!!! Contact here is not a cross.
 struct TExtractCells: public HMCallback::ExecutorBase{
 	HMCB_SET_PROCNAME("Extract cells");
 	HMCB_SET_DEFAULT_DURATION(100);

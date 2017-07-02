@@ -401,6 +401,13 @@ void keep_by_id(C& inp, int id){
 		[&id](const typename C::value_type& x){ return x->id != id; });
 	inp.resize(std::distance(inp.begin(), a));
 }
+template<class C>
+C copy_by_id(const C& inp, int id){
+	C ret;
+	std::copy_if(inp.begin(), inp.end(), std::back_inserter(ret),
+		[&id](const typename C::value_type& x){ return x->id == id; });
+	return ret;
+}
 //class which keeps enumeration of *Data
 //and places it back on delete
 template<class C>

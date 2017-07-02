@@ -38,18 +38,6 @@ struct TCombineGrids: public HMCallback::ExecutorBase{
 	GridData _run(const GridData& g1, const GridData& g2);
 };
 extern HMCallback::FunctionWithCallback<TCombineGrids> CombineGrids;
-
-
-struct TSubstractArea: public HMCallback::ExecutorBase{
-	HMCB_SET_PROCNAME("Domain exclusion");
-	HMCB_SET_DEFAULT_DURATION(100);
-
-	GridData _run(const GridData& g1, const Contour::Tree& area, bool is_inner);
-};
-extern HMCallback::FunctionWithCallback<TSubstractArea> SubstractArea;
-
-
-
 }}}
 
 #endif

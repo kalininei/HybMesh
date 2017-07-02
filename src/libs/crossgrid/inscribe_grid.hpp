@@ -81,6 +81,18 @@ struct TInsertConstraints: public HMCallback::ExecutorBase{
 extern HMCallback::FunctionWithCallback<TInsertConstraints> InsertConstraints;
 
 
+struct TSubstractArea: public HMCallback::ExecutorBase{
+	HMCB_SET_PROCNAME("Domain exclusion");
+	HMCB_SET_DEFAULT_DURATION(100);
+
+	GridData _run(const GridData& g1, const Contour::Tree& area, bool is_inner);
+};
+extern HMCallback::FunctionWithCallback<TSubstractArea> SubstractArea;
+
+
+
+
+
 }}}
 
 #endif

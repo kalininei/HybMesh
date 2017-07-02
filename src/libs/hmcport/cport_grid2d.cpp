@@ -23,6 +23,7 @@
 #include "export2d_hm.hpp"
 #include "snap_grid2cont.hpp"
 #include "treverter2d.hpp"
+#include "inscribe_grid.hpp"
 
 
 int g2_dims(void* obj, int* ret){

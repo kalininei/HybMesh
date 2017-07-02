@@ -10,6 +10,7 @@
 #include "modgrid.hpp"
 #include "unite_grids.hpp"
 #include "finder2d.hpp"
+#include "inscribe_grid.hpp"
 
 using HMTesting::add_check;
 
@@ -539,8 +540,9 @@ void test13(){
 	auto gr3 = HM2D::Grid::Algos::UniteGrids.ToCout(gr2, g2, opt);
 	opt.buffer_size = 0.2;
 	opt.empty_holes = true;
-	auto gr4 = HM2D::Grid::Algos::UniteGrids.ToCout(gr3, g3, opt);
+	auto gr4 = HM2D::Grid::Algos::UniteGrids(gr3, g3, opt);
 	add_check(maxskew(gr4)<0.8, "skewness check");
+	HM2D::Export::GridVTK(gr4, "g1.vtk");
 }
 
 HM2D::GridData grid_minus_cont(HM2D::GridData& g, const HM2D::EdgeData& cont){
@@ -614,7 +616,7 @@ void test14(){
 	HM2D::GridData basgrid2 = HM2D::Grid::Constructor::RectGrid(Point(-2.1, -1.1), Point(2.8, 2.1), 150, 100);
 	HM2D::GridData b2 = grid_minus_cont(basgrid2, HM2D::Contour::Assembler::GridBoundary1(g2));
 	HM2D::Grid::Algos::OptUnite opt2(0.03);
-	HM2D::GridData gr2 = HM2D::Grid::Algos::UniteGrids.ToCout(b2, g2, opt2);
+	HM2D::GridData gr2 = HM2D::Grid::Algos::UniteGrids(b2, g2, opt2);
 	HM2D::Grid::Algos::SimplifyBoundary(gr2, 45);
 	add_check(fabs(HM2D::Grid::Area(gr2) - 6.26758)<1e-5, "Reentrant area with a hole");
 
@@ -694,8 +696,8 @@ void test16(){
 
 	//impose
 	HM2D::Grid::Algos::OptUnite opt(0.3);
-	HM2D::GridData impgrid = HM2D::Grid::Algos::UniteGrids.ToCout(gcirc, bgrid, opt);
-	HM2D::GridData impgrid1 = HM2D::Grid::Algos::UniteGrids.ToCout(gcirc, bgrid4, opt);
+	HM2D::GridData impgrid = HM2D::Grid::Algos::UniteGrids(gcirc, bgrid, opt);
+	HM2D::GridData impgrid1 = HM2D::Grid::Algos::UniteGrids(gcirc, bgrid4, opt);
 
 	//see the result
 	double arinit = HM2D::Grid::Area(gcirc);

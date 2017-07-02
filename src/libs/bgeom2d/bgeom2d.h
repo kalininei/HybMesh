@@ -87,6 +87,46 @@ bool SectCross(const Point& p1S, const Point& p1E, const Point& p2S, const Point
 //same but with internal renorming. Gives better results aber it is slower.
 bool SectCrossWRenorm(const Point& p1S, const Point& p1E, const Point& p2S, const Point& p2E, double* ksieta) noexcept;
 
+struct TSectCrossGeps{ 
+	//-2 lies on (P1,P2) line left to P1
+	//-1 equals P1;
+	// 0 lies on (P1,P2) line in (P1, P2) segment
+	// 1 equals P2;
+	// 2 lies on (P1,P2) line right to P2
+	// 3 lies in the left halfplane of (P1, P2) 
+	// 4 lies in the right halfplane of (P1, P2) 
+	char posA, posB;
+
+	// 0 - same line
+	// 1 - parallel lines
+	// 2 - non-parallel lines
+	char posAB;
+
+	//cross constants for P1P2 and AB respectively. Only for posAB==2
+	//-2, before first pnt
+	//-1, = first pnt
+	// 0, within
+	// 1, = last pnt
+	// 2, after second pnt
+	char ksi, eta;
+
+	bool inner_cross() const {
+		return posAB == 2 && ksi==0 && eta==0;
+	}
+	bool a_on_line() const { return abs(posA)<2; }
+	bool b_on_line() const { return abs(posB)<2; }
+	bool has_contact() const {
+		if (posAB == 0){
+			return a_on_line() || b_on_line() ||
+				(posA == 3 && posB == 4) ||
+				(posA == 4 && posB == 3);
+		} else if (posAB == 2){
+			return abs(ksi)<2 && abs(eta)<2;
+		} else return false;
+	}
+};
+TSectCrossGeps SectCrossGeps(const Point& P1, const Point& P2, Point A, Point B);
+
 //=>
 //  0 if p lies to the left of [L1->L2] line
 //  1 if p lies on [L1->L2] line
@@ -275,16 +315,19 @@ struct BoundingBoxFinder{
 	void raw_addentry(const vector<int>& isqr);
 	vector<int> suspects(const BoundingBox& bb) const;
 	vector<int> suspects(const Point& bb) const;
+	//returns only data from boxes which contain segment
 	vector<int> suspects(const Point&, const Point&) const;
 
 	//data access
 	vector<int> sqrs_by_entry(int e) const;
 	vector<int> sqrs_by_point(const Point&) const;
+	//returns only boxes which contain segment
 	vector<int> sqrs_by_segment(const Point&, const Point&) const;
 	vector<int> sqrs_by_bbox(const BoundingBox&) const;
 
 	int nsqr() const { return (mx+1)*(my+1); }
 	const vector<int>& sqr_entries(int i) const { return data[i]; }
+	vector<int> sqr_entries(const std::vector<int>& isqr);
 	int nx() const { return mx+1; }
 	int ny() const { return my+1; }
 	Point sqr_center(int i) const;
