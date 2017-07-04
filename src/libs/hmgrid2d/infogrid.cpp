@@ -58,7 +58,7 @@ vector<double> hg::Skewness(const GridData& grid){
 namespace{
 
 class ExtractRunner{
-	const int RasterN = 30;
+	const int RasterN = 100;
 	int what;
 	CellData icells;
 	EdgeData iedges;
@@ -490,9 +490,7 @@ public:
 HMCallback::FunctionWithCallback<Grid::TExtractCells> Grid::ExtractCells;
 
 CellData Grid::TExtractCells::_run(const GridData& grid, const Contour::Tree& domain, int what){
-	HMTimer::Tic("ExtractCells");
 	auto r = ExtractRunner(grid, domain, what);
-	HMTimer::Toc("ExtractCells");
 	return r.Result;
 }
 

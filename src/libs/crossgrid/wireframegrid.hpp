@@ -9,6 +9,7 @@
 #include "primitives2d.hpp"
 #include "contour_tree.hpp"
 #include "nodes_compare.h"
+#include "finder2d.hpp"
 
 namespace HM2D{ namespace Grid{ namespace Impl{
 
@@ -41,8 +42,15 @@ struct PtsGraph{
 	//create 2D grid on the basis of current wireframe
 	//all boundary edges has an adjacent cell with index=-1.
 	GridData togrid() const;
+	GridData togrid(const HM2D::Contour::Tree& area) const;
+	GridData togrid(shared_ptr<Finder::RasterFinder> fnd) const;
 	EdgeData toedges() const;
 
+	//builds a vector of non-contacting graph lines
+	vector<PtsGraph> split() const;
+	void purge_endpoints();
+	//simply adds lines and points from another graph. Doesn't do any intersection checks.
+	void direct_add(const PtsGraph&);
 	//imposes contour edges.
 	void add_edges(const EdgeData&);
 
@@ -87,7 +95,7 @@ private:
 	static impResT impose(const PtsGraph& main_graph, const PtsGraph& imp_graph);
 	
 	// subprocedure for togrid() function
-	static GridData intrusion_algo(const vector<GridData>& grids);
+	static GridData intrusion_algo(const vector<GridData>& grids, shared_ptr<Finder::RasterFinder> fnd);
 private:
 	static impResT _impose_impl(const PtsGraph& main_graph, const PtsGraph& imp_graph);
 

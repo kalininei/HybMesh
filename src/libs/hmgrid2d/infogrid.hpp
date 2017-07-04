@@ -22,8 +22,6 @@ struct TExtractCells: public HMCallback::ExecutorBase{
 
 	CellData _run(const GridData& grid, const Contour::Tree& domain, int what);
 	CellData _run(const GridData& grid, const EdgeData& domain, int what);
-private:
-	CellData extract_bound(const CellData& suspcells, const EdgeData& nted);
 };
 extern HMCallback::FunctionWithCallback<TExtractCells> ExtractCells;
 

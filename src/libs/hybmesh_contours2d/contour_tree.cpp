@@ -208,6 +208,63 @@ int Tree::whereis(const Point& p) const{
 	}
 	return Contour::Finder::WhereIs(cedges, p);
 }
+namespace{
+
+bool _inner_point_core(shared_ptr<Vertex> p1, shared_ptr<Vertex> p2,
+		const Contour::Tree::TNode& tnode, Point& ret){
+	EdgeData con;
+	con.emplace_back(new Edge(p1, p2));
+	double wchild = 999, wroot = -999;
+	//first children cross
+	for (auto& it: tnode.children){
+		auto& c = it.lock()->contour;
+		double w = std::get<2>(Contour::Finder::Cross(con, c));
+		if (w<wchild) wchild = w;
+	}
+	//last root croos
+	con[0]->reverse();
+	wroot = 1-std::get<2>(Contour::Finder::Cross(con, tnode.contour));
+	//inner segment should be long enough to take a point from it.
+	if (con[0]->length()*(wchild - wroot) < 10*geps) return false;
+	ret = Point::Weigh(*p1, *p2, (wchild+wroot)/2.);
+	return true;
+}
+
+}
+
+Point Tree::inner_point() const{
+	assert(roots().size() > 0);
+	shared_ptr<TNode> rootnd;
+	for (auto n: bound_contours()){
+		if (n->isouter() && n->children.size() == 0){
+			return HM2D::Contour::InnerPoint(n->contour);
+		}
+		if (!rootnd && n->isouter() && n->children.size()>0){
+			rootnd = n;
+		}
+	}
+	assert([&](){
+		if (rootnd->contour.size()<3) return false;
+		for (auto ch: rootnd->children){
+			if (ch.expired() || ch.lock()->contour.size()<3) return false;
+		}
+		return true;
+	}());
+	Point ret;
+	for (int i=0; i<rootnd->contour.size(); ++i)
+	for (int j=0; j<rootnd->children.size(); ++j)
+	for (int k=0; k<rootnd->children[j].lock()->contour.size(); ++k){
+		auto& rcont = rootnd->contour;
+		auto& ccont = rootnd->children[j].lock()->contour;
+		shared_ptr<Vertex> p1, p2;
+		if (Contour::CorrectlyDirectedEdge(rcont, i)) p1 = rcont[i]->first();
+		else p1 = rcont[i]->last();
+		if (Contour::CorrectlyDirectedEdge(ccont, k)) p2 = ccont[k]->first();
+		else p2 = ccont[k]->last();
+		if (_inner_point_core(p1, p2, *rootnd, ret)) return ret;
+	}
+	throw std::runtime_error("failed to find an inner point in a contour tree");
+}
 
 Tree Tree::GridBoundary(const GridData& data){
 	vector<Tree> vt = GridBoundary01(data);

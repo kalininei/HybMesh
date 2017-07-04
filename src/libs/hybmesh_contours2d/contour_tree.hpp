@@ -49,6 +49,7 @@ struct Tree{
 	//functions
 	double area() const;
 	int whereis(const Point&) const;
+	Point inner_point() const;
 
 	//assemble procedure: returned tree uses edges of data
 	static Tree Assemble(const EdgeData& data);

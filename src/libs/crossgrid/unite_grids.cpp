@@ -10,6 +10,7 @@
 #include "nodes_compare.h"
 #include "inscribe_grid.hpp"
 #include "debug_grid2d.hpp"
+#include "wireframegrid.hpp"
 
 using namespace HM2D;
 using namespace HM2D::Grid;

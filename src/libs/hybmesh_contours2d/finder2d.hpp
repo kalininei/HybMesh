@@ -73,6 +73,29 @@ public:
 	BoundingBoxFinder& bbfinder(){ return *bbf; }
 };
 
+class RasterFinder{
+	Contour::Tree tree;
+	EdgeData ae;
+	shared_ptr<BoundingBox> bb;
+	shared_ptr<RasterizeEdges> raster;
+	vector<int> sqr_groups;
+	vector<int> group_pos;
+
+	int raw_whereis(const Point& p) const;
+public:
+	RasterFinder(const Contour::Tree& ed, int Nx);
+	
+	int q_whereis(const Point& p) const;
+	int whereis(const Point& p) const;
+	shared_ptr<Edge> edge_by_point(const Point& p) const;
+
+	//reliable results only for cells which are fully inside/outside the area.
+	CellData extract_cells(const CellData& cd, int pos) const;
+
+	//copies boundary conditions to 'to' edges from closest ones of this collection.
+	void copy_bt_to(EdgeData& to) const;
+};
+
 }
 
 namespace Contour{ namespace Finder{

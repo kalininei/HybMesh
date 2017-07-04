@@ -314,20 +314,23 @@ Point inner_point_core(const EdgeData& c){
 	if (std::all_of(triareas.begin(), triareas.end(), [](double a){ return a>-geps*geps; })){
 		return midp(up);
 	}
-	//else find closest point to best convex vertex lying within its triangle
+	//else find closest vertex lying within concave triangle
 	Point pbest;
 	double mbest=std::numeric_limits<double>::max();
 	int iconv = std::max_element(triareas.begin(), triareas.end())-triareas.begin();
 	if (iconv == 0) std::rotate(up.begin(), up.end()-1, up.end());
 	else std::rotate(up.begin(), up.begin()+iconv-1, up.end());
+	//using lesser triangle to exclude cases with contacts to 0-2 lines
+	Point nd0 = Point::Weigh(*up[0], *up[1], 0.1);
+	Point nd2 = Point::Weigh(*up[1], *up[2], 0.9);
 	for (int i=3; i<up.size(); ++i){
-		if (inside_tri(*up[i], *up[0], *up[1], *up[2])){
+		if (inside_tri(*up[i], nd0, *up[1], nd2)){
 			double m = Point::meas(*up[1], *up[i]);
 			if (m<mbest){ mbest = m; pbest = *up[i]; }
 		}
 	}
 
-	if (mbest == std::numeric_limits<double>::max()) return Point::Weigh(*up[0], *up[2], 0.5);
+	if (mbest == std::numeric_limits<double>::max()) return Point::Weigh(nd0, nd2, 0.5);
 	else return Point::Weigh(pbest, *up[1], 0.5);
 }
 }//inner_point

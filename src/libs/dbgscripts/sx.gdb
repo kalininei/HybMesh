@@ -8,7 +8,7 @@ set args ../../src/py/hybmesh.py -sx others/rrj2.py -silent
 #set follow-fork-mode child
 
 set breakpoint pending on
-b cport_cont2d.cpp:674
+b finder2d.cpp:433 if iinner > 100
 run
 
 source ../../src/libs/dbgscripts/skiplist

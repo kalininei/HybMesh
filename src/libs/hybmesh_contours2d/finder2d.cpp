@@ -1,6 +1,9 @@
 #include "finder2d.hpp"
 #include "contour.hpp"
 #include "clipper_core.hpp"
+#include "modcont.hpp"
+#include "hmtimer.hpp"
+
 using namespace HM2D;
 
 // =============== contains procedures
@@ -323,6 +326,130 @@ vector<int> Finder::RasterizeEdges::colour_squares(bool use_groups) const{
 	return ret;
 }
 
+CellData Finder::RasterFinder::extract_cells(const CellData& ac, int pos) const{
+	const int PGOOD = 1;
+	const int PBAD = 2;
+	const int PBND = 3;
+	auto ae = AllEdges(ac);
+	auto av = AllVertices(ae);
+	std::vector<int> vtypes(av.size(), 0);  //0-undef, 1-good, 2-bad, 3-bound
+	std::vector<int> etypes(ae.size(), 0);
+	std::vector<int> ctypes(ac.size(), 0);
+	for (auto& e: ae){
+		if (e->has_right_cell()) e->right.lock()->id = -999;
+		if (e->has_left_cell()) e->left.lock()->id = -999;
+	}
+	aa::enumerate_ids_pvec(ae);
+	aa::enumerate_ids_pvec(av);
+	aa::enumerate_ids_pvec(ac);
+	std::vector<std::pair<int, int>> edge_cell(ae.size(), std::pair<int, int>(-1,-1));
+	for (int i=0; i<ae.size(); ++i){
+		auto& e = ae[i];
+		if (e->has_right_cell()){
+			int ic = e->right.lock()->id;
+			if (ic >= 0) edge_cell[i].first = ic;
+		}
+		if (e->has_left_cell()){
+			int ic = e->left.lock()->id;
+			if (ic >= 0) edge_cell[i].second = ic;
+		}
+	}
+	
+	auto set_edge = [&](int ie, int tp){
+		etypes[ie] = tp;
+		if (edge_cell[ie].first > -1) ctypes[edge_cell[ie].first] = tp;
+		if (edge_cell[ie].second > -1) ctypes[edge_cell[ie].second] = tp;
+	};
+	auto proc_vert1 = [&](int iv)->int{
+		if (vtypes[iv] == 0){
+			int p = q_whereis(*av[iv]);
+			if (p == pos) vtypes[iv] = PGOOD;
+			else if (p !=BOUND) vtypes[iv] = PBAD;
+		}
+		return vtypes[iv];
+	};
+	auto proc_edge1 = [&](int ie){
+		switch (proc_vert1(ae[ie]->pfirst()->id)){
+			case PGOOD: return set_edge(ie, PGOOD);
+			case PBAD: return set_edge(ie, PBAD);
+		}
+		switch (proc_vert1(ae[ie]->plast()->id)){
+			case PGOOD: return set_edge(ie, PGOOD);
+			case PBAD: return set_edge(ie, PBAD);
+		}
+	};
+	for (int i=0; i<ac.size(); ++i){
+		int j=0;
+		while (ctypes[i] == 0 && j<ac[i]->edges.size()){
+			proc_edge1(ac[i]->edges[j]->id);
+			++j;
+		}
+	}
+	auto proc_vert2 = [&](int iv)->int{
+		if (vtypes[iv] == 0){
+			int p = whereis(*av[iv]);
+			if (p == pos) vtypes[iv] = PGOOD;
+			else if (p != BOUND) vtypes[iv] = PBAD;
+			else vtypes[iv] = PBND;
+		}
+		return vtypes[iv];
+	};
+	auto proc_edge2 = [&](int ie){
+		switch (proc_vert2(ae[ie]->pfirst()->id)){
+			case PGOOD: return set_edge(ie, PGOOD);
+			case PBAD: return set_edge(ie, PBAD);
+		}
+		switch (proc_vert2(ae[ie]->plast()->id)){
+			case PGOOD: return set_edge(ie, PGOOD);
+			case PBAD: return set_edge(ie, PBAD);
+		}
+	};
+	for (int i=0; i<ac.size(); ++i){
+		int j=0;
+		while (ctypes[i] == 0 && j<ac[i]->edges.size()){
+			proc_edge2(ac[i]->edges[j]->id);
+			++j;
+		}
+	}
+	auto proc_edge3 = [&](int ie){
+		int p = whereis(ae[ie]->center());
+		if (p == pos) set_edge(ie, PGOOD);
+		else if (p != BOUND) set_edge(ie, PBAD);
+	};
+	for (int i=0; i<ac.size(); ++i){
+		int j=0;
+		while (ctypes[i] == 0 && j<ac[i]->edges.size()){
+			proc_edge3(ac[i]->edges[j]->id);
+			++j;
+		}
+	}
+
+	CellData ret;
+	for (int i=0; i<ac.size(); ++i){
+		if (ctypes[i] == 0){
+			int p = whereis(HM2D::Contour::InnerPoint(ac[i]->edges));
+			assert(p != BOUND);
+			if (p == pos) ctypes[i] = PGOOD;
+			else ctypes[i] = PBAD;
+		}
+		if (ctypes[i] == PGOOD) ret.push_back(ac[i]);
+	}
+	return ret;
+}
+
+
+void Finder::RasterFinder::copy_bt_to(EdgeData& to) const{
+	EdgeData undef;
+	for (auto& e: to){
+		auto e2 = edge_by_point(e->center());
+		if (e2 != nullptr) e->boundary_type = e2->boundary_type;
+		else undef.push_back(e);
+	}
+	if (undef.size()>0){
+		HM2D::ECol::Algos::AssignBTypes(tree.alledges(), undef);
+	}
+}
+
 vector<int> Contour::Finder::SortOutPoints(const EdgeData& t1, const vector<Point>& pnt){
 	Contour::Tree tree;
 	tree.add_contour(t1);
@@ -335,6 +462,75 @@ vector<int> Contour::Finder::SortOutPoints(const EdgeData& t1, const vector<Poin
 		}
 	}
 	return ret;
+}
+
+Finder::RasterFinder::RasterFinder(const Contour::Tree& ed, int Nx){
+	tree = ed;
+	ae = tree.alledges();
+	assert(ae.size()>0);
+	for (auto& n: tree.nodes){
+		if (n->isbound() && n->level!=0) continue;
+		auto b1 = HM2D::BBox(n->contour);
+		if (bb==nullptr) bb.reset(new BoundingBox(b1));
+		else bb->widen(b1);
+	}
+	raster.reset(new RasterizeEdges(ae, *bb, bb->maxlen()/Nx)); 
+	sqr_groups = raster->colour_squares(true);
+	int ng = *std::max_element(sqr_groups.begin(), sqr_groups.end()) + 1;
+	group_pos.resize(ng, BOUND);
+	for (int i=1; i<ng; ++i){
+		int isqr = std::find(sqr_groups.begin(), sqr_groups.end(), i) - sqr_groups.begin();
+		group_pos[i] = raw_whereis(raster->bbfinder().sqr_center(isqr));
+	}
+}
+
+int Finder::RasterFinder::raw_whereis(const Point& p) const{
+	Point pout(bb->xmax + 1.56749, bb->ymax + 1.06574);
+
+	for (int tries=0; tries<100; ++tries){
+		int ncrosses = 0;
+		for (auto& ie: raster->bbfinder().suspects(p, pout)){
+			auto e = ae[ie];
+			auto cr = SectCrossGeps(*e->first(), *e->last(), p, pout);
+			if (cr.a_on_line()) return BOUND;
+			else if (cr.inner_cross()) ++ncrosses;
+			else if (cr.has_contact()) goto NEXTTRY;
+		}
+		if (ncrosses % 2 == 0) return OUTSIDE;
+		else return INSIDE;
+NEXTTRY:
+		pout+=Point(-0.4483, 0.0342);
+	}
+
+	throw std::runtime_error("failed to detect point-contour relation");
+}
+int Finder::RasterFinder::q_whereis(const Point& p) const{
+	if (bb->whereis(p) == OUTSIDE) return OUTSIDE;
+	auto sqrs = raster->bbfinder().sqrs_by_point(p);
+	assert(sqrs.size()>0);
+	int gr = sqr_groups[sqrs[0]];
+	for (int i=1; i<sqrs.size(); ++i){
+		int r2 = sqr_groups[sqrs[i]];
+		if (r2 != gr) return BOUND;
+	}
+	return group_pos[gr];
+}
+
+int Finder::RasterFinder::whereis(const Point& p) const{
+	if (bb->whereis(p) == OUTSIDE) return OUTSIDE;
+	int pos = q_whereis(p);
+	if (pos != BOUND) return pos;
+	else return raw_whereis(p);
+}
+
+shared_ptr<Edge> Finder::RasterFinder::edge_by_point(const Point& p) const{
+	for (auto& ei: raster->bbfinder().suspects(p)){
+		auto e = ae[ei];
+		if (Point::meas_section(p, *e->pfirst(), *e->plast()) < geps*geps){
+			return e;
+		}
+	}
+	return nullptr;
 }
 
 namespace{

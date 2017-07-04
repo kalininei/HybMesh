@@ -346,7 +346,6 @@ g8 = hm.unite_grids(g8, [(g81, 1)], empty_holes=True, buffer_fill='4',
 # left-right top connect: g11
 [cl, cb, cr, ct] = hm.extract_subcontours(
     c_top, [c[i] for i in [8, 13, 14, 7, 8]])
-print "SSSSSSS"
 [cl] = hm.extract_subcontours(g7, [c[13], c[8]])
 [cr] = hm.extract_subcontours(g8, [c[7], c[14]])
 ct = hm.partition_contour(ct, "ref_weights", bstep, start=c[7])

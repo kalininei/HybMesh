@@ -6,7 +6,8 @@
 #include "buildgrid.hpp"
 #include "modcont.hpp"
 #include "trigrid.hpp"
-#include "finder2d.hpp"
+#include "hmgraph.hpp"
+#include "healgrid.hpp"
 
 using namespace HM2D;
 using namespace HM2D::Grid;
@@ -224,9 +225,36 @@ GridData formgrid(const vector<tgPoint>& P, const vector<tgHalfEdge>& HE,
 	for (auto& p: P){ raw_pnt.push_back(p.x); raw_pnt.push_back(p.y); }
 	return Grid::Constructor::FromRaw(raw_pnt.size()/2, cell_inner.size(), &raw_pnt[0], &cells_nodes[0], -1);
 }
+
+GridData togrid_return(GridData&& gr, shared_ptr<Finder::RasterFinder> fnd){
+	if (fnd != nullptr){
+		gr.vcells = fnd->extract_cells(gr.vcells, INSIDE);
+		Algos::RestoreFromCells(gr);
+	}
+	return gr;
+}
+
 }//namespace
 
 GridData PtsGraph::togrid() const{
+	return togrid(shared_ptr<Finder::RasterFinder>());
+}
+
+GridData PtsGraph::togrid(const HM2D::Contour::Tree& area) const{
+	shared_ptr<Finder::RasterFinder> fnd;
+	auto ar2 = area;
+	ar2.remove_detached();
+	bool have_area = false;
+	for (auto& n: ar2.nodes){
+		if (n->contour.size()>0){ have_area= true; break; }
+	}
+	if (have_area){
+		fnd.reset(new Finder::RasterFinder(ar2, 100));
+		return togrid(fnd);
+	} else return GridData();
+}
+
+GridData PtsGraph::togrid(shared_ptr<Finder::RasterFinder> fnd) const{
 	//assemble subgraphs each of which can be
 	//processed to a single connected grid
 	auto subs = SubGraph::build(*this);
@@ -237,7 +265,7 @@ GridData PtsGraph::togrid() const{
 
 	//if only a single grid exists return it
 	if (grids.size() == 0) return GridData();
-	if (grids.size() == 1) return grids[0];
+	if (grids.size() == 1) return togrid_return(std::move(grids[0]), fnd);
 
 	//assembling system of outer contours
 	HM2D::Contour::Tree cont;
@@ -253,15 +281,15 @@ GridData PtsGraph::togrid() const{
 		for (int i=1; i<grids.size(); ++i){
 			Grid::Algos::ShallowAdd(grids[i], grids[0]);
 		}
-		return grids[0];
+		return togrid_return(std::move(grids[0]), fnd);
 	}
 
 	//some grids lie within cells of parent grids. We need the intrusion algo.
-	return PtsGraph::intrusion_algo(grids);
+	return togrid_return(PtsGraph::intrusion_algo(grids, fnd), fnd);
 }
 
 namespace{
-void intrude(GridData& where, vector<const GridData*> vwhat){
+void intrude(GridData& where, vector<const GridData*> vwhat, shared_ptr<Finder::RasterFinder> fnd){
 	GridData what;
 	for (auto it: vwhat) Algos::ShallowAdd(*it, what);
 	if (where.vcells.size() == 0) {
@@ -289,7 +317,10 @@ void intrude(GridData& where, vector<const GridData*> vwhat){
 	for (auto& n: what_cont.roots()){
 		tree.add_contour(std::move(n->contour));
 	}
-	GridData g3 = Mesher::UnstructuredTriangle(tree);
+	GridData g3;
+	if (fnd == nullptr || fnd->whereis(tree.inner_point()) == INSIDE){
+		g3 = Mesher::UnstructuredTriangle(tree);
+	}
 
 	//merging
 	Grid::Algos::RemoveCells(where, {ipar});
@@ -298,7 +329,7 @@ void intrude(GridData& where, vector<const GridData*> vwhat){
 }
 }
 
-GridData PtsGraph::intrusion_algo(const vector<GridData>& grids){
+GridData PtsGraph::intrusion_algo(const vector<GridData>& grids, shared_ptr<Finder::RasterFinder> fnd){
 	vector<Contour::Tree> trees;
 	for (auto& g: grids) trees.push_back(Contour::Tree::GridBoundary(g));
 
@@ -330,7 +361,7 @@ GridData PtsGraph::intrusion_algo(const vector<GridData>& grids){
 			Contour::Tree::TNode* ptr = it.lock().get();
 			g.push_back(&grids[gind[ptr]]);
 		}
-		intrude(ret, g);
+		intrude(ret, g, fnd);
 		for (auto it: gc) add(it.lock()->children); 
 	};
 	WpVector<Contour::Tree::TNode> roots;
@@ -684,6 +715,68 @@ PtsGraph PtsGraph::cut(const PtsGraph& wmain, const Contour::Tree& conts, int di
 	pg.delete_unused_points();
 
 	return pg;
+}
+
+//builds a vector of non-contacting graph lines
+vector<PtsGraph> PtsGraph::split() const{
+	vector<vector<int>> sp = HMMath::Graph::SplitGraph(lines_lines_tab());
+	vector<PtsGraph> ret(sp.size());
+	for (int i=0; i<sp.size(); ++i){
+		auto& ilines = sp[i];
+		ret[i].nodes = nodes;
+		for (int j=0; j<ilines.size(); ++j){
+			ret[i].lines.push_back(lines[ilines[j]]);
+		}
+		ret[i].delete_unused_points();
+	}
+	return ret;
+}
+
+void PtsGraph::purge_endpoints(){
+	vector<vector<int>> node_node(nodes.size());
+	for (auto& ln: lines){
+		node_node[ln.i0].push_back(ln.i1);
+		node_node[ln.i1].push_back(ln.i0);
+	}
+	vector<int> sz(node_node.size());
+	std::transform(node_node.begin(), node_node.end(), sz.begin(),
+			[](const vector<int>& a){return a.size();});
+	vector<bool> goodpnt(nodes.size(), true);
+
+	std::function<void(int)> process;
+	process = [&](int i){
+		goodpnt[i] = false;
+		--sz[i];
+		for (auto& n: node_node[i]) if (--sz[n] == 1) process(n);
+	};
+
+	bool did=false;
+	while(1){
+		int istart = std::find(sz.begin(), sz.end(), 1) - sz.begin();
+		if (istart == sz.size()) break;
+		did = true;
+		process(istart);
+	}
+	
+	if (!did) return;
+
+	vector<GraphLine> newlines; newlines.reserve(lines.size());
+	for (auto& ln: lines){
+		if (goodpnt[ln.i0] && goodpnt[ln.i1]) newlines.push_back(ln);
+	}
+	std::swap(newlines, lines);
+}
+
+//simply adds lines and points from another graph. Doesn't do any intersection checks.
+void PtsGraph::direct_add(const PtsGraph& g2){
+	int nd_start = nodes.size();
+	int ln_start = lines.size();
+	nodes.insert(nodes.end(), g2.nodes.begin(), g2.nodes.end());
+	lines.insert(lines.end(), g2.lines.begin(), g2.lines.end());
+	for (int i=ln_start; i<lines.size(); ++i){
+		lines[i].i0+=nd_start;
+		lines[i].i1+=nd_start;
+	}
 }
 
 void PtsGraph::add_edges(const EdgeData& c){
