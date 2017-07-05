@@ -181,8 +181,11 @@ public:
 			auto rel = meshareabb.relation(contbb[i]);
 			if (rel == 3) to_remove.insert(i);
 		}
-		assert(to_remove.size() < ntdom.nodes.size());
-		if (to_remove.size() > 0){
+		if (to_remove.size() == ntdom.nodes.size()){
+			Result.insert(Result.end(), icells.begin(), icells.end());
+			icells.clear();
+			return;
+		} if (to_remove.size() > 0){
 			aa::remove_entries(ntdom.nodes, to_remove);
 			aa::remove_entries(contbb, to_remove);
 			domainbb = contbb[0];

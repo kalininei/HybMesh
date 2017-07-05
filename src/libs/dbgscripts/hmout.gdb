@@ -18,6 +18,19 @@ define wfvtk
 	call HM2D::Grid::Debug::save_wf_vtk($arg0)
 end
 
+define numerid
+	call HM2D::Debug::numer_all($arg0)
+end
+
+define checkgrid
+	if ($argc==1)
+		call HM2D::Grid::Debug::report_grid_problems($arg0)
+	end
+	if ($argc==2)
+		call HM2D::Grid::Debug::report_grid_problems($arg0, $arg1)
+	end
+end
+
 define ppvec
 	if ($argc==1)
 		set $i = 0
@@ -42,6 +55,10 @@ define info_contour
 	call HM2D::Debug::info_contour($arg0)
 end
 
+define info_cell
+	call HM2D::Debug::info_cell($arg0, $arg1)
+end
+
 define info_tree
 	call HMCont2D::Debug::info_tree($arg0)
 end
@@ -49,6 +66,7 @@ end
 define info_extpath
 	call HMBlay::Debug::info_extpath($arg0)
 end
+
 
 define gg_contour
 	call HMCont2D::Debug::geogebra_contour($arg0)

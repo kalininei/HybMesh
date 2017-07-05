@@ -3,10 +3,10 @@
 
 source ../../src/libs/dbgscripts/hmout.gdb
 
-file ./crossgrid_test
+file ./hmblay_test
 
 set breakpoint pending on
-b inscribe_grid.cpp:342
+b healgrid.cpp:213
 run
 
 

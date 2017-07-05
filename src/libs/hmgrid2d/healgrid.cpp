@@ -189,18 +189,35 @@ void Algos::Heal(GridData& from){
 	}
 
 	//edge->cell tables
+	std::set<int> can_not_merge;
 	for (int i=0; i<change1.size(); ++i){
 		auto& efrom = change2[i];
 		auto& eto = change1[i];
 		bool has_same_dir = efrom->first() == eto->first();
-		if (has_same_dir){
-			if (eto->no_left_cell()) eto->left = efrom->left;
-			if (eto->no_right_cell()) eto->right = efrom->right;
-		} else {
-			if (eto->no_left_cell()) eto->left = efrom->right;
-			if (eto->no_right_cell()) eto->right = efrom->left;
+		if (!has_same_dir) efrom->reverse();
+		bool c1 = eto->no_left_cell() && efrom->has_left_cell();
+		bool c2 = eto->has_left_cell() && efrom->no_left_cell();
+		bool c3 = eto->no_right_cell() && efrom->has_right_cell();
+		bool c4 = eto->has_right_cell() && efrom->no_right_cell();
+		if (!((c1 || c2) && (c3 || c4))){
+			//can not merge if coincident edges point to different cells
+			bool c5 = eto->has_left_cell() && efrom->has_left_cell() &&
+				eto->left.lock() == efrom->left.lock();
+			bool c6 = eto->no_left_cell() && efrom->no_left_cell();
+			bool c7 = eto->has_right_cell() && efrom->has_right_cell() &&
+				eto->right.lock() == efrom->right.lock();
+			bool c8 = eto->no_right_cell() && efrom->no_right_cell();
+			if (!((c5 || c6) && (c7 || c8))) can_not_merge.insert(i);
+		}else{
+			if (c1) eto->left = efrom->left;
+			if (c2) efrom->left = eto->left;
+			if (c3) eto->right = efrom->right;
+			if (c4) efrom->right = eto->right;
 		}
+		if (!has_same_dir) efrom->reverse();
 	}
+	aa::remove_entries(change1, can_not_merge);
+	aa::remove_entries(change2, can_not_merge);
 
 	//set edges ids
 	aa::constant_ids_pvec(from.vedges, -1);

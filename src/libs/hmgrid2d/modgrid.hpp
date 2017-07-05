@@ -19,6 +19,7 @@ void MergeTo(const GridData& from, GridData& to);
 
 //does the same as MergeTo but also places all 'from' boundary nodes
 //to 'to' boundary if they lie on the boundary but do not equal 'to' vertex
+//Unlike MergeTo this doesn't copy 'from' primitives but creates deep copied ones.
 void MergeBoundaries(const GridData& from, GridData& to);
 
 //adds non-repeating (by pointer) vertices, edges and cells

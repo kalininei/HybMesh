@@ -20,9 +20,13 @@ HM2D::EdgeData RectGridLeft(const GridData& gd);
 GridData Ring(Point p0, double rad1, double rad2, int narc, int nrad);
 GridData Circle(Point p0, double rad, int narc, int nrad, bool tri_center);
 
-//uses only those vert which present in vert_cell tabs
+//uses only those vert which present in vert_cell tabs.
+//cell_vert should be given in counterclockwise ordering.
+//Use FixCellVert procedure to guarantee it.
 GridData FromTab(const VertexData& vert, const vector<vector<int>>& cell_vert);
 GridData FromTab(VertexData&& vert, const vector<vector<int>>& cell_vert);
+void FixCellVert(const VertexData& vert, vector<vector<int>>& cell_vert);
+
 
 //dim < 2 -> variable cells dimension
 //from cell->point table

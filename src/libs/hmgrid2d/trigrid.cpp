@@ -385,7 +385,7 @@ GridData GridFromModel(GModel& m){
 			}
 		}
 	}
-
+	Grid::Constructor::FixCellVert(vvert, cellvert);
 	return Grid::Constructor::FromTab(std::move(vvert), cellvert);
 }
 
@@ -628,19 +628,11 @@ GridData gmsh_builder(const Contour::Tree& source, const CoordinateMap2D<double>
 	}
 
 	callback->step_after(10, "Finalizing");
-	//adjust rotation
-	for (auto ret: gg)
-	for (int i=0; i<ret.vcells.size(); ++i){
-		if (Contour::Area(ret.vcells[i]->edges) < 0){
-			Contour::Algos::Reverse(ret.vcells[i]->edges);
-		}
-	}
-	GridData ret = std::move(gg[0]);
 	//make a summation with merging
+	GridData ret = std::move(gg[0]);
 	for (int i=1; i<gg.size(); ++i){
 		Grid::Algos::MergeBoundaries(gg[i], ret);
 	}
-	//merge equal boundary points
 	return ret;
 }
 
@@ -689,14 +681,27 @@ void recomb_heal(GridData& grid){
 		ee = HM2D::Contour::Assembler::Contour1(ee);
 		//if ee is not closed cell return error status.
 		if (!HM2D::Contour::IsClosed(ee)) return false;
-		Contour::R::Clockwise::Permanent(ee, false);
 		c1->edges = ee;
-		for (auto e: c1->edges){
-			e->left = grid.vcells[ic1];
-			if (e->right.lock().get() == c2) e->right.reset();
-		}
+		Contour::R::Clockwise::Permanent(ee, false);
+		//for (auto e: c1->edges){
+		//        e->left = grid.vcells[ic1];
+		//        if (e->right.lock().get() == c2) e->right.reset();
+		//}
 		grid.vcells[ic2]=nullptr;
+		for (auto e: c1->edges){
+			e->left.reset();
+			e->right.reset();
+		}
 		Grid::Algos::RestoreFromCells(grid);
+		for (auto& c: grid.vcells){
+			for (int i=0; i<c->edges.size(); ++i){
+				if (Contour::CorrectlyDirectedEdge(c->edges, i)){
+					c->edges[i]->left = c;
+				} else {
+					c->edges[i]->right = c;
+				}
+			}
+		}
 		auto cc = Contour::Finder::SelfCross(ee);
 		// If resuling cell has no self crosses it's ok to quit the function.
 		// See others/botscript1.py

@@ -381,6 +381,7 @@ public:
 	Iterator find(double x, double y) { return Iterator::find_(this, x, y);}
 	CIterator find(double x, double y) const { return CIterator::find_(this, x, y);}
 
+	//returns if point was added
 	bool add(Point key, D val=0) { return add(key.x, key.y, val); }
 	bool add(double x, double y, D val=0){
 		typename std::map<double, std::vector<XData>>::iterator f1;

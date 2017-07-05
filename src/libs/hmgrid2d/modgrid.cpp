@@ -115,36 +115,56 @@ void Algos::RemoveCells(GridData& grid, const Contour::Tree& domain, int what){
 	RestoreFromCells(grid);
 }
 
-void Algos::MergeBoundaries(const GridData& from, GridData& to){
-	//== force 'from' boundary nodes lying on 'to' boundary to 'to'
-	//assembling boundaries
-	auto bvfrom = AllVertices(ECol::Assembler::GridBoundary(from));
-	auto bedto = ECol::Assembler::GridBoundary(to);
-	auto bbox = HM2D::BBox(bedto);
-	//quick search for 'to' boundary edges
-	BoundingBoxFinder tofinder(bbox, bbox.maxlen()/30.);
-	for (auto e: bedto){
-		tofinder.addentry(BoundingBox(*e->pfirst(), *e->plast()));
+namespace{
+vector<vector<double>> find_split(const EdgeData& ed, const VertexData& verts){
+	vector<vector<double>> ret(ed.size());
+	BoundingBox bbox = BBox(ed);
+	BoundingBoxFinder efinder(bbox, bbox.maxlen()/30.);
+	for (auto e: ed){
+		efinder.addentry(BoundingBox(*e->pfirst(), *e->plast()));
 	}
-	for (auto v: bvfrom){
-		double ksi;
-		for (auto ecand: tofinder.suspects(*v)){
-			auto e = bedto[ecand].get();
-			//if 'from' vertex equals 'to' vertex ignore it.
-			//It will be splitted in MergeTo procedure
+	double ksi;
+	for (auto& v: verts){
+		for (int esus: efinder.suspects(*v)){
+			auto e = ed[esus];
 			if (*v == *e->pfirst() || *v == *e->plast()) break;
 			isOnSection(*v, *e->pfirst(), *e->plast(), ksi);
-			//if 'from' vertex lie in the middle of 'to' edge
-			//split 'to' edge by this vertex
-			if (ISIN_NN(ksi, 0, 1)){
-				aa::enumerate_ids_pvec(to.vedges);
-				SplitEdge(to, e->id, {*v}, true);
-				bedto.push_back(to.vedges.back());
-				tofinder.addentry(BoundingBox(*to.vedges.back()->pfirst(),
-				                              *to.vedges.back()->plast()));
-			}
+			if (ISIN_NN(ksi, 0, 1)){ ret[esus].push_back(ksi); }
 		}
 	}
+	return ret;
+}
+void insert_split(GridData& g, const EdgeData& ed, vector<vector<double>>& sp){
+	aa::enumerate_ids_pvec(g.vedges);
+	for (int i=ed.size()-1; i>=0; --i) if (sp[i].size()>0){
+		//make a deep copy of the edge
+		shared_ptr<Edge> e = ed[i];
+		std::sort(sp[i].begin(), sp[i].end());
+		vector<Point> pnts(sp[i].size());
+		for (int j=0; j<sp[i].size(); ++j){
+			pnts[j] = Point::Weigh(*e->pfirst(), *e->plast(), sp[i][j]);
+		}
+		Algos::SplitEdge(g, e->id, pnts, true);
+		aa::enumerate_ids_pvec(g.vedges);
+	}
+}
+};
+void Algos::MergeBoundaries(const GridData& _from, GridData& to){
+	if (_from.vcells.size() == 0) return;
+	GridData from;
+	HM2D::DeepCopy(_from, from);
+	if (to.vcells.size() == 0) {to=from; return; }
+	auto bedto = ECol::Assembler::GridBoundary(to);
+	auto bedfrom = ECol::Assembler::GridBoundary(from);
+	auto bvto = AllVertices(bedto);
+	auto bvfrom = AllVertices(bedfrom);
+
+	vector<vector<double>> to_split = find_split(bedto, bvfrom);
+	vector<vector<double>> from_split = find_split(bedfrom, bvto);
+	
+	insert_split(from, bedfrom, from_split);
+	insert_split(to, bedto, to_split);
+
 	MergeTo(from, to);
 }
 
@@ -178,6 +198,15 @@ void Algos::MergeTo(const GridData& from, GridData& to){
 			if (toe->vertices[1] == ve.v) toe->vertices[1] = fndres;
 		}
 		fndres->id = 1;
+	}
+
+	//##############
+	for (int i=0; i<bvfrom.size(); ++i){
+		auto v = bvfrom[i];
+		auto fd = finder.find(*v);
+		if (v!=fd){
+			int a = 0;
+		}
 	}
 
 	//!!! 'from' should not contain duplicated boundary nodes
@@ -229,7 +258,10 @@ void Algos::MergeTo(const GridData& from, GridData& to){
 	std::sort(from_susp.begin(), from_susp.end(), esortkey1);
 	//force matching
 	for (int i=0; i<to_susp.size(); ++i){
-		assert(i<from_susp.size());
+		if (i>=from_susp.size()){
+			to_susp.resize(from_susp.size());
+			break;
+		}
 		auto& eto = to_susp[i];
 		int j = i;
 		while (j<from_susp.size()){

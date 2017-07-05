@@ -8,6 +8,48 @@
 
 using namespace HM2D;
 
+void Debug::info_cell(const GridData& g, int i){
+	aa::RestoreIds<CellData> r1(g.vcells);
+	aa::RestoreIds<EdgeData> r2(g.vedges);
+	aa::RestoreIds<VertexData> r3(g.vvert);
+	numer_all(g);
+	auto c = g.vcells[i];
+	std::cout<<"Cell "<<i<<" edge list:"<<std::endl;
+	for (int j=0; j<c->edges.size(); ++j){
+		std::cout<<j<<")\t";
+		std::cout<<c->edges[j]->id<<" - ";
+		std::cout<<c->edges[j].get()<<"; cell neighbours: ";
+		if (c->edges[j]->has_left_cell())
+			std::cout<<c->edges[j]->left.lock()->id<<" - ";
+		else
+			std::cout<<"no - ";
+		if (c->edges[j]->has_right_cell())
+			std::cout<<c->edges[j]->right.lock()->id;
+		else
+			std::cout<<"no";
+		std::cout<<"; vertex neighbours: ";
+		std::cout<<c->edges[j]->vertices[0]->id<<" - ";
+		std::cout<<c->edges[j]->vertices[1]->id<<" ";
+		if (HM2D::Contour::CorrectlyDirectedEdge(c->edges, j)){
+			std::cout<<"  direct;"<<std::endl;
+		} else {
+			std::cout<<"  reversed;"<<std::endl;
+		}
+	}
+	std::cout<<"Cell "<<i<<" vertex list:"<<std::endl;
+	int j=0;
+	for (auto& v: HM2D::Contour::OrderedPoints1(c->edges)){
+		std::cout<<j<<")\t"<<v->id<<" - "<<v.get()<<std::endl;
+		++j;
+	}
+}
+
+void Debug::numer_all(const GridData& g){
+	aa::enumerate_ids_pvec(g.vcells);
+	aa::enumerate_ids_pvec(g.vedges);
+	aa::enumerate_ids_pvec(g.vvert);
+}
+
 void Debug::info_contour(const EdgeData& c){
 	Cout()<<"+++ EdgeData at "<<&c<<". "<<c.size()<<" edges. ";
 	if (Contour::IsContour(c)){

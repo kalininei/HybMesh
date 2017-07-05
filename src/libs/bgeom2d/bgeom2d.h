@@ -113,13 +113,16 @@ struct TSectCrossGeps{
 	bool inner_cross() const {
 		return posAB == 2 && ksi==0 && eta==0;
 	}
+	bool segment_cross() const{
+		return (posAB == 0 && posA*posB <=0);
+	}
 	bool a_on_line() const { return abs(posA)<2; }
 	bool b_on_line() const { return abs(posB)<2; }
 	bool has_contact() const {
 		if (posAB == 0){
 			return a_on_line() || b_on_line() ||
-				(posA == 3 && posB == 4) ||
-				(posA == 4 && posB == 3);
+				(posA == -2 && posB == 2) ||
+				(posA == 2 && posB == -2);
 		} else if (posAB == 2){
 			return abs(ksi)<2 && abs(eta)<2;
 		} else return false;
@@ -328,9 +331,11 @@ struct BoundingBoxFinder{
 	int nsqr() const { return (mx+1)*(my+1); }
 	const vector<int>& sqr_entries(int i) const { return data[i]; }
 	vector<int> sqr_entries(const std::vector<int>& isqr);
+	Point sqr_center(int i) const;
 	int nx() const { return mx+1; }
 	int ny() const { return my+1; }
-	Point sqr_center(int i) const;
+	double stepx() const { return hx; }
+	double stepy() const { return hy; }
 	Point pmin() const { return Point(x0, y0); }
 	Point pmax() const { return Point(x0 + hx*nx(), y0 + hy*ny()); }
 private:

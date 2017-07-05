@@ -363,7 +363,7 @@ GridData Algos::TSubstractArea::_run(const GridData& ginp, const Contour::Tree& 
 
 	//remove elements which can present in the grid due
 	//to outer contour exclusion
-	Algos::MergeTo(gnc, gg);
+	Algos::MergeBoundaries(gnc, gg);
 
 	//place area boundary before grid boundary to
 	//guarantee higher priority of area edges.

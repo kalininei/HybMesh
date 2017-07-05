@@ -15,6 +15,8 @@ struct Debug: public HMDebug{
 	static void info_contour(const EdgeData& c);
 	static void info_tree(const Contour::Tree& c);
 	static void info_tree_node(const Contour::Tree::TNode& c);
+	static void info_cell(const GridData& g, int icell);
+	static void numer_all(const GridData& g);
 
 	//contour in geogebra script format
 	static void geogebra_contour(const EdgeData& c);

@@ -187,7 +187,8 @@ NEXTTRY:
 namespace{
 vector<std::tuple<bool, Point, double, double>>
 cross_core(const EdgeData& c1, const EdgeData& c2, bool is1){
-	vector<std::tuple<bool, Point, double, double>> retv;
+	typedef std::tuple<bool, Point, double, double> RetT;
+	vector<RetT> retv;
 	auto bb1 = HM2D::BBox(c1), bb2 = HM2D::BBox(c2);
 	if (!bb1.has_common_points(bb2)) return retv;
 
@@ -208,14 +209,19 @@ cross_core(const EdgeData& c1, const EdgeData& c2, bool is1){
 		for (int j=0; j<op2.size()-1; ++j){
 			SectCross(*op1[i], *op1[i+1], *op2[j], *op2[j+1], ksieta);
 			if (ksieta[0]>-geps && ksieta[0]<1+geps && ksieta[1]>-geps && ksieta[1]<1+geps){
-				addcross(
-					Point::Weigh(*op1[i], *op1[i+1], ksieta[0]),
+				addcross(Point::Weigh(*op1[i], *op1[i+1], ksieta[0]),
 					(L1 + lens1[i]*ksieta[0])/flen1,
 					(L2 + lens2[j]*ksieta[1])/flen2
 				);
-				if (is1) return retv;
 			}
 			L2+=lens2[j];
+		}
+		if (is1 && retv.size()>0) {
+			if (retv.size() == 1) return retv;
+			auto me = min_element(retv.begin(), retv.end(),
+				[](const RetT& a, const RetT& b){
+					return std::get<2>(a)<std::get<2>(b);});
+			return {*me};
 		}
 		L1 += lens1[i];
 	}
@@ -378,13 +384,6 @@ CellData Finder::RasterFinder::extract_cells(const CellData& ac, int pos) const{
 			case PBAD: return set_edge(ie, PBAD);
 		}
 	};
-	for (int i=0; i<ac.size(); ++i){
-		int j=0;
-		while (ctypes[i] == 0 && j<ac[i]->edges.size()){
-			proc_edge1(ac[i]->edges[j]->id);
-			++j;
-		}
-	}
 	auto proc_vert2 = [&](int iv)->int{
 		if (vtypes[iv] == 0){
 			int p = whereis(*av[iv]);
@@ -404,6 +403,20 @@ CellData Finder::RasterFinder::extract_cells(const CellData& ac, int pos) const{
 			case PBAD: return set_edge(ie, PBAD);
 		}
 	};
+	auto proc_edge3 = [&](int ie){
+		int p = whereis(ae[ie]->center());
+		if (p == pos) set_edge(ie, PGOOD);
+		else if (p != BOUND) set_edge(ie, PBAD);
+	};
+	//using bb point position checks
+	for (int i=0; i<ac.size(); ++i){
+		int j=0;
+		while (ctypes[i] == 0 && j<ac[i]->edges.size()){
+			proc_edge1(ac[i]->edges[j]->id);
+			++j;
+		}
+	}
+	//using correct point position checks
 	for (int i=0; i<ac.size(); ++i){
 		int j=0;
 		while (ctypes[i] == 0 && j<ac[i]->edges.size()){
@@ -411,11 +424,7 @@ CellData Finder::RasterFinder::extract_cells(const CellData& ac, int pos) const{
 			++j;
 		}
 	}
-	auto proc_edge3 = [&](int ie){
-		int p = whereis(ae[ie]->center());
-		if (p == pos) set_edge(ie, PGOOD);
-		else if (p != BOUND) set_edge(ie, PBAD);
-	};
+	//using checks of edge central points
 	for (int i=0; i<ac.size(); ++i){
 		int j=0;
 		while (ctypes[i] == 0 && j<ac[i]->edges.size()){

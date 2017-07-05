@@ -214,6 +214,20 @@ GridData Algos::TUniteGrids::_run(const GridData& base, const GridData& sec, con
 	return ret;
 }
 
+#if 1
+GridData Algos::TCombineGrids::_run(const GridData& g1, const GridData& g2){
+	//1) build secondary contours
+	Contour::Tree c2 = Contour::Tree::GridBoundary(g2);
+	//2) substract
+	GridData ret = SubstractArea(g1, c2, true);
+	//3) merge
+	Algos::MergeBoundaries(g2, ret);
+	//5) get rid of hanging + non-significant + boundary nodes
+	//   They appear if boundaries of g1 and g2 partly coincide
+	Grid::Algos::SimplifyBoundary(ret, 0);
+	return ret;
+}
+#else
 GridData Algos::TCombineGrids::_run(const GridData& g1, const GridData& g2){
 	//1) build grids contours
 	callback->step_after(10, "Building graphs");
@@ -261,3 +275,4 @@ GridData Algos::TCombineGrids::_run(const GridData& g1, const GridData& g2){
 	HM2D::ECol::Algos::AssignBTypes(ic2, rc);
 	return ret;
 }
+#endif

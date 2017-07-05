@@ -112,15 +112,18 @@ TSectCrossGeps SectCrossGeps(const Point& P1, const Point& P2, Point A, Point B)
 	//Line equation
 	double E12[3] = { P1.y-P2.y, P2.x-P1.x, vecCrossZ(P1,P2) };
 	double Lp = sqrt(E12[0]*E12[0]+E12[1]*E12[1]);
+	assert(!ISZERO(Lp));
+	bool xdom = fabs(E12[1])>fabs(E12[0]);
 	//distance from A to P1-P2 Line
 	double AP1P2 = (E12[0]*A.x + E12[1]*A.y + E12[2])/Lp;
-	double L_AP1P2 = (E12[1]!=0) ? (Lp*(A.x-P1.x)-AP1P2*E12[0])/E12[1]
-	                             : (P2.y>P1.y) ? A.y-P1.y : P1.y-A.y;
+	double L_AP1P2 = (xdom) ? (Lp*(A.x-P1.x)-AP1P2*E12[0])/E12[1]
+	                        : (AP1P2*E12[1]-Lp*(A.y-P1.y))/E12[0];
 
 	//distance from B to P1-P2 line
 	double BP1P2 = (E12[0]*B.x + E12[1]*B.y + E12[2])/Lp;
-	double L_BP1P2 = (E12[1]!=0) ? (Lp*(B.x-P1.x)-BP1P2*E12[0])/E12[1]
-	                             : (P2.y>P1.y) ? B.y-P1.y : P1.y-B.y;
+	double L_BP1P2 = (xdom) ? (Lp*(B.x-P1.x)-BP1P2*E12[0])/E12[1]
+	                        : (BP1P2*E12[1]-Lp*(B.y-P1.y))/E12[0];
+	
 	//projecting, posA
 	if (AP1P2<-geps) r.posA = 4;
 	else if (AP1P2<geps){

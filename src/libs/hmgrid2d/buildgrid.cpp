@@ -163,7 +163,23 @@ GridData hgc::FromRaw(int npnt, int ncls, double* pnt, int* cls, int dim){
 	return FromTab(std::move(vv), cell_vert);
 }
 
-//uses only those vert which present in vert_cell tabs
+namespace{
+double cellar(const VertexData& vert, const vector<int>& cv){
+	double ret = 0;
+	for (int j=1; j<cv.size()-1; ++j){
+		ret += triarea(*vert[cv[0]], *vert[cv[j]], *vert[cv[j+1]]);
+	}
+	return ret;
+}
+};
+
+void hgc::FixCellVert(const VertexData& vert, vector<vector<int>>& cell_vert){
+	for (int i=0; i<cell_vert.size(); ++i){
+		auto& cv = cell_vert[i];
+		if (cellar(vert, cv) < 0) std::reverse(cv.begin(), cv.end());
+	}
+}
+
 GridData hgc::FromTab(const VertexData& vert, const vector<vector<int>>& cell_vert){
 	return FromTab(VertexData(vert), cell_vert);
 }
@@ -180,6 +196,7 @@ GridData hgc::FromTab(VertexData&& vert, const vector<vector<int>>& cell_vert){
 	int neds=0;
 
 	for (int i=0; i<cell_vert.size(); ++i){
+		assert(cellar(r.vvert, cell_vert[i])>=0);
 		for (int j=0; j<cell_vert[i].size(); ++j){
 			int i1 = cell_vert[i][j];
 			int i2 = cell_vert[i][(j==cell_vert[i].size()-1) ? 0 : j+1];

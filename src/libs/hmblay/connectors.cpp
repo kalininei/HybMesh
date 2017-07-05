@@ -319,6 +319,7 @@ void RoundConnector::AssembleGrid(vector<HM2D::VertexData>& pallpts, shared_ptr<
 		cell_weights.push_back(1);
 		cell_feat.push_back(feat);
 	}
+	HM2D::Grid::Constructor::FixCellVert(ap, cell_vert);
 	filler = BGrid::MoveFrom1(HM2D::Grid::Constructor::FromTab(ap, cell_vert));
 	for (int i=0; i<filler->vcells.size(); ++i){
 		filler->weight.emplace(filler->vcells[i].get(), cell_weights[i]);

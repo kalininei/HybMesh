@@ -71,6 +71,7 @@ public:
 	vector<int> colour_squares(bool use_groups) const;
 
 	BoundingBoxFinder& bbfinder(){ return *bbf; }
+	const BoundingBoxFinder& bbfinder() const{ return *bbf; } 
 };
 
 class RasterFinder{
