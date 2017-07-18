@@ -168,6 +168,9 @@ Contour Operations
 .. autofunction:: pebi_fill
 .. autofunction:: unite_grids
 .. autofunction:: unite_grids1
+.. autofunction:: remove_cells
+.. autofunction:: inscribe_grid
+.. autofunction:: insert_grid_constraints
 .. autoclass:: BoundaryGridOptions()
    :members: __init__, uniform_partition, incremental_partition
 .. autofunction:: build_boundary_grid

@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Example 3 &#8212; HybMesh 0.5.0 documentation</title>
+    <title>Example 3 &#8212; HybMesh 0.5.1 documentation</title>
     
     <link rel="stylesheet" href="_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '0.5.0',
+        VERSION:     '0.5.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true,
@@ -45,7 +45,7 @@
         <li class="right" >
           <a href="intro_example2.html" title="Example 2"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">HybMesh 0.5.0 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="index.html">HybMesh 0.5.1 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="pyinterface.html" accesskey="U">Python Script Interface</a> &#187;</li> 
       </ul>
     </div>  
@@ -181,13 +181,13 @@
     <span class="k">if</span> <span class="n">oldb</span> <span class="ow">in</span> <span class="p">[</span><span class="n">bcyl</span><span class="p">,</span> <span class="n">bcut</span><span class="p">]:</span>
         <span class="k">return</span> <span class="n">oldb</span>
     <span class="c1"># bottom/top walls</span>
-    <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">y0</span> <span class="o">-</span> <span class="n">y1</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">1e-12</span><span class="p">:</span>
+    <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">y0</span> <span class="o">-</span> <span class="n">y1</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="n">e</span><span class="o">-</span><span class="mi">12</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">bwalls</span>
     <span class="c1"># output</span>
-    <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">x0</span> <span class="o">-</span> <span class="n">x1</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">1e-12</span> <span class="ow">and</span> <span class="n">x0</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">x0</span> <span class="o">-</span> <span class="n">x1</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="n">e</span><span class="o">-</span><span class="mi">12</span> <span class="ow">and</span> <span class="n">x0</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">boutput</span>
     <span class="c1"># input</span>
-    <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">x0</span> <span class="o">-</span> <span class="n">x1</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">1e-12</span> <span class="ow">and</span> <span class="n">x0</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">x0</span> <span class="o">-</span> <span class="n">x1</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="n">e</span><span class="o">-</span><span class="mi">12</span> <span class="ow">and</span> <span class="n">x0</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">binput</span>
 
 <span class="n">hm</span><span class="o">.</span><span class="n">set_boundary_type</span><span class="p">(</span><span class="n">grid_final</span><span class="p">,</span> <span class="n">bfun</span><span class="o">=</span><span class="n">channelbfun</span><span class="p">)</span>
@@ -254,7 +254,7 @@
         <li class="right" >
           <a href="intro_example2.html" title="Example 2"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">HybMesh 0.5.0 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="index.html">HybMesh 0.5.1 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="pyinterface.html" >Python Script Interface</a> &#187;</li> 
       </ul>
     </div>

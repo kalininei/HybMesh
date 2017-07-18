@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Grid Prototypes &#8212; HybMesh 0.5.0 documentation</title>
+    <title>Grid Prototypes &#8212; HybMesh 0.5.1 documentation</title>
     
     <link rel="stylesheet" href="_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '0.5.0',
+        VERSION:     '0.5.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true,
@@ -45,7 +45,7 @@
         <li class="right" >
           <a href="functionality.html" title="Functionality"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">HybMesh 0.5.0 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">HybMesh 0.5.1 documentation</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -62,7 +62,7 @@
 User can define partition as number of equidistant segments,
 as a constant step or explicitly define partition by passing
 increasing array of respective coordinates.</p>
-<p>Python interface function: <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.add_unf_rect_grid" title="hybmeshpack.hmscript.add_unf_rect_grid"><code class="xref py py-func docutils literal"><span class="pre">add_unf_rect_grid()</span></code></a>.</p>
+<p>Python interface function: <code class="xref py py-func docutils literal"><span class="pre">add_unf_rect_grid()</span></code>.</p>
 </div>
 <div class="section" id="radial-grid">
 <h2>Radial Grid<a class="headerlink" href="#radial-grid" title="Permalink to this headline">¶</a></h2>
@@ -70,13 +70,13 @@ increasing array of respective coordinates.</p>
 as a regular n-side polygon. Radial and arch partition could be
 defined by number of steps, step size or explicitly. Refinement
 of radius partition could also be applied.</p>
-<p>Python interface function: <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.add_unf_circ_grid" title="hybmeshpack.hmscript.add_unf_circ_grid"><code class="xref py py-func docutils literal"><span class="pre">add_unf_circ_grid()</span></code></a>.</p>
+<p>Python interface function: <code class="xref py py-func docutils literal"><span class="pre">add_unf_circ_grid()</span></code>.</p>
 </div>
 <div class="section" id="ring-grid">
 <h2>Ring Grid<a class="headerlink" href="#ring-grid" title="Permalink to this headline">¶</a></h2>
 <p>Builds structured radial grid in a ring area.
 Refinement of radius partition could also be applied.</p>
-<p>Python interface function: <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.add_unf_ring_grid" title="hybmeshpack.hmscript.add_unf_ring_grid"><code class="xref py py-func docutils literal"><span class="pre">add_unf_ring_grid()</span></code></a>.</p>
+<p>Python interface function: <code class="xref py py-func docutils literal"><span class="pre">add_unf_ring_grid()</span></code>.</p>
 </div>
 <div class="section" id="triangle-grid">
 <h2>Triangle Grid<a class="headerlink" href="#triangle-grid" title="Permalink to this headline">¶</a></h2>
@@ -84,10 +84,10 @@ Refinement of radius partition could also be applied.</p>
 by three points.
 Resulting grid will contain quadrangle cells everywhere except
 area near one of the edges where triangle cells will be built.</p>
-<p>Python interface function: <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.add_triangle_grid" title="hybmeshpack.hmscript.add_triangle_grid"><code class="xref py py-func docutils literal"><span class="pre">add_triangle_grid()</span></code></a>.</p>
+<p>Python interface function: <code class="xref py py-func docutils literal"><span class="pre">add_triangle_grid()</span></code>.</p>
 </div>
 <div class="section" id="hexagonal-grid">
-<span id="hexgrid"></span><h2>Hexagonal Grid<a class="headerlink" href="#hexagonal-grid" title="Permalink to this headline">¶</a></h2>
+<span id="hexgrid"></span><h2>Hexagonal grid<a class="headerlink" href="#hexagonal-grid" title="Permalink to this headline">¶</a></h2>
 <p>Builds a structured regular hexagonal mesh in hexagonal or rectangular area (see figure below).</p>
 <div class="figure" id="id1">
 <a class="reference internal image-reference" href="_images/proto_hex1.png"><img alt="_images/proto_hex1.png" src="_images/proto_hex1.png" style="width: 500px;" /></a>
@@ -114,7 +114,7 @@ will be cut through their middle axis (see figure below).</p>
 <a class="reference internal image-reference" href="_images/proto_hex3.png"><img alt="_images/proto_hex3.png" src="_images/proto_hex3.png" style="width: 500px;" /></a>
 <p class="caption"><span class="caption-text">Clipped hexagonal mesh built in rectangle area with different <strong>strict</strong> settings.</span></p>
 </div>
-<p>Python interface function: <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.add_unf_hex_grid" title="hybmeshpack.hmscript.add_unf_hex_grid"><code class="xref py py-func docutils literal"><span class="pre">add_unf_hex_grid()</span></code></a>.</p>
+<p>Python interface function: <code class="xref py py-func docutils literal"><span class="pre">add_unf_hex_grid()</span></code>.</p>
 </div>
 <div class="section" id="square-in-circle">
 <span id="circrect-grid"></span><h2>Square in Circle<a class="headerlink" href="#square-in-circle" title="Permalink to this headline">¶</a></h2>
@@ -152,7 +152,7 @@ from outer circle vertices.</li>
 <p>The first, second and third algorithms give uniform grid within inner square;
 the first, second and forth - uniform outer circle partition.
 Only last two algorithms build an orthogonal grid.</p>
-<p>Python interface function: <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.add_circ_rect_grid" title="hybmeshpack.hmscript.add_circ_rect_grid"><code class="xref py py-func docutils literal"><span class="pre">add_circ_rect_grid()</span></code></a>.</p>
+<p>Python interface function: <code class="xref py py-func docutils literal"><span class="pre">add_circ_rect_grid()</span></code>.</p>
 </div>
 <div class="section" id="custom-rectangle-grid">
 <span id="custom-rect-grid"></span><h2>Custom Rectangle Grid<a class="headerlink" href="#custom-rectangle-grid" title="Permalink to this headline">¶</a></h2>
@@ -235,7 +235,7 @@ built in the similar way starting from vertices of the <em>left</em> contour.
 The resulting grid is guaranteed to be orthogonal disregarding the grid edges straightening.</p>
 <p>Linear, tfi and Laplace algorithms demand equal partition of opposite contours.
 Orthogonal algorithm completely ignores partition of <em>right</em> and <em>top</em> contours.</p>
-<p>Python interface function: <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.add_custom_rect_grid" title="hybmeshpack.hmscript.add_custom_rect_grid"><code class="xref py py-func docutils literal"><span class="pre">add_custom_rect_grid()</span></code></a>.</p>
+<p>Python interface function: <code class="xref py py-func docutils literal"><span class="pre">add_custom_rect_grid()</span></code>.</p>
 </div>
 <div class="section" id="boundary-grids">
 <span id="bgrids"></span><h2>Boundary Grids<a class="headerlink" href="#boundary-grids" title="Permalink to this headline">¶</a></h2>
@@ -256,7 +256,7 @@ Orthogonal algorithm completely ignores partition of <em>right</em> and <em>top<
 <li><a class="reference internal" href="#radial-grid">Radial Grid</a></li>
 <li><a class="reference internal" href="#ring-grid">Ring Grid</a></li>
 <li><a class="reference internal" href="#triangle-grid">Triangle Grid</a></li>
-<li><a class="reference internal" href="#hexagonal-grid">Hexagonal Grid</a></li>
+<li><a class="reference internal" href="#hexagonal-grid">Hexagonal grid</a></li>
 <li><a class="reference internal" href="#square-in-circle">Square in Circle</a></li>
 <li><a class="reference internal" href="#custom-rectangle-grid">Custom Rectangle Grid</a></li>
 <li><a class="reference internal" href="#boundary-grids">Boundary Grids</a></li>
@@ -306,7 +306,7 @@ Orthogonal algorithm completely ignores partition of <em>right</em> and <em>top<
         <li class="right" >
           <a href="functionality.html" title="Functionality"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">HybMesh 0.5.0 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">HybMesh 0.5.1 documentation</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">

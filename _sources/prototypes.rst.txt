@@ -41,7 +41,7 @@ Python interface function: :func:`add_triangle_grid`.
 
 .. _hexgrid:
 
-Hexagonal Grid
+Hexagonal grid
 --------------
 Builds a structured regular hexagonal mesh in hexagonal or rectangular area (see figure below).
 

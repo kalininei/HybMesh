@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Python Script Interface &#8212; HybMesh 0.5.0 documentation</title>
+    <title>Python Script Interface &#8212; HybMesh 0.5.1 documentation</title>
     
     <link rel="stylesheet" href="_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '0.5.0',
+        VERSION:     '0.5.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true,
@@ -45,7 +45,7 @@
         <li class="right" >
           <a href="prototypes.html" title="Grid Prototypes"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">HybMesh 0.5.0 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">HybMesh 0.5.1 documentation</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -256,9 +256,9 @@ will be printed to console.</p>
 <td><a class="reference internal" href="#hybmeshpack.hmscript.exclude_contours" title="hybmeshpack.hmscript.exclude_contours"><code class="xref py py-func docutils literal"><span class="pre">exclude_contours()</span></code></a></td>
 </tr>
 <tr class="row-odd"><td><a class="reference internal" href="#hybmeshpack.hmscript.map_grid" title="hybmeshpack.hmscript.map_grid"><code class="xref py py-func docutils literal"><span class="pre">map_grid()</span></code></a></td>
-<td></td>
-<td></td>
-<td></td>
+<td><a class="reference internal" href="#hybmeshpack.hmscript.remove_cells" title="hybmeshpack.hmscript.remove_cells"><code class="xref py py-func docutils literal"><span class="pre">remove_cells()</span></code></a></td>
+<td><a class="reference internal" href="#hybmeshpack.hmscript.inscribe_grid" title="hybmeshpack.hmscript.inscribe_grid"><code class="xref py py-func docutils literal"><span class="pre">inscribe_grid()</span></code></a></td>
+<td><a class="reference internal" href="#hybmeshpack.hmscript.insert_grid_constraints" title="hybmeshpack.hmscript.insert_grid_constraints"><code class="xref py py-func docutils literal"><span class="pre">insert_grid_constraints()</span></code></a></td>
 <td></td>
 </tr>
 </tbody>
@@ -1955,6 +1955,121 @@ Makes sense only if <code class="docutils literal"><span class="pre">fix_bnd</sp
 <p>Same as <a class="reference internal" href="#hybmeshpack.hmscript.unite_grids" title="hybmeshpack.hmscript.unite_grids"><code class="xref py py-func docutils literal"><span class="pre">unite_grids()</span></code></a> without chain superposition support.</p>
 </dd></dl>
 
+<dl class="function">
+<dt id="hybmeshpack.hmscript.remove_cells">
+<code class="descclassname">hybmeshpack.hmscript.</code><code class="descname">remove_cells</code><span class="sig-paren">(</span><em>grid</em>, <em>cont</em>, <em>what</em><span class="sig-paren">)</span><a class="headerlink" href="#hybmeshpack.hmscript.remove_cells" title="Permalink to this definition">¶</a></dt>
+<dd><p>Removes grid cells by a bounding contour.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>grid</strong> &#8211; basic grid identifier</li>
+<li><strong>cont</strong> &#8211; bounding area, grid or contour identifier</li>
+<li><strong>what</strong> (<em>str</em>) &#8211; <p>remove cells which are</p>
+<ul>
+<li><code class="docutils literal"><span class="pre">&quot;fully_inside&quot;</span></code>,</li>
+<li><code class="docutils literal"><span class="pre">&quot;fully_outside&quot;</span></code>,</li>
+<li><code class="docutils literal"><span class="pre">&quot;partly_inside&quot;</span></code>,</li>
+<li><code class="docutils literal"><span class="pre">&quot;partly_outside&quot;</span></code>,</li>
+<li><code class="docutils literal"><span class="pre">&quot;cross&quot;</span></code>, &#8211; crossed by <strong>cont</strong> edges,</li>
+<li><code class="docutils literal"><span class="pre">&quot;no_cross&quot;</span></code>, &#8211; not crossed by <strong>cont</strong> edges.</li>
+</ul>
+</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">identifier of the newly created grid</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p>See details in <a class="reference internal" href="functionality.html#remove-cells"><span class="std std-ref">Remove Cells</span></a>.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="hybmeshpack.hmscript.inscribe_grid">
+<code class="descclassname">hybmeshpack.hmscript.</code><code class="descname">inscribe_grid</code><span class="sig-paren">(</span><em>grid</em>, <em>cont</em>, <em>where</em>, <em>buffer_size</em>, <em>keep_cont=True</em>, <em>zero_angle=0</em>, <em>buffer_fill='3'</em><span class="sig-paren">)</span><a class="headerlink" href="#hybmeshpack.hmscript.inscribe_grid" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inscribes grid into an area.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>grid</strong> &#8211; input grid identifier</li>
+<li><strong>cont</strong> &#8211; bounding area, grid or contour identifier</li>
+<li><strong>where</strong> (<em>str</em>) &#8211; <p>inscribe inside/outside <strong>cont</strong> area.</p>
+<ul>
+<li><code class="docutils literal"><span class="pre">&quot;inside&quot;</span></code>,</li>
+<li><code class="docutils literal"><span class="pre">&quot;outside&quot;</span></code>.</li>
+</ul>
+</li>
+<li><strong>buffer_size</strong> (<em>float</em>) &#8211; offset distance from <strong>cont</strong>
+area which defines a buffer zone.</li>
+<li><strong>keep_cont</strong> (<em>bool</em>) &#8211; whether use <strong>cont</strong> segmentation as is or
+repart it.</li>
+<li><strong>zero_angle</strong> (<em>degree</em>) &#8211; defines deviation from the straight angle which is considered
+insignificant while 1D resegmentation. -1 makes all existed vertices
+significant; 180 &#8211; allows complete resegmentation.</li>
+<li><strong>buffer_fill</strong> (<em>str</em>) &#8211; <p>one of</p>
+<ul>
+<li><code class="docutils literal"><span class="pre">&quot;3&quot;</span></code> - triangulate buffer,</li>
+<li><code class="docutils literal"><span class="pre">&quot;4&quot;</span></code> - build recombined grid,</li>
+<li><code class="docutils literal"><span class="pre">&quot;no&quot;</span></code> - do not fill the buffer with unstructured grid.</li>
+</ul>
+</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">identifier of the newly created grid</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p>See details in <a class="reference internal" href="functionality.html#inscribe-grid"><span class="std std-ref">Inscribe Grid into Domain</span></a>.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="hybmeshpack.hmscript.insert_grid_constraints">
+<code class="descclassname">hybmeshpack.hmscript.</code><code class="descname">insert_grid_constraints</code><span class="sig-paren">(</span><em>grid</em>, <em>conts=[]</em>, <em>sites=[]</em>, <em>buffer_size=1.0</em>, <em>keep_cont=True</em>, <em>zero_angle=0</em>, <em>buffer_fill='3'</em><span class="sig-paren">)</span><a class="headerlink" href="#hybmeshpack.hmscript.insert_grid_constraints" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inserts a line or site constraint into a grid.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>grid</strong> &#8211; input grid identifier</li>
+<li><strong>conts</strong> &#8211; contour (or grid) identifier or list of identifiers 
+for line constraints</li>
+<li><strong>sites</strong> &#8211; list of site constraints given as
+<code class="docutils literal"><span class="pre">[size0,</span> <span class="pre">[x0,</span> <span class="pre">y0],</span> <span class="pre">size1,</span> <span class="pre">[x1,</span> <span class="pre">y1],</span> <span class="pre">...]</span></code> where <em>size0,1,...</em> is the
+desired edge size in a given site. Set it to -1 or <code class="docutils literal"><span class="pre">'auto'</span></code>
+for automatic size detection.</li>
+<li><strong>buffer_size</strong> (<em>float</em>) &#8211; offset distance from <strong>conts</strong> and <strong>sites</strong>
+which defines a buffer zone.</li>
+<li><strong>keep_cont</strong> &#8211; whether line constraints should be used as they are or
+remeshed with a proper step.</li>
+<li><strong>zero_angle</strong> (<em>degree</em>) &#8211; defines deviation from the straight angle which is considered
+insignificant while 1D resegmentation. -1 makes all existed vertices
+significant.</li>
+<li><strong>buffer_fill</strong> (<em>str</em>) &#8211; <p>one of</p>
+<ul>
+<li><code class="docutils literal"><span class="pre">&quot;3&quot;</span></code> - triangulate buffer,</li>
+<li><code class="docutils literal"><span class="pre">&quot;4&quot;</span></code> - build recombined grid,</li>
+<li><code class="docutils literal"><span class="pre">&quot;no&quot;</span></code> - do not fill the buffer with unstructured grid.</li>
+</ul>
+</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">identifier of the newly created grid</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p>See details in <a class="reference internal" href="functionality.html#insert-constraints"><span class="std std-ref">Insert Line and Site Constraints</span></a>.</p>
+</dd></dl>
+
 <dl class="class">
 <dt id="hybmeshpack.hmscript.BoundaryGridOptions">
 <em class="property">class </em><code class="descclassname">hybmeshpack.hmscript.</code><code class="descname">BoundaryGridOptions</code><a class="headerlink" href="#hybmeshpack.hmscript.BoundaryGridOptions" title="Permalink to this definition">¶</a></dt>
@@ -2160,9 +2275,9 @@ options using existing contour segmentation for horizontal stepping.</p>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>grid</strong> &#8211; source grid identifier</li>
-<li><strong>conts</strong> &#8211; contour or list of contours/grids identifiers for exclusion.</li>
+<li><strong>conts</strong> &#8211; contour or list of contour/grid identifiers for exclusion.</li>
 <li><strong>what</strong> (<em>str</em>) &#8211; <code class="docutils literal"><span class="pre">&quot;inner&quot;</span></code>/<code class="docutils literal"><span class="pre">&quot;outer&quot;</span></code>.
-Describes what part of <code class="docutils literal"><span class="pre">conts</span></code> domain exclude</li>
+Defines what part of <code class="docutils literal"><span class="pre">conts</span></code> domain should be excluded.</li>
 </ul>
 </td>
 </tr>
@@ -2171,6 +2286,7 @@ Describes what part of <code class="docutils literal"><span class="pre">conts</s
 </tr>
 </tbody>
 </table>
+<p>See details in <a class="reference internal" href="functionality.html#substract-area"><span class="std std-ref">Substract Area</span></a>.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
 <p class="last">All contours from <strong>cont</strong> list are excluded consecutively.
@@ -2573,7 +2689,7 @@ have same boundary type</li>
 <span class="c1"># case 3: same as case 2 but select central face within z=0</span>
 <span class="c1">#         surface and assign it with bcustom boundary type</span>
 <span class="k">def</span> <span class="nf">assign_boundary3d_z0</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
-    <span class="k">if</span> <span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">y</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">&lt;</span> <span class="mf">1e-6</span><span class="p">:</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">y</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="n">e</span><span class="o">-</span><span class="mi">6</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">bcustom</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">bz0</span>
@@ -3411,7 +3527,7 @@ Different approaches to non-regular domain meshing.</li>
         <li class="right" >
           <a href="prototypes.html" title="Grid Prototypes"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">HybMesh 0.5.0 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">HybMesh 0.5.1 documentation</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">

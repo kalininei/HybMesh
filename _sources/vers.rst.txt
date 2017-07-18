@@ -216,3 +216,11 @@ Versions History
    * :func:`tab_cont2`, :func:`tab_grid2`, :func:`tab_surf3`, :func:`tab_grid3`
    * :func:`snap_grid_to_contour`
    * :func:`unite_grids1`, :func:`build_boundary_grid1`
+
+
+* **0.5.1**:
+   New python interface functions:
+
+   * :func:`remove_cells`
+   * :func:`inscribe_grid`
+   * :func:`insert_grid_constraints`
