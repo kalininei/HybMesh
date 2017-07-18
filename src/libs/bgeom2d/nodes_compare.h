@@ -298,8 +298,8 @@ public:
 			return !(level0 == it.level0 && (level0 == parent->sdata.end() || level1 == it.level1));
 		}
 
-		double x() const { return level1->realy; }
-		double y() const { return level1->realx; }
+		double x() const { return level1->realx; }
+		double y() const { return level1->realy; }
 		Point point() const { return Point(level1->realx, level1->realy); }
 		DT& data(){ return level1->data; }
 

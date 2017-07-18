@@ -829,3 +829,36 @@ $FUNC(
 	$ARG #STRING algo=#VALSTRING(add)
 	$RETURN #GRID2D
 $FUNC)
+
+$FUNC(
+	$NAME remove_cells
+	$ARG #GRID2D grid
+	$ARG #OBJECT2D cont
+	$ARG #STRING what
+	$RETURN #GRID2D
+$FUNC)
+
+$FUNC(
+	$NAME inscribe_grid
+	$ARG #GRID2D grid
+	$ARG #OBJECT2D cont
+	$ARG #STRING where
+	$ARG #DOUBLE buffer_size
+	$ARG #BOOL keep_cont=#TRUE
+	$ARG #DOUBLE zero_angle=0.0
+	$ARG #STRING buffer_fill=#VALSTRING(3)
+	$RETURN #GRID2D
+$FUNC)
+
+$FUNC(
+	$NAME insert_grid_constraints
+	$ARG #GRID2D grid
+	$ARG #VECOBJECT2D conts
+	$ARGSPLITVEC(0) #VECDOUBLE site_sizes
+	$ARGSPLITVEC(0) #VECPOINT sites
+	$ARG #DOUBLE buffer_size
+	$ARG #BOOL keep_cont=#TRUE
+	$ARG #DOUBLE zero_angle=0.0
+	$ARG #STRING buffer_fill=#VALSTRING(3)
+	$RETURN #GRID2D
+$FUNC)

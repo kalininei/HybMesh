@@ -67,7 +67,6 @@ def bfun3(x0, y0, x1, y1, bo):
 
 
 hm.set_boundary_type(g3, bfun=bfun3)
-print hm.info_contour(g3)
 check_cont(g3, 20, 20, [10, 10], {1: 10, 2: 5, 3: 5})
 
 print "separate/simplify"
@@ -240,10 +239,10 @@ c2 = hm.partition_contour(c2, 'const', 0.03)
 c3 = hm.add_circ_contour([0.3, 0.7], 0.15, 16)
 c4 = hm.add_circ_contour([0.7, 0.7], 0.15, 24)
 g1 = hm.triangulate_domain(c1, [c2, c3, c4])
-checkdict(hm.info_grid(g1), {'cell_types': {3: 1008}})
+check(abs(hm.domain_area(g1)-1)<1e-8);
 
 g1 = hm.triangulate_domain([c1, c3, c4], c2)
-checkdict(hm.info_grid(g1), {'cell_types': {3: 824}})
+check(abs(hm.domain_area(g1) - 0.86123583999)<1e-3);
 
 c1 = hm.create_spline_contour([[-0.2, 0.35], [0.5, 0.1], [1.2, 0.35]])
 c1 = hm.partition_contour(c1, "const", 0.05, crosses=[csqr])

@@ -80,7 +80,7 @@ hm.export_contour_vtk(house_final, "house_contour.vtk")
 # ^^^^^^^^^^^^^^^^^^^^^^^^
 if (not skew['ok']):
     raise Exception
-if (hm.info_contour(house_final)['btypes'] != {0: 122, 1: 25, 2: 77, 3: 160}):
+if (hm.info_contour(house_final)['btypes'] != {0: 122, 1: 25, 2: 74, 3: 160}):
     print hm.info_contour(house_final)['btypes'], 'vs'
-    print {0: 122, 1: 25, 2: 77, 3: 160}
+    print {0: 122, 1: 25, 2: 74, 3: 160}
     raise Exception

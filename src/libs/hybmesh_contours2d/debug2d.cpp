@@ -158,6 +158,9 @@ EdgeData Debug::alledges(const CellData& cells){
 	return aa::no_duplicates(ret);
 }
 
+void Debug::save_edges_vtk(const Contour::Tree& c){
+	return Debug::save_edges_vtk(c.alledges());
+}
 void Debug::save_edges_vtk(const EdgeData& c){
 	auto av = allvertices(c);
 	aa::RestoreIds<EdgeData> r1(c);
@@ -261,7 +264,11 @@ void Debug::save_cells_vtk_id(const CellData& data){
 void Debug::save_edges_vtk_id(const EdgeData& data){
 	save_edges_vtk(data);
 	std::ofstream fs("_dbgout.vtk", std::ios::app);
-	fs<<"CELL_DATA "<<data.size()<<std::endl;
+	vector<int> bcond(data.size());
+	for (int i=0; i<data.size(); ++i) bcond[i] = data[i]->boundary_type;
+	if (std::all_of(bcond.begin(), bcond.end(), [](int a){ return a==0; })){
+		fs<<"CELL_DATA "<<data.size()<<std::endl;
+	}
 	fs<<"SCALARS id int 1"<<std::endl;
 	fs<<"LOOKUP_TABLE default"<<std::endl;
 	for (int i=0; i<data.size(); ++i) fs<<data[i]->id<<std::endl;

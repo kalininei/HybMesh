@@ -89,8 +89,8 @@ int c2_scale(void* obj, double* pc, double* p0){
 		auto cont = static_cast<HM2D::EdgeData*>(obj);
 		double xc = pc[0] / 100., yc = pc[1] / 100.;
 		for (auto& p: HM2D::AllVertices(*cont)){
-			p->x -= p0[0]; p->x *= xc;
-			p->y -= p0[1]; p->y *= yc;
+			p->x -= p0[0]; p->x *= xc; p->x += p0[0];
+			p->y -= p0[1]; p->y *= yc; p->y += p0[1];
 		}
 		return HMSUCCESS;
 	} catch (std::exception& e){

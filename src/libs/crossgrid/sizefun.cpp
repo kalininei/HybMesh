@@ -27,6 +27,13 @@ vector<double> SizeFun::sz(const vector<Point>& p) const{
 
 namespace{
 
+//This exception is used to detect whether is site segment belongs could be
+//restored from aux grid edges or not.
+//Method sz_boundary_segment throws this exception on fail.
+struct _PointNotOnGridEdge: public std::runtime_error{
+	_PointNotOnGridEdge(): std::runtime_error("point is not on grid edge"){}
+};
+
 //Size function for multiple non-crossed trees
 struct SumSizeFun: public SizeFun{
 	vector<shared_ptr<SizeFun>> szfuns;
@@ -65,6 +72,21 @@ struct SumSizeFun: public SizeFun{
 		}
 		throw std::runtime_error("error detecting size outside of the area");
 	}
+	double sz_proj(const Point& p) const override{
+		try{
+			return sz(p);
+		} catch (std::runtime_error){
+			vector<Point> proj(szfuns.size());
+			for (int i=0; i<szfuns.size(); ++i){
+				proj[i] = HM2D::Finder::ClosestEPoint(bounds[i].alledges(), p);
+			}
+			int ibest = std::min_element(proj.begin(), proj.end(),
+				[&p](const Point& a, const Point& b){
+					return Point::meas(a, p)<Point::meas(b,p);
+				})-proj.begin();
+			return szfuns[ibest]->sz(proj[ibest]);
+		}
+	}
 
 	vector<double> sz(const vector<Point>& p) const override{
 		vector<int> pos(p.size(), -1);
@@ -80,7 +102,7 @@ struct SumSizeFun: public SizeFun{
 			}
 		}
 
-		vector<double> ret(p.size());
+		vector<double> ret(p.size(), -1);
 		for (int i=0; i<szfuns.size(); ++i){
 			vector<Point> p2;
 			for (int j=0; j<p.size(); ++j) if (pos[j] == i){
@@ -108,7 +130,7 @@ struct SumSizeFun: public SizeFun{
 				return szfuns[i]->sz_boundary_segment(pos);
 			}
 		}
-		throw std::runtime_error("error detecting size outside of the area");
+		throw _PointNotOnGridEdge();
 	}
 };
 
@@ -122,23 +144,13 @@ struct ConstSizeFun: public SizeFun{
 	double maxstep() const override{ return val; }
 
 	double sz(const Point& p) const override{ return val; }
+	double sz_proj(const Point& p) const override{ return val; }
 
 	HMMath::LinearPiecewise sz_boundary_segment(const HM2D::EdgeData& pos) const override{
 		HMMath::LinearPiecewise ret;
 		ret.add_point(0, val);
 		ret.add_point(1, val);
 		return ret;
-	}
-};
-
-struct InvalidSizeFun: public SizeFun{
-	InvalidSizeFun(){};
-
-	double minstep() const override{ return std::numeric_limits<double>::max(); }
-	double maxstep() const override{ return 0;}
-	double sz(const Point& p) const override{ throw std::runtime_error("invalid sizefunction call"); }
-	HMMath::LinearPiecewise sz_boundary_segment(const HM2D::EdgeData& pos) const override{
-		 throw std::runtime_error("invalid sizefunction call"); 
 	}
 };
 
@@ -224,6 +236,14 @@ struct TriBasedSizeFun: public SizeFun{
 		}
 		return approx->Val(p, common_size);
 	}
+	double sz_proj(const Point& p) const override{
+		try {
+			return sz(p);
+		} catch (HMFem::Grid43::Approximator::EOutOfArea){
+			return sz(HM2D::Finder::ClosestEPoint(
+				ECol::Assembler::GridBoundary(*grid), p));
+		}
+	}
 
 	HMMath::LinearPiecewise sz_boundary_segment(const HM2D::EdgeData& site) const override{
 		HMMath::LinearPiecewise ret;
@@ -253,7 +273,7 @@ struct TriBasedSizeFun: public SizeFun{
 				case HMFem::Grid43::Approximator::NodePos::InternalVertex:
 				case HMFem::Grid43::Approximator::NodePos::BndVertex:
 					v1 = grid->vvert[pos1.nvert];
-					break;
+					return;
 				case HMFem::Grid43::Approximator::NodePos::BndEdge:
 				case HMFem::Grid43::Approximator::NodePos::InternalEdge:
 				{
@@ -262,16 +282,15 @@ struct TriBasedSizeFun: public SizeFun{
 					auto cand2 = grid->vvert[pos1.nve2];
 					for (auto it: site){
 						if (isOnSection(*cand1, *it->pfirst(), *it->plast(), ksi)){
-							v1 = cand1; break;
+							v1 = cand1; return;
 						}
 						if (isOnSection(*cand2, *it->pfirst(), *it->plast(), ksi)){
-							v1 = cand2; break;
+							v1 = cand2; return;
 						}
 					}
-					break;
 				}
-				default: throw std::runtime_error("Point does not lie on a grid edge");
 			}
+			throw _PointNotOnGridEdge();
 		};
 
 
@@ -320,9 +339,7 @@ struct TriBasedSizeFun: public SizeFun{
 			}
 			// we must reach v2 anyway. If we are here then we've failed. 
 			// Try one more time in the opposite direction and then raise an exception
-			if (ntry++ != 0) {
-				throw std::runtime_error("Failed to assemble contour from grid edges");
-			}
+			if (ntry++ != 0) throw _PointNotOnGridEdge();
 			ret.clear();
 			veit = v1->id;
 			continue;
@@ -663,8 +680,14 @@ shared_ptr<SizeFun> build_size_function1(const Contour::Tree& source, const Edge
 	remove_bound_cross_edges(vital_detached, source);
 	remove_outer_edges(vital_detached, source);
 
+	//if there are no size constraints in input data use source bound
+	//segmentation as a size source.
 	int n = (vital_detached.size() + vital_bound.size() + psrc2.size());
-	if (n == 0) return std::shared_ptr<SizeFun>(new InvalidSizeFun());
+	if (n == 0){
+		for (auto& n: source.bound_contours())
+		for (auto& e: n->contour) vital_bound.push_back(e);
+		n = vital_bound.size();
+	}
 
 	//get minimum and maximum steps
 	double minval=1e100, maxval=-1, aver=0;
@@ -718,11 +741,9 @@ void check_edges_vitality(shared_ptr<SizeFun> sfun,
 	vector<int> new_vital;
 	for (int i=0; i<reparted.size(); ++i){
 		if (reparted[i]->pfirst()->id == 1 && reparted[i]->plast()->id == 1){
-			try{ //may raise due to InvalidSizeFun
-				double true_len = reparted[i]->length();
-				double sfun_len = sfun->sz(reparted[i]->center());
-				if (sfun_len / true_len >= 2.) new_vital.push_back(i);
-			} catch (std::runtime_error) {}
+			double true_len = reparted[i]->length();
+			double sfun_len = sfun->sz_proj(reparted[i]->center());
+			if (sfun_len / true_len >= 2.) new_vital.push_back(i);
 		}
 	}
 	if (new_vital.size() == 0) return; 
@@ -794,7 +815,7 @@ bool boundary_repart(const shared_ptr<SizeFun>& sfun, Contour::Tree& source,
 			for (auto& n: bmap1){
 				bmap.emplace((n.first-v0)/nrm, n.second);
 			}
-		} catch (std::runtime_error){
+		} catch (_PointNotOnGridEdge){
 			//if conts[i] doesn't lie along the set of grid edges the
 			//do simple linear interpolation
 			double len = HM2D::Contour::Length(conts[i]);

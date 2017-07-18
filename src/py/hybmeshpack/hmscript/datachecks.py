@@ -265,7 +265,7 @@ class UListOr1(Or):
 
 
 class ListOr1(Or):
-    """unique list of values or single value"""
+    """list of values or single value"""
     def __init__(self, c1, **kwargs):
         super(ListOr1, self).__init__(List(c1, **kwargs), c1)
 

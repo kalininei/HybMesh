@@ -60,7 +60,7 @@ define info_cell
 end
 
 define info_tree
-	call HMCont2D::Debug::info_tree($arg0)
+	call HM2D::Debug::info_tree($arg0)
 end
 
 define info_extpath
@@ -69,58 +69,58 @@ end
 
 
 define gg_contour
-	call HMCont2D::Debug::geogebra_contour($arg0)
+	call HM2D::Debug::geogebra_contour($arg0)
 	if ($argc>1)
-		call HMCont2D::Debug::geogebra_contour($arg1)
+		call HM2D::Debug::geogebra_contour($arg1)
 	end
 	if ($argc>2)
-		call HMCont2D::Debug::geogebra_contour($arg2)
+		call HM2D::Debug::geogebra_contour($arg2)
 	end
 	if ($argc>3)
-		call HMCont2D::Debug::geogebra_contour($arg3)
+		call HM2D::Debug::geogebra_contour($arg3)
 	end
 	if ($argc>4)
-		call HMCont2D::Debug::geogebra_contour($arg4)
+		call HM2D::Debug::geogebra_contour($arg4)
 	end
 	if ($argc>5)
-		call HMCont2D::Debug::geogebra_contour($arg5)
+		call HM2D::Debug::geogebra_contour($arg5)
 	end
 	if ($argc>6)
-		call HMCont2D::Debug::geogebra_contour($arg6)
+		call HM2D::Debug::geogebra_contour($arg6)
 	end
 end
 
 define gg_tree
-	call HMCont2D::Debug::geogebra_tree($arg0)
+	call HM2D::Debug::geogebra_tree($arg0)
 	if ($argc>1)
-		call HMCont2D::Debug::geogebra_tree($arg1)
+		call HM2D::Debug::geogebra_tree($arg1)
 	end
 	if ($argc>2)
-		call HMCont2D::Debug::geogebra_tree($arg2)
+		call HM2D::Debug::geogebra_tree($arg2)
 	end
 	if ($argc>3)
-		call HMCont2D::Debug::geogebra_tree($arg3)
+		call HM2D::Debug::geogebra_tree($arg3)
 	end
 	if ($argc>4)
-		call HMCont2D::Debug::geogebra_tree($arg4)
+		call HM2D::Debug::geogebra_tree($arg4)
 	end
 	if ($argc>5)
-		call HMCont2D::Debug::geogebra_tree($arg5)
+		call HM2D::Debug::geogebra_tree($arg5)
 	end
 	if ($argc>6)
-		call HMCont2D::Debug::geogebra_tree($arg6)
+		call HM2D::Debug::geogebra_tree($arg6)
 	end
 end
 
 define gg_ecol
-	call HMCont2D::Debug::geogebra_ecollection($arg0)
+	call HM2D::Debug::geogebra_ecollection($arg0)
 	if ($argc>1)
-		call HMCont2D::Debug::geogebra_ecollection($arg1)
+		call HM2D::Debug::geogebra_ecollection($arg1)
 	end
 	if ($argc>2)
-		call HMCont2D::Debug::geogebra_ecollection($arg2)
+		call HM2D::Debug::geogebra_ecollection($arg2)
 	end
 	if ($argc>3)
-		call HMCont2D::Debug::geogebra_ecollection($arg3)
+		call HM2D::Debug::geogebra_ecollection($arg3)
 	end
 end

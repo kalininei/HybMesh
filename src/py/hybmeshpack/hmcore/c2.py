@@ -226,8 +226,8 @@ def contour_type(obj):
 
 
 def concatenate(objs):
-    objs = list_to_c(objs, "void*")
     nobjs = ct.c_int(len(objs))
+    objs = list_to_c(objs, "void*")
     ret = ct.c_void_p()
     ccall(cport.c2_concatenate, nobjs, objs, ct.byref(ret))
     return ret

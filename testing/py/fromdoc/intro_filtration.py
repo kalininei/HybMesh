@@ -153,7 +153,6 @@ hm.export_grid_vtk(fin5, "g5.vtk")
 hm.export_grid_vtk(fin6, "g6.vtk")
 hm.export3d_grid_tecplot(fin7, "g7.dat")
 # if hm.info_grid(fin4)['cell_types'][4] != 1567:
-sk = hm.skewness(fin4, 0.8)
-if len(sk['bad_cells']) > 1:
+if not hm.skewness(fin4, 0.9)['ok']:
     print sk
     raise Exception

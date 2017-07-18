@@ -71,15 +71,16 @@ def scale_geom(objs, xpc=100., ypc=100., zpc=100., refp=[0.0, 0.0, 0.0]):
     if **objs** contains only 2d objects **zpc** is ignored and could be
     ommitted, **refp** could by given as ``[x, y]``.
     """
+    # for backward compatibility check if zpc was omitted
+    if isinstance(zpc, list):
+        refp = zpc
+        zpc = 100.
     icheck(0, UListOr1(AObject()))
     icheck(1, Float(grthan=0.))
     icheck(2, Float(grthan=0.))
     icheck(3, Float(grthan=0.))
     icheck(4, APoint())
-    # for backward compatibility check if zpc was omitted
-    if isinstance(zpc, list):
-        refp = zpc
-        zpc = 100.
+
     if len(refp) == 2:
         refp = [refp[0], refp[1], 0.]
 

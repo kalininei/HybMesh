@@ -35,7 +35,7 @@ struct TCombineGrids: public HMCallback::ExecutorBase{
 	HMCB_SET_PROCNAME("Combine grids");
 	HMCB_SET_DEFAULT_DURATION(100);
 
-	GridData _run(const GridData& g1, const GridData& g2);
+	GridData _run(const GridData& g1, const GridData& g2, bool keep_g2_holes=false);
 };
 extern HMCallback::FunctionWithCallback<TCombineGrids> CombineGrids;
 }}}

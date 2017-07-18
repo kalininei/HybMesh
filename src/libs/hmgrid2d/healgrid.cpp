@@ -7,6 +7,7 @@
 #include "finder2d.hpp"
 #include "clipdomain.hpp"
 #include "nodes_compare.h"
+#include "hmtimer.hpp"
 
 using namespace HM2D;
 using namespace HM2D::Grid;
@@ -33,7 +34,7 @@ bool check_cells(const GridData& g, double& sumarea){
 
 bool check_edges_intersections(const GridData& g){
 	auto bb = HM2D::BBox(g.vvert);
-	BoundingBoxFinder bfinder(bb, bb.maxlen()/50);
+	BoundingBoxFinder bfinder(bb, bb.maxlen()/100);
 	vector<BoundingBox> ebb(g.vedges.size());
 	for (int i=0; i<g.vedges.size(); ++i){
 		ebb[i] = BoundingBox(*g.vedges[i]->pfirst(), *g.vedges[i]->plast());

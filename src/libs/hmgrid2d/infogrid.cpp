@@ -103,7 +103,8 @@ class ExtractRunner{
 public:
 	CellData Result;
 
-	ExtractRunner(const GridData& grid, const Contour::Tree& domain, int _what){
+	ExtractRunner(HMCallback::Caller2& callback, const GridData& grid, const Contour::Tree& domain, int _what){
+		callback.step_after(90, "Detect bad cells", 7, 1);
 		what=_what;
 		//get needed domain contours
 		ntdom = domain;
@@ -120,26 +121,33 @@ public:
 		//fills all class internal data
 		//#########
 		icells = cells_by_tp(11);
+		callback.subprocess_step_after(1);
 		sort_by_bb(grid, domain);
 		if (icells.size() == 0) return;
 
 		//cell edges bounding box checks
+		callback.subprocess_step_after(1);
 		using_edge_bb();
 
 		//cell edges cross checks
+		callback.subprocess_step_after(1);
 		using_edge_crosses();
 	
 		//cells which has intersections at edge nodes or
 		//tangent intercections
+		callback.subprocess_step_after(1);
 		process_uncertain_cells();
 	
 		//check for domain areas which lie fully within cells
+		callback.subprocess_step_after(1);
 		detect_fully_inside_contours();
 
 		//process cells with points liying on domain boundary (fully uncertain)
+		callback.subprocess_step_after(1);
 		if (what != BOUND) inner_point_check();
 	
 		//assemble result
+		callback.step_after(5, "Assemble the result");
 		for (int i=0; i<icells.size(); ++i){
 			if (cell_pos[i] != 2) Result.push_back(icells[i]);
 		}
@@ -493,7 +501,7 @@ public:
 HMCallback::FunctionWithCallback<Grid::TExtractCells> Grid::ExtractCells;
 
 CellData Grid::TExtractCells::_run(const GridData& grid, const Contour::Tree& domain, int what){
-	auto r = ExtractRunner(grid, domain, what);
+	auto r = ExtractRunner(*callback, grid, domain, what);
 	return r.Result;
 }
 

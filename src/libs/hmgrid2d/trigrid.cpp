@@ -389,14 +389,197 @@ GridData GridFromModel(GModel& m){
 	return Grid::Constructor::FromTab(std::move(vvert), cellvert);
 }
 
-namespace{
 struct ShpVCmp{
 	bool operator()(const shared_ptr<HM2D::Vertex>& v1, const shared_ptr<HM2D::Vertex>& v2){
 		return *v1 < *v2;
 	}
 };
-};
 
+#if 1
+void sort_detached(vector<Contour::Tree>& tvec, const EdgeData& conts){
+	EdgeData c1=conts, c2;
+	vector<Point> p1, p2;
+	for (auto& e: c1) p1.push_back(e->center());
+	for (auto& t: tvec){
+		EdgeData thisdet;
+		c2.clear(); p2.clear();
+		vector<int> srt = Contour::Finder::SortOutPoints(t, p1);
+		for (int i=0; i<srt.size(); ++i){
+			if (srt[i] == INSIDE){
+				thisdet.push_back(c1[i]);
+			} else {
+				c2.push_back(c1[i]);
+				p2.push_back(p1[i]);
+			}
+		}
+		for (auto c: Contour::Assembler::SimpleContours(thisdet)){
+			t.add_detached_contour(c);
+		}
+		std::swap(c1, c2);
+		std::swap(p1, p2);
+	}
+}
+
+struct _ProcessAmbConns{
+	typedef Contour::Tree Tree;
+	typedef Contour::Tree::TNode TNode;
+	typedef HM2D::Connectivity::VertexEdgeR VER;
+	EdgeData ae;
+	vector<bool> usede, usedv;
+	vector<VER> ve;
+
+	_ProcessAmbConns(const Tree& input){
+		ae = input.alledges();
+		ve = HM2D::Connectivity::VertexEdge(ae);
+		std::sort(ve.begin(), ve.end(), 
+			[](const VER& a, const VER& b){return a.v->x < b.v->x;});
+		usede.resize(ae.size(), false);
+		usedv.resize(ve.size(), false);
+	}
+
+	bool has_ambigious_pts() const{
+		for (auto& it: ve){
+			if (it.size()>2) return true;
+		}
+		return false;
+	}
+
+	static shared_ptr<TNode> find_position(Tree& tree, Point p){
+		std::function<shared_ptr<TNode>(shared_ptr<TNode>)> findlevel;
+		findlevel = [&](shared_ptr<TNode> nd)->shared_ptr<TNode>{
+			if (Contour::Finder::WhereIs(nd->contour, p) == INSIDE){
+				for (auto ch: nd->children){
+					auto r = findlevel(ch.lock());
+					if (r != nullptr) return r;
+				}
+				return nd;
+			} else return nullptr;
+		};
+		shared_ptr<TNode> parent = nullptr;
+		for (auto& n: tree.roots()){
+			parent = findlevel(n);
+			if (parent != nullptr) break;
+		}
+		tree.nodes.emplace_back(new TNode());
+		if (parent == nullptr){
+			tree.nodes.back()->level = 0;
+		} else {
+			tree.nodes.back()->level = parent->level+1;
+			tree.nodes.back()->parent = parent;
+			parent->children.push_back(tree.nodes.back());
+		}
+		return tree.nodes.back();
+	}
+	shared_ptr<Edge> most_left_edge(){
+		int fnd = std::find(usedv.begin(), usedv.end(), false)-usedv.begin();
+		if (fnd>=usedv.size()) return nullptr;
+		EdgeData candedges;
+		for (int ei: ve[fnd].eind){
+			if (usede[ei]==false) {
+				//first vertex is the most left
+				if (ae[ei]->first() != ve[fnd].v) ae[ei]->reverse();
+				candedges.push_back(ae[ei]);
+			}
+		}
+		int ibest = 0;  //best is the most closed to vertical
+		double abest = (candedges[0]->plast()->x-candedges[0]->pfirst()->x)/candedges[0]->length();
+		for (int i=1; i<candedges.size(); ++i){
+			double a = (candedges[i]->plast()->x-candedges[i]->pfirst()->x)/candedges[i]->length();
+			if (a<abest) {abest = a; ibest = i; }
+		}
+		assert(abest<1);
+		//revert edge so that it's a correctly directed for counterclockwise direction
+		if (candedges[ibest]->plast()->y > candedges[ibest]->pfirst()->y){
+			candedges[ibest]->reverse();
+		}
+		return candedges[ibest];
+	}
+	void numer_prims(){
+		for (int i=0; i<ve.size(); ++i) ve[i].v->id = i;
+		aa::enumerate_ids_pvec(ae);
+	}
+	//start has a counterclockwise direction
+	EdgeData assembler_inner_outer(shared_ptr<Edge> start, bool outer){
+		numer_prims();
+		auto get_next_edge = [&](shared_ptr<Edge> ed, Vertex* cp)->shared_ptr<Edge>{
+			vector<int> cands;
+			for (int ei: ve[cp->id].eind){
+				if (ei != ed->id && usede[ei]!=true) cands.push_back(ei);
+			}
+			assert(cands.size() > 0);
+			if (cands.size() == 1) return ae[cands[0]];
+			int besti = 0;
+			double besta = Angle(*ed->pfirst(), *ed->plast(), *ae[cands[0]]->sibling(cp));
+			for (int i=1; i<cands.size(); ++i){
+				double a = Angle(*ed->pfirst(), *ed->plast(), *ae[cands[i]]->sibling(cp));
+				if (outer){
+					if (a < besta){ besta = a; besti = i; }
+				} else {
+					if (a > besta){ besta = a; besti = i; }
+				}
+			}
+			return ae[cands[besti]];
+		};
+		//assemble routine:
+		//Result is really directed counterclockwise closed.
+		EdgeData ret = {start};
+		auto cpoint = start->plast();
+		while (1){
+			auto nexte = get_next_edge(ret.back(), cpoint);
+			if (nexte->pfirst() != cpoint) nexte->reverse();
+			if (nexte == ret[0]) break;
+			ret.push_back(nexte);
+			cpoint = nexte->sibling(cpoint).get();
+		}
+		//used
+		for (auto e: ret) usede[e->id] = true;
+		for (auto e: ret){
+			int ind = e->pfirst()->id;
+			bool allused = true;
+			for (int ei: ve[ind].eind){
+				if (usede[ei] != true) {allused=false; break; }
+			}
+			if (allused) usedv[ind] = true;
+		}
+		return ret;
+	}
+};
+Contour::Tree process_ambigious_conns(const Contour::Tree& input){
+	_ProcessAmbConns helper(input);
+	if (!helper.has_ambigious_pts()) return input;
+
+	Contour::Tree ret;
+	while (1){
+		shared_ptr<Edge> starter = helper.most_left_edge();
+		if (starter == nullptr) break;
+		shared_ptr<Contour::Tree::TNode> pos = helper.find_position(
+			ret, starter->center());
+		pos->contour = helper.assembler_inner_outer(starter, pos->isouter());
+	}
+
+	return ret;
+}
+vector<Contour::Tree> build_cropped(const Contour::Tree& source_){
+	auto source = Contour::Tree::DeepCopy(source_);
+	// merge equal points
+	auto ae = source.alledges();
+	HM2D::ECol::Algos::MergePoints(ae);
+	// reassemble bound contours in case of ambigious connections
+	// (points with more than 2 adjacent edges)
+	auto nodet = source;
+	nodet.remove_detached();
+	Contour::Tree bnodes = process_ambigious_conns(nodet);
+	// crop
+	auto ret = HM2D::Contour::Tree::CropLevel01(bnodes);
+	// reference detached contours
+	HM2D::EdgeData det;
+	for (auto& n: source.nodes) if (n->isdetached()){
+		det.insert(det.begin(), n->contour.begin(), n->contour.end());
+	}
+	sort_detached(ret, det);
+	return ret;
+}
+#else
 vector<Contour::Tree> build_cropped(const Contour::Tree& source){
 	//using shallow copies
 	vector<Contour::Tree> ret;
@@ -444,6 +627,7 @@ vector<Contour::Tree> build_cropped(const Contour::Tree& source){
 
 	return ret;
 }
+#endif
 
 vector<GEdge*> fill_model_with_1d(
 		GModel& m,
@@ -517,13 +701,21 @@ GFace* assemble_face(GModel& m, const Contour::Tree& tree, vector<vector<GEdge*>
 	return fc;
 }
 
+void dbg_write_gmodel(GModel& m){
+	m.writeGEO("gmsh_geo.geo");
+	m.writeMSH("gmsh_geo.msh");
+	m.writeVTK("gmsh_geo.vtk");
+}
+
 void fill_model_with_2d(GModel& m, const GFace* fc){
 	//Mesh2D
 	//m.writeGEO("gmsh_geo.geo");
 	//m.writeMSH("gmsh_geo.msh");
-	m.mesh(2);
 	//m.writeVTK("gmsh_geo.vtk");
-	//m.writeMSH("gmsh_geo.msh");
+	m.mesh(2);
+	//m.writeGEO("gmsh_geo2.geo");
+	//m.writeMSH("gmsh_geo2.msh");
+	//m.writeVTK("gmsh_geo2.vtk");
 }
 
 void fill_model_with_2d_recomb(GModel& m, GFace* fc){

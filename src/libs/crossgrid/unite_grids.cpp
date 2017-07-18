@@ -177,24 +177,14 @@ GridData Algos::TUniteGrids::_run(const GridData& base, const GridData& sec, con
 	}
 	callback->subprocess_fin();
 
-	//---- if secondary holes are empty -> remove secondary top level area from main grid
-	auto cb1 = callback->bottom_line_subrange(10);
-	if (opt.empty_holes){
-		if (tree_highest_level(contsec) > 0){
-			auto t0 = root_nodes_tree(contsec);
-			ret = SubstractArea.UseCallback(cb1, ret, t0, true);
-			contret = Contour::Tree::GridBoundary(ret);
-		}
-	}
-
 	//---- combine grids without using buffers
 	auto cb2 = callback->bottom_line_subrange(50);
-	ret = CombineGrids.UseCallback(cb2, ret, sec);
+	ret = CombineGrids.UseCallback(cb2, ret, sec, opt.empty_holes);
 	if (opt.buffer_size < geps) return ret;
 	vector<GridData> sg = SplitData(ret);
 
 	//----- fill buffer
-	callback->silent_step_after(20, "Filling buffer", sg.size()*contsec.bound_contours().size());
+	callback->silent_step_after(30, "Filling buffer", sg.size()*contsec.bound_contours().size());
 	for (int i=0; i<sg.size(); ++i)
 	for (auto n: contsec.bound_contours()){
 		callback->subprocess_step_after(1);
@@ -214,65 +204,20 @@ GridData Algos::TUniteGrids::_run(const GridData& base, const GridData& sec, con
 	return ret;
 }
 
-#if 1
-GridData Algos::TCombineGrids::_run(const GridData& g1, const GridData& g2){
+GridData Algos::TCombineGrids::_run(const GridData& g1, const GridData& g2, bool keep_g2_holes){
 	//1) build secondary contours
+	callback->step_after(10, "Assemble boundary");
 	Contour::Tree c2 = Contour::Tree::GridBoundary(g2);
+	//if keep g2 holes, then leave only root nodes
+	if (keep_g2_holes) c2 = root_nodes_tree(c2);
 	//2) substract
-	GridData ret = SubstractArea(g1, c2, true);
+	auto cb1 = callback->bottom_line_subrange(50);
+	GridData ret = SubstractArea.UseCallback(cb1, g1, c2, true);
 	//3) merge
+	callback->step_after(40, "Merge grids");
 	Algos::MergeBoundaries(g2, ret);
 	//5) get rid of hanging + non-significant + boundary nodes
 	//   They appear if boundaries of g1 and g2 partly coincide
 	Grid::Algos::SimplifyBoundary(ret, 0);
 	return ret;
 }
-#else
-GridData Algos::TCombineGrids::_run(const GridData& g1, const GridData& g2){
-	//1) build grids contours
-	callback->step_after(10, "Building graphs");
-	Contour::Tree c1 = Contour::Tree::GridBoundary(g1);
-	Contour::Tree c2 = Contour::Tree::GridBoundary(g2);
-
-	//2) input data to wireframe format
-	Impl::PtsGraph w1(g1);
-	Impl::PtsGraph w2(g2);
-
-	//3) cut outer grid with inner grid contour
-	callback->step_after(30, "Overlay procedures", 2, 1);
-	w1 = Impl::PtsGraph::cut(w1, c2, INSIDE);
-
-	//4) overlay grids
-	callback->subprocess_step_after(1);
-	w1 = Impl::PtsGraph::overlay(w1, w2);
-
-	//5) build single connected grid
-	callback->step_after(30, "Assembling grid");
-	GridData ret = w1.togrid();
-
-	//6) filter out all cells which lie outside gmain and gsec contours
-	//if gmain and gsec are not simple structures
-	callback->step_after(25, "Simplifications");
-	auto intersect = HM2D::Contour::Clip::Union(c1, c2);
-	bool issimple = true;
-	if (intersect.nodes.size() != intersect.roots().size()){ issimple = false; }
-	if (!issimple){
-		RemoveCells(ret, intersect, OUTSIDE);
-	}
-
-	//7) get rid of hanging + non-significant + boundary nodes
-	//   They appear if boundaries of gmain and gsec partly coincide
-	Grid::Algos::SimplifyBoundary(ret, 0);
-
-	//8) boundary types
-	callback->step_after(5, "Assign boundary types");
-	//placing second (overlaid) grid edges first to guarantee
-	//them to be found before first (base) grid edges if they are equal.
-	EdgeData ic1 = c1.alledges();
-	EdgeData ic2 = c2.alledges();
-	ic2.insert(ic2.end(), ic1.begin(), ic1.end());
-	EdgeData rc = HM2D::ECol::Assembler::GridBoundary(ret);
-	HM2D::ECol::Algos::AssignBTypes(ic2, rc);
-	return ret;
-}
-#endif

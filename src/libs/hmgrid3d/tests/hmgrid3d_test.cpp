@@ -51,7 +51,7 @@ void test01(){
 		auto g1 = HM2D::Grid::Constructor::RegularHexagonal(Point(1, 1), 10., 2.);
 		auto g3 = HM3D::Grid::Constructor::SweepGrid2D(g1, {0., 1., 3., 5.});
 		HM3D::Export::GridVTK(g3, "g1.vtk");
-		add_file_check(17870419829891734470U, "g1.vtk", "regular hexagonal");
+		add_file_check(2562171395034807663U, "g1.vtk", "regular hexagonal");
 	}
 }
 
@@ -149,7 +149,7 @@ void test03(){
 						default: return "unknown";
 					}
 				});
-		add_file_check(4247503388199499266U, "g5.msh", "mesh with polyhedra cells");
+		add_file_check(1063455593663082514U, "g5.msh", "mesh with polyhedra cells");
 	}
 }
 
@@ -203,7 +203,7 @@ void test04(){
 		pd.add_condition(1, 2, HM3D::Vertex(0, 0, 3), HM3D::Vertex(0, 0, 4), true);
 		pd.add_condition(3, 4, HM3D::Vertex(0, 0, 3), HM3D::Vertex(10, 0, 3), true);
 		HM3D::Export::GridMSH(g3d, "g2.msh", pd);
-		add_file_check(18279916701421103105U, "g2.msh", "multiple periodic");
+		add_file_check(10942320110952123235U, "g2.msh", "multiple periodic");
 	}
 };
 
@@ -280,9 +280,9 @@ void test06(){
 		for (auto& e: g3.vedges) e->boundary_type = 1;
 		auto g3d = RevolveGrid2D(g3, {0, 10, 20, 30}, Point(0, 0), Point(0, 1), true);
 		HM3D::Export::GridTecplot.Silent(g3d, "g1.dat");
-		add_file_check(12980710001405184230U, "g1.dat", "hanging nodes near axis to tecplot");
+		add_file_check(17926138630627743429U, "g1.dat", "hanging nodes near axis to tecplot");
 		HM3D::Export::GridMSH.Silent(g3d, "g1.msh");
-		add_file_check(8061023987823183823U, "g1.msh", "hanging nodes near axis to fluent");
+		add_file_check(1156029018907211104U, "g1.msh", "hanging nodes near axis to fluent");
 	}
 }
 

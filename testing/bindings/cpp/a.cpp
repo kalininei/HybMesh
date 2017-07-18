@@ -257,6 +257,14 @@ void pings(){
 	c94.get_point(P2::None(), P2(0.5, -1));
 	c94.get_point(P2::None(), P2::None(), P2(1.0, -1));
 
+	auto c95 = hm.add_unf_ring_grid(P2(10, 10), 1.0, 2.0, 32, 10);
+	auto c96 = hm.add_circ_contour(P2(10,10), 1.5, 64);
+	auto c97 = hm.remove_cells(c95, c96, "fully_inside");
+	check_cond(c97.dims()[2]==160);
+	auto c98 = hm.inscribe_grid(c95, c96, "inside", 0.02, true, 0, "4");
+	auto c99 = hm.insert_grid_constraints(c95, {c96}, {}, {}, 0.1, false, 90);
+	hm.export_grid_vtk(c99, "c99.vtk");
+
 	hm.export_all_hmd("out.hmd", "ascii");
 	hm.remove_all();
 	hm.import_grid_hmg("out.hmd", "Grid2D_1");

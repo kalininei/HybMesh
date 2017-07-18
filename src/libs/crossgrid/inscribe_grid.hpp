@@ -32,12 +32,12 @@ struct OptInscribe{
 		bool keep_cont=true,
 		double angle0=0)
 	:buffer_size(buffer_size), inside(inside),
-		fillalgo(fillalgo), keep_cont(keep_cont), angle0(angle0){};
+			fillalgo(fillalgo), keep_cont(keep_cont), angle0(angle0){}
 
 	double buffer_size; // shift
 	bool inside;        // leave internal(=true) or external(=false) cont area
 	int fillalgo;       // 0-triangle, 1-recombined, 99-no
-	bool keep_cont;     // whether to use contour nodes(=true) or make contour partition
+	bool keep_cont;     // whether to use cont contour nodes(=true) or make repartition
 	double angle0;      // significant angle for contour partition (only for keep_cont=false)
 };
 

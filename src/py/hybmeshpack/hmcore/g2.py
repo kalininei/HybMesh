@@ -346,6 +346,43 @@ def grid_excl_cont(obj, cont, isinner, cb):
     return ret
 
 
+def grid_excl_cells(obj, cont, what, cb):
+    what = ct.c_int({"fully_inside": 1,
+            "fully_outside": 2,
+            "partly_inside": 3,
+            "partly_outside": 4,
+            "cross": 5,
+            "no_cross": 6}[what])
+    ret = ct.c_void_p()
+    ccall_cb(cport.g2_exclude_cells, cb, obj, cont, what, ct.byref(ret))
+    return ret
+
+
+def inscribe_grid(grid, cont, buf, where, filler, keepcont, angle0, cb):
+    buf = ct.c_double(buf)
+    inside_cont = ct.c_int(1 if where == "inside" else 0)
+    filler = ct.c_int({"3": 0, "4": 1, "no": 99}[filler])
+    keepcont = ct.c_int(1 if keepcont else 0)
+    angle0 = ct.c_double(angle0)
+    ret = ct.c_void_p()
+    ccall_cb(cport.g2_inscribe_grid, cb, grid, cont,
+            buf, inside_cont, filler, keepcont, angle0, ct.byref(ret));
+    return ret
+
+
+def insert_constraints(grid, cont, sites, buf, keepcont, angle0, filler, cb):
+    nsites = ct.c_int(len(sites) / 3)
+    sites = list_to_c(sites, float)
+    buf = ct.c_double(buf)
+    keepcont = ct.c_int(1 if keepcont else 0)
+    angle0 = ct.c_double(angle0)
+    filler = ct.c_int({"3": 0, "4": 1, "no": 99}[filler])
+    ret = ct.c_void_p()
+    ccall_cb(cport.g2_insert_constraints, cb, grid, cont,
+        nsites, sites, buf, filler, keepcont, angle0, ct.byref(ret))
+    return ret
+
+
 def unite_grids(obj1, obj2, buf, fixbnd, emptyholes, angle0, filler, cb):
     buf = ct.c_double(buf)
     fixbnd = ct.c_int(fixbnd)

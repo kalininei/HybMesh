@@ -3,7 +3,7 @@ from hybmeshpack import com
 from hybmeshpack.hmscript import flow, hmscriptfun
 import o2info
 from datachecks import (icheck, List, UListOr1, Bool, UList, Point2D,
-                        Grid2D, OneOf, Float, Tuple, ACont2D)
+                        Grid2D, OneOf, Float, Tuple, ACont2D, CompoundList)
 
 
 @hmscriptfun
@@ -12,12 +12,14 @@ def exclude_contours(grid, conts, what):
 
     :param grid: source grid identifier
 
-    :param conts: contour or list of contours/grids identifiers for exclusion.
+    :param conts: contour or list of contour/grid identifiers for exclusion.
 
     :param str what: ``"inner"``/``"outer"``.
-       Describes what part of ``conts`` domain exclude
+       Defines what part of ``conts`` domain should be excluded.
 
     :returns: new grid identifier
+
+    See details in :ref:`substract-area`.
 
     .. note::
 
@@ -150,6 +152,158 @@ def unite_grids1(base_grid, secondary_grid, buffer_size,
     return unite_grids(base_grid, [(secondary_grid, buffer_size)],
                        empty_holes, fix_bnd, zero_angle_approx,
                        buffer_fill)
+
+
+@hmscriptfun
+def remove_cells(grid, cont, what):
+    """ Removes grid cells by a bounding contour.
+
+    :param grid: basic grid identifier
+
+    :param cont: bounding area, grid or contour identifier
+
+    :param str what: remove cells which are
+
+      * ``"fully_inside"``,
+      * ``"fully_outside"``,
+      * ``"partly_inside"``,
+      * ``"partly_outside"``,
+      * ``"cross"``, -- crossed by **cont** edges,
+      * ``"no_cross"``, -- not crossed by **cont** edges.
+
+    :return: identifier of the newly created grid
+
+    See details in :ref:`remove-cells`.
+
+    """
+    icheck(0, Grid2D())
+    icheck(1, ACont2D())
+    icheck(2, OneOf('fully_inside', 'fully_outside',
+        'partly_inside', 'partly_outside', 'cross', 'no_cross'))
+
+    args = {"grid_name": grid, "cont_name": cont, "what": what}
+    c = com.gridcom.RemoveCells(args)
+    flow.exec_command(c)
+    return c.added_grids2()[0]
+
+
+@hmscriptfun
+def inscribe_grid(grid, cont, where, buffer_size,
+        keep_cont=True, zero_angle=0, buffer_fill='3'):
+    """ Inscribes grid into an area.
+
+    :param grid: input grid identifier
+
+    :param cont: bounding area, grid or contour identifier
+
+    :param str where: inscribe inside/outside **cont** area.
+
+      * ``"inside"``,
+      * ``"outside"``.
+
+    :param float buffer_size: offset distance from **cont**
+       area which defines a buffer zone.
+
+    :param bool keep_cont: whether use **cont** segmentation as is or
+      repart it.
+
+    :param degree zero_angle:
+      defines deviation from the straight angle which is considered
+      insignificant while 1D resegmentation. -1 makes all existed vertices
+      significent; 180 -- allows complete resegmentation.
+
+    :param str buffer_fill: one of
+
+      * ``"3"`` - triangulate buffer,
+      * ``"4"`` - build recombined grid,
+      * ``"no"`` - do not fill the buffer with unstructured grid.
+
+    :return: identifier of the newly created grid
+
+
+    See details in :ref:`inscribe-grid`.
+
+    """
+    icheck(0, Grid2D())
+    icheck(1, ACont2D())
+    icheck(2, OneOf('inside', 'outside'))
+    icheck(3, Float(grthan=0.0))
+    icheck(4, Bool())
+    icheck(5, Float(within=[-1.0, 180., '[]']))
+    icheck(6, OneOf('3', '4', 'no'))
+
+    args = {"grid_name": grid, "cont_name": cont, "where": where,
+        "buffer": buffer_size, "keep_cont": keep_cont,
+        "zero_angle": zero_angle, "buffer_fill": buffer_fill}
+    c = com.gridcom.InscribeGrid(args)
+    flow.exec_command(c)
+    return c.added_grids2()[0]
+
+
+@hmscriptfun
+def insert_grid_constraints(grid, conts=[], sites=[], buffer_size=1.,
+        keep_cont=True, zero_angle=0, buffer_fill='3'):
+    """ Inserts a line or site constraint into a grid.
+
+    :param grid: input grid identifier
+
+    :param conts: contour (or grid) identifier or list of identifiers 
+       for line constraints
+
+    :param sites: list of site constraints given as
+       ``[size0, [x0, y0], size1, [x1, y1], ...]`` where *size0,1,...* is the
+       desired edge size in a given site. Set it to -1 or ``'auto'``
+       for automatic size detection.
+
+    :param float buffer_size: offset distance from **conts** and **sites**
+       which defines a buffer zone.
+
+    :param keep_cont: whether line constraints should be used as they are or
+       remeshed with a proper step.
+
+    :param degree zero_angle:
+      defines deviation from the straight angle which is considered
+      insignificant while 1D resegmentation. -1 makes all existed vertices
+      significant.
+
+    :param str buffer_fill: one of
+
+      * ``"3"`` - triangulate buffer,
+      * ``"4"`` - build recombined grid,
+      * ``"no"`` - do not fill the buffer with unstructured grid.
+
+    :return: identifier of the newly created grid
+
+    See details in :ref:`insert-constraints`.
+
+    """
+    i = 0;
+    while i<len(sites):
+        if sites[i] == 'auto':
+            sites[i] = -1
+        i += 2
+    if not isinstance(conts, list):
+        conts = [conts]
+
+    icheck(0, Grid2D())
+    icheck(1, UList(ACont2D()))
+    icheck(2, CompoundList(Float(), Point2D()))
+    icheck(3, Float(grthan=0.0))
+    icheck(4, Bool())
+    icheck(5, Float(within=[-1.0, 180., '[]']))
+    icheck(6, OneOf('3', '4', 'no'))
+
+    args = {"grid_name": grid, "conts": conts, "sites": [], 
+        "buffer": buffer_size, "keep_cont": keep_cont,
+        "zero_angle": zero_angle, "buffer_fill": buffer_fill}
+    it = iter(sites)
+    for dist, pnt in zip(it, it):
+        args['sites'].append(dist)
+        args['sites'].append(pnt[0])
+        args['sites'].append(pnt[1])
+    c = com.gridcom.InsertConstraints(args)
+    flow.exec_command(c)
+    return c.added_grids2()[0]
 
 
 @hmscriptfun

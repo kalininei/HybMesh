@@ -220,6 +220,110 @@ class AddTriGrid(NewGridCommand):
             self.get_option('bnd'))
 
 
+class RemoveCells(NewGridCommand):
+    "Exclude cells from grids"
+
+    def __init__(self, arg):
+        super(RemoveCells, self).__init__(arg)
+
+    @classmethod
+    def _arguments_types(cls):
+        """ name - new grid name,
+            grid_name - source grid name,
+            cont_name - contour name,
+            what - what to exclude
+        """
+        return {'name': co.BasicOption(str, None),
+                'grid_name': co.BasicOption(str),
+                'cont_name': co.BasicOption(str),
+                'what': co.BasicOption(str),
+                }
+
+    def _build_grid(self):
+        cb = self.ask_for_callback()
+        base = self.grid2_by_name(self.get_option('grid_name'))
+
+        cname = self.get_option('cont_name')
+        cont = self.any_cont_by_name(cname)
+        return g2core.grid_excl_cells(
+            base.cdata, cont.cdata, self.get_option('what'), cb)
+
+
+class InscribeGrid(NewGridCommand):
+    "Inscribes grid into area"
+
+    def __init__(self, arg):
+        super(InscribeGrid, self).__init__(arg)
+
+    @classmethod
+    def _arguments_types(cls):
+        """ name - new grid name,
+            grid_name - source grid name,
+            cont_name - contour name,
+            what - what to exclude
+        """
+        return {'name': co.BasicOption(str, None),
+                'grid_name': co.BasicOption(str),
+                'cont_name': co.BasicOption(str),
+                'where': co.BasicOption(str),
+                'buffer': co.BasicOption(float),
+                'keep_cont': co.BoolOption(),
+                'zero_angle': co.BasicOption(float),
+                'buffer_fill': co.BasicOption(str),
+                }
+
+    def _build_grid(self):
+        cb = self.ask_for_callback()
+        base = self.grid2_by_name(self.get_option('grid_name'))
+        cname = self.get_option('cont_name')
+        cont = self.any_cont_by_name(cname)
+        return g2core.inscribe_grid(
+            base.cdata, cont.cdata, 
+            self.get_option("buffer"), self.get_option('where'),
+            self.get_option('buffer_fill'), self.get_option('keep_cont'),
+            self.get_option('zero_angle'), cb)
+
+
+class InsertConstraints(NewGridCommand):
+    "Insert constraints"
+
+    def __init__(self, arg):
+        super(InsertConstraints, self).__init__(arg)
+
+    @classmethod
+    def _arguments_types(cls):
+        """ name - new grid name,
+            grid_name - source grid name,
+            cont_name - contour name,
+            what - what to exclude
+        """
+        return {'name': co.BasicOption(str, None),
+                'grid_name': co.BasicOption(str),
+                'conts': co.ListOfOptions(co.BasicOption(str)),
+                'sites': co.ListOfOptions(co.BasicOption(float)),
+                'buffer': co.BasicOption(float),
+                'keep_cont': co.BoolOption(),
+                'zero_angle': co.BasicOption(float),
+                'buffer_fill': co.BasicOption(str),
+                }
+
+    def _build_grid(self):
+        cb = self.ask_for_callback()
+        base = self.grid2_by_name(self.get_option('grid_name'))
+        conts = []
+        for c in self.get_option('conts'):
+            conts.append(self.any_cont_by_name(c).cdata)
+        sumcont = c2core.concatenate(conts)
+
+        return g2core.insert_constraints(
+            base.cdata, sumcont,
+            self.get_option('sites'),
+            self.get_option('buffer'),
+            self.get_option('keep_cont'),
+            self.get_option('zero_angle'),
+            self.get_option('buffer_fill'), cb)
+
+
 class ExcludeContours(addremove.AbstractAddRemove):
     "Exclude contour area from grids"
 

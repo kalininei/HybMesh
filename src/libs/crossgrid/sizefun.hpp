@@ -9,6 +9,7 @@ namespace HM2D{ namespace Grid{
 class SizeFun{
 public:
 	virtual double sz(const Point& p) const=0;
+	virtual double sz_proj(const Point& p) const=0;
 	virtual vector<double> sz(const vector<Point>& p) const;
 	virtual HMMath::LinearPiecewise sz_boundary_segment(const HM2D::EdgeData& pos) const=0;
 	virtual double minstep() const = 0;

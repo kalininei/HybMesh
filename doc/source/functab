@@ -26,7 +26,7 @@ Contour operations
 |func-g06|  |func-g07|  |func-g08|  |func-g09|  |func-g10|
 |func-g11|  |func-g12|  |func-g13|  |func-g14|  |func-g15|
 |func-g16|  |func-g17|  |func-g18|  |func-g19|  |func-g20|
-|func-g21|  ..          ..          ..          ..
+|func-g21|  |func-g22|  |func-g23|  |func-g24|  ..
 =========== =========== =========== =========== ===========
 
 Surface operations
@@ -126,6 +126,9 @@ Import
 .. |func-g19| replace:: :func:`build_boundary_grid1`
 .. |func-g20| replace:: :func:`exclude_contours`
 .. |func-g21| replace:: :func:`map_grid`
+.. |func-g22| replace:: :func:`remove_cells`
+.. |func-g23| replace:: :func:`inscribe_grid`
+.. |func-g24| replace:: :func:`insert_grid_constraints`
 
 .. |func-S01| replace:: :func:`info_surface`
 .. |func-S02| replace:: :func:`tab_surf3`

@@ -389,6 +389,25 @@ void BoundingBoxFinder::raw_addentry(const vector<int>& isqr){
 	++totaldata;
 }
 
+namespace{
+void change_last_to_ind(vector<vector<int>>& dt, int last, int st){
+	for (auto& it1: dt)
+	for (auto& it2: it1) 
+		if (it2 == last) it2 = st;
+		else if (it2>=st) ++it2;
+}
+}
+
+void BoundingBoxFinder::insertentry(const BoundingBox& e, int ind){
+	addentry(e);
+	change_last_to_ind(data, totaldata-1, ind);
+}
+
+void BoundingBoxFinder::raw_insertentry(const vector<int>& isqr, int ind){
+	raw_addentry(isqr);
+	change_last_to_ind(data, totaldata-1, ind);
+}
+
 int BoundingBoxFinder::get_xstart(double x) const{
 	int ret = (x - x0) / hx;
 	if (ISEQ(ret*hx, x-x0)) --ret;

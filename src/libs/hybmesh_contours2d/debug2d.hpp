@@ -32,6 +32,7 @@ struct Debug: public HMDebug{
 	static void save_cells_vtk_id(const CellData& c);
 
 	static void save_edges_vtk(const EdgeData& c);
+	static void save_edges_vtk(const Contour::Tree& c);
 	static void save_edges_vtk(const EdgeData& c, const std::map<Point*, double>& data);
 	static void save_edges_vtk_id(const EdgeData& c);
 

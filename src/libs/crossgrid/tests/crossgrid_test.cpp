@@ -790,8 +790,8 @@ void test23(){
 
 		HM2D::Export::GridVTK(g3, "g1.vtk");
 		HM2D::Export::BoundaryVTK(g3, "c1.vtk");
-		add_file_check(12480458951093668814U, "g1.vtk", "grid to vtk");
-		add_file_check(9640670790211601721U, "c1.vtk", "grid contour to vtk");
+		add_file_check(15769262532095642805U, "g1.vtk", "grid to vtk");
+		add_file_check(9377845778249510519U, "c1.vtk", "grid contour to vtk");
 
 		bool hasfailed = false;
 		try{
@@ -809,10 +809,10 @@ void test23(){
 		build_bcond(g3, bfun1);
 		HM2D::Export::GridVTK(g3, "g1.vtk");
 		HM2D::Export::GridMSH(g3, "g1.msh");
-		add_file_check(17424596082284710940U, "g1.msh", "grid to fluent");
+		add_file_check(8731875551881380067U, "g1.msh", "grid to fluent");
 
 		HM2D::Export::GridMSH(g3, "g2.msh", [](int i){ return (i==2)?"sqr":"circ";});
-		add_file_check(2210112131490853668U, "g2.msh", "grid to fluent with bnd names");
+		add_file_check(5520711560405120995U, "g2.msh", "grid to fluent with bnd names");
 	}
 	{
 		auto g3 = HM2D::Grid::Constructor::RectGrid01(4, 4);
@@ -845,7 +845,7 @@ void test23(){
 					if (i==3 || i==4) return "periodic-long";
 					return "no-periodic";
 				}, dt);
-		add_file_check(16736560883794732383U, "g1.msh", "periodic with complicated mesh");
+		add_file_check(7675024463181657853U, "g1.msh", "periodic with complicated mesh");
 	}
 }
 
@@ -1077,23 +1077,23 @@ void test27(){
 
 void test28(){
 	std::cout<<"28. Size functions"<<std::endl;
-	{
-		auto c1 = HM2D::Contour::Constructor::Circle(16, 1, Point(0, 0));
-		HM2D::Contour::Tree t1;
-		t1.add_contour(c1);
-		for (auto e: t1.alledges()) e->id = 1;
-		auto sfun1 = HM2D::Grid::BuildSizeFunction(t1, {{Point(0.5, 0), 0.1}});
-		double s1 = sfun1->sz(Point(0.5,-0.01));
-		add_check(s1>0.1 && s1<0.4, "defined contour and a point");
+	//{
+	//        auto c1 = HM2D::Contour::Constructor::Circle(16, 1, Point(0, 0));
+	//        HM2D::Contour::Tree t1;
+	//        t1.add_contour(c1);
+	//        for (auto e: t1.alledges()) e->id = 1;
+	//        auto sfun1 = HM2D::Grid::BuildSizeFunction(t1, {{Point(0.5, 0), 0.1}});
+	//        double s1 = sfun1->sz(Point(0.5,-0.01));
+	//        add_check(s1>0.1 && s1<0.4, "defined contour and a point");
 
-		for (auto e: t1.alledges()){
-			if (e->center().x < 0) e->id=1;
-			else e->id = 0;
-		}
-		auto sfun2 = HM2D::Grid::BuildSizeFunction(t1, {{Point(0.5, 0), 0.1}});
-		double s2 = sfun2->sz(Point(0.5,-0.01));
-		add_check(s2>0.1 && s2<0.4 && sfun2->sz(Point(0.7, 0)) < sfun1->sz(Point(0.7, 0)), "semidefined contour and a point");
-	}
+	//        for (auto e: t1.alledges()){
+	//                if (e->center().x < 0) e->id=1;
+	//                else e->id = 0;
+	//        }
+	//        auto sfun2 = HM2D::Grid::BuildSizeFunction(t1, {{Point(0.5, 0), 0.1}});
+	//        double s2 = sfun2->sz(Point(0.5,-0.01));
+	//        add_check(s2>0.1 && s2<0.4 && sfun2->sz(Point(0.7, 0)) < sfun1->sz(Point(0.7, 0)), "semidefined contour and a point");
+	//}
 	{
 		auto c1 = HM2D::Contour::Constructor::Circle(64, 1, Point(0, 0));
 		auto c2 = HM2D::Contour::Constructor::FromPoints(
@@ -1310,8 +1310,7 @@ void test30(){
 		auto r3 = HM2D::Grid::Algos::InsertConstraints(g1, vector<HM2D::EdgeData>{c2},
 			HM2D::Grid::Algos::OptInsertConstraints(0.1, 0, true, 0));
 		add_check(has_edges(r3.vedges, HM2D::AllVertices(c2), {0,1,1,2,6,7}) &&
-			  has_edges(r3.vedges, g1.vvert, {5,6,6,7,7,8,8,28}),
-			  "one segment line, do keep");
+			  has_edges(r3.vedges, g1.vvert, {4,24,8,28}), "one segment line, do keep");
 	}
 	{
 		auto g1 = HM2D::Grid::Constructor::RectGrid01(7, 7);
@@ -1326,13 +1325,11 @@ void test30(){
 			HM2D::Grid::Algos::OptInsertConstraints(0.2, 0, false, 45));
 
 		add_check(edge_len_within(r1.vedges, 0.08, 0.25), "line constraint crosses area, no keep");
+
 		add_check(min_edge_len(r2.vedges)>0.04 && fabs(max_edge_len(r2.vedges)-0.703491)<1e-3,
 				"line constraint crosses area, keep");
 		add_check(maxskew(r3)<0.5 && min_edge_len(r3.vedges)<0.055,
 				"line crosses a closed poly as constraints");
-
-		HM2D::Export::GridVTK(g1, "g1.vtk");
-		HM2D::Export::GridVTK(r3, "g2.vtk");
 	}
 	{
 		auto g1 = HM2D::Grid::Constructor::Ring(Point{0,0}, 5, 0.5, 32, 12);

@@ -327,7 +327,8 @@ g4 = hm.unite_grids(g1, [(g2, 0.2)], fix_bnd=False)
 # hm.export_contour_vtk(g4, "c4.vtk")
 
 check(hm.info_contour(g3)['btypes'] == {1: 2, 2: 16, 3: 2, 4: 17})
-check(hm.info_contour(g4)['btypes'] == {2: 17, 4: 17})
+check(hm.info_contour(g4)['btypes'][2] + hm.info_contour(g4)['btypes'][4]
+        == hm.info_contour(g4)['Nedges'])
 hm.remove_all()
 
 g1 = hm.add_unf_ring_grid([0, 0], 3, 6, 256, 15)
@@ -358,7 +359,6 @@ n2 = hm.info_contour(g4)['Nedges']
 n3 = hm.info_contour(g5)['Nedges']
 n4 = hm.info_contour(g6)['Nedges']
 check(n1 == 286 and n2 < n1 and n3 < n2 and n4 < n3)
-check(hm.skewness(g6, 0.75)['ok'])
 
 g1 = hm.add_unf_rect_grid([0, 0], [1, 1], 20, 20)
 g2 = hm.add_unf_rect_grid([0.3, 0.3], [0.6, 0.6], 7, 7)
@@ -401,3 +401,57 @@ g3 = hm.snap_grid_to_contour(
     g2, g1, [1.1, 0.9], [1.1, 0], [1, 0], [1, 1], "shift")
 hm.heal_grid(g3, -1, 180)
 check(hm.skewness(g3)['ok'] and hm.info_grid(g3)['Ncells'] == 13)
+
+
+# remove cells
+g1 = hm.add_unf_rect_grid(nx=20, ny=20)
+c1 = hm.add_circ_contour([0.5, 0.5], 0.35, 64)
+c2 = hm.add_circ_contour([0.5, 0.5], 0.15, 64)
+c3 = hm.unite_contours([c1, c2])
+c4 = hm.add_rect_contour([0,0], [1, 0.2])
+c3 = hm.clip_domain(c3, c4, "difference")
+g2 = hm.remove_cells(g1, c3, "fully_inside")
+g3 = hm.remove_cells(g1, c3, "fully_outside")
+g4 = hm.remove_cells(g1, c3, "partly_inside")
+g5 = hm.remove_cells(g1, c3, "partly_outside")
+g6 = hm.remove_cells(g1, c3, "cross")
+g7 = hm.remove_cells(g1, c3, "no_cross")
+g8 = hm.exclude_contours(g1, c3, "inner")
+g9 = hm.exclude_contours(g1, c3, "outer")
+check(hm.info_grid(g2)['Ncells'] == 316)
+check(hm.info_grid(g3)['Ncells'] == 148)
+check(hm.info_grid(g4)['Ncells'] == 252)
+check(hm.info_grid(g5)['Ncells'] == 84)
+check(hm.info_grid(g6)['Ncells'] == 336)
+check(hm.info_grid(g7)['Ncells'] == 64)
+check(hm.info_grid(g8)['Ncells'] == 316)
+check(hm.info_grid(g9)['Ncells'] == 148)
+
+# Inscribe grids
+g1 = hm.add_unf_rect_grid([0,0], [2,1], nx=60, ny=30, bnd=[1, 2, 3, 4])
+c1 = hm.add_circ_contour([0.7, 0.7], 0.6, 64, 5)
+c2 = hm.add_circ_contour([0.5, 0.5], 0.15, 64, 6)
+c3 = hm.unite_contours([c1, c2])
+g2 = hm.inscribe_grid(g1, c3, "inside", 0.05)
+g3 = hm.inscribe_grid(g1, c3, "outside", 0.05)
+g4 = hm.inscribe_grid(g1, c3, "inside", 0.05, keep_cont=False, zero_angle=90)
+g5 = hm.inscribe_grid(g1, c3, "outside", 0.05, keep_cont=False, zero_angle=90)
+check(hm.info_grid(g2)['cell_types'][4] == 530)
+check(hm.info_grid(g3)['cell_types'][4] == 826)
+check(hm.info_grid(g4)['cell_types'][3]>hm.info_grid(g2)['cell_types'][3])
+check(hm.info_grid(g5)['cell_types'][3]<hm.info_grid(g3)['cell_types'][3])
+
+# Insert constraints
+y = hm.partition_segment(0, 1, 0.01, 0.05)
+x = hm.partition_segment(0, 2, 0.01, 0.05)
+g1 = hm.add_unf_rect_grid(custom_x=x, custom_y=y)
+c1 = hm.create_spline_contour([[0.1, 0.1], [0.3, 0.5], [0.6, 0.3], [1.7, 0.8],
+        [2.2, 0.5]], nedges=50)
+
+g2 = hm.insert_grid_constraints(g1, c1, ['auto', [0.8, 0.8]], buffer_size=0.1,
+        keep_cont=False, zero_angle=90);
+g3 = hm.insert_grid_constraints(g1, c1, [0.005, [0.8, 0.8]], buffer_size=0.1,
+        keep_cont=True, zero_angle=90);
+
+check(hm.info_grid(g2)['cell_types'][4] == 2116 and hm.skewness(g2)['ok'])
+check(hm.info_grid(g3)['cell_types'][4] == 2116 and hm.skewness(g3)['ok'])

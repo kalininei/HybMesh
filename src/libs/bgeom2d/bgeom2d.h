@@ -315,7 +315,9 @@ struct BoundingBoxFinder{
 	BoundingBoxFinder(const BoundingBox& area, double L);
 
 	void addentry(const BoundingBox& e);
+	void insertentry(const BoundingBox& e, int ind);
 	void raw_addentry(const vector<int>& isqr);
+	void raw_insertentry(const vector<int>& isqr, int ind);
 	vector<int> suspects(const BoundingBox& bb) const;
 	vector<int> suspects(const Point& bb) const;
 	//returns only data from boxes which contain segment

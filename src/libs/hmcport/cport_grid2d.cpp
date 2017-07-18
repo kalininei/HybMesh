@@ -151,8 +151,8 @@ int g2_scale(void* obj, double* pc, double* p0){
 		auto g = static_cast<HM2D::GridData*>(obj);
 		double xc = pc[0] / 100., yc = pc[1] / 100.;
 		for (auto& p: g->vvert){
-			p->x -= p0[0]; p->x *= xc;
-			p->y -= p0[1]; p->y *= yc;
+			p->x -= p0[0]; p->x *= xc; p->x += p0[0];
+			p->y -= p0[1]; p->y *= yc; p->y += p0[1];
 		}
 		return HMSUCCESS;
 	} catch (std::exception& e){
@@ -993,6 +993,97 @@ int g2_unite_grids(void* obj1, void* obj2, double buf, int fixbnd,
 		opt.angle0 = angle0;
 		opt.filler = (c2cpp::eqstring(filler, "3")) ? 0 : 1;
 		auto ret_ = HM2D::Grid::Algos::UniteGrids.WithCallback(cb, *g0, *g1, opt);
+		sc.unscale(&ret_);
+		c2cpp::to_pp(ret_, ret);
+		return HMSUCCESS;
+	} catch (std::exception& e){
+		add_error_message(e.what());
+		return HMERROR;
+	}
+}
+
+int g2_exclude_cells(void* obj, void* cont, int what, void** ret, hmcport_callback cb){
+	try{
+		HM2D::GridData* g0 = static_cast<HM2D::GridData*>(obj);
+		HM2D::EdgeData* e0 = static_cast<HM2D::EdgeData*>(cont);
+
+		Autoscale::D2 sc(g0);
+		sc.add_data(e0);
+		//building contour tree
+		auto tree = HM2D::Contour::Tree::Assemble(*e0);
+
+		HM2D::Grid::Algos::SubstractCellsAlgo ag;
+		switch (what){
+			case 1: ag = HM2D::Grid::Algos::SubstractCellsAlgo::FULLY_INSIDE; break;
+			case 2: ag = HM2D::Grid::Algos::SubstractCellsAlgo::FULLY_OUTSIDE; break;
+			case 3: ag = HM2D::Grid::Algos::SubstractCellsAlgo::PARTLY_INSIDE; break;
+			case 4: ag = HM2D::Grid::Algos::SubstractCellsAlgo::PARTLY_OUTSIDE; break;
+			case 5: ag = HM2D::Grid::Algos::SubstractCellsAlgo::CROSS; break;
+			case 6: ag = HM2D::Grid::Algos::SubstractCellsAlgo::NO_CROSS; break;
+			default: throw std::runtime_error("Unknown exclude cells option");
+		}
+
+		auto ret_ = HM2D::Grid::Algos::SubstractCells.WithCallback(cb, *g0, tree, ag);
+		sc.unscale(&ret_);
+		c2cpp::to_pp(ret_, ret);
+		return HMSUCCESS;
+	} catch (std::exception& e){
+		add_error_message(e.what());
+		return HMERROR;
+	}
+}
+
+int g2_inscribe_grid(void* obj, void* cont, double buf, int inside_cont, int fill_algo, int keep_cont, double angle0,
+		void** ret, hmcport_callback cb){
+	try{
+		HM2D::GridData* g0 = static_cast<HM2D::GridData*>(obj);
+		HM2D::EdgeData* e0 = static_cast<HM2D::EdgeData*>(cont);
+
+		Autoscale::D2 sc(g0);
+		sc.add_data(e0);
+		//building contour tree
+		auto tree = HM2D::Contour::Tree::Assemble(*e0);
+		sc.scale(buf);
+		//
+		HM2D::Grid::Algos::OptInscribe opt(buf, inside_cont, fill_algo,
+			keep_cont, angle0);
+		auto ret_ = HM2D::Grid::Algos::InscribeGrid.WithCallback(cb, *g0, tree, opt);
+		sc.unscale(&ret_);
+		c2cpp::to_pp(ret_, ret);
+		return HMSUCCESS;
+	} catch (std::exception& e){
+		add_error_message(e.what());
+		return HMERROR;
+	}
+}
+
+int g2_insert_constraints(void* obj, void* lines, int Npnts, double* p_sz_coords,
+		double buf, int fill_algo, int keep_cont, double angle0,
+		void** ret, hmcport_callback cb){
+	try{
+		HM2D::GridData* g0 = static_cast<HM2D::GridData*>(obj);
+		Autoscale::D2 sc(g0);
+		sc.scale(buf);
+
+		vector<HM2D::EdgeData> lines2;
+		if (lines != nullptr){
+			HM2D::EdgeData* e0 = static_cast<HM2D::EdgeData*>(lines);
+			sc.add_data(e0);
+			lines2 = HM2D::Contour::Assembler::SimpleContours(*e0);
+		}
+		vector<std::pair<Point, double>> points2;
+		for (int i=0; i<Npnts; ++i){
+			Point p(p_sz_coords[3*i+1], p_sz_coords[3*i+2]);
+			double d = p_sz_coords[3*i];
+			sc.scale(p);
+			if (d > 0) sc.scale(d);
+			points2.emplace_back(p, d);
+		}
+
+		HM2D::Grid::Algos::OptInsertConstraints opt(
+			buf, fill_algo, keep_cont, angle0);
+
+		auto ret_ = HM2D::Grid::Algos::InsertConstraints.WithCallback(cb, *g0, lines2, points2, opt);
 		sc.unscale(&ret_);
 		c2cpp::to_pp(ret_, ret);
 		return HMSUCCESS;

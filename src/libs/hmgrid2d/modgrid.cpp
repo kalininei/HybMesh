@@ -249,10 +249,16 @@ void Algos::MergeTo(const GridData& from, GridData& to){
 
 	//sort susp arrays. After sorting they should match one by one
 	auto esortkey0 = [](shared_ptr<Edge> a, shared_ptr<Edge> b){
-		return a->vertices[0] < b->vertices[0];
+		if (a->vertices[0] == b->vertices[0])
+			return a->vertices[1] < b->vertices[1];
+		else
+			return a->vertices[0] < b->vertices[0];
 	};
 	auto esortkey1 = [](shared_ptr<Edge> a, shared_ptr<Edge> b){
-		return a->vertices[1] < b->vertices[1];
+		if (a->vertices[1] == b->vertices[1])
+			return a->vertices[0] < b->vertices[0];
+		else
+			return a->vertices[1] < b->vertices[1];
 	};
 	std::sort(to_susp.begin(), to_susp.end(), esortkey0);
 	std::sort(from_susp.begin(), from_susp.end(), esortkey1);

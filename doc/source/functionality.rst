@@ -25,7 +25,7 @@ the only restriction applied to a grid cell is that it can not
 be multiply connected.
 
 Surface is a collection of faces which are given by edges list.
-As well as contours there are no restriction on the surface geometry.
+As well as with contours there are no restriction on the surface geometry.
 
 3D grid is a set of 3D cells each of which is a closed surface.
 
@@ -40,7 +40,7 @@ Each grid contains its own bounding contour which is
 referenced as a grid contour or grid surface.
 It includes all boundary nodes of the grid along with grid boundary features.
 Most procedures which take contour/surface as an invariable input parameter (e.g.
-set boundary types, exclude contour from a grid etc.) could also accept
+set boundary types, exclude contour from a grid etc.), also accept
 grid contours addressed by a grid internal name.
 
 Boundary type is a non-geometric object which is defined
@@ -81,13 +81,13 @@ Grid Superposition
 
 This is the basic HybMesh operation. Generally it takes two independent
 grids which have non-zero domain intersection and composes them into a single grid.
-The domain of resulting grid is exactly equal to the domain of geometrical union of parent grid domains and
-its cells reflect the original grids cells everywhere except for a zone around the line of parent grids
-contact which is triangulated providing smooth cell size transition. This zone is later referenced as a
+The domain of resulting grid is exactly equal to the domain of geometrical union of parent grid domains;
+resulting cells reflect original grid everywhere except for a zone around the line of parent grids
+contact, which is triangulated providing smooth cell size transition. This zone is later referenced as the
 *buffer zone*.
 
 Order of superposition matters. For clarity sake we call the first of two original grids the *base grid*
-and the second one -- *overlaid grid*. **Buffer is always built within the base grid**. Cells
+and the second one -- the *overlaid grid*. **Buffer is always built within the base grid**. Cells
 of *overlaid grid* are transfered to the resulting grid mostly untouched
 (except for a few boundary vertices near grids intersection zone. See :ref:`fixbnd` for details).
 So, as you can see on the picture below, by swapping the grid roles we obtain different resulting grid geometry.
@@ -97,7 +97,8 @@ So, as you can see on the picture below, by swapping the grid roles we obtain di
 
    fig. 1. Basic superposition example
 
-Hybmesh also supports superposition of grid chain. In this regime a sequence of
+Hybmesh also supports superposition of grids given as a chain.
+In this regime a sequence of
 superposition operations are performed over a list of grids. Each operation takes the result of previous one
 as a *base grid* and use the next grid in given list as an *overlaid grid*.
 You should carefully define the order of grids in a input list to get desirable result.
@@ -109,8 +110,8 @@ On a picture below you can see the superposition result depending on given grids
    fig. 2. Chain superposition example
 
 
-Superposition with building a buffer grid only takes place if parent grid has non-zero and non single point intersection area.
-Different operation results depending on relative position of input grids are presented below.
+Superposition with buffer grid building only takes place if parent grid has non-zero and non single point intersection area.
+Operation results depending on relative position of input grids are presented below.
 
 .. figure:: grid_imposition3.png
    :width: 600 px
@@ -118,23 +119,23 @@ Different operation results depending on relative position of input grids are pr
    fig3. Superposition depending on types of given grid intersections.
 
 If grid domains have no proper intersections (two last examples on the picture above)
-then the resulting grid will contain cells from both given grids assembled to a
+then the resulting grid will contain cells from both given grids assembled into a
 single connectivity table.
-When grids have zero intersection but a common boundary segment (second example on the
-picture above) buffer will be built.
-For such cases consider using of :ref:`snapping<snapgrid>` function to snap
+If grids have zero intersection but a common boundary segment (second example on the
+picture above), a buffer will be built.
+In such cases consider usage of :ref:`snapping<snapgrid>` function to snap
 base grid to overlaid grid contour and guarantee exact connection of grid domains.
 
 
 Boundary features of superposed grid contour reflect boundary features of given grids.
-If any boundary segment is contained in both *base grid* and *overlaid grid* then priority
-will be given to features from the latter.
+If both *base grid* and *overlaid grid* contain the same boundary segment, the
+priority is given to features from the latter.
 
 
 Buffer zone size
 ++++++++++++++++
-Buffer zone is constructed as an area of all *base grid* cells which contain a vertex located
-no further than given buffer zone size from contact line. Larger buffer zone provides
+Buffer zone is constructed by those *base grid* cells which contain a vertex located
+no further than the given buffer zone size from contact line. Larger buffer zone provides
 smoother triangle grid within the buffer (see picture below).
 
 .. figure:: grid_imposition4.png
@@ -323,6 +324,137 @@ use :ref:`heal-grid` functionality with *convex_cells* option preceded by
 
 Python interface function: :func:`snap_grid_to_contour`.
 
+
+Grid-Contour Operations
+-----------------------
+
+This set of operations modify existing grid geometry using domains or
+polyline contours.
+
+.. _inscribe-grid:
+
+Inscribe Grid into Domain
++++++++++++++++++++++++++
+
+Inscribe grid algorithm creates a new grid from given basic grid
+and some multiply connected domain in such a way that all grid cells
+lying outside (or inside) the domain are wiped out
+and domain edges become
+the new boundaries of created grid. In order to join domain edges and
+grid cells some buffer zone is built and filled with unstructured mesh.
+In fact this procedure acts almost like :ref:`gridimp` algorithm but instead
+of secondary grid a domain is used. 
+
+Grid can be inscribed either within or without the domain. In the
+first case the resulting grid boundary will equal domain boundary with
+corresponding boundary features. In the latter case resulting domain
+is the geometrical difference of base grid area and domain area. And 
+boundary features will be taken from both sources with higher priority
+of domain. The effect of both types of exclusion can be seen in the
+figure below.
+
+.. figure:: inscribe_grid1.png
+   :width: 600 px
+
+.. _inscribe-domain-resegment:
+
+Resegmentation options
+......................
+
+While filling the buffer the algorithm needs to use some 1D segmentation
+of the domain. There is an option whether to use domain segmentation as it
+is or rebuild it in a way best fitted to closest grid cell sizes.
+In the figure above results obtained with keeping contour (upper row)
+and rebuilding contour (lower row) are shown.
+
+Resegmentation is performed using *zero angle* feature -- a maximum deviation
+from straight (180 degree) angle which is considered insignificant.
+So all existing domain vertices
+which provide a turn greater than :math:`180+\alpha_0`
+or lower than :math:`180-\alpha_0` will be kept after repartition.
+:math:`\alpha_0=180` means that any vertex can be removed.
+With :math:`\alpha_0=0` only vertices lying on the same line
+can be removed or altered. A special value :math:`\alpha_0=-1` means
+that all vertices should be kept (however new ones can still be added).
+
+Note that even if *keep contour* option is set to true and
+repartition of the domain is not performed, *zero angle* value
+still matters while doing discretization of basic grid area sections
+lying within the buffer.
+
+Python interface function: :func:`inscribe_grid`.
+
+
+.. _insert-constraints:
+
+Insert Line and Site Constraints
+++++++++++++++++++++++++++++++++
+
+This procedure inserts polylines and vertices into existing grid structure.
+To connect embedded contours and points to grid cells, a buffer zone is
+built and filled with unstructured mesh (see figure below).
+
+.. figure:: insert_constraint1.png
+   :width: 600 px
+
+Segmentation of embedded contours could be used as is or adopted with
+respect to sizes of adjacent grid cells (see *keep contour* and *zero angle*
+options in :ref:`inscribe-domain-resegment`).
+Unstructured grid step sizes near embedded vertices also
+could be defined manually or calculated.
+
+Passed contours could be open, closed and have intersections.
+If *keep contour* is set to true (so resegmentation will not be done
+while algorithm execution) cross points should present among
+contour vertices.
+
+Python interface function: :func:`insert_grid_constraints`.
+
+.. _remove-cells:
+
+Remove Cells
+++++++++++++
+
+This procedure removes all grid cells which satisfy the condition
+with respect to a given multiply connected contour.
+Exact type of condition is defined by the **what** argument.
+Results obtained with different **what** options
+are depicted in the figure below.
+Note that all newly created boundary grid edges will have
+default (zero) boundary feature. So boundary features of the substracted
+area is not taking into account.
+
+.. figure:: remove_cells1.png
+   :width: 500 px
+
+   Remove Cells with different **what** option.
+
+
+Python interface function: :func:`remove_cells`.
+
+.. _substract-area:
+
+Substract Area
+++++++++++++++
+
+Unlike the previous procedure this one makes an exact domain
+exclusion applying clipping to those grid cells which cross excluded
+area edges. The results of this procedure for both
+inside and outside exclusion can be seen in the figure below.
+
+.. figure:: exclude_area1.png
+   :width: 500 px
+
+All boundary edges of resulting grid are produced by either source grid
+boundary or substracted area boundary. Hence boundary features of the
+resulting grid are taken from input grid and contours. In case
+of conflicts the priority is given to features of the substracted area.
+
+Python interface function: :func:`exclude_contours`.
+
+
+
+
 .. _unstructured-meshing:
 
 Unstructured Domain Meshing
@@ -374,7 +506,7 @@ points will form grid nodes. See example below to see how this option works.
 
    fig. 3. Point-type constraints.
 
-Triangulation procedure could be followed by recombination routine
+Triangulation procedure could be followed by the recombination routine
 which will try to transform the resulting grid cells to provide
 mostly quadrangular grid. Use option `fill = '4'` to execute this
 algorithm. All given constraints will still be actual.
@@ -385,9 +517,9 @@ algorithm. All given constraints will still be actual.
    fig. 4. Recombination algorithm effect.
 
 It is also possible to build pebi-like finite volume grids
-on the basis of triangulation procedure. Pebi grid builder
+on the basis of triangulation procedure. Pebi grid building
 procedure also accepts contour and point-type constraints.
-The difference is that in this case all
+Note, that in this case all
 vertices presented in constraint contours and point-type
 conditions will be located at the center of resulting grid cells.
 Therefore boundary representation (but not domain area) of resulting grid   
@@ -410,11 +542,6 @@ Python interface function: :func:`triangulate_domain`, :func:`pebi_fill`
 
 See also :ref:`example6`.
 
-.. _gridclip:
-
-Clip Grid
----------
-TODO
 
 .. _heal-grid:
 
@@ -429,7 +556,7 @@ Grid Mapping
 ------------
 This procedure maps the domain containing a grid (*base domain*) to any other domain with equal
 connectivity (*target domain*) and uses this mapping to translate the grid.
-Mapping is built as a result of solution of the Laplace equation with boundary conditions of
+Mapping is built as a result of solution of the Laplace's equation with boundary conditions of
 the first kind.
 Boundary values are calculated using domains boundary mapping defined by user.
 Boundary value problem is solved by a finite element method using

@@ -363,17 +363,18 @@ shared_ptr<HM2D::Vertex> Grid43::GuaranteePoint(HM2D::GridData& grid, Point pts,
 	};
 
 	auto direct_cell = [&](int ic, int ind){
-		if (ind == approx.icellvert[ic][0]) return;
-		int istart = (ind == approx.icellvert[ic][1]) ? 1 : 2;
-		std::rotate(approx.cellvert[ic].begin(),
-				approx.cellvert[ic].begin()+istart,
-				approx.cellvert[ic].begin()+3);
-		std::rotate(approx.icellvert[ic].begin(),
-				approx.icellvert[ic].begin()+istart,
-				approx.icellvert[ic].begin()+3);
-		std::rotate(grid.vcells[ic]->edges.begin(),
-				grid.vcells[ic]->edges.begin()+istart,
-				grid.vcells[ic]->edges.end());
+		if (ind != approx.icellvert[ic][0]){
+			int istart = (ind == approx.icellvert[ic][1]) ? 1 : 2;
+			std::rotate(approx.cellvert[ic].begin(),
+					approx.cellvert[ic].begin()+istart,
+					approx.cellvert[ic].begin()+3);
+			std::rotate(approx.icellvert[ic].begin(),
+					approx.icellvert[ic].begin()+istart,
+					approx.icellvert[ic].begin()+3);
+			std::rotate(grid.vcells[ic]->edges.begin(),
+					grid.vcells[ic]->edges.begin()+istart,
+					grid.vcells[ic]->edges.end());
+		}
 		HM2D::Contour::R::ReallyDirect::Permanent(grid.vcells[ic]->edges);
 	};
 	auto set_neighbour = [&](int ie, int left, int right){

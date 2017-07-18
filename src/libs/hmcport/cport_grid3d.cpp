@@ -36,9 +36,9 @@ int g3_scale(void* obj, double* pc, double* p0){
 		auto g = static_cast<HM3D::GridData*>(obj);
 		double xc = pc[0] / 100., yc = pc[1] / 100., zc = pc[2] / 100.;
 		for (auto& p: g->vvert){
-			p->x -= p0[0]; p->x *= xc;
-			p->y -= p0[1]; p->y *= yc;
-			p->z -= p0[2]; p->z *= zc;
+			p->x -= p0[0]; p->x *= xc; p->x += p0[0];
+			p->y -= p0[1]; p->y *= yc; p->y += p0[1];
+			p->z -= p0[2]; p->z *= zc; p->z += p0[2];
 		}
 		return HMSUCCESS;
 	} catch (std::exception& e){

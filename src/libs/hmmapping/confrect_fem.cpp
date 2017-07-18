@@ -7,6 +7,7 @@
 #include "contabs2d.hpp"
 #include "finder2d.hpp"
 #include "treverter2d.hpp"
+#include "hmtimer.hpp"
 
 #define FEM_NMAX 1000000
 #define APPROX_PART 200
