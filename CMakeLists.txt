@@ -92,7 +92,7 @@ if (WIN32)
 endif(WIN32)
 
 # ============================ Version
-set(APPVERSION 0.5.0)
+set(APPVERSION 0.5.1)
 
 # =========================== linking libraries flags
 #libGmsh: global definition of BUILD_GMSH, GMSH_TARGET, GMSH_INCLUDE

@@ -39,11 +39,12 @@ if sys.platform.startswith('win'):
         'libhmmath.dll',
         'libhybmesh_contours2d.dll',
         'libhybmesh_surfaces3d.dll',
-        'libcrossgrid.dll',
+        'libhmgrid2d.dll',
+        'libhmgrid3d.dll',
         'libhmnumeric.dll',
+        'libcrossgrid.dll',
         'libhmmapping.dll',
         'libhmblay.dll',
-        'libhmgrid3d.dll',
         'libhmcport.dll',
     ]
     import ctypes as ct

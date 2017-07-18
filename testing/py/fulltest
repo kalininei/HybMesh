@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
-HMCOM="python ../../src/py/hybmesh.py -verbosity 0 -sx"
-#HMCOM="hybmesh -silent -sx"
+#HMCOM="python ../../src/py/hybmesh.py -verbosity 0 -sx"
+HMCOM="hybmesh -silent -sx"
 
 echo "============ doing unit tests"
 echo "--- cont_test.py"

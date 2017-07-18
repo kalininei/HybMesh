@@ -210,7 +210,7 @@ def inscribe_grid(grid, cont, where, buffer_size,
     :param degree zero_angle:
       defines deviation from the straight angle which is considered
       insignificant while 1D resegmentation. -1 makes all existed vertices
-      significent; 180 -- allows complete resegmentation.
+      significant; 180 -- allows complete resegmentation.
 
     :param str buffer_fill: one of
 
@@ -220,9 +220,7 @@ def inscribe_grid(grid, cont, where, buffer_size,
 
     :return: identifier of the newly created grid
 
-
     See details in :ref:`inscribe-grid`.
-
     """
     icheck(0, Grid2D())
     icheck(1, ACont2D())
