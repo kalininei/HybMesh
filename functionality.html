@@ -100,11 +100,11 @@ explicitly changed by user. However readlonly access is possible.
 HybMesh <a class="reference internal" href="pyinterface.html#pyinterf"><span class="std std-ref">sctipting interface</span></a> provides a set of <em>tab</em> functions
 which return vertices coordinates and different connectivity tables as
 plain 1D arrays by a given table name. See documentation of
-<code class="xref py py-func docutils literal"><span class="pre">tab_cont2()</span></code>, <code class="xref py py-func docutils literal"><span class="pre">tab_grid2()</span></code>, <code class="xref py py-func docutils literal"><span class="pre">tab_surf3()</span></code>, <code class="xref py py-func docutils literal"><span class="pre">tab_grid3()</span></code>
+<a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.tab_cont2" title="hybmeshpack.hmscript.tab_cont2"><code class="xref py py-func docutils literal"><span class="pre">tab_cont2()</span></code></a>, <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.tab_grid2" title="hybmeshpack.hmscript.tab_grid2"><code class="xref py py-func docutils literal"><span class="pre">tab_grid2()</span></code></a>, <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.tab_surf3" title="hybmeshpack.hmscript.tab_surf3"><code class="xref py py-func docutils literal"><span class="pre">tab_surf3()</span></code></a>, <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.tab_grid3" title="hybmeshpack.hmscript.tab_grid3"><code class="xref py py-func docutils literal"><span class="pre">tab_grid3()</span></code></a>
 for details. In <a class="reference internal" href="oointerface.html#oointerfaces"><span class="std std-ref">wrapper interfaces</span></a>
 some of those tables can be access via
-<code class="xref py py-func docutils literal"><span class="pre">get_vertices</span></code>
-and <code class="xref py py-func docutils literal"><span class="pre">get_tab</span></code> methods.
+<a class="reference internal" href="ooifuncref.html#Hybmesh.Hybmesh.Object.raw_vertices" title="Hybmesh.Hybmesh.Object.raw_vertices"><code class="xref py py-func docutils literal"><span class="pre">get_vertices</span></code></a>
+and <a class="reference internal" href="ooifuncref.html#Hybmesh.Hybmesh.Object.raw_tab" title="Hybmesh.Hybmesh.Object.raw_tab"><code class="xref py py-func docutils literal"><span class="pre">get_tab</span></code></a> methods.
 Note, that the latter function returns array of integers.
 Hence only tables given by array of integers could be accessed.</p>
 <p>An alternative way to read hybmesh geometry is to export it
@@ -251,7 +251,7 @@ The effect of this options is shown in picture below.</p>
 <a class="reference internal image-reference" href="_images/grid_imposition9.png"><img alt="_images/grid_imposition9.png" src="_images/grid_imposition9.png" style="width: 400px;" /></a>
 <p class="caption"><span class="caption-text">fig. 9. Superposition with buffer fill = &#8216;3&#8217; (default) and &#8216;4&#8217;</span></p>
 </div>
-<p>Python interface function: <code class="xref py py-func docutils literal"><span class="pre">unite_grids()</span></code>, <code class="xref py py-func docutils literal"><span class="pre">unite_grids1()</span></code>.</p>
+<p>Python interface function: <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.unite_grids" title="hybmeshpack.hmscript.unite_grids"><code class="xref py py-func docutils literal"><span class="pre">unite_grids()</span></code></a>, <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.unite_grids1" title="hybmeshpack.hmscript.unite_grids1"><code class="xref py py-func docutils literal"><span class="pre">unite_grids1()</span></code></a>.</p>
 </div>
 </div>
 <div class="section" id="grid-snapping">
@@ -313,7 +313,7 @@ use <a class="reference internal" href="#heal-grid"><span class="std std-ref">He
 <div class="figure">
 <a class="reference internal image-reference" href="_images/snap_grid2.png"><img alt="_images/snap_grid2.png" src="_images/snap_grid2.png" style="width: 600px;" /></a>
 </div>
-<p>Python interface function: <code class="xref py py-func docutils literal"><span class="pre">snap_grid_to_contour()</span></code>.</p>
+<p>Python interface function: <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.snap_grid_to_contour" title="hybmeshpack.hmscript.snap_grid_to_contour"><code class="xref py py-func docutils literal"><span class="pre">snap_grid_to_contour()</span></code></a>.</p>
 </div>
 </div>
 <div class="section" id="grid-contour-operations">
@@ -360,7 +360,7 @@ that all vertices should be kept (however new ones can still be added).</p>
 repartition of the domain is not performed, <em>zero angle</em> value
 still matters while doing discretization of basic grid area sections
 lying within the buffer.</p>
-<p>Python interface function: <code class="xref py py-func docutils literal"><span class="pre">inscribe_grid()</span></code>.</p>
+<p>Python interface function: <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.inscribe_grid" title="hybmeshpack.hmscript.inscribe_grid"><code class="xref py py-func docutils literal"><span class="pre">inscribe_grid()</span></code></a>.</p>
 </div>
 </div>
 <div class="section" id="insert-line-and-site-constraints">
@@ -380,7 +380,7 @@ could be defined manually or calculated.</p>
 If <em>keep contour</em> is set to true (so resegmentation will not be done
 while algorithm execution) cross points should present among
 contour vertices.</p>
-<p>Python interface function: <code class="xref py py-func docutils literal"><span class="pre">insert_grid_constraints()</span></code>.</p>
+<p>Python interface function: <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.insert_grid_constraints" title="hybmeshpack.hmscript.insert_grid_constraints"><code class="xref py py-func docutils literal"><span class="pre">insert_grid_constraints()</span></code></a>.</p>
 </div>
 <div class="section" id="remove-cells">
 <span id="id2"></span><h3>Remove Cells<a class="headerlink" href="#remove-cells" title="Permalink to this headline">¶</a></h3>
@@ -396,7 +396,7 @@ area is not taking into account.</p>
 <a class="reference internal image-reference" href="_images/remove_cells1.png"><img alt="_images/remove_cells1.png" src="_images/remove_cells1.png" style="width: 500px;" /></a>
 <p class="caption"><span class="caption-text">Remove Cells with different <strong>what</strong> option.</span></p>
 </div>
-<p>Python interface function: <code class="xref py py-func docutils literal"><span class="pre">remove_cells()</span></code>.</p>
+<p>Python interface function: <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.remove_cells" title="hybmeshpack.hmscript.remove_cells"><code class="xref py py-func docutils literal"><span class="pre">remove_cells()</span></code></a>.</p>
 </div>
 <div class="section" id="substract-area">
 <span id="id3"></span><h3>Substract Area<a class="headerlink" href="#substract-area" title="Permalink to this headline">¶</a></h3>
@@ -411,7 +411,7 @@ inside and outside exclusion can be seen in the figure below.</p>
 boundary or substracted area boundary. Hence boundary features of the
 resulting grid are taken from input grid and contours. In case
 of conflicts the priority is given to features of the substracted area.</p>
-<p>Python interface function: <code class="xref py py-func docutils literal"><span class="pre">exclude_contours()</span></code>.</p>
+<p>Python interface function: <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.exclude_contours" title="hybmeshpack.hmscript.exclude_contours"><code class="xref py py-func docutils literal"><span class="pre">exclude_contours()</span></code></a>.</p>
 </div>
 </div>
 <div class="section" id="unstructured-domain-meshing">
@@ -479,7 +479,7 @@ So the resulting grid will not be strictly of pebi type.</p>
 <a class="reference internal image-reference" href="_images/domain_triangulation5.png"><img alt="_images/domain_triangulation5.png" src="_images/domain_triangulation5.png" style="width: 500px;" /></a>
 <p class="caption"><span class="caption-text">fig. 5. Constrained pebi grid building.</span></p>
 </div>
-<p>Python interface function: <code class="xref py py-func docutils literal"><span class="pre">triangulate_domain()</span></code>, <code class="xref py py-func docutils literal"><span class="pre">pebi_fill()</span></code></p>
+<p>Python interface function: <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.triangulate_domain" title="hybmeshpack.hmscript.triangulate_domain"><code class="xref py py-func docutils literal"><span class="pre">triangulate_domain()</span></code></a>, <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.pebi_fill" title="hybmeshpack.hmscript.pebi_fill"><code class="xref py py-func docutils literal"><span class="pre">pebi_fill()</span></code></a></p>
 <p>See also <a class="reference internal" href="intro_example6.html#example6"><span class="std std-ref">Example 6</span></a>.</p>
 </div>
 <div class="section" id="heal-grid">
@@ -650,7 +650,7 @@ The latter guarantees that the resulting domain will be equal to the original <e
 it changes grid topology so that it won&#8217;t be the same as the topology of the <em>base grid</em>.</p>
 <p>Snapping for each boundary edge will only take place if it is valid, i.e. it
 will not result in intersections with internal grid edges.</p>
-<p>Python interface function: <code class="xref py py-func docutils literal"><span class="pre">map_grid()</span></code>.
+<p>Python interface function: <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.map_grid" title="hybmeshpack.hmscript.map_grid"><code class="xref py py-func docutils literal"><span class="pre">map_grid()</span></code></a>.
 See also: <a class="reference internal" href="prototypes.html#custom-rect-grid"><span class="std std-ref">Custom Rectangle Grid</span></a>, <a class="reference internal" href="prototypes.html#circrect-grid"><span class="std std-ref">Square in Circle</span></a>.</p>
 </div>
 </div>
@@ -701,7 +701,7 @@ contour and put all those points into resulting segmentation.</li>
 <a class="reference internal image-reference" href="_images/cont_meshing3.png"><img alt="_images/cont_meshing3.png" src="_images/cont_meshing3.png" style="width: 700px;" /></a>
 <p class="caption"><span class="caption-text">fig. 3. Contour meshing with different <img class="math" src="_images/math/e89765431934c995d7d6a5545dbd4dbf64122339.png" alt="\alpha_0"/>, meshing with cross contour given.</span></p>
 </div>
-<p>Python interface function: <code class="xref py py-func docutils literal"><span class="pre">partition_contour()</span></code>.</p>
+<p>Python interface function: <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.partition_contour" title="hybmeshpack.hmscript.partition_contour"><code class="xref py py-func docutils literal"><span class="pre">partition_contour()</span></code></a>.</p>
 </div>
 <div class="section" id="matched-contour-meshing">
 <span id="matchedcontmeshing"></span><h4>Matched contour meshing<a class="headerlink" href="#matched-contour-meshing" title="Permalink to this headline">¶</a></h4>
@@ -727,7 +727,7 @@ will be calculated and preserved in the resulting mesh.</p>
 <p>This procedure could be useful for building 1D meshes prior to
 <a class="reference internal" href="#unstructured-meshing"><span class="std std-ref">unstructured constraint triangulation</span></a> of areas.
 See example of usage in <a class="reference internal" href="intro_example6.html#example6"><span class="std std-ref">Example 6</span></a>.</p>
-<p>Python interface function: <code class="xref py py-func docutils literal"><span class="pre">matched_partition()</span></code>.</p>
+<p>Python interface function: <a class="reference internal" href="pyinterface.html#hybmeshpack.hmscript.matched_partition" title="hybmeshpack.hmscript.matched_partition"><code class="xref py py-func docutils literal"><span class="pre">matched_partition()</span></code></a>.</p>
 </div>
 </div>
 </div>
