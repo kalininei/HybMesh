@@ -200,15 +200,6 @@ void Algos::MergeTo(const GridData& from, GridData& to){
 		fndres->id = 1;
 	}
 
-	//##############
-	for (int i=0; i<bvfrom.size(); ++i){
-		auto v = bvfrom[i];
-		auto fd = finder.find(*v);
-		if (v!=fd){
-			int a = 0;
-		}
-	}
-
 	//!!! 'from' should not contain duplicated boundary nodes
 	assert([&](){
 		for (auto& v: bvfrom){

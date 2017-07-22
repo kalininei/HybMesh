@@ -119,8 +119,6 @@ public:
 
 		//process bounding boxes and raterization.
 		//fills all class internal data
-		//#########
-		icells = cells_by_tp(11);
 		callback.subprocess_step_after(1);
 		sort_by_bb(grid, domain);
 		if (icells.size() == 0) return;

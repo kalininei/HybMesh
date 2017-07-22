@@ -7,8 +7,6 @@
 #include "hmfem.hpp"
 #include "partcont.hpp"
 #include "modcont.hpp"
-//#######
-#include "export2d_vtk.hpp"
 
 using namespace HM2D;
 using namespace HM2D::Grid;
@@ -189,45 +187,6 @@ struct TriBasedSizeFun: public SizeFun{
 		lprob.SetDirichlet(bp, [mp](const Vertex* v)->double{ return mp.find(v)->second; });
 		common_size.resize(grid->vvert.size(), 0);
 		lprob.Solve(common_size);
-
-		/*
-		//resort points so that all known points was at the end of point list
-		aa::constant_ids_pvec(grid->vvert, -1);
-		aa::enumerate_ids_pvec(known_pts);
-		std::sort(grid->vvert.begin(), grid->vvert.end(),
-			[](const shared_ptr<Vertex>& p1, const shared_ptr<Vertex>& p2){
-				return p1->id < p2->id;
-			});
-		// create gradient matrix
-		auto dxmat = HMFem::Assemble::DDx(*grid);
-		auto dymat = HMFem::Assemble::DDy(*grid);
-		dxmat->data.resize(2*grid->vvert.size());
-		std::copy(dymat->data.begin(), dymat->data.end(),
-				dxmat->data.begin() + grid->vvert.size());
-		auto& gradmat = *dxmat;
-		// create rhs
-		vector<double> rhs(gradmat.data.size(), 0);
-		// apply known values
-		int start_known = grid->vvert.size() - known_sz.size();
-		for (int i=0; i<gradmat.data.size(); ++i){
-			auto jt = gradmat.data[i].lower_bound(start_known);
-			while (jt != gradmat.data[i].end()){
-				rhs[i] -= jt->second * known_sz[jt->first-start_known];
-				gradmat.data[i].erase(jt++);
-			}
-		}
-
-		// QR solution
-		common_size.reserve(grid->vvert.size());
-		common_size.resize(start_known, 1e8);
-		HMMath::SuiteSparseQRSolver slv(gradmat, common_size.size());
-		slv.Solve(rhs, common_size);
-		//add known values
-		common_size.resize(grid->vvert.size());
-		std::copy(known_sz.begin(), known_sz.end(), common_size.begin()+start_known);
-		*/
-		//#############################
-		HM2D::Export::GridVDataVTK(*grid, common_size, "g2.vtk");
 	}
 
 	double sz(const Point& p) const override{

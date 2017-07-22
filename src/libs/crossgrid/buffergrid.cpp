@@ -311,33 +311,8 @@ void BufferGrid::build_size_sources(const splitR& s, vector<std::pair<Point, dou
 	}
 }
 
-//#####################################3
 Contour::Tree BufferGrid::triangulation_boundary(){
 	auto ginv = std::make_shared<Constructor::InvokeGrid>(*this);
-	/*
-	//get buffer cells boundary
-	vector<EdgeData> conts = Contour::Assembler::GridBoundary(ginv->grid);
-	ginv.reset();
-
-	//split contour
-	vector<splitR> splitted(conts.size());
-	for (int i=0; i<conts.size(); ++i)
-		splitted[i] = split_edges(conts[i]);
-
-	//build size sources
-	vector<std::pair<Point, double>> size_sources;
-	for (int i=0; i<splitted.size(); ++i){
-		build_size_sources(splitted[i], size_sources);
-	}
-
-	//partition
-	for (int i=0; i<conts.size(); ++i)
-		contour_segmentation(conts[i], splitted[i], size_sources);
-
-	//assemble tree
-	Contour::Tree ret;
-	for (auto& c: conts) { ret.add_contour(std::move(c)); }
-	*/
 
 	//get triangulation boundary
 	Contour::Tree ret = Contour::Tree::GridBoundary(ginv->grid);
